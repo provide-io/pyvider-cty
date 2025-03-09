@@ -1,0 +1,36 @@
+from typing import Any, ClassVar
+
+from attrs import define, field
+
+from pyvider.exceptions import ValidationError
+
+from ..base import TFType
+
+
+@define(frozen=True, slots=True)
+class TFBool(TFType[bool]):
+    ctype: ClassVar[str] = "bool"
+    value: bool = field(default=False)
+
+    def validate(self, value: Any) -> "TFBool":
+        if isinstance(value, bool):
+            return TFBool(value=value)
+        raise ValidationError("Value must be a boolean.")
+
+    def equal(self, other: "TFType[bool]") -> bool:
+        """Check equality with another type."""
+        return isinstance(other, TFBool)
+
+    def usable_as(self, other: "TFType[bool]") -> bool:
+        """Check if this type can be used as another type."""
+        return isinstance(other, TFBool)
+
+    def __eq__(self, other):
+        return super().__eq__(other)
+
+    def __repr__(self):
+        """Return a string representation of the TFBool type."""
+        return f"{self.__class__.__name__}(metadata={self.metadata})"
+
+    def __hash__(self):
+        return hash(self.value)
