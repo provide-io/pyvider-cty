@@ -1,0 +1,152 @@
+
+# pyvider-cty/pyproject.toml
+
+[project]
+name = "pyvider-cty"
+version = "0.1.1"
+description = "Pyvider CTY Package"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "Tim Perkins", email = "code@tim.life"}
+]
+
+dependencies = [
+    "attrs>=25.1.0",
+]
+
+[dependency-groups]
+dev = [
+]
+
+################################################################################
+# hatch
+################################################################################
+
+[tool.hatch.envs.default]
+dependencies = []
+
+# [tool.hatch.envs.test]
+# dependencies = [
+#     "pytest>=8.3.4",
+#     "pytest-asyncio>=0.25.3",
+#     "pytest-cov>=6.0.0",
+#     "ruff>=0.0.265",
+#     "pyre-check>=0.9.19",
+#     "hypothesis>=6.100.0",
+#     "bandit>=1.7.8"
+# ]
+
+[tool.hatch.envs.test.scripts]
+#test = "pytest {args:tests}"
+#coverage = "pytest --cov=pyvider.cty --cov-report=term-missing --cov-config=pyproject.toml"
+lint = "ruff check src tests"
+format = "ruff format src tests"
+typecheck = "pyre check"
+security = "bandit -r src"
+
+[tool.hatch.envs.default.scripts]
+test = "pytest -n auto --dist=loadscope"  # Parallel tests, no coverage by default
+test-cov = "pytest -n auto --dist=loadscope --cov=your_module --cov-report=html"
+run = "python -m pyvider.cty"
+
+[tool.hatch.envs.go.scripts]
+build = "(cd examples/kvprobo/go-rpc; ./build.sh)"
+test = "(cd examples/kvprobo/go-rpc; ./build.sh)"
+
+[tool.hatch.metadata.targets.wheel]
+packages = [
+    { include = "pyvider.cty", from = "src" }
+]
+
+################################################################################
+# pytest
+################################################################################
+
+[tool.pytest.ini_options]
+log_cli = true
+# log_cli_level = "DEBUG"
+
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+filterwarnings = [
+    "ignore:cannot collect test class .* because it has a __init__ constructor:pytest.PytestCollectionWarning",
+    "ignore:.* KqueueSelector constructor:pytest.PytestCollectionWarning",
+]
+
+norecursedirs = [
+    "build",
+    "dist",
+    "*.egg-info",
+    ".venv",
+    "**/*pb2*.py",
+    "*/logger/messages/*",
+]
+
+################################################################################
+# lint
+################################################################################
+
+[tool.lint]
+select = ["E", "F", "I", "UP", "ANN", "B"]
+ignore = [
+    "ANN401",
+    "B008",
+    "E501",
+]
+exclude = ["tests/*", "**/*pb2*.py"]
+line-length = 88
+
+################################################################################
+# coverage
+################################################################################
+
+[tool.coverage.run]
+source = ["pyvider.cty"]
+branch = true
+omit = [
+    "*_pb2.py",
+    "*/logger/*",
+    "*/crypto/debug.py",
+    "tests/*",
+]
+
+[tool.coverage.report]
+# Improve report readability with missing lines
+show_missing = true
+skip_covered = false  # Show all lines, even if 100% covered
+precision = 2  # Decimal places in report output
+
+# Exclude logging statements and unnecessary code blocks
+exclude_lines = [
+    "logger\\.",  # Ignore all logger calls (debug, info, warning, error, critical)
+    "import logging",  # Ignore logging import statements
+    "from logging",  # Ignore logging module imports
+    "raise NotImplementedError",  # Ignore abstract method placeholders
+    "if __name__ == .__main__.:",  # Ignore main script execution guards
+    "pass",  # Ignore no-op placeholders
+    "pragma: no cover"  # Still allow manual exclusion of blocks
+]
+
+[tool.coverage.html]
+directory = "htmlcov"  # Output directory for HTML coverage reports
+
+[tool.coverage.xml]
+output = "coverage.xml"  # Output XML for CI/CD tools
+
+[tool.coverage.annotate]
+directory = "cover"  # Annotate files with coverage info
+
+################################################################################
+# pyre
+################################################################################
+
+[tool.pyre]
+source_directories = ["src"]
+exclude = ["tests/*", "**/*pb2*.py"]
+strict = true
+
