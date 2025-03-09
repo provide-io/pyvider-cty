@@ -1,0 +1,77 @@
+flowchart TD
+    subgraph "Value System"
+        Value["Value Object"] --> Type
+        Value --> RawValue["Raw Value Data"]
+        Unknowns["Unknown Values"] --> Value
+        Nulls["Null Values"] --> Value
+        Refinements["Refinement System"] --> Unknowns
+    end
+
+    subgraph "Type System"
+        Type["Type Interface"] --> Primitives
+        Type --> Collections
+        Type --> Structural
+        
+        subgraph "Primitives"
+            String
+            Number
+            Bool
+        end
+        
+        subgraph "Collections"
+            List --> ElementType["Element Type"]
+            Map --> MapKeyType["Key Type"]
+            Map --> MapValType["Value Type"]
+            Set --> SetElementType["Element Type"]
+        end
+        
+        subgraph "Structural"
+            Object --> AttributeTypes["Attribute Types"]
+            Tuple --> TupleTypes["Element Types"]
+            Dynamic
+        end
+    end
+
+    subgraph "Path System"
+        Path["Path Object"]
+        PathStep["Path Steps"] --> Path
+        GetAttr["GetAttr Step"] --> PathStep
+        Index["Index Step"] --> PathStep
+    end
+
+    subgraph "Serialization"
+        JSON["JSON Encoder/Decoder"] 
+        Msgpack["Msgpack Encoder/Decoder"]
+        DynamicValue["DynamicValue Handler"]
+        
+        Value --"Value to bytes"--> JSON
+        Value --"Value to bytes"--> Msgpack
+        JSON --"Bytes to Value"--> Value
+        Msgpack --"Bytes to Value"--> Value
+        JSON --"Used by"--> DynamicValue
+        Msgpack --"Used by"--> DynamicValue
+    end
+
+    subgraph "Schema Integration"
+        ResourceDec["Resource Decorator"]
+        FieldDef["Field Definition"]
+        SchemaAttr["Schema Attributes"]
+        ProtobufConv["Protocol Buffer Conversion"]
+        
+        ResourceDec --> SchemaAttr
+        FieldDef --> SchemaAttr
+        Type --"Type Information"--> SchemaAttr
+        SchemaAttr --> ProtobufConv
+    end
+
+    Value --"Extracts via Path"--> Path
+    Path --"Applies to"--> Value
+    
+    %% External interactions
+    Terraform["Terraform Core"] --"Sends/Receives"--> DynamicValue
+    DynamicValue --"Encodes/Decodes"--> Value
+
+    %% Integration flows
+    Type --"Validates"--> Value
+    SchemaAttr --"Creates"--> Type
+    Value --"Used in Resource Lifecycle"--> ResourceDec
