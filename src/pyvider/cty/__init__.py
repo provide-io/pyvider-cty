@@ -1,36 +1,36 @@
 """Terraform type system."""
 
 from .collections import (
-    TFList,
-    TFMap,
-    TFSet,
+    CtyList,
+    CtyMap,
+    CtySet,
 )
 from .primitives import (
-    TFBool,
-    TFNumber,
-    TFString,
+    CtyBool,
+    CtyNumber,
+    CtyString,
 )
 from .structural import (
-    TFDynamic,
-    TFObject,
-    TFTuple,
+    CtyDynamic,
+    CtyObject,
+    CtyTuple,
 )
 from .type import (
-    TFType,
+    CtyType,
 )
 
 __all__ = [
-    "TFType",
+    "CtyType",
 
-    "TFBool",
-    "TFNumber",
-    "TFString",
+    "CtyBool",
+    "CtyNumber",
+    "CtyString",
 
-    "TFList",
-    "TFMap",
-    "TFSet",
+    "CtyList",
+    "CtyMap",
+    "CtySet",
 
-    "TFDynamic",
-    "TFObject",
-    "TFTuple",
+    "CtyDynamic",
+    "CtyObject",
+    "CtyTuple",
 ]

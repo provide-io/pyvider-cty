@@ -29,22 +29,22 @@ services = tfobj({ # or maybe tfschema(tfobj(. dunno.
 @attrs.define
 class AppConfigSchema(Schema):
     feature_flags = tfobj({
-        "enable_beta": tfbool(required=True, default=False),
-        "dark_mode": tfbool(computed=True),
-        "new_ui": tfbool(required=True, default=True)
+        "enable_beta": CtyBool(required=True, default=False),
+        "dark_mode": CtyBool(computed=True),
+        "new_ui": CtyBool(required=True, default=True)
     }, required=True)
 
     scaling_config = tfobj({
         "max_instances": tfnum(required=True, default=10),
         "min_instances": tfnum(required=True, default=1),
-        "auto_scaling": tfbool(required=True, default=True)
+        "auto_scaling": CtyBool(required=True, default=True)
     }, required=True)
 
     services = tfobj({
         "frontend": tfobj({
             "url": tfstr(required=True),
             "port": tfnum(required=True, default=443),
-            "enable_cache": tfbool(default=False)
+            "enable_cache": CtyBool(default=False)
         }, required=True),
         "backend": tfobj({
             "url": tfstr(required=True),
@@ -67,7 +67,7 @@ class AppConfigSchema(Schema):
     }, required=True)
 
     monitoring = tfobj({
-        "enabled": tfbool(default=True),
+        "enabled": CtyBool(default=True),
         "level": tfstr(default="info"),
         "slack_webhook": tfstr(sensitive=True)
     }, computed=True)

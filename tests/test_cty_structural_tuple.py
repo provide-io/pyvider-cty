@@ -1,13 +1,13 @@
 import unittest
 
-from pyvider.exceptions import ValidationError
-from pyvider.cty import TFTuple
+from pyvider.cty.exceptions import ValidationError
+from pyvider.cty import CtyTuple
 
 
-class TestTFTupleType(unittest.TestCase):
+class TestCtyTupleType(unittest.TestCase):
     def setUp(self):
         # Define a tuple with the expected structure (str, int)
-        self.tuple_type = TFTuple((str, int))
+        self.tuple_type = CtyTuple((str, int))
 
     def test_validate_valid_tuple(self):
         try:
@@ -24,17 +24,17 @@ class TestTFTupleType(unittest.TestCase):
             self.tuple_type.validate(("hello",))
 
     def test_equal(self):
-        other_tuple = TFTuple((str, int))
+        other_tuple = CtyTuple((str, int))
         self.assertTrue(self.tuple_type.equal(other_tuple))
 
-        different_tuple = TFTuple((str, str))
+        different_tuple = CtyTuple((str, str))
         self.assertFalse(self.tuple_type.equal(different_tuple))
 
     def test_usable_as(self):
-        compatible_tuple = TFTuple((str, int))
+        compatible_tuple = CtyTuple((str, int))
         self.assertTrue(self.tuple_type.usable_as(compatible_tuple))
 
-        incompatible_tuple = TFTuple((int, str))
+        incompatible_tuple = CtyTuple((int, str))
         self.assertFalse(self.tuple_type.usable_as(incompatible_tuple))
 
 

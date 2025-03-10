@@ -1,4 +1,4 @@
-Introducing a `tfdynamic()` function to Pyvider's schema DSL could make sense, especially as a complement to the existing `tfstr()`, `tfnum()`, `tfobj()`, and `tflist()` functions. This would directly mirror Terraform’s `DynamicValue` and provide a way to explicitly define attributes that can hold polymorphic or unstructured data.
+Introducing a `tfdynamic()` function to Pyvider's schema DSL could make sense, especially as a complement to the existing `tfstr()`, `tfnum()`, `tfobj()`, and `CtyList()` functions. This would directly mirror Terraform’s `DynamicValue` and provide a way to explicitly define attributes that can hold polymorphic or unstructured data.
 
 ### Why Consider `tfdynamic()`?
 - **Schema Flexibility**: Certain attributes in Terraform resources cannot have a fixed schema at design time. `tfdynamic()` would allow defining attributes that accept arbitrary JSON, MessagePack, or other encoded data formats.
@@ -12,17 +12,17 @@ Introducing a `tfdynamic()` function to Pyvider's schema DSL could make sense, e
 - Similar to `tfstr()`, it would define an attribute with flexible typing, typically backed by Terraform's `DynamicValue`.
 
 ```python
-from pyvider.cty.base import TFType
+from pyvider.cty.base import CtyType
 from pyvider.protocols.tfprotov6.protobuf import DynamicValue
 
 @attrs.define
-class TFDynamic(TFType):
+class CtyDynamic(CtyType):
     def to_proto(self):
         return DynamicValue()  # Empty or structured DynamicValue
 
 def tfdynamic(**kwargs) -> AttributeValue:
     meta = AttributeMetadata(**kwargs)
-    value = AttributeValue(ctype=TFDynamic(), metadata=meta)
+    value = AttributeValue(ctype=CtyDynamic(), metadata=meta)
     return value
 ```
 

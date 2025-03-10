@@ -4,22 +4,22 @@ import unittest
 
 import pytest
 
-from pyvider.exceptions import ValidationError
-from pyvider.cty import TFBool, TFNumber, TFSet, TFString
+from pyvider.cty.exceptions import ValidationError
+from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString
 
 
-class TestTFSetType(unittest.TestCase):
+class TestCtySetType(unittest.TestCase):
     def setUp(self):
         # Set up basic sets for testing
-        self.string_set = TFSet(element_type=TFString())
-        self.number_set = TFSet(element_type=TFNumber())
-        self.bool_set = TFSet(element_type=TFBool())
+        self.string_set = CtySet(element_type=CtyString())
+        self.number_set = CtySet(element_type=CtyNumber())
+        self.bool_set = CtySet(element_type=CtyBool())
 
     # -------------------- VALIDATION TESTS --------------------
     def test_validate_valid_string_set(self):
         updated = self.string_set.validate({"one", "two", "three"})
-        expected = {TFString(value="one"), TFString(value="two"), TFString(value="three")}
-        self.assertEqual(updated.value, expected)  # Compare TFString instances
+        expected = {CtyString(value="one"), CtyString(value="two"), CtyString(value="three")}
+        self.assertEqual(updated.value, expected)  # Compare CtyString instances
 
     def test_validate_invalid_string_set(self):
         with self.assertRaises(ValidationError):
@@ -38,7 +38,7 @@ class TestTFSetType(unittest.TestCase):
             self.number_set.validate({1, "two"})  # Mixing str with int
 
     def test_validate_non_iterable(self):
-        tfset = TFSet(element_type=TFString())
+        tfset = CtySet(element_type=CtyString())
         with self.assertRaises(ValidationError, msg="Expected iterable, got int"):
             tfset.validate(123)
 
@@ -61,13 +61,13 @@ class TestTFSetType(unittest.TestCase):
 
     # -------------------- OPERATIONAL TESTS --------------------
     def test_add_element_to_set(self):
-        s = TFSet(element_type=TFString())
+        s = CtySet(element_type=CtyString())
         s.validate({"apple"})
         s.add("banana")
         assert s.value == {"apple", "banana"}, f"Expected set: {{'apple', 'banana'}}, got {s.value}"
 
     def test_add_element_to_set(self):
-        tfset = TFSet(element_type=TFString())
+        tfset = CtySet(element_type=CtyString())
         tfset.add("apple")
         expected = {"apple"}
         self.assertEqual(set(tfset), expected)  # Ensure native conversion for comparison
@@ -80,18 +80,18 @@ class TestTFSetType(unittest.TestCase):
         print(f"Evolved Set: {evolved.value}")
 
         # Ensure "two" was removed
-        self.assertNotIn(TFString(value="two"), evolved.value)
-        self.assertEqual(evolved.value, {TFString(value="one")})
+        self.assertNotIn(CtyString(value="two"), evolved.value)
+        self.assertEqual(evolved.value, {CtyString(value="one")})
 
     def test_remove_non_existent_element(self):
-        s = TFSet(element_type=TFString())
+        s = CtySet(element_type=CtyString())
         s.validate({"apple"})
         s.remove("orange")  # Remove non-existent element
         assert s.value == {"apple"} or s.value == set()
 
     # -------------------- EDGE CASES --------------------
     def test_nested_sets(self):
-        s = TFSet(element_type=TFString())
+        s = CtySet(element_type=CtyString())
         with pytest.raises(ValidationError, match="Nested sets are not allowed"):
             s.validate({frozenset({"nested"})})  # Use frozenset to simulate nesting
 

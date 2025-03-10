@@ -1,17 +1,17 @@
 
-from pyvider.exceptions import ValidationError
-from pyvider.cty.base import TFType
+from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.base import CtyType
 
-class TFDynamic(TFType):
+class CtyDynamic(CtyType):
     """
-    TFDynamic represents a dynamic Terraform type that can accept any value.
+    CtyDynamic represents a dynamic Terraform type that can accept any value.
     This type acts as a catch-all during schema validation, allowing flexibility 
     for attributes whose structure or type cannot be determined at schema definition time.
     """
 
     def validate(self, value: object) -> None:
         """
-        Validation for TFDynamic is a no-op since it accepts any value.
+        Validation for CtyDynamic is a no-op since it accepts any value.
 
         Args:
             value (object): Any value to validate.
@@ -22,47 +22,47 @@ class TFDynamic(TFType):
         if isinstance(value, (dict, list, int, float, bool, str, type(None))):
             return  # All standard types are acceptable
 
-        raise ValidationError("Unsupported value for TFDynamic. Acceptable types are primitive types, dict, list, or None.")
+        raise ValidationError("Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None.")
 
-    def equal(self, other: TFType) -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
-        TFDynamic instances are considered equal to any other instance of TFDynamic.
+        CtyDynamic instances are considered equal to any other instance of CtyDynamic.
 
         Args:
-            other (TFType): Another TFType instance.
+            other (CtyType): Another CtyType instance.
 
         Returns:
             bool: True if the types are compatible, otherwise False.
         """
-        return isinstance(other, TFDynamic)
+        return isinstance(other, CtyDynamic)
 
-    def usable_as(self, other: TFType) -> bool:
+    def usable_as(self, other: CtyType) -> bool:
         """
-        TFDynamic can be used interchangeably with any other TFDynamic.
+        CtyDynamic can be used interchangeably with any other CtyDynamic.
 
         Args:
-            other (TFType): Target TFType to compare against.
+            other (CtyType): Target CtyType to compare against.
 
         Returns:
             bool: True if usable as the target type.
         """
-        return isinstance(other, TFDynamic)
+        return isinstance(other, CtyDynamic)
 
     def __str__(self) -> str:
-        return "TFDynamic"
+        return "CtyDynamic"
 
     def __repr__(self) -> str:
-        return "TFDynamic()"
+        return "CtyDynamic()"
 
 # Factory function for schema definition
 
 def tfdynamic(**kwargs) -> 'AttributeValue':
     """
-    Factory method for creating a TFDynamic attribute in schema definitions.
+    Factory method for creating a CtyDynamic attribute in schema definitions.
 
     Returns:
-        AttributeValue: An attribute containing TFDynamic as its type.
+        AttributeValue: An attribute containing CtyDynamic as its type.
     """
     from pyvider.schema.attributes import AttributeMetadata, AttributeValue
     meta = AttributeMetadata(**kwargs)
-    return AttributeValue(ctype=TFDynamic(), metadata=meta)
+    return AttributeValue(ctype=CtyDynamic(), metadata=meta)

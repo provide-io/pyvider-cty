@@ -2,11 +2,11 @@ Here's an outline for the **Schema** section of the Pyvider language reference, 
 
 ---
 
-## **Outline: Pyvider Language Reference – Schema and Metaschema**  
+## **Outline: Pyvider Language Reference – Schema and Metaschema**
 
 ---
 
-### **1. Schema Overview**  
+### **1. Schema Overview**
 **Description**:  
 Schemas define the structure, types, and validation rules for Pyvider resources, data sources, and providers. They dictate the configuration, lifecycle, and metadata of managed entities.
 
@@ -17,7 +17,7 @@ Schemas define the structure, types, and validation rules for Pyvider resources,
 
 ---
 
-### **2. Core Concepts**  
+### **2. Core Concepts**
 - **Schema**: A class defining the shape and constraints of a resource or provider.  
 - **Schema Fragment**: A reusable block representing part of a larger schema.  
 - **Metaschema**: The complete schema resulting from the assembly of all fragments and attributes, representing the entire structure of a resource or provider.  
@@ -25,13 +25,13 @@ Schemas define the structure, types, and validation rules for Pyvider resources,
 
 ---
 
-### **3. Schema Components**  
+### **3. Schema Components**
 
-#### **3.1 Attributes**  
+#### **3.1 Attributes**
 Attributes represent individual fields within a schema. They can be primitive types (e.g., `string`, `number`) or complex types (e.g., `object`, `list`).  
 
-- **Primitive Attributes**: `tfstr`, `tfnum`, `tfbool`  
-- **Collection Attributes**: `tflist`, `tfmap`, `tfset`  
+- **Primitive Attributes**: `tfstr`, `tfnum`, `CtyBool`  
+- **Collection Attributes**: `CtyList`, `tfmap`, `tfset`  
 - **Nested Attributes**: `tfobj` (embeds another schema as a sub-block)  
 
 **Example**:  
@@ -45,7 +45,7 @@ class AppSchema(Schema):
 
 ---
 
-#### **3.2 Meta Attributes**  
+#### **3.2 Meta Attributes**
 Meta attributes modify the behavior of attributes but do not define the schema structure. Examples include:  
 - **`computed`** – Value is determined at runtime.  
 - **`sensitive`** – Masked in logs/output.  
@@ -61,14 +61,14 @@ class CredentialSchema(Schema):
 
 ---
 
-### **4. Schema Fragments**  
+### **4. Schema Fragments**
 Schema fragments represent reusable schema components. They can be nested within parent schemas to create hierarchical structures.
 
 **Example**:  
 ```python
 class NetworkConfigSchema(Schema):
     vpc_id = tfstr(required=True)
-    subnet_ids = tflist(tfstr)
+    subnet_ids = CtyList(tfstr)
 
 class AppSchema(Schema):
     app_name = tfstr(required=True)
@@ -77,7 +77,7 @@ class AppSchema(Schema):
 
 ---
 
-### **5. Metaschema**  
+### **5. Metaschema**
 The **metaschema** is the fully assembled schema that results from combining all fragments and attributes. It reflects the complete configuration model for a resource or provider.
 
 **Key Characteristics**:  
@@ -89,7 +89,7 @@ The **metaschema** is the fully assembled schema that results from combining all
 ```python
 class WebServerSchema(Schema):
     server_name = tfstr(required=True)
-    secure = tfbool(default=False)
+    secure = CtyBool(default=False)
 
     def __attrs_post_init__(self):
         if self.secure:
@@ -98,7 +98,7 @@ class WebServerSchema(Schema):
 
 ---
 
-### **6. Lifecycle of Schema Construction**  
+### **6. Lifecycle of Schema Construction**
 
 **Phases of Schema Generation**:  
 1. **Definition** – Individual attributes and fragments are defined within classes.  
@@ -108,7 +108,7 @@ class WebServerSchema(Schema):
 
 ---
 
-### **7. Validators**  
+### **7. Validators**
 Validators attach to schema attributes to enforce constraints (e.g., length, regex, value ranges). They ensure input correctness before resource creation or modification.  
 
 **Example**:  
@@ -124,28 +124,28 @@ class UserSchema(Schema):
 
 ---
 
-### **8. Schema Building Utilities**  
+### **8. Schema Building Utilities**
 
 - **tfstr** – Defines string attributes.  
 - **tfnum** – Defines numeric attributes.  
-- **tfbool** – Defines boolean attributes.  
-- **tflist** – Defines list attributes.  
+- **CtyBool** – Defines boolean attributes.  
+- **CtyList** – Defines list attributes.  
 - **tfmap** – Defines map attributes.  
 - **tfset** – Defines set attributes.  
 - **tfobj** – Embeds nested schema objects.  
 
 ---
 
-### **9. Advanced Schema Composition**  
+### **9. Advanced Schema Composition**
 
-#### **9.1 Conditional Schema Fragments**  
+#### **9.1 Conditional Schema Fragments**
 Fragments can be conditionally attached based on feature flags or configuration values.  
 
 **Example**:  
 ```python
 class WebAppSchema(Schema):
     app_name = tfstr(required=True)
-    enable_logging = tfbool(default=False)
+    enable_logging = CtyBool(default=False)
 
     def __attrs_post_init__(self):
         if self.enable_logging:
@@ -154,7 +154,7 @@ class WebAppSchema(Schema):
 
 ---
 
-### **10. Schema Inheritance and Reuse**  
+### **10. Schema Inheritance and Reuse**
 
 Schemas can inherit or reuse fragments across multiple definitions, promoting DRY (Don't Repeat Yourself) practices.  
 
@@ -166,12 +166,12 @@ class BaseResourceSchema(Schema):
 
 class S3BucketSchema(BaseResourceSchema):
     bucket_name = tfstr(required=True)
-    versioning = tfbool(default=False)
+    versioning = CtyBool(default=False)
 ```  
 
 ---
 
-### **11. Schema Serialization and Export**  
+### **11. Schema Serialization and Export**
 
 Schemas can be serialized to JSON or Protocol Buffers for interaction with Terraform. This allows for seamless integration with Terraform Plugin Protocol v6.  
 
@@ -186,7 +186,7 @@ file_schema = FileSchema().to_proto()
 
 ---
 
-### **12. Error Handling in Schemas**  
+### **12. Error Handling in Schemas**
 
 Common schema errors include:  
 - **ValidationError** – Raised when schema constraints are violated.  
@@ -194,12 +194,12 @@ Common schema errors include:
 
 ---
 
-### **13. Example: Full Resource Schema**  
+### **13. Example: Full Resource Schema**
 
 ```python
 class S3BucketSchema(Schema):
     bucket_name = tfstr(required=True)
-    versioning = tfbool(default=False)
+    versioning = CtyBool(default=False)
     policy = tfobj(S3BucketPolicy, optional=True)
 
 class S3BucketPolicy(Schema):
@@ -208,7 +208,7 @@ class S3BucketPolicy(Schema):
 
 ---
 
-### **14. Best Practices for Schema Development**  
+### **14. Best Practices for Schema Development**
 - Use **schema fragments** for reusable components.  
 - Leverage **validators** for early error detection.  
 - Dynamically assemble metaschemas using **feature flags** and **post-initialization hooks**.  

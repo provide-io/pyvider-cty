@@ -1,11 +1,11 @@
 """Terraform type system."""
 
-from .bool import TFBool
-from .number import TFNumber
-from .string import TFString
+from .bool import CtyBool
+from .number import CtyNumber
+from .string import CtyString
 
 __all__ = [
-    'TFBool',
-    'TFNumber',
-    'TFString',
+    'CtyBool',
+    'CtyNumber',
+    'CtyString',
 ]

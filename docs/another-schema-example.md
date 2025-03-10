@@ -12,7 +12,7 @@ class NetworkSchemaV1:
 class NetworkSchemaV2:
     vpc_id = tfstr(required=True)
     subnet_id = tfstr(required=True)
-    allowed_ips = tflist(
+    allowed_ips = CtyList(
         tfstr(validators=["ip_range"]),
         min_length=1
     )

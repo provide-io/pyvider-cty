@@ -1,16 +1,16 @@
 
 from typing import Any, Generic, TypeVar
 
-from pyvider.exceptions import ValidationError
+from pyvider.cty.exceptions import ValidationError
 
-from ..base import TFType
+from ..base import CtyType
 
 # Define generic type variables
 T = TypeVar("T")
 U = TypeVar("U")
 
 
-class TFTuple(TFType[tuple[T, U]], Generic[T, U]):
+class CtyTuple(CtyType[tuple[T, U]], Generic[T, U]):
     """
     Represents a Terraform tuple type with a fixed structure.
     """
@@ -20,7 +20,7 @@ class TFTuple(TFType[tuple[T, U]], Generic[T, U]):
         Initializes the tuple type with the expected element types.
 
         Args:
-            types (TFTuple[Any, ...]): A tuple of types defining the expected structure.
+            types (CtyTuple[Any, ...]): A tuple of types defining the expected structure.
         """
         self.types = types
 
@@ -29,7 +29,7 @@ class TFTuple(TFType[tuple[T, U]], Generic[T, U]):
         Validates that the value matches the expected tuple structure.
 
         Args:
-            value (TFTuple): The value to validate.
+            value (CtyTuple): The value to validate.
 
         Raises:
             ValidationError: If the value does not match the structure.
@@ -44,29 +44,29 @@ class TFTuple(TFType[tuple[T, U]], Generic[T, U]):
                     f"Element {i} expected type {expected_type.__name__}, got {type(item).__name__}: {item}"
                 )
 
-    def equal(self, other: "TFType") -> bool:
+    def equal(self, other: "CtyType") -> bool:
         """
         Checks if this tuple type is equal to another type.
 
         Args:
-            other (TFType): Another type to compare.
+            other (CtyType): Another type to compare.
 
         Returns:
             bool: True if the types are equal, False otherwise.
         """
-        return isinstance(other, TFTuple) and self.types == other.types
+        return isinstance(other, CtyTuple) and self.types == other.types
 
-    def usable_as(self, other: "TFType") -> bool:
+    def usable_as(self, other: "CtyType") -> bool:
         """
         Checks if this tuple type can be used as another type.
 
         Args:
-            other (TFType): Another type to check compatibility with.
+            other (CtyType): Another type to check compatibility with.
 
         Returns:
             bool: True if compatible, False otherwise.
         """
-        return isinstance(other, TFTuple) and all(
+        return isinstance(other, CtyTuple) and all(
             issubclass(self_type, other_type)
             for self_type, other_type in zip(self.types, other.types)
         )
@@ -84,4 +84,4 @@ class TFTuple(TFType[tuple[T, U]], Generic[T, U]):
         Returns:
             str: The string representation.
         """
-        return f"TFTuple({', '.join(t.__name__ for t in self.types)})"
+        return f"CtyTuple({', '.join(t.__name__ for t in self.types)})"

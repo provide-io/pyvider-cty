@@ -31,7 +31,7 @@ A **schema fragment** is a **reusable, isolated piece of schema logic** that can
 
 In Pyvider:  
 - A **schema fragment** is typically a **class** representing a nested block or subsection of the schema.  
-- Fragments can be **directly attached** to parent schemas using `tfobj` or `tflist`.  
+- Fragments can be **directly attached** to parent schemas using `tfobj` or `CtyList`.  
 - Fragments can include **their own validators** or inherit validators from higher-level schemas.  
 
 ---
@@ -49,7 +49,7 @@ In Pyvider:
 class NetworkSchema:
     vpc_id = tfstr(required=True)
     subnet_id = tfstr(required=True)
-    allowed_ips = tflist(
+    allowed_ips = CtyList(
         tfstr(validators=["ip_range"]),
         min_length=1
     )
@@ -89,7 +89,7 @@ class ReplicaSchema:
 ```python
 @define
 class DeploymentSchema:
-    replicas = tflist(
+    replicas = CtyList(
         tfobj(ReplicaSchema),
         required=True,
         validators=["minmax_length"],
@@ -105,13 +105,13 @@ class DeploymentSchema:
 ```python
 @define
 class SecuritySchema:
-    firewall_enabled = tfbool(default=False)
-    firewall_rules = tflist(
+    firewall_enabled = CtyBool(default=False)
+    firewall_rules = CtyList(
         tfstr(),
         validators=["conditional"],
         optional=True
     )
-    security_groups = tflist(
+    security_groups = CtyList(
         tfstr(validators=["minmax_length"]),
         min_length=1,
         max_length=5
@@ -131,7 +131,7 @@ class ApplicationSchema:
     app_name = tfstr(required=True)
     environment = tfstr(required=True)
     security = tfobj(SecuritySchema(), optional=True)
-    replicas = tflist(tfobj(ReplicaSchema), required=True)
+    replicas = CtyList(tfobj(ReplicaSchema), required=True)
     network = tfobj(NetworkSchema(), required=True)
 ```
 
@@ -187,7 +187,7 @@ class DynamicSchema:
 | **Terraform (HCL Block)**        | **Pyvider Schema Fragment**                                | **Notes**                                             |
 |----------------------------------|------------------------------------------------------------|-------------------------------------------------------|
 | `network_config`                  | `NetworkSchema` (Attached to multiple schemas)             | Represents reusable block for networking.             |
-| `replica` (multiple blocks)       | `ReplicaSchema` (List of nested objects)                   | Multiple fragments attached via `tflist`.             |
+| `replica` (multiple blocks)       | `ReplicaSchema` (List of nested objects)                   | Multiple fragments attached via `CtyList`.             |
 | `security_group`                  | `SecuritySchema`                                           | Optional fragment conditionally injected at runtime.  |
 | `dynamic "block"` (for_each)      | `__attrs_post_init__` (dynamic fragment injection)         | Fragments dynamically inserted during instantiation.  |
 
@@ -273,7 +273,7 @@ class NetworkSchemaV1:
 class NetworkSchemaV2:
     vpc_id = tfstr(required=True)
     subnet_id = tfstr(required=True)
-    allowed_ips = tflist(
+    allowed_ips = CtyList(
         tfstr(validators=["ip_range"]),
         min_length=1
     )
@@ -339,12 +339,12 @@ from fragments.network.v2 import NetworkSchema as NetworkSchemaV2
 class NetworkSchema:
     vpc_id = tfstr(required=True)
     subnet_id = tfstr(required=True)
-    allowed_ips = tflist(tfstr(), optional=True)
+    allowed_ips = CtyList(tfstr(), optional=True)
     
     def __attrs_post_init__(self):
         # Enable allowed_ips only for version 2
         if getattr(self, 'version', 1) >= 2:
-            self.__class__.allowed_ips = tflist(
+            self.__class__.allowed_ips = CtyList(
                 tfstr(validators=["ip_range"]),
                 min_length=1
             )
@@ -456,7 +456,7 @@ def feature_flag(flag: str) -> bool:
 ```python
 @define
 class DeploymentSchema:
-    replicas = tflist(tfobj(ReplicaSchema), required=True)
+    replicas = CtyList(tfobj(ReplicaSchema), required=True)
     database = tfobj(DatabaseSchema(version=2), required=True)
 
     def __attrs_post_init__(self):

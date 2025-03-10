@@ -1,13 +1,13 @@
 """
-TFObject type implementation for Terraform.
+CtyObject type implementation for Terraform.
 
-The TFObject type represents a complex value with a fixed set of attributes,
+The CtyObject type represents a complex value with a fixed set of attributes,
 where each attribute has its own type. Unlike maps, objects have a predefined
 schema and support different types for different attributes.
 
 Examples:
     Define an address type:
-    >>> address_type = TFObject({
+    >>> address_type = CtyObject({
     ...     "street": Types.string(),
     ...     "city": Types.string(),
     ...     "postal_code": Types.string(),
@@ -28,28 +28,28 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, FrozenSet, TypeVar, final
 
-from pyvider.exceptions import AttributeValidationError, InvalidTypeError, SchemaValidationError, ValidationError
+from pyvider.cty.exceptions import AttributeValidationError, InvalidTypeError, SchemaValidationError, ValidationError
 
-from ..base import TFType
+from ..base import CtyType
 
 T = TypeVar('T')
 
 def _extract_ctype(value):
-    """Helper to unwrap AttributeValue to extract the raw TFType."""
+    """Helper to unwrap AttributeValue to extract the raw CtyType."""
     return value.ctype if isinstance(value, AttributeValue) else value
 
 @final
 @dataclass(frozen=True)
-class TFObject(TFType[dict[str, Any]]):
+class CtyObject(CtyType[dict[str, Any]]):
     """
-    TFObject represents a Terraform object type.
+    CtyObject represents a Terraform object type.
 
     An object is a collection of attributes where each attribute has its own type.
     Unlike maps, objects have a schema - you can't add arbitrary keys, and each
     key has its own type which may be different from other keys.
     """
 
-    attribute_types: dict[str, TFType]
+    attribute_types: dict[str, CtyType]
     optional_attributes: FrozenSet[str] = field(default_factory=frozenset)
     computed_attributes: FrozenSet[str] = field(default_factory=frozenset)  # Added computed attributes
     block_attributes: FrozenSet[str] = field(default_factory=frozenset)
@@ -63,10 +63,10 @@ class TFObject(TFType[dict[str, Any]]):
         if not isinstance(self.attribute_types, dict):
             raise InvalidTypeError("attribute_types must be a dictionary")
 
-        # Validate that all types are TFType instances
+        # Validate that all types are CtyType instances
         invalid_types = [
             name for name, type_ in self.attribute_types.items()
-            if not isinstance(type_, TFType)
+            if not isinstance(type_, CtyType)
         ]
         if invalid_types:
             raise AttributeValidationError(f"Invalid types for attributes: {', '.join(invalid_types)}")
@@ -98,7 +98,7 @@ class TFObject(TFType[dict[str, Any]]):
            return None
 
         if not isinstance(value, dict):
-            raise ValidationError(f"TFObject value must be a dictionary, got {type(value).__name__}.")
+            raise ValidationError(f"CtyObject value must be a dictionary, got {type(value).__name__}.")
 
         validated = {}
         for name, attr_type in self.attribute_types.items():
@@ -120,7 +120,7 @@ class TFObject(TFType[dict[str, Any]]):
         return validated
 
     # def __eq__(self, other):
-    #     if not isinstance(other, TFObject):
+    #     if not isinstance(other, CtyObject):
     #         return False
     #     return (
     #         self.attribute_types == other.attribute_types and
@@ -135,7 +135,7 @@ class TFObject(TFType[dict[str, Any]]):
         Get a validated attribute value by name.
 
         Args:
-            value: TFObject value to access
+            value: CtyObject value to access
             name: Name of attribute to get
 
         Returns:
@@ -153,7 +153,7 @@ class TFObject(TFType[dict[str, Any]]):
 
         return value.get(name)
 
-    def with_optional(self, *names: str) -> "TFObject":
+    def with_optional(self, *names: str) -> "CtyObject":
         """
         Create new object type with additional optional attributes.
 
@@ -161,7 +161,7 @@ class TFObject(TFType[dict[str, Any]]):
             *names: Names of attributes to mark as optional
 
         Returns:
-            New TFObject type with updated optional attributes
+            New CtyObject type with updated optional attributes
 
         Raises:
             SchemaValidationError: If any name is not a valid attribute
@@ -170,14 +170,14 @@ class TFObject(TFType[dict[str, Any]]):
         if unknown:
             raise SchemaValidationError(f"Unknown attributes: {', '.join(unknown)}")
 
-        return TFObject(
+        return CtyObject(
             self.attribute_types,
             self.optional_attributes | set(names),
             self.block_attributes,
             self.computed_attributes
         )
 
-    def with_blocks(self, *names: str) -> "TFObject":
+    def with_blocks(self, *names: str) -> "CtyObject":
         """
         Create new object type with attributes marked as blocks.
 
@@ -185,7 +185,7 @@ class TFObject(TFType[dict[str, Any]]):
             *names: Names of attributes to mark as blocks
 
         Returns:
-            New TFObject type with updated block attributes
+            New CtyObject type with updated block attributes
 
         Raises:
             SchemaValidationError: If any name is not a valid attribute
@@ -194,14 +194,14 @@ class TFObject(TFType[dict[str, Any]]):
         if unknown:
             raise SchemaValidationError(f"Unknown attributes: {', '.join(unknown)}")
 
-        return TFObject(
+        return CtyObject(
             self.attribute_types,
             self.optional_attributes,
             self.block_attributes | set(names),
             self.computed_attributes
         )
 
-    def with_computed(self, *names: str) -> "TFObject":
+    def with_computed(self, *names: str) -> "CtyObject":
         """
         Create new object type with computed attributes.
 
@@ -209,7 +209,7 @@ class TFObject(TFType[dict[str, Any]]):
             *names: Names of attributes to mark as computed
 
         Returns:
-            New TFObject type with updated computed attributes
+            New CtyObject type with updated computed attributes
 
         Raises:
             SchemaValidationError: If any name is not a valid attribute
@@ -218,16 +218,16 @@ class TFObject(TFType[dict[str, Any]]):
         if unknown:
             raise SchemaValidationError(f"Unknown attributes: {', '.join(unknown)}")
 
-        return TFObject(
+        return CtyObject(
             self.attribute_types,
             self.optional_attributes,
             self.block_attributes,
             self.computed_attributes | set(names)
         )
 
-    def equal(self, other: "TFType") -> bool:
+    def equal(self, other: "CtyType") -> bool:
         """Check if types are equal."""
-        if not isinstance(other, TFObject):
+        if not isinstance(other, CtyObject):
             return False
 
         if set(self.attribute_types) != set(other.attribute_types):
@@ -238,9 +238,9 @@ class TFObject(TFType[dict[str, Any]]):
             for name in self.attribute_types
         )
 
-    def usable_as(self, other: "TFType") -> bool:
+    def usable_as(self, other: "CtyType") -> bool:
         """Check if this type can be used as another type."""
-        if not isinstance(other, TFObject):
+        if not isinstance(other, CtyObject):
             return False
 
         # Check that all required attributes are present and compatible
