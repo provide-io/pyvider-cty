@@ -8,7 +8,7 @@ from pyvider.cty.structural import CtyObject
 # Test: CtyObject Basic Validation
 # --------------------------------
 
-def test_CtyObject_validate_success():
+def test_ctyobject_validate_success():
     obj = CtyObject({
         "name": CtyString(),
         "age": CtyNumber(),
@@ -23,7 +23,7 @@ def test_CtyObject_validate_success():
     assert validated == {"name": "John Doe", "age": 30, "active": True}
 
 
-def test_CtyObject_validate_missing_required():
+def test_ctyobject_validate_missing_required():
     obj = CtyObject({
         "name": CtyString(),
         "age": CtyNumber(),
@@ -37,7 +37,7 @@ def test_CtyObject_validate_missing_required():
 # Test: CtyObject Nested Validation
 # --------------------------------
 
-def test_CtyObject_nested_validation():
+def test_ctyobject_nested_validation():
     address_type = CtyObject({
         "street": CtyString(),
         "city": CtyString(),
@@ -61,7 +61,7 @@ def test_CtyObject_nested_validation():
     assert validated["address"]["city"] == "Springfield"
 
 
-def test_CtyObject_nested_invalid_type():
+def test_ctyobject_nested_invalid_type():
     address_type = CtyObject({
         "street": CtyString(),
         "city": CtyString()
@@ -83,7 +83,7 @@ def test_CtyObject_nested_invalid_type():
 # Test: CtyObject with Immutability
 # --------------------------------
 
-def test_CtyObject_validate_immutable():
+def test_ctyobject_validate_immutable():
     obj = CtyObject(
         {"title": CtyString()},
         mutable=False
@@ -101,7 +101,7 @@ def test_CtyObject_validate_immutable():
 # Test: CtyObject Schema Errors
 # --------------------------------
 
-def test_CtyObject_with_invalid_block_attributes():
+def test_ctyobject_with_invalid_block_attributes():
     with pytest.raises(AttributeValidationError, match="Unknown attributes: invalid_block"):
         CtyObject(
             {"age": CtyNumber()},
@@ -113,7 +113,7 @@ def test_CtyObject_with_invalid_block_attributes():
 # Test: CtyObject Attribute Access
 # --------------------------------
 
-def test_CtyObject_get_valid_attribute():
+def test_ctyobject_get_valid_attribute():
     obj = CtyObject({
         "title": CtyString(),
         "level": CtyNumber()
@@ -123,7 +123,7 @@ def test_CtyObject_get_valid_attribute():
     assert obj.get_attribute(data, "title") == "Game Title"
 
 
-def test_CtyObject_get_invalid_attribute():
+def test_ctyobject_get_invalid_attribute():
     obj = CtyObject({
         "username": CtyString()
     })
@@ -138,7 +138,7 @@ def test_CtyObject_get_invalid_attribute():
 # Test: CtyObject with Blocks
 # --------------------------------
 
-def test_CtyObject_with_blocks():
+def test_ctyobject_with_blocks():
     block_type = CtyObject({
         "id": CtyString(),
         "enabled": CtyBool()
@@ -160,7 +160,7 @@ def test_CtyObject_with_blocks():
     assert validated["config"]["enabled"] is True
 
 
-def test_CtyObject_invalid_block():
+def test_ctyobject_invalid_block():
     block_type = CtyObject({
         "id": CtyString()
     })
@@ -179,7 +179,7 @@ def test_CtyObject_invalid_block():
 # Test: CtyObject Equality
 # --------------------------------
 
-def test_CtyObject_equality():
+def test_ctyobject_equality():
     obj1 = CtyObject({
         "name": CtyString(),
         "age": CtyNumber()
@@ -193,7 +193,7 @@ def test_CtyObject_equality():
     assert obj1.equal(obj2)
 
 
-def test_CtyObject_inequality():
+def test_ctyobject_inequality():
     obj1 = CtyObject({"name": CtyString()})
     obj2 = CtyObject({"email": CtyString()})
 
@@ -204,7 +204,7 @@ def test_CtyObject_inequality():
 # Test: CtyObject with Mixed Attribute Types
 # --------------------------------
 
-def test_CtyObject_mixed_types():
+def test_ctyobject_mixed_types():
     obj = CtyObject({
         "string_attr": CtyString(),
         "number_attr": CtyNumber(),
@@ -235,7 +235,7 @@ def test_CtyObject_mixed_types():
 # Test: Missing All Required Attributes
 # --------------------------------
 
-def test_CtyObject_all_required_missing():
+def test_ctyobject_all_required_missing():
     obj = CtyObject({
         "first_name": CtyString(),
         "last_name": CtyString(),
@@ -249,7 +249,7 @@ def test_CtyObject_all_required_missing():
 # Test: CtyObject Immutability with Nested Structures
 # --------------------------------
 
-def test_CtyObject_immutable_nested():
+def test_ctyobject_immutable_nested():
     inner = CtyObject({"key": CtyString()}, mutable=False)
     outer = CtyObject({"nested": inner}, mutable=False)
 
@@ -270,7 +270,7 @@ def test_CtyObject_immutable_nested():
 # Test: Equality with Different Attribute Sets
 # --------------------------------
 
-def test_CtyObject_equality_with_different_attributes():
+def test_ctyobject_equality_with_different_attributes():
     obj1 = CtyObject({
         "name": CtyString(),
         "age": CtyNumber()
@@ -288,7 +288,7 @@ def test_CtyObject_equality_with_different_attributes():
 # Test: CtyObject Usable As Another Object
 # --------------------------------
 
-def test_CtyObject_usable_as():
+def test_ctyobject_usable_as():
     parent = CtyObject({
         "name": CtyString(),
         "email": CtyString(),
@@ -306,7 +306,7 @@ def test_CtyObject_usable_as():
 # Test: Schema Validation Errors (Blocks and Optional Attributes)
 # --------------------------------
 
-def test_CtyObject_schema_validation_error():
+def test_ctyobject_schema_validation_error():
     with pytest.raises(SchemaValidationError, match="Unknown attributes: invalid"):
         CtyObject(
             {"name": CtyString()},
@@ -318,7 +318,7 @@ def test_CtyObject_schema_validation_error():
 # Test: Immutability Enforcement During Validation
 # --------------------------------
 
-def test_CtyObject_immutable_list():
+def test_ctyobject_immutable_list():
     obj = CtyObject({
         "tags": CtyList(element_type=CtyString())
     }, mutable=False)
@@ -334,7 +334,7 @@ def test_CtyObject_immutable_list():
 # Test: CtyObject with Block Attribute Not Passed
 # --------------------------------
 
-def test_CtyObject_block_not_passed():
+def test_ctyobject_block_not_passed():
     obj = CtyObject({
         "config": CtyObject({
             "enabled": CtyBool()
@@ -351,7 +351,7 @@ def test_CtyObject_block_not_passed():
 # Test: CtyObject Validate with Extra Attributes (Fail)
 # --------------------------------
 
-def test_CtyObject_extra_attributes_fail():
+def test_ctyobject_extra_attributes_fail():
     obj = CtyObject({
         "username": CtyString(),
     })
@@ -367,7 +367,7 @@ def test_CtyObject_extra_attributes_fail():
 # Test: CtyObject with Block Attribute Not in Schema
 # --------------------------------
 
-def test_CtyObject_invalid_block_attribute():
+def test_ctyobject_invalid_block_attribute():
     with pytest.raises(AttributeValidationError, match="Unknown attributes: invalid_block"):
         CtyObject({
             "title": CtyString()
@@ -378,7 +378,7 @@ def test_CtyObject_invalid_block_attribute():
 # Test: CtyObject Immutability on Nested Structures
 # --------------------------------
 
-def test_CtyObject_nested_immutability():
+def test_ctyobject_nested_immutability():
     nested_obj = CtyObject({
         "key": CtyString()
     }, mutable=False)
@@ -399,7 +399,7 @@ def test_CtyObject_nested_immutability():
 # Test: CtyObject Partial Equality (Extra Attributes)
 # --------------------------------
 
-def test_CtyObject_partial_equality_extra_attributes():
+def test_ctyobject_partial_equality_extra_attributes():
     obj1 = CtyObject({
         "name": CtyString(),
         "email": CtyString()
@@ -416,7 +416,7 @@ def test_CtyObject_partial_equality_extra_attributes():
 # Test: CtyObject Partial Usability (Extra Attributes)
 # --------------------------------
 
-def test_CtyObject_usable_as_partial():
+def test_ctyobject_usable_as_partial():
     parent = CtyObject({
         "name": CtyString(),
         "email": CtyString(),
@@ -435,7 +435,7 @@ def test_CtyObject_usable_as_partial():
 # Test: CtyObject Immutable with Nested Lists
 # --------------------------------
 
-def test_CtyObject_nested_list_immutable():
+def test_ctyobject_nested_list_immutable():
     obj = CtyObject({
         "tags": CtyObject({
             "labels": CtyObject({
@@ -458,7 +458,7 @@ def test_CtyObject_nested_list_immutable():
 # Test: CtyObject With No Attributes (Empty Object)
 # --------------------------------
 
-def test_CtyObject_no_attributes():
+def test_ctyobject_no_attributes():
     obj = CtyObject({})
 
     validated = obj.validate({})
@@ -469,7 +469,7 @@ def test_CtyObject_no_attributes():
 # Test: CtyObject Validation Error Cascading
 # --------------------------------
 
-def test_CtyObject_cascading_validation_error():
+def test_ctyobject_cascading_validation_error():
     inner = CtyObject({
         "age": CtyNumber()
     })
