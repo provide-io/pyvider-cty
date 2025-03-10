@@ -1,11 +1,11 @@
 # types/structural/__init__.py
 
-from .dynamic import TFDynamic
-from .object import TFObject
-from .tuple import TFTuple
+from .dynamic import CtyDynamic
+from .object import CtyObject
+from .tuple import CtyTuple
 
 __all__ = [
-    'TFObject',
-    'TFTuple',
-    'TFDynamic',
+    'CtyObject',
+    'CtyTuple',
+    'CtyDynamic',
 ]

@@ -1,18 +1,18 @@
 import pytest
 
-from pyvider.exceptions import AttributeValidationError, SchemaValidationError, ValidationError
-from pyvider.cty.primitives import TFBool, TFNumber, TFString
-from pyvider.cty.structural import TFObject
+from pyvider.cty.exceptions import AttributeValidationError, SchemaValidationError, ValidationError
+from pyvider.cty.primitives import CtyBool, CtyNumber, CtyString
+from pyvider.cty.structural import CtyObject
 
 # --------------------------------
-# Test: TFObject Basic Validation
+# Test: CtyObject Basic Validation
 # --------------------------------
 
-def test_tfobject_validate_success():
-    obj = TFObject({
-        "name": TFString(),
-        "age": TFNumber(),
-        "active": TFBool()
+def test_CtyObject_validate_success():
+    obj = CtyObject({
+        "name": CtyString(),
+        "age": CtyNumber(),
+        "active": CtyBool()
     })
 
     validated = obj.validate({
@@ -23,10 +23,10 @@ def test_tfobject_validate_success():
     assert validated == {"name": "John Doe", "age": 30, "active": True}
 
 
-def test_tfobject_validate_missing_required():
-    obj = TFObject({
-        "name": TFString(),
-        "age": TFNumber(),
+def test_CtyObject_validate_missing_required():
+    obj = CtyObject({
+        "name": CtyString(),
+        "age": CtyNumber(),
     })
 
     with pytest.raises(ValidationError, match="Missing required attribute: age"):
@@ -34,18 +34,18 @@ def test_tfobject_validate_missing_required():
 
 
 # --------------------------------
-# Test: TFObject Nested Validation
+# Test: CtyObject Nested Validation
 # --------------------------------
 
-def test_tfobject_nested_validation():
-    address_type = TFObject({
-        "street": TFString(),
-        "city": TFString(),
-        "postal_code": TFString()
+def test_CtyObject_nested_validation():
+    address_type = CtyObject({
+        "street": CtyString(),
+        "city": CtyString(),
+        "postal_code": CtyString()
     })
 
-    user_type = TFObject({
-        "name": TFString(),
+    user_type = CtyObject({
+        "name": CtyString(),
         "address": address_type,
     })
 
@@ -61,14 +61,14 @@ def test_tfobject_nested_validation():
     assert validated["address"]["city"] == "Springfield"
 
 
-def test_tfobject_nested_invalid_type():
-    address_type = TFObject({
-        "street": TFString(),
-        "city": TFString()
+def test_CtyObject_nested_invalid_type():
+    address_type = CtyObject({
+        "street": CtyString(),
+        "city": CtyString()
     })
 
-    user_type = TFObject({
-        "name": TFString(),
+    user_type = CtyObject({
+        "name": CtyString(),
         "address": address_type,
     })
 
@@ -80,12 +80,12 @@ def test_tfobject_nested_invalid_type():
 
 
 # --------------------------------
-# Test: TFObject with Immutability
+# Test: CtyObject with Immutability
 # --------------------------------
 
-def test_tfobject_validate_immutable():
-    obj = TFObject(
-        {"title": TFString()},
+def test_CtyObject_validate_immutable():
+    obj = CtyObject(
+        {"title": CtyString()},
         mutable=False
     )
 
@@ -98,34 +98,34 @@ def test_tfobject_validate_immutable():
 
 
 # --------------------------------
-# Test: TFObject Schema Errors
+# Test: CtyObject Schema Errors
 # --------------------------------
 
-def test_tfobject_with_invalid_block_attributes():
+def test_CtyObject_with_invalid_block_attributes():
     with pytest.raises(AttributeValidationError, match="Unknown attributes: invalid_block"):
-        TFObject(
-            {"age": TFNumber()},
+        CtyObject(
+            {"age": CtyNumber()},
             block_attributes={"invalid_block"}
         )
 
 
 # --------------------------------
-# Test: TFObject Attribute Access
+# Test: CtyObject Attribute Access
 # --------------------------------
 
-def test_tfobject_get_valid_attribute():
-    obj = TFObject({
-        "title": TFString(),
-        "level": TFNumber()
+def test_CtyObject_get_valid_attribute():
+    obj = CtyObject({
+        "title": CtyString(),
+        "level": CtyNumber()
     })
 
     data = obj.validate({"title": "Game Title", "level": 5})
     assert obj.get_attribute(data, "title") == "Game Title"
 
 
-def test_tfobject_get_invalid_attribute():
-    obj = TFObject({
-        "username": TFString()
+def test_CtyObject_get_invalid_attribute():
+    obj = CtyObject({
+        "username": CtyString()
     })
 
     data = obj.validate({"username": "user1"})
@@ -135,18 +135,18 @@ def test_tfobject_get_invalid_attribute():
 
 
 # --------------------------------
-# Test: TFObject with Blocks
+# Test: CtyObject with Blocks
 # --------------------------------
 
-def test_tfobject_with_blocks():
-    block_type = TFObject({
-        "id": TFString(),
-        "enabled": TFBool()
+def test_CtyObject_with_blocks():
+    block_type = CtyObject({
+        "id": CtyString(),
+        "enabled": CtyBool()
     })
 
-    parent = TFObject({
+    parent = CtyObject({
         "config": block_type,
-        "metadata": TFString(),
+        "metadata": CtyString(),
     })
 
     validated = parent.validate({
@@ -160,12 +160,12 @@ def test_tfobject_with_blocks():
     assert validated["config"]["enabled"] is True
 
 
-def test_tfobject_invalid_block():
-    block_type = TFObject({
-        "id": TFString()
+def test_CtyObject_invalid_block():
+    block_type = CtyObject({
+        "id": CtyString()
     })
 
-    parent = TFObject({
+    parent = CtyObject({
         "config": block_type
     })
 
@@ -176,39 +176,39 @@ def test_tfobject_invalid_block():
 
 
 # --------------------------------
-# Test: TFObject Equality
+# Test: CtyObject Equality
 # --------------------------------
 
-def test_tfobject_equality():
-    obj1 = TFObject({
-        "name": TFString(),
-        "age": TFNumber()
+def test_CtyObject_equality():
+    obj1 = CtyObject({
+        "name": CtyString(),
+        "age": CtyNumber()
     })
 
-    obj2 = TFObject({
-        "name": TFString(),
-        "age": TFNumber()
+    obj2 = CtyObject({
+        "name": CtyString(),
+        "age": CtyNumber()
     })
 
     assert obj1.equal(obj2)
 
 
-def test_tfobject_inequality():
-    obj1 = TFObject({"name": TFString()})
-    obj2 = TFObject({"email": TFString()})
+def test_CtyObject_inequality():
+    obj1 = CtyObject({"name": CtyString()})
+    obj2 = CtyObject({"email": CtyString()})
 
     assert not obj1.equal(obj2)
 
 
 # --------------------------------
-# Test: TFObject with Mixed Attribute Types
+# Test: CtyObject with Mixed Attribute Types
 # --------------------------------
 
-def test_tfobject_mixed_types():
-    obj = TFObject({
-        "string_attr": TFString(),
-        "number_attr": TFNumber(),
-        "bool_attr": TFBool()
+def test_CtyObject_mixed_types():
+    obj = CtyObject({
+        "string_attr": CtyString(),
+        "number_attr": CtyNumber(),
+        "bool_attr": CtyBool()
     })
 
     validated = obj.validate({
@@ -235,10 +235,10 @@ def test_tfobject_mixed_types():
 # Test: Missing All Required Attributes
 # --------------------------------
 
-def test_tfobject_all_required_missing():
-    obj = TFObject({
-        "first_name": TFString(),
-        "last_name": TFString(),
+def test_CtyObject_all_required_missing():
+    obj = CtyObject({
+        "first_name": CtyString(),
+        "last_name": CtyString(),
     })
 
     with pytest.raises(ValidationError, match="Missing required attribute: first_name"):
@@ -246,12 +246,12 @@ def test_tfobject_all_required_missing():
 
 
 # --------------------------------
-# Test: TFObject Immutability with Nested Structures
+# Test: CtyObject Immutability with Nested Structures
 # --------------------------------
 
-def test_tfobject_immutable_nested():
-    inner = TFObject({"key": TFString()}, mutable=False)
-    outer = TFObject({"nested": inner}, mutable=False)
+def test_CtyObject_immutable_nested():
+    inner = CtyObject({"key": CtyString()}, mutable=False)
+    outer = CtyObject({"nested": inner}, mutable=False)
 
     validated = outer.validate({
         "nested": {
@@ -270,32 +270,32 @@ def test_tfobject_immutable_nested():
 # Test: Equality with Different Attribute Sets
 # --------------------------------
 
-def test_tfobject_equality_with_different_attributes():
-    obj1 = TFObject({
-        "name": TFString(),
-        "age": TFNumber()
+def test_CtyObject_equality_with_different_attributes():
+    obj1 = CtyObject({
+        "name": CtyString(),
+        "age": CtyNumber()
     })
 
-    obj2 = TFObject({
-        "name": TFString(),
-        "gender": TFString()
+    obj2 = CtyObject({
+        "name": CtyString(),
+        "gender": CtyString()
     })
 
     assert not obj1.equal(obj2)
 
 
 # --------------------------------
-# Test: TFObject Usable As Another Object
+# Test: CtyObject Usable As Another Object
 # --------------------------------
 
-def test_tfobject_usable_as():
-    parent = TFObject({
-        "name": TFString(),
-        "email": TFString(),
+def test_CtyObject_usable_as():
+    parent = CtyObject({
+        "name": CtyString(),
+        "email": CtyString(),
     })
 
-    child = TFObject({
-        "name": TFString(),
+    child = CtyObject({
+        "name": CtyString(),
     })
 
     assert child.usable_as(parent)
@@ -306,10 +306,10 @@ def test_tfobject_usable_as():
 # Test: Schema Validation Errors (Blocks and Optional Attributes)
 # --------------------------------
 
-def test_tfobject_schema_validation_error():
+def test_CtyObject_schema_validation_error():
     with pytest.raises(SchemaValidationError, match="Unknown attributes: invalid"):
-        TFObject(
-            {"name": TFString()},
+        CtyObject(
+            {"name": CtyString()},
             block_attributes={"invalid"}
         )
 
@@ -318,9 +318,9 @@ def test_tfobject_schema_validation_error():
 # Test: Immutability Enforcement During Validation
 # --------------------------------
 
-def test_tfobject_immutable_list():
-    obj = TFObject({
-        "tags": TFList(element_type=TFString())
+def test_CtyObject_immutable_list():
+    obj = CtyObject({
+        "tags": CtyList(element_type=CtyString())
     }, mutable=False)
 
     validated = obj.validate({"tags": ["one", "two"]})
@@ -331,13 +331,13 @@ def test_tfobject_immutable_list():
 
 
 # --------------------------------
-# Test: TFObject with Block Attribute Not Passed
+# Test: CtyObject with Block Attribute Not Passed
 # --------------------------------
 
-def test_tfobject_block_not_passed():
-    obj = TFObject({
-        "config": TFObject({
-            "enabled": TFBool()
+def test_CtyObject_block_not_passed():
+    obj = CtyObject({
+        "config": CtyObject({
+            "enabled": CtyBool()
         }, block_attributes={"enabled"})
     })
 
@@ -348,12 +348,12 @@ def test_tfobject_block_not_passed():
 
 
 # --------------------------------
-# Test: TFObject Validate with Extra Attributes (Fail)
+# Test: CtyObject Validate with Extra Attributes (Fail)
 # --------------------------------
 
-def test_tfobject_extra_attributes_fail():
-    obj = TFObject({
-        "username": TFString(),
+def test_CtyObject_extra_attributes_fail():
+    obj = CtyObject({
+        "username": CtyString(),
     })
 
     with pytest.raises(ValidationError, match="Unknown attribute: role"):
@@ -364,26 +364,26 @@ def test_tfobject_extra_attributes_fail():
 
 
 # --------------------------------
-# Test: TFObject with Block Attribute Not in Schema
+# Test: CtyObject with Block Attribute Not in Schema
 # --------------------------------
 
-def test_tfobject_invalid_block_attribute():
+def test_CtyObject_invalid_block_attribute():
     with pytest.raises(AttributeValidationError, match="Unknown attributes: invalid_block"):
-        TFObject({
-            "title": TFString()
+        CtyObject({
+            "title": CtyString()
         }, block_attributes={"invalid_block"})
 
 
 # --------------------------------
-# Test: TFObject Immutability on Nested Structures
+# Test: CtyObject Immutability on Nested Structures
 # --------------------------------
 
-def test_tfobject_nested_immutability():
-    nested_obj = TFObject({
-        "key": TFString()
+def test_CtyObject_nested_immutability():
+    nested_obj = CtyObject({
+        "key": CtyString()
     }, mutable=False)
 
-    outer_obj = TFObject({
+    outer_obj = CtyObject({
         "nested": nested_obj
     }, mutable=False)
 
@@ -396,34 +396,34 @@ def test_tfobject_nested_immutability():
 
 
 # --------------------------------
-# Test: TFObject Partial Equality (Extra Attributes)
+# Test: CtyObject Partial Equality (Extra Attributes)
 # --------------------------------
 
-def test_tfobject_partial_equality_extra_attributes():
-    obj1 = TFObject({
-        "name": TFString(),
-        "email": TFString()
+def test_CtyObject_partial_equality_extra_attributes():
+    obj1 = CtyObject({
+        "name": CtyString(),
+        "email": CtyString()
     })
 
-    obj2 = TFObject({
-        "name": TFString()
+    obj2 = CtyObject({
+        "name": CtyString()
     })
 
     assert not obj1.equal(obj2)  # obj1 has more attributes
 
 
 # --------------------------------
-# Test: TFObject Partial Usability (Extra Attributes)
+# Test: CtyObject Partial Usability (Extra Attributes)
 # --------------------------------
 
-def test_tfobject_usable_as_partial():
-    parent = TFObject({
-        "name": TFString(),
-        "email": TFString(),
+def test_CtyObject_usable_as_partial():
+    parent = CtyObject({
+        "name": CtyString(),
+        "email": CtyString(),
     })
 
-    child = TFObject({
-        "name": TFString(),
+    child = CtyObject({
+        "name": CtyString(),
     })
 
     assert child.usable_as(parent)
@@ -432,14 +432,14 @@ def test_tfobject_usable_as_partial():
 
 
 # --------------------------------
-# Test: TFObject Immutable with Nested Lists
+# Test: CtyObject Immutable with Nested Lists
 # --------------------------------
 
-def test_tfobject_nested_list_immutable():
-    obj = TFObject({
-        "tags": TFObject({
-            "labels": TFObject({
-                "key": TFString()
+def test_CtyObject_nested_list_immutable():
+    obj = CtyObject({
+        "tags": CtyObject({
+            "labels": CtyObject({
+                "key": CtyString()
             }, mutable=False)
         }, mutable=False)
     }, mutable=False)
@@ -455,26 +455,26 @@ def test_tfobject_nested_list_immutable():
 
 
 # --------------------------------
-# Test: TFObject With No Attributes (Empty Object)
+# Test: CtyObject With No Attributes (Empty Object)
 # --------------------------------
 
-def test_tfobject_no_attributes():
-    obj = TFObject({})
+def test_CtyObject_no_attributes():
+    obj = CtyObject({})
 
     validated = obj.validate({})
     assert validated == {}
 
 
 # --------------------------------
-# Test: TFObject Validation Error Cascading
+# Test: CtyObject Validation Error Cascading
 # --------------------------------
 
-def test_tfobject_cascading_validation_error():
-    inner = TFObject({
-        "age": TFNumber()
+def test_CtyObject_cascading_validation_error():
+    inner = CtyObject({
+        "age": CtyNumber()
     })
 
-    outer = TFObject({
+    outer = CtyObject({
         "user": inner
     })
 

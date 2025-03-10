@@ -32,7 +32,7 @@ In simpler terms, a metaschema represents the **compiled, holistic view of the s
     ```python
     class NetworkSchema(Schema):
         vpc_id = tfstr(required=True)
-        subnet_ids = tflist(tfstr, required=True)
+        subnet_ids = CtyList(tfstr, required=True)
     ```
 
 - **Metaschema**:  

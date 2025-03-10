@@ -1,12 +1,12 @@
 import unittest
 
-from pyvider.exceptions import ValidationError
-from pyvider.cty.primitives import TFBool, TFNumber, TFString
+from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.primitives import CtyBool, CtyNumber, CtyString
 
 
-class TestTFStringType(unittest.TestCase):
+class TestCtyStringType(unittest.TestCase):
     def setUp(self):
-        self.string_type = TFString()
+        self.string_type = CtyString()
 
     def test_validate_valid_string(self):
         try:
@@ -18,9 +18,9 @@ class TestTFStringType(unittest.TestCase):
         with self.assertRaises(ValidationError):
             self.string_type.validate(123)
 
-class TestTFNumberType(unittest.TestCase):
+class TestCtyNumberType(unittest.TestCase):
     def setUp(self):
-        self.number_type = TFNumber()
+        self.number_type = CtyNumber()
 
     def test_validate_valid_number(self):
         try:
@@ -33,9 +33,9 @@ class TestTFNumberType(unittest.TestCase):
         with self.assertRaises(ValidationError):
             self.number_type.validate("string")
 
-class TestTFBoolType(unittest.TestCase):
+class TestCtyBoolType(unittest.TestCase):
     def setUp(self):
-        self.bool_type = TFBool()
+        self.bool_type = CtyBool()
 
     def test_validate_valid_bool(self):
         try:

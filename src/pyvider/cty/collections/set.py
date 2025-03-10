@@ -3,26 +3,26 @@ from typing import Set as PySet
 
 from attrs import define, evolve, field
 
-from pyvider.exceptions import ValidationError
+from pyvider.cty.exceptions import ValidationError
 
-from ..type import TFType
+from pyvider.cty.type import CtyType
 
 T = TypeVar('T')
 
 @final
 @define(frozen=True, slots=True)
-class TFSet(TFType[PySet[T]], Generic[T]):
+class CtySet(CtyType[PySet[T]], Generic[T]):
     ctype: ClassVar[str] = "set"
-    element_type: TFType[T] = field(kw_only=True)  # Mandatory as keyword-only
+    element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
     value: PySet[T] = field(factory=set, kw_only=True)  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
-        if not isinstance(self.element_type, TFType):
+        if not isinstance(self.element_type, CtyType):
             raise ValidationError(
-                f"Expected TFType for element_type, got {type(self.element_type)}"
+                f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any) -> "TFSet":
+    def validate(self, value: Any) -> "CtySet":
         if value is None:
             return evolve(self, value=set())
         if not hasattr(value, '__iter__') or isinstance(value, (str, bytes)):
@@ -34,7 +34,7 @@ class TFSet(TFType[PySet[T]], Generic[T]):
 
         def freeze_nested_sets(item):
             if isinstance(item, (set, frozenset)):
-                raise ValidationError("Nested sets are not allowed in TFSet.")
+                raise ValidationError("Nested sets are not allowed in CtySet.")
             return self.element_type.validate(item)
 
         for i, item in enumerate(value):
@@ -45,7 +45,7 @@ class TFSet(TFType[PySet[T]], Generic[T]):
                 validation_errors.append(f"Item {i}: {item} -> {e!s}")
 
         if validation_errors:
-            raise ValidationError("TFSet validation failed:\n" + "\n".join(validation_errors))
+            raise ValidationError("CtySet validation failed:\n" + "\n".join(validation_errors))
 
         return evolve(self, value=validated)
 
@@ -56,7 +56,7 @@ class TFSet(TFType[PySet[T]], Generic[T]):
         except ValidationError as e:
             raise ValidationError(f"Failed to add element: {e}")
 
-    def remove(self, item: T) -> "TFSet":
+    def remove(self, item: T) -> "CtySet":
         try:
             validated_item = self.element_type.validate(item)
             new_set = {x for x in self.value if x != validated_item}
@@ -64,16 +64,16 @@ class TFSet(TFType[PySet[T]], Generic[T]):
         except Exception as e:
             raise ValidationError(f"Failed to remove item: {e}")
 
-    def usable_as(self, other: "TFType") -> bool:
-        return isinstance(other, TFSet) and self.element_type.usable_as(other.element_type)
+    def usable_as(self, other: "CtyType") -> bool:
+        return isinstance(other, CtySet) and self.element_type.usable_as(other.element_type)
 
-    def equal(self, other: "TFType") -> bool:
-        if not isinstance(other, TFSet):
+    def equal(self, other: "CtyType") -> bool:
+        if not isinstance(other, CtySet):
             return False
         return self.element_type.equal(other.element_type)
 
     def __eq__(self, other):
-        if not isinstance(other, TFSet):
+        if not isinstance(other, CtySet):
             return False
         return (
             self.element_type == other.element_type

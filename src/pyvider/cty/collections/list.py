@@ -1,35 +1,35 @@
 """
-TFList type implementation for Terraform.
+CtyList type implementation for Terraform.
 
-Represents an ordered sequence of values of the same type. TFLists in Terraform
+Represents an ordered sequence of values of the same type. CtyLists in Terraform
 maintain order and allow duplicate values, similar to Python lists.
 """
 
 from dataclasses import dataclass
 from typing import Any, ClassVar, Generic, TypeVar, final
 
-from pyvider.exceptions import PyviderError, ValidationError
+from pyvider.cty.exceptions import PyviderError, ValidationError
 
-from ..base import TFType
+from ..base import CtyType
 
 T = TypeVar('T')
 
 @final
 @dataclass(frozen=True, slots=True)
-class TFList(TFType[list[T]], Generic[T]):
+class CtyList(CtyType[list[T]], Generic[T]):
     """
-    TFList type for Terraform values.
+    CtyList type for Terraform values.
 
-    A TFList represents an ordered sequence of values, all having the same type.
+    A CtyList represents an ordered sequence of values, all having the same type.
     """
 
     ctype: ClassVar[str] = "list"
-    element_type: TFType[T]
+    element_type: CtyType[T]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.element_type, TFType):
+        if not isinstance(self.element_type, CtyType):
             raise PyviderError(
-                f"Expected TFType for element_type, got {type(self.element_type)}"
+                f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
     def validate(self, value: Any) -> list[T]:
@@ -60,26 +60,26 @@ class TFList(TFType[list[T]], Generic[T]):
             return value[index]
         except IndexError:
             raise IndexError(
-                f"TFList index {index} out of range for list of length {len(value)}"
+                f"CtyList index {index} out of range for list of length {len(value)}"
             )
 
-    def equal(self, other: "TFType") -> bool:
+    def equal(self, other: "CtyType") -> bool:
         """Check if types are equal."""
-        if not isinstance(other, TFList):
+        if not isinstance(other, CtyList):
             return False
         return self.element_type.equal(other.element_type)
 
-    def usable_as(self, other: "TFType") -> bool:
+    def usable_as(self, other: "CtyType") -> bool:
         """
         Checks if this tuple type can be used as another type.
 
         Args:
-            other (TFType): Another type to check compatibility with.
+            other (CtyType): Another type to check compatibility with.
 
         Returns:
             bool: True if compatible, False otherwise.
         """
-        return isinstance(other, TFList) and all(
+        return isinstance(other, CtyList) and all(
             issubclass(self_type, other_type)
             for self_type, other_type in zip(self.types, other.types)
         )

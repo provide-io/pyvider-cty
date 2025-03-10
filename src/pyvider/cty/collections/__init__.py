@@ -1,11 +1,11 @@
 """Terraform type system."""
 
-from .list import TFList
-from .map import TFMap
-from .set import TFSet
+from .list import CtyList
+from .map import CtyMap
+from .set import CtySet
 
 __all__ = [
-    'TFList',
-    'TFMap',
-    'TFSet',
+    'CtyList',
+    'CtyMap',
+    'CtySet',
 ]

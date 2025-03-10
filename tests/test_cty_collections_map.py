@@ -1,14 +1,14 @@
 import unittest
 
-from pyvider.exceptions import ValidationError
-from pyvider.cty import TFBool, TFMap, TFNumber, TFString
+from pyvider.cty.exceptions import ValidationError
+from pyvider.cty import CtyBool, CtyMap, CtyNumber, CtyString
 
 
-class TestTFMapType(unittest.TestCase):
+class TestCtyMapType(unittest.TestCase):
     def setUp(self):
-        self.string_map = TFMap(key_type=TFString(), value_type=TFString())
-        self.number_map = TFMap(key_type=TFString(), value_type=TFNumber())
-        self.bool_map = TFMap(key_type=TFString(), value_type=TFBool())
+        self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
+        self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        self.bool_map = CtyMap(key_type=CtyString(), value_type=CtyBool())
 
     # -------------------- VALIDATION TESTS --------------------
     def test_validate_valid_string_map(self):
@@ -42,26 +42,26 @@ class TestTFMapType(unittest.TestCase):
         self.assertEqual(len(empty), 0)
 
     def test_validate_nested_map(self):
-        nested_map = TFMap(key_type=TFString(), value_type=self.string_map)
+        nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
         valid = {"config": {"filename": "test.txt"}}
         nested_map.validate(valid)
         self.assertEqual(valid["config"]["filename"], "test.txt")
 
     def test_validate_nested_map_invalid(self):
-        nested_map = TFMap(key_type=TFString(), value_type=self.string_map)
+        nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
         invalid = {"config": {"filename": 123}}
         with self.assertRaises(ValidationError):
             nested_map.validate(invalid)
 
     # -------------------- EQUALITY AND COMPARISON TESTS --------------------
     def test_map_equality(self):
-        map1 = TFMap(key_type=TFString(), value_type=TFNumber())
-        map2 = TFMap(key_type=TFString(), value_type=TFNumber())
+        map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        map2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         self.assertTrue(map1.equal(map2))
 
     def test_map_inequality(self):
-        map1 = TFMap(key_type=TFString(), value_type=TFNumber())
-        map2 = TFMap(key_type=TFString(), value_type=TFString())
+        map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        map2 = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.assertFalse(map1.equal(map2))
 
     # -------------------- EDGE CASES --------------------
@@ -81,7 +81,7 @@ class TestTFMapType(unittest.TestCase):
             self.string_map.validate(invalid)
 
     def test_map_with_nested_lists(self):
-        tf_map = TFMap(value_type=TFString())
+        tf_map = CtyMap(value_type=CtyString())
         nested_data = {"key1": ["item1", "item2"], "key2": ["item3"]}
 
         validated = tf_map.validate(nested_data)
@@ -91,17 +91,17 @@ class TestTFMapType(unittest.TestCase):
         }
 
     def test_map_with_incompatible_nested(self):
-        nested_map = TFMap(key_type=TFString(), value_type=self.string_map)
+        nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
         invalid = {"nested": {"key": 42}}  # Key type valid, value type invalid
         with self.assertRaises(ValidationError):
             nested_map.validate(invalid)
 
     def test_validate_invalid_bool_map(self):
-        invalid = {"is_active": TFNumber(1)}  # Incorrect type for boolean field
+        invalid = {"is_active": CtyNumber(1)}  # Incorrect type for boolean field
         with self.assertRaises(ValidationError) as excinfo:
             self.bool_map.validate(invalid)
 
-        assert "Expected TFBool" in str(excinfo.exception)
+        assert "Expected CtyBool" in str(excinfo.exception)
 
 if __name__ == "__main__":
     unittest.main()
