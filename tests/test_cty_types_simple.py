@@ -1,7 +1,7 @@
 import unittest
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.primitives import CtyBool, CtyNumber, CtyString
+from pyvider.cty import CtyBool, CtyNumber, CtyString
 
 
 class TestCtyStringType(unittest.TestCase):

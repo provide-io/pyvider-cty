@@ -1,8 +1,8 @@
 """Terraform type system."""
 
-from .list import CtyList
-from .map import CtyMap
-from .set import CtySet
+from pyvider.cty.types.collections.list import CtyList
+from pyvider.cty.types.collections.map import CtyMap
+from pyvider.cty.types.collections.set import CtySet
 
 __all__ = [
     'CtyList',

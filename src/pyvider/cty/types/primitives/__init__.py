@@ -1,8 +1,8 @@
 """Terraform type system."""
 
-from .bool import CtyBool
-from .number import CtyNumber
-from .string import CtyString
+from pyvider.cty.types.primitives.bool import CtyBool
+from pyvider.cty.types.primitives.number import CtyNumber
+from pyvider.cty.types.primitives.string import CtyString
 
 __all__ = [
     'CtyBool',

@@ -6,7 +6,7 @@ from typing import (
 
 from attr import define, field
 
-from .base import CtyType
+from pyvider.cty.types.base import CtyType
 
 # Define generic type variable
 T = TypeVar("T")

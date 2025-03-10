@@ -1,8 +1,7 @@
 import pytest
 
 from pyvider.cty.exceptions import AttributeValidationError, SchemaValidationError, ValidationError
-from pyvider.cty.primitives import CtyBool, CtyNumber, CtyString
-from pyvider.cty.structural import CtyObject
+from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyObject
 
 # --------------------------------
 # Test: CtyObject Basic Validation

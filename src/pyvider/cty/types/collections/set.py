@@ -5,7 +5,7 @@ from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import ValidationError
 
-from pyvider.cty.type import CtyType
+from pyvider.cty.types.base import CtyType
 
 T = TypeVar('T')
 

@@ -1,6 +1,8 @@
 
 # pyvider/cty/types/__init__.py
 
+from pyvider.cty.types.base import CtyType
+
 from pyvider.cty.types.collections import (
     CtyList,
     CtyMap,
@@ -15,10 +17,6 @@ from pyvider.cty.types.structural import (
     CtyDynamic,
     CtyObject,
     CtyTuple,
-)
-
-from .type import (
-    CtyType,
 )
 
 __all__ = [
