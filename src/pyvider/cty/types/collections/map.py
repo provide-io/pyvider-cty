@@ -8,12 +8,12 @@ import attrs
 
 from pyvider.cty.exceptions import ValidationError
 
-from ..primitives import (
+from pyvider.cty.types.primitives import (
     CtyBool,
     CtyNumber,
     CtyString,
 )
-from ..type import CtyType
+from pyvider.cty.types.base import CtyType
 
 T = TypeVar("T")
 

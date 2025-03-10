@@ -1,6 +1,6 @@
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.base import CtyType
+from pyvider.cty.types.base import CtyType
 
 class CtyDynamic(CtyType):
     """

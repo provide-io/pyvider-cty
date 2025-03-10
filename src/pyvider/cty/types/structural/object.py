@@ -30,7 +30,7 @@ from typing import Any, FrozenSet, TypeVar, final
 
 from pyvider.cty.exceptions import AttributeValidationError, InvalidTypeError, SchemaValidationError, ValidationError
 
-from ..base import CtyType
+from pyvider.cty.types.base import CtyType
 
 T = TypeVar('T')
 

@@ -1,22 +1,19 @@
 """Terraform type system."""
 
-from .collections import (
-    CtyList,
-    CtyMap,
-    CtySet,
-)
-from .primitives import (
+from pyvider.cty.types import (
+    CtyType,
+
     CtyBool,
     CtyNumber,
     CtyString,
-)
-from .structural import (
+
+    CtyList,
+    CtyMap,
+    CtySet,
+
     CtyDynamic,
     CtyObject,
     CtyTuple,
-)
-from .type import (
-    CtyType,
 )
 
 __all__ = [

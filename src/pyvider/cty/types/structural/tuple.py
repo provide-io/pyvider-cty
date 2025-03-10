@@ -3,7 +3,7 @@ from typing import Any, Generic, TypeVar
 
 from pyvider.cty.exceptions import ValidationError
 
-from ..base import CtyType
+from pyvider.cty.types.base import CtyType
 
 # Define generic type variables
 T = TypeVar("T")
