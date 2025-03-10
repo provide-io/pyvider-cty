@@ -1,0 +1,1652 @@
+### FILE 1: marks.md | size=4875 | modified=2025-03-02 09:09:29.742870 | file_type=markdown | checksum=20627ff375ab8920269d73b4c5a9815b ###
+<<< BOF <<<
+# Value Marks
+
+----
+
+**Note:** Marks are an optional feature that will not be needed in most
+applications. If your application never uses this API then you don't need to
+worry about encountering marked values, and you can ignore this document.
+
+----
+
+A `cty.Value` can optionally be _marked_, which causes it to carry around some
+additonal metadata along with its value. Marks are just normal Go values that
+are value to use as map keys, and are compared by equality.
+
+For example, an application might use marks to track the origin of a particular
+value in order to give better error messages, or to present the value in a
+different way in a UI.
+
+```go
+// Use a named type for all marks, for namespacing purposes.
+type fromConfigType int
+var fromConfig fromConfigType
+
+return val.Mark(fromConfig)
+```
+
+```go
+if val.HasMark(fromConfig) {
+    // Maybe warn the user that the value is derived from configuration?
+    // Or whatever makes sense for the calling application.
+}
+```
+
+When a value is marked, operation methods using that value will propagate the
+marks to any result values. That makes marks "infectious" in the sense that
+they propagate through operations and accumulate in the result automatically.
+
+However, marks cannot propagate automatically thruogh _integration_ methods,
+and so a calilng application is required to explicitly _unmark_ a value
+before using them:
+
+```go
+val, valMarks := val.Unmark()
+// ...then use integration methods with val,
+// eventually producing a result that propgates
+// the marks:
+return result.WithMarks(valMarks)
+```
+
+## Marked Values in Sets
+
+Sets present an interesting problem for marks because marks do not contribute
+to equality of two values and thus it would be possible in principle to add
+the same value to a given set twice with different marks.
+
+To avoid the complexity of tracking superset marks on a per-element basis,
+`cty` instead makes a compromise: sets can never contain marked values, and
+if any marked values are passed to `cty.SetVal` then they will be automatically
+unmarked and the superset of all marks applied to the resulting set as a whole.
+
+This is lossy about exactly which elements contributed which marks, but is
+conservative in the sense that any access to elements in the set will encounter
+the superset marks as expected.
+
+## Marks Under Conversion
+
+The `cty/convert` package is aware of marks and will automatically propagate
+them through conversions. That includes nested values that are marked, which
+will be propagated to the corresponding nested value in the result if possible,
+or will be simplified to marks on a container where an exact propagation is not
+possible.
+
+## Marks as Function Arguments
+
+The `cty/function` package is aware of marks and will, by default,
+automatically unmark all function arguments prior to calling a function and
+propagate the argument marks to the result value so that most functions do
+not need to worry about handling marks.
+
+A function may opt in to handling marks itself for a particular parameter by
+setting `AllowMarks: true` on the definition of that parameter. If a function
+opts in, it is therefore responsible for correctly propagating any marks onto
+its result.
+
+A function's `Type` implementation will receive automatically-unmarked values
+unless `AllowMarks` is set, which means that return-type checking alone will
+disregard any marks unless `AllowMarks` is set. Because type checking does not
+return a value, there is no way for type checking alone to communicate which
+marks it encountered during its work.
+
+If you're using marks in a use-case around obscuring sensitive values, beware
+that type checking of some functions could extract information without
+preserving the sensitivity mark. For example, if a string marked as sensitive
+were passed as the first argument to the stdlib `JSONDecode` function then
+type-checking of that function will betray the object property names inside
+that value as part of the inferred result type.
+
+## Marks Under Serialization
+
+Marks cannot be represented in either the JSON nor the msgpack serializations
+of cty values, and so the `Marshal` functions for those will return errors
+if they encounter marked values.
+
+If you need to serialize values that might contain marks, you must explicitly
+unmark the whole data structure first (e.g. using `Value.UnmarkDeep`) and then
+decide what to do with those marks in order to ensure that if it makes sense
+to propagate them through the serialization then they will get represented
+somehow.
+
+## Relationship to "Refinements"
+
+The idea of annotating a value with additional information has some overlap
+with the concept of [Refinements](refinements.md). However, the two have
+different purposes and so different design details and tradeoffs.
+
+For more details, see
+[the corresponding section in the Refinements documentation](refinements.md#relationship-to-marks).
+
+>>> EOF >>>
+### FILE 2: concepts.md | size=7901 | modified=2025-03-02 09:09:29.742339 | file_type=markdown | checksum=f51cb7303179b94a7303ee9b0f149510 ###
+<<< BOF <<<
+# `cty` Concepts
+
+`cty` is built around two fundamental concepts: _types_ and _values_.
+
+A _type_ represents a particular way of storing some data in memory and a
+set of operations that can be performed on that data. A _value_ is, therefore,
+the combination of some raw data and a _type_ that describes how that data
+should be interpreted.
+
+The simplest types in `cty` are the _number_, _string_ and _bool_ types,
+collectively known as the _primitive_ types.
+
+Along with the primitive types, `cty` supports _compound_ types, which are
+types that are constructed by assembling together other types in a particular
+way. The _compound_ types are further subdivided into two categories:
+
+* **Collection Types** represent collections of values that all have the same
+  type (the _element type_) and permit access to those values in different
+  ways. The collection type kinds are _list_, _set_, and _map_.
+
+* **Structural Types** represent collections of values that may all have
+  _different_ types, organized either by name or by position in a sequence.
+  The structural type kinds are _object_ and _tuple_.
+
+For example, "list of string" is a collection type that represents a
+collection of string values (_elements_) that are each assigned a sequential
+index starting at zero, while "map of string" instead assigns each of its
+elements a name in the form of a string value.
+
+The details of the specific types and type kinds are covered in
+[the full description of the type system](./types.md); the remainder of _this_
+document will discuss types and values in general, using specific types only
+as examples.
+
+## Value Operations
+
+Each type defines a set of operations that are valid on its values. For
+example, the _number_ type permits various arithmetic operations such as
+addition, subtraction, and multiplication, but these are not permitted for
+other types such as _bool_.
+
+Since `cty` is a dynamic type system (from the perspective of the calling Go
+program), the validity of an operation on a given value must be checked at
+runtime. The documentation for each type defines what operations are valid
+on it and what semantics each operation has.
+
+## Unknown Values and the Dynamic Pseudo-Type
+
+`cty` has some additional _optional_ concepts that may be useful in certain
+applications.
+
+An _unknown value_ is a value that carries a type but no value. It can serve
+as a placeholder for a value to be resolved later, which can be useful when
+implementing a static type checker for a language. Unknown values are special
+because they support the same operations as a known value of the same type
+but the result will itself be an unknown value. For example, the number 5
+added to an unknown number yields another unknown number.
+
+The dynamic pseudo-type is a special type that serves as a placeholder for
+a type that isn't yet known. Whereas unknown values represent situations where
+the type is known and the value is not, the dynamic pseudo-type represents
+situations where neither is known, or where any value of any type is permitted.
+It is referred to as a "pseudo-type" because while it can be used in many
+places where types are permitted, it does not define any operations of its own.
+
+These two concepts are related in that the dynamic pseudo-type has no non-null,
+non-unknown values. It single non-null type is itself an unknown value.
+_All_ operations are supported on non-null dynamic values, but the result
+will always be an unknown value, possibly type-unknown itself.
+
+Dealing with unknown values and the dynamic pseudo-type can cause additional
+complexity for a calling application, although many details of it are handled
+automatically by the `cty` internals. As a consequence, the main `cty` API
+promises to never produce an unknown value for an operation unless one of the
+operands is itself unknown, and so applications can opt out of this additional
+complexity by never providing unknown values as operands.
+
+At minimum an unknown value has a type constraint which describes a set of
+types that the final value could possibly have once known. In some cases we
+can refine an unknown value with additional dynamic information, using
+[Value Refinements](refinements.md).
+
+## Type Equality and Type Conformance
+
+Two types are said to be equal if they are exactly equivalent. Each type kind
+defines its own equality rules, but the overall intent is to implement strict
+type comparisons.
+
+Type _conformance_ is a slightly-weaker concept that allows the dynamic
+pseudo-type to be used as a placeholder to represent "any type". Therefore
+a given type is equal only to itself but it is _conformant_ to either itself
+or the dynamic pseudo-type.
+
+Type conformance is not directly used by `cty`'s core, but it is used as
+a building block for the `function` package and for JSON serialization.
+
+## The `cty` Go API
+
+The primary way a application works with `cty` values is via the API exposed
+by the `cty` go package. The full details of this package are in
+[its reference documentation](https://godoc.org/github.com/zclconf/go-cty/cty),
+so this section will just cover the basic usage patterns.
+
+The main features of the `cty` package are the Go types `cty.Type` and `cty.Value`,
+which each represent the concept they are named after.
+
+The package contains variables that represent the primitive types, `cty.Number`,
+`cty.String` and `cty.Bool`. It also contains functions that allow the
+construction of compound types, such as `cty.List`, `cty.Object`, etc. These
+functions each take different arguments depending on the kind of compound type
+in question.
+
+Alongside the types and type factories, the package also contains variables
+and functions for constructing _values_ of these types, which conventionally
+have names that are the corresponding type or type kind with the suffix `Val`.
+For example, the two boolean values are exported as `cty.True` and `cty.False`,
+and string values can be constructed using the function `cty.StringVal`, given
+a native Go string.
+
+The `cty.Type` and `cty.Value` types are similar to the types of the same
+name in the built-in Go `reflect` package. They expose methods that are the
+union of all operations supported across all types, but each method has a
+set of constraints associated with it, and failure to follow these will result
+in a run-time panic.
+
+The `cty.Value` object has two classes of methods:
+
+* **Operation Methods** stay within the `cty` type system, dealing entirely
+  with `cty.Value` instances. These methods fully deal with concerns such as
+  unknown values, so the caller just needs to be sure to apply only operations
+  that are valid for the receiving value's type.
+
+* **Integration Methods** live on the boundary between `cty` and the native
+  Go type system, and can be used by the calling application to integrate
+  with non-`cty`-aware code. These methods often have constraints such as not
+  supporting unknown values, which are covered in their documentation.
+
+While the integration methods alone are sufficient for a calling application
+to convert to and from `cty` values, the utility package
+[`gocty`](./gocty.html) provides a more convenient way to convert between
+Go native values and `cty` values.
+
+## Marks
+
+A `cty.Value` can optionally be _marked_, which causes it to carry around some
+additonal metadata along with its value. Marks are just normal Go values that
+are value to use as map keys, and are compared by equality.
+
+For example, an application might use marks to track the origin of a particular
+value in order to give better error messages, or to present the value in a
+different way in a UI.
+
+When a value is marked, operation methods using that value will propagate the
+marks to any result values. That makes marks "infectious" in the sense that
+they propagate through operations and accumulate in the result automatically.
+
+For more information on marks, see [the dedicated section on marks](./marks.md).
+
+>>> EOF >>>
+### FILE 3: json.md | size=3862 | modified=2025-03-02 09:09:29.742762 | file_type=markdown | checksum=fd31c75def2ba19d9b17fcd308bcfa1c ###
+<<< BOF <<<
+# JSON serialization of `cty` values
+
+[The `json` package](https://godoc.org/github.com/zclconf/go-cty/cty/json)
+allows `cty` values to be serialized as JSON and decoded back into `cty` values.
+
+Since the `cty` type system is a superset of the JSON type system, two modes
+of operation are possible:
+
+The recommended approach is to define the intended `cty` data structure as
+a `cty.Type` -- possibly involving `cty.DynamicPseudoType` placeholders --
+which then allows full recovery of the original values with correct type
+information, assuming that the same type description can be provided at
+decoding time.
+
+Alternatively, this package can decode an arbitrary JSON data structure into
+the corresponding `cty` types, which means that it is possible to serialize
+a `cty` value without type information and then decode into a value that
+contains the same data but possibly uses different types to represent
+that data. This allows direct integration with the standard library
+`encoding/json` package, at the expense of type-lossy deserialization.
+
+## Type-preserving JSON Serialization
+
+The `Marshal` and `Unmarshal` functions together provide for type-preserving
+serialization and deserialization (respectively) of `cty` values.
+
+The pattern for using these functions is to define the intended `cty` type
+as a `cty.Type` instance and then pass an identical type as the second argument
+to both `Marshal` and `Unmarshal`. Assuming an identical type is used for both
+functions, it is guaranteed that values will round-trip through JSON
+serialization to produce a value of the same type.
+
+The `cty.Type` passed to `Unmarshal` is used as a hint to resolve ambiguities
+in the mapping to JSON. For example, `cty` list, set and tuple types all
+lower to JSON arrays, so additional type information is needed to decide
+which type to use when unmarshaling.
+
+The `cty.Type` passed to `Marshal` serves a more subtle purpose. Any
+`cty.DynamicPseudoType` placeholders in the type will cause extra type
+information to be saved in the JSON data structure, which is then used
+by `Unmarshal` to recover the original type.
+
+Type-preserving JSON serialization is able to serialize and deserialize
+capsule-typed values whose encapsulated Go types are JSON-serializable, except
+when those values are conformed to a `cty.DynamicPseudoType`. However, since
+capsule values compare by pointer equality, a decoded value will not be
+equal (as `cty` defines it) with the value that produced it.
+
+## Type-lossy JSON Serialization
+
+If a given application does not need to exactly preserve the type of a value,
+the `SimpleJSONValue` type provides a simpler method for JSON serialization
+that works with the `encoding/json` package in Go's standard library.
+
+`SimpleJSONValue` is a wrapper struct around `cty.Value`, which can be
+embedded into another struct used with the standard library `Marshal` and
+`Unmarshal` functions:
+
+```go
+type Example struct {
+    Name  string          `json:"name"`
+    Value SimpleJSONValue `json:"value"`
+}
+
+var example Example
+example.Name = "Ermintrude"
+example.Value = SimpleJSONValue{cty.NumberIntVal(43)}
+```
+
+Since no specific `cty` type is available when unmarshalling into
+`SimpleJSONValue`, a straightforward mapping is used:
+
+* JSON strings become `cty.String` values.
+* JSON numbers become `cty.Number` values.
+* JSON booleans become `cty.Bool` values.
+* JSON arrays become `cty.Tuple`-typed values whose element types are selected via this mapping.
+* JSON objects become `cty.Object`-typed values whose attribute types are selected via this mapping.
+* Any JSON `null` is mapped to `cty.NullVal(cty.DynamicPseudoType)`.
+
+The above mapping is unambiguous and lossless, so any valid JSON buffer can be
+decoded into an equally-expressive `cty` value, but the type may not exactly
+match that of the value used to produce the JSON buffer in the first place.
+
+>>> EOF >>>
+### FILE 4: refinements.md | size=15222 | modified=2025-03-02 09:09:29.742949 | file_type=markdown | checksum=c057e8015ff9081bc52ddaff936842b7 ###
+<<< BOF <<<
+# Value Refinements
+
+_Refinements_ are dynamic annotations associated with unknown values that
+each shrink the range of possible values futher than can be represented by
+type constraint alone.
+
+When an unknown value is refined, it allows certain operations against that
+unknown value to produce a known result, and allows some operations to fail
+earlier than they would with a fully-unknown value by detecting that a valid
+result is impossible using just the refinement information.
+
+Refinements always _shrink_ the range of an unknown value, and never grow it.
+That makes it valid for some operations to ignore refinements and just treat
+an unknown value as representing any possible value of its type constraint,
+which is important to avoid burdening all downstream callers of `cty` from
+handling all refinements and from immediately adding support for new kinds of
+refinement if this model gets extended in future releases.
+
+However, note that `Value.RawEquals` _does_ take into account refinements, so
+any tests that assert against the exact final value of an operation may need
+to be updated after adopting a new version of `cty` which makes increased use
+of refinements. `Value.RawEquals` is not intended as part of the _user model_
+of `cty` and so this should not negatively impact the end-user-visible behavior
+of an application using `cty`, although of course they might benefit from
+more specific results from operations that can now take refinements into
+account.
+
+## How to refine a value
+
+You can derive a more refined value from a less refined value by using the
+`Value.Refine` method to obtain a _refinement builder_, which uses the
+builder pattern to construct a new value with one or more extra refinements.
+
+```go
+val := cty.UnknownVal(cty.String).Refine().
+    NotNull().
+    StringPrefix("https://").
+    NewValue()
+```
+
+The above snippet would produce a refined local value whose range is limited
+only to non-null strings which start with the prefix `"https://"`. This
+information can, in theory, allow `val.Equals(cty.NullVal(cty.String))` to
+return `cty.False` rather than `cty.UnknownVal(cty.Bool)`, and allow a prefix
+match against the string to return a known result.
+
+In practice not all operations against unknown values can make full use of
+unknown value refinements, but hopefully the coverage will increase over time.
+
+Only unknown values can have refinements, because known values are already
+refined by their concrete value: simple values like `cty.Zero` are constrained
+to exactly one value, while some values like `cty.ListValEmpty(cty.DynamicPseudoType)`
+represent a set of possible values -- all empty lists of any element type, in
+this case.
+
+However, the `Refine` operation _is_ also supported for known values and in that
+case acts as a self-checking assertion that the known value does actually
+meet the requirements. If you write your codepaths to unconditionally assign
+refinements regardless of whether the value is known then your code will
+self-check and raise a panic if the final known value doesn't match the
+previously-promised refinements.
+
+A similar rule applies to applying new refinements already-refined values: it's
+fine to describe a less specific refinement, which will therefore be ignored
+because it adds no new information. It's an application bug to describe a
+contradictory refinement, such as a new string prefix that doesn't match one
+previously assigned.
+
+## Value ranges
+
+The `Refine()` method described above constructs a value with refinements. To
+access the information from those refinements, use the `Value.Range` method to
+obtain a `cty.ValueRange` object, which describes a superset of all of the
+values that a particular value could have.
+
+For example, you can use `val.Range().DefinitelyNotNull()` to test whether a
+particular value is guaranteed to be non-null once it is finally known. This
+again works for both known and unknown values, so e.g.
+`cty.StringVal("foo").Range().DefinitelyNotNull()` returns `true` because
+a known, non-null string value is _definitely not null_.
+
+When writing operations that depend only on information that can be determined
+from refinements it's valid to depend exclusively on `Value.Range` and rely on
+the fact that the range of an already-known value is just a very narrow range
+that covers only what that specific value covers.
+
+The model of value ranges is imprecise, though: it's limited only to information
+we can track for unknown values through refinements. Many operations will still
+need a special codepath to handle the unknown case vs. the known case so they
+can take into account the additional detail from the exact value once known.
+
+## Available Refinements
+
+The set of possible refinement types might grow over time, but the initial set
+is focused on a narrow set of possibilities that seems likely to allow a number
+of other operations to either produce known results from unknown input or to
+rule that particular input is invalid despite not yet being known.
+
+The most notable restriction on refinements is that the available refinements
+vary depending on the type constraint of the value being refined.
+
+The least flexible case is `cty.DynamicVal` -- an unknown value of an unknown
+type -- which is the one value that cannot be refined at all and will silently
+ignore any attempts to do so, leaving the result still totally unrefined. This
+is a pragmatic compromise for backward compatibility: existing callers use
+patterns like `val == cty.DynamicVal` to test for this specific special value,
+and any refinements of that value would make it no longer equal.
+
+Unknown values of built-in exact types, and also unknown values whose type
+_kind_ is constrained even if the element/attribute types are not, can at
+least be refined as being non-null, and because that is a common situation
+there is a shorthand for it which avoids using the builder pattern:
+`val.RefineNotNull()`.
+
+All other possible refinements are type-constraint-specific:
+
+* `cty.String`
+
+    For strings we can refine a known prefix of the string, which is intended
+    for situations where the string represents some microsyntax with a
+    known prefix, such as a URL of a particular known scheme.
+
+    * `.StringPrefix(string)` specifies a known prefix of the final string.
+
+        By default an unknown string has no known prefix, which is the same
+        as the prefix being the empty string.
+
+        Because `cty`'s model of strings is a sequence of Unicode grapheme
+        clusters, `.StringPrefix` will quietly disregard trailing Unicode
+        code units of the given prefix that might combine with other code
+        units to form a new combined grapheme. This is a good safe default
+        behavior for situations where the remainder of the string is under
+        end-user control and might begin with combining diacritics or
+        emoji variation sequences. Applications should not rely on the
+        details of this heuristic because it may become more precise in
+        later releases.
+
+    * `.StringPrefixFull(string)` is like `.StringPrefix` but does not trim
+      possibly-combining code units from the end of the given string.
+
+        Applications must use this with care, making sure that they control
+        the final string enough to guarantee that the subsequent additional
+        code units will never combine with any characters in the given prefix.
+
+* `cty.Number`
+
+    For numbers we can refine both the lower and upper bound of possible values,
+    with each boundary being either inclusive or exclusive.
+
+    * `.NumberRangeLowerBound(cty.Value, bool)` refines the lower bound of
+      possible values for an unknown number. The boolean argument represents
+      whether the bound is _inclusive_.
+
+        The given value must be a non-null `cty.Number` value. An unrefined
+        number effectively has a lower bound of `(cty.NegativeInfinity, true)`.
+
+    * `.NumberRangeUpperBound(cty.Value, bool)` refines the upper bound of
+      possible values for an unknown number. The boolean argument represents
+      whether the bound is _inclusive_.
+
+        The given value must be a non-null `cty.Number` value. An unrefined
+        number effectively has an upper bound of `(cty.PositiveInfinity, true)`.
+
+    * `.NumberRangeInclusive(min, max cty.Value)` is a helper wrapper around
+      the previous two methods that declares both an upper and lower bound
+      at the same time, while specifying that both are inclusive bounds.
+
+* `cty.List`, `cty.Set`, and `cty.Map` types
+
+    For all collection types we can refine the lower and upper bound of the
+    length of the collection. The boundaries on length are always inclusive
+    and are integers, because it isn't possible to have a fraction of an
+    element.
+
+    * `.CollectionLengthLowerBound(int)` refines the lower bound of possible
+      lengths for an unknown collection.
+
+        An unrefined collection effectively has a lower bound of zero, because
+        it's not possible for a collection to have a negative length.
+
+    * `.CollectionLengthUpperBound(int)` refines the upper bound of possible
+      lengths for an unknown collection.
+
+        An unrefined collection has an upper bound that matches the largest
+        valid Go slice index on the current platform, because `cty`'s
+        collections are implemented in terms of Go's collection types.
+        However, applications should typically not expose that specific value
+        to users (it's an implementation detail) and should instead present
+        the maximum value as an unconstrained length.
+
+    * `.CollectionLength(int)` is a shorthand that refines both the lower and
+      upper bounds to the same value. This is a helpful requirement to make
+      whenever possible because it will often allow the final value to be
+      a known collection with unknown elements, as described in
+      [Refinement Value Collapse](#refinement-value-collapse).
+
+Some built-in operations will automatically take into account refinements from
+their input operands and propagate them in a suitable way to the result.
+However, that is not a guarantee for all operations and so should be treated
+as a "best effort" behavior which will hopefully become more precise in future
+versions.
+
+Behaviors implemented in downstream applications, such as custom functions
+using [the function system](functions.md), might also take into account
+refinements. If they do their work using only _operation methods_ on `Value`
+then the handling of refinements might come for free. If they do work using
+_integration methods_ instead then they will need to explicitly handle
+refinements if desired. If they don't then by default the result from an
+unknown input will be a totally-unrefined unknown value, though will hopefully
+still have a useful type constraint.
+
+## Refinement Value Collapse
+
+For some kinds of refinement it's possible to constrain the range so much that
+only one possible value remains. In that case, the `.NewValue()` method of the
+refinement builder might return a known value instead of an unknown value.
+
+For example, if the lower bound and upper bound of a collection's length are
+equal then the length of the collection is effectively known. For some lengths
+of some collection kinds the refinement can collapse into a known collection
+containing unknown values. For example, an unknown list that's known to have
+exactly two values can be represented equivalently as a known list of length
+two where both elements are unknown themselves.
+
+The exact details of how refinement collapse is decided might change in future
+versions, but only in ways that can make results "more known". It would be a
+breaking change to weaken a rule to produce unknown values in more cases, so
+that kind of change would be reserved only for fixing an important bug or
+design error.
+
+## Refinements are Dynamic Only
+
+Refinements belong to unknown values rather than to type constraints, and so
+refining an unknown value does not change its type constraint.
+
+This design is a tradeoff: making the refinements dynamic and implicit means
+that it's possible to add more detailed refinements over type without making
+breaking changes to explicit type information, but the downside is that
+it isn't possible to represent refinements in any situation that is only
+aware of types.
+
+For example, it isn't currently possible to represent the idea of an unknown
+map whose elements each have a further refinement applied, because the
+refinements apply to the map itself and there are not yet any specific element
+values for the element refinements to attach to.
+
+(It would be possible in theory to allow refining an unknown collection with
+meta-refinements about its hypothetical elements, but that is not currently
+supported because it would mean that refinements would need to be resolved
+recursively and that would be considerably more complex and expensive than
+the current single-value-only refinements structure.)
+
+## Refinements Under Serialization
+
+Refinements are intentionally designed so that they only constrain the range
+of an unknown value, and never expand it. This means that it should typically
+be safe to discard refinements in situations like serialization where there
+may not be any way to represent the refinements. After decoding the unknown
+value now has a wider range but it should still be a superset of the true
+range of the value. This is an example of the general rule that no operation
+on an unknown value is _guaranteed_ to fully preserve the input refinements
+or to consider them when calculating the result.
+
+The official MessagePack serialization in particular does have some support
+for retaining approximations of refinements as part of its serialization of
+unknown values, using a MessagePack extension value. Some detail may still
+be lost under round-tripping but the output range should always be a superset
+of the input range. As long as both the serializer and deserializer are using
+the `cty/msgpack` sub-package unknown values will propagate automatically
+without any additional caller effort.
+
+## Relationship to "Marks"
+
+The idea of annotating a value with additional information has some overlap
+with the concept of [Marks](marks.md). However, the two have different purposes
+and so different design details and tradeoffs.
+
+Marks should typically be used for additional information that is independent
+of the specific type and value, such as marking a value as having come from
+a sensitive location. The marking then propagates to all results from operations
+on that value, usually without changing the behavior of that operation. In a
+sense the mark represents the _origin_ of the value rather than the value
+itself.
+
+Refinements are instead directly part of the value. By reducing the possible
+range of an unknown value placeholder, other downstream operations can in turn
+produce a more refined result, or possibly even a known result from unknown
+inputs. Refinements do not naively propagate from one value to the next, but
+some operations will use the refinements of their operands to calculate a new
+set of refiments for their result, with the rules varying on a case-by-case
+basis depending on what calculation the operation represents.
+
+>>> EOF >>>
+### FILE 5: gocty.md | size=7599 | modified=2025-03-02 09:09:29.742700 | file_type=markdown | checksum=50fb1ed5391ea1342244a88f9c4eafff ###
+<<< BOF <<<
+# Converting between Go and `cty` values
+
+While `cty` provides a representation of values within its own type system,
+a calling application will inevitably need to eventually pass values
+to a native Go API, using native Go types.
+
+[The `gocty` package](https://godoc.org/github.com/zclconf/go-cty/cty/gocty)
+aims to make conversions between `cty` values and Go values as convenient as
+possible, using an approach similar to that used by `encoding/json` where
+the `reflect` package is used to define the desired structure using Go
+native types.
+
+## From Go to `cty`
+
+Converting Go values to `cty` values is the task of the `ToCtyValue` function.
+It takes an arbitrary Go value (as an `interface{}`) and `cty.Type` describing
+the shape of the desired value.
+
+The given type is used both as a conformance check and as a source of hints
+to resolve ambiguities in the mapping from Go types. For example, it is valid
+to convert a Go slice to both a `cty` set and list types, and so the given
+`cty` type is used to indicate which is desired.
+
+The errors generated by this function use terminology aimed at the developers
+of the calling application, since it's assumed that any problems encountered
+are bugs in the calling program and are thus "should never happen" cases.
+
+Since unknown values cannot be represented natively in Go's type system, `gocty`
+works only with known values. An error will be generated if a caller attempts
+to convert an unknown value into a Go value.
+
+## From `cty` to Go
+
+Converting `cty` values to Go values is done via the `FromCtyValue` function.
+In this case, the function mutates a particular Go value in place rather
+than returning a new value, as is traditional from similar functions in
+packages like `encoding/json`.
+
+The function must be given a non-nil pointer to the value that should be
+populated. If the function succeeds without error then this target value has
+been populated with data from the given `cty` value.
+
+Any errors returned are written with the target audience being the hypothetical
+user that wrote whatever input was transformed into the given cty value, and
+thus the terminology used is `cty` type system terminology.
+
+As a concrete example, consider converting a value into a Go `int8`:
+
+```go
+var val int8
+err := gocty.FromCtyValue(value, &val)
+```
+
+There are a few different ways that this can fail:
+
+* If `value` is not a `cty.Number` value, the error message returned says
+  "a number is required", assuming that this value came from user input
+  and the user provided a value of the wrong type.
+
+* If `value` is not an integer, or it's an integer outside of the range of
+  an `int8`, the error message says "must be a whole number between -128 and
+  127", again assuming that this was user input and that the target type here
+  is an implied constraint on the value provided by the user.
+
+As a consequence, it is valid and encouraged to convert arbitrary
+user-supplied values into concrete Go data structures as a concise way to
+express certain data validation constraints in a declarative way, and then
+return any error message verbatim to the end-user.
+
+## Converting to and from `struct`s
+
+As well as straightforward mappings of primitive and collection types, `gocty`
+can convert object and tuple values to and from values of Go `struct` types.
+
+For tuples, the target `struct` must have exactly the same number of fields
+as exist in the tuple, and the fields are used in the order they are defined
+with no regard to their names or tags. A `struct` used to decode a tuple must
+have all public attributes. These constraints mean that generally-speaking
+it will be hard to re-use existing application structs for this purpose, and
+instead a specialized struct must be used to represent each tuple type. For
+simple uses, a struct defined inline within a function can be used.
+
+For objects, the mapping is more flexible. Field tags are used to express
+which struct fields correspond to each object attribute, as in the following
+example:
+
+```go
+type Example struct {
+    Name string `cty:"name"`
+    Age  int    `cty:"age"`
+}
+```
+
+For the mapping to be valid, there must be a one-to-one correspondence between
+object attributes and tagged struct fields. The presence or absence of attribute
+tags in the struct is used to define which attributes are valid, and so error
+messages will be generated for any extraneous or missing attributes. Additional
+fields may be present without tags, but all fields with tags must be public.
+
+## Dynamically-typed Values
+
+If parts of the `cty` data structure have types that can't be known until
+runtime, it is possible to leave these portions un-decoded for later
+processing.
+
+To achieve this, `cty.DynamicPseudoType` is used in the type passed to the
+two conversion functions, and at the corresponding place in the Go data
+structure a `cty.Value` object is placed. When converting from `cty` to Go,
+the portion of the value corresponding to the dynamic pseudo-type is
+assigned directly to the `cty.Value` object with no conversion,
+so the calling program can then use the core `cty` API to interact with it.
+
+The converse is true for converting from Go to `cty`: any valid `cty.Value`
+object can be provided, and it will be included verbatim in the returned
+`cty.Value`.
+
+```go
+type Thing struct {
+    Name string `cty:"name"`
+    ExtraData cty.Value `cty:"extra_data"`
+}
+
+thingType := cty.Object(map[string]cty.Type{
+    "name": cty.String,
+    "extra_data": cty.DynamicPseudoType,
+})
+thingVal := cty.ObjectVal(map[string]cty.Value{
+    "name": cty.StringVal("Ermintrude"),
+    "extra_data": cty.NumberIntVal(12),
+})
+var thing Thing
+err := gocty.FromCtyValue(thingVal, &thing)
+// (error check)
+fmt.Printf("extra_data is %s", thing.ExtraData.Type().FriendlyName())
+// Prints: "extra_data is number"
+```
+
+## Conversion of Capsule Types
+
+Since capsule types encapsulate native Go values, their handling in `gocty`
+is a simple wrapping and un-wrapping of the encapsulated value. The
+encapsulated type and the type of the target value must match.
+
+Since capsule values capture a pointer to the target value, it is possible
+to round-trip a pointer from a Go value into a capsule value and back to
+a Go value and recover the original pointer value, referring to the same
+in-memory object.
+
+## Implied `cty` Type of a Go value
+
+In simple cases it can be desirable to just write a simple type in Go and
+use it immediately in conversions, without needing to separately write out a
+corresponding `cty.Type` expression.
+
+The `ImpliedType` function helps with this by trying to generate a reasonable
+`cty.Type` from a native Go value. Not all `cty` types can be represented in
+this way, but if the goal is a straightforward mapping to a convenient Go
+data structure then this function is suitable.
+
+The mapping is as follows:
+
+* Go's int, uint and float types all map to `cty.Number`.
+* Go's bool type maps to `cty.Bool`
+* Go's string type maps to `cty.String`
+* Go slice types map to `cty` lists with the element type mapped per these rules.
+* Go maps _with string keys_ map to `cty` maps with the element type mapped per these rules.
+* Go struct types are converted to `cty` object types using the struct tag
+  convention described above and these mapping rules for each tagged field.
+* A Go value of type `cty.Value` maps to `cty.DynamicPseudoType`, allowing for
+  values whose precise type isn't known statically.
+
+`ImpliedType` considers only the Go type of the provided value, so it's valid
+to pass a nil or zero value of the type. When passing `nil`, be sure to convert
+it to the target type, e.g. `[]int(nil)`.
+
+>>> EOF >>>
+### FILE 6: capsule-type-operations.md | size=4771 | modified=2025-03-02 09:09:29.742216 | file_type=markdown | checksum=fc86c5befb01235676ad70cc9a7d12d9 ###
+<<< BOF <<<
+# Capsule Type Operation Definitions
+
+As described in [the main introduction to Capsule types](./types.md#capsule-types),
+by default a capsule type supports no operations apart from comparison by
+reference identity.
+
+However, there are certain operations that calling applications reasonably
+expect to be able to use generically across values of any type, e.g. as part of
+decoding arbitrary user input and preparing it for use.
+
+To support this, calling applications can optionally implement some additional
+operations for their capsule types. This is limited only to the subset of
+operations that, as noted above, are reasonable to expect to have available on
+values of any type.
+
+It does not include type-specialized operations like
+arithmetic; to perform such operations against capsule types, implement that
+logic in your calling application instead where you must presumably already
+be making specialized decisions based on value types.
+
+The following operations are implementable:
+
+* The `GoString` result for values of the type, so that values can be included
+  in `fmt` operations using `%#v` along with other values and give a more
+  useful result.
+
+  To stay within `cty`'s conventions, the `GoString` result should generally
+  represent a call to a value constructor function that would produce an
+  equivalent value.
+
+* The `GoString` result for the type itself, for similar reasons.
+
+* Equality as an operation. It's unnecessary to implement this unless your
+  capsule type represents a container for other `cty` values that would
+  need to be recursively compared for equality. For simple capsule types,
+  just implement raw equality and it will be used for both situations.
+
+* Raw equality as an integration method. This is commonly used in tests in
+  order to take into account not only the value itself but its null-ness and
+  unknown-ness. Because capsule types are primarily intended to be simple
+  transports for opaque application values, in simple cases this integration
+  method can just be a wrapper around whatever normal equality operation would
+  apply to the wrapped type.
+
+* Conversion to and from the capsule type, using the `convert` package. Some
+  applications use conversion as part of decoding user input in order to
+  coerce user values into an expected type, in which case implementing
+  conversions can make an application's capsule types participate in such
+  coersions as needed.
+
+To implement one or more of these operations on a capsule type, construct it
+with `cty.CapsuleWithOps` instead of just `cty.Capsule`.
+
+The operation implementations are provided as function references within a
+struct value, and so those function references can potentially be closures
+referring to arguments passed to a type constructor function in order to
+implement parameterized capsule types.
+
+For more information on the available operations and the contract for
+implementing each one, see the documentation on the fields of `cty.CapsuleOps`.
+
+## Extension Data
+
+In addition to the operations that `cty` packages use directly as described
+above, `CapsuleOps` includes extra function `ExtensionData` which can be used
+for application-specific extensions.
+
+It creates an extensible namespace using arbitrary comparable values of named
+types, where an application can define a key in its own package namespace and
+then use it to retrieve values from cooperating capsule types.
+
+For example, if there were an application package called `happyapp` which
+defined an extension key `Frob`, a cooperating capsule type might implement
+`ExtensionData` like this:
+
+```go
+    ExtensionData: func (key interface{}) interface{} {
+        switch key {
+        case happyapp.Frob: // a value of some type belonging to "happyapp"
+            return "frob indeed"
+        default:
+            return nil
+        }
+    }
+```
+
+Package `happyapp` should define this `Frob` symbol as being of a named type
+belonging to its own package, so that the type can serve as a namespace:
+
+```go
+type frobType int
+
+var Frob frobType
+```
+
+`cty` itself doesn't do anything special with `ExtensionData`, but there is a
+convenience method `CapsuleExtensionData` on `cty.Type` that can be used with
+capsule types to attempt to access extension data keys without first retrieving
+the `CapsuleOps` and checking if it implements `ExtensionData`:
+
+```go
+// (in package happyapp)
+if frobValue, ok := givenType.CapsuleExtensionData(Frob).(string); ok {
+    // If we get in here then the capsule type correctly handles Frob,
+    // returning a string. If the capsule type does not handle Frob or
+    // if it returns the wrong type then we'll ignore it.
+    log.Printf("This capsule type has a Frob: %s", frobValue)
+}
+```
+
+`CapsuleExtensionData` will panic if called on a non-capsule type.
+
+>>> EOF >>>
+### FILE 7: functions.md | size=7638 | modified=2025-03-02 09:09:29.742580 | file_type=markdown | checksum=6839a348b7a6555b1f832840c53b6b08 ###
+<<< BOF <<<
+# `cty` Functions system
+
+Core `cty` is primarily concerned with types and values, with behavior
+delegated to the calling application. However, writing functions that operate
+on `cty.Value` is expected to be a common enough case for it to be worth
+factoring out into a shared package, so
+[the `function` package](https://godoc.org/github.com/zclconf/go-cty/cty/function)
+serves that need.
+
+The shared function abstraction is intended to help applications provide the
+expected behavior in handling `cty` complexities such as unknown values and
+dynamic types. The infrastructure in this package can do basic type checking
+automatically, allowing applications to focus on the logic unique to each
+function.
+
+## Function Specifications
+
+Functions are defined by calling applications via `FunctionSpec` instances.
+These describe the parameters the function accepts, the return value it would
+produce given a set of parameters, and the actual implementation of the
+function.
+
+The return type is defined by a function, allowing the definition of generic
+functions whose return type depends on the given argument types or values.
+
+### Function Parameters
+
+Functions can have both fixed parameters and variadic arguments. Each fixed
+parameter has its own separate specification, while the variadic arguments
+together share a single parameter specification, meaning that they must
+all be of the same type.
+
+[`Parameter`](https://godoc.org/github.com/zclconf/go-cty/cty/function#Parameter)
+represents the description of a parameter. The `Params` member of
+`FunctionSpec` is a slice of positional parameters, while `VarParam` is
+a pointer to the description of the variadic arguments, if supported.
+
+Parameters have the following fields:
+
+* `Name` is not used directly by this package but is intended to be useful
+  in generating documentation based on function specifications.
+* `Type` is a type specification that a given argument must _conform_ to.
+  (see the `TestConformance` method of `cty.Type` for information on
+  what exactly that means.)
+* `AllowNull` can be set to `true` to permit the caller to provide null values.
+  If not set, passing a null is treated as an immediate error and the
+  implementation function is not called at all.
+* `AllowUnknown` can be set to `true` if the implementation function is
+  prepared to handle unknown values. If not set, calls with an unknown argument
+  will immediately return an unknown value of the function's return type,
+  and the implementation function is not called at all.
+* `AllowDynamicType` can be set to `true` to allow not-yet-typed values to be
+  passed. If not set, calls with a dynamic argument will immediately return
+  `cty.DynamicVal`, and neither the type-checking function nor the
+  implementation function will be called.
+  
+Since dynamic values are themselves unknown, `AllowUnknown` and
+`AllowDynamicType` must be set together to permit `cty.DynamicVal` to be
+passed as an argument to the implementation function, but setting
+`AllowDynamicType` _without_ setting `AllowUnknown` has the special effect
+of allowing dynamic values to be passed into the type checking function
+_without_ also passing them to the implementation function, allowing a more
+specific return type to be specified even if the input type isn't
+known.
+
+### Return Type
+
+A function returns a single value when called. The return type function,
+specified via the `Type` field in `FunctionSpec`, defines the type this
+value will have for the given arguments.
+
+The arguments are passed to the type function as _values_ rather than as
+types, though in many cases they will be unknown values for which the only
+useful operation is to call the `Type()` method on them. Unknown values
+can be passed to the type function regardless of how the `AllowUnknown`
+flag is set on the associated parameter specification.
+
+If `AllowDynamicType` is set on a parameter specification, a corresponding
+argument may be `cty.DynamicVal`. The return type function can then handle
+this how it wishes. If the parameter _itself_ is typed as
+`cty.DynamicPseudoType` then the corresponding argument may be a value of
+_any_ type. These behaviors together allow the return type function to behave
+as a full-fledged _type checking_ function, returning an error if the caller's
+supplied types do not conform to some requirements that are not simple enough
+to be expressed via the parameter specifications alone.
+
+Returning `cty.DynamicPseudoType` from the type checking function signals that
+the function is not able to determine its return type from the given
+information. Hopefully -- but not necessarily -- the function _implementation_
+will produce a value of a known type once the argument values are themselves
+known.
+
+Calling applications may elect to pass _known_ values for type checking, which
+then allows for functions whose return type depends on argument _values_.
+This is a relatively-rare situation, but one key example is a hypothetical
+JSON decoding function, which takes a string value for the JSON structure to
+decode. If given `cty.Unknown(cty.String)` as an argument, this function would
+need to specify its return type as `cty.DynamicPseudoType`, but if given
+a _known_ string it could infer an appropriate return type from that string.
+
+### Function Implementation
+
+The `Impl` field in `FunctionSpec` is used to specify the function's
+implementation as a Go function pointer.
+
+The implementation function takes a slice of `cty.Value` representing the
+call arguments and the `cty.Type` that was returned from the return type
+function. It must then either produce a value conforming to that given type
+or return an error.
+
+A function implementer can write any arbitrary Go code into the implementation
+of a function, but `cty` functions are intended to behave as pure functions,
+so side-effects should be avoided unless the function is specialized for a
+particular calling application that is able to accept such side-effects.
+
+If any of the given arguments are unknown and their corresponding parameter
+specifications _permit_ unknowns, the function implementation must handle
+this situation, normally by immediately returning an unknown value of the
+required return type. A function should _not_ return unknown values unless
+at least one of the arguments is unknown, since to do otherwise would
+violate the `cty` guarantee that a caller can avoid dealing with the
+complexity of unknown values by never passing any in.
+
+## The `cty` Standard Library
+
+The set of operations provided directly on `cty.Value` is intended to cover
+the basic operators of a simple expression language, but there are several
+higher-level operations that can be implemented in terms of `cty` values,
+such as string manipulations, standard mathematical functions, etc.
+
+[The standard library](https://godoc.org/github.com/zclconf/go-cty/cty/function/stdlib)
+contains a set of `cty` functions that are intended to be generally useful.
+For the convenience of calling applications, each function is provided both
+as a first-class Go function _and_ as a `Function` instance; the former
+could be useful for Go code dealing directly with `cty.Value` instances,
+while the latter is likely more useful for exposing functions into a
+language interpreter.
+
+The standard library also includes some functions that are just thin wrappers
+around the operations on `cty.Value`. These are somewhat redundant, but
+exposing them as functions has the advantage that their operands can be
+described as function parameters and so automatic type checking and error
+handling is possible, whereas the `cty.Value` operations prefer to `panic`
+when given invalid input.
+
+
+>>> EOF >>>
+### FILE 8: types.md | size=16980 | modified=2025-03-02 09:09:29.743026 | file_type=markdown | checksum=7f0e9449dbb903a79bcc042cd1401d83 ###
+<<< BOF <<<
+# `cty` types
+
+This page covers in detail all of the primitive types and compound type kinds supported within `cty`. For more general background information, see
+[the `cty` overview](./concepts.md).
+
+## Common Operations and Integration Methods
+
+The following methods apply to all values:
+
+* `Type` returns the type of the value, as a `cty.Type` instance.
+* `Equals` returns a `cty.Bool` that is `cty.True` if the receiver and the
+  given other value are equal. This is an operation method, so its result
+  will be unknown if either argument is unknown.
+* `RawEquals` is similar to `Equals` except that it doesn't implement the
+  usual special behavior for unknowns and dynamic values, and it returns a
+  native Go `bool` as its result. This method is intended for use in tests;
+  `Equals` should be preferred for most uses.
+* `IsKnown` returns `true` if the receiver is a known value, or `false`
+  if it is an unknown value.
+* `IsNull` returns `true` if the receiver is a null value, or `false`
+  otherwise.
+
+All values except capsule-typed values can be serialized with the builtin
+Go package `encoding/gob`. Values can also be used with the `%#v` pattern
+in the `fmt` package to print out a Go-oriented serialization of the
+value.
+
+## Primitive Types
+
+### `cty.Number`
+
+The number type represents what we'll clumsily call "JSON numbers".
+Technically, this means the set of numbers that have a canonical decimal
+representation in our JSON encoding _and_ that can be represented in memory
+with 512 bits of binary floating point precision.
+
+Since these numbers have high precision, there is little need to worry about
+integer overflow/underflow or over-zealous rounding during arithmetic
+operations. In particular, `cty.Number` can represent the full range of
+`int64` with no loss. However, numbers _are_ still finite in memory and subject
+to approximation in binary-to-decimal and decimal-to-binary conversions, and so
+can't accurately represent _all_ real numbers.
+
+Eventually a calling application will probably want to convert a
+number to one of the Go numeric types, at which point its range will be
+constrained to fit within that type, generating an error if it does not fit.
+Because the number range is larger than all of the Go integer types, it's
+always possible to convert a whole number to a Go integer without any loss,
+as long as it value is within the required range.
+
+The following additional operations are supported on numbers:
+
+* `Absolute` converts a negative value to a positive value of the same
+  magnitude.
+* `Add` computes the sum of two numbers.
+* `Divide` divides the receiver by another number.
+* `GreaterThan` returns `cty.True` if the receiver is greater than the other
+  given number.
+* `GreaterThanOrEqualTo` returns `cty.True` if the receiver is greater than or
+  equal to the other given number.
+* `LessThan` returns `cty.True` if the receiver is less than the other given
+  number.
+* `LessThanOrEqualTo` returns `cty.True` if the receiver is less than or
+  equal to the other given number.
+* `Modulo` computes the remainder from integer division of the receiver by
+  the other given number.
+* `Multiply` computes the product of two numbers.
+* `Negate` inverts the sign of the number.
+* `Subtract` computes the difference between two numbers.
+
+`cty.Number` values can be constructed using several different factory
+functions:
+
+* `ParseNumberVal` creates a number value by parsing a decimal representation
+  of it given as a string. This is the constructor that most properly
+  represents the full documented range of number values; the others below
+  care convenient for many cases, but have a more limited range.
+* `NumberIntVal` creates a number value from a native `int64` value.
+* `NumberUIntVal` creates a number value from a native `uint64` value.
+* `NumberFloatVal` creates a number value from a native `float64` value.
+* `NumberVal` creates a number value from a `*big.Float`, from the `math/big` package.
+  This can preserve arbitrary big floats without modification, but comes
+  at the risk of introducing precision inconsisistencies. Prefer the other
+  constructors for most uses.
+
+The core API only allows extracting the value from a known number as a
+`*big.Float` using the `AsBigFloat` method. However,
+[the `gocty` package](./gocty.md) provides a more convenient way to convert
+numbers to any native Go number type, with automatic range checking to ensure
+that the value fits into the target type.
+
+The following numbers are provided as package variables for convenience:
+
+* `cty.Zero` is the number zero.
+* `cty.PositiveInfinity` represents positive infinity as a number. All other
+  numbers are less than this value.
+* `cty.NegativeInfinity` represents negative infinity as a number. All other
+  numbers are greater than this value.
+
+Note that the two infinity values are always out of range for a conversion to
+any Go primitive integer type.
+
+### `cty.String`
+
+The string type represents a sequence of unicode codepoints.
+
+There are no additional operations supported for strings.
+
+`cty.String` values can be constructed using the `cty.StringVal` factory
+function. The native Go `string` passed in must be a valid UTF-8 sequence,
+and it will be normalized such that any combining diacritics are converted
+to precomposed forms where available. (Technically-speaking, the mapping
+applied is the NFC normalization as defined in the relevant Unicode
+specifications.)
+
+The `AsString` method can be called on a string value to obtain the native
+Go `string` representation of a known string, after normalization.
+
+### `cty.Bool`
+
+The bool type represents boolean (true or false) values.
+
+The following additional operations are supported on bool values:
+
+* `And` computes the logical AND operation for two boolean values.
+* `Not` returns the boolean opposite of the receiver.
+* `Or` computes the logical OR operation for two boolean values.
+
+Calling applications may either work directly with the predefined `cty.True`
+and `cty.False` variables, or dynamically create a boolean value using
+`cty.BoolVal`.
+
+The `True` method returns a native Go `bool` representing a known boolean
+value. The `False` method returns the opposite of it.
+
+## Collection Type Kinds
+
+`cty` has three different kinds of collection type. All three of them are
+parameterized with a single _element type_ to produce a collection type.
+The difference between the kinds is how the elements are internally organized
+and what operations are used to retrieve them.
+
+### `cty.List` types
+
+List types are ordered sequences of values, accessed using consecutive
+integers starting at zero.
+
+The following operations apply to values of a list type:
+
+* `Index` can be passed an integer number less than the list's length to
+  retrieve one of the list elements.
+* `HasIndex` can be used to determine if a particular call to `Index` would
+  succeed.
+* `Length` returns a number representing the number of elements in the list.
+  The highest integer that can be passed to `Index` is one less than this
+  number.
+
+List types are created by passing an element type to the function `cty.List`.
+List _values_ can be created by passing a type-homogenous `[]cty.Value`
+to `cty.ListVal`, or by passing an element type to `cty.ListValEmpty`.
+
+The following integration methods can be used with known list-typed values:
+
+* `LengthInt` returns the length of the list as a native Go `int`.
+* `ElementIterator` returns an object that can be used to iterate over the
+  list elements.
+* `ForEachElement` runs a given callback function for each element.
+
+### `cty.Map` types
+
+Map types are collection values that are each assigned a unique string key.
+
+The following operations apply to values of a map type:
+
+* `Index` can be passed a string value to retrieve the corresponding
+  element.
+* `HasIndex` can be used to determine if a particular call to `Index` would
+  succeed.
+* `Length` returns a number representing the number of elements in the map.
+
+Map types are created by passing an element type to the function `cty.Map`.
+Map _values_ can be created by passing a type-homogenous `map[string]cty.Value`
+to `cty.MapVal`, or by passing an element type to `cty.MapValEmpty`.
+
+The following integration methods can be used with known map-typed values:
+
+* `LengthInt` returns the number of elements as a native Go `int`.
+* `ElementIterator` returns an object that can be used to iterate over the
+  map elements in lexicographical order by key.
+* `ForEachElement` runs a given callback function for each element in the
+  same order as the `ElementIterator`.
+
+### `cty.Set` types
+
+Set types are collection values that model a mathematical set, where every
+possible value is either in or out of the set. Thus each set element value is
+its own identity in the set, and a given value cannot appear twice in the same
+set.
+
+The following operations apply to values of a set type:
+
+* `HasIndex` can be used to determine whether a particular value is in the
+  receiving set..
+* `Length` returns a number representing the number of elements in the set.
+* `Index` is not particularly useful for sets, but for symmetry with the
+  other collection types it may be passed a value that is in the set and it
+  will then return that same value.
+
+Set types are created by passing an element type to the function `cty.Set`.
+Set _values_ can be created by passing a type-homogenous `[]cty.Value` to
+`cty.SetVal`, though the result is undefined if two values in the slice are
+equal. Alternatively, an empty set can be constructed using `cty.SetValEmpty`.
+
+The following integration methods can be used with known set-typed values:
+
+* `LengthInt` returns the number of elements as a native Go `int`.
+* `ElementIterator` returns an object that can be used to iterate over the
+  set elements in an undefined (but consistent) order.
+* `ForEachElement` runs a given callback function for each element in the
+  same order as the `ElementIterator`.
+
+Set membership is determined by equality, which has an interesting consequence
+for unknown values. Since unknown values are never equal to one another,
+theoretically an infinite number of unknown values can be in a set (constrained
+by available memory) but can never be detected by calls to `HasIndex`.
+
+A set with at least one unknown value in it has an unknown length, because the
+unknown values may or may not match each other (and thus coalesce into a single
+value) once they become known. However, if a set contains a mixture of known
+and unknown values then `HasIndex` will return true for those values because
+they are guaranteed to remain present no matter what final known value each
+of the unknown values takes on.
+
+## Structural Types
+
+`cty` has two different kinds of structural type. They have in common that
+they combine a number of values of arbitrary types together into a single
+value, but differ in how those values are internally organized and in which
+operations are used to retrieve them.
+
+### `cty.Object` types
+
+Object types each have zero or more named attributes that each in turn have
+their own type.
+
+The following operation applies to values of an object type:
+
+* `GetAttr` returns the value of an attribute given its name.
+
+The set of valid attributes for an object type can be inspected using the
+following methods on the type itself:
+
+* `AttributeTypes` returns a `map[string]Type` describing the types of all of
+  the attributes.
+* `AttributeType` returns the type of a single attribute given its name.
+* `HasAttribute` returns `true` if the type has an attribute with the given
+  name.
+
+Object types are constructed by passing a `map[string]Type` to `cty.Object`.
+Object _values_ can be created by passing a `map[string]Value` to
+`cty.ObjectVal`, in which the keys and value types define the object type
+that is implicitly created for that value.
+
+The variable `cty.EmptyObject` contains the object type with no attributes,
+and `cty.EmptyObjectVal` is the only non-null, known value of that type.
+
+There is **currently-experimental** support for creating object types where
+one or more attributes is annotated as being "optional", using the alternative
+constructor `cty.ObjectWithOptionalAttrs`. The behavior of that function or
+of any other function working with its result is subject to change even in
+future minor versions of `cty`. The optional-attribute annotations are
+considered only during type conversion, so for more information refer to
+the guide [Converting between `cty` types](convert.md).
+
+### `cty.Tuple` types
+
+Tuple types each have zero or more elements, each with its own type, arranged
+in a sequence and accessed by integer numbers starting at zero.
+
+A tuple type is therefore somewhat similar to a list type, but rather than
+representing an arbitrary number of values of a single type it represents a
+fixed number of values that may have _different_ types.
+
+The following operations apply to values of a tuple type:
+
+* `Index` can be passed an integer number less than the tuple's length to
+  retrieve one of the tuple elements.
+* `HasIndex` can be used to determine if a particular call to `Index` would
+  succeed.
+* `Length` returns a number representing the number of elements in the tuple.
+  The highest integer that can be passed to `Index` is one less than this
+  number.
+
+Tuple types are created by passing a `[]cty.Type` to the function `cty.Tuple`.
+Tuple _values_ can be created by passing a `[]cty.Value` to `cty.TupleVal`,
+in which the value types define the tuple type that is implicitly created
+for that value.
+
+The variable `cty.EmptyTuple` contains the tuple type with no elements,
+and `cty.EmptyTupleVal` is the only non-null, known value of that type.
+
+The following integration methods can be used with known tuple-typed values:
+
+* `LengthInt` returns the length of the tuple as a native Go `int`.
+* `ElementIterator` returns an object that can be used to iterate over the
+  tuple elements.
+* `ForEachElement` runs a given callback function for each element.
+
+## The Dynamic Pseudo-Type
+
+The dynamic pseudo-type is not a real type but is rather a _placeholder_ for
+a type that isn't known.
+
+One consequence of this being a "pseudo-type" is that there is no known,
+non-null value of this type, but `cty.DynamicVal` is the unknown value of
+this type, and a null value without a known type can be represented by
+`cty.NullVal(cty.DynamicPseudoType)`.
+
+This pseudo-type serves two similar purposes as a placeholder type:
+
+* When `cty.DynamicVal` is used in an operation with another value, the
+  result is either itself `cty.DynamicVal` or it is an unknown value of
+  some suitable type. This allows the dynamic pseudo-type to be used as
+  a placeholder during type checking, optimistically assuming that the
+  eventually-determined type will be compatible and failing at that
+  later point if not.
+* `cty.DynamicPseudoType` can be used with the type `TestConformance` method
+  to declare that any type is permitted in the type being tested for
+  conformance.
+
+`cty` doesn't have _sum types_ (i.e. union types), so `cty.DynamicPseudoType`
+can be used also to represent situations where two or more specific types are
+allowed, under the assumption that more specific type checking will be done
+within the calling application's own logic even though it cannot be expressed
+directly within the `cty` type system.
+
+## Capsule Types
+
+Capsule types are a special kind of type that allows a calling application to
+"smuggle" otherwise-unsupported Go values through the `cty` type system.
+
+Such types and their associated values have no defined meaning in `cty`. The
+interpreter for a language building on `cty` might use capsule types for
+passing language-specific objects between functions provided in that language.
+
+A capsule type is created using the function `cty.Capsule`, which takes a
+"friendly name" for the type along with a `reflect.Type` that defines what
+type of Go value will be encapsulated in values of this type. A capsule-typed
+value can then be created by passing the capsule type and a pointer to a
+native value of the encapsulated type to `cty.CapsuleVal`.
+
+The integration method `EncapsulatedValue` allows the encapsulated data to
+then later be retrieved.
+
+Capsule types compare by reference, so each call to `cty.Capsule` produces
+a distinct type. Capsule _values_ compare by pointer equality, so two
+capsule values are equal if they have the same capsule type and they
+encapsulate a pointer to the same object.
+
+Due to the strange nature of capsule types, they are not totally supported
+by all of the other packages that build on the core `cty` API. They should
+be used with care and the documentation for other packages should be consulted
+for information about caveats and constraints relating to their use.
+
+It's possible for a calling application to write additional logic to make
+capsule types support a subset of operations that are generally expected to
+work for values of any type. For more information, see
+[capsule type operation definitions](./capsule-type-operations.md).
+
+>>> EOF >>>
+### FILE 9: convert.md | size=7844 | modified=2025-03-02 09:09:29.742462 | file_type=markdown | checksum=d5468b3c6872d84913729aa73d24d9d4 ###
+<<< BOF <<<
+# Converting between `cty` types
+
+[The `convert` package](https://godoc.org/github.com/zclconf/go-cty/cty/convert)
+provides a standard set of type conversion routines for moving between
+types in the `cty` type system.
+
+_Conversion_ in this context means taking a given value and producing a
+new value of a different type that, in some sense, contains the same
+information. For example, the number `5` can be converted to a string as
+`"5"`.
+
+Specific conversion operations are represented by type `Conversion`, which
+is a function type that takes a single value as input and returns a value
+or an error.
+
+## "Safe" and "Unsafe" conversions
+
+The `convert` package broadly organizes its supported conversions into two
+types.
+
+"Safe" conversions are ones where all values of the source type can
+be represented in the target type, and thus the conversion is guaranteed to
+succeed for any value of the source type.
+
+"Unsafe" conversions, on the other hand, are able to convert only a subset
+of values of the source type. Values outside of that subset will cause the
+conversion function to return an error.
+
+Converting from number to string is safe because an unambiguous string
+representation can be created for any number. The converse is _unsafe_,
+because while a string like `"2.5"` can be converted to a number, a string
+like `"bananas"` cannot.
+
+The calling application must choose whether to attempt unsafe conversions,
+depending on whether it is willing to tolerate conversions returning errors
+even though they ostensibly passed type checking. Operations that have both
+safe and unsafe modes come in couplets, with the unsafe version's name
+having the suffix `Unsafe`.
+
+## Getting a Conversion
+
+To find out if a conversion is available between two types, an application can
+call either `GetConversion` or `GetConversionUnsafe`. These functions return
+a valid `Conversion` if one is available, or `nil` if not.
+
+Note that there are no conversions from a type to itself. Callers should check
+if two types are equal before attempting to obtain a conversion between them.
+
+As usual, `cty.DynamicPseudoType` serves as a special-case placeholder. It is
+used in two ways, depending on whether it appears in the source or the
+destination type:
+
+* When a source type is dynamic, a special unsafe conversion is available that
+  takes any value and passes it through verbatim if it matches the destination
+  type, or returns an error if it does not. This can be used as part of handling
+  dynamic values during a type-checking procedure, with the generated
+  conversion serving as a run-time type check.
+
+* When a _destination_ type is dynamic, a simple passthrough conversion is
+  generated that does not transform the source value at all. This is supported
+  so that a destination type can behave similarly to a type description used
+  for a conformance check, thus allowing this package to be used to attempt
+  to _make_ a type conformant, rather than merely check whether it already
+  is.
+
+## Converting a Value
+
+A value can be converted by passing it as the argument to any conversion whose
+source type matches the value's type. If the conversion is an unsafe one, the
+conversion function may return an error, in which case the returned value is
+invalid and must not be used.
+
+As a convenience, the `Convert` function takes a value and a target type and
+returns a converted value if a conversion is available. This is equivalent
+to testing for an unsafe conversion for the value's type and then immediately
+calling any discovered conversion. An error is returned if a conversion is not
+available.
+
+## Type Unification
+
+A related idea to type _conversion_ is type _unification_. While conversion
+is concerned with going from a specific source type to a specific target type,
+unification is instead concerned with finding a single type that several other
+types can be converted to, without any specific preference as to what the
+final type is.
+
+A good example of this would be to take a set of values provided to initialize
+a list and choose a single type that all of those values can be
+converted to, which then decides the element type of the final list.
+
+The `Unify` and `UnifyUnsafe` functions are used for type unification. They
+both take as input a slice of types and then return, if possible, a single
+target type along with a slice of conversions corresponding to each
+of the input types.
+
+Since many type pairs support type conversions in both directions, the unify
+functions must apply a preference for which direction to follow given such a
+pair of types. These functions prefer safe conversions over unsafe ones
+(assuming that `UnifyUnsafe` was called), and prefer lossless conversions
+over potentially-lossy ones.
+
+Type unification is a potentially-expensive operation, depending on the
+complexity of the passed types and whether they are mutually conformant.
+
+## Conversion Charts
+
+The foundation of the available conversions is the matrix of conversions
+between the primitive types. String is the most general type, since the
+other two primitive types have safe conversions to string. The full
+matrix for primitive types is as follows:
+
+|         | string | number | boolean |
+|---------|:------:|:------:|:-------:|
+| string  |   n/a  | unsafe |  unsafe |
+| number  |  safe  |   n/a  |   none  |
+| boolean |  safe  |  none  |   n/a   |
+
+The conversions for compound types are then derived from the above foundation.
+For example, a list of numbers can convert to a list of strings
+because a number can convert to a string.
+
+The compound type kinds themselves have some available conversions, though:
+
+|        |  tuple | object | list |   map  |     set    |
+|--------|:------:|:------:|:----:|:------:|:----------:|
+| tuple  |   n/a  |  none  | safe |  none  | safe+lossy |
+| object |  none  |   n/a  | none |  safe  |    none    |
+| list   | unsafe |  none  |  n/a |  none  | safe+lossy |
+| map    |  none  | unsafe | none |   n/a  |    none    |
+| set    | unsafe |  none  | safe |  none  |     n/a    |
+
+Conversions between compound kinds, as shown above, are possible only
+if their respective elements/attributes also have conversions available.
+
+The conversions from structural types to collection types rely on
+type unification to identify a single element type for the final collection,
+and so conversion is possible only if unification is possible.
+
+## Conversion between Object Types
+
+There are some special considerations for conversion between distinct object
+types that do not apply to conversion between types of other kinds.
+
+For object types, `convert` implements _structural typing_ behaviors, where
+the target type is considered to be a description of a set of attributes the
+final result should have. There are two important additional concerns that
+result from this design intent:
+
+* If the input type has additional attributes that are not mentioned at all
+  in the target type, those additional attributes are silently discarded
+  during conversion, leading to a new object value that has a subset of the
+  attributes of the input value, and whose type therefore conforms to the
+  target type constraint.
+
+* If any of the attributes of the target type are marked as optional using
+  the **currently-experimental** `cty.ObjectWithOptionalAttrs` constructor,
+  type conversion will tolerate those attributes being absent in the given
+  type, and the resulting value will include appropriately-typed null value
+  placeholders as the values of those omitted attributes.
+
+    This behavior is subject to change even in future minor versions of the
+    `cty` module, so that we can try it out with experimental versions of
+    calling applications and adjust the details of the behavior if needed.
+    Hopefully this mechanism will be stabilized in a future release, if those
+    downstream experiments are successful.
+
+>>> EOF >>>
+
+### BUNDLE SUMMARY ###
+- Total Files Processed: 9
+- Total Size: 76692 bytes
+- Total Duplicates: 0
+- Total Empty Files: 0
