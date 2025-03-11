@@ -7,21 +7,15 @@ CtyObject implementation for Terraform object values.
 The CtyObject type represents a complex value with a fixed set of attributes,
 each having its own type. Unlike maps, objects have a predefined schema that
 validates attribute types and presence/absence of required attributes.
-
-Objects are the foundation of resource and data source schemas in Terraform,
-representing structured configuration with rich validation capabilities.
 """
 
-import asyncio
-from dataclasses import dataclass, field
-from typing import Any, Dict, FrozenSet, Optional, Set, Type, Union, cast, get_type_hints
+import logging
+from typing import Any, Dict, FrozenSet, Optional, Set, Type, Union, cast
 
 import attrs
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural.dynamic import CtyDynamic
 from pyvider.cty.exceptions import (
     AttributeValidationError,
@@ -55,12 +49,13 @@ class CtyObject(CtyType[Dict[str, Any]]):
     
     def __attrs_post_init__(self) -> None:
         """Validate object type configuration."""
+        logger.debug("🧩🔍 Validating CtyObject configuration on initialization")
+        
         # Validate attribute_types is a dictionary
         if not isinstance(self.attribute_types, dict):
-            raise InvalidTypeError(
-                expected_type="dict",
-                actual_type=type(self.attribute_types).__name__
-            )
+            error_msg = f"Expected dict for attribute_types, got {type(self.attribute_types).__name__}"
+            logger.error(f"🧩❌ {error_msg}")
+            raise InvalidTypeError(error_msg)
         
         # Validate all types are CtyType instances
         invalid_types = [
@@ -68,39 +63,41 @@ class CtyObject(CtyType[Dict[str, Any]]):
             if not isinstance(type_, CtyType)
         ]
         if invalid_types:
-            raise AttributeValidationError(
-                f"Invalid types for attributes: {', '.join(invalid_types)}"
-            )
+            error_msg = f"Invalid types for attributes: {', '.join(invalid_types)}"
+            logger.error(f"🧩❌ {error_msg}")
+            raise AttributeValidationError(error_msg)
         
         # Validate optional attributes exist in the type definition
         unknown_optional = set(self.optional_attributes) - set(self.attribute_types)
         if unknown_optional:
-            raise AttributeValidationError(
-                f"Unknown optional attributes: {', '.join(unknown_optional)}"
-            )
+            error_msg = f"Unknown optional attributes: {', '.join(unknown_optional)}"
+            logger.error(f"🧩❌ {error_msg}")
+            raise AttributeValidationError(error_msg)
         
         # Validate computed attributes exist
         unknown_computed = set(self.computed_attributes) - set(self.attribute_types)
         if unknown_computed:
-            raise AttributeValidationError(
-                f"Unknown computed attributes: {', '.join(unknown_computed)}"
-            )
+            error_msg = f"Unknown computed attributes: {', '.join(unknown_computed)}"
+            logger.error(f"🧩❌ {error_msg}")
+            raise AttributeValidationError(error_msg)
         
         # Validate block attributes exist
         unknown_blocks = set(self.block_attributes) - set(self.attribute_types)
         if unknown_blocks:
-            raise AttributeValidationError(
-                f"Unknown block attributes: {', '.join(unknown_blocks)}"
-            )
+            error_msg = f"Unknown block attributes: {', '.join(unknown_blocks)}"
+            logger.error(f"🧩❌ {error_msg}")
+            raise AttributeValidationError(error_msg)
         
         # Validate sensitive attributes exist
         unknown_sensitive = set(self.sensitive_attributes) - set(self.attribute_types)
         if unknown_sensitive:
-            raise AttributeValidationError(
-                f"Unknown sensitive attributes: {', '.join(unknown_sensitive)}"
-            )
+            error_msg = f"Unknown sensitive attributes: {', '.join(unknown_sensitive)}"
+            logger.error(f"🧩❌ {error_msg}")
+            raise AttributeValidationError(error_msg)
+        
+        logger.debug("🧩✅ CtyObject configuration validated successfully")
     
-    async def validate(self, value: Any) -> Dict[str, Any]:
+    def validate(self, value: Any) -> Dict[str, Any]:
         """
         Validate a value against this object type.
         
@@ -113,11 +110,11 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             ValidationError: If the value doesn't match this type
         """
-        logger.debug(f"🧩🔍🔄 Validating value against CtyObject: {value}")
+        logger.debug(f"🧩🔍 Validating value against CtyObject: {value}")
         
         # Handle null values as None
         if value is None:
-            logger.debug("🧩🔍ℹ️ Received null value")
+            logger.debug("🧩🔍 Received null value, returning None")
             return None
         
         # Value must be a dictionary
@@ -128,7 +125,9 @@ class CtyObject(CtyType[Dict[str, Any]]):
             raise ValidationError(error_msg)
         
         # Check for required attributes
-        for name in self.required_attributes():
+        required_attrs = self.required_attributes()
+        logger.debug(f"🧩🔍 Required attributes: {required_attrs}")
+        for name in required_attrs:
             if name not in value:
                 error_msg = f"Missing required attribute: {name}"
                 logger.error(f"🧩🔍❌ {error_msg}")
@@ -139,45 +138,42 @@ class CtyObject(CtyType[Dict[str, Any]]):
         if unknown_attrs:
             error_msg = f"Unknown attributes: {', '.join(unknown_attrs)}"
             logger.warning(f"🧩🔍⚠️ {error_msg}")
-            # We don't raise here because we want to accept extra attributes in some cases
+            if len(unknown_attrs) > 0:
+                # In this implementation, we'll raise an error for unknown attributes
+                # This can be changed to just warn if needed
+                logger.error(f"🧩🔍❌ {error_msg}")
+                raise ValidationError(error_msg)
         
         # Validate each attribute
         validated = {}
         
-        # Process attributes concurrently for efficiency
-        async def validate_attribute(name: str, attr_value: Any) -> tuple[str, Any]:
-            if name not in self.attribute_types:
-                # Skip unknown attributes
-                return name, attr_value
+        # Process each attribute
+        for name, attr_type in self.attribute_types.items():
+            logger.debug(f"🧩🔍 Validating attribute {name} with type {attr_type}")
+            
+            # Skip if attribute isn't present and is optional
+            if name not in value:
+                if name in self.optional_attributes or name in self.computed_attributes:
+                    logger.debug(f"🧩🔍 Attribute {name} is optional/computed and not provided")
+                    validated[name] = None
+                continue
+            
+            # Get the attribute value
+            attr_value = value[name]
             
             try:
-                attr_type = self.attribute_types[name]
-                validated_value = await attr_type.validate(attr_value)
+                # Validate the attribute
+                validated_value = attr_type.validate(attr_value)
                 logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
-                return name, validated_value
+                validated[name] = validated_value
             except ValidationError as e:
                 error_msg = f"Invalid value for attribute '{name}': {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 raise ValidationError(error_msg) from e
-        
-        # Gather validation tasks
-        tasks = [
-            validate_attribute(name, attr_value)
-            for name, attr_value in value.items()
-            if name in self.attribute_types
-        ]
-        
-        # Add defaults for missing optional attributes
-        for name in self.optional_attributes:
-            if name not in value and name in self.attribute_types:
-                tasks.append(validate_attribute(name, None))
-        
-        # Execute all validation tasks
-        results = await asyncio.gather(*tasks)
-        
-        # Collect results
-        for name, validated_value in results:
-            validated[name] = validated_value
+            except Exception as e:
+                error_msg = f"Error validating attribute '{name}': {e}"
+                logger.error(f"🧩🔍❌ {error_msg}")
+                raise ValidationError(error_msg) from e
         
         logger.debug(f"🧩🔍✅ Successfully validated object: {validated}")
         return validated
@@ -195,7 +191,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
             and name not in self.computed_attributes
         )
     
-    async def get_attribute(self, value: Dict[str, Any], name: str) -> Any:
+    def get_attribute(self, value: Dict[str, Any], name: str) -> Any:
         """
         Get an attribute value by name.
         
@@ -210,7 +206,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
             AttributeValidationError: If attribute doesn't exist
             ValidationError: If value is not a valid object
         """
-        logger.debug(f"🧩🔍🔄 Getting attribute {name} from object")
+        logger.debug(f"🧩🔍 Getting attribute {name} from object")
         
         # Validate input
         if not isinstance(value, dict):
@@ -230,7 +226,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         logger.debug(f"🧩🔍✅ Found attribute {name}: {attr_value}")
         return attr_value
     
-    async def has_attribute(self, name: str) -> bool:
+    def has_attribute(self, name: str) -> bool:
         """
         Check if an attribute exists in this object type.
         
@@ -240,7 +236,9 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Returns:
             bool: True if the attribute exists
         """
-        return name in self.attribute_types
+        result = name in self.attribute_types
+        logger.debug(f"🧩🔍 Checking if attribute {name} exists: {result}")
+        return result
     
     def with_optional_attributes(self, *names: str) -> "CtyObject":
         """
@@ -255,14 +253,14 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with optional attributes: {names}")
+        logger.debug(f"🧩🔧 Creating new object type with optional attributes: {names}")
         
         # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) | set(names))
@@ -292,20 +290,20 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with required attributes: {names}")
+        logger.debug(f"🧩🔧 Creating new object type with required attributes: {names}")
         
         # Validate all names exist in attribute_types and are currently optional
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         not_optional = set(names) - set(self.optional_attributes)
         if not_optional:
             error_msg = f"Attributes already required: {', '.join(not_optional)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) - set(names))
@@ -335,14 +333,14 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with computed attributes: {names}")
+        logger.debug(f"🧩🔧 Creating new object type with computed attributes: {names}")
         
         # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         # Create new computed set
         new_computed = frozenset(set(self.computed_attributes) | set(names))
@@ -372,14 +370,14 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with block attributes: {names}")
+        logger.debug(f"🧩🔧 Creating new object type with block attributes: {names}")
         
         # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         # Create new block set
         new_blocks = frozenset(set(self.block_attributes) | set(names))
@@ -409,14 +407,14 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with sensitive attributes: {names}")
+        logger.debug(f"🧩🔧 Creating new object type with sensitive attributes: {names}")
         
         # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         # Create new sensitive set
         new_sensitive = frozenset(set(self.sensitive_attributes) | set(names))
@@ -453,13 +451,13 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Raises:
             SchemaValidationError: If the name already exists
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with attribute: {name} ({type_.__class__.__name__})")
+        logger.debug(f"🧩🔧 Creating new object type with attribute: {name} ({type_.__class__.__name__})")
         
         # Validate attribute doesn't already exist
         if name in self.attribute_types:
             error_msg = f"Attribute already exists: {name}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise SchemaValidationError("object", error_msg)
+            raise SchemaValidationError(error_msg)
         
         # Create new attribute_types dict
         new_attrs = dict(self.attribute_types)
@@ -492,7 +490,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         logger.debug(f"🧩🔧✅ Created new object type with attribute: {name}")
         return new_obj
     
-    async def equal(self, other: CtyType) -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
         Check if this type equals another type.
         
@@ -502,7 +500,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Returns:
             bool: True if the types are equal
         """
-        logger.debug(f"🧩🔍🔄 Checking equality with {other.__class__.__name__}")
+        logger.debug(f"🧩🔍 Checking equality with {other.__class__.__name__}")
         
         # Must be a CtyObject
         if not isinstance(other, CtyObject):
@@ -517,7 +515,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         # Must have same attribute types
         for name, type_ in self.attribute_types.items():
             other_type = other.attribute_types[name]
-            if not await type_.equal(other_type):
+            if not type_.equal(other_type):
                 logger.debug(f"🧩🔍❌ Not equal: attribute {name} types differ")
                 return False
         
@@ -544,7 +542,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         logger.debug("🧩🔍✅ Objects are equal")
         return True
     
-    async def usable_as(self, other: CtyType) -> bool:
+    def usable_as(self, other: CtyType) -> bool:
         """
         Check if this type can be used as another type.
         
@@ -554,7 +552,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         Returns:
             bool: True if usable as the target type
         """
-        logger.debug(f"🧩🔍🔄 Checking usability as {other.__class__.__name__}")
+        logger.debug(f"🧩🔍 Checking usability as {other.__class__.__name__}")
         
         # Must be a CtyObject
         if not isinstance(other, CtyObject):
@@ -573,7 +571,7 @@ class CtyObject(CtyType[Dict[str, Any]]):
         for name in other_attrs:
             self_type = self.attribute_types[name]
             other_type = other.attribute_types[name]
-            if not await self_type.usable_as(other_type):
+            if not self_type.equal(other_type):
                 logger.debug(f"🧩🔍❌ Not usable: attribute {name} type not compatible")
                 return False
         

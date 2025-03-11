@@ -1,11 +1,11 @@
 # pyvider/cty/convert/primitive.py
 
-from pyvider.cty.values.base import Value
 from pyvider.cty.convert.base import register_conversion
 from pyvider.cty.types import CtyString, CtyNumber
+from pyvider.cty.values import CtyValue
 
 # String to number conversion (unsafe)
-def string_to_number(value: Value) -> Value:
+def string_to_number(value: CtyValue) -> CtyValue:
     """Convert a string value to a number value."""
     if not value.is_known:
         return unknown_val(Number())
@@ -15,7 +15,7 @@ def string_to_number(value: Value) -> Value:
     
     try:
         num_val = Decimal(value._value)
-        return Value(Number(), num_val, marks=value._marks)
+        return CtyValue(Number(), num_val, marks=value._marks)
     except (ValueError, DecimalException):
         raise ValueError(f"Cannot convert string '{value._value}' to number")
 

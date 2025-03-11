@@ -2,13 +2,13 @@
 # pyvider/cty/encoding/msgpack.py
 
 """
-MessagePack encoder/decoder for CTY values.
+MessagePack encoder/decoder for Cty values.
 
-This module provides functions to serialize CTY values to MessagePack format
-and deserialize MessagePack data to CTY values. MessagePack is used by Terraform
+This module provides functions to serialize Cty values to MessagePack format
+and deserialize MessagePack data to Cty values. MessagePack is used by Terraform
 as a compact binary serialization format for its DynamicValue protocol buffer messages.
 
-MessagePack encoding preserves CTY type information and special values like null and unknown,
+MessagePack encoding preserves Cty type information and special values like null and unknown,
 allowing for precise round-trip serialization.
 """
 
@@ -20,13 +20,22 @@ import msgpack
 from msgpack import ExtType
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyBool, CtyNumber, CtyString
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyDynamic, CtyObject, CtyTuple
-from pyvider.cty.values.base import Value
+from pyvider.cty.types import (
+    CtyType,
+    CtyBool,
+    CtyNumber,
+    CtyString,
+    CtyList,
+    CtyMap,
+    CtySet,
+    CtyDynamic,
+    CtyObject,
+    CtyTuple,
+)
 
-# Extension type codes for special CTY value representations
+from pyvider.cty.values import CtyValue
+
+# Extension type codes for special Cty value representations
 EXT_UNKNOWN = 0
 EXT_NULL = 1
 EXT_MARKED = 2
@@ -48,21 +57,21 @@ DEFAULT_DECODE_OPTIONS = {
 
 
 class MsgpackEncodeError(Exception):
-    """Error during MessagePack encoding of a CTY value."""
+    """Error during MessagePack encoding of a Cty value."""
     pass
 
 
 class MsgpackDecodeError(Exception):
-    """Error during MessagePack decoding to a CTY value."""
+    """Error during MessagePack decoding to a Cty value."""
     pass
 
 
-async def encode_value(value: Value, options: Optional[Dict[str, Any]] = None) -> bytes:
+async def encode_value(value: CtyValue, options: Optional[Dict[str, Any]] = None) -> bytes:
     """
-    Encode a CTY value to MessagePack format.
+    Encode a Cty value to MessagePack format.
     
     Args:
-        value: The CTY value to encode
+        value: The Cty value to encode
         options: Optional MessagePack encoding options
         
     Returns:
@@ -71,7 +80,7 @@ async def encode_value(value: Value, options: Optional[Dict[str, Any]] = None) -
     Raises:
         MsgpackEncodeError: If encoding fails
     """
-    logger.debug(f"🧮📤🔄 Encoding CTY value to MessagePack: {value}")
+    logger.debug(f"🧮📤🔄 Encoding Cty value to MessagePack: {value}")
     
     # Merge with default options
     opts = {**DEFAULT_ENCODE_OPTIONS}
@@ -173,26 +182,26 @@ async def encode_value(value: Value, options: Optional[Dict[str, Any]] = None) -
         
         # Unknown type
         else:
-            logger.warning(f"🧮📤⚠️ Unknown CTY type: {type_name}, using default encoding")
+            logger.warning(f"🧮📤⚠️ Unknown Cty type: {type_name}, using default encoding")
             return msgpack.packb(value.raw_value, **opts)
     
     except Exception as e:
-        error_msg = f"Failed to encode CTY value: {e}"
+        error_msg = f"Failed to encode Cty value: {e}"
         logger.error(f"🧮📤❌ {error_msg}", exc_info=True)
         raise MsgpackEncodeError(error_msg) from e
 
 
-async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], options: Optional[Dict[str, Any]] = None) -> Value:
+async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], options: Optional[Dict[str, Any]] = None) -> CtyValue:
     """
-    Decode MessagePack data to a CTY value.
+    Decode MessagePack data to a Cty value.
     
     Args:
         data: MessagePack encoded data
-        type_: The CTY type to decode as
+        type_: The Cty type to decode as
         options: Optional MessagePack decoding options
         
     Returns:
-        Value: The decoded CTY value
+        CtyValue: The decoded Cty value
         
     Raises:
         MsgpackDecodeError: If decoding fails
@@ -212,11 +221,11 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
     def ext_hook(code, data):
         if code == EXT_UNKNOWN:
             logger.debug("🧮📥ℹ️ Decoding unknown value")
-            return Value(type_, is_unknown=True)
+            return CtyValue(type_, is_unknown=True)
         
         elif code == EXT_NULL:
             logger.debug("🧮📥ℹ️ Decoding null value")
-            return Value(type_, is_null=True)
+            return CtyValue(type_, is_null=True)
         
         elif code == EXT_MARKED:
             logger.debug("🧮📥ℹ️ Decoding marked value")
@@ -245,7 +254,7 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
                 for element_data in elements:
                     element_val = await decode_value(element_data, element_type)
                     set_values.add(element_val)
-                return Value(type_, raw_value=set_values)
+                return CtyValue(type_, raw_value=set_values)
             
             elif raw_value.get("_cty_tuple"):
                 logger.debug("🧮📥ℹ️ Decoding tuple value")
@@ -256,22 +265,22 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
                     element_type = tuple_types[i] if i < len(tuple_types) else CtyDynamic()
                     element_val = await decode_value(element_data, element_type)
                     tuple_values.append(element_val)
-                return Value(type_, raw_value=tuple(tuple_values))
+                return CtyValue(type_, raw_value=tuple(tuple_values))
         
         # Type-specific decoding
         type_name = type_.__class__.__name__
         
         # Primitive types
         if type_name == "CtyString":
-            return Value(type_, raw_value=str(raw_value))
+            return CtyValue(type_, raw_value=str(raw_value))
         
         elif type_name == "CtyNumber":
             if isinstance(raw_value, int):
-                return Value(type_, raw_value=Decimal(raw_value))
-            return Value(type_, raw_value=Decimal(str(raw_value)))
+                return CtyValue(type_, raw_value=Decimal(raw_value))
+            return CtyValue(type_, raw_value=Decimal(str(raw_value)))
         
         elif type_name == "CtyBool":
-            return Value(type_, raw_value=bool(raw_value))
+            return CtyValue(type_, raw_value=bool(raw_value))
         
         # Collection types
         elif type_name == "CtyList":
@@ -280,7 +289,7 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
             for element_data in raw_value:
                 element_val = await decode_value(msgpack.packb(element_data, **DEFAULT_ENCODE_OPTIONS), element_type)
                 elements.append(element_val)
-            return Value(type_, raw_value=elements)
+            return CtyValue(type_, raw_value=elements)
         
         elif type_name == "CtyMap":
             key_type = type_.key_type
@@ -291,7 +300,7 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
                 key_val = await decode_value(msgpack.packb(key_str, **DEFAULT_ENCODE_OPTIONS), key_type)
                 val_val = await decode_value(msgpack.packb(val_data, **DEFAULT_ENCODE_OPTIONS), value_type)
                 items[key_val] = val_val
-            return Value(type_, raw_value=items)
+            return CtyValue(type_, raw_value=items)
         
         # Structural types
         elif type_name == "CtyObject":
@@ -300,14 +309,14 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
                 attr_type = type_.attribute_types.get(attr_name, CtyDynamic())
                 attr_val = await decode_value(msgpack.packb(attr_data, **DEFAULT_ENCODE_OPTIONS), attr_type)
                 attributes[attr_name] = attr_val
-            return Value(type_, raw_value=attributes)
+            return CtyValue(type_, raw_value=attributes)
         
         # Dynamic - directly use the raw value
         elif type_name == "CtyDynamic":
-            return Value(type_, raw_value=raw_value)
+            return CtyValue(type_, raw_value=raw_value)
         
         # Default handling
-        return Value(type_, raw_value=raw_value)
+        return CtyValue(type_, raw_value=raw_value)
     
     except Exception as e:
         error_msg = f"Failed to decode MessagePack data: {e}"
@@ -317,10 +326,10 @@ async def decode_value(data: bytes, type_: Union[CtyType, Type[CtyType]], option
 
 async def encode_type(type_: CtyType) -> bytes:
     """
-    Encode a CTY type definition to MessagePack.
+    Encode a Cty type definition to MessagePack.
     
     Args:
-        type_: The CTY type to encode
+        type_: The Cty type to encode
         
     Returns:
         bytes: MessagePack encoded type definition
@@ -362,13 +371,13 @@ async def encode_type(type_: CtyType) -> bytes:
 
 async def decode_type(data: bytes) -> CtyType:
     """
-    Decode MessagePack data to a CTY type.
+    Decode MessagePack data to a Cty type.
     
     Args:
         data: MessagePack encoded type definition
         
     Returns:
-        CtyType: The decoded CTY type
+        CtyType: The decoded Cty type
         
     Raises:
         MsgpackDecodeError: If decoding fails
@@ -427,21 +436,21 @@ async def decode_type(data: bytes) -> CtyType:
         raise MsgpackDecodeError(error_msg) from e
 
 
-async def marshal(val: Value, opts: Optional[Dict[str, Any]] = None) -> bytes:
+async def marshal(val: CtyValue, opts: Optional[Dict[str, Any]] = None) -> bytes:
     """
-    Marshal a CTY value to MessagePack with type information.
+    Marshal a Cty value to MessagePack with type information.
     
     This is a more comprehensive version of encode_value that includes
     type information, allowing for accurate round-trip serialization.
     
     Args:
-        val: The CTY value to marshal
+        val: The Cty value to marshal
         opts: Optional MessagePack encoding options
         
     Returns:
         bytes: MessagePack encoded data
     """
-    logger.debug(f"🧮📤🔄 Marshaling CTY value: {val}")
+    logger.debug(f"🧮📤🔄 Marshaling Cty value: {val}")
     
     try:
         # Create a marshaled representation with type and value
@@ -464,9 +473,9 @@ async def marshal(val: Value, opts: Optional[Dict[str, Any]] = None) -> bytes:
         raise MsgpackEncodeError(error_msg) from e
 
 
-async def unmarshal(data: bytes, opts: Optional[Dict[str, Any]] = None) -> Value:
+async def unmarshal(data: bytes, opts: Optional[Dict[str, Any]] = None) -> CtyValue:
     """
-    Unmarshal MessagePack data to a CTY value.
+    Unmarshal MessagePack data to a Cty value.
     
     This is the counterpart to marshal() and handles both type and value
     information for complete deserialization.
@@ -476,9 +485,9 @@ async def unmarshal(data: bytes, opts: Optional[Dict[str, Any]] = None) -> Value
         opts: Optional MessagePack decoding options
         
     Returns:
-        Value: The unmarshaled CTY value
+        CtyValue: The unmarshaled Cty value
     """
-    logger.debug("🧮📥🔄 Unmarshaling CTY value from MessagePack")
+    logger.debug("🧮📥🔄 Unmarshaling Cty value from MessagePack")
     
     try:
         # Decode the marshaled data
@@ -491,9 +500,9 @@ async def unmarshal(data: bytes, opts: Optional[Dict[str, Any]] = None) -> Value
         
         # Create value based on special states
         if not is_known:
-            value = Value(type_, is_unknown=True)
+            value = CtyValue(type_, is_unknown=True)
         elif is_null:
-            value = Value(type_, is_null=True)
+            value = CtyValue(type_, is_null=True)
         else:
             value = await decode_value(marshaled["value"], type_, opts)
         

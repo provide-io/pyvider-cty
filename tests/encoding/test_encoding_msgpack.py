@@ -2,10 +2,10 @@
 # tests/cty/encoding/test_msgpack_integration.py
 
 """
-Integration tests for CTY MessagePack encoding module.
+Integration tests for Cty MessagePack encoding module.
 
-This test suite verifies the serialization and deserialization of CTY values
-to/from MessagePack format. It covers all CTY types, special values (null and unknown),
+This test suite verifies the serialization and deserialization of Cty values
+to/from MessagePack format. It covers all Cty types, special values (null and unknown),
 and ensures proper round-trip encoding/decoding.
 """
 
@@ -13,14 +13,16 @@ import asyncio
 import json
 import pytest
 from decimal import Decimal
-from typing import Dict, List, Set, Any
+from typing import Any
 
 import msgpack
 
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural import CtyObject, CtyTuple, CtyDynamic
-from pyvider.cty.values.base import Value
+
+from pyvider.cty import CtyValue
+
 from pyvider.cty.encoding.msgpack import (
     encode_value, decode_value, encode_type, decode_type,
     marshal, unmarshal, MsgpackEncodeError, MsgpackDecodeError
@@ -28,7 +30,7 @@ from pyvider.cty.encoding.msgpack import (
 
 
 class TestCtyMsgpackIntegration:
-    """Integration tests for CTY MessagePack encoding and decoding."""
+    """Integration tests for Cty MessagePack encoding and decoding."""
     
     @pytest.mark.asyncio
     async def test_encode_decode_string(self):
@@ -44,8 +46,8 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create a CTY string value
-            cty_value = Value(string_type, raw_value=value)
+            # Create a Cty string value
+            cty_value = CtyValue(string_type, raw_value=value)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -78,8 +80,8 @@ class TestCtyMsgpackIntegration:
             # Convert to Decimal for consistency
             decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
             
-            # Create a CTY number value
-            cty_value = Value(number_type, raw_value=decimal_value)
+            # Create a Cty number value
+            cty_value = CtyValue(number_type, raw_value=decimal_value)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -113,8 +115,8 @@ class TestCtyMsgpackIntegration:
         test_values = [True, False]
         
         for value in test_values:
-            # Create a CTY boolean value
-            cty_value = Value(bool_type, raw_value=value)
+            # Create a Cty boolean value
+            cty_value = CtyValue(bool_type, raw_value=value)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -144,9 +146,9 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create CTY list value with string elements
-            elements = [Value(string_type, raw_value=item) for item in value]
-            cty_value = Value(list_type, raw_value=elements)
+            # Create Cty list value with string elements
+            elements = [CtyValue(string_type, raw_value=item) for item in value]
+            cty_value = CtyValue(list_type, raw_value=elements)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -180,12 +182,12 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create CTY map value
+            # Create Cty map value
             elements = {
-                Value(string_type, raw_value=k): Value(number_type, raw_value=Decimal(str(v)))
+                CtyValue(string_type, raw_value=k): CtyValue(number_type, raw_value=Decimal(str(v)))
                 for k, v in value.items()
             }
-            cty_value = Value(map_type, raw_value=elements)
+            cty_value = CtyValue(map_type, raw_value=elements)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -226,9 +228,9 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create CTY set value
+            # Create Cty set value
             elements = {Value(string_type, raw_value=item) for item in value}
-            cty_value = Value(set_type, raw_value=elements)
+            cty_value = CtyValue(set_type, raw_value=elements)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -276,13 +278,13 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create CTY object value
+            # Create Cty object value
             attributes = {
-                "name": Value(CtyString(), raw_value=value["name"]),
-                "age": Value(CtyNumber(), raw_value=value["age"]),
-                "active": Value(CtyBool(), raw_value=value["active"])
+                "name": CtyValue(CtyString(), raw_value=value["name"]),
+                "age": CtyValue(CtyNumber(), raw_value=value["age"]),
+                "active": CtyValue(CtyBool(), raw_value=value["active"])
             }
-            cty_value = Value(object_type, raw_value=attributes)
+            cty_value = CtyValue(object_type, raw_value=attributes)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -314,13 +316,13 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create CTY tuple value
+            # Create Cty tuple value
             elements = (
-                Value(CtyString(), raw_value=value[0]),
-                Value(CtyNumber(), raw_value=value[1]),
-                Value(CtyBool(), raw_value=value[2])
+                CtyValue(CtyString(), raw_value=value[0]),
+                CtyValue(CtyNumber(), raw_value=value[1]),
+                CtyValue(CtyBool(), raw_value=value[2])
             )
-            cty_value = Value(tuple_type, raw_value=elements)
+            cty_value = CtyValue(tuple_type, raw_value=elements)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -355,8 +357,8 @@ class TestCtyMsgpackIntegration:
         ]
         
         for value in test_values:
-            # Create CTY dynamic value
-            cty_value = Value(dynamic_type, raw_value=value)
+            # Create Cty dynamic value
+            cty_value = CtyValue(dynamic_type, raw_value=value)
             
             # Encode to MessagePack
             encoded = await encode_value(cty_value)
@@ -389,7 +391,7 @@ class TestCtyMsgpackIntegration:
         
         for type_ in test_types:
             # Create null value
-            null_value = Value(type_, is_null=True)
+            null_value = CtyValue(type_, is_null=True)
             
             # Encode to MessagePack
             encoded = await encode_value(null_value)
@@ -417,7 +419,7 @@ class TestCtyMsgpackIntegration:
         
         for type_ in test_types:
             # Create unknown value
-            unknown_value = Value(type_, is_unknown=True)
+            unknown_value = CtyValue(type_, is_unknown=True)
             
             # Encode to MessagePack
             encoded = await encode_value(unknown_value)
@@ -436,7 +438,7 @@ class TestCtyMsgpackIntegration:
         """Test encoding and decoding values with marks."""
         # Create string value with marks
         string_type = CtyString()
-        string_value = Value(string_type, raw_value="Hello")
+        string_value = CtyValue(string_type, raw_value="Hello")
         marked_value = string_value.mark("mark1").mark("mark2")
         
         # Encode to MessagePack
@@ -503,7 +505,7 @@ class TestCtyMsgpackIntegration:
     
     @pytest.mark.asyncio
     async def test_marshal_unmarshal_roundtrip(self):
-        """Test round-trip marshaling and unmarshaling of CTY values."""
+        """Test round-trip marshaling and unmarshaling of Cty values."""
         # Create complex object
         object_type = CtyObject(attribute_types={
             "name": CtyString(),
@@ -515,19 +517,19 @@ class TestCtyMsgpackIntegration:
         
         # Create value
         object_value = {
-            "name": Value(CtyString(), raw_value="Alice"),
-            "age": Value(CtyNumber(), raw_value=Decimal("30")),
-            "tags": Value(CtyList(element_type=CtyString()), raw_value=[
-                Value(CtyString(), raw_value="tag1"),
-                Value(CtyString(), raw_value="tag2")
+            "name": CtyValue(CtyString(), raw_value="Alice"),
+            "age": CtyValue(CtyNumber(), raw_value=Decimal("30")),
+            "tags": CtyValue(CtyList(element_type=CtyString()), raw_value=[
+                CtyValue(CtyString(), raw_value="tag1"),
+                CtyValue(CtyString(), raw_value="tag2")
             ]),
-            "active": Value(CtyBool(), raw_value=True),
-            "metadata": Value(CtyMap(key_type=CtyString(), value_type=CtyDynamic()), raw_value={
-                Value(CtyString(), raw_value="created"): Value(CtyDynamic(), raw_value="2025-03-09")
+            "active": CtyValue(CtyBool(), raw_value=True),
+            "metadata": CtyValue(CtyMap(key_type=CtyString(), value_type=CtyDynamic()), raw_value={
+                CtyValue(CtyString(), raw_value="created"): CtyValue(CtyDynamic(), raw_value="2025-03-09")
             })
         }
         
-        cty_value = Value(object_type, raw_value=object_value)
+        cty_value = CtyValue(object_type, raw_value=object_value)
         
         # Marshal to MessagePack
         marshaled = await marshal(cty_value)
@@ -582,7 +584,7 @@ class TestCtyMsgpackIntegration:
             await decode_value(invalid_data, string_type)
         
         # Test type mismatch during decoding
-        string_value = Value(string_type, raw_value="test")
+        string_value = CtyValue(string_type, raw_value="test")
         encoded = await encode_value(string_value)
         
         # Try to decode as number

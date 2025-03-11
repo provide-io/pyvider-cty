@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Generic, TypeVar, final
 
 from pyvider.cty.exceptions import PyviderError, ValidationError
 
-from ..base import CtyType
+from pyvider.cty.types.base import CtyType
 
 T = TypeVar('T')
 
@@ -89,7 +89,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
         return f"list({self.element_type})"
 
     def __eq__(self, other):
-        return super().__eq__(other)
+        if not isinstance(other, CtyList):
+            return False
+        return self.element_type == other.element_type
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"

@@ -6,7 +6,7 @@ Integration tests for the CtyObject type implementation.
 
 These tests verify that CtyObject correctly handles complex object definitions,
 attribute validation, optional and required attributes, and integration with
-the rest of the CTY type system.
+the rest of the Cty type system.
 """
 
 import asyncio
@@ -187,7 +187,7 @@ class TestCtyObjectIntegration:
         
         # Validate each value
         for value in valid_values:
-            validated = await person_type.validate(value)
+            validated = person_type.validate(value)
             assert validated is not None
             assert isinstance(validated, dict)
             assert "name" in validated
@@ -218,7 +218,7 @@ class TestCtyObjectIntegration:
         }
         
         # Validate
-        validated = await person_type.validate(value)
+        validated = person_type.validate(value)
         assert validated is not None
         assert isinstance(validated, dict)
         assert "name" in validated
@@ -243,7 +243,7 @@ class TestCtyObjectIntegration:
         )
         
         # Validate null value
-        validated = await person_type.validate(None)
+        validated = person_type.validate(None)
         assert validated is None
     
     @pytest.mark.asyncio
@@ -268,7 +268,7 @@ class TestCtyObjectIntegration:
         # Validate each invalid value
         for value in invalid_values:
             with pytest.raises(ValidationError) as excinfo:
-                await person_type.validate(value)
+                person_type.validate(value)
             
             # Check error message mentions missing attribute
             error_msg = str(excinfo.value)
@@ -296,7 +296,7 @@ class TestCtyObjectIntegration:
         # Validate each invalid value
         for value in invalid_values:
             with pytest.raises(ValidationError) as excinfo:
-                await person_type.validate(value)
+                person_type.validate(value)
             
             # Check error message mentions invalid value
             error_msg = str(excinfo.value)
@@ -324,7 +324,7 @@ class TestCtyObjectIntegration:
         # Validate each invalid value
         for value in invalid_values:
             with pytest.raises(ValidationError) as excinfo:
-                await person_type.validate(value)
+                person_type.validate(value)
             
             # Check error message
             error_msg = str(excinfo.value)
@@ -350,9 +350,9 @@ class TestCtyObjectIntegration:
         }
         
         # Get attributes
-        name = await person_type.get_attribute(value, "name")
-        age = await person_type.get_attribute(value, "age")
-        active = await person_type.get_attribute(value, "active")
+        name = person_type.get_attribute(value, "name")
+        age = person_type.get_attribute(value, "age")
+        active = person_type.get_attribute(value, "active")
         
         # Verify attributes
         assert name == "Alice"
@@ -378,7 +378,7 @@ class TestCtyObjectIntegration:
         
         # Try to get unknown attribute
         with pytest.raises(AttributeValidationError) as excinfo:
-            await person_type.get_attribute(value, "unknown")
+            person_type.get_attribute(value, "unknown")
         
         # Check error message
         error_msg = str(excinfo.value)
@@ -396,9 +396,9 @@ class TestCtyObjectIntegration:
         )
         
         # Check attributes
-        assert await person_type.has_attribute("name") is True
-        assert await person_type.has_attribute("age") is True
-        assert await person_type.has_attribute("unknown") is False
+        assert person_type.has_attribute("name") is True
+        assert person_type.has_attribute("age") is True
+        assert person_type.has_attribute("unknown") is False
     
     @pytest.mark.asyncio
     async def test_with_optional_attributes(self):
@@ -608,8 +608,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check equality
-        assert await type1.equal(type2) is True
-        assert await type2.equal(type1) is True
+        assert type1.equal(type2) is True
+        assert type2.equal(type1) is True
     
     @pytest.mark.asyncio
     async def test_equal_different_attributes(self):
@@ -630,8 +630,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check equality
-        assert await type1.equal(type2) is False
-        assert await type2.equal(type1) is False
+        assert type1.equal(type2) is False
+        assert type2.equal(type1) is False
     
     @pytest.mark.asyncio
     async def test_equal_different_attribute_types(self):
@@ -652,8 +652,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check equality
-        assert await type1.equal(type2) is False
-        assert await type2.equal(type1) is False
+        assert type1.equal(type2) is False
+        assert type2.equal(type1) is False
     
     @pytest.mark.asyncio
     async def test_equal_different_optional(self):
@@ -675,8 +675,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check equality
-        assert await type1.equal(type2) is False
-        assert await type2.equal(type1) is False
+        assert type1.equal(type2) is False
+        assert type2.equal(type1) is False
     
     @pytest.mark.asyncio
     async def test_usable_as_same_type(self):
@@ -697,8 +697,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check usability
-        assert await type1.usable_as(type2) is True
-        assert await type2.usable_as(type1) is True
+        assert type1.usable_as(type2) is True
+        assert type2.usable_as(type1) is True
     
     @pytest.mark.asyncio
     async def test_usable_as_subset_attributes(self):
@@ -721,8 +721,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check usability
-        assert await type1.usable_as(type2) is True  # More attributes can be used as fewer
-        assert await type2.usable_as(type1) is False  # Fewer attributes cannot be used as more
+        assert type1.usable_as(type2) is True  # More attributes can be used as fewer
+        assert type2.usable_as(type1) is False  # Fewer attributes cannot be used as more
     
     @pytest.mark.asyncio
     async def test_usable_as_compatible_types(self):
@@ -755,8 +755,8 @@ class TestCtyObjectIntegration:
         )
         
         # Check usability
-        assert await type1.usable_as(type2) is True  # More required can be used as fewer required
-        assert await type2.usable_as(type1) is False  # Fewer required cannot be used as more required
+        assert type1.usable_as(type2) is True  # More required can be used as fewer required
+        assert type2.usable_as(type1) is False  # Fewer required cannot be used as more required
     
     @pytest.mark.asyncio
     async def test_create_object_helper(self):
@@ -849,7 +849,7 @@ class TestCtyObjectIntegration:
         }
         
         # Validate
-        validated = await server_type.validate(value)
+        validated = server_type.validate(value)
         assert validated is not None
         assert isinstance(validated, dict)
         
@@ -897,7 +897,7 @@ class TestCtyObjectIntegration:
         
         # Measure validation time
         start_time = asyncio.get_event_loop().time()
-        validated = await large_type.validate(value)
+        validated = large_type.validate(value)
         end_time = asyncio.get_event_loop().time()
         
         # Check validation was successful

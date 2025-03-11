@@ -2,8 +2,8 @@
 # pyvider/cty/convert/base.py
 
 from typing import Optional, Callable, Type
-from pyvider.cty import CtyType
-from pyvider.cty.values.base import Value
+from pyvider.cty.types import CtyType
+from pyvider.cty.values import CtyValue
 
 class Conversion:
     """Represents a conversion from one type to another."""
@@ -11,14 +11,14 @@ class Conversion:
     def __init__(self, 
                  source_type: CtyType,
                  target_type: CtyType,
-                 converter: Callable[[Value], Value],
+                 converter: Callable[[CtyValue], CtyValue],
                  is_safe: bool = False):
         self.source_type = source_type
         self.target_type = target_type
         self.converter = converter
         self.is_safe = is_safe
     
-    def convert(self, value: Value) -> Value:
+    def convert(self, value: CtyValue) -> CtyValue:
         """Convert a value from the source type to the target type."""
         return self.converter(value)
 
@@ -28,7 +28,7 @@ _UNSAFE_CONVERSIONS: dict[tuple[Type[CtyType], Type[CtyType]], Conversion] = {}
 
 def register_conversion(source_type: CtyType, 
                         target_type: CtyType, 
-                        converter: Callable[[Value], Value],
+                        converter: Callable[[CtyValue], CtyValue],
                         is_safe: bool = False) -> None:
     """Register a conversion."""
     conv = Conversion(source_type, target_type, converter, is_safe)
@@ -49,7 +49,7 @@ def get_conversion_unsafe(source_type: CtyType, target_type: CtyType) -> Optiona
     key = (type(source_type), type(target_type))
     return _UNSAFE_CONVERSIONS.get(key)
 
-def convert(value: Value, target_type: CtyType) -> Value:
+def convert(value: CtyValue, target_type: CtyType) -> CtyValue:
     """Convert a value to the target type (safe only)."""
     if value.type.equals(target_type):
         return value
@@ -60,7 +60,7 @@ def convert(value: Value, target_type: CtyType) -> Value:
     
     return conversion.convert(value)
 
-def convert_unsafe(value: Value, target_type: CtyType) -> Value:
+def convert_unsafe(value: CtyValue, target_type: CtyType) -> CtyValue:
     """Convert a value to the target type, allowing unsafe conversions."""
     if value.type.equals(target_type):
         return value

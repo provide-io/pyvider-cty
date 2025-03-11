@@ -2,9 +2,9 @@
 # tests/integration/cty/path/test_path.py
 
 """
-Integration tests for the CTY path system.
+Integration tests for the Cty path system.
 
-These tests verify that paths can navigate through nested CTY values,
+These tests verify that paths can navigate through nested Cty values,
 including objects, lists, tuples, and maps.
 """
 
@@ -15,7 +15,7 @@ import pytest
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap
 from pyvider.cty.types.structural import CtyObject, CtyTuple
-from pyvider.cty.values.base import Value
+from pyvider.cty import CtyValue
 from pyvider.cty.path.path import (
     Path,
     GetAttrStep,
@@ -25,7 +25,7 @@ from pyvider.cty.path.path import (
 )
 
 class TestPathSystem:
-    """Test the CTY path system."""
+    """Test the Cty path system."""
     
     @pytest.mark.asyncio
     async def test_attribute_paths(self):
@@ -42,7 +42,7 @@ class TestPathSystem:
         })
         
         # Create an object value
-        person = Value(type_=person_type, value={
+        person = CtyValue(type_=person_type, value={
             "name": "Alice",
             "age": 30,
             "address": {
@@ -81,7 +81,7 @@ class TestPathSystem:
         numbers_type = CtyList(element_type=CtyNumber())
         
         # Create a list value
-        numbers = Value(type_=numbers_type, value=[10, 20, 30, 40, 50])
+        numbers = CtyValue(type_=numbers_type, value=[10, 20, 30, 40, 50])
         
         # Test index access
         second_path = Path.index(1)
@@ -104,7 +104,7 @@ class TestPathSystem:
         
         # Test with tuple
         tuple_type = CtyTuple(types=(CtyString(), CtyNumber(), CtyBool()))
-        tuple_value = Value(type_=tuple_type, value=("hello", 42, True))
+        tuple_value = CtyValue(type_=tuple_type, value=("hello", 42, True))
         
         middle_path = Path.index(1)
         middle_result = await middle_path.apply_path(tuple_value)
@@ -121,7 +121,7 @@ class TestPathSystem:
         scores_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         
         # Create a map value
-        scores = Value(type_=scores_type, value={
+        scores = CtyValue(type_=scores_type, value={
             "Alice": 95,
             "Bob": 87,
             "Charlie": 92,
@@ -153,7 +153,7 @@ class TestPathSystem:
         })
         users_type = CtyList(element_type=user_type)
         
-        users = Value(type_=users_type, value=[
+        users = CtyValue(type_=users_type, value=[
             {
                 "name": "Alice",
                 "scores": {
@@ -206,7 +206,7 @@ class TestPathSystem:
         })
         
         # Create a null value
-        null_person = Value(type_=person_type, is_null=True)
+        null_person = CtyValue(type_=person_type, is_null=True)
         
         # Path to attribute should fail for null
         name_path = Path.get_attr("name")
@@ -214,7 +214,7 @@ class TestPathSystem:
             await name_path.apply_path(null_person)
             
         # Create an unknown value
-        unknown_person = Value(type_=person_type, is_unknown=True)
+        unknown_person = CtyValue(type_=person_type, is_unknown=True)
         
         # Path to attribute should return unknown value of correct type
         name_result = await name_path.apply_path(unknown_person)
@@ -231,7 +231,7 @@ class TestPathSystem:
             "address": address_type
         })
         
-        person_with_null_address = Value(type_=person_with_address_type, value={
+        person_with_null_address = CtyValue(type_=person_with_address_type, value={
             "name": "Alice",
             "address": None  # Null address
         })
@@ -242,9 +242,9 @@ class TestPathSystem:
             await street_path.apply_path(person_with_null_address)
             
         # Test with unknown value in a nested structure
-        person_with_unknown_address = Value(type_=person_with_address_type, value={
+        person_with_unknown_address = CtyValue(type_=person_with_address_type, value={
             "name": "Alice",
-            "address": Value(type_=address_type, is_unknown=True)
+            "address": CtyValue(type_=address_type, is_unknown=True)
         })
         
         # Path to street should return unknown value of correct type

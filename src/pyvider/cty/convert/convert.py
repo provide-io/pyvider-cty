@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+
 # pyvider/cty/convert/convert.py
 
 """
-Core type conversion system for CTY.
+Core type conversion system for Cty.
 
-This module provides the infrastructure for converting between CTY types.
+This module provides the infrastructure for converting between Cty types.
 It implements a registry of conversion rules and functions for performing
 type conversions with appropriate validation.
 
@@ -27,32 +27,41 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Typ
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
+from pyvider.cty.types import (
+    CtyType,
+    CtyString,
+    CtyNumber,
+    CtyBool,
+    CtyList,
+    CtyMap,
+    CtySet,
+    CtyObject,
+    CtyDynamic,
+    CtyTuple,
+)
+from pyvider.cty.values import CtyValue
+
 from pyvider.cty.exceptions import ConversionError
 
 # Forward reference for Value to avoid circular imports
-Value = TypeVar('Value')
 T = TypeVar('T')
 S = TypeVar('S')
 
 @attrs.define(frozen=True)
 class Conversion:
     """
-    Definition of a conversion between two CTY types.
+    Definition of a conversion between two Cty types.
     
-    A conversion defines how to convert values from one CTY type to another,
+    A conversion defines how to convert values from one Cty type to another,
     and whether that conversion is considered "safe" (no information loss)
     or "unsafe" (potential information loss).
     """
     source_type: Type[CtyType] = attrs.field()
     target_type: Type[CtyType] = attrs.field()
-    converter: Callable[[Value], Value] = attrs.field()
+    converter: Callable[[CtyValue], CtyValue] = attrs.field()
     is_safe: bool = attrs.field(default=False)
     
-    async def convert(self, value: Value) -> Value:
+    async def convert(self, value: CtyValue) -> CtyValue:
         """
         Convert a value from the source type to the target type.
         
@@ -60,7 +69,7 @@ class Conversion:
             value: The value to convert
             
         Returns:
-            Value: The converted value
+            CtyValue: The converted value
             
         Raises:
             ConversionError: If conversion fails
@@ -80,7 +89,7 @@ class ConversionRegistry:
     """
     Registry of type conversions.
     
-    This registry maintains a graph of possible conversions between CTY types,
+    This registry maintains a graph of possible conversions between Cty types,
     and provides methods for finding conversion paths and performing conversions.
     """
     # Maps (source_type, target_type) to a Conversion object
@@ -91,7 +100,7 @@ class ConversionRegistry:
         self, 
         source_type: Type[CtyType], 
         target_type: Type[CtyType],
-        converter: Callable[[Value], Value],
+        converter: Callable[[CtyValue], CtyValue],
         is_safe: bool = False
     ) -> None:
         """
@@ -177,7 +186,7 @@ class ConversionRegistry:
         Returns:
             Conversion: An identity conversion
         """
-        async def identity_converter(value: Value) -> Value:
+        async def identity_converter(value: CtyValue) -> CtyValue:
             return value
             
         return Conversion(
@@ -244,10 +253,10 @@ class ConversionRegistry:
         
     async def convert(
         self,
-        value: Value,
+        value: CtyValue,
         target_type: Type[CtyType],
         allow_unsafe: bool = False
-    ) -> Value:
+    ) -> CtyValue:
         """
         Convert a value to a target type.
         
@@ -257,12 +266,12 @@ class ConversionRegistry:
             allow_unsafe: Whether to allow unsafe conversions
             
         Returns:
-            Value: The converted value
+            CtyValue: The converted value
             
         Raises:
             ConversionError: If conversion fails or is impossible
         """
-        from pyvider.cty.values.base import Value as CtyValue
+        from pyvider.cty.values import CtyValue
         
         source_type = type(value.type)
         logger.debug(f"🧰🔄🔍 Converting value from {source_type.__name__} to {target_type.__name__}")
@@ -311,8 +320,9 @@ class ConversionRegistry:
         
         # Empty list - return dynamic
         if not types:
+            from pyvider.cty.types import CtyDynamic
             return CtyDynamic, []
-            
+
         # Single type - return it
         if len(types) == 1:
             return types[0], [self._identity_conversion(types[0])]
@@ -346,7 +356,7 @@ class ConversionRegistry:
 registry = ConversionRegistry()
 
 # Helper functions that use the global registry
-async def convert(value: Value, target_type: Type[CtyType]) -> Value:
+async def convert(value: CtyValue, target_type: Type[CtyType]) -> CtyValue:
     """
     Convert a value to a target type using only safe conversions.
     
@@ -355,14 +365,14 @@ async def convert(value: Value, target_type: Type[CtyType]) -> Value:
         target_type: The target type
         
     Returns:
-        Value: The converted value
+        CtyValue: The converted value
         
     Raises:
         ConversionError: If conversion fails or is impossible
     """
     return await registry.convert(value, target_type, allow_unsafe=False)
 
-async def convert_unsafe(value: Value, target_type: Type[CtyType]) -> Value:
+async def convert_unsafe(value: CtyValue, target_type: Type[CtyType]) -> CtyValue:
     """
     Convert a value to a target type, allowing unsafe conversions.
     
@@ -371,7 +381,7 @@ async def convert_unsafe(value: Value, target_type: Type[CtyType]) -> Value:
         target_type: The target type
         
     Returns:
-        Value: The converted value
+        CtyValue: The converted value
         
     Raises:
         ConversionError: If conversion fails or is impossible
@@ -441,9 +451,9 @@ async def unify_unsafe(types: List[CtyType]) -> Optional[Tuple[Type[CtyType], Li
 # Register built-in conversions
 
 # String to Number
-async def string_to_number(value: Value) -> Value:
+async def string_to_number(value: CtyValue) -> CtyValue:
     """Convert string to number."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(type_=CtyNumber(), is_null=value.is_null, is_unknown=value.is_unknown)
@@ -455,9 +465,9 @@ async def string_to_number(value: Value) -> Value:
         raise ConversionError(f"Cannot convert string '{value.value}' to number")
 
 # String to Bool
-async def string_to_bool(value: Value) -> Value:
+async def string_to_bool(value: CtyValue) -> CtyValue:
     """Convert string to bool."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(type_=CtyBool(), is_null=value.is_null, is_unknown=value.is_unknown)
@@ -472,9 +482,9 @@ async def string_to_bool(value: Value) -> Value:
         raise ConversionError(f"Cannot convert string '{value.value}' to bool")
 
 # Number to String
-async def number_to_string(value: Value) -> Value:
+async def number_to_string(value: CtyValue) -> CtyValue:
     """Convert number to string."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(type_=CtyString(), is_null=value.is_null, is_unknown=value.is_unknown)
@@ -482,9 +492,9 @@ async def number_to_string(value: Value) -> Value:
     return CtyValue(type_=CtyString(), value=str(value.value))
 
 # Number to Bool
-async def number_to_bool(value: Value) -> Value:
+async def number_to_bool(value: CtyValue) -> CtyValue:
     """Convert number to bool."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(type_=CtyBool(), is_null=value.is_null, is_unknown=value.is_unknown)
@@ -492,9 +502,9 @@ async def number_to_bool(value: Value) -> Value:
     return CtyValue(type_=CtyBool(), value=bool(value.value))
 
 # Bool to String
-async def bool_to_string(value: Value) -> Value:
+async def bool_to_string(value: CtyValue) -> CtyValue:
     """Convert bool to string."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(type_=CtyString(), is_null=value.is_null, is_unknown=value.is_unknown)
@@ -502,9 +512,9 @@ async def bool_to_string(value: Value) -> Value:
     return CtyValue(type_=CtyString(), value="true" if value.value else "false")
 
 # Bool to Number
-async def bool_to_number(value: Value) -> Value:
+async def bool_to_number(value: CtyValue) -> CtyValue:
     """Convert bool to number."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(type_=CtyNumber(), is_null=value.is_null, is_unknown=value.is_unknown)
@@ -512,9 +522,9 @@ async def bool_to_number(value: Value) -> Value:
     return CtyValue(type_=CtyNumber(), value=Decimal(1) if value.value else Decimal(0))
 
 # List to Set
-async def list_to_set(value: Value) -> Value:
+async def list_to_set(value: CtyValue) -> CtyValue:
     """Convert list to set."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(
@@ -531,9 +541,9 @@ async def list_to_set(value: Value) -> Value:
     )
 
 # Set to List
-async def set_to_list(value: Value) -> Value:
+async def set_to_list(value: CtyValue) -> CtyValue:
     """Convert set to list."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(
@@ -550,9 +560,9 @@ async def set_to_list(value: Value) -> Value:
     )
 
 # Tuple to List
-async def tuple_to_list(value: Value) -> Value:
+async def tuple_to_list(value: CtyValue) -> CtyValue:
     """Convert tuple to list."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         # We need a common element type - use the first element's type
@@ -587,9 +597,9 @@ async def tuple_to_list(value: Value) -> Value:
     )
 
 # Dynamic conversions
-async def dynamic_to_any(value: Value, target_type: Type[CtyType]) -> Value:
+async def dynamic_to_any(value: CtyValue, target_type: Type[CtyType]) -> CtyValue:
     """Convert dynamic to any type."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(
@@ -607,9 +617,9 @@ async def dynamic_to_any(value: Value, target_type: Type[CtyType]) -> Value:
         raise ConversionError(f"Cannot convert dynamic value to {target_type.__name__}: {e}")
 
 # Any to dynamic
-async def any_to_dynamic(value: Value) -> Value:
+async def any_to_dynamic(value: CtyValue) -> CtyValue:
     """Convert any type to dynamic."""
-    from pyvider.cty.values.base import Value as CtyValue
+    from pyvider.cty.values import CtyValue
     
     if value.is_null or value.is_unknown:
         return CtyValue(

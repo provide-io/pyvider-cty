@@ -2,10 +2,10 @@
 # tests/integration/cty/function/test_stdlib.py
 
 """
-Integration tests for CTY standard library functions.
+Integration tests for Cty standard library functions.
 
 These tests verify that the standard library functions work correctly with other
-parts of the CTY system, including types, values, and conversions.
+parts of the Cty system, including types, values, and conversions.
 """
 
 import asyncio
@@ -19,12 +19,12 @@ import pytest
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural import CtyObject, CtyDynamic
-from pyvider.cty.values.base import Value
+from pyvider.cty import CtyValue
 from pyvider.cty.function.base import registry
 from pyvider.cty.function.stdlib import *  # Import to register functions
 
 class TestStdlibFunctions:
-    """Test the CTY standard library functions."""
+    """Test the Cty standard library functions."""
     
     @pytest.mark.asyncio
     async def test_string_functions(self):
@@ -62,17 +62,17 @@ class TestStdlibFunctions:
         assert substr_fn is not None
         
         result = await substr_fn(
-            Value(type_=CtyString(), value="hello world"),
-            Value(type_=CtyNumber(), value=6),
-            Value(type_=CtyNumber(), value=5)
+            CtyValue(type_=CtyString(), value="hello world"),
+            CtyValue(type_=CtyNumber(), value=6),
+            CtyValue(type_=CtyNumber(), value=5)
         )
         assert result.value == "world"
         
         # Test substr with negative offset
         result = await substr_fn(
-            Value(type_=CtyString(), value="hello world"),
-            Value(type_=CtyNumber(), value=-5),
-            Value(type_=CtyNumber(), value=5)
+            CtyValue(type_=CtyString(), value="hello world"),
+            CtyValue(type_=CtyNumber(), value=-5),
+            CtyValue(type_=CtyNumber(), value=5)
         )
         assert result.value == "world"
         
@@ -81,9 +81,9 @@ class TestStdlibFunctions:
         assert replace_fn is not None
         
         result = await replace_fn(
-            Value(type_=CtyString(), value="hello world"),
-            Value(type_=CtyString(), value="world"),
-            Value(type_=CtyString(), value="terraform")
+            CtyValue(type_=CtyString(), value="hello world"),
+            CtyValue(type_=CtyString(), value="world"),
+            CtyValue(type_=CtyString(), value="terraform")
         )
         assert result.value == "hello terraform"
         
@@ -92,17 +92,17 @@ class TestStdlibFunctions:
         assert format_fn is not None
         
         result = await format_fn(
-            Value(type_=CtyString(), value="Hello, {0}!"),
-            Value(type_=CtyString(), value="world")
+            CtyValue(type_=CtyString(), value="Hello, {0}!"),
+            CtyValue(type_=CtyString(), value="world")
         )
         assert result.value == "Hello, world!"
         
         # Test format with multiple arguments
         result = await format_fn(
-            Value(type_=CtyString(), value="{0} {1} {2}"),
-            Value(type_=CtyString(), value="Hello"),
-            Value(type_=CtyString(), value="Terraform"),
-            Value(type_=CtyString(), value="World")
+            CtyValue(type_=CtyString(), value="{0} {1} {2}"),
+            CtyValue(type_=CtyString(), value="Hello"),
+            CtyValue(type_=CtyString(), value="Terraform"),
+            CtyValue(type_=CtyString(), value="World")
         )
         assert result.value == "Hello Terraform World"
         
@@ -135,9 +135,9 @@ class TestStdlibFunctions:
         assert max_fn is not None
         
         result = await max_fn(
-            Value(type_=CtyNumber(), value=1),
-            Value(type_=CtyNumber(), value=5),
-            Value(type_=CtyNumber(), value=3)
+            CtyValue(type_=CtyNumber(), value=1),
+            CtyValue(type_=CtyNumber(), value=5),
+            CtyValue(type_=CtyNumber(), value=3)
         )
         assert result.value == 5
         
@@ -146,17 +146,17 @@ class TestStdlibFunctions:
         assert min_fn is not None
         
         result = await min_fn(
-            Value(type_=CtyNumber(), value=1),
-            Value(type_=CtyNumber(), value=5),
-            Value(type_=CtyNumber(), value=3)
+            CtyValue(type_=CtyNumber(), value=1),
+            CtyValue(type_=CtyNumber(), value=5),
+            CtyValue(type_=CtyNumber(), value=3)
         )
         assert result.value == 1
         
         # Test with Decimal values
         result = await min_fn(
-            Value(type_=CtyNumber(), value=Decimal("1.1")),
-            Value(type_=CtyNumber(), value=Decimal("1.2")),
-            Value(type_=CtyNumber(), value=Decimal("1.3"))
+            CtyValue(type_=CtyNumber(), value=Decimal("1.1")),
+            CtyValue(type_=CtyNumber(), value=Decimal("1.2")),
+            CtyValue(type_=CtyNumber(), value=Decimal("1.3"))
         )
         assert result.value == Decimal("1.1")
         
@@ -190,21 +190,21 @@ class TestStdlibFunctions:
         assert element_fn is not None
         
         result = await element_fn(
-            Value(
+            CtyValue(
                 type_=CtyList(element_type=CtyString()),
                 value=["a", "b", "c"]
             ),
-            Value(type_=CtyNumber(), value=1)
+            CtyValue(type_=CtyNumber(), value=1)
         )
         assert result.value == "b"
         
         # Test element with negative index
         result = await element_fn(
-            Value(
+            CtyValue(
                 type_=CtyList(element_type=CtyString()),
                 value=["a", "b", "c"]
             ),
-            Value(type_=CtyNumber(), value=-1)
+            CtyValue(type_=CtyNumber(), value=-1)
         )
         assert result.value == "c"
         
@@ -214,28 +214,28 @@ class TestStdlibFunctions:
         
         # Test with list
         result = await contains_fn(
-            Value(
+            CtyValue(
                 type_=CtyList(element_type=CtyString()),
                 value=["a", "b", "c"]
             ),
-            Value(type_=CtyString(), value="b")
+            CtyValue(type_=CtyString(), value="b")
         )
         assert result.value is True
         
         # Test with map (checks keys)
         result = await contains_fn(
-            Value(
+            CtyValue(
                 type_=CtyMap(key_type=CtyString(), value_type=CtyString()),
                 value={"a": "A", "b": "B", "c": "C"}
             ),
-            Value(type_=CtyString(), value="b")
+            CtyValue(type_=CtyString(), value="b")
         )
         assert result.value is True
         
         # Test with string
         result = await contains_fn(
-            Value(type_=CtyString(), value="hello world"),
-            Value(type_=CtyString(), value="world")
+            CtyValue(type_=CtyString(), value="hello world"),
+            CtyValue(type_=CtyString(), value="world")
         )
         assert result.value is True
         
@@ -266,11 +266,11 @@ class TestStdlibFunctions:
         assert merge_fn is not None
         
         result = await merge_fn(
-            Value(
+            CtyValue(
                 type_=CtyMap(key_type=CtyString(), value_type=CtyString()),
                 value={"a": "A", "b": "B"}
             ),
-            Value(
+            CtyValue(
                 type_=CtyMap(key_type=CtyString(), value_type=CtyString()),
                 value={"b": "BB", "c": "C"}
             )
@@ -439,16 +439,16 @@ class TestStdlibFunctions:
         # Test with multiple arguments where one is null
         replace_fn = registry.get("replace")
         result = await replace_fn(
-            Value(type_=CtyString(), value="hello world"),
-            Value(type_=CtyString(), value="world"),
-            Value(type_=CtyString(), is_null=True)
+            CtyValue(type_=CtyString(), value="hello world"),
+            CtyValue(type_=CtyString(), value="world"),
+            CtyValue(type_=CtyString(), is_null=True)
         )
         assert result.is_null
         
         # Test with multiple arguments where one is unknown
         result = await replace_fn(
-            Value(type_=CtyString(), value="hello world"),
-            Value(type_=CtyString(), is_unknown=True),
-            Value(type_=CtyString(), value="terraform")
+            CtyValue(type_=CtyString(), value="hello world"),
+            CtyValue(type_=CtyString(), is_unknown=True),
+            CtyValue(type_=CtyString(), value="terraform")
         )
         assert result.is_unknown

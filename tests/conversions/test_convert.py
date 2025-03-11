@@ -2,11 +2,11 @@
 # tests/integration/cty/convert/test_convert.py
 
 """
-Integration tests for the CTY conversion system.
+Integration tests for the Cty conversion system.
 
 These tests verify that the conversion system correctly converts between
-different CTY types, handling both safe and unsafe conversions, as well
-as integration with other parts of the CTY system.
+different Cty types, handling both safe and unsafe conversions, as well
+as integration with other parts of the Cty system.
 """
 
 import asyncio
@@ -17,7 +17,7 @@ import pytest
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
-from pyvider.cty.values.base import Value
+from pyvider.cty import CtyValue
 from pyvider.cty.convert.convert import (
     registry,
     convert,
@@ -30,43 +30,43 @@ from pyvider.cty.convert.convert import (
 )
 
 class TestConversionSystem:
-    """Test the CTY conversion system."""
+    """Test the Cty conversion system."""
     
     @pytest.mark.asyncio
     async def test_primitive_conversions(self):
         """Test conversions between primitive types."""
         # String to Number
-        string_val = Value(type_=CtyString(), value="42")
+        string_val = CtyValue(type_=CtyString(), value="42")
         number_result = await convert_unsafe(string_val, CtyNumber)
         assert isinstance(number_result.type, CtyNumber)
         assert number_result.value == 42
         
         # String to Bool
-        string_val = Value(type_=CtyString(), value="true")
+        string_val = CtyValue(type_=CtyString(), value="true")
         bool_result = await convert_unsafe(string_val, CtyBool)
         assert isinstance(bool_result.type, CtyBool)
         assert bool_result.value is True
         
         # Number to String
-        number_val = Value(type_=CtyNumber(), value=42)
+        number_val = CtyValue(type_=CtyNumber(), value=42)
         string_result = await convert(number_val, CtyString)
         assert isinstance(string_result.type, CtyString)
         assert string_result.value == "42"
         
         # Number to Bool
-        number_val = Value(type_=CtyNumber(), value=1)
+        number_val = CtyValue(type_=CtyNumber(), value=1)
         bool_result = await convert_unsafe(number_val, CtyBool)
         assert isinstance(bool_result.type, CtyBool)
         assert bool_result.value is True
         
         # Bool to String
-        bool_val = Value(type_=CtyBool(), value=True)
+        bool_val = CtyValue(type_=CtyBool(), value=True)
         string_result = await convert(bool_val, CtyString)
         assert isinstance(string_result.type, CtyString)
         assert string_result.value == "true"
         
         # Bool to Number
-        bool_val = Value(type_=CtyBool(), value=True)
+        bool_val = CtyValue(type_=CtyBool(), value=True)
         number_result = await convert(bool_val, CtyNumber)
         assert isinstance(number_result.type, CtyNumber)
         assert number_result.value == 1
@@ -75,18 +75,18 @@ class TestConversionSystem:
     async def test_invalid_conversions(self):
         """Test conversions that should fail."""
         # Invalid string to number
-        string_val = Value(type_=CtyString(), value="not a number")
+        string_val = CtyValue(type_=CtyString(), value="not a number")
         with pytest.raises(ConversionError):
             await convert_unsafe(string_val, CtyNumber)
             
         # Invalid string to bool
-        string_val = Value(type_=CtyString(), value="not a bool")
+        string_val = CtyValue(type_=CtyString(), value="not a bool")
         with pytest.raises(ConversionError):
             await convert_unsafe(string_val, CtyBool)
             
         # Conversion that doesn't exist
         # For example, direct conversion from string to list
-        string_val = Value(type_=CtyString(), value="hello")
+        string_val = CtyValue(type_=CtyString(), value="hello")
         with pytest.raises(ConversionError):
             await convert_unsafe(string_val, CtyList)
             
@@ -94,25 +94,25 @@ class TestConversionSystem:
     async def test_null_and_unknown_handling(self):
         """Test that null and unknown values are handled correctly."""
         # Null string to number
-        null_string = Value(type_=CtyString(), is_null=True)
+        null_string = CtyValue(type_=CtyString(), is_null=True)
         null_number = await convert_unsafe(null_string, CtyNumber)
         assert null_number.is_null
         assert isinstance(null_number.type, CtyNumber)
         
         # Unknown string to number
-        unknown_string = Value(type_=CtyString(), is_unknown=True)
+        unknown_string = CtyValue(type_=CtyString(), is_unknown=True)
         unknown_number = await convert_unsafe(unknown_string, CtyNumber)
         assert unknown_number.is_unknown
         assert isinstance(unknown_number.type, CtyNumber)
         
         # Null bool to string
-        null_bool = Value(type_=CtyBool(), is_null=True)
+        null_bool = CtyValue(type_=CtyBool(), is_null=True)
         null_string = await convert(null_bool, CtyString)
         assert null_string.is_null
         assert isinstance(null_string.type, CtyString)
         
         # Unknown bool to string
-        unknown_bool = Value(type_=CtyBool(), is_unknown=True)
+        unknown_bool = CtyValue(type_=CtyBool(), is_unknown=True)
         unknown_string = await convert(unknown_bool, CtyString)
         assert unknown_string.is_unknown
         assert isinstance(unknown_string.type, CtyString)
@@ -182,7 +182,7 @@ class TestConversionSystem:
         async def string_to_string_list(value: Value) -> Value:
             """Convert string to list by splitting on commas."""
             if value.is_null or value.is_unknown:
-                return Value(
+                return CtyValue(
                     type_=CtyList(element_type=CtyString()),
                     is_null=value.is_null,
                     is_unknown=value.is_unknown
@@ -190,7 +190,7 @@ class TestConversionSystem:
                 
             # Split on commas
             items = [s.strip() for s in value.value.split(",")]
-            return Value(
+            return CtyValue(
                 type_=CtyList(element_type=CtyString()),
                 value=items
             )
@@ -204,7 +204,7 @@ class TestConversionSystem:
         )
         
         # Test the conversion
-        string_val = Value(type_=CtyString(), value="a, b, c")
+        string_val = CtyValue(type_=CtyString(), value="a, b, c")
         list_result = await convert_unsafe(string_val, CtyList)
         assert isinstance(list_result.type, CtyList)
         assert list_result.value == ["a", "b", "c"]
@@ -230,7 +230,7 @@ class TestConversionSystem:
             assert path[1].target_type == CtyBool
             
             # Test the actual conversion
-            string_val = Value(type_=CtyString(), value="1")
+            string_val = CtyValue(type_=CtyString(), value="1")
             bool_result = await convert_unsafe(string_val, CtyBool)
             assert isinstance(bool_result.type, CtyBool)
             assert bool_result.value is True
@@ -244,7 +244,7 @@ class TestConversionSystem:
     async def test_collection_type_handling(self):
         """Test conversion with collection types."""
         # Create a list of strings
-        string_list = Value(
+        string_list = CtyValue(
             type_=CtyList(element_type=CtyString()),
             value=["1", "2", "3"]
         )
@@ -253,7 +253,7 @@ class TestConversionSystem:
         async def string_list_to_number_list(value: Value) -> Value:
             """Convert list of strings to list of numbers."""
             if value.is_null or value.is_unknown:
-                return Value(
+                return CtyValue(
                     type_=CtyList(element_type=CtyNumber()),
                     is_null=value.is_null,
                     is_unknown=value.is_unknown
@@ -262,7 +262,7 @@ class TestConversionSystem:
             # Convert each string to number
             try:
                 numbers = [Decimal(item) for item in value.value]
-                return Value(
+                return CtyValue(
                     type_=CtyList(element_type=CtyNumber()),
                     value=numbers
                 )
@@ -289,8 +289,8 @@ class TestConversionSystem:
         from pyvider.cty.values.operations import add, subtract, multiply, divide
         
         # Add a string representing a number to a number
-        string_val = Value(type_=CtyString(), value="10")
-        number_val = Value(type_=CtyNumber(), value=5)
+        string_val = CtyValue(type_=CtyString(), value="10")
+        number_val = CtyValue(type_=CtyNumber(), value=5)
         
         # This should convert the string to a number first
         result = await add(string_val, number_val)
@@ -329,7 +329,7 @@ class TestConversionSystem:
             else:
                 result = f"{Decimal(str(num)):.2f}"
                 
-            return Value(type_=return_type, value=result)
+            return CtyValue(type_=return_type, value=result)
             
         spec = FunctionSpec(
             name="format_number",
@@ -349,7 +349,7 @@ class TestConversionSystem:
         
         # Test with a string that can be converted to a number
         # This should fail without conversion
-        string_val = Value(type_=CtyString(), value="42.5")
+        string_val = CtyValue(type_=CtyString(), value="42.5")
         with pytest.raises(Exception):
             await format_fn(string_val)
             

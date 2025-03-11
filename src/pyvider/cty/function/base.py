@@ -2,10 +2,10 @@
 # pyvider/cty/function/base.py
 
 """
-Core function infrastructure for the CTY type system.
+Core function infrastructure for the Cty type system.
 
 This module provides the base classes and utilities for defining and executing
-type-safe functions on CTY values. It implements:
+type-safe functions on Cty values. It implements:
 
 1. Function signature and parameter definitions
 2. Type checking and validation for function calls
@@ -29,9 +29,8 @@ from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
 from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.values import CtyValue
 
-# Forward reference for Value to avoid circular imports
-Value = TypeVar('Value')
 T = TypeVar('T')
 
 @attrs.define(frozen=True, eq=True)
@@ -56,7 +55,7 @@ class Parameter:
         if not value.isidentifier():
             raise ValueError(f"Invalid parameter name: {value}")
             
-    async def validate(self, value: 'Value') -> bool:
+    async def validate(self, value: CtyValue) -> bool:
         """
         Validate a value against this parameter's rules.
         
@@ -69,7 +68,7 @@ class Parameter:
         Raises:
             ValidationError: If validation fails
         """
-        from pyvider.cty.values.base import Value
+        # from pyvider.cty.values.base import Value
         
         logger.debug(f"🧰🔍🔄 Validating parameter {self.name} with value {value}")
         
@@ -87,7 +86,7 @@ class Parameter:
             from pyvider.cty.convert.convert import can_convert
             
             if await can_convert(value.type, self.type):
-                logger.debug(f"🧰🔍🔄 Value can be converted to required type {self.type.__class__.__name__}")
+                logger.debug(f"🧰🔍🔄 CtyValue can be converted to required type {self.type.__class__.__name__}")
                 return True
                 
             raise ValidationError(
@@ -121,7 +120,7 @@ class VariadicParameter(Parameter):
         if value is not None and value < self.min_elements:
             raise ValueError("max_elements cannot be less than min_elements")
             
-    async def validate_all(self, values: List['Value']) -> bool:
+    async def validate_all(self, values: List[CtyValue]) -> bool:
         """
         Validate a list of values against this parameter's rules.
         
@@ -163,8 +162,8 @@ class FunctionSpec:
     # Required attributes must come first
     name: str = attrs.field()
     params: List[Parameter] = attrs.field()
-    return_type_fn: Callable[[List['Value']], CtyType] = attrs.field()
-    implementation: Callable[[List['Value'], CtyType], 'Value'] = attrs.field()
+    return_type_fn: Callable[[List[CtyValue]], CtyType] = attrs.field()
+    implementation: Callable[[List[CtyValue], CtyType], CtyValue] = attrs.field()
     
     # Optional attributes with defaults come last
     variadic_param: Optional[VariadicParameter] = attrs.field(default=None)
@@ -177,7 +176,7 @@ class FunctionSpec:
         if not value.isidentifier():
             raise ValueError(f"Invalid function name: {value}")
             
-    async def validate_args(self, args: List['Value']) -> bool:
+    async def validate_args(self, args: List[CtyValue]) -> bool:
         """
         Validate function arguments against the parameter specifications.
         
@@ -231,7 +230,7 @@ class FunctionSpec:
             
         return True
     
-    async def call(self, args: List['Value']) -> 'Value':
+    async def call(self, args: List[CtyValue]) -> CtyValue:
         """
         Call the function with the given arguments.
         
@@ -265,7 +264,7 @@ class FunctionSpec:
 
 class Function:
     """
-    A callable CTY function.
+    A callable Cty function.
     
     This class wraps a FunctionSpec to provide a callable interface and
     additional metadata.
@@ -280,7 +279,7 @@ class Function:
         """
         self.spec = spec
         
-    async def __call__(self, *args: 'Value') -> 'Value':
+    async def __call__(self, *args: CtyValue) -> CtyValue:
         """
         Call the function with the given arguments.
         
@@ -319,7 +318,7 @@ class Function:
 
 class FunctionRegistry:
     """
-    Registry for CTY functions.
+    Registry for Cty functions.
     
     This class manages a collection of functions and provides lookup by name.
     """

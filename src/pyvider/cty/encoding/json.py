@@ -5,9 +5,9 @@ import json
 from typing import Any, Union, Optional
 
 from pyvider.cty import CtyType
-from pyvider.cty.values.base import Value
+from pyvider.cty.values import CtyValue
 
-def marshal(val: Value, type_: Optional[CtyType] = None) -> bytes:
+def marshal(val: CtyValue, type_: Optional[CtyType] = None) -> bytes:
     """Marshal a value to JSON with type information."""
     if not val.is_known:
         raise ValueError("Cannot marshal unknown values to JSON")
@@ -21,7 +21,7 @@ def marshal(val: Value, type_: Optional[CtyType] = None) -> bytes:
     # Default fallback
     return json.dumps(val._value).encode('utf-8')
 
-def unmarshal(data: Union[bytes, str], type_: CtyType) -> Value:
+def unmarshal(data: Union[bytes, str], type_: CtyType) -> CtyValue:
     """Unmarshal a JSON value using provided type information."""
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -36,6 +36,7 @@ def unmarshal(data: Union[bytes, str], type_: CtyType) -> Value:
         
         # Validate and create value
         validated = type_.validate(parsed_value)
-        return Value(type_, validated)
+        return CtyValue(type_, validated)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON: {e}")
+

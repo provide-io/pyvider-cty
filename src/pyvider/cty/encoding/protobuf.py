@@ -2,17 +2,17 @@
 # pyvider/cty/encoding/protobuf.py
 
 """
-Protobuf encoding for CTY types and values.
+Protobuf encoding for Cty types and values.
 
-This module provides bidirectional conversion between Pyvider's CTY type system
-and Terraform's protobuf representations. It enables serialization of CTY values
-to protobuf DynamicValue messages and deserialization back to CTY values.
+This module provides bidirectional conversion between Pyvider's Cty type system
+and Terraform's protobuf representations. It enables serialization of Cty values
+to protobuf DynamicValue messages and deserialization back to Cty values.
 
 Key functions:
-- encode_value: Convert CTY value to protobuf DynamicValue
-- decode_value: Convert protobuf DynamicValue to CTY value
-- get_proto_type: Convert CTY type to protobuf schema type bytes
-- get_cty_type: Convert protobuf schema type bytes to CTY type
+- encode_value: Convert Cty value to protobuf DynamicValue
+- decode_value: Convert protobuf DynamicValue to Cty value
+- get_proto_type: Convert Cty type to protobuf schema type bytes
+- get_cty_type: Convert protobuf schema type bytes to Cty type
 """
 
 import json
@@ -31,8 +31,8 @@ from pyvider.protocols.tfprotov6.protobuf import DynamicValue
 # Type variable for generic functions
 T = TypeVar('T')
 
-# Mapping from CTY type classes to protobuf schema type bytes
-_CTY_TYPE_TO_PROTO: Dict[Type[CtyType], bytes] = {
+# Mapping from Cty type classes to protobuf schema type bytes
+_Cty_TYPE_TO_PROTO: Dict[Type[CtyType], bytes] = {
     CtyString: b'"string"',
     CtyNumber: b'"number"',
     CtyBool: b'"bool"',
@@ -44,8 +44,8 @@ _CTY_TYPE_TO_PROTO: Dict[Type[CtyType], bytes] = {
     CtyTuple: b'"tuple"',
 }
 
-# Mapping from protobuf schema type bytes to CTY type classes
-_PROTO_TO_CTY_TYPE: Dict[bytes, Type[CtyType]] = {
+# Mapping from protobuf schema type bytes to Cty type classes
+_PROTO_TO_Cty_TYPE: Dict[bytes, Type[CtyType]] = {
     b'"string"': CtyString,
     b'"number"': CtyNumber,
     b'"bool"': CtyBool,
@@ -59,10 +59,10 @@ _PROTO_TO_CTY_TYPE: Dict[bytes, Type[CtyType]] = {
 
 async def get_proto_type(cty_type: Union[CtyType, Type[CtyType]]) -> bytes:
     """
-    Convert a CTY type to its protobuf schema type representation.
+    Convert a Cty type to its protobuf schema type representation.
     
     Args:
-        cty_type: A CTY type instance or class
+        cty_type: A Cty type instance or class
         
     Returns:
         bytes: The protobuf schema type bytes
@@ -70,40 +70,40 @@ async def get_proto_type(cty_type: Union[CtyType, Type[CtyType]]) -> bytes:
     Raises:
         ValueError: If the type cannot be converted
     """
-    logger.debug(f"🧰📤🔄 Converting CTY type to protobuf: {cty_type!r}")
+    logger.debug(f"🧰📤🔄 Converting Cty type to protobuf: {cty_type!r}")
     
     # Handle instance vs class
     actual_type = type(cty_type) if isinstance(cty_type, CtyType) else cty_type
     
     # Look up in mapping
-    if actual_type in _CTY_TYPE_TO_PROTO:
-        proto_type = _CTY_TYPE_TO_PROTO[actual_type]
+    if actual_type in _Cty_TYPE_TO_PROTO:
+        proto_type = _Cty_TYPE_TO_PROTO[actual_type]
         logger.debug(f"🧰📤✅ Converted to protobuf type: {proto_type!r}")
         return proto_type
     
     # Fallback to dynamic type
-    logger.warning(f"🧰📤⚠️ Unknown CTY type {cty_type!r}, using dynamic")
-    return _CTY_TYPE_TO_PROTO[CtyDynamic]
+    logger.warning(f"🧰📤⚠️ Unknown Cty type {cty_type!r}, using dynamic")
+    return _Cty_TYPE_TO_PROTO[CtyDynamic]
 
 async def get_cty_type(proto_type: bytes) -> Type[CtyType]:
     """
-    Convert a protobuf schema type to its corresponding CTY type class.
+    Convert a protobuf schema type to its corresponding Cty type class.
     
     Args:
         proto_type: The protobuf schema type bytes
         
     Returns:
-        Type[CtyType]: The corresponding CTY type class
+        Type[CtyType]: The corresponding Cty type class
         
     Raises:
         ValueError: If the type cannot be converted
     """
-    logger.debug(f"🧰📥🔄 Converting protobuf type to CTY: {proto_type!r}")
+    logger.debug(f"🧰📥🔄 Converting protobuf type to Cty: {proto_type!r}")
     
     # Look up in mapping
-    if proto_type in _PROTO_TO_CTY_TYPE:
-        cty_type = _PROTO_TO_CTY_TYPE[proto_type]
-        logger.debug(f"🧰📥✅ Converted to CTY type: {cty_type.__name__}")
+    if proto_type in _PROTO_TO_Cty_TYPE:
+        cty_type = _PROTO_TO_Cty_TYPE[proto_type]
+        logger.debug(f"🧰📥✅ Converted to Cty type: {cty_type.__name__}")
         return cty_type
     
     # Fallback to dynamic type
@@ -112,11 +112,11 @@ async def get_cty_type(proto_type: bytes) -> Type[CtyType]:
 
 async def encode_value(value: Any, cty_type: Optional[Union[CtyType, Type[CtyType]]] = None) -> DynamicValue:
     """
-    Encode a Python value to a protobuf DynamicValue using the specified CTY type.
+    Encode a Python value to a protobuf DynamicValue using the specified Cty type.
     
     Args:
         value: The Python value to encode
-        cty_type: Optional CTY type to use for encoding (inferred if not provided)
+        cty_type: Optional Cty type to use for encoding (inferred if not provided)
         
     Returns:
         DynamicValue: Protobuf DynamicValue message
@@ -134,7 +134,7 @@ async def encode_value(value: Any, cty_type: Optional[Union[CtyType, Type[CtyTyp
     # Infer type if not provided
     if cty_type is None:
         cty_type = _infer_cty_type(value)
-        logger.debug(f"🧰📤🔄 Inferred CTY type: {cty_type.__name__}")
+        logger.debug(f"🧰📤🔄 Inferred Cty type: {cty_type.__name__}")
     
     # Convert to canonical form based on type
     try:
@@ -179,11 +179,11 @@ async def encode_value(value: Any, cty_type: Optional[Union[CtyType, Type[CtyTyp
 
 async def decode_value(dynamic_value: DynamicValue, cty_type: Union[CtyType, Type[CtyType]]) -> Any:
     """
-    Decode a protobuf DynamicValue to a Python value using the specified CTY type.
+    Decode a protobuf DynamicValue to a Python value using the specified Cty type.
     
     Args:
         dynamic_value: The protobuf DynamicValue message
-        cty_type: CTY type to use for decoding
+        cty_type: Cty type to use for decoding
         
     Returns:
         Any: The decoded Python value
@@ -273,13 +273,13 @@ async def decode_value(dynamic_value: DynamicValue, cty_type: Union[CtyType, Typ
 
 def _infer_cty_type(value: Any) -> Type[CtyType]:
     """
-    Infer the CTY type from a Python value.
+    Infer the Cty type from a Python value.
     
     Args:
         value: The Python value
         
     Returns:
-        Type[CtyType]: The inferred CTY type class
+        Type[CtyType]: The inferred Cty type class
     """
     if isinstance(value, str):
         return CtyString
@@ -312,7 +312,7 @@ async def encode_schema_value(value: Any, schema_type: bytes) -> DynamicValue:
     """
     logger.debug(f"🧰📤🔄 Encoding value with schema type: {schema_type!r}")
     
-    # Convert schema type to CTY type
+    # Convert schema type to Cty type
     cty_type = await get_cty_type(schema_type)
     
     # Encode value
@@ -333,7 +333,7 @@ async def decode_schema_value(dynamic_value: DynamicValue, schema_type: bytes) -
     """
     logger.debug(f"🧰📥🔄 Decoding value with schema type: {schema_type!r}")
     
-    # Convert schema type to CTY type
+    # Convert schema type to Cty type
     cty_type = await get_cty_type(schema_type)
     
     # Decode value
