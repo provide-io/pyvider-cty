@@ -4,7 +4,7 @@
 from typing import Any, Optional, List
 from decimal import Decimal
 
-from pyvider.cty.values.base import Value as CtyValue
+from pyvider.cty.values import CtyValue
 
 class ValueRefinement:
     """Base class for all value refinements."""
@@ -47,8 +47,8 @@ class ValueRefinementBuilder:
 
     def string_prefix(self, prefix: str) -> 'ValueRefinementBuilder':
         """Add a string prefix refinement."""
-        from pyvider_cty.types.primitives import String
-        if not isinstance(self._value.type, String):
+        from pyvider.cty.types.primitives import CtyString
+        if not isinstance(self._value.type, CtyString):
             raise TypeError("string_prefix can only be applied to string values")
 
         self._refinements.append(StringPrefixRefinement(prefix))
@@ -56,8 +56,8 @@ class ValueRefinementBuilder:
 
     def number_range_inclusive(self, min_val: Any, max_val: Any) -> 'ValueRefinementBuilder':
         """Add a number range refinement with inclusive bounds."""
-        from pyvider_cty.types.primitives import Number
-        if not isinstance(self._value.type, Number):
+        from pyvider.cty.types.primitives import CtyNumber
+        if not isinstance(self._value.type, CtyNumber):
             raise TypeError("number_range_inclusive can only be applied to number values")
 
         min_decimal = Decimal(str(min_val)) if min_val is not None else None

@@ -2,12 +2,13 @@
 # pyvider/cty/values/base.py
 
 from typing import Any, Optional, FrozenSet, Generic, TypeVar
-from pyvider.cty import CtyType
+
+from pyvider.cty.types import CtyType
 
 T = TypeVar('T', covariant=True)
 
-class Value(Generic[T]):
-    """Immutable representation of a CTY value."""
+class CtyValue(Generic[T]):
+    """Immutable representation of a Cty value."""
     
     def __init__(self, 
                  type_: CtyType[T], 
@@ -62,5 +63,26 @@ class Value(Generic[T]):
     
     def refine(self) -> "ValueRefinementBuilder":
         """Create a refinement builder for this value."""
-        from pyvider_cty.values.refinement import ValueRefinementBuilder
+        from pyvider.cty.values.refinement import ValueRefinementBuilder
         return ValueRefinementBuilder(self)
+
+    @property
+    def value(self) -> Any:
+        """Get the raw value of this CtyValue."""
+        return self._value
+
+    @classmethod
+    def bool(cls, value: bool) -> "CtyValue":
+        """Create a boolean value."""
+        from pyvider.cty.types import CtyBool
+        return cls(type_=CtyBool(), value=value)
+
+    @classmethod
+    def unknown(cls, type_: "CtyType") -> "CtyValue":
+        """Create an unknown value of the given type."""
+        return cls(type_=type_, is_unknown=True)
+
+    @classmethod
+    def null(cls, type_: "CtyType") -> "CtyValue":
+        """Create a null value of the given type."""
+        return cls(type_=type_, is_null=True)

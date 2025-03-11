@@ -2,10 +2,10 @@
 # pyvider/cty/values/operations.py
 
 """
-CtyValue operations for the CTY type system.
+CtyValue operations for the Cty type system.
 
-This module provides operations that can be performed on CTY values, similar to
-the operations provided by Go-CTY. These include equality checking, type conversion,
+This module provides operations that can be performed on Cty values, similar to
+the operations provided by Go-Cty. These include equality checking, type conversion,
 arithmetic operations, and more complex operations like retrieval from collections.
 
 Operations respect value state (known/unknown/null) and properly handle marks.
@@ -14,16 +14,26 @@ All operations maintain proper type checking and value immutability.
 
 import operator
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import Any, Optional, TypeVar, Union, cast
 
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
-from pyvider.cty.values.base import Value as CtyValue
+from pyvider.cty.types import (
+    CtyType,
+    CtyBool,
+    CtyNumber,
+    CtyString,
+    CtyList,
+    CtyMap,
+    CtySet,
+    CtyDynamic,
+    CtyObject,
+    CtyTuple,
+)
+
+from pyvider.cty.values import CtyValue
+
 from pyvider.cty.exceptions import CtyError, TypeMismatchError
 
 # Type variables for generic operations
@@ -92,8 +102,8 @@ def equals(a: CtyValue, b: CtyValue) -> CtyValue:
 
 def _equals_list(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for list equality checking."""
-    a_list = cast(List[Any], a.value)
-    b_list = cast(List[Any], b.value)
+    a_list = cast(list[Any], a.value)
+    b_list = cast(list[Any], b.value)
     
     # Check length first
     if len(a_list) != len(b_list):
@@ -101,7 +111,7 @@ def _equals_list(a: CtyValue, b: CtyValue) -> CtyValue:
     
     # Compare each element
     for i, (a_item, b_item) in enumerate(zip(a_list, b_list)):
-        # Convert Python values to CTY values
+        # Convert Python values to Cty values
         a_elem = CtyValue(a.type.element_type, a_item)
         b_elem = CtyValue(b.type.element_type, b_item)
         
@@ -118,8 +128,8 @@ def _equals_list(a: CtyValue, b: CtyValue) -> CtyValue:
 
 def _equals_map(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for map equality checking."""
-    a_map = cast(Dict[str, Any], a.value)
-    b_map = cast(Dict[str, Any], b.value)
+    a_map = cast(dict[str, Any], a.value)
+    b_map = cast(dict[str, Any], b.value)
     
     # Check keys first
     if set(a_map.keys()) != set(b_map.keys()):
@@ -127,7 +137,7 @@ def _equals_map(a: CtyValue, b: CtyValue) -> CtyValue:
     
     # Compare each value
     for key in a_map:
-        # Convert Python values to CTY values
+        # Convert Python values to Cty values
         a_elem = CtyValue(a.type.element_type, a_map[key])
         b_elem = CtyValue(b.type.element_type, b_map[key])
         
@@ -144,8 +154,8 @@ def _equals_map(a: CtyValue, b: CtyValue) -> CtyValue:
 
 def _equals_set(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for set equality checking."""
-    a_set = cast(Set[Any], a.value)
-    b_set = cast(Set[Any], b.value)
+    a_set = cast(set[Any], a.value)
+    b_set = cast(set[Any], b.value)
     
     # Simple length check first
     if len(a_set) != len(b_set):
@@ -153,12 +163,12 @@ def _equals_set(a: CtyValue, b: CtyValue) -> CtyValue:
     
     # For sets, we need to check membership both ways
     # This is more complex than just comparing sets directly
-    # because we need to use CTY equality semantics
+    # because we need to use Cty equality semantics
     for a_item in a_set:
         # Check if a_item is in b_set
         found = False
         for b_item in b_set:
-            # Convert to CTY values
+            # Convert to Cty values
             a_elem = CtyValue(a.type.element_type, a_item)
             b_elem = CtyValue(b.type.element_type, b_item)
             
@@ -179,8 +189,8 @@ def _equals_set(a: CtyValue, b: CtyValue) -> CtyValue:
 
 def _equals_object(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for object equality checking."""
-    a_obj = cast(Dict[str, Any], a.value)
-    b_obj = cast(Dict[str, Any], b.value)
+    a_obj = cast(dict[str, Any], a.value)
+    b_obj = cast(dict[str, Any], b.value)
     
     # Get object type info
     a_type = cast(CtyObject, a.type)
@@ -192,7 +202,7 @@ def _equals_object(a: CtyValue, b: CtyValue) -> CtyValue:
         a_attr = a_obj.get(attr_name)
         b_attr = b_obj.get(attr_name)
         
-        # Convert to CTY values
+        # Convert to Cty values
         a_elem = CtyValue(attr_type, a_attr)
         b_elem = CtyValue(attr_type, b_attr)
         
@@ -221,7 +231,7 @@ def add(a: CtyValue, b: CtyValue) -> CtyValue:
     Supported combinations:
     - Number + Number = Number (arithmetic addition)
     - String + String = String (concatenation)
-    - List + List = List (concatenation)
+    - list + list = list (concatenation)
     
     Raises:
         TypeError: If the operation is not supported for the given types
@@ -276,16 +286,16 @@ def add(a: CtyValue, b: CtyValue) -> CtyValue:
             logger.debug(f"🧮➕✅ String concatenation result: {result}")
             return CtyValue(CtyString(), result)
         
-        # List concatenation
+        # list concatenation
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyList):
             # Ensure element types are compatible
             if not a.type.element_type.equal(b.type.element_type):
                 raise TypeMismatchError("Cannot add lists with incompatible element types")
             
-            a_list = cast(List[Any], a.value)
-            b_list = cast(List[Any], b.value)
+            a_list = cast(list[Any], a.value)
+            b_list = cast(list[Any], b.value)
             result = a_list + b_list
-            logger.debug(f"🧮➕✅ List concatenation result: {result}")
+            logger.debug(f"🧮➕✅ list concatenation result: {result}")
             return CtyValue(CtyList(element_type=a.type.element_type), result)
         
         # Unsupported combination
@@ -363,7 +373,7 @@ def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
     Supported combinations:
     - Number * Number = Number (arithmetic multiplication)
     - String * Number = String (repetition)
-    - List * Number = List (repetition)
+    - list * Number = list (repetition)
     
     Raises:
         TypeError: If the operation is not supported for the given types
@@ -407,22 +417,22 @@ def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
             # Ensure the number is an integer
             count = int(b.value)
             if count < 0:
-                raise CtyValueError("Cannot repeat string a negative number of times")
+                raise ValueError("Cannot repeat string a negative number of times")
             
             result = str(a.value) * count
             logger.debug(f"🧮✖️✅ String repetition result: {result}")
             return CtyValue(CtyString(), result)
         
-        # List repetition
+        # list repetition
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyNumber):
             # Ensure the number is an integer
             count = int(b.value)
             if count < 0:
-                raise CtyValueError("Cannot repeat list a negative number of times")
+                raise ValueError("Cannot repeat list a negative number of times")
             
-            a_list = cast(List[Any], a.value)
+            a_list = cast(list[Any], a.value)
             result = a_list * count
-            logger.debug(f"🧮✖️✅ List repetition result: {result}")
+            logger.debug(f"🧮✖️✅ list repetition result: {result}")
             return CtyValue(CtyList(element_type=a.type.element_type), result)
         
         # Unsupported combination
@@ -430,7 +440,7 @@ def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
             raise TypeError(f"Cannot multiply values of types {a.type} and {b.type}")
             
     except Exception as e:
-        if isinstance(e, (TypeError, CtyValueError)) and "Cannot" in str(e):
+        if isinstance(e, (TypeError, ValueError)) and "Cannot" in str(e):
             # Re-raise validation errors
             raise
         
@@ -454,7 +464,7 @@ def divide(a: CtyValue, b: CtyValue) -> CtyValue:
     
     Raises:
         TypeError: If the operation is not supported for the given types
-        CtyValueError: If dividing by zero
+        ValueError: If dividing by zero
     """
     logger.debug(f"🧮➗✅ Dividing {a} by {b}")
     
@@ -480,7 +490,7 @@ def divide(a: CtyValue, b: CtyValue) -> CtyValue:
             
             # Check for division by zero
             if num_b == 0:
-                raise CtyValueError("Division by zero")
+                raise ValueError("Division by zero")
             
             result = num_a / num_b
             logger.debug(f"🧮➗✅ Number division result: {result}")
@@ -508,7 +518,7 @@ def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
     
     Raises:
         TypeError: If the operation is not supported for the given types
-        CtyValueError: If divisor is zero
+        ValueError: If divisor is zero
     """
     logger.debug(f"🧮📊✅ Calculating modulo of {a} by {b}")
     
@@ -534,7 +544,7 @@ def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
             
             # Check for modulo by zero
             if num_b == 0:
-                raise CtyValueError("Modulo by zero")
+                raise ValueError("Modulo by zero")
             
             result = num_a % num_b
             logger.debug(f"🧮📊✅ Number modulo result: {result}")
@@ -656,7 +666,7 @@ def get_attribute(obj: CtyValue, name: str) -> CtyValue:
     if isinstance(obj.type, CtyObject):
         try:
             # Get object attributes
-            obj_value = cast(Dict[str, Any], obj.value)
+            obj_value = cast(dict[str, Any], obj.value)
             
             # Check if the attribute exists in the type definition
             if name not in obj.type.attribute_types:
@@ -732,7 +742,7 @@ def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyVa
                     idx = int(index.value)
                     if 0 <= idx < len(collection.type.element_types):
                         return CtyValue.unknown(collection.type.element_types[idx])
-                except (CtyValueError, TypeError):
+                except (ValueError, TypeError):
                     pass
             # If we can't determine the element type, return unknown dynamic
             return CtyValue.unknown(CtyDynamic())
@@ -753,7 +763,7 @@ def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyVa
                     idx = int(index.value)
                     if 0 <= idx < len(collection.type.element_types):
                         return CtyValue.null(collection.type.element_types[idx])
-                except (CtyValueError, TypeError):
+                except (ValueError, TypeError):
                     pass
             # If we can't determine the element type, return null dynamic
             return CtyValue.null(CtyDynamic())
@@ -775,28 +785,28 @@ def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyVa
     
     # Handle null index
     if index.is_null:
-        raise CtyValueError("Cannot use null as an index")
+        raise ValueError("Cannot use null as an index")
     
     # Handle actual element access
     try:
-        # List element access
+        # list element access
         if isinstance(collection.type, CtyList):
             # Ensure index is a number
             if not isinstance(index.type, CtyNumber):
-                raise TypeError(f"List index must be a number, got {index.type}")
+                raise TypeError(f"list index must be a number, got {index.type}")
             
             # Convert index to integer
             try:
                 idx = int(index.value)
-            except (CtyValueError, TypeError):
-                raise TypeError(f"List index must be an integer, got {index.value}")
+            except (ValueError, TypeError):
+                raise TypeError(f"list index must be an integer, got {index.value}")
             
             # Get the list value
-            list_value = cast(List[Any], collection.value)
+            list_value = cast(list[Any], collection.value)
             
             # Check bounds
             if idx < 0 or idx >= len(list_value):
-                raise IndexError(f"List index {idx} out of range (0-{len(list_value)-1})")
+                raise IndexError(f"list index {idx} out of range (0-{len(list_value)-1})")
             
             # Get the element
             element = list_value[idx]
@@ -813,7 +823,7 @@ def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyVa
             key = str(index.value)
             
             # Get the map value
-            map_value = cast(Dict[str, Any], collection.value)
+            map_value = cast(dict[str, Any], collection.value)
             
             # Check if key exists
             if key not in map_value:
@@ -824,24 +834,24 @@ def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyVa
             logger.debug(f"🧮🔢✅ Got map element: {element}")
             return CtyValue(collection.type.element_type, element)
         
-        # Tuple element access
+        # tuple element access
         elif isinstance(collection.type, CtyTuple):
             # Ensure index is a number
             if not isinstance(index.type, CtyNumber):
-                raise TypeError(f"Tuple index must be a number, got {index.type}")
+                raise TypeError(f"tuple index must be a number, got {index.type}")
             
             # Convert index to integer
             try:
                 idx = int(index.value)
-            except (CtyValueError, TypeError):
-                raise TypeError(f"Tuple index must be an integer, got {index.value}")
+            except (ValueError, TypeError):
+                raise TypeError(f"tuple index must be an integer, got {index.value}")
             
             # Get the tuple value
             tuple_value = collection.value
             
             # Check bounds
             if idx < 0 or idx >= len(tuple_value):
-                raise IndexError(f"Tuple index {idx} out of range (0-{len(tuple_value)-1})")
+                raise IndexError(f"tuple index {idx} out of range (0-{len(tuple_value)-1})")
             
             # Get the element type and value
             element_type = collection.type.element_types[idx]
@@ -854,7 +864,7 @@ def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyVa
             raise TypeError(f"Cannot get element from type {collection.type}")
             
     except Exception as e:
-        if isinstance(e, (TypeError, CtyValueError, KeyError, IndexError)):
+        if isinstance(e, (TypeError, ValueError, KeyError, IndexError)):
             # Re-raise validation errors
             raise
         
@@ -893,32 +903,32 @@ def length(collection: CtyValue) -> CtyValue:
             logger.debug(f"🧮📏✅ String length: {result}")
             return CtyValue(CtyNumber(), result)
         
-        # List length
+        # list length
         elif isinstance(collection.type, CtyList):
-            list_value = cast(List[Any], collection.value)
+            list_value = cast(list[Any], collection.value)
             result = len(list_value)
-            logger.debug(f"🧮📏✅ List length: {result}")
+            logger.debug(f"🧮📏✅ list length: {result}")
             return CtyValue(CtyNumber(), result)
         
         # Map length
         elif isinstance(collection.type, CtyMap):
-            map_value = cast(Dict[str, Any], collection.value)
+            map_value = cast(dict[str, Any], collection.value)
             result = len(map_value)
             logger.debug(f"🧮📏✅ Map length: {result}")
             return CtyValue(CtyNumber(), result)
         
-        # Set length
+        # set length
         elif isinstance(collection.type, CtySet):
-            set_value = cast(Set[Any], collection.value)
+            set_value = cast(set[Any], collection.value)
             result = len(set_value)
-            logger.debug(f"🧮📏✅ Set length: {result}")
+            logger.debug(f"🧮📏✅ set length: {result}")
             return CtyValue(CtyNumber(), result)
         
-        # Tuple length
+        # tuple length
         elif isinstance(collection.type, CtyTuple):
             tuple_value = collection.value
             result = len(tuple_value)
-            logger.debug(f"🧮📏✅ Tuple length: {result}")
+            logger.debug(f"🧮📏✅ tuple length: {result}")
             return CtyValue(CtyNumber(), result)
         
         # Unsupported type
@@ -972,14 +982,14 @@ def contains(collection: CtyValue, item: CtyValue) -> CtyValue:
             logger.debug(f"🧮🔎✅ String containment result: {result}")
             return CtyValue(CtyBool(), result)
         
-        # List containment
+        # list containment
         elif isinstance(collection.type, CtyList):
             # Check if item type is compatible with list element type
             if not item.type.equal(collection.type.element_type):
                 # If types don't match, it cannot be in the list
                 return CtyValue(CtyBool(), False)
             
-            list_value = cast(List[Any], collection.value)
+            list_value = cast(list[Any], collection.value)
             
             # We need to perform a deep equals check for each element
             for elem in list_value:
@@ -999,19 +1009,19 @@ def contains(collection: CtyValue, item: CtyValue) -> CtyValue:
             if not isinstance(item.type, CtyString):
                 raise TypeError(f"Map keys can only be strings, got {item.type}")
             
-            map_value = cast(Dict[str, Any], collection.value)
+            map_value = cast(dict[str, Any], collection.value)
             result = str(item.value) in map_value
             logger.debug(f"🧮🔎✅ Map key containment result: {result}")
             return CtyValue(CtyBool(), result)
         
-        # Set containment
+        # set containment
         elif isinstance(collection.type, CtySet):
             # Check if item type is compatible with set element type
             if not item.type.equal(collection.type.element_type):
                 # If types don't match, it cannot be in the set
                 return CtyValue(CtyBool(), False)
             
-            set_value = cast(Set[Any], collection.value)
+            set_value = cast(set[Any], collection.value)
             
             # We need to perform a deep equals check for each element
             for elem in set_value:
@@ -1043,14 +1053,14 @@ def concat_lists(*lists: CtyValue) -> CtyValue:
     Concatenate multiple lists into a single list.
     
     Args:
-        *lists: List values to concatenate
+        *lists: list values to concatenate
         
     Returns:
         Concatenated list value
         
     Raises:
         TypeError: If any argument is not a list type
-        CtyValueError: If lists have incompatible element types
+        ValueError: If lists have incompatible element types
     """
     logger.debug(f"🧮🔗✅ Concatenating {len(lists)} lists")
     
@@ -1083,7 +1093,7 @@ def concat_lists(*lists: CtyValue) -> CtyValue:
         
         # Check element type compatibility
         if not lst.type.element_type.equal(element_type):
-            raise CtyValueError(f"List element types don't match: {lst.type.element_type} vs {element_type}")
+            raise ValueError(f"list element types don't match: {lst.type.element_type} vs {element_type}")
         
         if not lst.is_known:
             has_unknown = True
@@ -1103,7 +1113,7 @@ def concat_lists(*lists: CtyValue) -> CtyValue:
         result = []
         for lst in lists:
             if not lst.is_null:
-                list_value = cast(List[Any], lst.value)
+                list_value = cast(list[Any], lst.value)
                 result.extend(list_value)
         
         logger.debug(f"🧮🔗✅ Concatenated list result length: {len(result)}")
@@ -1126,7 +1136,7 @@ def merge_maps(*maps: CtyValue) -> CtyValue:
         
     Raises:
         TypeError: If any argument is not a map type
-        CtyValueError: If maps have incompatible element types
+        ValueError: If maps have incompatible element types
     """
     logger.debug(f"🧮🔀✅ Merging {len(maps)} maps")
     
@@ -1159,7 +1169,7 @@ def merge_maps(*maps: CtyValue) -> CtyValue:
         
         # Check element type compatibility
         if not map_val.type.element_type.equal(element_type):
-            raise CtyValueError(f"Map element types don't match: {map_val.type.element_type} vs {element_type}")
+            raise ValueError(f"Map element types don't match: {map_val.type.element_type} vs {element_type}")
         
         if not map_val.is_known:
             has_unknown = True
@@ -1179,7 +1189,7 @@ def merge_maps(*maps: CtyValue) -> CtyValue:
         result = {}
         for map_val in maps:
             if not map_val.is_null:
-                map_value = cast(Dict[str, Any], map_val.value)
+                map_value = cast(dict[str, Any], map_val.value)
                 # Later maps override earlier ones for duplicate keys
                 result.update(map_value)
         
@@ -1233,14 +1243,14 @@ def slice_string(str_val: CtyValue, start_idx: CtyValue, end_idx: Optional[CtyVa
     # Get the start index
     try:
         start = int(start_idx.value)
-    except (CtyValueError, TypeError):
+    except (ValueError, TypeError):
         raise TypeError(f"Start index must be an integer, got {start_idx.value}")
     
     # Get the end index
     if end_idx is not None:
         try:
             end = int(end_idx.value)
-        except (CtyValueError, TypeError):
+        except (ValueError, TypeError):
             raise TypeError(f"End index must be an integer, got {end_idx.value}")
     else:
         end = len(string)
@@ -1267,7 +1277,7 @@ def slice_list(list_val: CtyValue, start_idx: CtyValue, end_idx: Optional[CtyVal
     Extract a slice from a list.
     
     Args:
-        list_val: List value
+        list_val: list value
         start_idx: Start index (inclusive)
         end_idx: End index (exclusive, optional)
         
@@ -1299,19 +1309,19 @@ def slice_list(list_val: CtyValue, start_idx: CtyValue, end_idx: Optional[CtyVal
         return CtyValue.null(CtyList(element_type=list_val.type.element_type))
     
     # Get the list value
-    list_value = cast(List[Any], list_val.value)
+    list_value = cast(list[Any], list_val.value)
     
     # Get the start index
     try:
         start = int(start_idx.value)
-    except (CtyValueError, TypeError):
+    except (ValueError, TypeError):
         raise TypeError(f"Start index must be an integer, got {start_idx.value}")
     
     # Get the end index
     if end_idx is not None:
         try:
             end = int(end_idx.value)
-        except (CtyValueError, TypeError):
+        except (ValueError, TypeError):
             raise TypeError(f"End index must be an integer, got {end_idx.value}")
     else:
         end = len(list_value)
@@ -1326,7 +1336,7 @@ def slice_list(list_val: CtyValue, start_idx: CtyValue, end_idx: Optional[CtyVal
     # Slice the list
     try:
         result = list_value[start:end]
-        logger.debug(f"🧮✂️✅ List slice result length: {len(result)}")
+        logger.debug(f"🧮✂️✅ list slice result length: {len(result)}")
         return CtyValue(CtyList(element_type=list_val.type.element_type), result)
     except Exception as e:
         logger.error(f"🧮✂️❌ Error slicing list: {e}", exc_info=True)

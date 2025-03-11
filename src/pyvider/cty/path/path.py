@@ -2,9 +2,9 @@
 # pyvider/cty/path/path.py
 
 """
-Path implementation for navigating CTY values.
+Path implementation for navigating Cty values.
 
-This module provides a way to build and follow paths through nested CTY values,
+This module provides a way to build and follow paths through nested Cty values,
 similar to how JavaScript allows property access with dot notation or indexing.
 
 Paths can include:
@@ -114,7 +114,7 @@ class GetAttrStep(PathStep):
             attr_type = await self.apply_type(value.type)
             
             # Create an unknown value of the attribute's type
-            from pyvider.cty.values.base import Value as CtyValue
+            from pyvider.cty.values import CtyValue
             return CtyValue(type_=attr_type, is_unknown=True)
             
         # Check if the value is an object
@@ -194,7 +194,7 @@ class IndexStep(PathStep):
             elem_type = await self.apply_type(value.type)
             
             # Create an unknown value of the element's type
-            from pyvider.cty.values.base import Value as CtyValue
+            from pyvider.cty.values import CtyValue
             return CtyValue(type_=elem_type, is_unknown=True)
             
         # Check if the value is a list or tuple
@@ -277,7 +277,7 @@ class KeyStep(PathStep):
             val_type = await self.apply_type(value.type)
             
             # Create an unknown value of the value's type
-            from pyvider.cty.values.base import Value as CtyValue
+            from pyvider.cty.values import CtyValue
             return CtyValue(type_=val_type, is_unknown=True)
             
         # Check if the value is a map
@@ -299,7 +299,7 @@ class KeyStep(PathStep):
             raw_value = value.value[str_key]
             
             # Create a value of the proper type
-            from pyvider.cty.values.base import Value as CtyValue
+            from pyvider.cty.values import CtyValue
             return CtyValue(type_=value.type.value_type, value=raw_value)
         except Exception as e:
             raise AttributePathError(f"Failed to get value for key {self.key}: {e}")
@@ -341,7 +341,7 @@ class KeyStep(PathStep):
 @attrs.define
 class Path:
     """
-    A path through a nested CTY value.
+    A path through a nested Cty value.
     
     A path consists of a sequence of steps, where each step navigates from a
     value to a nested value. Paths can be constructed incrementally and then

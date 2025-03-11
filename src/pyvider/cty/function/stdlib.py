@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+
 # pyvider/cty/function/stdlib.py
 
 """
-Standard library of functions for CTY.
+Standard library of functions for Cty.
 
 This module provides a set of standard functions that can be used in
 Terraform expressions. It implements the core set of functions that
@@ -27,14 +27,23 @@ import base64
 import json
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Sequence, Union
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
-from pyvider.cty.values.base import Value
+from pyvider.cty.types import (
+    CtyType,
+    CtyString,
+    CtyNumber,
+    CtyBool,
+    CtyList,
+    CtyMap,
+    CtySet,
+    CtyObject,
+    CtyDynamic,
+    CtyTuple,
+)
+
+from pyvider.cty.values import CtyValue
 from pyvider.cty.function.base import (
     Parameter,
     VariadicParameter,
@@ -47,25 +56,25 @@ from pyvider.cty.function.base import (
 # Type Helpers
 #
 
-def return_type_number(args: List[Value]) -> CtyType:
+def return_type_number(args: list[CtyValue]) -> CtyType:
     """Always returns CtyNumber type."""
     return CtyNumber()
     
-def return_type_string(args: List[Value]) -> CtyType:
+def return_type_string(args: list[CtyValue]) -> CtyType:
     """Always returns CtyString type."""
     return CtyString()
     
-def return_type_bool(args: List[Value]) -> CtyType:
+def return_type_bool(args: list[CtyValue]) -> CtyType:
     """Always returns CtyBool type."""
     return CtyBool()
     
-def return_type_first_arg(args: List[Value]) -> CtyType:
+def return_type_first_arg(args: list[CtyValue]) -> CtyType:
     """Returns the type of the first argument."""
     if not args:
         return CtyDynamic()
     return args[0].type
     
-def return_type_list_of(args: List[Value]) -> CtyType:
+def return_type_list_of(args: list[CtyValue]) -> CtyType:
     """Returns a list type with element type from the first argument."""
     if not args:
         return CtyList(element_type=CtyDynamic())
@@ -75,57 +84,57 @@ def return_type_list_of(args: List[Value]) -> CtyType:
 # String Functions
 #
 
-def fn_upper(args: List[Value], return_type: CtyType) -> Value:
+def fn_upper(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Convert string to uppercase."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     result = str(args[0].value).upper()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_lower(args: List[Value], return_type: CtyType) -> Value:
+def fn_lower(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Convert string to lowercase."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     result = str(args[0].value).lower()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_title(args: List[Value], return_type: CtyType) -> Value:
+def fn_title(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Convert string to title case."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     result = str(args[0].value).title()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_trim(args: List[Value], return_type: CtyType) -> Value:
+def fn_trim(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Trim whitespace from string."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     result = str(args[0].value).strip()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_substr(args: List[Value], return_type: CtyType) -> Value:
+def fn_substr(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Extract substring."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     s = str(args[0].value)
     offset = int(args[1].value)
@@ -137,57 +146,57 @@ def fn_substr(args: List[Value], return_type: CtyType) -> Value:
         
     # Bounds checking
     if offset < 0 or offset >= len(s):
-        return Value(type_=return_type, value="")
+        return CtyValue(type_=return_type, value="")
         
     # Extract substring
     result = s[offset:offset + length]
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_replace(args: List[Value], return_type: CtyType) -> Value:
+def fn_replace(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Replace substring."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     s = str(args[0].value)
     search = str(args[1].value)
     replace = str(args[2].value)
     
     result = s.replace(search, replace)
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_format(args: List[Value], return_type: CtyType) -> Value:
+def fn_format(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Format string using format specifiers."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     format_str = str(args[0].value)
     format_args = [arg.value for arg in args[1:]]
     
     try:
         result = format_str.format(*format_args)
-        return Value(type_=return_type, value=result)
+        return CtyValue(type_=return_type, value=result)
     except Exception as e:
         logger.error(f"🧰🔧❌ Error formatting string: {e}")
         # Return original string on error
-        return Value(type_=return_type, value=format_str)
+        return CtyValue(type_=return_type, value=format_str)
 
 #
 # Numeric Functions
 #
 
-def fn_abs(args: List[Value], return_type: CtyType) -> Value:
+def fn_abs(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Absolute value."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     num = args[0].value
     if isinstance(num, Decimal):
@@ -195,15 +204,15 @@ def fn_abs(args: List[Value], return_type: CtyType) -> Value:
     else:
         result = abs(Decimal(str(num)))
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_ceil(args: List[Value], return_type: CtyType) -> Value:
+def fn_ceil(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Ceiling function (round up)."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     num = args[0].value
     if isinstance(num, Decimal):
@@ -211,15 +220,15 @@ def fn_ceil(args: List[Value], return_type: CtyType) -> Value:
     else:
         result = Decimal(str(num)).quantize(Decimal('1.'), rounding=ROUND_HALF_UP)
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_floor(args: List[Value], return_type: CtyType) -> Value:
+def fn_floor(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Floor function (round down)."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     num = args[0].value
     if isinstance(num, Decimal):
@@ -227,15 +236,15 @@ def fn_floor(args: List[Value], return_type: CtyType) -> Value:
     else:
         result = Decimal(str(num)).to_integral_exact(rounding=ROUND_HALF_UP)
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_max(args: List[Value], return_type: CtyType) -> Value:
+def fn_max(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Maximum value."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     # Convert all to Decimal for consistency
     nums = []
@@ -246,15 +255,15 @@ def fn_max(args: List[Value], return_type: CtyType) -> Value:
             nums.append(Decimal(str(arg.value)))
             
     result = max(nums)
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_min(args: List[Value], return_type: CtyType) -> Value:
+def fn_min(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Minimum value."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     # Convert all to Decimal for consistency
     nums = []
@@ -265,19 +274,19 @@ def fn_min(args: List[Value], return_type: CtyType) -> Value:
             nums.append(Decimal(str(arg.value)))
             
     result = min(nums)
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
 
 #
 # Collection Functions
 #
 
-def fn_length(args: List[Value], return_type: CtyType) -> Value:
+def fn_length(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Get length of a string or collection."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = args[0].value
     
@@ -287,15 +296,15 @@ def fn_length(args: List[Value], return_type: CtyType) -> Value:
         # Try to convert to string and get length
         result = len(str(value))
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_element(args: List[Value], return_type: CtyType) -> Value:
+def fn_element(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Get element from list at specified index."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     lst = args[0].value
     index = int(args[1].value)
@@ -306,18 +315,18 @@ def fn_element(args: List[Value], return_type: CtyType) -> Value:
         
     # Bounds checking
     if not isinstance(lst, (list, tuple)) or index < 0 or index >= len(lst):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     result = lst[index]
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_contains(args: List[Value], return_type: CtyType) -> Value:
+def fn_contains(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Check if list contains a value."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     lst = args[0].value
     value = args[1].value
@@ -334,51 +343,51 @@ def fn_contains(args: List[Value], return_type: CtyType) -> Value:
     else:
         result = False
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_keys(args: List[Value], return_type: CtyType) -> Value:
+def fn_keys(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Get keys from a map."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = args[0].value
     
     if not isinstance(value, dict):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     result = list(value.keys())
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_values(args: List[Value], return_type: CtyType) -> Value:
+def fn_values(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Get values from a map."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = args[0].value
     
     if not isinstance(value, dict):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     result = list(value.values())
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_merge(args: List[Value], return_type: CtyType) -> Value:
+def fn_merge(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Merge maps."""
     if any(arg.is_null for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if any(arg.is_unknown for arg in args):
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     # Ensure all args are dicts
     if not all(isinstance(arg.value, dict) for arg in args):
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     # Start with empty dict
     result = {}
@@ -387,19 +396,19 @@ def fn_merge(args: List[Value], return_type: CtyType) -> Value:
     for arg in args:
         result.update(arg.value)
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
 
 #
 # Conversion Functions
 #
 
-def fn_tostring(args: List[Value], return_type: CtyType) -> Value:
+def fn_tostring(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Convert to string."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = args[0].value
     
@@ -412,15 +421,15 @@ def fn_tostring(args: List[Value], return_type: CtyType) -> Value:
     else:
         result = str(value)
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_tonumber(args: List[Value], return_type: CtyType) -> Value:
+def fn_tonumber(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Convert to number."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = args[0].value
     
@@ -433,20 +442,20 @@ def fn_tonumber(args: List[Value], return_type: CtyType) -> Value:
             result = Decimal(value)
         else:
             # Can't convert
-            return Value(type_=return_type, is_null=True)
+            return CtyValue(type_=return_type, is_null=True)
     except Exception:
         # Conversion failed
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_tobool(args: List[Value], return_type: CtyType) -> Value:
+def fn_tobool(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Convert to bool."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = args[0].value
     
@@ -462,138 +471,138 @@ def fn_tobool(args: List[Value], return_type: CtyType) -> Value:
             result = False
         else:
             # Can't convert
-            return Value(type_=return_type, is_null=True)
+            return CtyValue(type_=return_type, is_null=True)
     else:
         # Can't convert
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
 
 #
 # Filesystem Functions
 #
 
-def fn_file(args: List[Value], return_type: CtyType) -> Value:
+def fn_file(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Read file contents."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     path = str(args[0].value)
     
     try:
         with open(path, "r") as f:
             content = f.read()
-        return Value(type_=return_type, value=content)
+        return CtyValue(type_=return_type, value=content)
     except Exception as e:
         logger.error(f"🧰🔧❌ Error reading file: {e}")
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
-def fn_fileexists(args: List[Value], return_type: CtyType) -> Value:
+def fn_fileexists(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Check if file exists."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     path = str(args[0].value)
     result = os.path.isfile(path)
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_dirname(args: List[Value], return_type: CtyType) -> Value:
+def fn_dirname(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Get directory name from path."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     path = str(args[0].value)
     result = os.path.dirname(path)
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_basename(args: List[Value], return_type: CtyType) -> Value:
+def fn_basename(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Get basename from path."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     path = str(args[0].value)
     result = os.path.basename(path)
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
 
 #
 # Crypto Functions
 #
 
-def fn_base64encode(args: List[Value], return_type: CtyType) -> Value:
+def fn_base64encode(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Encode string as base64."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = str(args[0].value).encode('utf-8')
     result = base64.b64encode(value).decode('utf-8')
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_base64decode(args: List[Value], return_type: CtyType) -> Value:
+def fn_base64decode(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Decode base64 string."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     try:
         value = str(args[0].value).encode('utf-8')
         result = base64.b64decode(value).decode('utf-8')
-        return Value(type_=return_type, value=result)
+        return CtyValue(type_=return_type, value=result)
     except Exception as e:
         logger.error(f"🧰🔧❌ Error decoding base64: {e}")
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
-def fn_md5(args: List[Value], return_type: CtyType) -> Value:
+def fn_md5(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Calculate MD5 hash."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = str(args[0].value).encode('utf-8')
     result = hashlib.md5(value).hexdigest()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_sha1(args: List[Value], return_type: CtyType) -> Value:
+def fn_sha1(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Calculate SHA1 hash."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = str(args[0].value).encode('utf-8')
     result = hashlib.sha1(value).hexdigest()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
     
-def fn_sha256(args: List[Value], return_type: CtyType) -> Value:
+def fn_sha256(args: list[CtyValue], return_type: CtyType) -> CtyValue:
     """Calculate SHA256 hash."""
     if args[0].is_null:
-        return Value(type_=return_type, is_null=True)
+        return CtyValue(type_=return_type, is_null=True)
         
     if args[0].is_unknown:
-        return Value(type_=return_type, is_unknown=True)
+        return CtyValue(type_=return_type, is_unknown=True)
         
     value = str(args[0].value).encode('utf-8')
     result = hashlib.sha256(value).hexdigest()
-    return Value(type_=return_type, value=result)
+    return CtyValue(type_=return_type, value=result)
 
 #
 # Register all functions

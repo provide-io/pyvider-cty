@@ -1,5 +1,5 @@
 
-# Pyvider CTY Package
+# Pyvider Cty Package
 
                                                           ::
                                                         *:@@:%
@@ -27,3 +27,14 @@
          =@@@@@*::::::::::::::-*@@@@@@@@@@@@@.        ::  ::  :
                   :#@@@@@@@@@=.                       :::    ::
 
+
+# TODO:
+
+* Fix the failure and assertions.
+
+
+## License
+
+This project is licensed under the **Creative Commons Attribution-NoDerivs 4.0 International (CC BY-ND 4.0)**.
+
+[![CC BY-ND 4.0](https://licensebuttons.net/l/by-nd/4.0/88x31.png)](https://creativecommons.org/licenses/by-nd/4.0/)

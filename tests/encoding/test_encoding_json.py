@@ -75,7 +75,7 @@ class TestJsonEncoding():
     def test_unmarshal_bytes_data(self):
         """Test unmarshaling from bytes data."""
         # Mock the Value constructor
-        with patch('pyvider.cty.encoding.json.Value') as mock_value_class:
+        with patch('pyvider.cty.encoding.json.CtyValue') as mock_value_class:
             # Set up mock return value
             mock_value_instance = MagicMock()
             mock_value_class.return_value = mock_value_instance
@@ -141,8 +141,8 @@ class TestJsonEncoding():
             "object": {"nested": "value"}
         }
         
-        # Mock Value constructor and type.validate
-        with patch('pyvider.cty.encoding.json.Value') as mock_value_class:
+        # Mock CtyValue constructor and type.validate
+        with patch('pyvider.cty.encoding.json.CtyValue') as mock_value_class:
             # Set up mock return value
             mock_value_instance = MagicMock()
             mock_value_class.return_value = mock_value_instance

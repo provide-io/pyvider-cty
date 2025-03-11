@@ -1,7 +1,10 @@
+
+import pytest
 import unittest
+
 from unittest.mock import MagicMock, patch
 
-from pyvider.cty.values.base import Value
+from pyvider.cty import CtyValue
 
 
 class TestValue(unittest.TestCase):
@@ -15,7 +18,7 @@ class TestValue(unittest.TestCase):
     def test_value_initialization(self):
         """Test basic Value initialization."""
         # Create a regular value
-        val = Value(type_=self.mock_type, value="test")
+        val = CtyValue(type_=self.mock_type, value="test")
         
         # Assertions
         self.assertEqual(val._type, self.mock_type)
@@ -27,7 +30,7 @@ class TestValue(unittest.TestCase):
     def test_value_unknown(self):
         """Test unknown Value initialization."""
         # Create an unknown value
-        val = Value(type_=self.mock_type, is_unknown=True)
+        val = CtyValue(type_=self.mock_type, is_unknown=True)
         
         # Assertions
         self.assertEqual(val._type, self.mock_type)
@@ -40,7 +43,7 @@ class TestValue(unittest.TestCase):
     def test_value_null(self):
         """Test null Value initialization."""
         # Create a null value
-        val = Value(type_=self.mock_type, is_null=True)
+        val = CtyValue(type_=self.mock_type, is_null=True)
         
         # Assertions
         self.assertEqual(val._type, self.mock_type)
@@ -55,7 +58,7 @@ class TestValue(unittest.TestCase):
         """Test Value with marks."""
         # Create a value with marks
         marks = frozenset(["sensitive", "encrypted"])
-        val = Value(type_=self.mock_type, value="password", marks=marks)
+        val = CtyValue(type_=self.mock_type, value="password", marks=marks)
         
         # Assertions
         self.assertEqual(val._type, self.mock_type)
@@ -68,7 +71,7 @@ class TestValue(unittest.TestCase):
     def test_value_has_mark(self):
         """Test has_mark method."""
         # Create a value with a mark
-        val = Value(type_=self.mock_type, value="test", marks=frozenset([self.mock_mark]))
+        val = CtyValue(type_=self.mock_type, value="test", marks=frozenset([self.mock_mark]))
         
         # Assertions
         self.assertTrue(val.has_mark(self.mock_mark))
@@ -77,7 +80,7 @@ class TestValue(unittest.TestCase):
     def test_value_add_mark(self):
         """Test mark method to add a mark."""
         # Create a value without marks
-        val = Value(type_=self.mock_type, value="test")
+        val = CtyValue(type_=self.mock_type, value="test")
         
         # Add a mark
         marked_val = val.mark(self.mock_mark)
@@ -91,7 +94,7 @@ class TestValue(unittest.TestCase):
     def test_value_add_multiple_marks(self):
         """Test adding multiple marks to a value."""
         # Create a value with one mark
-        val = Value(type_=self.mock_type, value="test", marks=frozenset(["mark1"]))
+        val = CtyValue(type_=self.mock_type, value="test", marks=frozenset(["mark1"]))
         
         # Add another mark
         marked_val = val.mark("mark2")
@@ -104,7 +107,7 @@ class TestValue(unittest.TestCase):
     def test_value_unmark(self):
         """Test unmark method to remove all marks."""
         # Create a value with marks
-        val = Value(
+        val = CtyValue(
             type_=self.mock_type, 
             value="test", 
             marks=frozenset(["mark1", "mark2"])
@@ -122,7 +125,7 @@ class TestValue(unittest.TestCase):
     def test_value_type_property(self):
         """Test type property."""
         # Create a value
-        val = Value(type_=self.mock_type, value="test")
+        val = CtyValue(type_=self.mock_type, value="test")
         
         # Assertions
         self.assertEqual(val.type, self.mock_type)
@@ -130,10 +133,10 @@ class TestValue(unittest.TestCase):
     def test_value_is_known_property(self):
         """Test is_known property."""
         # Create a known value
-        known_val = Value(type_=self.mock_type, value="test")
+        known_val = CtyValue(type_=self.mock_type, value="test")
         
         # Create an unknown value
-        unknown_val = Value(type_=self.mock_type, is_unknown=True)
+        unknown_val = CtyValue(type_=self.mock_type, is_unknown=True)
         
         # Assertions
         self.assertTrue(known_val.is_known)
@@ -142,10 +145,10 @@ class TestValue(unittest.TestCase):
     def test_value_is_null_property(self):
         """Test is_null property."""
         # Create a null value
-        null_val = Value(type_=self.mock_type, is_null=True)
+        null_val = CtyValue(type_=self.mock_type, is_null=True)
         
         # Create a non-null value
-        non_null_val = Value(type_=self.mock_type, value="test")
+        non_null_val = CtyValue(type_=self.mock_type, value="test")
         
         # Assertions
         self.assertTrue(null_val.is_null)
@@ -154,7 +157,7 @@ class TestValue(unittest.TestCase):
     def test_value_refine(self):
         """Test refine method."""
         # Create a value
-        val = Value(type_=self.mock_type, value="test")
+        val = CtyValue(type_=self.mock_type, value="test")
         
         # Mock the ValueRefinementBuilder class
         with patch('pyvider.cty.values.refinement.ValueRefinementBuilder') as mock_builder:
