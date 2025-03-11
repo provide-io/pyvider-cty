@@ -13,6 +13,7 @@ authors = [
 
 dependencies = [
     "attrs>=25.1.0",
+    "msgpack>=1.1.0",
 ]
 
 [dependency-groups]
