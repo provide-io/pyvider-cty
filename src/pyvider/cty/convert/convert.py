@@ -84,8 +84,8 @@ class ConversionRegistry:
     and provides methods for finding conversion paths and performing conversions.
     """
     # Maps (source_type, target_type) to a Conversion object
-    _safe_conversions: Dict[Tuple[Type[CtyType], Type[CtyType]], Conversion] = field(factory=dict)
-    _unsafe_conversions: Dict[Tuple[Type[CtyType], Type[CtyType]], Conversion] = field(factory=dict)
+    _safe_conversions: Dict[Tuple[Type[CtyType], Type[CtyType]], Conversion] = attrs.field(factory=dict)
+    _unsafe_conversions: Dict[Tuple[Type[CtyType], Type[CtyType]], Conversion] = attrs.field(factory=dict)
     
     def register(
         self, 

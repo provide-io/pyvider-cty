@@ -160,18 +160,16 @@ class VariadicParameter(Parameter):
 
 @attrs.define
 class FunctionSpec:
-    """
-    Complete specification for a function.
-    
-    This includes parameters, return type, and implementation.
-    """
+    # Required attributes must come first
     name: str = attrs.field()
-    params: List[Parameter] = attrs.field(factory=list)
-    variadic_param: Optional[VariadicParameter] = attrs.field(default=None)
+    params: List[Parameter] = attrs.field()
     return_type_fn: Callable[[List['Value']], CtyType] = attrs.field()
     implementation: Callable[[List['Value'], CtyType], 'Value'] = attrs.field()
-    description: str = attrs.field(default="")
     
+    # Optional attributes with defaults come last
+    variadic_param: Optional[VariadicParameter] = attrs.field(default=None)
+    description: str = attrs.field(default="")
+        
     @name.validator
     def _validate_name(self, attribute, value):
         if not value:

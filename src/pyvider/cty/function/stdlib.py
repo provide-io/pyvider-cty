@@ -29,7 +29,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
-from pyvider.telemetry import logger
+from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet

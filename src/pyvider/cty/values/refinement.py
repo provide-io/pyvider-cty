@@ -1,8 +1,10 @@
 
 # pyvider/cty/values/refinement.py
 
-from typing import Optional, List
+from typing import Any, Optional, List
 from decimal import Decimal
+
+from pyvider.cty.values.base import Value as CtyValue
 
 class ValueRefinement:
     """Base class for all value refinements."""
@@ -34,7 +36,7 @@ class NumberRangeRefinement(ValueRefinement):
 class ValueRefinementBuilder:
     """Builder for creating refined values."""
 
-    def __init__(self, value: Value):
+    def __init__(self, value: CtyValue):
         self._value = value
         self._refinements: List[ValueRefinement] = []
 
@@ -71,7 +73,7 @@ class ValueRefinementBuilder:
         )
         return self
 
-    def new_value(self) -> Value:
+    def new_value(self) -> CtyValue:
         """Create the refined value."""
         # If value is already known, check if it satisfies refinements
         if self._value.is_known and not self._value.is_null:
@@ -84,7 +86,7 @@ class ValueRefinementBuilder:
             return self._value
 
         # For unknown values, create a new unknown with refinements
-        return Value(
+        return CtyValue(
             type_=self._value.type,
             is_unknown=True,
             marks=self._value._marks,
