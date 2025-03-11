@@ -29,8 +29,7 @@ class CtyBool(CtyType[bool]):
         return super().__eq__(other)
 
     def __repr__(self):
-        """Return a string representation of the CtyBool type."""
-        return f"{self.__class__.__name__}(metadata={self.metadata})"
+        return f"{self.__class__.__name__}()"
 
     def __hash__(self):
         return hash(self.value)
