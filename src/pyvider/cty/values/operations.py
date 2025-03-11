@@ -2,7 +2,7 @@
 # pyvider/cty/values/operations.py
 
 """
-Value operations for the CTY type system.
+CtyValue operations for the CTY type system.
 
 This module provides operations that can be performed on CTY values, similar to
 the operations provided by Go-CTY. These include equality checking, type conversion,
@@ -23,7 +23,7 @@ from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
-from pyvider.cty.values.base import Value
+from pyvider.cty.values.base import Value as CtyValue
 from pyvider.cty.exceptions import CtyError, TypeMismatchError
 
 # Type variables for generic operations
@@ -31,7 +31,7 @@ T = TypeVar('T')
 R = TypeVar('R')
 
 
-def equals(a: Value, b: Value) -> Value:
+def equals(a: CtyValue, b: CtyValue) -> CtyValue:
     """
     Check if two values are equal.
     
@@ -40,7 +40,7 @@ def equals(a: Value, b: Value) -> Value:
         b: Second value
         
     Returns:
-        A boolean Value representing the equality check result
+        A boolean CtyValue representing the equality check result
         
     This operation checks both value equality and type equality.
     Unknown or null values result in unknown boolean values.
@@ -50,22 +50,22 @@ def equals(a: Value, b: Value) -> Value:
     # Handle unknown values
     if not a.is_known or not b.is_known:
         logger.debug("🧮🔄✅ One or both values are unknown, result is unknown")
-        return Value.unknown(CtyBool())
+        return CtyValue.unknown(CtyBool())
     
     # Handle null values
     if a.is_null or b.is_null:
         # Two nulls of compatible types are equal
         if a.is_null and b.is_null and a.type.equal(b.type):
             logger.debug("🧮🔄✅ Both values are null with compatible types, result is true")
-            return Value.bool(True)
+            return CtyValue.bool(True)
         
         logger.debug("🧮🔄✅ One value is null, other is not, or types incompatible, result is false")
-        return Value.bool(False)
+        return CtyValue.bool(False)
     
     # Type mismatch
     if not a.type.equal(b.type):
         logger.debug(f"🧮🔄✅ Type mismatch: {a.type} != {b.type}, result is false")
-        return Value.bool(False)
+        return CtyValue.bool(False)
     
     # Check actual values
     try:
@@ -82,74 +82,74 @@ def equals(a: Value, b: Value) -> Value:
             # Direct value comparison for basic types
             result = a.value == b.value
             logger.debug(f"🧮🔄✅ Direct value comparison result: {result}")
-            return Value.bool(result)
+            return CtyValue.bool(result)
             
     except Exception as e:
         logger.error(f"🧮🔄❌ Error comparing values: {e}", exc_info=True)
         # Return false on any error
-        return Value.bool(False)
+        return CtyValue.bool(False)
 
 
-def _equals_list(a: Value, b: Value) -> Value:
+def _equals_list(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for list equality checking."""
     a_list = cast(List[Any], a.value)
     b_list = cast(List[Any], b.value)
     
     # Check length first
     if len(a_list) != len(b_list):
-        return Value.bool(False)
+        return CtyValue.bool(False)
     
     # Compare each element
     for i, (a_item, b_item) in enumerate(zip(a_list, b_list)):
         # Convert Python values to CTY values
-        a_elem = Value(a.type.element_type, a_item)
-        b_elem = Value(b.type.element_type, b_item)
+        a_elem = CtyValue(a.type.element_type, a_item)
+        b_elem = CtyValue(b.type.element_type, b_item)
         
         # Check element equality
         eq_result = equals(a_elem, b_elem)
         if not eq_result.is_known:
             return eq_result  # Propagate unknown
         if not eq_result.value:
-            return Value.bool(False)  # Any non-equal element means not equal
+            return CtyValue.bool(False)  # Any non-equal element means not equal
     
     # All elements equal
-    return Value.bool(True)
+    return CtyValue.bool(True)
 
 
-def _equals_map(a: Value, b: Value) -> Value:
+def _equals_map(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for map equality checking."""
     a_map = cast(Dict[str, Any], a.value)
     b_map = cast(Dict[str, Any], b.value)
     
     # Check keys first
     if set(a_map.keys()) != set(b_map.keys()):
-        return Value.bool(False)
+        return CtyValue.bool(False)
     
     # Compare each value
     for key in a_map:
         # Convert Python values to CTY values
-        a_elem = Value(a.type.element_type, a_map[key])
-        b_elem = Value(b.type.element_type, b_map[key])
+        a_elem = CtyValue(a.type.element_type, a_map[key])
+        b_elem = CtyValue(b.type.element_type, b_map[key])
         
         # Check value equality
         eq_result = equals(a_elem, b_elem)
         if not eq_result.is_known:
             return eq_result  # Propagate unknown
         if not eq_result.value:
-            return Value.bool(False)  # Any non-equal value means not equal
+            return CtyValue.bool(False)  # Any non-equal value means not equal
     
     # All values equal
-    return Value.bool(True)
+    return CtyValue.bool(True)
 
 
-def _equals_set(a: Value, b: Value) -> Value:
+def _equals_set(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for set equality checking."""
     a_set = cast(Set[Any], a.value)
     b_set = cast(Set[Any], b.value)
     
     # Simple length check first
     if len(a_set) != len(b_set):
-        return Value.bool(False)
+        return CtyValue.bool(False)
     
     # For sets, we need to check membership both ways
     # This is more complex than just comparing sets directly
@@ -159,8 +159,8 @@ def _equals_set(a: Value, b: Value) -> Value:
         found = False
         for b_item in b_set:
             # Convert to CTY values
-            a_elem = Value(a.type.element_type, a_item)
-            b_elem = Value(b.type.element_type, b_item)
+            a_elem = CtyValue(a.type.element_type, a_item)
+            b_elem = CtyValue(b.type.element_type, b_item)
             
             # Check equality
             eq_result = equals(a_elem, b_elem)
@@ -171,13 +171,13 @@ def _equals_set(a: Value, b: Value) -> Value:
                 break
         
         if not found:
-            return Value.bool(False)  # Item in a not found in b
+            return CtyValue.bool(False)  # Item in a not found in b
     
     # All elements found
-    return Value.bool(True)
+    return CtyValue.bool(True)
 
 
-def _equals_object(a: Value, b: Value) -> Value:
+def _equals_object(a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper for object equality checking."""
     a_obj = cast(Dict[str, Any], a.value)
     b_obj = cast(Dict[str, Any], b.value)
@@ -193,21 +193,21 @@ def _equals_object(a: Value, b: Value) -> Value:
         b_attr = b_obj.get(attr_name)
         
         # Convert to CTY values
-        a_elem = Value(attr_type, a_attr)
-        b_elem = Value(attr_type, b_attr)
+        a_elem = CtyValue(attr_type, a_attr)
+        b_elem = CtyValue(attr_type, b_attr)
         
         # Check equality
         eq_result = equals(a_elem, b_elem)
         if not eq_result.is_known:
             return eq_result  # Propagate unknown
         if not eq_result.value:
-            return Value.bool(False)  # Any non-equal attribute means not equal
+            return CtyValue.bool(False)  # Any non-equal attribute means not equal
     
     # All attributes equal
-    return Value.bool(True)
+    return CtyValue.bool(True)
 
 
-def add(a: Value, b: Value) -> Value:
+def add(a: CtyValue, b: CtyValue) -> CtyValue:
     """
     Add two values together.
     
@@ -232,13 +232,13 @@ def add(a: Value, b: Value) -> Value:
     if not a.is_known or not b.is_known:
         # For unknown values, return unknown of the expected result type
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyNumber())
+            return CtyValue.unknown(CtyNumber())
         elif isinstance(a.type, CtyString) and isinstance(b.type, CtyString):
-            return Value.unknown(CtyString())
+            return CtyValue.unknown(CtyString())
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyList):
             # For lists, ensure element types are compatible
             if a.type.element_type.equal(b.type.element_type):
-                return Value.unknown(CtyList(element_type=a.type.element_type))
+                return CtyValue.unknown(CtyList(element_type=a.type.element_type))
             else:
                 raise TypeMismatchError("Cannot add lists with incompatible element types")
         else:
@@ -248,13 +248,13 @@ def add(a: Value, b: Value) -> Value:
     if a.is_null or b.is_null:
         # For null values, return null of the expected result type
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyNumber())
+            return CtyValue.null(CtyNumber())
         elif isinstance(a.type, CtyString) and isinstance(b.type, CtyString):
-            return Value.null(CtyString())
+            return CtyValue.null(CtyString())
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyList):
             # For lists, ensure element types are compatible
             if a.type.element_type.equal(b.type.element_type):
-                return Value.null(CtyList(element_type=a.type.element_type))
+                return CtyValue.null(CtyList(element_type=a.type.element_type))
             else:
                 raise TypeMismatchError("Cannot add lists with incompatible element types")
         else:
@@ -268,13 +268,13 @@ def add(a: Value, b: Value) -> Value:
             num_b = Decimal(str(b.value))
             result = num_a + num_b
             logger.debug(f"🧮➕✅ Number addition result: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # String concatenation
         elif isinstance(a.type, CtyString) and isinstance(b.type, CtyString):
             result = str(a.value) + str(b.value)
             logger.debug(f"🧮➕✅ String concatenation result: {result}")
-            return Value(CtyString(), result)
+            return CtyValue(CtyString(), result)
         
         # List concatenation
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyList):
@@ -286,7 +286,7 @@ def add(a: Value, b: Value) -> Value:
             b_list = cast(List[Any], b.value)
             result = a_list + b_list
             logger.debug(f"🧮➕✅ List concatenation result: {result}")
-            return Value(CtyList(element_type=a.type.element_type), result)
+            return CtyValue(CtyList(element_type=a.type.element_type), result)
         
         # Unsupported combination
         else:
@@ -301,7 +301,7 @@ def add(a: Value, b: Value) -> Value:
         raise CtyError(f"Error adding values: {e}") from e
 
 
-def subtract(a: Value, b: Value) -> Value:
+def subtract(a: CtyValue, b: CtyValue) -> CtyValue:
     """
     Subtract one value from another.
     
@@ -323,14 +323,14 @@ def subtract(a: Value, b: Value) -> Value:
     # Handle unknown values
     if not a.is_known or not b.is_known:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyNumber())
+            return CtyValue.unknown(CtyNumber())
         else:
             raise TypeError(f"Cannot subtract values of types {a.type} and {b.type}")
     
     # Handle null values
     if a.is_null or b.is_null:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyNumber())
+            return CtyValue.null(CtyNumber())
         else:
             raise TypeError(f"Cannot subtract values of types {a.type} and {b.type}")
     
@@ -341,7 +341,7 @@ def subtract(a: Value, b: Value) -> Value:
             num_b = Decimal(str(b.value))
             result = num_a - num_b
             logger.debug(f"🧮➖✅ Number subtraction result: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         except Exception as e:
             logger.error(f"🧮➖❌ Error subtracting values: {e}", exc_info=True)
             raise CtyError(f"Error subtracting values: {e}") from e
@@ -349,7 +349,7 @@ def subtract(a: Value, b: Value) -> Value:
         raise TypeError(f"Cannot subtract values of types {a.type} and {b.type}")
 
 
-def multiply(a: Value, b: Value) -> Value:
+def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
     """
     Multiply two values.
     
@@ -373,22 +373,22 @@ def multiply(a: Value, b: Value) -> Value:
     # Handle unknown values
     if not a.is_known or not b.is_known:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyNumber())
+            return CtyValue.unknown(CtyNumber())
         elif isinstance(a.type, CtyString) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyString())
+            return CtyValue.unknown(CtyString())
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyList(element_type=a.type.element_type))
+            return CtyValue.unknown(CtyList(element_type=a.type.element_type))
         else:
             raise TypeError(f"Cannot multiply values of types {a.type} and {b.type}")
     
     # Handle null values
     if a.is_null or b.is_null:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyNumber())
+            return CtyValue.null(CtyNumber())
         elif isinstance(a.type, CtyString) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyString())
+            return CtyValue.null(CtyString())
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyList(element_type=a.type.element_type))
+            return CtyValue.null(CtyList(element_type=a.type.element_type))
         else:
             raise TypeError(f"Cannot multiply values of types {a.type} and {b.type}")
     
@@ -400,37 +400,37 @@ def multiply(a: Value, b: Value) -> Value:
             num_b = Decimal(str(b.value))
             result = num_a * num_b
             logger.debug(f"🧮✖️✅ Number multiplication result: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # String repetition
         elif isinstance(a.type, CtyString) and isinstance(b.type, CtyNumber):
             # Ensure the number is an integer
             count = int(b.value)
             if count < 0:
-                raise ValueError("Cannot repeat string a negative number of times")
+                raise CtyValueError("Cannot repeat string a negative number of times")
             
             result = str(a.value) * count
             logger.debug(f"🧮✖️✅ String repetition result: {result}")
-            return Value(CtyString(), result)
+            return CtyValue(CtyString(), result)
         
         # List repetition
         elif isinstance(a.type, CtyList) and isinstance(b.type, CtyNumber):
             # Ensure the number is an integer
             count = int(b.value)
             if count < 0:
-                raise ValueError("Cannot repeat list a negative number of times")
+                raise CtyValueError("Cannot repeat list a negative number of times")
             
             a_list = cast(List[Any], a.value)
             result = a_list * count
             logger.debug(f"🧮✖️✅ List repetition result: {result}")
-            return Value(CtyList(element_type=a.type.element_type), result)
+            return CtyValue(CtyList(element_type=a.type.element_type), result)
         
         # Unsupported combination
         else:
             raise TypeError(f"Cannot multiply values of types {a.type} and {b.type}")
             
     except Exception as e:
-        if isinstance(e, (TypeError, ValueError)) and "Cannot" in str(e):
+        if isinstance(e, (TypeError, CtyValueError)) and "Cannot" in str(e):
             # Re-raise validation errors
             raise
         
@@ -438,7 +438,7 @@ def multiply(a: Value, b: Value) -> Value:
         raise CtyError(f"Error multiplying values: {e}") from e
 
 
-def divide(a: Value, b: Value) -> Value:
+def divide(a: CtyValue, b: CtyValue) -> CtyValue:
     """
     Divide one value by another.
     
@@ -454,21 +454,21 @@ def divide(a: Value, b: Value) -> Value:
     
     Raises:
         TypeError: If the operation is not supported for the given types
-        ValueError: If dividing by zero
+        CtyValueError: If dividing by zero
     """
     logger.debug(f"🧮➗✅ Dividing {a} by {b}")
     
     # Handle unknown values
     if not a.is_known or not b.is_known:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyNumber())
+            return CtyValue.unknown(CtyNumber())
         else:
             raise TypeError(f"Cannot divide values of types {a.type} and {b.type}")
     
     # Handle null values
     if a.is_null or b.is_null:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyNumber())
+            return CtyValue.null(CtyNumber())
         else:
             raise TypeError(f"Cannot divide values of types {a.type} and {b.type}")
     
@@ -480,11 +480,11 @@ def divide(a: Value, b: Value) -> Value:
             
             # Check for division by zero
             if num_b == 0:
-                raise ValueError("Division by zero")
+                raise CtyValueError("Division by zero")
             
             result = num_a / num_b
             logger.debug(f"🧮➗✅ Number division result: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         except Exception as e:
             logger.error(f"🧮➗❌ Error dividing values: {e}", exc_info=True)
             raise CtyError(f"Error dividing values: {e}") from e
@@ -492,7 +492,7 @@ def divide(a: Value, b: Value) -> Value:
         raise TypeError(f"Cannot divide values of types {a.type} and {b.type}")
 
 
-def modulo(a: Value, b: Value) -> Value:
+def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
     """
     Calculate the modulo of one value by another.
     
@@ -508,21 +508,21 @@ def modulo(a: Value, b: Value) -> Value:
     
     Raises:
         TypeError: If the operation is not supported for the given types
-        ValueError: If divisor is zero
+        CtyValueError: If divisor is zero
     """
     logger.debug(f"🧮📊✅ Calculating modulo of {a} by {b}")
     
     # Handle unknown values
     if not a.is_known or not b.is_known:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.unknown(CtyNumber())
+            return CtyValue.unknown(CtyNumber())
         else:
             raise TypeError(f"Cannot calculate modulo of values of types {a.type} and {b.type}")
     
     # Handle null values
     if a.is_null or b.is_null:
         if isinstance(a.type, CtyNumber) and isinstance(b.type, CtyNumber):
-            return Value.null(CtyNumber())
+            return CtyValue.null(CtyNumber())
         else:
             raise TypeError(f"Cannot calculate modulo of values of types {a.type} and {b.type}")
     
@@ -534,11 +534,11 @@ def modulo(a: Value, b: Value) -> Value:
             
             # Check for modulo by zero
             if num_b == 0:
-                raise ValueError("Modulo by zero")
+                raise CtyValueError("Modulo by zero")
             
             result = num_a % num_b
             logger.debug(f"🧮📊✅ Number modulo result: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         except Exception as e:
             logger.error(f"🧮📊❌ Error calculating modulo: {e}", exc_info=True)
             raise CtyError(f"Error calculating modulo: {e}") from e
@@ -546,12 +546,12 @@ def modulo(a: Value, b: Value) -> Value:
         raise TypeError(f"Cannot calculate modulo of values of types {a.type} and {b.type}")
 
 
-def negate(a: Value) -> Value:
+def negate(a: CtyValue) -> CtyValue:
     """
     Negate a value.
     
     Args:
-        a: Value to negate
+        a: CtyValue to negate
         
     Returns:
         Negated value
@@ -568,18 +568,18 @@ def negate(a: Value) -> Value:
     # Handle unknown values
     if not a.is_known:
         if isinstance(a.type, CtyNumber):
-            return Value.unknown(CtyNumber())
+            return CtyValue.unknown(CtyNumber())
         elif isinstance(a.type, CtyBool):
-            return Value.unknown(CtyBool())
+            return CtyValue.unknown(CtyBool())
         else:
             raise TypeError(f"Cannot negate value of type {a.type}")
     
     # Handle null values
     if a.is_null:
         if isinstance(a.type, CtyNumber):
-            return Value.null(CtyNumber())
+            return CtyValue.null(CtyNumber())
         elif isinstance(a.type, CtyBool):
-            return Value.null(CtyBool())
+            return CtyValue.null(CtyBool())
         else:
             raise TypeError(f"Cannot negate value of type {a.type}")
     
@@ -590,13 +590,13 @@ def negate(a: Value) -> Value:
             num_a = Decimal(str(a.value))
             result = -num_a
             logger.debug(f"🧮❓✅ Number negation result: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # Boolean negation
         elif isinstance(a.type, CtyBool):
             result = not a.value
             logger.debug(f"🧮❓✅ Boolean negation result: {result}")
-            return Value(CtyBool(), result)
+            return CtyValue(CtyBool(), result)
         
         # Unsupported type
         else:
@@ -611,7 +611,7 @@ def negate(a: Value) -> Value:
         raise CtyError(f"Error negating value: {e}") from e
 
 
-def get_attribute(obj: Value, name: str) -> Value:
+def get_attribute(obj: CtyValue, name: str) -> CtyValue:
     """
     Get an attribute from an object.
     
@@ -635,7 +635,7 @@ def get_attribute(obj: Value, name: str) -> Value:
         if isinstance(obj.type, CtyObject):
             if name in obj.type.attribute_types:
                 attr_type = obj.type.attribute_types[name]
-                return Value.unknown(attr_type)
+                return CtyValue.unknown(attr_type)
             else:
                 raise AttributeError(f"Unknown object has no attribute '{name}'")
         else:
@@ -646,7 +646,7 @@ def get_attribute(obj: Value, name: str) -> Value:
         if isinstance(obj.type, CtyObject):
             if name in obj.type.attribute_types:
                 attr_type = obj.type.attribute_types[name]
-                return Value.null(attr_type)
+                return CtyValue.null(attr_type)
             else:
                 raise AttributeError(f"Object has no attribute '{name}'")
         else:
@@ -669,12 +669,12 @@ def get_attribute(obj: Value, name: str) -> Value:
             if name in obj_value:
                 attr_value = obj_value[name]
                 logger.debug(f"🧮🔍✅ Got attribute value: {attr_value}")
-                return Value(attr_type, attr_value)
+                return CtyValue(attr_type, attr_value)
             else:
                 # If the attribute is in the type but not in the value,
                 # it might be optional - return null
                 logger.debug(f"🧮🔍✅ Attribute not found in value, returning null")
-                return Value.null(attr_type)
+                return CtyValue.null(attr_type)
                 
         except Exception as e:
             if isinstance(e, AttributeError):
@@ -687,7 +687,7 @@ def get_attribute(obj: Value, name: str) -> Value:
         raise TypeError(f"Cannot get attribute from non-object type {obj.type}")
 
 
-def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
+def get_element(collection: CtyValue, index: Union[CtyValue, int, str]) -> CtyValue:
     """
     Get an element from a collection.
     
@@ -705,15 +705,15 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
     """
     logger.debug(f"🧮🔢✅ Getting element at {index} from {collection}")
     
-    # Convert index to Value if it's not already
-    if not isinstance(index, Value):
+    # Convert index to CtyValue if it's not already
+    if not isinstance(index, CtyValue):
         if isinstance(index, int) and (
             isinstance(collection.type, CtyList) or 
             isinstance(collection.type, CtyTuple)
         ):
-            index = Value(CtyNumber(), index)
+            index = CtyValue(CtyNumber(), index)
         elif isinstance(index, str) and isinstance(collection.type, CtyMap):
-            index = Value(CtyString(), index)
+            index = CtyValue(CtyString(), index)
         else:
             raise TypeError(f"Invalid index type: {type(index).__name__}")
     
@@ -722,20 +722,20 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
         # For unknown collections, return an unknown of the element type
         # (if we can determine it)
         if isinstance(collection.type, CtyList):
-            return Value.unknown(collection.type.element_type)
+            return CtyValue.unknown(collection.type.element_type)
         elif isinstance(collection.type, CtyMap):
-            return Value.unknown(collection.type.element_type)
+            return CtyValue.unknown(collection.type.element_type)
         elif isinstance(collection.type, CtyTuple):
             # For tuples, we need to check if the index is a known number
             if isinstance(index.type, CtyNumber) and index.is_known:
                 try:
                     idx = int(index.value)
                     if 0 <= idx < len(collection.type.element_types):
-                        return Value.unknown(collection.type.element_types[idx])
-                except (ValueError, TypeError):
+                        return CtyValue.unknown(collection.type.element_types[idx])
+                except (CtyValueError, TypeError):
                     pass
             # If we can't determine the element type, return unknown dynamic
-            return Value.unknown(CtyDynamic())
+            return CtyValue.unknown(CtyDynamic())
         else:
             raise TypeError(f"Cannot get element from type {collection.type}")
     
@@ -743,20 +743,20 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
     if collection.is_null:
         # Accessing elements of null always results in null
         if isinstance(collection.type, CtyList):
-            return Value.null(collection.type.element_type)
+            return CtyValue.null(collection.type.element_type)
         elif isinstance(collection.type, CtyMap):
-            return Value.null(collection.type.element_type)
+            return CtyValue.null(collection.type.element_type)
         elif isinstance(collection.type, CtyTuple):
             # For tuples, we need to determine the element type
             if isinstance(index.type, CtyNumber) and index.is_known:
                 try:
                     idx = int(index.value)
                     if 0 <= idx < len(collection.type.element_types):
-                        return Value.null(collection.type.element_types[idx])
-                except (ValueError, TypeError):
+                        return CtyValue.null(collection.type.element_types[idx])
+                except (CtyValueError, TypeError):
                     pass
             # If we can't determine the element type, return null dynamic
-            return Value.null(CtyDynamic())
+            return CtyValue.null(CtyDynamic())
         else:
             raise TypeError(f"Cannot get element from type {collection.type}")
     
@@ -764,18 +764,18 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
     if not index.is_known:
         # For unknown indices, return an unknown of the element type
         if isinstance(collection.type, CtyList):
-            return Value.unknown(collection.type.element_type)
+            return CtyValue.unknown(collection.type.element_type)
         elif isinstance(collection.type, CtyMap):
-            return Value.unknown(collection.type.element_type)
+            return CtyValue.unknown(collection.type.element_type)
         elif isinstance(collection.type, CtyTuple):
             # For tuples, we need a known index to determine element type
-            return Value.unknown(CtyDynamic())
+            return CtyValue.unknown(CtyDynamic())
         else:
             raise TypeError(f"Cannot get element from type {collection.type}")
     
     # Handle null index
     if index.is_null:
-        raise ValueError("Cannot use null as an index")
+        raise CtyValueError("Cannot use null as an index")
     
     # Handle actual element access
     try:
@@ -788,7 +788,7 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
             # Convert index to integer
             try:
                 idx = int(index.value)
-            except (ValueError, TypeError):
+            except (CtyValueError, TypeError):
                 raise TypeError(f"List index must be an integer, got {index.value}")
             
             # Get the list value
@@ -801,7 +801,7 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
             # Get the element
             element = list_value[idx]
             logger.debug(f"🧮🔢✅ Got list element: {element}")
-            return Value(collection.type.element_type, element)
+            return CtyValue(collection.type.element_type, element)
         
         # Map element access
         elif isinstance(collection.type, CtyMap):
@@ -822,7 +822,7 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
             # Get the element
             element = map_value[key]
             logger.debug(f"🧮🔢✅ Got map element: {element}")
-            return Value(collection.type.element_type, element)
+            return CtyValue(collection.type.element_type, element)
         
         # Tuple element access
         elif isinstance(collection.type, CtyTuple):
@@ -833,7 +833,7 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
             # Convert index to integer
             try:
                 idx = int(index.value)
-            except (ValueError, TypeError):
+            except (CtyValueError, TypeError):
                 raise TypeError(f"Tuple index must be an integer, got {index.value}")
             
             # Get the tuple value
@@ -847,14 +847,14 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
             element_type = collection.type.element_types[idx]
             element = tuple_value[idx]
             logger.debug(f"🧮🔢✅ Got tuple element: {element}")
-            return Value(element_type, element)
+            return CtyValue(element_type, element)
         
         # Unsupported type
         else:
             raise TypeError(f"Cannot get element from type {collection.type}")
             
     except Exception as e:
-        if isinstance(e, (TypeError, ValueError, KeyError, IndexError)):
+        if isinstance(e, (TypeError, CtyValueError, KeyError, IndexError)):
             # Re-raise validation errors
             raise
         
@@ -862,7 +862,7 @@ def get_element(collection: Value, index: Union[Value, int, str]) -> Value:
         raise CtyError(f"Error getting element: {e}") from e
 
 
-def length(collection: Value) -> Value:
+def length(collection: CtyValue) -> CtyValue:
     """
     Get the length of a collection.
     
@@ -879,11 +879,11 @@ def length(collection: Value) -> Value:
     
     # Handle unknown values
     if not collection.is_known:
-        return Value.unknown(CtyNumber())
+        return CtyValue.unknown(CtyNumber())
     
     # Handle null values
     if collection.is_null:
-        return Value.null(CtyNumber())
+        return CtyValue.null(CtyNumber())
     
     # Handle actual length calculation
     try:
@@ -891,35 +891,35 @@ def length(collection: Value) -> Value:
         if isinstance(collection.type, CtyString):
             result = len(str(collection.value))
             logger.debug(f"🧮📏✅ String length: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # List length
         elif isinstance(collection.type, CtyList):
             list_value = cast(List[Any], collection.value)
             result = len(list_value)
             logger.debug(f"🧮📏✅ List length: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # Map length
         elif isinstance(collection.type, CtyMap):
             map_value = cast(Dict[str, Any], collection.value)
             result = len(map_value)
             logger.debug(f"🧮📏✅ Map length: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # Set length
         elif isinstance(collection.type, CtySet):
             set_value = cast(Set[Any], collection.value)
             result = len(set_value)
             logger.debug(f"🧮📏✅ Set length: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # Tuple length
         elif isinstance(collection.type, CtyTuple):
             tuple_value = collection.value
             result = len(tuple_value)
             logger.debug(f"🧮📏✅ Tuple length: {result}")
-            return Value(CtyNumber(), result)
+            return CtyValue(CtyNumber(), result)
         
         # Unsupported type
         else:
@@ -934,7 +934,7 @@ def length(collection: Value) -> Value:
         raise CtyError(f"Error getting length: {e}") from e
 
 
-def contains(collection: Value, item: Value) -> Value:
+def contains(collection: CtyValue, item: CtyValue) -> CtyValue:
     """
     Check if a collection contains an item.
     
@@ -952,11 +952,11 @@ def contains(collection: Value, item: Value) -> Value:
     
     # Handle unknown values
     if not collection.is_known or not item.is_known:
-        return Value.unknown(CtyBool())
+        return CtyValue.unknown(CtyBool())
     
     # Handle null values
     if collection.is_null or item.is_null:
-        return Value.null(CtyBool())
+        return CtyValue.null(CtyBool())
     
     # Handle actual containment check
     try:
@@ -970,28 +970,28 @@ def contains(collection: Value, item: Value) -> Value:
             item_str = str(item.value)
             result = item_str in collection_str
             logger.debug(f"🧮🔎✅ String containment result: {result}")
-            return Value(CtyBool(), result)
+            return CtyValue(CtyBool(), result)
         
         # List containment
         elif isinstance(collection.type, CtyList):
             # Check if item type is compatible with list element type
             if not item.type.equal(collection.type.element_type):
                 # If types don't match, it cannot be in the list
-                return Value(CtyBool(), False)
+                return CtyValue(CtyBool(), False)
             
             list_value = cast(List[Any], collection.value)
             
             # We need to perform a deep equals check for each element
             for elem in list_value:
-                elem_value = Value(collection.type.element_type, elem)
+                elem_value = CtyValue(collection.type.element_type, elem)
                 eq_result = equals(elem_value, item)
                 
                 if eq_result.is_known and eq_result.value:
                     # Found a match
-                    return Value(CtyBool(), True)
+                    return CtyValue(CtyBool(), True)
             
             # No match found
-            return Value(CtyBool(), False)
+            return CtyValue(CtyBool(), False)
         
         # Map containment (key check)
         elif isinstance(collection.type, CtyMap):
@@ -1002,28 +1002,28 @@ def contains(collection: Value, item: Value) -> Value:
             map_value = cast(Dict[str, Any], collection.value)
             result = str(item.value) in map_value
             logger.debug(f"🧮🔎✅ Map key containment result: {result}")
-            return Value(CtyBool(), result)
+            return CtyValue(CtyBool(), result)
         
         # Set containment
         elif isinstance(collection.type, CtySet):
             # Check if item type is compatible with set element type
             if not item.type.equal(collection.type.element_type):
                 # If types don't match, it cannot be in the set
-                return Value(CtyBool(), False)
+                return CtyValue(CtyBool(), False)
             
             set_value = cast(Set[Any], collection.value)
             
             # We need to perform a deep equals check for each element
             for elem in set_value:
-                elem_value = Value(collection.type.element_type, elem)
+                elem_value = CtyValue(collection.type.element_type, elem)
                 eq_result = equals(elem_value, item)
                 
                 if eq_result.is_known and eq_result.value:
                     # Found a match
-                    return Value(CtyBool(), True)
+                    return CtyValue(CtyBool(), True)
             
             # No match found
-            return Value(CtyBool(), False)
+            return CtyValue(CtyBool(), False)
         
         # Unsupported type
         else:
@@ -1038,7 +1038,7 @@ def contains(collection: Value, item: Value) -> Value:
         raise CtyError(f"Error checking containment: {e}") from e
 
 
-def concat_lists(*lists: Value) -> Value:
+def concat_lists(*lists: CtyValue) -> CtyValue:
     """
     Concatenate multiple lists into a single list.
     
@@ -1050,14 +1050,14 @@ def concat_lists(*lists: Value) -> Value:
         
     Raises:
         TypeError: If any argument is not a list type
-        ValueError: If lists have incompatible element types
+        CtyValueError: If lists have incompatible element types
     """
     logger.debug(f"🧮🔗✅ Concatenating {len(lists)} lists")
     
     if not lists:
         # No lists provided - return an empty list with dynamic element type
         logger.debug("🧮🔗✅ No lists provided, returning empty list")
-        return Value(CtyList(element_type=CtyDynamic()), [])
+        return CtyValue(CtyList(element_type=CtyDynamic()), [])
     
     # Determine the element type from the first non-null, known list
     element_type = None
@@ -1083,7 +1083,7 @@ def concat_lists(*lists: Value) -> Value:
         
         # Check element type compatibility
         if not lst.type.element_type.equal(element_type):
-            raise ValueError(f"List element types don't match: {lst.type.element_type} vs {element_type}")
+            raise CtyValueError(f"List element types don't match: {lst.type.element_type} vs {element_type}")
         
         if not lst.is_known:
             has_unknown = True
@@ -1093,10 +1093,10 @@ def concat_lists(*lists: Value) -> Value:
     
     # Handle special cases
     if has_unknown:
-        return Value.unknown(CtyList(element_type=element_type))
+        return CtyValue.unknown(CtyList(element_type=element_type))
     
     if all_null:
-        return Value.null(CtyList(element_type=element_type))
+        return CtyValue.null(CtyList(element_type=element_type))
     
     # Concatenate the lists
     try:
@@ -1107,14 +1107,14 @@ def concat_lists(*lists: Value) -> Value:
                 result.extend(list_value)
         
         logger.debug(f"🧮🔗✅ Concatenated list result length: {len(result)}")
-        return Value(CtyList(element_type=element_type), result)
+        return CtyValue(CtyList(element_type=element_type), result)
         
     except Exception as e:
         logger.error(f"🧮🔗❌ Error concatenating lists: {e}", exc_info=True)
         raise CtyError(f"Error concatenating lists: {e}") from e
 
 
-def merge_maps(*maps: Value) -> Value:
+def merge_maps(*maps: CtyValue) -> CtyValue:
     """
     Merge multiple maps into a single map.
     
@@ -1126,14 +1126,14 @@ def merge_maps(*maps: Value) -> Value:
         
     Raises:
         TypeError: If any argument is not a map type
-        ValueError: If maps have incompatible element types
+        CtyValueError: If maps have incompatible element types
     """
     logger.debug(f"🧮🔀✅ Merging {len(maps)} maps")
     
     if not maps:
         # No maps provided - return an empty map with dynamic element type
         logger.debug("🧮🔀✅ No maps provided, returning empty map")
-        return Value(CtyMap(element_type=CtyDynamic()), {})
+        return CtyValue(CtyMap(element_type=CtyDynamic()), {})
     
     # Determine the element type from the first non-null, known map
     element_type = None
@@ -1159,7 +1159,7 @@ def merge_maps(*maps: Value) -> Value:
         
         # Check element type compatibility
         if not map_val.type.element_type.equal(element_type):
-            raise ValueError(f"Map element types don't match: {map_val.type.element_type} vs {element_type}")
+            raise CtyValueError(f"Map element types don't match: {map_val.type.element_type} vs {element_type}")
         
         if not map_val.is_known:
             has_unknown = True
@@ -1169,10 +1169,10 @@ def merge_maps(*maps: Value) -> Value:
     
     # Handle special cases
     if has_unknown:
-        return Value.unknown(CtyMap(element_type=element_type))
+        return CtyValue.unknown(CtyMap(element_type=element_type))
     
     if all_null:
-        return Value.null(CtyMap(element_type=element_type))
+        return CtyValue.null(CtyMap(element_type=element_type))
     
     # Merge the maps
     try:
@@ -1184,14 +1184,14 @@ def merge_maps(*maps: Value) -> Value:
                 result.update(map_value)
         
         logger.debug(f"🧮🔀✅ Merged map result size: {len(result)}")
-        return Value(CtyMap(element_type=element_type), result)
+        return CtyValue(CtyMap(element_type=element_type), result)
         
     except Exception as e:
         logger.error(f"🧮🔀❌ Error merging maps: {e}", exc_info=True)
         raise CtyError(f"Error merging maps: {e}") from e
 
 
-def slice_string(str_val: Value, start_idx: Value, end_idx: Optional[Value] = None) -> Value:
+def slice_string(str_val: CtyValue, start_idx: CtyValue, end_idx: Optional[CtyValue] = None) -> CtyValue:
     """
     Extract a substring from a string.
     
@@ -1221,11 +1221,11 @@ def slice_string(str_val: Value, start_idx: Value, end_idx: Optional[Value] = No
     
     # Handle unknown values
     if not str_val.is_known or not start_idx.is_known or (end_idx is not None and not end_idx.is_known):
-        return Value.unknown(CtyString())
+        return CtyValue.unknown(CtyString())
     
     # Handle null values
     if str_val.is_null or start_idx.is_null or (end_idx is not None and end_idx.is_null):
-        return Value.null(CtyString())
+        return CtyValue.null(CtyString())
     
     # Get the string value
     string = str(str_val.value)
@@ -1233,14 +1233,14 @@ def slice_string(str_val: Value, start_idx: Value, end_idx: Optional[Value] = No
     # Get the start index
     try:
         start = int(start_idx.value)
-    except (ValueError, TypeError):
+    except (CtyValueError, TypeError):
         raise TypeError(f"Start index must be an integer, got {start_idx.value}")
     
     # Get the end index
     if end_idx is not None:
         try:
             end = int(end_idx.value)
-        except (ValueError, TypeError):
+        except (CtyValueError, TypeError):
             raise TypeError(f"End index must be an integer, got {end_idx.value}")
     else:
         end = len(string)
@@ -1256,13 +1256,13 @@ def slice_string(str_val: Value, start_idx: Value, end_idx: Optional[Value] = No
     try:
         result = string[start:end]
         logger.debug(f"🧮✂️✅ String slice result: {result}")
-        return Value(CtyString(), result)
+        return CtyValue(CtyString(), result)
     except Exception as e:
         logger.error(f"🧮✂️❌ Error slicing string: {e}", exc_info=True)
         raise CtyError(f"Error slicing string: {e}") from e
 
 
-def slice_list(list_val: Value, start_idx: Value, end_idx: Optional[Value] = None) -> Value:
+def slice_list(list_val: CtyValue, start_idx: CtyValue, end_idx: Optional[CtyValue] = None) -> CtyValue:
     """
     Extract a slice from a list.
     
@@ -1292,11 +1292,11 @@ def slice_list(list_val: Value, start_idx: Value, end_idx: Optional[Value] = Non
     
     # Handle unknown values
     if not list_val.is_known or not start_idx.is_known or (end_idx is not None and not end_idx.is_known):
-        return Value.unknown(CtyList(element_type=list_val.type.element_type))
+        return CtyValue.unknown(CtyList(element_type=list_val.type.element_type))
     
     # Handle null values
     if list_val.is_null or start_idx.is_null or (end_idx is not None and end_idx.is_null):
-        return Value.null(CtyList(element_type=list_val.type.element_type))
+        return CtyValue.null(CtyList(element_type=list_val.type.element_type))
     
     # Get the list value
     list_value = cast(List[Any], list_val.value)
@@ -1304,14 +1304,14 @@ def slice_list(list_val: Value, start_idx: Value, end_idx: Optional[Value] = Non
     # Get the start index
     try:
         start = int(start_idx.value)
-    except (ValueError, TypeError):
+    except (CtyValueError, TypeError):
         raise TypeError(f"Start index must be an integer, got {start_idx.value}")
     
     # Get the end index
     if end_idx is not None:
         try:
             end = int(end_idx.value)
-        except (ValueError, TypeError):
+        except (CtyValueError, TypeError):
             raise TypeError(f"End index must be an integer, got {end_idx.value}")
     else:
         end = len(list_value)
@@ -1327,7 +1327,7 @@ def slice_list(list_val: Value, start_idx: Value, end_idx: Optional[Value] = Non
     try:
         result = list_value[start:end]
         logger.debug(f"🧮✂️✅ List slice result length: {len(result)}")
-        return Value(CtyList(element_type=list_val.type.element_type), result)
+        return CtyValue(CtyList(element_type=list_val.type.element_type), result)
     except Exception as e:
         logger.error(f"🧮✂️❌ Error slicing list: {e}", exc_info=True)
         raise CtyError(f"Error slicing list: {e}") from e
