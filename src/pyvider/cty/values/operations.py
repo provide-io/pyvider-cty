@@ -24,7 +24,7 @@ from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
 from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
 from pyvider.cty.values.base import Value
-from pyvider.exceptions import CtyError, TypeMismatchError
+from pyvider.cty.exceptions import CtyError, TypeMismatchError
 
 # Type variables for generic operations
 T = TypeVar('T')

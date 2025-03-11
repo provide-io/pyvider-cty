@@ -1,285 +1,650 @@
+
+# pyvider/cty/types/structural/object.py
+
 """
-CtyObject type implementation for Terraform.
+CtyObject implementation for Terraform object values.
 
 The CtyObject type represents a complex value with a fixed set of attributes,
-where each attribute has its own type. Unlike maps, objects have a predefined
-schema and support different types for different attributes.
+each having its own type. Unlike maps, objects have a predefined schema that
+validates attribute types and presence/absence of required attributes.
 
-Examples:
-    Define an address type:
-    >>> address_type = CtyObject({
-    ...     "street": Types.string(),
-    ...     "city": Types.string(),
-    ...     "postal_code": Types.string(),
-    ...     "country": Types.string(),
-    ...     "is_primary": Types.boolean()
-    ... }, optional_attributes={"is_primary"})
-
-    Create and validate an address:
-    >>> addr = address_type.validate({
-    ...     "street": "123 Main St",
-    ...     "city": "Springfield",
-    ...     "postal_code": "12345",
-    ...     "country": "US"
-    ... })
+Objects are the foundation of resource and data source schemas in Terraform,
+representing structured configuration with rich validation capabilities.
 """
 
+import asyncio
 from dataclasses import dataclass, field
-from types import MappingProxyType
-from typing import Any, FrozenSet, TypeVar, final
+from typing import Any, Dict, FrozenSet, Optional, Set, Type, Union, cast, get_type_hints
 
-from pyvider.cty.exceptions import AttributeValidationError, InvalidTypeError, SchemaValidationError, ValidationError
+import attrs
 
+from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
+from pyvider.cty.types.structural.dynamic import CtyDynamic
+from pyvider.cty.exceptions import (
+    AttributeValidationError,
+    InvalidTypeError,
+    SchemaValidationError,
+    ValidationError,
+)
 
-T = TypeVar('T')
 
-def _extract_ctype(value):
-    """Helper to unwrap AttributeValue to extract the raw CtyType."""
-    return value.ctype if isinstance(value, AttributeValue) else value
-
-@final
-@dataclass(frozen=True)
-class CtyObject(CtyType[dict[str, Any]]):
+@attrs.define(frozen=True, slots=True)
+class CtyObject(CtyType[Dict[str, Any]]):
     """
-    CtyObject represents a Terraform object type.
-
-    An object is a collection of attributes where each attribute has its own type.
-    Unlike maps, objects have a schema - you can't add arbitrary keys, and each
-    key has its own type which may be different from other keys.
+    Represents a Terraform object type with a fixed set of attributes.
+    
+    An object has a predefined schema with strictly typed attributes.
+    Unlike maps, objects have known attribute names and types at definition time,
+    and can have attributes of different types.
+    
+    Attributes:
+        attribute_types: Dictionary mapping attribute names to their types
+        optional_attributes: Set of attribute names that are optional
+        computed_attributes: Set of attribute names computed by the provider
+        block_attributes: Set of attribute names that represent blocks
+        sensitive_attributes: Set of attribute names containing sensitive data
     """
-
-    attribute_types: dict[str, CtyType]
-    optional_attributes: FrozenSet[str] = field(default_factory=frozenset)
-    computed_attributes: FrozenSet[str] = field(default_factory=frozenset)  # Added computed attributes
-    block_attributes: FrozenSet[str] = field(default_factory=frozenset)
-    mutable: bool = True  # Default to mutable
-
-
-    def __post_init__(self):
+    attribute_types: Dict[str, CtyType] = attrs.field(factory=dict)
+    optional_attributes: FrozenSet[str] = attrs.field(factory=frozenset)
+    computed_attributes: FrozenSet[str] = attrs.field(factory=frozenset)
+    block_attributes: FrozenSet[str] = attrs.field(factory=frozenset)
+    sensitive_attributes: FrozenSet[str] = attrs.field(factory=frozenset)
+    
+    def __attrs_post_init__(self) -> None:
         """Validate object type configuration."""
-        # Unlike Go, Python's dataclass can't do this in a frozen pre-init state
-        # so we validate attributes instead
+        # Validate attribute_types is a dictionary
         if not isinstance(self.attribute_types, dict):
-            raise InvalidTypeError("attribute_types must be a dictionary")
-
-        # Validate that all types are CtyType instances
+            raise InvalidTypeError(
+                expected_type="dict",
+                actual_type=type(self.attribute_types).__name__
+            )
+        
+        # Validate all types are CtyType instances
         invalid_types = [
             name for name, type_ in self.attribute_types.items()
             if not isinstance(type_, CtyType)
         ]
         if invalid_types:
-            raise AttributeValidationError(f"Invalid types for attributes: {', '.join(invalid_types)}")
-
-        # Validate optional attributes
-        unknown_optional = (
-            set(self.optional_attributes) - set(self.attribute_types)
-        )
+            raise AttributeValidationError(
+                f"Invalid types for attributes: {', '.join(invalid_types)}"
+            )
+        
+        # Validate optional attributes exist in the type definition
+        unknown_optional = set(self.optional_attributes) - set(self.attribute_types)
         if unknown_optional:
             raise AttributeValidationError(
                 f"Unknown optional attributes: {', '.join(unknown_optional)}"
             )
-
-    def validate(self, value: dict[str, Any]) -> dict[str, Any]:
+        
+        # Validate computed attributes exist
+        unknown_computed = set(self.computed_attributes) - set(self.attribute_types)
+        if unknown_computed:
+            raise AttributeValidationError(
+                f"Unknown computed attributes: {', '.join(unknown_computed)}"
+            )
+        
+        # Validate block attributes exist
+        unknown_blocks = set(self.block_attributes) - set(self.attribute_types)
+        if unknown_blocks:
+            raise AttributeValidationError(
+                f"Unknown block attributes: {', '.join(unknown_blocks)}"
+            )
+        
+        # Validate sensitive attributes exist
+        unknown_sensitive = set(self.sensitive_attributes) - set(self.attribute_types)
+        if unknown_sensitive:
+            raise AttributeValidationError(
+                f"Unknown sensitive attributes: {', '.join(unknown_sensitive)}"
+            )
+    
+    async def validate(self, value: Any) -> Dict[str, Any]:
         """
-        Validate a dictionary against the object schema.
-
+        Validate a value against this object type.
+        
         Args:
-            value (dict[str, Any]): The dictionary to validate.
-
+            value: Value to validate (dictionary or None)
+        
         Returns:
-            dict[str, Any]: The validated dictionary.
-
+            Dict[str, Any]: The validated value
+        
         Raises:
-            ValidationError: If the validation fails.
+            ValidationError: If the value doesn't match this type
         """
-
+        logger.debug(f"🧩🔍🔄 Validating value against CtyObject: {value}")
+        
+        # Handle null values as None
         if value is None:
-           return None
-
+            logger.debug("🧩🔍ℹ️ Received null value")
+            return None
+        
+        # Value must be a dictionary
         if not isinstance(value, dict):
-            raise ValidationError(f"CtyObject value must be a dictionary, got {type(value).__name__}.")
-
-        validated = {}
-        for name, attr_type in self.attribute_types.items():
+            type_name = type(value).__name__
+            error_msg = f"Expected a dictionary, got {type_name}: {value}"
+            logger.error(f"🧩🔍❌ {error_msg}")
+            raise ValidationError(error_msg)
+        
+        # Check for required attributes
+        for name in self.required_attributes():
             if name not in value:
-                if name not in self.optional_attributes:
-                    raise ValidationError(f"Missing required attribute: {name}.")
-                continue
-
+                error_msg = f"Missing required attribute: {name}"
+                logger.error(f"🧩🔍❌ {error_msg}")
+                raise ValidationError(error_msg)
+        
+        # Check for unknown attributes
+        unknown_attrs = set(value.keys()) - set(self.attribute_types.keys())
+        if unknown_attrs:
+            error_msg = f"Unknown attributes: {', '.join(unknown_attrs)}"
+            logger.warning(f"🧩🔍⚠️ {error_msg}")
+            # We don't raise here because we want to accept extra attributes in some cases
+        
+        # Validate each attribute
+        validated = {}
+        
+        # Process attributes concurrently for efficiency
+        async def validate_attribute(name: str, attr_value: Any) -> tuple[str, Any]:
+            if name not in self.attribute_types:
+                # Skip unknown attributes
+                return name, attr_value
+            
             try:
-                validated[name] = attr_type.validate(value[name])
+                attr_type = self.attribute_types[name]
+                validated_value = await attr_type.validate(attr_value)
+                logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
+                return name, validated_value
             except ValidationError as e:
-                original_message = str(e).split(": ", 1)[-1]
-                raise ValidationError(f"Invalid value for attribute '{name}': {original_message}")
-
-        # Enforce immutability if required
-        if not self.mutable:
-            return MappingProxyType(validated)
-
+                error_msg = f"Invalid value for attribute '{name}': {e}"
+                logger.error(f"🧩🔍❌ {error_msg}")
+                raise ValidationError(error_msg) from e
+        
+        # Gather validation tasks
+        tasks = [
+            validate_attribute(name, attr_value)
+            for name, attr_value in value.items()
+            if name in self.attribute_types
+        ]
+        
+        # Add defaults for missing optional attributes
+        for name in self.optional_attributes:
+            if name not in value and name in self.attribute_types:
+                tasks.append(validate_attribute(name, None))
+        
+        # Execute all validation tasks
+        results = await asyncio.gather(*tasks)
+        
+        # Collect results
+        for name, validated_value in results:
+            validated[name] = validated_value
+        
+        logger.debug(f"🧩🔍✅ Successfully validated object: {validated}")
         return validated
-
-    # def __eq__(self, other):
-    #     if not isinstance(other, CtyObject):
-    #         return False
-    #     return (
-    #         self.attribute_types == other.attribute_types and
-    #         self.optional_attributes == other.optional_attributes
-    #     )
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__)
-
-    def get_attribute(self, value: dict[str, Any], name: str) -> Any:
+    
+    def required_attributes(self) -> FrozenSet[str]:
         """
-        Get a validated attribute value by name.
-
-        Args:
-            value: CtyObject value to access
-            name: Name of attribute to get
-
+        Get the set of required attribute names.
+        
         Returns:
-            Attribute value
-
+            FrozenSet[str]: Names of all required attributes
+        """
+        return frozenset(
+            name for name in self.attribute_types
+            if name not in self.optional_attributes
+            and name not in self.computed_attributes
+        )
+    
+    async def get_attribute(self, value: Dict[str, Any], name: str) -> Any:
+        """
+        Get an attribute value by name.
+        
+        Args:
+            value: Object value to access
+            name: Name of attribute to get
+        
+        Returns:
+            The attribute value
+        
         Raises:
             AttributeValidationError: If attribute doesn't exist
             ValidationError: If value is not a valid object
         """
+        logger.debug(f"🧩🔍🔄 Getting attribute {name} from object")
+        
+        # Validate input
         if not isinstance(value, dict):
-            raise ValidationError(f"Expected dict, got {type(value).__name__}")
-
+            type_name = type(value).__name__
+            error_msg = f"Expected a dictionary, got {type_name}: {value}"
+            logger.error(f"🧩🔍❌ {error_msg}")
+            raise ValidationError(error_msg)
+        
+        # Check attribute exists in schema
         if name not in self.attribute_types:
-            raise AttributeValidationError(f"Unknown attribute: {name}")
-
-        return value.get(name)
-
-    def with_optional(self, *names: str) -> "CtyObject":
+            error_msg = f"Unknown attribute: {name}"
+            logger.error(f"🧩🔍❌ {error_msg}")
+            raise AttributeValidationError(error_msg)
+        
+        # Return attribute value (may be None)
+        attr_value = value.get(name)
+        logger.debug(f"🧩🔍✅ Found attribute {name}: {attr_value}")
+        return attr_value
+    
+    async def has_attribute(self, name: str) -> bool:
         """
-        Create new object type with additional optional attributes.
-
+        Check if an attribute exists in this object type.
+        
+        Args:
+            name: Attribute name to check
+        
+        Returns:
+            bool: True if the attribute exists
+        """
+        return name in self.attribute_types
+    
+    def with_optional_attributes(self, *names: str) -> "CtyObject":
+        """
+        Create a new object type with additional optional attributes.
+        
         Args:
             *names: Names of attributes to mark as optional
-
+        
         Returns:
-            New CtyObject type with updated optional attributes
-
+            CtyObject: New object type with updated optional attributes
+        
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
+        logger.debug(f"🧩🔧🔄 Creating new object type with optional attributes: {names}")
+        
+        # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
-            raise SchemaValidationError(f"Unknown attributes: {', '.join(unknown)}")
-
-        return CtyObject(
-            self.attribute_types,
-            self.optional_attributes | set(names),
-            self.block_attributes,
-            self.computed_attributes
+            error_msg = f"Unknown attributes: {', '.join(unknown)}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        # Create new optional set
+        new_optional = frozenset(set(self.optional_attributes) | set(names))
+        
+        # Create new object type
+        new_obj = CtyObject(
+            attribute_types=self.attribute_types,
+            optional_attributes=new_optional,
+            computed_attributes=self.computed_attributes,
+            block_attributes=self.block_attributes,
+            sensitive_attributes=self.sensitive_attributes
         )
-
-    def with_blocks(self, *names: str) -> "CtyObject":
+        
+        logger.debug(f"🧩🔧✅ Created new object type with optional attributes: {new_optional}")
+        return new_obj
+    
+    def with_required_attributes(self, *names: str) -> "CtyObject":
         """
-        Create new object type with attributes marked as blocks.
-
+        Create a new object type with additional required attributes.
+        
         Args:
-            *names: Names of attributes to mark as blocks
-
+            *names: Names of attributes to mark as required
+        
         Returns:
-            New CtyObject type with updated block attributes
-
+            CtyObject: New object type with updated required attributes
+        
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
+        logger.debug(f"🧩🔧🔄 Creating new object type with required attributes: {names}")
+        
+        # Validate all names exist in attribute_types and are currently optional
         unknown = set(names) - set(self.attribute_types)
         if unknown:
-            raise SchemaValidationError(f"Unknown attributes: {', '.join(unknown)}")
-
-        return CtyObject(
-            self.attribute_types,
-            self.optional_attributes,
-            self.block_attributes | set(names),
-            self.computed_attributes
+            error_msg = f"Unknown attributes: {', '.join(unknown)}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        not_optional = set(names) - set(self.optional_attributes)
+        if not_optional:
+            error_msg = f"Attributes already required: {', '.join(not_optional)}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        # Create new optional set
+        new_optional = frozenset(set(self.optional_attributes) - set(names))
+        
+        # Create new object type
+        new_obj = CtyObject(
+            attribute_types=self.attribute_types,
+            optional_attributes=new_optional,
+            computed_attributes=self.computed_attributes,
+            block_attributes=self.block_attributes,
+            sensitive_attributes=self.sensitive_attributes
         )
-
-    def with_computed(self, *names: str) -> "CtyObject":
+        
+        logger.debug(f"🧩🔧✅ Created new object type with required attributes: {names}")
+        return new_obj
+    
+    def with_computed_attributes(self, *names: str) -> "CtyObject":
         """
-        Create new object type with computed attributes.
-
+        Create a new object type with additional computed attributes.
+        
         Args:
             *names: Names of attributes to mark as computed
-
+        
         Returns:
-            New CtyObject type with updated computed attributes
-
+            CtyObject: New object type with updated computed attributes
+        
         Raises:
             SchemaValidationError: If any name is not a valid attribute
         """
+        logger.debug(f"🧩🔧🔄 Creating new object type with computed attributes: {names}")
+        
+        # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
-            raise SchemaValidationError(f"Unknown attributes: {', '.join(unknown)}")
-
-        return CtyObject(
-            self.attribute_types,
-            self.optional_attributes,
-            self.block_attributes,
-            self.computed_attributes | set(names)
+            error_msg = f"Unknown attributes: {', '.join(unknown)}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        # Create new computed set
+        new_computed = frozenset(set(self.computed_attributes) | set(names))
+        
+        # Create new object type
+        new_obj = CtyObject(
+            attribute_types=self.attribute_types,
+            optional_attributes=self.optional_attributes,
+            computed_attributes=new_computed,
+            block_attributes=self.block_attributes,
+            sensitive_attributes=self.sensitive_attributes
         )
-
-    def equal(self, other: "CtyType") -> bool:
-        """Check if types are equal."""
+        
+        logger.debug(f"🧩🔧✅ Created new object type with computed attributes: {new_computed}")
+        return new_obj
+    
+    def with_block_attributes(self, *names: str) -> "CtyObject":
+        """
+        Create a new object type with additional block attributes.
+        
+        Args:
+            *names: Names of attributes to mark as blocks
+        
+        Returns:
+            CtyObject: New object type with updated block attributes
+        
+        Raises:
+            SchemaValidationError: If any name is not a valid attribute
+        """
+        logger.debug(f"🧩🔧🔄 Creating new object type with block attributes: {names}")
+        
+        # Validate all names exist in attribute_types
+        unknown = set(names) - set(self.attribute_types)
+        if unknown:
+            error_msg = f"Unknown attributes: {', '.join(unknown)}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        # Create new block set
+        new_blocks = frozenset(set(self.block_attributes) | set(names))
+        
+        # Create new object type
+        new_obj = CtyObject(
+            attribute_types=self.attribute_types,
+            optional_attributes=self.optional_attributes,
+            computed_attributes=self.computed_attributes,
+            block_attributes=new_blocks,
+            sensitive_attributes=self.sensitive_attributes
+        )
+        
+        logger.debug(f"🧩🔧✅ Created new object type with block attributes: {new_blocks}")
+        return new_obj
+    
+    def with_sensitive_attributes(self, *names: str) -> "CtyObject":
+        """
+        Create a new object type with additional sensitive attributes.
+        
+        Args:
+            *names: Names of attributes to mark as sensitive
+        
+        Returns:
+            CtyObject: New object type with updated sensitive attributes
+        
+        Raises:
+            SchemaValidationError: If any name is not a valid attribute
+        """
+        logger.debug(f"🧩🔧🔄 Creating new object type with sensitive attributes: {names}")
+        
+        # Validate all names exist in attribute_types
+        unknown = set(names) - set(self.attribute_types)
+        if unknown:
+            error_msg = f"Unknown attributes: {', '.join(unknown)}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        # Create new sensitive set
+        new_sensitive = frozenset(set(self.sensitive_attributes) | set(names))
+        
+        # Create new object type
+        new_obj = CtyObject(
+            attribute_types=self.attribute_types,
+            optional_attributes=self.optional_attributes,
+            computed_attributes=self.computed_attributes,
+            block_attributes=self.block_attributes,
+            sensitive_attributes=new_sensitive
+        )
+        
+        logger.debug(f"🧩🔧✅ Created new object type with sensitive attributes: {new_sensitive}")
+        return new_obj
+    
+    def with_attribute(self, name: str, type_: CtyType, *, 
+                      optional: bool = False, computed: bool = False, 
+                      block: bool = False, sensitive: bool = False) -> "CtyObject":
+        """
+        Create a new object type with an additional attribute.
+        
+        Args:
+            name: Name of the new attribute
+            type_: Type of the new attribute
+            optional: Whether the attribute is optional
+            computed: Whether the attribute is computed
+            block: Whether the attribute is a block
+            sensitive: Whether the attribute is sensitive
+        
+        Returns:
+            CtyObject: New object type with the additional attribute
+        
+        Raises:
+            SchemaValidationError: If the name already exists
+        """
+        logger.debug(f"🧩🔧🔄 Creating new object type with attribute: {name} ({type_.__class__.__name__})")
+        
+        # Validate attribute doesn't already exist
+        if name in self.attribute_types:
+            error_msg = f"Attribute already exists: {name}"
+            logger.error(f"🧩🔧❌ {error_msg}")
+            raise SchemaValidationError("object", error_msg)
+        
+        # Create new attribute_types dict
+        new_attrs = dict(self.attribute_types)
+        new_attrs[name] = type_
+        
+        # Update attribute sets based on flags
+        new_optional = set(self.optional_attributes)
+        new_computed = set(self.computed_attributes)
+        new_blocks = set(self.block_attributes)
+        new_sensitive = set(self.sensitive_attributes)
+        
+        if optional:
+            new_optional.add(name)
+        if computed:
+            new_computed.add(name)
+        if block:
+            new_blocks.add(name)
+        if sensitive:
+            new_sensitive.add(name)
+        
+        # Create new object type
+        new_obj = CtyObject(
+            attribute_types=new_attrs,
+            optional_attributes=frozenset(new_optional),
+            computed_attributes=frozenset(new_computed),
+            block_attributes=frozenset(new_blocks),
+            sensitive_attributes=frozenset(new_sensitive)
+        )
+        
+        logger.debug(f"🧩🔧✅ Created new object type with attribute: {name}")
+        return new_obj
+    
+    async def equal(self, other: CtyType) -> bool:
+        """
+        Check if this type equals another type.
+        
+        Args:
+            other: Another type to compare
+        
+        Returns:
+            bool: True if the types are equal
+        """
+        logger.debug(f"🧩🔍🔄 Checking equality with {other.__class__.__name__}")
+        
+        # Must be a CtyObject
         if not isinstance(other, CtyObject):
+            logger.debug(f"🧩🔍❌ Not equal: {other.__class__.__name__} is not CtyObject")
             return False
-
+        
+        # Must have same attribute names
         if set(self.attribute_types) != set(other.attribute_types):
+            logger.debug("🧩🔍❌ Not equal: attribute names differ")
             return False
-
-        return all(
-            self.attribute_types[name].equal(other.attribute_types[name])
-            for name in self.attribute_types
-        )
-
-    def usable_as(self, other: "CtyType") -> bool:
-        """Check if this type can be used as another type."""
+        
+        # Must have same attribute types
+        for name, type_ in self.attribute_types.items():
+            other_type = other.attribute_types[name]
+            if not await type_.equal(other_type):
+                logger.debug(f"🧩🔍❌ Not equal: attribute {name} types differ")
+                return False
+        
+        # Must have same optional attributes
+        if self.optional_attributes != other.optional_attributes:
+            logger.debug("🧩🔍❌ Not equal: optional attributes differ")
+            return False
+        
+        # Must have same computed attributes
+        if self.computed_attributes != other.computed_attributes:
+            logger.debug("🧩🔍❌ Not equal: computed attributes differ")
+            return False
+        
+        # Must have same block attributes
+        if self.block_attributes != other.block_attributes:
+            logger.debug("🧩🔍❌ Not equal: block attributes differ")
+            return False
+        
+        # Must have same sensitive attributes
+        if self.sensitive_attributes != other.sensitive_attributes:
+            logger.debug("🧩🔍❌ Not equal: sensitive attributes differ")
+            return False
+        
+        logger.debug("🧩🔍✅ Objects are equal")
+        return True
+    
+    async def usable_as(self, other: CtyType) -> bool:
+        """
+        Check if this type can be used as another type.
+        
+        Args:
+            other: Target type to check
+        
+        Returns:
+            bool: True if usable as the target type
+        """
+        logger.debug(f"🧩🔍🔄 Checking usability as {other.__class__.__name__}")
+        
+        # Must be a CtyObject
         if not isinstance(other, CtyObject):
+            logger.debug(f"🧩🔍❌ Not usable as {other.__class__.__name__}")
             return False
-
-        # Check that all required attributes are present and compatible
-        return all(
-            name in self.attribute_types
-            and self.attribute_types[name].usable_as(attr_type)
-            for name, attr_type in other.attribute_types.items()
-        )
-
-    def attributes(self) -> frozenset[str]:
-        """Get all attribute names."""
-        return frozenset(self.attribute_types)
-
-    def required_attributes(self) -> frozenset[str]:
-        """Get names of required attributes."""
-        return (
-            set(self.attribute_types) -
-            self.optional_attributes -
-            self.computed_attributes
-        )
-
-    def __hash__(self):
-        # Optional: Implement if the object needs to be used in sets/dicts
-        return hash(frozenset(self.attribute_types.items()))
-
+        
+        # Other type must not have attributes that we don't have
+        other_attrs = set(other.attribute_types)
+        self_attrs = set(self.attribute_types)
+        missing_attrs = other_attrs - self_attrs
+        if missing_attrs:
+            logger.debug(f"🧩🔍❌ Not usable: missing attributes {missing_attrs}")
+            return False
+        
+        # For attributes in both, our type must be usable as other's type
+        for name in other_attrs:
+            self_type = self.attribute_types[name]
+            other_type = other.attribute_types[name]
+            if not await self_type.usable_as(other_type):
+                logger.debug(f"🧩🔍❌ Not usable: attribute {name} type not compatible")
+                return False
+        
+        # Required attributes: other's required must be subset of ours
+        other_required = other.required_attributes()
+        self_required = self.required_attributes()
+        if not other_required.issubset(self_required):
+            extra_required = other_required - self_required
+            logger.debug(f"🧩🔍❌ Not usable: other requires attributes we don't: {extra_required}")
+            return False
+        
+        logger.debug("🧩🔍✅ Object is usable as target type")
+        return True
+    
     def __str__(self) -> str:
         """Get string representation of the type."""
         parts = []
         for name, type_ in sorted(self.attribute_types.items()):
             part = f"{name}: {type_}"
+            
+            flags = []
             if name in self.optional_attributes:
-                part += "?"
+                flags.append("optional")
             if name in self.computed_attributes:
-                part += " (computed)"
+                flags.append("computed")
             if name in self.block_attributes:
-                part += " (block)"
+                flags.append("block")
+            if name in self.sensitive_attributes:
+                flags.append("sensitive")
+            
+            if flags:
+                part += f" ({', '.join(flags)})"
+            
             parts.append(part)
+        
+        return f"object({{{ ', '.join(parts) }}})"
 
-        return f"object({', '.join(parts)})"
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}()"
+def create_object(**kwargs) -> CtyObject:
+    """
+    Create a CtyObject with attribute types specified as keyword arguments.
+    
+    This is a convenience function for creating CtyObject instances with a
+    more readable syntax. Each keyword argument is an attribute name with
+    its value being the attribute type.
+    
+    Example:
+        person_type = create_object(
+            name=CtyString(),
+            age=CtyNumber(),
+            is_active=CtyBool(),
+            optional=["is_active"]
+        )
+    
+    Args:
+        **kwargs: Attribute types and configuration
+        
+    Returns:
+        CtyObject: The created object type
+    """
+    # Extract special configuration parameters
+    optional = kwargs.pop("optional", [])
+    computed = kwargs.pop("computed", [])
+    blocks = kwargs.pop("blocks", [])
+    sensitive = kwargs.pop("sensitive", [])
+    
+    # Create CtyObject with remaining kwargs as attribute_types
+    return CtyObject(
+        attribute_types=kwargs,
+        optional_attributes=frozenset(optional),
+        computed_attributes=frozenset(computed),
+        block_attributes=frozenset(blocks),
+        sensitive_attributes=frozenset(sensitive)
+    )

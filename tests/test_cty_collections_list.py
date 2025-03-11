@@ -1,8 +1,7 @@
 import pytest
 
 from pyvider.cty.exceptions import PyviderError, ValidationError
-from pyvider.cty.collections import CtyList
-from pyvider.cty import CtyNumber, CtyString
+from pyvider.cty import CtyNumber, CtyString, CtyList
 
 # --------------------------------
 # Test: CtyList Validation
