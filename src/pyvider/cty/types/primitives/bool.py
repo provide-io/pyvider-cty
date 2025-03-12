@@ -29,7 +29,7 @@ class CtyBool(CtyType[bool]):
         return super().__eq__(other)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}()"
+        return f"{self.__class__.__name__}(value={self.value})"
 
     def __hash__(self):
         return hash(self.value)
