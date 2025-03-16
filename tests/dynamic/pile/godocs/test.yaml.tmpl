@@ -1,0 +1,56 @@
+{
+  "package": "{{.Name}}",
+  "import_path": "{{.ImportPath}}",
+  "is_command": {{.IsCommand}},
+  "synopsis": "{{.EmitSynopsis | printf "%s"}}",
+  "header": "{{.EmitHeader | printf "%s"}}",
+  "documentation": {
+    "standard": "{{.Emit | printf "%s"}}",
+    "usage": {
+      "constants": [
+        {{- range $index, $const := .Consts }}
+        {
+          "name": "{{ index $const.Names 0 }}",
+          "declaration": "{{ $const.Decl }}",
+          "synopsis": "{{ $const.Doc | printf "%s" }}"
+        }{{if not (eq (len $.Consts) (add1 $index)) }},{{end}}
+        {{- end }}
+      ],
+      "variables": [
+        {{- range $index, $var := .Vars }}
+        {
+          "name": "{{ index $var.Names 0 }}",
+          "declaration": "{{ $var.Decl }}",
+          "synopsis": "{{ $var.Doc | printf "%s" }}"
+        }{{if not (eq (len $.Vars) (add1 $index)) }},{{end}}
+        {{- end }}
+      ],
+      "functions": [
+        {{- range $index, $func := .Funcs }}
+        {
+          "name": "{{ $func.Name }}",
+          "signature": "{{ $func.Decl }}",
+          "synopsis": "{{ $func.Doc | printf "%s" }}"
+        }{{if not (eq (len $.Funcs) (add1 $index)) }},{{end}}
+        {{- end }}
+      ],
+      "types": [
+        {{- range $index, $type := .Types }}
+        {
+          "name": "{{ $type.Name }}",
+          "synopsis": "{{ $type.Doc | printf "%s" }}",
+          "methods": [
+            {{- range $methodIndex, $method := $type.Funcs }}
+            {
+              "name": "{{ $method.Name }}",
+              "signature": "{{ $method.Decl }}",
+              "synopsis": "{{ $method.Doc | printf "%s" }}"
+            }{{if not (eq (len $type.Funcs) (add1 $methodIndex)) }},{{end}}
+            {{- end }}
+          ]
+        }{{if not (eq (len $.Types) (add1 $index)) }},{{end}}
+        {{- end }}
+      ]
+    }
+  }
+}
