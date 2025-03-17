@@ -31,6 +31,9 @@ class SchemaValidationError(ValidationError):
     """Raised when a schema fails validation."""
     pass
 
+class TransformationError(CtyError):
+    """Raised when a schema fails validation."""
+    pass
 
 class InvalidTypeError(CtyError):
     """Raised when an invalid type is used in a type definition."""
