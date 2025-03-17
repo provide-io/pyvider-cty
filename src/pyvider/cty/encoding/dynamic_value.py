@@ -19,7 +19,7 @@ from typing import Any, Union
 from pyvider.cty.types import CtyDynamic
 from pyvider.cty.values import CtyValue
 from pyvider.cty.encoding.protobuf import ProtobufCodec
-from pyvider.exceptions import TransformationError
+from pyvider.cty.exceptions import TransformationError
 from pyvider.cty.logger import logger
 
 
@@ -98,3 +98,5 @@ class CtyDynamicValue:
             error_msg = f"Unexpected error decoding DynamicValue: {e}"
             logger.error(f"🧰🔍❌ {error_msg}")
             raise TransformationError(error_msg) from e
+
+
