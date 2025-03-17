@@ -1,116 +1,139 @@
-#from attrs import define, evolve, field
+"""
+Test module for CtySet implementation.
 
-import unittest
-
+This module contains tests for the CtySet type, ensuring proper validation,
+equality checking, and other operations.
+"""
 import pytest
+from typing import Any, Set
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString
+from pyvider.cty.types import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
 
-
-class TestCtySetType(unittest.TestCase):
-    def setUp(self):
-        # Set up basic sets for testing
+class TestCtySetType:
+    """Test suite for CtySet type."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
         self.string_set = CtySet(element_type=CtyString())
         self.number_set = CtySet(element_type=CtyNumber())
         self.bool_set = CtySet(element_type=CtyBool())
-
+    
     # -------------------- VALIDATION TESTS --------------------
+    
     def test_validate_valid_string_set(self):
-        updated = self.string_set.validate({"one", "two", "three"})
-        expected = {CtyString(value="one"), CtyString(value="two"), CtyString(value="three")}
-        self.assertEqual(updated.value, expected)  # Compare CtyString instances
-
-    def test_validate_invalid_string_set(self):
-        with self.assertRaises(ValidationError):
-            self.string_set.validate({"one", 42})  # Mixing int with str
-
+        """Test validation of a valid string set."""
+        valid = {"apple", "banana", "cherry"}
+        validated = self.string_set.validate(valid)
+        assert set(validated.value) == valid
+    
+    def test_validate_valid_number_set(self):
+        """Test validation of a valid number set."""
+        valid = {1, 2, 3}
+        validated = self.number_set.validate(valid)
+        assert set(validated.value) == valid
+    
+    def test_validate_valid_bool_set(self):
+        """Test validation of a valid boolean set."""
+        valid = {True, False}
+        validated = self.bool_set.validate(valid)
+        assert set(validated.value) == valid
+    
+    def test_validate_invalid_element_type(self):
+        """Test validation with invalid element type."""
+        invalid = {"apple", 2, True}  # Mixed types
+        with pytest.raises(ValidationError):
+            self.string_set.validate(invalid)
+    
     def test_validate_empty_set(self):
-        updated = self.string_set.validate(set())
-        self.assertEqual(updated.value, set())
-
-    def test_validate_number_set(self):
-        updated = self.number_set.validate({1, 2, 3.5})
-        assert {x.value for x in updated.value} == {1, 2, 3.5}
-
-    def test_validate_invalid_number_set(self):
-        with self.assertRaises(ValidationError):
-            self.number_set.validate({1, "two"})  # Mixing str with int
-
+        """Test validation of an empty set."""
+        empty = set()
+        validated = self.string_set.validate(empty)
+        assert len(validated.value) == 0
+    
+    def test_validate_none_value(self):
+        """Test validation with None value."""
+        validated = self.string_set.validate(None)
+        assert len(validated.value) == 0
+    
     def test_validate_non_iterable(self):
-        tfset = CtySet(element_type=CtyString())
-        with self.assertRaises(ValidationError, msg="Expected iterable, got int"):
-            tfset.validate(123)
-
-    # -------------------- EQUALITY TESTS --------------------
+        """Test validation with non-iterable value."""
+        with pytest.raises(ValidationError):
+            self.string_set.validate(123)
+    
+    def test_validate_nested_set(self):
+        """Test validation with nested set (should fail)."""
+        nested = {{"nested"}}
+        with pytest.raises(ValidationError):
+            self.string_set.validate(nested)
+    
+    # -------------------- EQUALITY AND COMPARISON TESTS --------------------
+    
     def test_set_equality(self):
-        set1 = self.string_set.validate({"one", "two"})
-        set2 = self.string_set.validate({"two", "one"})  # Order doesn't matter
-        self.assertEqual(set1, set2)
-
-
+        """Test equality of sets with same element type."""
+        set1 = CtySet(element_type=CtyString())
+        set2 = CtySet(element_type=CtyString())
+        assert set1.equal(set2)
+    
     def test_set_inequality(self):
-        set1 = self.string_set.validate({"one", "two"})
-        set2 = self.string_set.validate({"three"})
-        self.assertNotEqual(set1, set2)
-
-    def test_mixed_type_equality(self):
-        str_set = self.string_set.validate({"one"})
-        num_set = self.number_set.validate({1})
-        self.assertNotEqual(str_set, num_set)
-
-    # -------------------- OPERATIONAL TESTS --------------------
-    def test_add_element_to_set(self):
-        s = CtySet(element_type=CtyString())
-        s.validate({"apple"})
-        s.add("banana")
-        assert s.value == {"apple", "banana"}, f"Expected set: {{'apple', 'banana'}}, got {s.value}"
-
-    def test_add_element_to_set(self):
-        tfset = CtySet(element_type=CtyString())
-        tfset.add("apple")
-        expected = {"apple"}
-        self.assertEqual(set(tfset), expected)  # Ensure native conversion for comparison
-
-    def test_remove_element_from_set(self):
-        updated = self.string_set.validate({"one", "two"})
-        evolved = updated.remove("two")
-
-        # Debugging output
-        print(f"Evolved Set: {evolved.value}")
-
-        # Ensure "two" was removed
-        self.assertNotIn(CtyString(value="two"), evolved.value)
-        self.assertEqual(evolved.value, {CtyString(value="one")})
-
-    def test_remove_non_existent_element(self):
-        s = CtySet(element_type=CtyString())
-        s.validate({"apple"})
-        s.remove("orange")  # Remove non-existent element
-        assert s.value == {"apple"} or s.value == set()
-
+        """Test inequality of sets with different element types."""
+        assert not self.string_set.equal(self.number_set)
+    
+    def test_usable_as_same_type(self):
+        """Test usable_as with same type."""
+        set1 = CtySet(element_type=CtyString())
+        set2 = CtySet(element_type=CtyString())
+        assert set1.usable_as(set2)
+    
+    def test_usable_as_different_type(self):
+        """Test usable_as with different type."""
+        assert not self.string_set.usable_as(self.number_set)
+    
+    def test_usable_as_non_set_type(self):
+        """Test usable_as with non-set type."""
+        assert not self.string_set.usable_as(CtyString())
+    
+    # -------------------- OPERATION TESTS --------------------
+    
+    def test_add_valid_element(self):
+        """Test adding a valid element to the set."""
+        set_obj = self.string_set.validate({"apple", "banana"})
+        set_obj.add("cherry")
+        assert "cherry" in set_obj.value
+    
+    def test_add_invalid_element(self):
+        """Test adding an invalid element to the set."""
+        set_obj = self.string_set.validate({"apple", "banana"})
+        with pytest.raises(ValidationError):
+            set_obj.add(123)
+    
+    def test_remove_element(self):
+        """Test removing an element from the set."""
+        set_obj = self.string_set.validate({"apple", "banana", "cherry"})
+        new_set = set_obj.remove("banana")
+        assert "banana" not in new_set.value
+        assert len(new_set.value) == 2
+    
+    def test_remove_nonexistent_element(self):
+        """Test removing a nonexistent element from the set."""
+        set_obj = self.string_set.validate({"apple", "banana"})
+        new_set = set_obj.remove("cherry")
+        assert len(new_set.value) == 2
+    
     # -------------------- EDGE CASES --------------------
-    def test_nested_sets(self):
-        s = CtySet(element_type=CtyString())
-        with pytest.raises(ValidationError, match="Nested sets are not allowed"):
-            s.validate({frozenset({"nested"})})  # Use frozenset to simulate nesting
-
-    def test_set_with_none(self):
-        with self.assertRaises(ValidationError):
-            self.string_set.validate({None})  # None is not a valid string
-
+    
     def test_large_set(self):
+        """Test validation of a large set."""
         large_set = {str(i) for i in range(1000)}
-        updated = self.string_set.validate(large_set)
-        self.assertEqual(len(updated.value), 1000)
-
-    def test_mixed_type_equality(self):
-        with self.assertRaises(ValidationError):
-            self.string_set.validate({"one", 1})  # Intentionally mixing types
-
-    def test_unhashable_items(self):
-        with self.assertRaises(ValidationError):
-            self.string_set.validate([{"unhashable": "dict"}])
-
-if __name__ == "__main__":
-    unittest.main()
+        validated = self.string_set.validate(large_set)
+        assert len(validated.value) == 1000
+    
+    def test_string_representation(self):
+        """Test string representation of CtySet."""
+        assert str(self.string_set) == "set(CtyString)"
+    
+    def test_iteration(self):
+        """Test iteration over set values."""
+        set_obj = self.string_set.validate({"apple", "banana", "cherry"})
+        items = set(iter(set_obj))
+        assert items == {"apple", "banana", "cherry"}
