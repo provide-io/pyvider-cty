@@ -87,6 +87,28 @@ class CtyValue(Generic[T]):
         """Create a null value of the given type."""
         return cls(type_=type_, is_null=True)
 
+    def to_dict(self) -> dict:
+        """Convert to dictionary representation for serialization."""
+        result = {
+            "type": self._type.__class__.__name__,
+        }
+        
+        # Handle different value types for JSON serialization
+        if isinstance(self._value, (set, frozenset)):
+            result["value"] = list(self._value)
+        elif self._value is not None:
+            result["value"] = self._value
+            
+        # Add metadata
+        result["is_unknown"] = self._is_unknown
+        result["is_null"] = self._is_null
+        
+        # Add marks if present
+        if self._marks:
+            result["marks"] = list(self._marks)
+        
+        return result
+
     def __len__(self) -> int:
         """Get the length of this value, similar to Go-CTY's behavior."""
         # Cannot get length of unknown values
