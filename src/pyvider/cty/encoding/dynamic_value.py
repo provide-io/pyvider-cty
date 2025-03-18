@@ -44,6 +44,25 @@ class CtyDynamicValue:
         """
         logger.debug(f"🧰📝🔄 Encoding DynamicValue for: {repr(value)[:100]}")
 
+        # Auto-convert primitive types to CtyValue
+        if isinstance(value, (int, float)):
+            from pyvider.cty.types.primitives import CtyNumber
+            from pyvider.cty.values import CtyValue
+            value = CtyValue(CtyNumber(), value)
+        elif isinstance(value, str):
+            from pyvider.cty.types.primitives import CtyString
+            from pyvider.cty.values import CtyValue
+            value = CtyValue(CtyString(), value)
+        elif isinstance(value, bool):
+            from pyvider.cty.types.primitives import CtyBool
+            from pyvider.cty.values import CtyValue
+            value = CtyValue(CtyBool(), value)
+        elif isinstance(value, list):
+            from pyvider.cty.types.collections import CtyList
+            from pyvider.cty.types.structural import CtyDynamic
+            from pyvider.cty.values import CtyValue
+            value = CtyValue(CtyList(element_type=CtyDynamic()), value)
+
         if not isinstance(value, (CtyValue, CtyDynamic)):
             error_msg = f"Expected CtyValue or CtyDynamic, got {type(value).__name__}"
             logger.error(f"🧰📝❌ {error_msg}")
