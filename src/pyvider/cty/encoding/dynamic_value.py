@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 # pyvider/cty/encoding/dynamic_value.py
 
 """
@@ -18,8 +18,10 @@ from typing import Any, Union
 
 from pyvider.cty.types import CtyDynamic
 from pyvider.cty.values import CtyValue
+
 from pyvider.cty.encoding.protobuf import ProtobufCodec
 from pyvider.cty.exceptions import TransformationError
+
 from pyvider.cty.logger import logger
 
 
@@ -47,20 +49,15 @@ class CtyDynamicValue:
         # Auto-convert primitive types to CtyValue
         if isinstance(value, (int, float)):
             from pyvider.cty.types.primitives import CtyNumber
-            from pyvider.cty.values import CtyValue
             value = CtyValue(CtyNumber(), value)
         elif isinstance(value, str):
             from pyvider.cty.types.primitives import CtyString
-            from pyvider.cty.values import CtyValue
             value = CtyValue(CtyString(), value)
         elif isinstance(value, bool):
             from pyvider.cty.types.primitives import CtyBool
-            from pyvider.cty.values import CtyValue
             value = CtyValue(CtyBool(), value)
         elif isinstance(value, list):
-            from pyvider.cty.types.collections import CtyList
-            from pyvider.cty.types.structural import CtyDynamic
-            from pyvider.cty.values import CtyValue
+            from pyvider.cty.types.primitives import CtyList
             value = CtyValue(CtyList(element_type=CtyDynamic()), value)
 
         if not isinstance(value, (CtyValue, CtyDynamic)):
