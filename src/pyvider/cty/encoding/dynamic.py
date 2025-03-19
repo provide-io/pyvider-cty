@@ -34,7 +34,7 @@ class ValueTypes:
     DYNAMIC = "dynamic"
 
 
-class DynamicValue:
+class CtyDynamicValue:
     """
     Transforms between Cty values and Terraform-compatible representations.
     
