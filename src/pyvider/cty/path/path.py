@@ -22,9 +22,9 @@ from typing import Any, List, Optional, Union, cast
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.ctypes.base import CtyType
-from pyvider.cty.ctypes.collections import CtyList, CtyMap
-from pyvider.cty.ctypes.structural import CtyObject, CtyTuple
+from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.collections import CtyList, CtyMap
+from pyvider.cty.types.structural import CtyObject, CtyTuple
 from pyvider.cty.exceptions import AttributePathError, ValidationError
 
 # Forward reference for Value to avoid circular imports

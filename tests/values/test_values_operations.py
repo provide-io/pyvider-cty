@@ -13,10 +13,10 @@ import pytest
 from decimal import Decimal
 from typing import Dict, List, Set
 
-from pyvider.cty.ctypes.base import CtyType
-from pyvider.cty.ctypes.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.ctypes.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.ctypes.structural import CtyObject, CtyDynamic, CtyTuple
+from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
+from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
 from pyvider.cty import CtyValue
 from pyvider.cty.values.operations import (
     equals,

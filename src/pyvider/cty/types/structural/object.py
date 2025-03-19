@@ -15,8 +15,8 @@ from typing import Any, Dict, FrozenSet, Optional, Set, Type, Union, cast
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.ctypes.base import CtyType
-from pyvider.cty.ctypes.structural.dynamic import CtyDynamic
+from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.structural.dynamic import CtyDynamic
 from pyvider.cty.exceptions import (
     AttributeValidationError,
     InvalidTypeError,

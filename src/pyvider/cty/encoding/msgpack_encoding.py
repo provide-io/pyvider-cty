@@ -20,7 +20,7 @@ import msgpack
 from msgpack import ExtType
 
 from pyvider.cty.logger import logger
-from pyvider.cty.ctypes import (
+from pyvider.cty.types import (
     CtyType,
     CtyBool,
     CtyNumber,

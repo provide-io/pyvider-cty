@@ -17,7 +17,7 @@ Key Features:
 import json
 from typing import Any, Union
 
-from pyvider.cty.ctypes import CtyDynamic
+from pyvider.cty.types import CtyDynamic
 from pyvider.cty.exceptions import TransformationError
 from pyvider.cty.logger import logger
 from pyvider.protocols.tfprotov6.protobuf import DynamicValue as ProtoDynamicValue

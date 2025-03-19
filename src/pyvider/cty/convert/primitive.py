@@ -1,7 +1,7 @@
 # pyvider/cty/convert/primitive.py
 
 from pyvider.cty.convert.base import register_conversion
-from pyvider.cty.ctypes import CtyString, CtyNumber
+from pyvider.cty.types import CtyString, CtyNumber
 from pyvider.cty.values import CtyValue
 
 # String to number conversion (unsafe)

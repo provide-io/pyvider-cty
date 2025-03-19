@@ -1,7 +1,7 @@
 import pytest
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.ctypes.structural.dynamic import CtyDynamic
+from pyvider.cty.types.structural.dynamic import CtyDynamic
 
 
 class TestCtyDynamic():
@@ -69,7 +69,7 @@ class TestCtyDynamic():
     
     def test_equal_different_type(self):
         """Test equality with a different type."""
-        from pyvider.cty.ctypes.primitives.string import CtyString
+        from pyvider.cty.types.primitives.string import CtyString
         string_type = CtyString()
         self.assertFalse(self.dynamic_type.equal(string_type))
     
@@ -80,7 +80,7 @@ class TestCtyDynamic():
     
     def test_usable_as_different_type(self):
         """Test usability with a different type."""
-        from pyvider.cty.ctypes.primitives.number import CtyNumber
+        from pyvider.cty.types.primitives.number import CtyNumber
         number_type = CtyNumber()
         self.assertFalse(self.dynamic_type.usable_as(number_type))
     
@@ -95,7 +95,7 @@ class TestDynamicFactoryFunction():
     
     def test_tfdynamic_factory(self):
         """Test the tfdynamic factory function."""
-        from pyvider.cty.ctypes.structural.dynamic import tfdynamic
+        from pyvider.cty.types.structural.dynamic import tfdynamic
         from pyvider.schema.attributes import AttributeValue, AttributeMetadata
         
         # Call the factory function
@@ -109,7 +109,7 @@ class TestDynamicFactoryFunction():
     
     def test_tfdynamic_with_multiple_kwargs(self):
         """Test tfdynamic factory with multiple keyword arguments."""
-        from pyvider.cty.ctypes.structural.dynamic import tfdynamic
+        from pyvider.cty.types.structural.dynamic import tfdynamic
         
         # Call with multiple kwargs
         result = tfdynamic(

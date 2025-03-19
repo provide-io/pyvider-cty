@@ -1,9 +1,11 @@
 
+# pyvider/cty/types/structural/tuple.py
+
 from typing import Any, Generic, TypeVar
 
 from pyvider.cty.exceptions import ValidationError
 
-from pyvider.cty.ctypes.base import CtyType
+from pyvider.cty.types.base import CtyType
 
 # Define generic type variables
 T = TypeVar("T")
@@ -85,3 +87,5 @@ class CtyTuple(CtyType[tuple[T, U]], Generic[T, U]):
             str: The string representation.
         """
         return f"CtyTuple({', '.join(t.__name__ for t in self.types)})"
+
+# 🐍🏗️
