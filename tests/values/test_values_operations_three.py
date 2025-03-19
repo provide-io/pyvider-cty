@@ -3,7 +3,7 @@
 import pytest
 from decimal import Decimal
 
-from pyvider.cty.ctypes import (
+from pyvider.cty.types import (
     CtyBool, CtyNumber, CtyString, CtyList, CtyMap, CtySet, CtyObject, CtyTuple
 )
 from pyvider.cty.values import CtyValue

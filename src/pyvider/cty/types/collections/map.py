@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, Dict, Generic, TypeVar, final
 from attrs import define, evolve, field
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.ctypes.base import CtyType
+from pyvider.cty.types.base import CtyType
 from pyvider.cty.logger import logger
 
 K = TypeVar('K')

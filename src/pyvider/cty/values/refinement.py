@@ -47,7 +47,7 @@ class ValueRefinementBuilder:
 
     def string_prefix(self, prefix: str) -> 'ValueRefinementBuilder':
         """Add a string prefix refinement."""
-        from pyvider.cty.ctypes.primitives import CtyString
+        from pyvider.cty.types.primitives import CtyString
         if not isinstance(self._value.type, CtyString):
             raise TypeError("string_prefix can only be applied to string values")
 
@@ -56,7 +56,7 @@ class ValueRefinementBuilder:
 
     def number_range_inclusive(self, min_val: Any, max_val: Any) -> 'ValueRefinementBuilder':
         """Add a number range refinement with inclusive bounds."""
-        from pyvider.cty.ctypes.primitives import CtyNumber
+        from pyvider.cty.types.primitives import CtyNumber
         if not isinstance(self._value.type, CtyNumber):
             raise TypeError("number_range_inclusive can only be applied to number values")
 

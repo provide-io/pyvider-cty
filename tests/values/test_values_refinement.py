@@ -14,7 +14,7 @@ from decimal import Decimal
 
 import pytest
 
-from pyvider.cty.ctypes.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty import CtyValue
 from pyvider.cty.values.refinement import (
     ValueRefinement,
