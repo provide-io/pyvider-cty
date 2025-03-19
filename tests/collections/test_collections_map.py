@@ -1,5 +1,5 @@
 
-# pyvider-cty/tests/collections/test_collections_map.y
+# pyvider-cty/tests/collections/test_collections_map.py
 
 import pytest
 

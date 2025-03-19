@@ -1,3 +1,6 @@
+
+# tests/collections/test_collections_set.py
+
 """
 Test module for CtySet implementation.
 
@@ -5,16 +8,16 @@ This module contains tests for the CtySet type, ensuring proper validation,
 equality checking, and other operations.
 """
 import pytest
-from typing import Any, Set
+from typing import Any
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.types import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
+from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
 
 class TestCtySetType:
     """Test suite for CtySet type."""
     
     def setup_method(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.string_set = CtySet(element_type=CtyString())
         self.number_set = CtySet(element_type=CtyNumber())
         self.bool_set = CtySet(element_type=CtyBool())
