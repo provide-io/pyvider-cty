@@ -14,9 +14,9 @@ import pytest
 from decimal import Decimal
 from typing import Dict, Any, Set
 
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic
+from pyvider.cty.ctypes.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.ctypes.collections import CtyList, CtyMap, CtySet
+from pyvider.cty.ctypes.structural import CtyObject, CtyDynamic
 from pyvider.cty.exceptions import (
     ValidationError,
     AttributeValidationError,
@@ -761,7 +761,7 @@ class TestCtyObjectIntegration:
     @pytest.mark.asyncio
     async def test_create_object_helper(self):
         """Test the create_object helper function."""
-        from pyvider.cty.types.structural.object import create_object
+        from pyvider.cty.ctypes.structural.object import create_object
         
         # Create object using helper
         person_type = create_object(

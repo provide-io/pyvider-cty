@@ -8,7 +8,7 @@ import attrs
 import grpc
 
 from pyvider.rpcplugin.protocol import RPCPluginProtocol
-from pyvider.cty.types import CtyType, CtyString, CtyNumber, CtyBool
+from pyvider.cty.ctypes import CtyType, CtyString, CtyNumber, CtyBool
 from pyvider.cty import CtyValue
 from pyvider.cty.logger import logger
 

@@ -3,7 +3,7 @@
 
 from typing import Any, Optional, FrozenSet, Generic, TypeVar
 
-from pyvider.cty.types import CtyType
+from pyvider.cty.ctypes import CtyType
 
 T = TypeVar('T', covariant=True)
 
@@ -74,7 +74,7 @@ class CtyValue(Generic[T]):
     @classmethod
     def bool(cls, value: bool) -> "CtyValue":
         """Create a boolean value."""
-        from pyvider.cty.types import CtyBool
+        from pyvider.cty.ctypes import CtyBool
         return cls(type_=CtyBool(), value=value)
 
     @classmethod

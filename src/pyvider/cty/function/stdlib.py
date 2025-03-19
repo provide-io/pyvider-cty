@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Sequence, Union
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types import (
+from pyvider.cty.ctypes import (
     CtyType,
     CtyString,
     CtyNumber,

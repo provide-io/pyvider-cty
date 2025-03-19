@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 # pyvider/cty/encoding/protobuf.py
 
 """
@@ -8,7 +8,7 @@ Protobuf encoding and decoding for Pyvider Cty.
 import struct
 from typing import Any, Union
 
-from pyvider.telemetry import logger
+from pyvider.cty.logger import logger
 
 class ProtobufCodec:
     """
@@ -107,3 +107,5 @@ class ProtobufCodec:
             error_msg = f"Error decoding data: {e}"
             logger.error(f"🧰🔍❌ {error_msg}", exc_info=True)
             raise ValueError(error_msg) from e
+
+# 🐍🏗️

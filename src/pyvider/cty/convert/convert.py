@@ -27,7 +27,7 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Typ
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types import (
+from pyvider.cty.ctypes import (
     CtyType,
     CtyString,
     CtyNumber,
@@ -320,7 +320,7 @@ class ConversionRegistry:
         
         # Empty list - return dynamic
         if not types:
-            from pyvider.cty.types import CtyDynamic
+            from pyvider.cty.ctypes import CtyDynamic
             return CtyDynamic, []
 
         # Single type - return it
