@@ -19,7 +19,7 @@ from typing import Any, Optional, TypeVar, Union, cast
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types import (
+from pyvider.cty.ctypes import (
     CtyType,
     CtyBool,
     CtyNumber,

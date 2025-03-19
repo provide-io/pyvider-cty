@@ -8,7 +8,7 @@ import pytest
 from typing import Any, Set
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.types import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
+from pyvider.cty.ctypes import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
 
 class TestCtySetType:
     """Test suite for CtySet type."""

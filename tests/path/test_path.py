@@ -12,9 +12,9 @@ import asyncio
 
 import pytest
 
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap
-from pyvider.cty.types.structural import CtyObject, CtyTuple
+from pyvider.cty.ctypes.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.ctypes.collections import CtyList, CtyMap
+from pyvider.cty.ctypes.structural import CtyObject, CtyTuple
 from pyvider.cty import CtyValue
 from pyvider.cty.path.path import (
     Path,

@@ -2,7 +2,7 @@
 # pyvider/cty/convert/base.py
 
 from typing import Optional, Callable, Type
-from pyvider.cty.types import CtyType
+from pyvider.cty.ctypes import CtyType
 from pyvider.cty.values import CtyValue
 
 class Conversion:

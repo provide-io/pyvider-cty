@@ -1,6 +1,6 @@
 """Terraform type system."""
 
-from pyvider.cty.types import (
+from pyvider.cty.ctypes import (
     CtyType,
 
     CtyBool,

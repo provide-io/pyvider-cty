@@ -14,9 +14,9 @@ from decimal import Decimal
 
 import pytest
 
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
+from pyvider.cty.ctypes.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.ctypes.collections import CtyList, CtyMap, CtySet
+from pyvider.cty.ctypes.structural import CtyObject, CtyDynamic, CtyTuple
 from pyvider.cty import CtyValue
 from pyvider.cty.convert.convert import (
     registry,

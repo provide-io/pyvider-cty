@@ -7,7 +7,7 @@ import asyncio
 
 from pyvider.cty.convert.convert import registry, ConversionRegistry, convert, convert_unsafe
 from pyvider.cty.convert.base import Conversion
-from pyvider.cty.types import (
+from pyvider.cty.ctypes import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic
 )
 from pyvider.cty.values import CtyValue

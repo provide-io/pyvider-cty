@@ -17,9 +17,9 @@ from typing import Any
 
 import msgpack
 
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyTuple, CtyDynamic
+from pyvider.cty.ctypes.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.ctypes.collections import CtyList, CtyMap, CtySet
+from pyvider.cty.ctypes.structural import CtyObject, CtyTuple, CtyDynamic
 
 from pyvider.cty import CtyValue
 
