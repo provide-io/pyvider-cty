@@ -18,7 +18,7 @@ from pyvider.cty.types import (
 
 from pyvider.cty.values import CtyValue
 
-from pyvider.cty.encoding.dynamic import CtyDynamicValue
+from pyvider.cty.encoding.dynamic_value import CtyDynamicValue
 
 __all__ = [
     "CtyType",
