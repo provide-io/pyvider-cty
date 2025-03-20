@@ -3,10 +3,10 @@
 
 [project]
 name = "pyvider-cty"
-version = "0.1.1"
 description = "Pyvider Cty Package"
-readme = "README.md"
+version = "0.1.1"
 requires-python = ">=3.12"
+readme = "README.md"
 authors = [
     {name = "Tim Perkins", email = "code@tim.life"}
 ]
@@ -149,3 +149,4 @@ source_directories = ["src"]
 exclude = ["tests/*", "**/*pb2*.py"]
 strict = true
 
+# 🐍🏗️📋
