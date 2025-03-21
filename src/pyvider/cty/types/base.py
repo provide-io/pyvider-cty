@@ -15,7 +15,7 @@ T = TypeVar("T")
 
 @define(slots=True)
 class CtyType(ABC, Generic[T]):
-    """Generic abstract base class for all Terraform types."""
+    """Generic abstract base class for all Cty types."""
     ctype: ClassVar[Optional[str]] = None  # Abstract class - no ctype by default
 
     @classmethod

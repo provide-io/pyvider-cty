@@ -1,4 +1,7 @@
-"""Terraform type system."""
+
+# pyvider/cty/__init__.py
+
+"""Cty type system."""
 
 from pyvider.cty.types import (
     CtyType,

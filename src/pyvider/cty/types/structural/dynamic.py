@@ -4,7 +4,7 @@ from pyvider.cty.types.base import CtyType
 
 class CtyDynamic(CtyType):
     """
-    CtyDynamic represents a dynamic Terraform type that can accept any value.
+    CtyDynamic represents a dynamic Cty type that can accept any value.
     This type acts as a catch-all during schema validation, allowing flexibility 
     for attributes whose structure or type cannot be determined at schema definition time.
     """

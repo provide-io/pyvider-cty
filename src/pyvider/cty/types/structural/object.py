@@ -2,7 +2,7 @@
 # pyvider/cty/types/structural/object.py
 
 """
-CtyObject implementation for Terraform object values.
+CtyObject implementation for Cty object values.
 
 The CtyObject type represents a complex value with a fixed set of attributes,
 each having its own type. Unlike maps, objects have a predefined schema that
@@ -26,7 +26,7 @@ from pyvider.cty.exceptions import (
 @attrs.define(frozen=True, slots=True)
 class CtyObject(CtyType[Dict[str, Any]]):
     """
-    Represents a Terraform object type with a fixed set of attributes.
+    Represents a Cty object type with a fixed set of attributes.
     
     An object has a predefined schema with strictly typed attributes.
     Unlike maps, objects have known attribute names and types at definition time,

@@ -11,10 +11,10 @@ V = TypeVar('V')
 @define(frozen=True, slots=True)
 class CtyMap(CtyType[Dict[K, V]], Generic[K, V]):
     """
-    CtyMap represents a map type in the Terraform type system.
+    CtyMap represents a map type in the Cty type system.
     
     Maps are collections of key-value pairs where all keys have the same type
-    and all values have the same type. In Terraform, map keys are typically strings.
+    and all values have the same type. In Cty, map keys are typically strings.
     """
     ctype: ClassVar[str] = "map"
     key_type: CtyType[K] = field(kw_only=True)  # Mandatory as keyword-only

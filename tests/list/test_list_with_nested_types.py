@@ -1,11 +1,13 @@
 
-import unittest
+# tests/list/test_list_with_nested_types.py
+
+import pytest
 
 from pyvider.cty.exceptions import ValidationError
 from pyvider.cty import CtyString, CtyNumber, CtyList, CtyTuple
 
 
-class TestCtyListWithNestedTypes(unittest.TestCase):
+class TestCtyListWithNestedTypes:
     """Tests for CtyList with complex nested types."""
     
     def test_list_of_tuples(self):
@@ -23,12 +25,12 @@ class TestCtyListWithNestedTypes(unittest.TestCase):
         try:
             result = list_of_tuples.validate(data)
             # Check that values match
-            self.assertEqual(len(result), 3)
-            self.assertEqual(result[0], ("a", 1))
-            self.assertEqual(result[1], ("b", 2))
-            self.assertEqual(result[2], ("c", 3))
+            assert len(result) == 3
+            assert result[0] == ("a", 1)
+            assert result[1] == ("b", 2)
+            assert result[2] == ("c", 3)
         except Exception as e:
-            self.fail(f"Validation raised exception: {e}")
+            pytest.fail(f"Validation raised exception: {e}")
     
     def test_list_of_tuples_invalid(self):
         """Test a list of tuples with invalid data."""
@@ -42,7 +44,7 @@ class TestCtyListWithNestedTypes(unittest.TestCase):
         data = [("a", 1), ("b", "not_an_int"), ("c", 3)]
         
         # Validate
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             list_of_tuples.validate(data)
     
     def test_list_of_lists_of_strings(self):
@@ -58,11 +60,11 @@ class TestCtyListWithNestedTypes(unittest.TestCase):
         result = list_of_lists.validate(data)
         
         # Assertions
-        self.assertEqual(result, data)
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0], ["a", "b"])
-        self.assertEqual(result[1], ["c", "d", "e"])
-        self.assertEqual(result[2], ["f"])
+        assert result == data
+        assert len(result) == 3
+        assert result[0] == ["a", "b"]
+        assert result[1] == ["c", "d", "e"]
+        assert result[2] == ["f"]
     
     def test_empty_list_elements(self):
         """Test a list with empty list elements."""
@@ -77,9 +79,9 @@ class TestCtyListWithNestedTypes(unittest.TestCase):
         result = list_of_lists.validate(data)
         
         # Assertions
-        self.assertEqual(result, data)
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[1], [])
+        assert result == data
+        assert len(result) == 3
+        assert result[1] == []
     
     def test_complex_nesting(self):
         """Test complex nested list structures."""
@@ -99,11 +101,11 @@ class TestCtyListWithNestedTypes(unittest.TestCase):
         result = outer_list.validate(data)
         
         # Assertions
-        self.assertEqual(result, data)
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0][0][0], 1)
-        self.assertEqual(result[1][0][2], 7)
-        self.assertEqual(result[2], [])
+        assert result == data
+        assert len(result) == 3
+        assert result[0][0][0] == 1
+        assert result[1][0][2] == 7
+        assert result[2] == []
     
     def test_mixed_depth_list(self):
         """Test lists with mixed nesting depths."""
@@ -114,5 +116,5 @@ class TestCtyListWithNestedTypes(unittest.TestCase):
         data = ["single_item", ["nested", "items"]]
         
         # This should fail since the second element is a list, not a string
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             string_list.validate(data)
