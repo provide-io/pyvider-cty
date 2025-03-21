@@ -32,25 +32,24 @@ class TestCtyListAdvanced:
 
         # Assertions
         assert isinstance(result, CtyList)
-        assert result.value == ["apple", "banana", "cherry"]
+        assert len(result.value) == 3
+        assert all(isinstance(item, CtyString) for item in result.value)
+        assert [item.value for item in result.value] == ["apple", "banana", "cherry"]
 
-    def test_validate_none_becomes_empty_list(self):
-        """Test that None is treated as an empty list."""
+    def test_validate_none_raises_error(self):
+        """Test that None raises a validation error."""
         # Validate None
-        result = self.string_list.validate(None)
-
-        # Assertions
-        assert isinstance(result, CtyList)
-        assert result.value == []
+        with pytest.raises(ValidationError, match="Cannot validate None as a list"):
+            self.string_list.validate(None)
 
     def test_validate_invalid_container_type(self):
         """Test validation fails for non-list/tuple containers."""
         # Try to validate a dictionary
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Expected iterable"):
             self.string_list.validate({"a": 1, "b": 2})
 
         # Try to validate a string (iterable but not list/tuple)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Expected iterable"):
             self.string_list.validate("not_a_list")
 
     def test_validate_homogeneous_list(self):
@@ -63,7 +62,9 @@ class TestCtyListAdvanced:
 
         # Assertions
         assert isinstance(result, CtyList)
-        assert result.value == [1, 2, 3, 4, 5]
+        assert len(result.value) == 5
+        assert all(isinstance(item, CtyNumber) for item in result.value)
+        assert [item.value for item in result.value] == [1, 2, 3, 4, 5]
 
     def test_validate_heterogeneous_list_fails(self):
         """Test validation fails for heterogeneous lists."""
@@ -85,10 +86,18 @@ class TestCtyListAdvanced:
 
         # Assertions
         assert isinstance(result, CtyList)
-        assert isinstance(result[0], CtyList)
-        assert isinstance(result[1], CtyList)
-        assert result[0].value == ["a", "b"]
-        assert result[1].value == ["c", "d", "e"]
+        assert len(result.value) == 2
+        assert all(isinstance(item, CtyList) for item in result.value)
+
+        # Check first inner list
+        assert len(result[0].value) == 2
+        assert all(isinstance(item, CtyString) for item in result[0].value)
+        assert [item.value for item in result[0].value] == ["a", "b"]
+
+        # Check second inner list
+        assert len(result[1].value) == 3
+        assert all(isinstance(item, CtyString) for item in result[1].value)
+        assert [item.value for item in result[1].value] == ["c", "d", "e"]
 
     def test_validate_nested_list_with_errors(self):
         """Test validation of nested lists with errors."""
@@ -102,21 +111,26 @@ class TestCtyListAdvanced:
 
     def test_element_at_valid_index(self):
         """Test retrieving an element at a valid index."""
-        # Create and validate a list
-        data = ["apple", "banana", "cherry"]
-        validated = self.string_list.validate(data)
+        # Create a CtyList with CtyString values
+        validated = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="apple"), CtyString(value="banana"), CtyString(value="cherry")]
+        )
 
         # Get element at index
         element = self.string_list.element_at(validated, 1)
 
         # Assertions
-        assert element == "banana"
+        assert isinstance(element, CtyString)
+        assert element.value == "banana"
 
     def test_element_at_invalid_index(self):
         """Test retrieving an element at an invalid index."""
-        # Create and validate a list
-        data = ["apple", "banana", "cherry"]
-        validated = self.string_list.validate(data)
+        # Create a CtyList with CtyString values
+        validated = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="apple"), CtyString(value="banana"), CtyString(value="cherry")]
+        )
 
         # Try to get element at invalid index
         with pytest.raises(IndexError):
@@ -124,15 +138,18 @@ class TestCtyListAdvanced:
 
     def test_element_at_negative_index(self):
         """Test retrieving an element at a negative index."""
-        # Create and validate a list
-        data = ["apple", "banana", "cherry"]
-        validated = self.string_list.validate(data)
+        # Create a CtyList with CtyString values
+        validated = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="apple"), CtyString(value="banana"), CtyString(value="cherry")]
+        )
 
         # Get element at negative index
         element = self.string_list.element_at(validated, -1)
 
         # Assertions
-        assert element == "cherry"
+        assert isinstance(element, CtyString)
+        assert element.value == "cherry"
 
     def test_element_at_invalid_container(self):
         """Test element_at with an invalid container."""
@@ -236,11 +253,25 @@ class TestCtyListWithNestedTypes:
 
         # Assertions
         assert isinstance(result, CtyList)
-        assert len(result) == 3
-        assert all(isinstance(item, CtyList) for item in result)
-        assert result[0].value == ["a", "b"]
-        assert result[1].value == ["c", "d", "e"]
-        assert result[2].value == ["f"]
+        assert len(result.value) == 3
+
+        # Check that all elements are CtyList objects
+        assert all(isinstance(item, CtyList) for item in result.value)
+
+        # Check the contents of the first inner list
+        assert len(result[0].value) == 2
+        assert all(isinstance(item, CtyString) for item in result[0].value)
+        assert [item.value for item in result[0].value] == ["a", "b"]
+
+        # Check the contents of the second inner list
+        assert len(result[1].value) == 3
+        assert all(isinstance(item, CtyString) for item in result[1].value)
+        assert [item.value for item in result[1].value] == ["c", "d", "e"]
+
+        # Check the contents of the third inner list
+        assert len(result[2].value) == 1
+        assert all(isinstance(item, CtyString) for item in result[2].value)
+        assert [item.value for item in result[2].value] == ["f"]
 
     def test_empty_list_elements(self):
         """Test a list with empty list elements."""
@@ -256,11 +287,23 @@ class TestCtyListWithNestedTypes:
 
         # Assertions
         assert isinstance(result, CtyList)
-        assert len(result) == 3
-        assert all(isinstance(item, CtyList) for item in result)
-        assert result[0].value == ["a", "b"]
-        assert result[1].value == []
-        assert result[2].value == ["c", "d"]
+        assert len(result.value) == 3
+
+        # Check that all elements are CtyList objects
+        assert all(isinstance(item, CtyList) for item in result.value)
+
+        # Check the contents of the first inner list
+        assert len(result[0].value) == 2
+        assert all(isinstance(item, CtyString) for item in result[0].value)
+        assert [item.value for item in result[0].value] == ["a", "b"]
+
+        # Check that the second inner list is empty
+        assert len(result[1].value) == 0
+
+        # Check the contents of the third inner list
+        assert len(result[2].value) == 2
+        assert all(isinstance(item, CtyString) for item in result[2].value)
+        assert [item.value for item in result[2].value] == ["c", "d"]
 
     def test_complex_nesting(self):
         """Test complex nested list structures."""
@@ -281,13 +324,36 @@ class TestCtyListWithNestedTypes:
 
         # Assertions
         assert isinstance(result, CtyList)
-        assert len(result) == 3
-        assert all(isinstance(item, CtyList) for item in result)
-        assert isinstance(result[0][0], CtyList)
-        assert isinstance(result[1][0], CtyList)
-        assert result[0][0].value == [1, 2]
-        assert result[1][0].value == [5, 6, 7]
-        assert len(result[2]) == 0
+        assert len(result.value) == 3
+
+        # Check that the first level elements are CtyList objects
+        assert all(isinstance(item, CtyList) for item in result.value)
+
+        # Check first element (list of lists)
+        assert len(result[0].value) == 2
+        assert all(isinstance(item, CtyList) for item in result[0].value)
+
+        # Check first inner list
+        assert len(result[0][0].value) == 2
+        assert all(isinstance(item, CtyNumber) for item in result[0][0].value)
+        assert [item.value for item in result[0][0].value] == [1, 2]
+
+        # Check second inner list
+        assert len(result[0][1].value) == 2
+        assert all(isinstance(item, CtyNumber) for item in result[0][1].value)
+        assert [item.value for item in result[0][1].value] == [3, 4]
+
+        # Check second element (list with one list)
+        assert len(result[1].value) == 1
+        assert all(isinstance(item, CtyList) for item in result[1].value)
+
+        # Check inner list of second element
+        assert len(result[1][0].value) == 3
+        assert all(isinstance(item, CtyNumber) for item in result[1][0].value)
+        assert [item.value for item in result[1][0].value] == [5, 6, 7]
+
+        # Check third element (empty list)
+        assert len(result[2].value) == 0
 
     def test_mixed_depth_list(self):
         """Test lists with mixed nesting depths (should fail)."""
@@ -303,44 +369,80 @@ class TestCtyListWithNestedTypes:
 
     def test_list_access_methods(self):
         """Test advanced list access methods."""
-        # Create a list
-        string_list = CtyList(element_type=CtyString(), value=["a", "b", "c", "d", "e"])
+        # Create a CtyList with CtyString values
+        string_list = CtyList(
+            element_type=CtyString(),
+            value=[
+                CtyString(value="a"),
+                CtyString(value="b"),
+                CtyString(value="c"),
+                CtyString(value="d"),
+                CtyString(value="e")
+            ]
+        )
 
         # Test slicing
         sliced = string_list[1:4]
         assert isinstance(sliced, CtyList)
-        assert sliced.value == ["b", "c", "d"]
+        assert len(sliced.value) == 3
+        assert all(isinstance(item, CtyString) for item in sliced.value)
+        assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
         # Test slice method
         sliced = string_list.slice(1, 4)
         assert isinstance(sliced, CtyList)
-        assert sliced.value == ["b", "c", "d"]
+        assert len(sliced.value) == 3
+        assert all(isinstance(item, CtyString) for item in sliced.value)
+        assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
         # Test negative slicing
         sliced = string_list[-3:]
         assert isinstance(sliced, CtyList)
-        assert sliced.value == ["c", "d", "e"]
+        assert len(sliced.value) == 3
+        assert all(isinstance(item, CtyString) for item in sliced.value)
+        assert [item.value for item in sliced.value] == ["c", "d", "e"]
 
     def test_list_concat_method(self):
         """Test concatenation of lists."""
-        # Create two lists
-        list1 = CtyList(element_type=CtyString(), value=["a", "b"])
-        list2 = CtyList(element_type=CtyString(), value=["c", "d"])
+        # Create two CtyLists with CtyString values
+        list1 = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="a"), CtyString(value="b")]
+        )
+        list2 = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="c"), CtyString(value="d")]
+        )
 
         # Test concat method
         result = list1.concat(list2)
         assert isinstance(result, CtyList)
-        assert result.value == ["a", "b", "c", "d"]
+        assert len(result.value) == 4
+        assert all(isinstance(item, CtyString) for item in result.value)
+        assert [item.value for item in result.value] == ["a", "b", "c", "d"]
+
+        # Test that original lists are unchanged
+        assert len(list1.value) == 2
+        assert [item.value for item in list1.value] == ["a", "b"]
+        assert len(list2.value) == 2
+        assert [item.value for item in list2.value] == ["c", "d"]
 
         # Test with incompatible element types
-        number_list = CtyList(element_type=CtyNumber(), value=[1, 2])
+        number_list = CtyList(element_type=CtyNumber(), value=[])
         with pytest.raises(ValidationError):
             list1.concat(number_list)
 
     def test_list_contains_method(self):
         """Test the contains method."""
-        # Create a list
-        string_list = CtyList(element_type=CtyString(), value=["a", "b", "c"])
+        # Create a CtyList with CtyString values
+        string_list = CtyList(
+            element_type=CtyString(),
+            value=[
+                CtyString(value="a"),
+                CtyString(value="b"),
+                CtyString(value="c")
+            ]
+        )
 
         # Test contains with valid values
         assert string_list.contains("a") is True
