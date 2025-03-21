@@ -1,9 +1,8 @@
 
 import unittest
-import pytest
 
 from pyvider.cty.exceptions import PyviderError, ValidationError
-from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
+from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString
 
 class TestCtyListAdvanced(unittest.TestCase):
     """Advanced tests for the CtyList type to improve coverage."""

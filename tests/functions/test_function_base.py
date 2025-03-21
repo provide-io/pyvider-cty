@@ -8,7 +8,6 @@ These tests verify that the function system works correctly with other parts
 of the Cty system, including type checking, validation, and execution.
 """
 
-import asyncio
 from decimal import Decimal
 from typing import List
 
@@ -18,11 +17,6 @@ from pyvider.cty import (
     CtyString,
     CtyNumber,
     CtyBool,
-    CtyList,
-    CtyMap,
-    CtySet,
-    CtyObject,
-    CtyDynamic,
     CtyValue,
 )
 from pyvider.cty.function.base import (

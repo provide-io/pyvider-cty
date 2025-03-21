@@ -14,7 +14,7 @@ allowing for precise round-trip serialization.
 
 import asyncio
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 import msgpack
 from msgpack import ExtType

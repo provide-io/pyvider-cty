@@ -9,14 +9,12 @@ each having its own type. Unlike maps, objects have a predefined schema that
 validates attribute types and presence/absence of required attributes.
 """
 
-import logging
-from typing import Any, Dict, FrozenSet, Optional, Set, Type, Union, cast
+from typing import Any, Dict, FrozenSet
 
 import attrs
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.structural.dynamic import CtyDynamic
 from pyvider.cty.exceptions import (
     AttributeValidationError,
     InvalidTypeError,

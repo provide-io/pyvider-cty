@@ -1,6 +1,5 @@
 # tests/test_dynamic.py
-import pytest
-from pyvider.cty.encoding.dynamic import DynamicValue
+from pyvider.cty.encoding.dynamic_value import CtyDynamicValue
 
 def test_roundtrip():
     test_values = [
@@ -15,6 +14,6 @@ def test_roundtrip():
     ]
     
     for value in test_values:
-        encoded = DynamicValue.encode(value)
-        decoded = DynamicValue.decode(encoded)
+        encoded = CtyDynamicValue.encode(value)
+        decoded = CtyDynamicValue.decode(encoded)
         assert decoded == value, f"Roundtrip failed for {value}"

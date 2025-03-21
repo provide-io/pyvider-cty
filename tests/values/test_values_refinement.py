@@ -8,16 +8,13 @@ These tests verify that the refinement system works correctly with other parts
 of the Cty system, including type checking, operations, and encoding.
 """
 
-import asyncio
-import json
 from decimal import Decimal
 
 import pytest
 
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
+from pyvider.cty.types.primitives import CtyString, CtyNumber
 from pyvider.cty import CtyValue
 from pyvider.cty.values.refinement import (
-    ValueRefinement,
     NotNullRefinement,
     StringPrefixRefinement,
     NumberRangeRefinement,

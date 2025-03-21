@@ -1,6 +1,5 @@
 
 import pytest
-from unittest.mock import MagicMock, patch
 from decimal import Decimal
 
 from pyvider.cty.values.operations import (
@@ -9,10 +8,10 @@ from pyvider.cty.values.operations import (
     merge_maps, slice_string, slice_list
 )
 from pyvider.cty import (
-    CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtySet, CtyObject, CtyTuple
+    CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject
 )
 from pyvider.cty.values.base import CtyValue
-from pyvider.cty.exceptions import CtyError, TypeMismatchError
+from pyvider.cty.exceptions import CtyError
 
 
 class TestEqualsOperation:

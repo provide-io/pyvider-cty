@@ -10,7 +10,7 @@ format auto-detection.
 """
 
 import functools
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, cast
+from typing import Callable, Dict, List, Optional, Type, TypeVar, cast
 
 from pyvider.telemetry import logger
 from pyvider.cty.encoding.protocols import SerializerProtocol

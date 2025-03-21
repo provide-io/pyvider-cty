@@ -1,5 +1,4 @@
 
-import pytest
 import unittest
 
 from pyvider.cty.exceptions import ValidationError

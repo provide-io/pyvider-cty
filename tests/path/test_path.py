@@ -8,7 +8,6 @@ These tests verify that paths can navigate through nested Cty values,
 including objects, lists, tuples, and maps.
 """
 
-import asyncio
 
 import pytest
 
@@ -18,9 +17,6 @@ from pyvider.cty.types.structural import CtyObject, CtyTuple
 from pyvider.cty import CtyValue
 from pyvider.cty.path.path import (
     Path,
-    GetAttrStep,
-    IndexStep,
-    KeyStep,
     AttributePathError,
 )
 

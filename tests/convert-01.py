@@ -20,17 +20,16 @@ Conversions can be:
 """
 
 import asyncio
-from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar, Union, cast
+from typing import Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
 import attrs
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
+from pyvider.cty.types.collections import CtyList, CtySet
+from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.exceptions import ConversionError
 
 # Forward reference for Value to avoid circular imports
@@ -262,7 +261,6 @@ class ConversionRegistry:
         Raises:
             ConversionError: If conversion fails or is impossible
         """
-        from pyvider.cty.values import CtyValue
         
         source_type = type(value.type)
         logger.debug(f"🧰🔄🔍 Converting value from {source_type.__name__} to {target_type.__name__}")
@@ -339,7 +337,7 @@ class ConversionRegistry:
                 return candidate, conversions
                 
         # No unification possible
-        logger.debug(f"🧰🔄❌ Unable to unify types")
+        logger.debug("🧰🔄❌ Unable to unify types")
         return None
 
 # Create global registry

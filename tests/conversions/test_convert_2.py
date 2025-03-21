@@ -7,7 +7,7 @@ from pyvider.cty.convert.convert import (
     unify, unify_unsafe, Conversion
 )
 from pyvider.cty.exceptions import ConversionError
-from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyList, CtyDynamic
+from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyList
 from pyvider.cty.values.base import CtyValue
 
 

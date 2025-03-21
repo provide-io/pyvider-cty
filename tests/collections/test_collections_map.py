@@ -4,7 +4,7 @@
 import pytest
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty import CtyBool, CtyMap, CtyNumber, CtyString, CtyValue
+from pyvider.cty import CtyBool, CtyMap, CtyNumber, CtyString
 
 
 class TestCtyMapType():

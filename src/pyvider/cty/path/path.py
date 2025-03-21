@@ -17,7 +17,7 @@ This follows go-cty's design for path handling.
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union, cast
+from typing import Any, List
 
 import attrs
 
@@ -106,7 +106,7 @@ class GetAttrStep(PathStep):
         logger.debug(f"🧰🔍✅ Getting attribute {self.name} from object")
         
         if value.is_null:
-            raise AttributePathError(f"Cannot get attribute from null value")
+            raise AttributePathError("Cannot get attribute from null value")
             
         if value.is_unknown:
             # If we have a refinement that constrains the object, we might
@@ -186,7 +186,7 @@ class IndexStep(PathStep):
         logger.debug(f"🧰🔍✅ Getting element at index {self.index} from collection")
         
         if value.is_null:
-            raise AttributePathError(f"Cannot index into null value")
+            raise AttributePathError("Cannot index into null value")
             
         if value.is_unknown:
             # If we have a refinement that constrains the list, we might
@@ -269,7 +269,7 @@ class KeyStep(PathStep):
         logger.debug(f"🧰🔍✅ Getting value for key {self.key} from map")
         
         if value.is_null:
-            raise AttributePathError(f"Cannot get key from null value")
+            raise AttributePathError("Cannot get key from null value")
             
         if value.is_unknown:
             # If we have a refinement that constrains the map, we might
