@@ -1,38 +1,48 @@
 
 # pyvider/cty/types/collections/list.py
 
-from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, cast
+from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, List, cast
 from attrs import define, evolve, field
 from pyvider.cty.exceptions import ValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.logger import logger
 
+# Type variable representing the type of values in the list
 T = TypeVar('T')
 
 @final
 @define(frozen=True, slots=True)
-class CtyList(CtyType[list[T]], Generic[T]):
+class CtyList(CtyType[List[T]], Generic[T]):
     """
     CtyList represents a list type in the Cty type system.
 
     Lists are ordered collections of values of a specific element type.
     Unlike sets, lists can contain duplicate values and maintain order.
+
+    Attributes:
+        element_type: The Cty type of elements in the list
+        value: The actual list of values (all of which are of type T)
     """
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: list[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
+    value: List[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
-        """Validate element_type after initialization."""
+        """
+        Validate element_type after initialization.
+
+        Raises:
+            ValidationError: If element_type is not a CtyType
+        """
         if not isinstance(self.element_type, CtyType):
-            logger.error(f"🔌❗❌ Expected CtyType for element_type, got {type(self.element_type)}")
-            raise ValidationError(
-                f"Expected CtyType for element_type, got {type(self.element_type)}"
-            )
+            message = f"Expected CtyType for element_type, got {type(self.element_type).__name__}"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
     def validate(self, value: Any) -> "CtyList[T]":
         """
         Validate that the given value conforms to this list type.
+        Validates each element against the element_type.
 
         Args:
             value: The value to validate
@@ -41,23 +51,27 @@ class CtyList(CtyType[list[T]], Generic[T]):
             A new CtyList with the validated value
 
         Raises:
-            ValidationError: If validation fails
+            ValidationError: If value is None
+            ValidationError: If value is not a list or tuple
+            ValidationError: If any element fails validation
         """
         logger.debug(f"🔌📝🔄 Validating value as CtyList: {type(value).__name__}")
 
-        # Handle None value - no fallback, just raise an error
+        # Handle None - explicitly reject
         if value is None:
-            logger.error("🔌❗❌ Cannot validate None as a list")
-            raise ValidationError("Cannot validate None as a list")
+            message = "Cannot validate None as a list"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
-        # Validate the input is an iterable
-        if not hasattr(value, '__iter__') or isinstance(value, (str, bytes, dict)):
-            logger.error(f"🔌❗❌ Expected iterable, got {type(value).__name__}")
-            raise ValidationError(f"Expected iterable, got {type(value).__name__}")
+        # Validate the input is a list or tuple
+        if not isinstance(value, (list, tuple)):
+            message = f"Expected list or tuple, got {type(value).__name__}"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
-        # Handle empty iterable
+        # Handle empty list or tuple
         if not value:
-            logger.debug("🔌📝✅ Returning empty list for empty iterable")
+            logger.debug("🔌📝✅ Returning empty list for empty container")
             return evolve(self, value=[])
 
         # Validate each element
@@ -66,7 +80,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         for i, item in enumerate(value):
             try:
-                # Validate each element against the element_type
+                # Validate item against element_type
                 validated_item = self.element_type.validate(item)
                 validated.append(validated_item)
                 logger.debug(f"🔌📝✅ Validated item {i}: {validated_item}")
@@ -75,7 +89,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 logger.error(f"🔌❗❌ {error_msg}")
                 validation_errors.append(error_msg)
 
-        # If any validation errors, raise them
+        # If any validation errors occurred, raise an exception with details
         if validation_errors:
             error_msg = "CtyList validation failed:\n" + "\n".join(validation_errors)
             logger.error(f"🔌❗❌ {error_msg}")
@@ -96,7 +110,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             The element at the specified index
 
         Raises:
-            ValidationError: If the container is not a list or CtyList
+            ValidationError: If the container is not a list, tuple, or CtyList
             IndexError: If the index is out of bounds
         """
         logger.debug(f"🔌🔍🔄 Getting element at index {index}")
@@ -104,22 +118,24 @@ class CtyList(CtyType[list[T]], Generic[T]):
         # Handle CtyList container
         if isinstance(container, CtyList):
             container_value = container.value
-        # Handle raw list container
+        # Handle raw list or tuple container
         elif isinstance(container, (list, tuple)):
             container_value = container
         # Handle invalid container type
         else:
-            logger.error(f"🔌❗❌ Expected list or CtyList, got {type(container).__name__}")
-            raise ValidationError(f"Expected list or CtyList, got {type(container).__name__}")
+            message = f"Expected list, tuple, or CtyList, got {type(container).__name__}"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
         # Get the element at the specified index
         try:
             result = container_value[index]
-            logger.debug(f"🔌🔍✅ Got element at index {index}")
+            logger.debug(f"🔌🔍✅ Got element at index {index}: {result}")
             return result
         except IndexError as e:
-            logger.error(f"🔌❗❌ Index out of bounds: {index}")
-            raise IndexError(f"Index out of bounds: {index}") from e
+            message = f"Index out of bounds: {index} (valid range: 0-{len(container_value)-1})"
+            logger.error(f"🔌❗❌ {message}")
+            raise IndexError(message) from e
 
     def append(self, item: Any) -> "CtyList[T]":
         """
@@ -137,7 +153,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝🔄 Appending item: {item}")
 
         try:
-            # Validate the item
+            # Validate the item against element_type
             validated_item = self.element_type.validate(item)
 
             # Create a new list with the additional item
@@ -147,8 +163,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.debug(f"🔌📝✅ Appended item: {validated_item}")
             return evolve(self, value=new_list)
         except Exception as e:
-            logger.error(f"🔌❗❌ Failed to append item: {e}")
-            raise ValidationError(f"Failed to append item: {e}")
+            message = f"Failed to append item: {e}"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
     def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
         """
@@ -169,22 +186,25 @@ class CtyList(CtyType[list[T]], Generic[T]):
         if end is None:
             end = len(self.value)
 
-        # Validate indices
+        # Convert negative indices to positive
         if start < 0:
             start = len(self.value) + start
         if end < 0:
             end = len(self.value) + end
 
+        # Validate indices are within bounds
         if start < 0 or start > len(self.value):
-            logger.error(f"🔌❗❌ Start index {start} out of bounds (0-{len(self.value)})")
-            raise IndexError(f"Start index {start} out of bounds (0-{len(self.value)})")
+            message = f"Start index {start} out of bounds (0-{len(self.value)})"
+            logger.error(f"🔌❗❌ {message}")
+            raise IndexError(message)
+
         if end < start or end > len(self.value):
-            logger.error(f"🔌❗❌ End index {end} out of bounds ({start}-{len(self.value)})")
-            raise IndexError(f"End index {end} out of bounds ({start}-{len(self.value)})")
+            message = f"End index {end} out of bounds ({start}-{len(self.value)})"
+            logger.error(f"🔌❗❌ {message}")
+            raise IndexError(message)
 
         # Create a new list with the sliced values
         sliced_value = self.value[start:end]
-
         logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
         return evolve(self, value=sliced_value)
 
@@ -205,19 +225,18 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         # Ensure other is a CtyList
         if not isinstance(other, CtyList):
-            logger.error(f"🔌❗❌ Expected CtyList, got {type(other).__name__}")
-            raise ValidationError(f"Expected CtyList, got {type(other).__name__}")
+            message = f"Expected CtyList, got {type(other).__name__}"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
         # Ensure element types are compatible
         if not self.element_type.equal(other.element_type):
-            logger.error(f"🔌❗❌ Element types are not compatible: {self.element_type} and {other.element_type}")
-            raise ValidationError(
-                f"Cannot concatenate lists with different element types: {self.element_type} and {other.element_type}"
-            )
+            message = f"Cannot concatenate lists with different element types: {self.element_type} and {other.element_type}"
+            logger.error(f"🔌❗❌ {message}")
+            raise ValidationError(message)
 
         # Create a new list with the concatenated values
         concat_value = list(self.value) + list(other.value)
-
         logger.debug(f"🔌📝✅ Concatenated lists, result size: {len(concat_value)}")
         return evolve(self, value=concat_value)
 
@@ -234,10 +253,10 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌🔍🔄 Checking if list contains item: {item}")
 
         try:
-            # Validate the item
+            # Validate the item against element_type
             validated_item = self.element_type.validate(item)
 
-            # Check if the validated item is in the list
+            # Check if any element in the list equals the validated item
             for list_item in self.value:
                 if list_item == validated_item:
                     logger.debug(f"🔌🔍✅ List contains item: {validated_item}")
@@ -246,6 +265,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.debug(f"🔌🔍❌ List does not contain item: {validated_item}")
             return False
         except Exception as e:
+            # If validation fails, the item can't be in the list
             logger.debug(f"🔌🔍❌ Item is not valid for this list: {e}")
             return False
 
@@ -287,24 +307,31 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
     def __eq__(self, other):
         """
-        Check if this list is equal to another object.
+        Check if this list is equal to another list.
 
         Args:
-            other: The other object to check against
+            other: The other list to check against
 
         Returns:
             True if the lists are equal
         """
-        # Only equal to other CtyList instances
         if not isinstance(other, CtyList):
             return False
 
-        # Check element type and values
-        return (
-            self.element_type == other.element_type
-            and len(self.value) == len(other.value)
-            and all(a == b for a, b in zip(self.value, other.value))
-        )
+        # Check element type equality
+        if not self.element_type == other.element_type:
+            return False
+
+        # Check if lists have the same length
+        if len(self.value) != len(other.value):
+            return False
+
+        # Check each element for equality
+        for a, b in zip(self.value, other.value):
+            if a != b:
+                return False
+
+        return True
 
     def __len__(self):
         """
@@ -355,4 +382,4 @@ class CtyList(CtyType[list[T]], Generic[T]):
         Returns:
             A detailed string representation
         """
-        return f"CtyList(element_type={self.element_type})"
+        return f"CtyList()"

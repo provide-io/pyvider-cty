@@ -18,6 +18,7 @@ from pyvider.cty import (
     CtyNumber,
     CtyBool,
     CtyValue,
+    CtyType,
 )
 from pyvider.cty.function.base import (
     Parameter,
@@ -126,7 +127,7 @@ class TestFunctionSystem:
         def return_number(args: List[CtyValue]) -> CtyType:
             return CtyNumber()
             
-        def add_numbers(args: List[CtyValue], return_type: CtyType) -> Value:
+        def add_numbers(args: List[CtyValue], return_type: CtyType) -> CtyValue:
             # Simple implementation that adds two numbers
             num1 = args[0].value
             num2 = args[1].value
@@ -214,7 +215,7 @@ class TestFunctionSystem:
         def return_string(args: List[CtyValue]) -> CtyType:
             return CtyString()
             
-        def concat_strings(args: List[CtyValue], return_type: CtyType) -> Value:
+        def concat_strings(args: List[CtyValue], return_type: CtyType) -> CtyValue:
             # Simple implementation that concatenates strings
             if any(arg.is_null for arg in args):
                 return CtyValue(type_=return_type, is_null=True)
@@ -245,7 +246,7 @@ class TestFunctionSystem:
         concat_fn = Function(spec)
         
         # Test with single argument
-        result = await concat_fn(Value(type_=CtyString(), value="hello"))
+        result = await concat_fn(CtyValue(type_=CtyString(), value="hello"))
         assert result.value == "hello"
         
         # Test with multiple arguments
@@ -285,7 +286,7 @@ class TestFunctionSystem:
         def return_string(args: List[CtyValue]) -> CtyType:
             return CtyString()
             
-        def upper_string(args: List[CtyValue], return_type: CtyType) -> Value:
+        def upper_string(args: List[CtyValue], return_type: CtyType) -> CtyValue:
             # Convert string to uppercase
             if args[0].is_null:
                 return CtyValue(type_=return_type, is_null=True)
@@ -323,7 +324,7 @@ class TestFunctionSystem:
         assert fn.name == "upper"
         
         # Call the function
-        result = await fn(Value(type_=CtyString(), value="hello"))
+        result = await fn(CtyValue(type_=CtyString(), value="hello"))
         assert result.value == "HELLO"
         
         # Test list of functions
@@ -346,7 +347,7 @@ class TestFunctionSystem:
         def return_bool(args: List[CtyValue]) -> CtyType:
             return CtyBool()
             
-        def starts_with(args: List[CtyValue], return_type: CtyType) -> Value:
+        def starts_with(args: List[CtyValue], return_type: CtyType) -> CtyValue:
             # Check if string starts with prefix
             str_val = args[0]
             prefix = args[1]
