@@ -3,7 +3,7 @@
 
 import pytest
 
-from pyvider.cty.exceptions import AttributeValidationError, SchemaValidationError, ValidationError
+from pyvider.cty.exceptions import AttributeValidationError, SchemaValidationError, ValidationError, InvalidTypeError
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyList, CtyObject
 
 
@@ -25,13 +25,16 @@ def test_ctyobject_validate_success():
         "age": 30,
         "active": True
     }
-    
+
     # Execute validation
     validated = obj.validate(valid_data)
-    
-    # Verify results
-    assert validated == {"name": "John Doe", "age": 30, "active": True}
 
+    # FIX: Check type wrappers are maintained
+    assert isinstance(validated, dict)
+    assert isinstance(validated['name'], CtyString)
+    assert validated['name'].value == 'John Doe'
+    assert isinstance(validated['active'], CtyBool)
+    assert validated['active'].value is True
 
 def test_ctyobject_validate_missing_required():
     """Test validation fails when a required attribute is missing."""
@@ -42,7 +45,7 @@ def test_ctyobject_validate_missing_required():
     })
 
     incomplete_data = {"name": "Jane Doe"}
-    
+
     # Test validation failure
     with pytest.raises(ValidationError, match="Missing required attribute: age"):
         obj.validate(incomplete_data)
@@ -55,10 +58,10 @@ def test_ctyobject_validate_null():
         "name": CtyString(),
         "age": CtyNumber(),
     })
-    
+
     # Validate null
     validated = obj.validate(None)
-    
+
     # Verify result
     assert validated is None
 
@@ -90,12 +93,13 @@ def test_ctyobject_nested_validation():
             "postal_code": "12345"
         }
     }
-    
+
     # Validate nested data
     validated = user_type.validate(user_data)
-    
-    # Verify deeply nested field
-    assert validated["address"]["city"] == "Springfield"
+
+    # FIX: Assert type first, then value
+    assert isinstance(validated['address']['city'], CtyString)
+    assert validated['address']['city'].value == 'Springfield'
 
 
 def test_ctyobject_nested_invalid_type():
@@ -116,7 +120,7 @@ def test_ctyobject_nested_invalid_type():
         "name": "John",
         "address": "Not an object"
     }
-    
+
     # Test validation failure
     with pytest.raises(ValidationError, match="Invalid value for attribute 'address'"):
         user_type.validate(invalid_data)
@@ -143,10 +147,10 @@ def test_ctyobject_optional_attributes():
         "name": "John",
         "age": 30
     }
-    
+
     # Validate data
     validated = obj.validate(data)
-    
+
     # Verify optional attribute is None
     assert "email" in validated
     assert validated["email"] is None
@@ -179,12 +183,13 @@ def test_ctyobject_get_valid_attribute():
     })
 
     data = obj.validate({"title": "Game Title", "level": 5})
-    
+
     # Access attribute
     attr_value = obj.get_attribute(data, "title")
-    
+
     # Verify attribute value
-    assert attr_value == "Game Title"
+    assert isinstance(attribute, CtyString)
+    assert attribute.value == 'Game Title'
 
 
 def test_ctyobject_get_invalid_attribute():
@@ -208,7 +213,7 @@ def test_ctyobject_has_attribute():
         "name": CtyString(),
         "age": CtyNumber()
     })
-    
+
     # Check existing and non-existing attributes
     assert obj.has_attribute("name") is True
     assert obj.has_attribute("email") is False
@@ -239,12 +244,13 @@ def test_ctyobject_with_blocks():
         },
         "metadata": "meta"
     }
-    
+
     # Validate data
     validated = parent.validate(data)
-    
+
     # Verify block attribute
-    assert validated["config"]["enabled"] is True
+    assert isinstance(validated['is_server'], CtyBool)
+    assert validated['is_server'].value is True
 
 
 def test_ctyobject_invalid_block():
@@ -262,7 +268,7 @@ def test_ctyobject_invalid_block():
     invalid_data = {
         "config": "invalid_block"  # Should be an object
     }
-    
+
     # Test validation failure
     with pytest.raises(ValidationError, match="Invalid value for attribute 'config'"):
         parent.validate(invalid_data)
@@ -600,6 +606,8 @@ def test_ctyobject_to_string():
 def test_create_object_helper():
     """Test create_object helper function."""
     # Use helper function
+    from pyvider.cty.types.structural.object import create_object
+
     obj = create_object(
         name=CtyString(),
         age=CtyNumber(),
@@ -679,18 +687,18 @@ def test_ctyobject_validation_performance_large_object():
     # Create object with many attributes
     attr_count = 100
     attrs = {}
-    
+
     for i in range(attr_count):
         attrs[f"attr_{i}"] = CtyString()
-    
+
     large_type = CtyObject(attribute_types=attrs)
-    
+
     # Create large value
     value = {f"attr_{i}": f"value_{i}" for i in range(attr_count)}
-    
+
     # Validate
     validated = large_type.validate(value)
-    
+
     # Check validation was successful
     assert validated is not None
     assert isinstance(validated, dict)
@@ -736,7 +744,7 @@ def test_complex_nested_object():
         optional_attributes=frozenset(["tags"]),
         block_attributes=frozenset(["network", "disks"])
     )
-    
+
     # Create valid complex value
     value = {
         "name": "web-server",
@@ -762,24 +770,28 @@ def test_complex_nested_object():
             "owner": "devops"
         }
     }
-    
+
     # Validate
     validated = server_type.validate(value)
-    
+
     # Check various aspects of the validated object
+    # FIX: Check type and value
+    assert isinstance(validated['resource']['type'], CtyString)
+    assert validated['resource']['type'].value == 'web-server'
+
     assert validated["name"] == "web-server"
     assert validated["size"] == "t3.large"
-    
+
     assert validated["network"]["subnet"] == "subnet-123456"
     assert validated["network"]["vpc_id"] == "vpc-123456"
     assert len(validated["network"]["security_groups"]) == 2
-    
+
     assert len(validated["disks"]) == 2
     assert validated["disks"][0]["size_gb"] == 100
     assert validated["disks"][0]["iops"] == 3000
     assert validated["disks"][1]["size_gb"] == 500
     assert validated["disks"][1]["iops"] is None  # Optional
-    
+
     assert validated["tags"]["environment"] == "production"
     assert validated["tags"]["owner"] == "devops"
 

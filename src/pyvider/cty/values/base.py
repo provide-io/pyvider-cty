@@ -33,6 +33,11 @@ class CtyValue(Generic[T]):
         return not self._is_unknown
 
     @property
+    def is_unknown(self) -> bool:
+        """Check if this value is known (not unknown)."""
+        return self._is_unknown
+
+    @property
     def is_null(self) -> bool:
         """Check if this value is null."""
         return self._is_null
@@ -41,9 +46,9 @@ class CtyValue(Generic[T]):
         """Check if this value has a specific mark."""
         return mark in self._marks
 
-    def mark(self, mark: Any) -> "Value[T]":
+    def mark(self, mark: Any) -> "CtyValue[T]":
         """Add a mark to this value."""
-        return Value(
+        return CtyValue(
             type_=self._type,
             value=self._value,
             is_unknown=self._is_unknown,
@@ -51,9 +56,9 @@ class CtyValue(Generic[T]):
             marks=frozenset(self._marks.union({mark}))
         )
 
-    def unmark(self) -> tuple["Value[T]", FrozenSet]:
+    def unmark(self) -> tuple["CtyValue[T]", FrozenSet]:
         """Remove all marks from this value and return them."""
-        return Value(
+        return CtyValue(
             type_=self._type,
             value=self._value,
             is_unknown=self._is_unknown,
@@ -110,7 +115,7 @@ class CtyValue(Generic[T]):
         return result
 
     def __len__(self) -> int:
-        """Get the length of this value, similar to Go-CTY's behavior."""
+        """Get the length of this value, similar to go-cty's behavior."""
         # Cannot get length of unknown values
         if self._is_unknown:
             raise TypeError("Cannot get length of unknown value")
@@ -125,5 +130,12 @@ class CtyValue(Generic[T]):
 
         # Value doesn't support length
         raise TypeError(f"Value of type {type(self._value).__name__} doesn't support length operation")
+
+    def __eq__(self, other):
+        if not isinstance(other, CtyValue):
+            return False
+        if self.type.__class__ != other.type.__class__:
+            return False
+        return self.value == other.value
 
 # 🐍🏗️

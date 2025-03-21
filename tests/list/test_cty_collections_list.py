@@ -107,7 +107,7 @@ def test_ctylist_invalid_element_type():
 def test_ctylist_invalid_structure():
     """Test validation with non-list structure."""
     list_of_numbers = CtyList(element_type=CtyNumber())
-    with pytest.raises(ValidationError, match="Expected iterable"):
+    with pytest.raises(ValidationError, match="Expected list or tuple"):
         list_of_numbers.validate("not_a_list")  # String is not a valid list
 
 
