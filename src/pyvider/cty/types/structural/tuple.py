@@ -14,7 +14,7 @@ U = TypeVar("U")
 
 class CtyTuple(CtyType[tuple[T, U]], Generic[T, U]):
     """
-    Represents a Terraform tuple type with a fixed structure.
+    Represents a Cty tuple type with a fixed structure.
     """
 
     def __init__(self, types: tuple[Any, ...]):
