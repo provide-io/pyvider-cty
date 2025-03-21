@@ -2,7 +2,7 @@
 # pyvider/cty/encoding/json.py
 
 import json
-from typing import Any, Union, Optional
+from typing import Union, Optional
 
 from pyvider.cty import CtyType
 from pyvider.cty.values import CtyValue

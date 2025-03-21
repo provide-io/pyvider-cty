@@ -12,11 +12,10 @@ the rest of the Cty type system.
 import asyncio
 import pytest
 from decimal import Decimal
-from typing import Dict, Any, Set
 
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic
+from pyvider.cty.types.collections import CtyList, CtyMap
+from pyvider.cty.types.structural import CtyObject
 from pyvider.cty.exceptions import (
     ValidationError,
     AttributeValidationError,

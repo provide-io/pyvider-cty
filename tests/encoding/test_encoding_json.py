@@ -1,5 +1,4 @@
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
 from pyvider.cty.encoding.json import marshal, unmarshal

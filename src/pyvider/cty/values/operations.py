@@ -12,15 +12,12 @@ Operations respect value state (known/unknown/null) and properly handle marks.
 All operations maintain proper type checking and value immutability.
 """
 
-import operator
 from decimal import Decimal
 from typing import Any, Optional, TypeVar, Union, cast
 
-import attrs
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types import (
-    CtyType,
     CtyBool,
     CtyNumber,
     CtyString,
@@ -683,7 +680,7 @@ def get_attribute(obj: CtyValue, name: str) -> CtyValue:
             else:
                 # If the attribute is in the type but not in the value,
                 # it might be optional - return null
-                logger.debug(f"🧮🔍✅ Attribute not found in value, returning null")
+                logger.debug("🧮🔍✅ Attribute not found in value, returning null")
                 return CtyValue.null(attr_type)
                 
         except Exception as e:

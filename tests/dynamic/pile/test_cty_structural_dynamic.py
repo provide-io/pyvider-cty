@@ -1,4 +1,3 @@
-import pytest
 
 from pyvider.cty.exceptions import ValidationError
 from pyvider.cty.types.structural.dynamic import CtyDynamic

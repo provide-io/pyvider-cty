@@ -8,10 +8,9 @@ This module contains tests for the CtySet type, ensuring proper validation,
 equality checking, and other operations.
 """
 import pytest
-from typing import Any
 
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
+from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString
 
 class TestCtySetType:
     """Test suite for CtySet type."""

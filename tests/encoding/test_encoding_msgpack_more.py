@@ -7,9 +7,9 @@ from decimal import Decimal
 from pyvider.cty.encoding.msgpack import (
     encode_value, decode_value, encode_type, decode_type,
     marshal, unmarshal, MsgpackEncodeError, MsgpackDecodeError,
-    EXT_UNKNOWN, EXT_NULL, EXT_MARKED
+    EXT_UNKNOWN, EXT_NULL
 )
-from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtySet, CtyObject, CtyDynamic
+from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyList, CtyMap
 from pyvider.cty.values.base import CtyValue
 
 
@@ -301,7 +301,6 @@ class TestMsgpackEncoding:
             nonlocal ext_hook
             ext_hook = kwargs['ext_hook']
             # Create ExtType for unknown value
-            from msgpack import ExtType
             dummy_data = msgpack.packb({
                 "type": b"type data",
                 "path": []
@@ -332,7 +331,6 @@ class TestMsgpackEncoding:
             nonlocal ext_hook
             ext_hook = kwargs['ext_hook']
             # Create ExtType for null value
-            from msgpack import ExtType
             return ext_hook(EXT_NULL, b"type data")
         
         with patch('msgpack.unpackb', mock_unpackb):

@@ -1,4 +1,3 @@
-import pytest
 
 from pyvider.cty.exceptions import PyviderError, ValidationError
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple

@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 # pyvider/ctytest/service.py
 
-import asyncio
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-import attrs
-import grpc
 
 from pyvider.rpcplugin.protocol import RPCPluginProtocol
-from pyvider.cty.types import CtyType, CtyString, CtyNumber, CtyBool
-from pyvider.cty import CtyValue
 from pyvider.cty.logger import logger
 
 from .proto import ctytest_pb2, ctytest_pb2_grpc

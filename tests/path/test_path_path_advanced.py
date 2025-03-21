@@ -1,16 +1,14 @@
 
 # pyvider-cty/tests/path/test_cty_refinement.py
 
-import pytest
 
-from unittest.mock import MagicMock, patch
 from decimal import Decimal
 
 from pyvider.cty.values.refinement import (
     ValueRefinement, NotNullRefinement, StringPrefixRefinement,
     NumberRangeRefinement, ValueRefinementBuilder
 )
-from pyvider.cty import CtyString, CtyNumber, CtyBool
+from pyvider.cty import CtyString
 from pyvider.cty import CtyValue
 
 class TestRefinement:

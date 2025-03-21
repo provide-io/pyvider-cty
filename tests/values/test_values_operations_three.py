@@ -8,11 +8,10 @@ from pyvider.cty.types import (
 )
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.operations import (
-    equals, add, subtract, multiply, divide, modulo, negate,
+    divide, modulo, negate,
     get_attribute, get_element, length, contains, 
     concat_lists, merge_maps, slice_string, slice_list
 )
-from pyvider.cty.exceptions import CtyError, TypeMismatchError
 
 class TestArithmeticOperations:
     """Test arithmetic operations."""

@@ -9,11 +9,8 @@ to/from MessagePack format. It covers all Cty types, special values (null and un
 and ensures proper round-trip encoding/decoding.
 """
 
-import asyncio
-import json
 import pytest
 from decimal import Decimal
-from typing import Any
 
 import msgpack
 

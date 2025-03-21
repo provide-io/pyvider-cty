@@ -9,14 +9,12 @@ different Cty types, handling both safe and unsafe conversions, as well
 as integration with other parts of the Cty system.
 """
 
-import asyncio
 from decimal import Decimal
 
 import pytest
 
 from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
-from pyvider.cty.types.structural import CtyObject, CtyDynamic, CtyTuple
+from pyvider.cty.types.collections import CtyList, CtyMap
 from pyvider.cty import CtyValue
 from pyvider.cty.convert.convert import (
     registry,

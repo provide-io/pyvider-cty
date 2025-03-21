@@ -11,7 +11,7 @@ Python types and Cty types with type information preservation.
 import json
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type, TypedDict, Union, cast
+from typing import Any, List, TypedDict
 
 import attrs
 

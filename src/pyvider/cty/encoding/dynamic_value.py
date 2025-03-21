@@ -1,5 +1,5 @@
 
-# pyvider/cty/encoding/dynamic.py
+# pyvider/cty/encoding/dynamic_value.py
 
 """
 Terraform-compatible dynamic value transformation.
@@ -9,9 +9,8 @@ Terraform-compatible data structures for serialization.
 """
 
 import json
-import re
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict, List, TypeVar, Union
 
 from pyvider.cty.logger import logger
 from pyvider.cty.exceptions import TransformationError
@@ -56,7 +55,7 @@ class CtyDynamicValue:
         Raises:
             TransformationError: If encoding fails
         """
-        logger.debug(f"🧰📝🔄 Encoding value to DynamicValue: {repr(value)[:100]}")
+        logger.debug(f"🧰📝🔄 Encoding value to CtyDynamicValue: {repr(value)[:100]}")
 
         try:
             # Handle None/null values
@@ -82,10 +81,10 @@ class CtyDynamicValue:
                 actual_value = value
             
             # Determine type and encode accordingly
-            return DynamicValue._encode_value(actual_value)
+            return CtyDynamicValue._encode_value(actual_value)
             
         except Exception as e:
-            error_msg = f"Failed to encode value to DynamicValue: {e}"
+            error_msg = f"Failed to encode value to CtyDynamicValue: {e}"
             logger.error(f"🧰📝❌ {error_msg}", exc_info=True)
             raise TransformationError(error_msg) from e
     
@@ -116,15 +115,15 @@ class CtyDynamicValue:
             return [ValueTypes.NUMBER, numeric_value]
         elif isinstance(value, list):
             logger.debug(f"🧰📝🔄 Encoding list with {len(value)} items")
-            encoded_items = [DynamicValue._encode_value(item) for item in value]
+            encoded_items = [CtyDynamicValue._encode_value(item) for item in value]
             return [ValueTypes.TUPLE, encoded_items]
         elif isinstance(value, tuple):
             logger.debug(f"🧰📝🔄 Encoding tuple with {len(value)} items")
-            encoded_items = [DynamicValue._encode_value(item) for item in value]
+            encoded_items = [CtyDynamicValue._encode_value(item) for item in value]
             return [ValueTypes.TUPLE, encoded_items]
         elif isinstance(value, (set, frozenset)):
             logger.debug(f"🧰📝🔄 Encoding set with {len(value)} items")
-            encoded_items = [DynamicValue._encode_value(item) for item in value]
+            encoded_items = [CtyDynamicValue._encode_value(item) for item in value]
             return [ValueTypes.SET, encoded_items]
         elif isinstance(value, dict):
             logger.debug(f"🧰📝🔄 Encoding dict with {len(value)} keys")
@@ -132,19 +131,19 @@ class CtyDynamicValue:
             encoded_dict = {}
             for k, v in value.items():
                 str_key = str(k)
-                encoded_dict[str_key] = DynamicValue._encode_value(v)
+                encoded_dict[str_key] = CtyDynamicValue._encode_value(v)
             return [ValueTypes.OBJECT, encoded_dict]
         else:
             # Try object with to_dict method
             if hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
                 logger.debug(f"🧰📝🔄 Encoding object with to_dict method: {type(value).__name__}")
                 dict_value = value.to_dict()
-                return DynamicValue._encode_value(dict_value)
+                return CtyDynamicValue._encode_value(dict_value)
                 
             # Try object with __dict__ attribute
             if hasattr(value, '__dict__'):
                 logger.debug(f"🧰📝🔄 Encoding object using __dict__: {type(value).__name__}")
-                return DynamicValue._encode_value(value.__dict__)
+                return CtyDynamicValue._encode_value(value.__dict__)
                 
             # Last resort - convert to string
             logger.debug(f"🧰📝🔄 Encoding as string (fallback): {type(value).__name__}")
@@ -164,7 +163,7 @@ class CtyDynamicValue:
         Raises:
             TransformationError: If decoding fails
         """
-        logger.debug(f"🧰🔍🔄 Decoding DynamicValue")
+        logger.debug("🧰🔍🔄 Decoding CtyDynamicValue")
 
         try:
             # Handle None/null
@@ -192,7 +191,7 @@ class CtyDynamicValue:
                 return None  # Or return a proper unknown value if available
             
             # Decode the value
-            result = DynamicValue._decode_value(data)
+            result = CtyDynamicValue._decode_value(data)
             logger.debug(f"🧰🔍✅ Decoded to: {repr(result)[:100]}")
             return result
                 
@@ -201,7 +200,7 @@ class CtyDynamicValue:
             logger.error(f"🧰🔍❌ {error_msg}", exc_info=True)
             raise TransformationError(error_msg) from e
         except Exception as e:
-            error_msg = f"Failed to decode DynamicValue: {e}"
+            error_msg = f"Failed to decode CtyDynamicValue: {e}"
             logger.error(f"🧰🔍❌ {error_msg}", exc_info=True)
             raise TransformationError(error_msg) from e
     
@@ -238,13 +237,13 @@ class CtyDynamicValue:
                 return None
             elif type_name in (ValueTypes.TUPLE, ValueTypes.LIST):
                 # Recursively decode each element
-                return [DynamicValue._decode_value(item) for item in actual_value]
+                return [CtyDynamicValue._decode_value(item) for item in actual_value]
             elif type_name == ValueTypes.SET:
                 # Convert to a set after decoding elements
-                return {DynamicValue._decode_value(item) for item in actual_value}
+                return {CtyDynamicValue._decode_value(item) for item in actual_value}
             elif type_name in (ValueTypes.MAP, ValueTypes.OBJECT):
                 # Recursively decode each value
-                return {k: DynamicValue._decode_value(v) for k, v in actual_value.items()}
+                return {k: CtyDynamicValue._decode_value(v) for k, v in actual_value.items()}
             else:
                 # Unknown type, return as is
                 logger.warning(f"🧰🔍⚠️ Unknown value type: {type_name}, returning raw value")
@@ -258,10 +257,10 @@ class CtyDynamicValue:
             return value
         elif isinstance(value, list):
             # Recursively decode elements
-            return [DynamicValue._decode_value(item) for item in value]
+            return [CtyDynamicValue._decode_value(item) for item in value]
         elif isinstance(value, dict):
             # Recursively decode values
-            return {k: DynamicValue._decode_value(v) for k, v in value.items()}
+            return {k: CtyDynamicValue._decode_value(v) for k, v in value.items()}
         else:
             # Return anything else as is
             return value
@@ -419,10 +418,10 @@ if __name__ == "__main__":
     ]
     
     for value in test_values:
-        encoded = DynamicValue.encode(value)
+        encoded = CtyDynamicValue.encode(value)
         print(f"Encoded: {encoded}")
         
-        decoded = DynamicValue.decode(encoded)
+        decoded = CtyDynamicValue.decode(encoded)
         print(f"Decoded: {decoded}")
         
         assert decoded == value, f"Roundtrip failed for {value}"
