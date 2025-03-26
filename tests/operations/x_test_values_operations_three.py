@@ -7,7 +7,7 @@ from pyvider.cty.types import (
     CtyBool, CtyNumber, CtyString, CtyList, CtyMap, CtySet, CtyObject, CtyTuple
 )
 from pyvider.cty.values import CtyValue
-from pyvider.cty.values.operations import (
+from pyvider.cty.operations import (
     divide, modulo, negate,
     get_attribute, get_element, length, contains, 
     concat_lists, merge_maps, slice_string, slice_list

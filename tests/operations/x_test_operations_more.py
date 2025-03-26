@@ -2,7 +2,7 @@
 import pytest
 from decimal import Decimal
 
-from pyvider.cty.values.operations import (
+from pyvider.cty.operations import (
     equals, add, subtract, multiply, divide, modulo, negate,
     get_attribute, get_element, length, contains, concat_lists,
     merge_maps, slice_string, slice_list

@@ -6,7 +6,7 @@ from decimal import Decimal
 import asyncio
 
 from pyvider.cty.convert.convert import registry, ConversionRegistry, convert, convert_unsafe
-from pyvider.cty.convert.base import Conversion
+from pyvider.cty.convert.registry import Conversion
 from pyvider.cty.types import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic
 )

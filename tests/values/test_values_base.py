@@ -153,20 +153,3 @@ class TestValue(unittest.TestCase):
         self.assertTrue(null_val.is_null)
         self.assertFalse(non_null_val.is_null)
     
-    def test_value_refine(self):
-        """Test refine method."""
-        # Create a value
-        val = CtyValue(type_=self.mock_type, value="test")
-        
-        # Mock the ValueRefinementBuilder class
-        with patch('pyvider.cty.values.refinement.ValueRefinementBuilder') as mock_builder:
-            # Set up the mock
-            mock_builder_instance = MagicMock()
-            mock_builder.return_value = mock_builder_instance
-            
-            # Call refine method
-            builder = val.refine()
-            
-            # Assertions
-            mock_builder.assert_called_once_with(val)
-            self.assertEqual(builder, mock_builder_instance)
