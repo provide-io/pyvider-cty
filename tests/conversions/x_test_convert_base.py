@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from pyvider.cty.convert.base import (
+from pyvider.cty.convert.registry import (
     Conversion, 
     register_conversion, 
     get_conversion,

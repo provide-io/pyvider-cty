@@ -284,7 +284,7 @@ class TestConversionSystem:
     @pytest.mark.asyncio
     async def test_integration_with_operations(self):
         """Test that conversions work with value operations."""
-        from pyvider.cty.values.operations import add, subtract, multiply, divide
+        from pyvider.cty.operations import add, subtract, multiply, divide
         
         # Add a string representing a number to a number
         string_val = CtyValue(type_=CtyString(), value="10")

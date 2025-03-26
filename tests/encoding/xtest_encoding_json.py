@@ -1,7 +1,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
-from pyvider.cty.encoding.json import marshal, unmarshal
+from pyvider.cty.encoding.json_serializer import marshal, unmarshal
 
 
 class TestJsonEncoding():
@@ -60,7 +60,7 @@ class TestJsonEncoding():
     def test_unmarshal_string_data(self):
         """Test unmarshaling from string data."""
         # Mock the null_val function
-        with patch('pyvider.cty.encoding.json.null_val') as mock_null_val:
+        with patch('pyvider.cty.encoding.json_serializer.null_val') as mock_null_val:
             # Set up mock return value
             mock_null_val.return_value = "null_value"
             
@@ -74,7 +74,7 @@ class TestJsonEncoding():
     def test_unmarshal_bytes_data(self):
         """Test unmarshaling from bytes data."""
         # Mock the Value constructor
-        with patch('pyvider.cty.encoding.json.CtyValue') as mock_value_class:
+        with patch('pyvider.cty.encoding.json_serializer.CtyValue') as mock_value_class:
             # Set up mock return value
             mock_value_instance = MagicMock()
             mock_value_class.return_value = mock_value_instance
@@ -94,7 +94,7 @@ class TestJsonEncoding():
     def test_unmarshal_null_data(self):
         """Test unmarshaling null data."""
         # Mock the null_val function
-        with patch('pyvider.cty.encoding.json.null_val') as mock_null_val:
+        with patch('pyvider.cty.encoding.json_serializer.null_val') as mock_null_val:
             # Set up mock return value
             mock_null_val.return_value = "null_value"
             
@@ -141,7 +141,7 @@ class TestJsonEncoding():
         }
         
         # Mock CtyValue constructor and type.validate
-        with patch('pyvider.cty.encoding.json.CtyValue') as mock_value_class:
+        with patch('pyvider.cty.encoding.json_serializer.CtyValue') as mock_value_class:
             # Set up mock return value
             mock_value_instance = MagicMock()
             mock_value_class.return_value = mock_value_instance

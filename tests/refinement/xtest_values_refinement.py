@@ -21,7 +21,7 @@ from pyvider.cty.values.refinement import (
     #CompoundRefinement,
     ValueRefinementBuilder,
 )
-from pyvider.cty.values.operations import (
+from pyvider.cty.operations import (
     equals,
     #less_than,
     # greater_than,
@@ -30,7 +30,7 @@ from pyvider.cty.values.operations import (
     multiply,
     divide,
 )
-from pyvider.cty.encoding.json import marshal, unmarshal
+from pyvider.cty.encoding.json_serializer import marshal, unmarshal
 
 # Utility for running async tests
 async def run_test(test_coro):

@@ -66,11 +66,6 @@ class CtyValue(Generic[T]):
             marks=frozenset()
         ), self._marks
 
-    def refine(self) -> "ValueRefinementBuilder":
-        """Create a refinement builder for this value."""
-        from pyvider.cty.values.refinement import ValueRefinementBuilder
-        return ValueRefinementBuilder(self)
-
     @property
     def value(self) -> Any:
         """Get the raw value of this CtyValue."""
