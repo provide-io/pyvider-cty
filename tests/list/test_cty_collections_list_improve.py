@@ -42,7 +42,7 @@ class TestCtyListAdvanced:
         with pytest.raises(ValidationError) as cm:
             self.string_list.validate(None)
 
-        assert "Cannot validate None as a list" in str(cm.value)
+        assert "Expected list or tuple, got NoneType" in str(cm.value)
 
     def test_validate_invalid_container_type(self):
         """Test validation fails for non-list/tuple containers."""
