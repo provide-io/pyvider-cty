@@ -1,6 +1,7 @@
 
 # pyvider/cty/values/base.py
 
+from decimal import Decimal
 from typing import Any, Optional, FrozenSet, Generic, TypeVar
 
 from pyvider.cty.types import CtyType
@@ -126,11 +127,50 @@ class CtyValue(Generic[T]):
         # Value doesn't support length
         raise TypeError(f"Value of type {type(self._value).__name__} doesn't support length operation")
 
-    def __eq__(self, other):
+    def __hash__(self) -> int:
+        """Make CtyValue instances hashable for use in sets and as dict keys."""
+        # Hash based on type, value state, and value (if simple)
+        type_hash = hash(self._type.__class__)
+        state_hash = hash((self._is_unknown, self._is_null))
+        
+        # Only include the value in the hash if it's hashable
+        value_hash = 0
+        if self._value is None:
+            value_hash = hash(None)
+        elif isinstance(self._value, (str, int, float, bool, Decimal)):
+            value_hash = hash(self._value)
+        # For complex values, we only use their type in the hash
+        
+        # Include marks in hash if present
+        marks_hash = hash(frozenset(self._marks)) if self._marks else 0
+        
+        return hash((type_hash, state_hash, value_hash, marks_hash))
+
+    def __eq__(self, other) -> bool:
+        """Check if two CtyValue instances are equal."""
         if not isinstance(other, CtyValue):
+            # For primitive type comparison support
+            if isinstance(self._value, (str, int, float, bool, Decimal)) and self.is_known and not self.is_null:
+                try:
+                    return self._value == other
+                except:
+                    return False
             return False
-        if self.type.__class__ != other.type.__class__:
+        
+        # Check type, state, and marks
+        if self._type.__class__ != other._type.__class__:
             return False
-        return self.value == other.value
+        if self._is_unknown != other._is_unknown:
+            return False
+        if self._is_null != other._is_null:
+            return False
+        if self._marks != other._marks:
+            return False
+        
+        # For known, non-null values, compare the actual values
+        if self.is_known and not self.is_null:
+            return self._value == other._value
+        
+        return True
 
 # 🐍🏗️
