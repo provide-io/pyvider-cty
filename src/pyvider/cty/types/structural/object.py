@@ -1,4 +1,6 @@
+#
 # pyvider/cty/types/structural/object.py
+#
 
 """
 CtyObject implementation for Cty object values.
@@ -6,7 +8,7 @@ CtyObject implementation for Cty object values.
 Pure object type validation without Terraform-specific features.
 """
 
-from typing import Any, Dict, FrozenSet, Optional, Type, cast
+from typing import Any, Dict, FrozenSet, Optional, Type, cast, Self
 
 import attrs
 
@@ -33,12 +35,12 @@ class CtyObject(CtyType[dict[str, Any]]):
 
     def __attrs_post_init__(self) -> None:
         """Validate object type configuration."""
-        logger.debug("🧩🔍 Validating CtyObject configuration on initialization")
+        logger.debug("🧩🔍🔄 Validating CtyObject configuration on initialization")
 
         # Validate attribute_types is a dictionary
         if not isinstance(self.attribute_types, dict):
             error_msg = f"Expected dict for attribute_types, got {type(self.attribute_types).__name__}"
-            logger.error(f"🧩❌ {error_msg}")
+            logger.error(f"🧩❌🔄 {error_msg}")
             raise InvalidTypeError(error_msg)
 
         # Validate all types are CtyType instances
@@ -48,69 +50,70 @@ class CtyObject(CtyType[dict[str, Any]]):
         ]
         if invalid_types:
             error_msg = f"Invalid types for attributes: {', '.join(invalid_types)}"
-            logger.error(f"🧩❌ {error_msg}")
+            logger.error(f"🧩❌🔄 {error_msg}")
             raise AttributeValidationError(error_msg)
 
         # Validate optional attributes exist in the type definition
         unknown_optional = set(self.optional_attributes) - set(self.attribute_types)
         if unknown_optional:
             error_msg = f"Unknown optional attributes: {', '.join(unknown_optional)}"
-            logger.error(f"🧩❌ {error_msg}")
+            logger.error(f"🧩❌🔄 {error_msg}")
             raise AttributeValidationError(error_msg)
 
-        logger.debug("🧩✅ CtyObject configuration validated successfully")
+        logger.debug(f"🧩✅🔄 CtyObject configuration validated successfully with {len(self.attribute_types)} attributes")
 
-    def validate(self, value: Any) -> dict[str, Any]:
+
+    def validate(self, value: Any) -> Any:
         """
         Validate a value against this object type.
-        
+
         Args:
             value: Value to validate (dictionary or None)
-            
+
         Returns:
-            dict[str, Any]: The validated value
-            
+            The validated value preserving Cty types
+
         Raises:
             ValidationError: If the value doesn't match this type
         """
-        logger.debug(f"🧩🔍 Validating value against CtyObject: {value}")
-        
+        logger.debug(f"🧩🔍🔄 Validating value against CtyObject: {value}")
+
         # Handle null values
         if value is None:
-            logger.debug("🧩🔍 Received null value, returning None")
+            logger.debug("🧩🔍🔄 Received null value, returning None")
             return None
-            
+
         # Value must be a dictionary
         if not isinstance(value, dict):
             type_name = type(value).__name__
             error_msg = f"Expected a dictionary, got {type_name}: {value}"
             logger.error(f"🧩🔍❌ {error_msg}")
             raise ValidationError(error_msg)
-            
+
         # Check for required attributes
         required_attrs = self.required_attributes()
-        logger.debug(f"🧩🔍 Required attributes: {required_attrs}")
-        
+        logger.debug(f"🧩🔍🔄 Required attributes: {required_attrs}")
+
         for name in required_attrs:
             if name not in value:
                 error_msg = f"Missing required attribute: {name}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 raise ValidationError(error_msg)
-                
+
         # Check for unknown attributes
         unknown_attrs = set(value.keys()) - set(self.attribute_types.keys())
         if unknown_attrs:
             error_msg = f"Unknown attributes: {', '.join(unknown_attrs)}"
             logger.error(f"🧩🔍❌ {error_msg}")
             raise ValidationError(error_msg)
-            
+
         # Validate each attribute
         validated = {}
-        
+
         # Process each attribute in attribute_types
         for name, attr_type in self.attribute_types.items():
-            logger.debug(f"🧩🔍 Validating attribute {name} with type {attr_type}")
-            
+            logger.debug(f"🧩🔍🔄 Validating attribute {name} with type {attr_type}")
+
             # Handle optional attributes that are missing from the input
             if name not in value:
                 if name in self.optional_attributes:
@@ -122,40 +125,30 @@ class CtyObject(CtyType[dict[str, Any]]):
                     error_msg = f"Missing required attribute: {name}"
                     logger.error(f"🧩🔍❌ {error_msg}")
                     raise ValidationError(error_msg)
-                    
+
             # Get the attribute value
             attr_value = value[name]
-            
+
             try:
                 # When attr_value is None and it's an optional attribute, just use None
                 if attr_value is None and name in self.optional_attributes:
                     logger.debug(f"🧩🔍✅ Optional attribute {name} is None")
                     validated[name] = None
                     continue
-                
+
+                # Check if the value is already a CtyType instance of the expected type
+                if hasattr(attr_value, '__class__') and isinstance(attr_value, attr_type.__class__):
+                    validated[name] = attr_value
+                    logger.debug(f"🧩🔍✅ Value is already a {attr_type.__class__.__name__}, no validation needed")
+                    continue
+
                 # Validate the attribute using its type
                 validated_value = attr_type.validate(attr_value)
-                
-                # Extract actual values for different types
-                if hasattr(validated_value, 'value') and hasattr(validated_value, 'ctype'):
-                    # For primitive types, extract the raw value
-                    validated[name] = validated_value.value
-                    logger.debug(f"🧩🔍✅ Extracted primitive value for {name}: {validated[name]}")
-                elif isinstance(validated_value, list):
-                    # For lists, extract values from each element
-                    processed_list = []
-                    for item in validated_value:
-                        if hasattr(item, 'value') and hasattr(item, 'ctype'):
-                            processed_list.append(item.value)
-                        else:
-                            processed_list.append(item)
-                    validated[name] = processed_list
-                    logger.debug(f"🧩🔍✅ Processed list for {name}: {processed_list}")
-                else:
-                    # For other types, use the validated value as is
-                    validated[name] = validated_value
-                    logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
-                
+
+                # Store the validated value
+                validated[name] = validated_value
+                logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
+
             except ValidationError as e:
                 error_msg = f"Invalid value for attribute '{name}': {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
@@ -164,8 +157,8 @@ class CtyObject(CtyType[dict[str, Any]]):
                 error_msg = f"Error validating attribute '{name}': {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 raise ValidationError(error_msg) from e
-                
-        logger.debug(f"🧩🔍✅ Successfully validated object: {validated}")
+
+        logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated)} attributes")
         return validated
 
     def required_attributes(self) -> FrozenSet[str]:
@@ -175,10 +168,12 @@ class CtyObject(CtyType[dict[str, Any]]):
         Returns:
             FrozenSet[str]: Names of all required attributes
         """
-        return frozenset(
+        required = frozenset(
             name for name in self.attribute_types
             if name not in self.optional_attributes
         )
+        logger.debug(f"🧩🔍🔄 Calculated required attributes: {required}")
+        return required
 
     def get_attribute(self, value: dict[str, Any], name: str) -> Any:
         """
@@ -189,13 +184,13 @@ class CtyObject(CtyType[dict[str, Any]]):
             name: Name of attribute to get
 
         Returns:
-            The attribute value
+            The attribute value (preserving Cty type)
 
         Raises:
             AttributeValidationError: If attribute doesn't exist
             ValidationError: If value is not a valid object
         """
-        logger.debug(f"🧩🔍 Getting attribute {name} from object")
+        logger.debug(f"🧩🔍🔄 Getting attribute {name} from object")
 
         # Validate input
         if not isinstance(value, dict):
@@ -214,8 +209,8 @@ class CtyObject(CtyType[dict[str, Any]]):
         if name not in value and name in self.optional_attributes:
             logger.debug(f"🧩🔍✅ Optional attribute {name} not found, returning None")
             return None
-            
-        # Get attribute from dict
+
+        # Get attribute from dict, preserving Cty type
         attr_value = value.get(name)
         logger.debug(f"🧩🔍✅ Found attribute {name}: {attr_value}")
         return attr_value
@@ -231,121 +226,122 @@ class CtyObject(CtyType[dict[str, Any]]):
             bool: True if the attribute exists
         """
         result = name in self.attribute_types
-        logger.debug(f"🧩🔍 Checking if attribute {name} exists: {result}")
+        logger.debug(f"🧩🔍🔄 Checking if attribute {name} exists: {result}")
         return result
 
-    def with_optional_attributes(self, *names: str) -> "CtyObject":
+    def with_optional_attributes(self, *names: str) -> Self:
         """
         Create a new object type with additional optional attributes.
-        
+
         Args:
             *names: Names of attributes to mark as optional
-            
+
         Returns:
             CtyObject: New object type with updated optional attributes
-            
+
         Raises:
             AttributeValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧 Creating new object type with optional attributes: {names}")
-        
+        logger.debug(f"🧩🔧🔄 Creating new object type with optional attributes: {names}")
+
         # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise AttributeValidationError(error_msg)  # Use AttributeValidationError for unit tests
-            
+            raise AttributeValidationError(error_msg)
+
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) | set(names))
-        
+
         # Create new object type
         new_obj = CtyObject(
             attribute_types=self.attribute_types,
             optional_attributes=new_optional
         )
-        
+
         logger.debug(f"🧩🔧✅ Created new object type with optional attributes: {new_optional}")
         return new_obj
 
-    def with_required_attributes(self, *names: str) -> "CtyObject":
+    def with_required_attributes(self, *names: str) -> Self:
         """
         Create a new object type with additional required attributes.
-        
+
         Args:
             *names: Names of attributes to mark as required
-            
+
         Returns:
             CtyObject: New object type with updated required attributes
-            
+
         Raises:
             AttributeValidationError: If any name is not a valid attribute or already required
         """
-        logger.debug(f"🧩🔧 Creating new object type with required attributes: {names}")
-        
+        logger.debug(f"🧩🔧🔄 Creating new object type with required attributes: {names}")
+
         # Validate all names exist in attribute_types and are currently optional
         unknown = set(names) - set(self.attribute_types)
         if unknown:
             error_msg = f"Unknown attributes: {', '.join(unknown)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise AttributeValidationError(error_msg)  # Use AttributeValidationError for unit tests
-            
+            raise AttributeValidationError(error_msg)
+
         not_optional = set(names) - set(self.optional_attributes)
         if not_optional:
             error_msg = f"Attributes already required: {', '.join(not_optional)}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise AttributeValidationError(error_msg)  # Use AttributeValidationError for unit tests
-            
+            raise AttributeValidationError(error_msg)
+
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) - set(names))
-        
+
         # Create new object type
         new_obj = CtyObject(
             attribute_types=self.attribute_types,
             optional_attributes=new_optional
         )
-        
+
         logger.debug(f"🧩🔧✅ Created new object type with required attributes: {names}")
         return new_obj
 
-    def with_attribute(self, name: str, type_: CtyType, *, optional: bool = False) -> "CtyObject":
+
+    def with_attribute(self, name: str, type_: CtyType, *, optional: bool = False) -> Self:
         """
         Create a new object type with an additional attribute.
-        
+
         Args:
             name: Name of the new attribute
             type_: Type of the new attribute
             optional: Whether the attribute is optional
-            
+
         Returns:
             CtyObject: New object type with the additional attribute
-            
+
         Raises:
             AttributeValidationError: If the name already exists
         """
-        logger.debug(f"🧩🔧 Creating new object type with attribute: {name} ({type_.__class__.__name__})")
-        
+        logger.debug(f"🧩🔧🔄 Creating new object type with attribute: {name} ({type_.__class__.__name__})")
+
         # Validate attribute doesn't already exist
         if name in self.attribute_types:
             error_msg = f"Attribute already exists: {name}"
             logger.error(f"🧩🔧❌ {error_msg}")
-            raise AttributeValidationError(error_msg)  # Use AttributeValidationError for unit tests
-            
+            raise AttributeValidationError(error_msg)
+
         # Create new attribute_types dict
         new_attrs = dict(self.attribute_types)
         new_attrs[name] = type_
-        
+
         # Update optional attributes if needed
         new_optional = set(self.optional_attributes)
         if optional:
             new_optional.add(name)
-            
+
         # Create new object type
         new_obj = CtyObject(
             attribute_types=new_attrs,
             optional_attributes=frozenset(new_optional)
         )
-        
+
         logger.debug(f"🧩🔧✅ Created new object type with attribute: {name}")
         return new_obj
 
@@ -359,7 +355,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         Returns:
             bool: True if the types are equal
         """
-        logger.debug(f"🧩🔍 Checking equality with {other.__class__.__name__}")
+        logger.debug(f"🧩🔍🔄 Checking equality with {other.__class__.__name__}")
 
         # Must be a CtyObject
         if not isinstance(other, CtyObject):
@@ -396,7 +392,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         Returns:
             bool: True if usable as the target type
         """
-        logger.debug(f"🧩🔍 Checking usability as {other.__class__.__name__}")
+        logger.debug(f"🧩🔍🔄 Checking usability as {other.__class__.__name__}")
 
         # Must be a CtyObject
         if not isinstance(other, CtyObject):
@@ -434,7 +430,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         """Get string representation of the type."""
         parts = []
         for name, type_ in sorted(self.attribute_types.items()):
-            part = f"{name}: {type_}"
+            part = f"{name}: {type_.__class__.__name__}"  # Use class name instead of str(type_)
 
             flags = []
             if name in self.optional_attributes:
@@ -446,3 +442,5 @@ class CtyObject(CtyType[dict[str, Any]]):
             parts.append(part)
 
         return f"object({{{ ', '.join(parts) }}})"
+
+# 🐍🏗️

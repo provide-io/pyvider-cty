@@ -1,7 +1,8 @@
-
+#
 # pyvider/cty/types/collections/list.py
+#
 
-from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, List, cast
+from typing import Any, ClassVar, Generic, List as PyList, TypeVar, final, Sequence, Optional, Union, cast
 from attrs import define, evolve, field
 from pyvider.cty.exceptions import ValidationError
 from pyvider.cty.types.base import CtyType
@@ -12,7 +13,7 @@ T = TypeVar('T')
 
 @final
 @define(frozen=True, slots=True)
-class CtyList(CtyType[List[T]], Generic[T]):
+class CtyList(CtyType[PyList[T]], Generic[T]):
     """
     CtyList represents a list type in the Cty type system.
 
@@ -25,7 +26,7 @@ class CtyList(CtyType[List[T]], Generic[T]):
     """
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: List[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
+    value: PyList[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
         """
@@ -42,7 +43,6 @@ class CtyList(CtyType[List[T]], Generic[T]):
     def validate(self, value: Any) -> "CtyList[T]":
         """
         Validate that the given value conforms to this list type.
-        Validates each element against the element_type.
 
         Args:
             value: The value to validate
@@ -51,48 +51,45 @@ class CtyList(CtyType[List[T]], Generic[T]):
             A new CtyList with the validated value
 
         Raises:
-            ValidationError: If value is None
-            ValidationError: If value is not a list or tuple
-            ValidationError: If any element fails validation
+            ValidationError: If validation fails
         """
         logger.debug(f"🔌📝🔄 Validating value as CtyList: {type(value).__name__}")
 
-        # Handle None - explicitly reject
+        # For go-cty compatibility, we need to raise ValidationError for None values
         if value is None:
-            message = "Cannot validate None as a list"
-            logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
+            logger.debug("🔌❗❌ Cannot validate None as a list")
+            raise ValidationError("Expected list or tuple, got NoneType")
 
-        # Validate the input is a list or tuple
         if not isinstance(value, (list, tuple)):
-            message = f"Expected list or tuple, got {type(value).__name__}"
-            logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
+            logger.debug(f"🔌❗❌ Expected list or tuple, got {type(value).__name__}")
+            raise ValidationError(f"Expected list or tuple, got {type(value).__name__}")
 
-        # Handle empty list or tuple
         if not value:
-            logger.debug("🔌📝✅ Returning empty list for empty container")
+            logger.debug("🔌📝✅ Returning empty list for empty list/tuple")
             return evolve(self, value=[])
 
-        # Validate each element
         validated = []
         validation_errors = []
 
         for i, item in enumerate(value):
             try:
-                # Validate item against element_type
-                validated_item = self.element_type.validate(item)
+                # Check if item is already a CtyType instance of the expected type
+                if isinstance(item, CtyType) and item.__class__ == self.element_type.__class__:
+                    validated_item = item
+                    logger.debug(f"🔌📝✅ Item {i} is already a {self.element_type.__class__.__name__}, no validation needed")
+                else:
+                    validated_item = self.element_type.validate(item)
+
                 validated.append(validated_item)
                 logger.debug(f"🔌📝✅ Validated item {i}: {validated_item}")
             except Exception as e:
                 error_msg = f"Item {i}: {item} -> {e!s}"
-                logger.error(f"🔌❗❌ {error_msg}")
+                logger.debug(f"🔌❗❌ {error_msg}")
                 validation_errors.append(error_msg)
 
-        # If any validation errors occurred, raise an exception with details
         if validation_errors:
             error_msg = "CtyList validation failed:\n" + "\n".join(validation_errors)
-            logger.error(f"🔌❗❌ {error_msg}")
+            logger.debug(f"🔌❗❌ {error_msg}")
             raise ValidationError(error_msg)
 
         logger.debug(f"🔌📝✅ Successfully validated list with {len(validated)} items")
@@ -154,7 +151,11 @@ class CtyList(CtyType[List[T]], Generic[T]):
 
         try:
             # Validate the item against element_type
-            validated_item = self.element_type.validate(item)
+            if isinstance(item, CtyType) and item.__class__ == self.element_type.__class__:
+                validated_item = item
+                logger.debug(f"🔌📝✅ Item is already a {self.element_type.__class__.__name__}, no validation needed")
+            else:
+                validated_item = self.element_type.validate(item)
 
             # Create a new list with the additional item
             new_list = list(self.value)
@@ -254,7 +255,11 @@ class CtyList(CtyType[List[T]], Generic[T]):
 
         try:
             # Validate the item against element_type
-            validated_item = self.element_type.validate(item)
+            if isinstance(item, CtyType) and item.__class__ == self.element_type.__class__:
+                validated_item = item
+                logger.debug(f"🔌🔍✅ Item is already a {self.element_type.__class__.__name__}, no validation needed")
+            else:
+                validated_item = self.element_type.validate(item)
 
             # Check if any element in the list equals the validated item
             for list_item in self.value:
@@ -373,7 +378,12 @@ class CtyList(CtyType[List[T]], Generic[T]):
         Returns:
             A string representation
         """
-        return f"list({self.element_type})"
+        # Handle nested lists properly
+        element_class = self.element_type.__class__.__name__
+        if element_class == "CtyList":
+            # For nested lists, include the inner element type
+            return f"list({str(self.element_type)})"
+        return f"list({element_class})"
 
     def __repr__(self) -> str:
         """
@@ -382,4 +392,6 @@ class CtyList(CtyType[List[T]], Generic[T]):
         Returns:
             A detailed string representation
         """
-        return f"CtyList()"
+        return f"CtyList(element_type={self.element_type!r})"
+
+# 🐍🏗️
