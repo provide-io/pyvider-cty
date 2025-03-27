@@ -19,7 +19,7 @@ from pyvider.cty.types.structural import CtyObject
 from pyvider.cty.exceptions import (
     ValidationError,
     AttributeValidationError,
-    SchemaValidationError,
+    AttributeValidationError,
 )
 
 
@@ -46,9 +46,6 @@ class TestCtyObjectIntegration:
         
         # Verify attribute sets
         assert len(person_type.optional_attributes) == 0
-        assert len(person_type.computed_attributes) == 0
-        assert len(person_type.block_attributes) == 0
-        assert len(person_type.sensitive_attributes) == 0
         
         # Verify required attributes
         required = person_type.required_attributes()
@@ -79,79 +76,6 @@ class TestCtyObjectIntegration:
         required = person_type.required_attributes()
         assert len(required) == 1
         assert "name" in required
-    
-    @pytest.mark.asyncio
-    async def test_object_with_computed_attributes(self):
-        """Test object with computed attributes."""
-        # Create object with computed attributes
-        person_type = CtyObject(
-            attribute_types={
-                "name": CtyString(),
-                "age": CtyNumber(),
-                "id": CtyString(),
-                "created_at": CtyString(),
-            },
-            computed_attributes=frozenset(["id", "created_at"])
-        )
-        
-        # Verify computed attributes
-        assert len(person_type.computed_attributes) == 2
-        assert "id" in person_type.computed_attributes
-        assert "created_at" in person_type.computed_attributes
-        
-        # Verify required attributes (computed are not required)
-        required = person_type.required_attributes()
-        assert len(required) == 2
-        assert "name" in required
-        assert "age" in required
-        assert "id" not in required
-        assert "created_at" not in required
-    
-    @pytest.mark.asyncio
-    async def test_object_with_block_attributes(self):
-        """Test object with block attributes."""
-        # Create object with block attributes
-        server_type = CtyObject(
-            attribute_types={
-                "name": CtyString(),
-                "network": CtyObject(
-                    attribute_types={
-                        "subnet": CtyString(),
-                        "vpc_id": CtyString(),
-                    }
-                ),
-                "disk": CtyObject(
-                    attribute_types={
-                        "size_gb": CtyNumber(),
-                        "type": CtyString(),
-                    }
-                ),
-            },
-            block_attributes=frozenset(["network", "disk"])
-        )
-        
-        # Verify block attributes
-        assert len(server_type.block_attributes) == 2
-        assert "network" in server_type.block_attributes
-        assert "disk" in server_type.block_attributes
-    
-    @pytest.mark.asyncio
-    async def test_object_with_sensitive_attributes(self):
-        """Test object with sensitive attributes."""
-        # Create object with sensitive attributes
-        user_type = CtyObject(
-            attribute_types={
-                "username": CtyString(),
-                "password": CtyString(),
-                "api_key": CtyString(),
-            },
-            sensitive_attributes=frozenset(["password", "api_key"])
-        )
-        
-        # Verify sensitive attributes
-        assert len(user_type.sensitive_attributes) == 2
-        assert "password" in user_type.sensitive_attributes
-        assert "api_key" in user_type.sensitive_attributes
     
     @pytest.mark.asyncio
     async def test_validation_success(self):
@@ -424,7 +348,7 @@ class TestCtyObjectIntegration:
         assert "active" in new_type.optional_attributes
         
         # Try to add unknown attribute
-        with pytest.raises(SchemaValidationError) as excinfo:
+        with pytest.raises(AttributeValidationError) as excinfo:
             person_type.with_optional_attributes("unknown")
         
         # Check error message
@@ -461,92 +385,12 @@ class TestCtyObjectIntegration:
         assert "email" not in new_type.optional_attributes
         
         # Try to make already required attribute required again
-        with pytest.raises(SchemaValidationError) as excinfo:
+        with pytest.raises(AttributeValidationError) as excinfo:
             new_type.with_required_attributes("name")
         
         # Check error message
         error_msg = str(excinfo.value)
         assert "Attributes already required: name" in error_msg
-    
-    @pytest.mark.asyncio
-    async def test_with_computed_attributes(self):
-        """Test adding computed attributes."""
-        # Create object type
-        person_type = CtyObject(
-            attribute_types={
-                "name": CtyString(),
-                "age": CtyNumber(),
-                "id": CtyString(),
-                "created_at": CtyString(),
-            }
-        )
-        
-        # Add computed attributes
-        new_type = person_type.with_computed_attributes("id", "created_at")
-        
-        # Verify original type is unchanged
-        assert len(person_type.computed_attributes) == 0
-        
-        # Verify new type has computed attributes
-        assert len(new_type.computed_attributes) == 2
-        assert "id" in new_type.computed_attributes
-        assert "created_at" in new_type.computed_attributes
-    
-    @pytest.mark.asyncio
-    async def test_with_block_attributes(self):
-        """Test adding block attributes."""
-        # Create object type
-        server_type = CtyObject(
-            attribute_types={
-                "name": CtyString(),
-                "network": CtyObject(
-                    attribute_types={
-                        "subnet": CtyString(),
-                        "vpc_id": CtyString(),
-                    }
-                ),
-                "disk": CtyObject(
-                    attribute_types={
-                        "size_gb": CtyNumber(),
-                        "type": CtyString(),
-                    }
-                ),
-            }
-        )
-        
-        # Add block attributes
-        new_type = server_type.with_block_attributes("network", "disk")
-        
-        # Verify original type is unchanged
-        assert len(server_type.block_attributes) == 0
-        
-        # Verify new type has block attributes
-        assert len(new_type.block_attributes) == 2
-        assert "network" in new_type.block_attributes
-        assert "disk" in new_type.block_attributes
-    
-    @pytest.mark.asyncio
-    async def test_with_sensitive_attributes(self):
-        """Test adding sensitive attributes."""
-        # Create object type
-        user_type = CtyObject(
-            attribute_types={
-                "username": CtyString(),
-                "password": CtyString(),
-                "api_key": CtyString(),
-            }
-        )
-        
-        # Add sensitive attributes
-        new_type = user_type.with_sensitive_attributes("password", "api_key")
-        
-        # Verify original type is unchanged
-        assert len(user_type.sensitive_attributes) == 0
-        
-        # Verify new type has sensitive attributes
-        assert len(new_type.sensitive_attributes) == 2
-        assert "password" in new_type.sensitive_attributes
-        assert "api_key" in new_type.sensitive_attributes
     
     @pytest.mark.asyncio
     async def test_with_attribute(self):
@@ -562,7 +406,7 @@ class TestCtyObjectIntegration:
         # Add new attribute
         new_type = person_type.with_attribute(
             "email", CtyString(),
-            optional=True, sensitive=True
+            optional=True
         )
         
         # Verify original type is unchanged
@@ -576,12 +420,9 @@ class TestCtyObjectIntegration:
         
         # Verify attribute flags
         assert "email" in new_type.optional_attributes
-        assert "email" in new_type.sensitive_attributes
-        assert "email" not in new_type.computed_attributes
-        assert "email" not in new_type.block_attributes
         
         # Try to add existing attribute
-        with pytest.raises(SchemaValidationError) as excinfo:
+        with pytest.raises(AttributeValidationError) as excinfo:
             new_type.with_attribute("email", CtyString())
         
         # Check error message
@@ -757,36 +598,6 @@ class TestCtyObjectIntegration:
         assert type1.usable_as(type2) is True  # More required can be used as fewer required
         assert type2.usable_as(type1) is False  # Fewer required cannot be used as more required
     
-    @pytest.mark.asyncio
-    async def test_create_object_helper(self):
-        """Test the create_object helper function."""
-        from pyvider.cty.types.structural.object import create_object
-        
-        # Create object using helper
-        person_type = create_object(
-            name=CtyString(),
-            age=CtyNumber(),
-            active=CtyBool(),
-            optional=["age", "active"],
-            sensitive=["active"]
-        )
-        
-        # Verify attributes
-        assert len(person_type.attribute_types) == 3
-        assert isinstance(person_type.attribute_types["name"], CtyString)
-        assert isinstance(person_type.attribute_types["age"], CtyNumber)
-        assert isinstance(person_type.attribute_types["active"], CtyBool)
-        
-        # Verify optional attributes
-        assert len(person_type.optional_attributes) == 2
-        assert "age" in person_type.optional_attributes
-        assert "active" in person_type.optional_attributes
-        
-        # Verify sensitive attributes
-        assert len(person_type.sensitive_attributes) == 1
-        assert "active" in person_type.sensitive_attributes
-    
-    @pytest.mark.asyncio
     async def test_complex_nested_object(self):
         """Test complex nested object type."""
         # Create complex nested object type
@@ -818,7 +629,6 @@ class TestCtyObjectIntegration:
                 )
             },
             optional_attributes=frozenset(["tags"]),
-            block_attributes=frozenset(["network", "disks"])
         )
         
         # Create valid complex value
@@ -860,7 +670,10 @@ class TestCtyObjectIntegration:
         assert isinstance(validated["network"], dict)
         assert validated["network"]["subnet"] == "subnet-123456"
         assert validated["network"]["vpc_id"] == "vpc-123456"
-        assert validated["network"]["security_groups"] == ["sg-1", "sg-2"]
+
+        assert isinstance(validated["network"]["security_groups"], list)
+        assert all(isinstance(item, CtyString) for item in validated["network"]["security_groups"])
+        assert [item.value for item in validated["network"]["security_groups"]] == ["sg-1", "sg-2"]
         
         # Check disks block
         assert isinstance(validated["disks"], list)

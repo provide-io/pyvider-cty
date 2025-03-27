@@ -27,10 +27,6 @@ class AttributeValidationError(ValidationError):
     pass
 
 
-class SchemaValidationError(ValidationError):
-    """Raised when a schema fails validation."""
-    pass
-
 class TransformationError(CtyError):
     """Raised when a schema fails validation."""
     pass
