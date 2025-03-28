@@ -62,7 +62,6 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         logger.debug(f"🧩✅🔄 CtyObject configuration validated successfully with {len(self.attribute_types)} attributes")
 
-
     def validate(self, value: Any) -> Any:
         """
         Validate a value against this object type.
@@ -150,6 +149,7 @@ class CtyObject(CtyType[dict[str, Any]]):
                 logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
 
             except ValidationError as e:
+                # Properly propagate nested validation errors with context
                 error_msg = f"Invalid value for attribute '{name}': {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 raise ValidationError(error_msg) from e

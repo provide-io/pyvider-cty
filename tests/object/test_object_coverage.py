@@ -186,7 +186,7 @@ async def test_validation_with_complex_nested_types():
     assert isinstance(validated["age"], CtyNumber)
     assert validated["age"].value == 30
     
-    # Check nested address object
+    # Check nested address object - ensure it's a dict of CtyType values, not Python natives
     address = validated["address"]
     assert isinstance(address, dict)
     assert isinstance(address["street"], CtyString)
@@ -196,9 +196,10 @@ async def test_validation_with_complex_nested_types():
     assert isinstance(address["zip"], CtyString)
     assert address["zip"].value == "12345"
     
-    # Check contacts list
+    # Check contacts list - ensure it's a CtyList containing dicts of CtyType values
     contacts = validated["contacts"]
     assert isinstance(contacts, CtyList)
+    assert contacts.element_type == contact_type
     contacts_list = contacts.value
     assert len(contacts_list) == 2
     
@@ -210,32 +211,41 @@ async def test_validation_with_complex_nested_types():
     assert isinstance(contact1["value"], CtyString)
     assert contact1["value"].value == "alice@example.com"
     
-    # Check metadata map
+    # Check metadata map - ensure it's a CtyMap containing CtyType keys and values
     metadata = validated["metadata"]
     assert isinstance(metadata, CtyMap)
+    assert len(metadata.value) > 0
+
+    # Find specific keys in metadata by matching the string value
+    created_key = None
+    active_key = None
+    score_key = None
     
-    # Find specific keys in metadata (must iterate to find by key value)
-    created_value = None
-    active_value = None
-    score_value = None
-    
-    for k, v in metadata.value.items():
+    for k in metadata.value.keys():
+        assert isinstance(k, CtyString)  # All keys must be CtyString
         if k.value == "created":
-            created_value = v
+            created_key = k
         elif k.value == "active":
-            active_value = v
+            active_key = k
         elif k.value == "score":
-            score_value = v
+            score_key = k
     
-    assert created_value is not None
+    # Verify we found all the keys
+    assert created_key is not None
+    assert active_key is not None
+    assert score_key is not None
+    
+    # Check the values
+    created_value = metadata.value[created_key]
+    active_value = metadata.value[active_key]
+    score_value = metadata.value[score_key]
+    
     assert isinstance(created_value, CtyString)
     assert created_value.value == "2023-01-01"
     
-    assert active_value is not None
     assert isinstance(active_value, CtyBool)
     assert active_value.value is True
     
-    assert score_value is not None
     assert isinstance(score_value, CtyNumber)
     assert score_value.value == 95
 
@@ -309,6 +319,7 @@ async def test_validate_error_propagation():
     # Check error message
     error_msg = str(excinfo.value)
     assert "Invalid value for attribute 'address'" in error_msg
+    assert "zip" in error_msg  # Make sure we're seeing the nested error details
 
 # 🐍🏗️🧪
 
