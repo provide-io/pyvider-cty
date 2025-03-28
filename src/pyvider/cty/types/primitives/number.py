@@ -20,7 +20,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     This matches the Go-CTY number semantics.
     """
     ctype: ClassVar[str] = "number"
-    value: Union[int, float, Decimal] = field(default=0.0)
+    value: Union[int, Decimal] = field(default=0)
 
     def validate(self, value: Any) -> "CtyNumber":
         """

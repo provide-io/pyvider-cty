@@ -286,40 +286,41 @@ async def test_usable_as_complex_types():
 @pytest.mark.asyncio
 async def test_validate_error_propagation():
     """Test that validation errors from nested types are properly propagated."""
-    # Create object type with nested object
-    address_type = CtyObject(
-        attribute_types={
-            "street": CtyString(),
-            "city": CtyString(),
-            "zip": CtyNumber(),  # Intentionally using Number for zip
-        }
-    )
-    
-    person_type = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "address": address_type,
-        }
-    )
-    
-    # Create value with invalid nested value
+    address_type = CtyObject(attribute_types={
+        "street": CtyString(),
+        "city": CtyString(),
+        "zip": CtyNumber(), # Expecting a number
+    })
+    person_type = CtyObject(attribute_types={
+        "name": CtyString(),
+        "address": address_type,
+    })
+
+    # MODIFIED: Use an invalid value that CtyNumber.validate WILL reject
     value = {
         "name": "Alice",
         "address": {
             "street": "123 Main St",
             "city": "Anytown",
-            "zip": "12345",  # String instead of number
+            "zip": "not-a-valid-number", # This will cause CtyNumber validation to fail
         }
     }
-    
-    # Validate should fail
+
+    # Validate should fail and raise ValidationError
     with pytest.raises(ValidationError) as excinfo:
-        person_type.validate(value)
-    
-    # Check error message
+        person_type.validate(value) # Expecting ValidationError from nested failure
+
+    # Check the combined error message reflects the nested failure
     error_msg = str(excinfo.value)
-    assert "Invalid value for attribute 'address'" in error_msg
-    assert "zip" in error_msg  # Make sure we're seeing the nested error details
+    print(f"Validation Error: {error_msg}") # Optional: print error for debugging
+
+    # Assertions based on expected error message structure
+    # Option 1: If errors are collected and combined (as per the suggested CtyObject.validate fix below)
+    assert "Object validation failed" in error_msg
+    assert "Invalid value for attribute 'address'" in error_msg # Check for top-level context
+    assert "'zip'" in error_msg # Check for nested attribute context
+    assert "Value must be a number" in error_msg # Check for original CtyNumber error
+
 
 # 🐍🏗️🧪
 
