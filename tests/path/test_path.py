@@ -1,5 +1,5 @@
 
-# tests/integration/cty/path/test_path.py
+# tests/path/test_path.py
 
 """
 Integration tests for the Cty path system.
@@ -7,7 +7,6 @@ Integration tests for the Cty path system.
 These tests verify that paths can navigate through nested Cty values,
 including objects, lists, tuples, and maps.
 """
-
 
 import pytest
 
@@ -37,22 +36,32 @@ class TestPathSystem:
             })
         })
 
-        # Create an object value
-        person = CtyValue(type_=person_type, value={
-            "name": "Alice",
-            "age": 30,
-            "address": {
-                "street": "123 Main St",
-                "city": "Anytown",
-                "zip": "12345"
+        # Create a properly wrapped object value
+        person = CtyValue(
+            type_=person_type, 
+            value={
+                "name": CtyValue(type_=CtyString(), value="Alice"),
+                "age": CtyValue(type_=CtyNumber(), value=30),
+                "address": CtyValue(
+                    type_=CtyObject(attribute_types={
+                        "street": CtyString(),
+                        "city": CtyString(),
+                        "zip": CtyString()
+                    }),
+                    value={
+                        "street": CtyValue(type_=CtyString(), value="123 Main St"),
+                        "city": CtyValue(type_=CtyString(), value="Anytown"),
+                        "zip": CtyValue(type_=CtyString(), value="12345")
+                    }
+                )
             }
-        })
+        )
 
         # Test direct attribute access
         name_path = Path.get_attr("name")
         name_result = await name_path.apply_path(person)
-        assert isinstance(name_result, CtyValue)  # Ensure we get a CtyValue
-        assert isinstance(name_result.type, CtyString)  # Type check
+        assert isinstance(name_result, CtyValue)
+        assert isinstance(name_result.type, CtyString)
         assert name_result.value == "Alice"
 
         # Test nested attribute access
@@ -79,55 +88,8 @@ class TestPathSystem:
 
         # Test path to attribute should return unknown value of correct type
         unknown_name_result = await name_path.apply_path(unknown_person)
-        assert not unknown_name_result.is_known  # Use is_known instead of is_unknown
+        assert unknown_name_result.is_unknown
         assert isinstance(unknown_name_result.type, CtyString)
-
-    @pytest.mark.asyncio
-    async def Xtest_attribute_paths(self):
-        """Test paths with attribute access."""
-        # Create an object type
-        person_type = CtyObject(attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber(),
-            "address": CtyObject(attribute_types={
-                "street": CtyString(),
-                "city": CtyString(),
-                "zip": CtyString()
-            })
-        })
-
-        # Create an object value
-        person = CtyValue(type_=person_type, value={
-            "name": "Alice",
-            "age": 30,
-            "address": {
-                "street": "123 Main St",
-                "city": "Anytown",
-                "zip": "12345"
-            }
-        })
-
-        # Test direct attribute access
-        name_path = Path.get_attr("name")
-        name_result = await name_path.apply_path(person)
-        assert name_result.value == "Alice"
-
-        # Test nested attribute access
-        street_path = Path.get_attr("address").child("street")
-        street_result = await street_path.apply_path(person)
-        assert street_result.value == "123 Main St"
-
-        # Test invalid attribute
-        invalid_path = Path.get_attr("invalid")
-        with pytest.raises(AttributePathError):
-            await invalid_path.apply_path(person)
-
-        # Test type checking
-        name_type = await name_path.apply_path_type(person_type)
-        assert isinstance(name_type, CtyString)
-
-        street_type = await street_path.apply_path_type(person_type)
-        assert isinstance(street_type, CtyString)
 
     @pytest.mark.asyncio
     async def test_index_paths(self):
@@ -135,17 +97,28 @@ class TestPathSystem:
         # Create a list type
         numbers_type = CtyList(element_type=CtyNumber())
 
-        # Create a list value
-        numbers = CtyValue(type_=numbers_type, value=[10, 20, 30, 40, 50])
+        # Create a properly wrapped list value
+        numbers = CtyValue(
+            type_=numbers_type, 
+            value=[
+                CtyValue(type_=CtyNumber(), value=10),
+                CtyValue(type_=CtyNumber(), value=20),
+                CtyValue(type_=CtyNumber(), value=30),
+                CtyValue(type_=CtyNumber(), value=40),
+                CtyValue(type_=CtyNumber(), value=50)
+            ]
+        )
 
         # Test index access
         second_path = Path.index(1)
         second_result = await second_path.apply_path(numbers)
+        assert isinstance(second_result, CtyValue)
         assert second_result.value == 20
 
         # Test negative index
         last_path = Path.index(-1)
         last_result = await last_path.apply_path(numbers)
+        assert isinstance(last_result, CtyValue)
         assert last_result.value == 50
 
         # Test out of bounds
@@ -158,11 +131,19 @@ class TestPathSystem:
         assert isinstance(element_type, CtyNumber)
 
         # Test with tuple
-        tuple_type = CtyTuple(types=(CtyString(), CtyNumber(), CtyBool()))
-        tuple_value = CtyValue(type_=tuple_type, value=("hello", 42, True))
+        tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool()))
+        tuple_value = CtyValue(
+            type_=tuple_type, 
+            value=(
+                CtyValue(type_=CtyString(), value="hello"),
+                CtyValue(type_=CtyNumber(), value=42),
+                CtyValue(type_=CtyBool(), value=True)
+            )
+        )
 
         middle_path = Path.index(1)
         middle_result = await middle_path.apply_path(tuple_value)
+        assert isinstance(middle_result, CtyValue)
         assert middle_result.value == 42
 
         # Test tuple type checking
@@ -175,17 +156,21 @@ class TestPathSystem:
         # Create a map type
         scores_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
-        # Create a map value
-        scores = CtyValue(type_=scores_type, value={
-            "Alice": 95,
-            "Bob": 87,
-            "Charlie": 92,
-            "Dave": 78
-        })
+        # Create a properly wrapped map value
+        scores = CtyValue(
+            type_=scores_type, 
+            value={
+                CtyValue(type_=CtyString(), value="Alice"): CtyValue(type_=CtyNumber(), value=95),
+                CtyValue(type_=CtyString(), value="Bob"): CtyValue(type_=CtyNumber(), value=87),
+                CtyValue(type_=CtyString(), value="Charlie"): CtyValue(type_=CtyNumber(), value=92),
+                CtyValue(type_=CtyString(), value="Dave"): CtyValue(type_=CtyNumber(), value=78)
+            }
+        )
 
         # Test key access
         bob_path = Path.key("Bob")
         bob_result = await bob_path.apply_path(scores)
+        assert isinstance(bob_result, CtyValue)
         assert bob_result.value == 87
 
         # Test invalid key
@@ -208,48 +193,72 @@ class TestPathSystem:
         })
         users_type = CtyList(element_type=user_type)
 
-        users = CtyValue(type_=users_type, value=[
-            {
-                "name": "Alice",
-                "scores": {
-                    "math": 95,
-                    "science": 92,
-                    "history": 88
-                }
-            },
-            {
-                "name": "Bob",
-                "scores": {
-                    "math": 87,
-                    "science": 85,
-                    "history": 92
-                }
-            },
-            {
-                "name": "Charlie",
-                "scores": {
-                    "math": 78,
-                    "science": 90,
-                    "history": 85
-                }
-            }
-        ])
+        # Create properly wrapped values
+        users = CtyValue(
+            type_=users_type, 
+            value=[
+                CtyValue(
+                    type_=user_type,
+                    value={
+                        "name": CtyValue(type_=CtyString(), value="Alice"),
+                        "scores": CtyValue(
+                            type_=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+                            value={
+                                CtyValue(type_=CtyString(), value="math"): CtyValue(type_=CtyNumber(), value=95),
+                                CtyValue(type_=CtyString(), value="science"): CtyValue(type_=CtyNumber(), value=92),
+                                CtyValue(type_=CtyString(), value="history"): CtyValue(type_=CtyNumber(), value=88)
+                            }
+                        )
+                    }
+                ),
+                CtyValue(
+                    type_=user_type,
+                    value={
+                        "name": CtyValue(type_=CtyString(), value="Bob"),
+                        "scores": CtyValue(
+                            type_=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+                            value={
+                                CtyValue(type_=CtyString(), value="math"): CtyValue(type_=CtyNumber(), value=87),
+                                CtyValue(type_=CtyString(), value="science"): CtyValue(type_=CtyNumber(), value=85),
+                                CtyValue(type_=CtyString(), value="history"): CtyValue(type_=CtyNumber(), value=92)
+                            }
+                        )
+                    }
+                ),
+                CtyValue(
+                    type_=user_type,
+                    value={
+                        "name": CtyValue(type_=CtyString(), value="Charlie"),
+                        "scores": CtyValue(
+                            type_=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+                            value={
+                                CtyValue(type_=CtyString(), value="math"): CtyValue(type_=CtyNumber(), value=78),
+                                CtyValue(type_=CtyString(), value="science"): CtyValue(type_=CtyNumber(), value=90),
+                                CtyValue(type_=CtyString(), value="history"): CtyValue(type_=CtyNumber(), value=85)
+                            }
+                        )
+                    }
+                )
+            ]
+        )
 
         # Test complex path: second user's math score
         # users[1].scores["math"]
         path = Path.index(1).child("scores").key_step("math")
         result = await path.apply_path(users)
+        assert isinstance(result, CtyValue)
         assert result.value == 87
 
         # Test another complex path: first user's name
         # users[0].name
         path = Path.index(0).child("name")
         result = await path.apply_path(users)
+        assert isinstance(result, CtyValue)
         assert result.value == "Alice"
 
         # Test path type checking
-        math_score_type = await path.apply_path_type(users_type)
-        assert isinstance(math_score_type, CtyString)
+        name_type = await path.apply_path_type(users_type)
+        assert isinstance(name_type, CtyString)
 
     @pytest.mark.asyncio
     async def test_null_and_unknown_handling(self):
@@ -274,7 +283,7 @@ class TestPathSystem:
 
         # Path to attribute should return unknown value of correct type
         name_result = await name_path.apply_path(unknown_person)
-        assert not name_result.is_known  # Use is_known instead of is_unknown
+        assert name_result.is_unknown
         assert isinstance(name_result.type, CtyString)
 
         # Test with null value in a nested structure
@@ -287,10 +296,13 @@ class TestPathSystem:
             "address": address_type
         })
 
-        person_with_null_address = CtyValue(type_=person_with_address_type, value={
-            "name": "Alice",
-            "address": None  # Null address
-        })
+        person_with_null_address = CtyValue(
+            type_=person_with_address_type, 
+            value={
+                "name": CtyValue(type_=CtyString(), value="Alice"),
+                "address": CtyValue(type_=address_type, is_null=True)
+            }
+        )
 
         # Path to street should fail because address is null
         street_path = Path.get_attr("address").child("street")
@@ -298,14 +310,17 @@ class TestPathSystem:
             await street_path.apply_path(person_with_null_address)
 
         # Test with unknown value in a nested structure
-        person_with_unknown_address = CtyValue(type_=person_with_address_type, value={
-            "name": "Alice",
-            "address": CtyValue(type_=address_type, is_unknown=True)
-        })
+        person_with_unknown_address = CtyValue(
+            type_=person_with_address_type, 
+            value={
+                "name": CtyValue(type_=CtyString(), value="Alice"),
+                "address": CtyValue(type_=address_type, is_unknown=True)
+            }
+        )
 
         # Path to street should return unknown value of correct type
         street_result = await street_path.apply_path(person_with_unknown_address)
-        assert not street_result.is_known  # Use is_known instead of is_unknown
+        assert street_result.is_unknown
         assert isinstance(street_result.type, CtyString)
 
     @pytest.mark.asyncio
