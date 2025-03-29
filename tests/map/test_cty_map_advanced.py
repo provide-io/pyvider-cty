@@ -147,14 +147,27 @@ class TestCtyMapAdvanced:
         data = {"key1": "value1", "key2": "value2", "key3": "value3"}
         map_val = self.string_map.validate(data)
         
+        # Verify initial state
+        assert len(map_val.value) == 3
+        
         # Delete a key
         new_map = map_val.delete("key2")
         
-        # Verify key was deleted
+        # Verify key was deleted (should now have 2 keys)
         assert len(new_map.value) == 2
-        for k, v in new_map.value.items():
-            assert k.value != "key2"
-            
+        
+        # Verify which keys remain
+        keys_found = set()
+        for k in new_map.value:
+            if hasattr(k, 'value'):
+                keys_found.add(k.value)
+            else:
+                keys_found.add(str(k))
+                
+        assert "key1" in keys_found
+        assert "key3" in keys_found
+        assert "key2" not in keys_found
+        
         # Verify original map is unchanged
         assert len(map_val.value) == 3
         

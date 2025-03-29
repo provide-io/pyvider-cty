@@ -27,7 +27,8 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any) -> "CtySet":
+    #### validate
+    def validate(self, value: Any) -> "CtyValue":
         """
         Validate that the given value conforms to this set type.
 
@@ -35,16 +36,19 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             value: The value to validate
 
         Returns:
-            A new CtySet with the validated value
+            A CtyValue with the validated set
 
         Raises:
             ValidationError: If validation fails
         """
         logger.debug(f"🔌📝🔄 Validating value as CtySet: {type(value).__name__}")
 
+        # Import locally to avoid circular imports
+        from pyvider.cty.values import CtyValue
+
         if value is None:
-            logger.debug("🔌📝✅ Returning empty set for None value")
-            return evolve(self, value=set())
+            logger.debug("🔌❗❌ Expected iterable, got NoneType")
+            raise ValidationError(f"Expected iterable, got NoneType")
 
         if not hasattr(value, '__iter__') or isinstance(value, (str, bytes)):
             logger.debug(f"🔌❗❌ Expected iterable, got {type(value).__name__}")
@@ -52,20 +56,21 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
 
         if not value:
             logger.debug("🔌📝✅ Returning empty set for empty iterable")
-            return evolve(self, value=set())
+            return CtyValue(type_=self, value=set())
 
         validated = set()
         validation_errors = []
 
-        def freeze_nested_sets(item):
-            if isinstance(item, (set, frozenset)):
-                logger.debug("🔌❗❌ Nested sets are not allowed in CtySet")
-                raise ValidationError("Nested sets are not allowed in CtySet.")
-            return self.element_type.validate(item)
-
         for i, item in enumerate(value):
             try:
-                validated_item = freeze_nested_sets(item)
+                if isinstance(item, (set, frozenset)):
+                    logger.debug("🔌❗❌ Nested sets are not allowed in CtySet")
+                    raise ValidationError("Nested sets are not allowed in CtySet.")
+                    
+                # Validate the element
+                validated_item = self.element_type.validate(item)
+                
+                # Add to the validated set
                 validated.add(validated_item)
                 logger.debug(f"🔌📝✅ Validated item {i}: {validated_item}")
             except Exception as e:
@@ -79,8 +84,9 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             raise ValidationError(error_msg)
 
         logger.debug(f"🔌📝✅ Successfully validated set with {len(validated)} items")
-        return evolve(self, value=validated)
+        return CtyValue(type_=self, value=validated)
 
+    #### add
     def add(self, element) -> "CtySet":
         """
         Add an element to the set.
@@ -197,3 +203,6 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             A string representation
         """
         return f"set({self.element_type})"
+
+
+# 🐍🏗️🐣

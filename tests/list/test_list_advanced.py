@@ -221,4 +221,4 @@ class TestCtyListAdvanced(unittest.TestCase):
     def test_repr_representation(self):
         """Test __repr__ representation."""
         # Test repr
-        self.assertEqual(repr(self.string_list), "CtyList()")
+        self.assertEqual(repr(self.string_list), "CtyList(element_type=CtyString())")

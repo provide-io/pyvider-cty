@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from pyvider.cty.path.path import Path, PathStep, GetAttrStep
+from pyvider.cty.path import CtyPath, PathStep, GetAttrStep
 
 
 class TestPathStep:
@@ -32,14 +32,14 @@ class TestPath:
     
     def setup_method(self):
         """Set up objects for each test."""
-        self.path = Path()
+        self.path = CtyPath()
         
         # Create mock steps
         self.mock_step1 = MagicMock(spec=PathStep)
         self.mock_step2 = MagicMock(spec=PathStep)
         
         # Create a path with steps
-        self.path_with_steps = Path([self.mock_step1, self.mock_step2])
+        self.path_with_steps = CtyPath([self.mock_step1, self.mock_step2])
     
     def test_path_init_empty(self):
         """Test Path initialization without steps."""
@@ -52,7 +52,7 @@ class TestPath:
         assert self.path_with_steps.steps == [self.mock_step1, self.mock_step2]
     
     def test_path_child(self):
-        """Test Path.child method."""
+        """Test CtyPath.child method."""
         # Chain get_attr calls
         new_path = self.path.child("user")
         
@@ -75,9 +75,9 @@ class TestPath:
         assert new_path.steps[1].name == "address"
         assert new_path.steps[2].name == "city"
     
-    @patch('pyvider.cty.path.path.IndexStep')
+    @patch('pyvider.cty.path.base.IndexStep')
     def test_path_index_step(self, mock_index_step_class):
-        """Test Path.index_step method."""
+        """Test CtyPath.index_step method."""
         # Setup mock
         mock_index_step = MagicMock()
         mock_index_step_class.return_value = mock_index_step
@@ -92,9 +92,9 @@ class TestPath:
         assert len(result.steps) == 1
         assert result.steps[0] == mock_index_step
     
-    @patch('pyvider.cty.path.path.KeyStep')
+    @patch('pyvider.cty.path.base.KeyStep')
     def test_path_key_step(self, mock_key_step_class):
-        """Test Path.key_step method."""
+        """Test CtyPath.key_step method."""
         # Setup mock
         mock_key_step = MagicMock()
         mock_key_step_class.return_value = mock_key_step
@@ -115,7 +115,7 @@ class TestPath:
         input_value = MagicMock()
         
         # Create a Path instance
-        path = Path()
+        path = CtyPath()
         
         # Apply empty path
         # Note: This is an async function but we're not testing the actual execution
@@ -157,8 +157,8 @@ class TestPath:
     @pytest.mark.parametrize(
         "path_factory,expected",
         [
-            (lambda: Path.empty(), []),
-            (lambda: Path.get_attr("name"), [GetAttrStep("name")]),
+            (lambda: CtyPath.empty(), []),
+            (lambda: CtyPath.get_attr("name"), [GetAttrStep("name")]),
         ]
     )
     def test_path_class_methods(self, path_factory, expected):

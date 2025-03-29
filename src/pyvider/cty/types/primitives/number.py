@@ -1,4 +1,6 @@
+#
 # pyvider/cty/types/primitives/number.py
+#
 
 from decimal import Decimal
 from typing import Any, ClassVar, Union
@@ -22,7 +24,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     ctype: ClassVar[str] = "number"
     value: Union[int, Decimal] = field(default=0)
 
-    def validate(self, value: Any) -> "CtyNumber":
+    def validate(self, value: Any) -> "CtyValue":
         """
         Validate that the given value is a number.
 
@@ -30,22 +32,51 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             value: The value to validate
 
         Returns:
-            A new CtyNumber with the validated value
+            A CtyValue with the validated number
 
         Raises:
             ValidationError: If the value is not a number
         """
         logger.debug(f"🔢🔍🔄 Validating value as number: {value}")
 
+        # Import locally to avoid circular imports
+        from pyvider.cty.values import CtyValue
+
+        # Handle CtyValue inputs
+        if isinstance(value, CtyValue):
+            if isinstance(value.type, CtyNumber):
+                logger.debug(f"🔢🔍✅ Value is already a CtyValue with CtyNumber type")
+                return value
+                
+            if value.is_known and not value.is_null:
+                # Try to convert inner value to number
+                inner_val = value.value
+                try:
+                    if isinstance(inner_val, (int, float, Decimal)):
+                        logger.debug(f"🔢🔍✅ Inner value is already numeric: {inner_val}")
+                        return CtyValue(type_=self, value=inner_val)
+                    elif isinstance(inner_val, str):
+                        try:
+                            # Try to parse as Decimal for precision
+                            num_val = Decimal(inner_val)
+                            logger.debug(f"🔢🔍✅ Converted string to Decimal: {num_val}")
+                            return CtyValue(type_=self, value=num_val)
+                        except:
+                            pass
+                except Exception as e:
+                    error_msg = f"Failed to convert CtyValue to number: {e}"
+                    logger.error(f"🔢❗❌ {error_msg}")
+                    raise ValidationError(error_msg)
+
         # Handle None as 0
         if value is None:
             logger.debug("🔢🔍✅ None value converted to 0")
-            return evolve(self, value=0)
+            return CtyValue(type_=self, value=0)
 
         # Accept numeric types: int, float, Decimal
         if isinstance(value, (int, float, Decimal)):
             logger.debug(f"🔢🔍✅ Value is valid number type: {type(value).__name__}")
-            return evolve(self, value=value)
+            return CtyValue(type_=self, value=value)
 
         # Try to convert strings that look like numbers
         if isinstance(value, str):
@@ -53,9 +84,11 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                 # Try to convert to a Decimal first for precision
                 decimal_val = Decimal(value)
                 logger.debug(f"🔢🔍✅ String converted to Decimal: {decimal_val}")
-                return evolve(self, value=decimal_val)
+                return CtyValue(type_=self, value=decimal_val)
             except (ValueError, ArithmeticError):
-                pass
+                error_msg = f"Cannot convert string '{value}' to number"
+                logger.debug(f"🔢❗❌ {error_msg}")
+                raise ValidationError(error_msg)
 
         # If we get here, the value is not a valid number
         logger.debug(f"🔢❗❌ Value must be a number, got {type(value).__name__}")
@@ -90,78 +123,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         return result
 
     def __eq__(self, other):
-        """
-        Check if this number is equal to another number.
-
-        Args:
-            other: The other number to check against
-
-        Returns:
-            True if the numbers are equal
-        """
-        if not isinstance(other, CtyNumber):
-            return False
-
-        # Compare values, being careful with different numeric types
-        if isinstance(self.value, Decimal) or isinstance(other.value, Decimal):
-            # Convert to Decimal for exact comparison
-            try:
-                self_decimal = Decimal(str(self.value)) if not isinstance(self.value, Decimal) else self.value
-                other_decimal = Decimal(str(other.value)) if not isinstance(other.value, Decimal) else other.value
-                return self_decimal == other_decimal
-            except (ValueError, ArithmeticError):
-                return False
-
-        # Regular comparison for int/float
-        return self.value == other.value
-
-    def __lt__(self, other):
-        """
-        Check if this number is less than another number.
-
-        Args:
-            other: The other number to compare with
-
-        Returns:
-            True if this number is less than the other number
-        """
-        if not isinstance(other, CtyNumber):
-            return NotImplemented
-
-        # Handle Decimal comparisons
-        if isinstance(self.value, Decimal) or isinstance(other.value, Decimal):
-            try:
-                self_decimal = Decimal(str(self.value)) if not isinstance(self.value, Decimal) else self.value
-                other_decimal = Decimal(str(other.value)) if not isinstance(other.value, Decimal) else other.value
-                return self_decimal < other_decimal
-            except (ValueError, ArithmeticError):
-                return NotImplemented
-
-        return self.value < other.value
-
-    def __gt__(self, other):
-        """
-        Check if this number is greater than another number.
-
-        Args:
-            other: The other number to compare with
-
-        Returns:
-            True if this number is greater than the other number
-        """
-        if not isinstance(other, CtyNumber):
-            return NotImplemented
-
-        # Handle Decimal comparisons
-        if isinstance(self.value, Decimal) or isinstance(other.value, Decimal):
-            try:
-                self_decimal = Decimal(str(self.value)) if not isinstance(self.value, Decimal) else self.value
-                other_decimal = Decimal(str(other.value)) if not isinstance(other.value, Decimal) else other.value
-                return self_decimal > other_decimal
-            except (ValueError, ArithmeticError):
-                return NotImplemented
-
-        return self.value > other.value
+        return isinstance(other, CtyNumber)
 
     def __repr__(self):
         """
@@ -170,7 +132,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         Returns:
             A detailed string representation
         """
-        return f"{self.__class__.__name__}(value={self.value!r})"
+        return f"{self.__class__.__name__}()"
 
     def __hash__(self):
         """
@@ -179,7 +141,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         Returns:
             A hash value
         """
-        return hash((self.__class__, self.value))
+        return hash((self.__class__,))
 
     def __str__(self):
         """
@@ -189,3 +151,6 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             A string representation
         """
         return "number"
+
+
+# 🐍🏗️🐣

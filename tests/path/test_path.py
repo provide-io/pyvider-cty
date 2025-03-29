@@ -14,10 +14,10 @@ from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
 from pyvider.cty.types.collections import CtyList, CtyMap
 from pyvider.cty.types.structural import CtyObject, CtyTuple
 from pyvider.cty import CtyValue
-from pyvider.cty.path.path import (
-    Path,
-    AttributePathError,
+from pyvider.cty.path import (
+    CtyPath,
 )
+from pyvider.cty.exceptions import AttributePathError
 
 class TestPathSystem:
     """Test the Cty path system."""
@@ -58,21 +58,21 @@ class TestPathSystem:
         )
 
         # Test direct attribute access
-        name_path = Path.get_attr("name")
+        name_path = CtyPath.get_attr("name")
         name_result = await name_path.apply_path(person)
         assert isinstance(name_result, CtyValue)
         assert isinstance(name_result.type, CtyString)
         assert name_result.value == "Alice"
 
         # Test nested attribute access
-        street_path = Path.get_attr("address").child("street")
+        street_path = CtyPath.get_attr("address").child("street")
         street_result = await street_path.apply_path(person)
         assert isinstance(street_result, CtyValue)
         assert isinstance(street_result.type, CtyString)
         assert street_result.value == "123 Main St"
 
         # Test invalid attribute
-        invalid_path = Path.get_attr("invalid")
+        invalid_path = CtyPath.get_attr("invalid")
         with pytest.raises(AttributePathError):
             await invalid_path.apply_path(person)
 
@@ -110,19 +110,19 @@ class TestPathSystem:
         )
 
         # Test index access
-        second_path = Path.index(1)
+        second_path = CtyPath.index(1)
         second_result = await second_path.apply_path(numbers)
         assert isinstance(second_result, CtyValue)
         assert second_result.value == 20
 
         # Test negative index
-        last_path = Path.index(-1)
+        last_path = CtyPath.index(-1)
         last_result = await last_path.apply_path(numbers)
         assert isinstance(last_result, CtyValue)
         assert last_result.value == 50
 
         # Test out of bounds
-        out_of_bounds_path = Path.index(10)
+        out_of_bounds_path = CtyPath.index(10)
         with pytest.raises(AttributePathError):
             await out_of_bounds_path.apply_path(numbers)
 
@@ -141,7 +141,7 @@ class TestPathSystem:
             )
         )
 
-        middle_path = Path.index(1)
+        middle_path = CtyPath.index(1)
         middle_result = await middle_path.apply_path(tuple_value)
         assert isinstance(middle_result, CtyValue)
         assert middle_result.value == 42
@@ -168,13 +168,13 @@ class TestPathSystem:
         )
 
         # Test key access
-        bob_path = Path.key("Bob")
+        bob_path = CtyPath.key("Bob")
         bob_result = await bob_path.apply_path(scores)
         assert isinstance(bob_result, CtyValue)
         assert bob_result.value == 87
 
         # Test invalid key
-        invalid_path = Path.key("Eve")
+        invalid_path = CtyPath.key("Eve")
         with pytest.raises(AttributePathError):
             await invalid_path.apply_path(scores)
 
@@ -244,14 +244,14 @@ class TestPathSystem:
 
         # Test complex path: second user's math score
         # users[1].scores["math"]
-        path = Path.index(1).child("scores").key_step("math")
+        path = CtyPath.index(1).child("scores").key_step("math")
         result = await path.apply_path(users)
         assert isinstance(result, CtyValue)
         assert result.value == 87
 
         # Test another complex path: first user's name
         # users[0].name
-        path = Path.index(0).child("name")
+        path = CtyPath.index(0).child("name")
         result = await path.apply_path(users)
         assert isinstance(result, CtyValue)
         assert result.value == "Alice"
@@ -274,7 +274,7 @@ class TestPathSystem:
         null_person = CtyValue(type_=person_type, is_null=True)
 
         # Path to attribute should fail for null
-        name_path = Path.get_attr("name")
+        name_path = CtyPath.get_attr("name")
         with pytest.raises(AttributePathError):
             await name_path.apply_path(null_person)
 
@@ -305,7 +305,7 @@ class TestPathSystem:
         )
 
         # Path to street should fail because address is null
-        street_path = Path.get_attr("address").child("street")
+        street_path = CtyPath.get_attr("address").child("street")
         with pytest.raises(AttributePathError):
             await street_path.apply_path(person_with_null_address)
 
@@ -327,21 +327,21 @@ class TestPathSystem:
     async def test_path_string_representation(self):
         """Test string representation of paths."""
         # Empty path
-        empty_path = Path.empty()
+        empty_path = CtyPath.empty()
         assert str(empty_path) == "(empty path)"
 
         # Attribute path
-        attr_path = Path.get_attr("name")
+        attr_path = CtyPath.get_attr("name")
         assert str(attr_path) == ".name"
 
         # Index path
-        index_path = Path.index(1)
+        index_path = CtyPath.index(1)
         assert str(index_path) == "[1]"
 
         # Key path
-        key_path = Path.key("foo")
+        key_path = CtyPath.key("foo")
         assert str(key_path) == "['foo']"
 
         # Complex path
-        complex_path = Path.index(0).child("scores").key_step("math")
+        complex_path = CtyPath.index(0).child("scores").key_step("math")
         assert str(complex_path) == "[0].scores['math']"

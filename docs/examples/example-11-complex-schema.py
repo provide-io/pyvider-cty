@@ -10,7 +10,7 @@ from pyvider.cty import (
     CtyValue, CtyTuple
 )
 from pyvider.cty.encoding import serialize_with_type, deserialize_with_type
-from pyvider.cty.path.path import Path
+from pyvider.cty.path import Path
 from pyvider.cty.exceptions import ValidationError, AttributePathError
 
 # Define a complex infrastructure schema
