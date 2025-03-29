@@ -3,7 +3,7 @@
 
 import asyncio
 from pyvider.cty import CtyObject, CtyList, CtyString, CtyNumber, CtyValue
-from pyvider.cty.path.path import Path
+from pyvider.cty.path import Path
 
 # Define a complex nested type
 server_type = CtyObject(

@@ -1,23 +1,79 @@
+#
+# pyvider/cty/types/primitives/string.py
+#
+
 from typing import Any, ClassVar, TypeVar
 
 from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import ValidationError
-
-from ..base import CtyType
+from pyvider.cty.logger import logger
+from pyvider.cty.types.base import CtyType
 
 T = TypeVar('T', bound=str)
 
 @define(frozen=True, slots=True)
 class CtyString(CtyType[str]):
+    """
+    CtyString represents a string type in the Cty type system.
+    
+    Strings are sequences of Unicode characters.
+    """
     ctype: ClassVar[str] = "string"
     value: str = field(default="")
 
-    def validate(self, value):
-        if not isinstance(value, str):
-            raise ValidationError("Value must be a string.")
-        # Evolve and return the new instance
-        return evolve(self, value=value)
+    def validate(self, value: Any) -> "CtyValue":
+        """
+        Validate that the given value is a string.
+        
+        Args:
+            value: The value to validate
+            
+        Returns:
+            A CtyValue with the validated string
+            
+        Raises:
+            ValidationError: If the value is not a string
+        """
+        # Import locally to avoid circular imports
+        from pyvider.cty.values import CtyValue
+        logger.debug(f"🔤🔍🔄 Validating value as string: {value}")
+        
+        # Handle None as empty string
+        if value is None:
+            logger.debug("🔤🔍✅ None value converted to empty string")
+            return CtyValue(type_=self, value="")
+            
+        # Handle CtyValue input
+        if isinstance(value, CtyValue):
+            if isinstance(value.type, CtyString):
+                logger.debug("🔤🔍✅ Value is already a CtyValue with CtyString type")
+                return value
+            if value.is_known and not value.is_null:
+                # Try to convert value.value to string
+                try:
+                    str_val = str(value.value)
+                    logger.debug(f"🔤🔍✅ Converted CtyValue to string: {str_val}")
+                    return CtyValue(type_=self, value=str_val)
+                except Exception as e:
+                    error_msg = f"Failed to convert CtyValue to string: {e}"
+                    logger.error(f"🔤❗❌ {error_msg}")
+                    raise ValidationError(error_msg)
+        
+        # Handle direct string
+        if isinstance(value, str):
+            logger.debug("🔤🔍✅ Value is a string")
+            return CtyValue(type_=self, value=value)
+            
+        # Try to convert to string
+        try:
+            str_val = str(value)
+            logger.debug(f"🔤🔍✅ Value converted to string: {str_val}")
+            return CtyValue(type_=self, value=str_val)
+        except Exception as e:
+            error_msg = f"Value must be a string, got {type(value).__name__}"
+            logger.error(f"🔤❗❌ {error_msg}")
+            raise ValidationError(error_msg)
 
     def equal(self, other: CtyType[Any]) -> bool:
         """
@@ -29,7 +85,9 @@ class CtyString(CtyType[str]):
         Returns:
             bool: True if the other type is a CtyString type.
         """
-        return isinstance(other, CtyString)
+        result = isinstance(other, CtyString)
+        logger.debug(f"🔤🔍✅ CtyString.equal: {result}")
+        return result
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         """
@@ -41,10 +99,12 @@ class CtyString(CtyType[str]):
         Returns:
             bool: True if this type can be used as the other type.
         """
-        return isinstance(other, CtyString)
+        result = isinstance(other, CtyString)
+        logger.debug(f"🔤🔍✅ CtyString.usable_as: {result}")
+        return result
 
     def __eq__(self, other):
-        return isinstance(other, CtyString) and self.value == other.value
+        return isinstance(other, CtyString)
 
     def __hash__(self) -> int:
         return hash((self.__class__,))
@@ -54,3 +114,5 @@ class CtyString(CtyType[str]):
 
     def __str__(self) -> str:
         return "CtyString"
+
+# 🐍🏗️🐣

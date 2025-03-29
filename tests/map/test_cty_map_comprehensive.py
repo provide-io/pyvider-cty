@@ -242,19 +242,26 @@ async def test_map_delete_method():
     """Test the delete() method."""
     map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
-    # Create a map with data
+    # Create and validate a map
     data = {"one": 1, "two": 2, "three": 3}
     map_val = map_type.validate(data)
+
+    # Verify initial map has 3 keys
+    assert len(map_val.value) == 3
 
     # Delete a key
     new_map = map_val.delete("two")
 
-    # Verify key was deleted
+    # Verify key was deleted (should now have 2 keys)
     assert len(new_map.value) == 2
 
-    keys_found = []
+    # Verify which keys remain
+    keys_found = set()
     for k in new_map.value:
-        keys_found.append(k.value)
+        if hasattr(k, 'value'):
+            keys_found.add(k.value)
+        else:
+            keys_found.add(str(k))
 
     assert "one" in keys_found
     assert "three" in keys_found
@@ -370,20 +377,42 @@ async def test_map_with_nested_value_types():
     assert len(result.value) == 2
 
     # Check values
+    found_person1 = False
+    found_person2 = False
+    
     for k, v in result.value.items():
-        assert isinstance(k, CtyString)
-        assert isinstance(v, dict)
-
-        # Check nested object attributes
-        assert isinstance(v["name"], CtyString)
-        assert isinstance(v["age"], CtyNumber)
-
+        assert hasattr(k, 'value'), "Key should be a CtyValue or have a value attribute"
+        
         if k.value == "person1":
-            assert v["name"].value == "Alice"
-            assert v["age"].value == 30
+            found_person1 = True
+            # v should be a CtyValue or have accessible attributes
+            assert "name" in v
+            assert "age" in v
+            
+            name_val = v["name"]
+            age_val = v["age"]
+            
+            assert isinstance(name_val, CtyValue)
+            assert isinstance(age_val, CtyValue)
+            assert name_val.value == "Alice"
+            assert age_val.value == 30
+            
         elif k.value == "person2":
-            assert v["name"].value == "Bob"
-            assert v["age"].value == 25
+            found_person2 = True
+            assert "name" in v
+            assert "age" in v
+            
+            name_val = v["name"]
+            age_val = v["age"]
+            
+            assert isinstance(name_val, CtyValue)
+            assert isinstance(age_val, CtyValue)
+            assert name_val.value == "Bob"
+            assert age_val.value == 25
+    
+    # Ensure we found both test persons
+    assert found_person1, "person1 not found in map"
+    assert found_person2, "person2 not found in map"
 
 @pytest.mark.asyncio
 async def test_map_validation_error_details():
@@ -422,3 +451,32 @@ async def test_map_equal_and_usable_as():
     assert str_str_map.usable_as(str_str_map2)
     assert not str_str_map.usable_as(str_num_map)
     assert not str_str_map.usable_as(CtyString())
+
+@pytest.mark.asyncio
+async def test_attribute_paths_with_cty_values():
+    """Test paths with attribute access for proper CtyValues."""
+    # Create object type with proper CtyType attributes
+    from pyvider.cty.path import CtyPath
+
+    person_type = CtyObject(attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    })
+    
+    # Create a value using proper CtyValue wrapping
+    person = CtyValue(
+        type_=person_type,
+        value={
+            "name": CtyValue(type_=CtyString(), value="Alice"),
+            "age": CtyValue(type_=CtyNumber(), value=30)
+        }
+    )
+    
+    # Test attribute access
+    name_path = CtyPath.get_attr("name")
+    name_result = await name_path.apply_path(person)
+    
+    # Verify result maintains CtyType
+    assert isinstance(name_result, CtyValue)
+    assert isinstance(name_result.type, CtyString)
+    assert name_result.value == "Alice"

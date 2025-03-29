@@ -1,3 +1,7 @@
+#
+# pyvider/cty/types/base.py
+#
+
 from abc import ABC, abstractmethod
 from typing import (
     Any,
@@ -28,7 +32,7 @@ class CtyType(ABC, Generic[T]):
         )
 
     @abstractmethod
-    def validate(self, value: Any) -> T:
+    def validate(self, value: Any) -> "CtyValue[T]":
         """Validate and coerce the value to this type."""
 
     @abstractmethod
@@ -47,3 +51,5 @@ class CtyType(ABC, Generic[T]):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
+
+# 🐍🏗️🐣
