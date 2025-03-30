@@ -2,451 +2,343 @@
 # pyvider/cty/types/collections/map.py
 #
 
-from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar, final
-from attrs import define, evolve, field
+"""
+CtyMap implementation for the Cty map type.
+
+Maps are collections of key-value pairs where keys have a consistent type
+and values have a consistent type.
+"""
+
+from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar, Union
+
+import attrs
+
 from pyvider.cty.exceptions import ValidationError
-from pyvider.cty.types.base import CtyType
 from pyvider.cty.logger import logger
+from pyvider.cty.types.base import CtyType
 
 K = TypeVar('K')
 V = TypeVar('V')
 
-@final
-@define(frozen=True, slots=True)
+@attrs.define(frozen=True, slots=True)
 class CtyMap(CtyType[Dict[K, V]], Generic[K, V]):
     """
-    CtyMap represents a map type in the Cty type system.
+    Represents a map type in the Cty type system.
 
     Maps are collections of key-value pairs where all keys have the same type
-    and all values have the same type. In Cty, map keys are typically strings.
+    and all values have the same type.
     """
     ctype: ClassVar[str] = "map"
-    key_type: CtyType[K] = field(kw_only=True)  # Mandatory as keyword-only
-    value_type: CtyType[V] = field(kw_only=True)  # Mandatory as keyword-only
-    value: Dict[Any, Any] = field(factory=dict, kw_only=True)  # Allow passing value via kw_only
+    key_type: CtyType[K] = attrs.field(kw_only=True)
+    value_type: CtyType[V] = attrs.field(kw_only=True)
+    value: Dict[K, V] = attrs.field(factory=dict, kw_only=True)
 
-    def __attrs_post_init__(self) -> None:
-        """Validate key_type and value_type after initialization."""
-        logger.debug("🔌📝🔄 Validating CtyMap initialization")
+    def __attrs_post_init__(self):
+        """Validate the map configuration."""
+        logger.debug("🔌🔍🔄 Validating CtyMap configuration")
 
         if not isinstance(self.key_type, CtyType):
-            error_msg = f"Expected CtyType for key_type, got {type(self.key_type)}"
-            logger.error(f"🔌❗❌ {error_msg}")
+            error_msg = f"Expected CtyType for key_type, got {type(self.key_type).__name__}"
+            logger.error(f"🔌❌🔄 {error_msg}")
             raise ValidationError(error_msg)
 
         if not isinstance(self.value_type, CtyType):
-            error_msg = f"Expected CtyType for value_type, got {type(self.value_type)}"
-            logger.error(f"🔌❗❌ {error_msg}")
+            error_msg = f"Expected CtyType for value_type, got {type(self.value_type).__name__}"
+            logger.error(f"🔌❌🔄 {error_msg}")
             raise ValidationError(error_msg)
 
-        logger.debug("🔌📝✅ CtyMap initialization valid")
+        logger.debug("🔌✅🔄 CtyMap configuration validated successfully")
 
     def validate(self, value: Any) -> "CtyValue":
-        """Validate that the given value conforms to this map type."""
-        logger.debug(f"🔌📝🔄 Validating value as CtyMap: {type(value).__name__}")
+        """
+        Validate a value against this map type.
 
-        # Import locally to avoid circular imports
+        Args:
+            value: Value to validate
+
+        Returns:
+            The validated map value as a CtyValue
+
+        Raises:
+            ValidationError: If the value doesn't match this map type
+        """
         from pyvider.cty.values import CtyValue
+        logger.debug(f"🔌🔍🔄 Validating value against CtyMap: {type(value).__name__}")
 
-        # Handle None/empty
-        if value is None or not value:
-            logger.debug("🔌📝✅ Creating empty map")
+        # Handle None as empty map
+        if value is None:
+            logger.debug("🔌🔍✅ None value treated as empty map")
             return CtyValue(type_=self, value={})
 
-        # Ensure input is a dictionary
+        # Value must be a dictionary
         if not isinstance(value, dict):
-            logger.debug(f"🔌❗❌ Expected dict, got {type(value).__name__}")
-            raise ValidationError(f"Expected dict, got {type(value).__name__}")
+            error_msg = f"Expected dictionary, got {type(value).__name__}"
+            logger.error(f"🔌❌🔄 {error_msg}")
+            raise ValidationError(error_msg)
+
+        # Handle empty dictionary
+        if not value:
+            logger.debug("🔌🔍✅ Empty dictionary is valid")
+            return CtyValue(type_=self, value={})
 
         # Validate each key-value pair
-        validated = {}
+        validated_map = {}
         validation_errors = []
 
         for k, v in value.items():
             try:
-                # Handle key validation - always ensure it's a CtyValue
-                if isinstance(k, CtyValue) and isinstance(k.type, self.key_type.__class__):
-                    validated_key = k
-                    logger.debug(f"🔌📝✅ Key is already a CtyValue: {k}")
-                else:
-                    # Validate raw key
-                    raw_key = self.key_type.validate(k)
-                    validated_key = raw_key  # Already a CtyValue from validate
-                    logger.debug(f"🔌📝✅ Validated key: {k} -> {validated_key}")
-
-                # Handle value validation - always ensure it's a CtyValue
-                if isinstance(v, CtyValue) and isinstance(v.type, self.value_type.__class__):
-                    validated_value = v
-                    logger.debug(f"🔌📝✅ Value is already a CtyValue: {v}")
-                else:
-                    # Validate raw value
-                    validated_value = self.value_type.validate(v)
-                    logger.debug(f"🔌📝✅ Validated value: {v} -> {validated_value}")
-
-                validated[validated_key] = validated_value
+                # Validate key
+                validated_key = self._validate_key(k)
+                # Validate value
+                validated_value = self._validate_value(v)
+                
+                # Add to validated map
+                validated_map[validated_key] = validated_value
+                logger.debug(f"🔌🔍✅ Validated map entry: {k} -> {v}")
             except Exception as e:
-                error_msg = f"Key {k}: {v} -> {e!s}"
-                logger.debug(f"🔌❗❌ {error_msg}")
+                error_msg = f"Invalid map entry {k}: {v} -> {e}"
+                logger.error(f"🔌❌🔄 {error_msg}")
                 validation_errors.append(error_msg)
 
         if validation_errors:
-            error_msg = "CtyMap validation failed:\n" + "\n".join(validation_errors)
-            logger.debug(f"🔌❗❌ {error_msg}")
+            error_msg = "Map validation failed:\n" + "\n".join(validation_errors)
+            logger.error(f"🔌❌🔄 {error_msg}")
             raise ValidationError(error_msg)
 
-        logger.debug(f"🔌📝✅ Successfully validated map with {len(validated)} items")
-        return CtyValue(type_=self, value=validated)
+        logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
+        return CtyValue(type_=self, value=validated_map)
 
-    def element(self, container: Any, key: Any) -> "CtyValue":
+    def set(self, container: Dict[K, V], key: Any, value: Any) -> Dict[K, V]:
         """
-        Get a value from a map by key (Go-CTY style).
-        
+        Set a key-value pair in a map.
+
+        This operation is immutable - it returns a new map with the updated key-value pair.
+
         Args:
-            container: Map container (CtyValue or dict)
-            key: Key to look up (native or CtyValue)
-            
-        Returns:
-            Value at the key as a CtyValue
-        """
-        logger.debug(f"🔌🔍🔄 Getting element for key: {key}")
-
-        # Import here to avoid circular imports
-        from pyvider.cty.values import CtyValue
-
-        # Handle container
-        if isinstance(container, CtyValue):
-            container_map = container.value
-        elif isinstance(container, dict):
-            container_map = container
-        else:
-            raise ValidationError(f"Expected map container, got {type(container).__name__}")
-
-        # Validate key
-        try:
-            search_key = self._validate_key(key)
-        except Exception as e:
-            logger.error(f"🔌❗❌ Invalid key: {e}")
-            raise ValidationError(f"Invalid key: {e}")
-
-        # Search for the key
-        for k, v in container_map.items():
-            # Compare by value, not identity
-            if hasattr(k, 'value') and hasattr(search_key, 'value') and k.value == search_key.value:
-                return v
-
-        # Key not found
-        raise KeyError(f"Key not found: {key}")
-
-    def get(self, container: Any, key: Any, default: Any = None) -> "CtyValue":
-        """
-        Get a value from the map by key, with a default if not found.
-        
-        Args:
-            container: Map container (CtyValue or dict)
-            key: Key to look up
-            default: Value to return if key not found
-            
-        Returns:
-            Value at the key as a CtyValue, or default
-        """
-        logger.debug(f"🔌🔍🔄 Getting value for key: {key}")
-
-        # Import locally to avoid circular imports
-        from pyvider.cty.values import CtyValue
-
-        # Handle container
-        if isinstance(container, CtyValue):
-            container_map = container.value
-        elif isinstance(container, dict):
-            container_map = container
-        else:
-            logger.debug(f"🔌❗⚠️ Invalid container type: {type(container).__name__}")
-            return default
-
-        try:
-            # Validate key for consistent comparison
-            if isinstance(key, CtyValue) and isinstance(key.type, self.key_type.__class__):
-                search_key = key
-            else:
-                try:
-                    search_key = self.key_type.validate(key)
-                except Exception as e:
-                    logger.debug(f"🔌🔍⚠️ Key validation failed: {e}")
-                    return default
-
-            # Find matching key by value comparison
-            for k, v in container_map.items():
-                if hasattr(k, 'value') and hasattr(search_key, 'value'):
-                    if k.value == search_key.value:
-                        logger.debug(f"🔌🔍✅ Found value for key: {k.value}")
-                        return v
-                elif k == search_key:
-                    logger.debug(f"🔌🔍✅ Found value for key: {k}")
-                    return v
-
-            logger.debug(f"🔌🔍⚠️ Key not found, returning default")
-            return default
-        except Exception as e:
-            logger.debug(f"🔌❗⚠️ Error getting key: {e}")
-            return default
-
-    def set(self, container: Any, key: Any, value: Any) -> "CtyValue":
-        """
-        Set a key-value pair in a map (Go-CTY style).
-        
-        Args:
-            container: The map container (CtyValue or dict)
+            container: The map to update
             key: The key to set
             value: The value to set
-            
+
         Returns:
-            A new CtyValue with the key-value pair set
+            A new map with the updated key-value pair
         """
-        from pyvider.cty.values import CtyValue
-        logger.debug(f"🔌📝🔄 Setting value for key: {key}")
+        logger.debug(f"🔌📝🔄 Setting key {key} to value {value} in map")
 
-        # Handle container
-        if isinstance(container, CtyValue):
-            container_map = dict(container.value)  # Make a copy
-        elif isinstance(container, dict):
-            container_map = dict(container)  # Make a copy
-        else:
-            error_msg = f"Expected map container, got {type(container).__name__}"
-            logger.error(f"🔌❗❌ {error_msg}")
-            raise ValidationError(error_msg)
+        # Create a new map
+        new_map = dict(container)
 
-        # Validate key and value
+        # Validate and wrap the key and value
         validated_key = self._validate_key(key)
         validated_value = self._validate_value(value)
 
-        # Find and replace existing key or add new key-value pair
-        found = False
+        # Set the key-value pair in the new map
+        new_map[validated_key] = validated_value
+
+        logger.debug(f"🔌📝✅ Key {key} set successfully")
+        return new_map
+
+    def get(self, container: Dict[K, V], key: Any, default: Any = None) -> Optional[V]:
+        """
+        Get a value from a map by key.
+
+        Args:
+            container: The map to get the value from
+            key: The key to look up
+            default: Value to return if key not found
+
+        Returns:
+            The value at the key, or the default if not found
+        """
+        logger.debug(f"🔌🔍🔄 Getting value for key {key} from map")
+
+        try:
+            # Validate the key
+            validated_key = self._validate_key(key)
+
+            # Search for the key in the map
+            for k, v in container.items():
+                # Compare keys - handle CtyValue keys
+                if hasattr(k, 'value') and hasattr(validated_key, 'value'):
+                    if k.value == validated_key.value:
+                        logger.debug(f"🔌🔍✅ Found value for key {key}")
+                        return v
+                # Direct comparison
+                elif k == validated_key:
+                    logger.debug(f"🔌🔍✅ Found value for key {key}")
+                    return v
+
+            # Key not found
+            logger.debug(f"🔌🔍⚠️ Key {key} not found in map, returning default")
+            return default
+        except Exception as e:
+            logger.debug(f"🔌❌🔄 Error getting value: {e}")
+            return default
+
+    def delete(self, container: Dict[K, V], key: Any) -> Dict[K, V]:
+        """
+        Delete a key-value pair from a map.
+
+        This operation is immutable - it returns a new map with the key-value pair removed.
+
+        Args:
+            container: The map to update
+            key: The key to delete
+
+        Returns:
+            A new map with the key-value pair removed
+        """
+        logger.debug(f"🔌📝🔄 Deleting key {key} from map")
+
+        # Create a new map
         new_map = {}
 
-        for k, v in container_map.items():
-            if hasattr(k, 'value') and hasattr(validated_key, 'value') and k.value == validated_key.value:
-                # Replace with new value
-                new_map[k] = validated_value
-                found = True
-            else:
-                # Keep existing key-value pair
+        try:
+            # Validate the key
+            validated_key = self._validate_key(key)
+
+            # Copy all entries except the one to delete
+            found = False
+            for k, v in container.items():
+                # Compare keys - handle CtyValue keys
+                if hasattr(k, 'value') and hasattr(validated_key, 'value'):
+                    if k.value == validated_key.value:
+                        found = True
+                        continue
+                # Direct comparison
+                elif k == validated_key:
+                    found = True
+                    continue
+
+                # Copy the entry
                 new_map[k] = v
 
-        # If key not found, add new key-value pair
-        if not found:
-            new_map[validated_key] = validated_value
+            if found:
+                logger.debug(f"🔌📝✅ Key {key} deleted successfully")
+            else:
+                logger.debug(f"🔌📝⚠️ Key {key} not found in map")
 
-        # Return new map
-        logger.debug(f"🔌📝✅ Set value for key {key} successfully")
-        return CtyValue(type_=self, value=new_map)
-
-    def delete(self, container: Any, key: Any) -> "CtyValue":
-        """
-        Delete a key from a map (Go-CTY style).
-        
-        Args:
-            container: The map container (CtyValue or dict) 
-            key: The key to delete
-            
-        Returns:
-            A new CtyValue with the key removed
-        """
-        from pyvider.cty.values import CtyValue
-        logger.debug(f"🔌📝🔄 Deleting key: {key}")
-
-        # Handle container
-        if isinstance(container, CtyValue):
-            container_map = dict(container.value)  # Make a copy
-        elif isinstance(container, dict):
-            container_map = dict(container)  # Make a copy
-        else:
-            error_msg = f"Expected map container, got {type(container).__name__}"
-            logger.error(f"🔌❗❌ {error_msg}")
-            raise ValidationError(error_msg)
-
-        # Validate key
-        try:
-            validated_key = self._validate_key(key)
+            return new_map
         except Exception as e:
-            logger.debug(f"🔌❗⚠️ Key validation failed: {e}")
-            # If key validation fails, return the original container unchanged
-            return container if isinstance(container, CtyValue) else CtyValue(type_=self, value=container_map)
+            logger.debug(f"🔌❌🔄 Error deleting key: {e}")
+            # If an error occurs, return original map
+            return container
 
-        # Filter out the key
-        new_map = {}
-        removed = False
+    def _validate_key(self, key: Any) -> K:
+        """
+        Validate a key against the key type.
 
-        for k, v in container_map.items():
-            if hasattr(k, 'value') and hasattr(validated_key, 'value') and k.value == validated_key.value:
-                removed = True
-                continue
-            new_map[k] = v
+        Args:
+            key: The key to validate
 
-        # If key not found, no change
-        if not removed:
-            logger.debug(f"🔌📝⚠️ Key {key} not found, no changes made")
-            return container if isinstance(container, CtyValue) else CtyValue(type_=self, value=container_map)
+        Returns:
+            The validated key
 
-        # Return new map
-        logger.debug(f"🔌📝✅ Deleted key {key} successfully")
-        return CtyValue(type_=self, value=new_map)
+        Raises:
+            ValidationError: If the key is invalid
+        """
+        logger.debug(f"🔌🔍🔄 Validating map key: {key}")
 
-    def _validate_key(self, key: Any) -> "CtyValue":
-        """Validate and wrap a key with the appropriate type."""
+        # If already a CtyValue with matching type, use directly
         from pyvider.cty.values import CtyValue
-        logger.debug(f"🔌🔍🔄 Validating key: {key}")
-
-        # Already a CtyValue with the right type?
-        if isinstance(key, CtyValue) and isinstance(key.type, self.key_type.__class__):
-            logger.debug(f"🔌🔍✅ Key is already a valid CtyValue")
+        if isinstance(key, CtyValue) and isinstance(key.type, type(self.key_type)):
+            logger.debug("🔌🔍✅ Key is already a CtyValue with correct type")
             return key
 
-        # Validate raw key
+        # Validate using key_type
         try:
-            validated = self.key_type.validate(key)
-            logger.debug(f"🔌🔍✅ Validated key: {key} -> {validated}")
-            return validated
+            validated_key = self.key_type.validate(key)
+            logger.debug(f"🔌🔍✅ Key validated successfully")
+            return validated_key
         except Exception as e:
             error_msg = f"Invalid key: {e}"
-            logger.error(f"🔌❗❌ {error_msg}")
-            raise ValidationError(error_msg)
+            logger.error(f"🔌❌🔄 {error_msg}")
+            raise ValidationError(error_msg) from e
 
-    def _validate_value(self, value: Any) -> "CtyValue":
-        """Validate and wrap a value with the appropriate type."""
+    def _validate_value(self, value: Any) -> V:
+        """
+        Validate a value against the value type.
+
+        Args:
+            value: The value to validate
+
+        Returns:
+            The validated value
+
+        Raises:
+            ValidationError: If the value is invalid
+        """
+        logger.debug(f"🔌🔍🔄 Validating map value: {value}")
+
+        # If already a CtyValue with matching type, use directly
         from pyvider.cty.values import CtyValue
-        logger.debug(f"🔌🔍🔄 Validating value: {value}")
-
-        # Already a CtyValue with the right type?
-        if isinstance(value, CtyValue) and isinstance(value.type, self.value_type.__class__):
-            logger.debug(f"🔌🔍✅ Value is already a valid CtyValue")
+        if isinstance(value, CtyValue) and isinstance(value.type, type(self.value_type)):
+            logger.debug("🔌🔍✅ Value is already a CtyValue with correct type")
             return value
 
-        # Validate raw value
+        # Validate using value_type
         try:
-            validated = self.value_type.validate(value)
-            logger.debug(f"🔌🔍✅ Validated value: {value} -> {validated}")
-            return validated
+            validated_value = self.value_type.validate(value)
+            logger.debug(f"🔌🔍✅ Value validated successfully")
+            return validated_value
         except Exception as e:
             error_msg = f"Invalid value: {e}"
-            logger.error(f"🔌❗❌ {error_msg}")
-            raise ValidationError(error_msg)
+            logger.error(f"🔌❌🔄 {error_msg}")
+            raise ValidationError(error_msg) from e
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
-        Check if this type can be used as the other type.
+        Check if this map type is equal to another type.
 
         Args:
-            other: The other type to check against
+            other: The other type to compare with
 
         Returns:
-            True if this type can be used as the other type
+            True if the types are equal, False otherwise
         """
+        logger.debug(f"🔌🔍🔄 Checking equality with {other.__class__.__name__}")
+
         if not isinstance(other, CtyMap):
-            logger.debug(f"🔌📝❌ CtyMap.usable_as: False (other is {type(other).__name__})")
+            logger.debug(f"🔌❌🔄 Not equal: {other.__class__.__name__} is not CtyMap")
             return False
 
-        key_usable = self.key_type.usable_as(other.key_type)
-        value_usable = self.value_type.usable_as(other.value_type)
-
-        result = key_usable and value_usable
-        logger.debug(f"🔌📝✅ CtyMap.usable_as: {result}")
-        return result
-
-    def equal(self, other: "CtyType") -> bool:
-        """
-        Check if this type is equal to the other type.
-
-        Args:
-            other: The other type to check against
-
-        Returns:
-            True if the types are equal
-        """
-        if not isinstance(other, CtyMap):
-            logger.debug(f"🔌📝❌ CtyMap.equal: False (other is {type(other).__name__})")
-            return False
-
+        # Check key type and value type equality
         key_equal = self.key_type.equal(other.key_type)
         value_equal = self.value_type.equal(other.value_type)
 
         result = key_equal and value_equal
-        logger.debug(f"🔌📝✅ CtyMap.equal: {result}")
+        logger.debug(f"🔌🔍✅ CtyMap.equal: {result}")
         return result
 
-    def __eq__(self, other):
+    def usable_as(self, other: CtyType) -> bool:
         """
-        Check if this map is equal to another map.
+        Check if this map type can be used as another type.
 
         Args:
-            other: The other map to check against
+            other: The other type to check compatibility with
 
         Returns:
-            True if the maps are equal
+            True if this type can be used as the other type, False otherwise
         """
+        logger.debug(f"🔌🔍🔄 Checking usability as {other.__class__.__name__}")
+
         if not isinstance(other, CtyMap):
+            logger.debug(f"🔌❌🔄 Not usable as: {other.__class__.__name__} is not CtyMap")
             return False
 
-        # Check key type and value type equality
-        if not self.key_type.__class__ == other.key_type.__class__ or not self.value_type.__class__ == other.value_type.__class__:
-            return False
+        # Check key type and value type compatibility
+        key_usable = self.key_type.usable_as(other.key_type)
+        value_usable = self.value_type.usable_as(other.value_type)
 
-        # Check if maps have the same number of entries
-        if len(self.value) != len(other.value):
-            return False
-
-        # For each key-value pair in self.value, check if it exists in other.value
-        for self_key, self_val in self.value.items():
-            # Find matching key in other.value
-            found = False
-            for other_key, other_val in other.value.items():
-                # Try value comparison for keys
-                if (hasattr(self_key, 'value') and hasattr(other_key, 'value') and
-                    self_key.value == other_key.value):
-                    # Compare values
-                    if hasattr(self_val, 'value') and hasattr(other_val, 'value'):
-                        if self_val.value != other_val.value:
-                            return False
-                    elif self_val != other_val:
-                        return False
-                    found = True
-                    break
-                # Direct equality comparison
-                elif self_key == other_key:
-                    if self_val != other_val:
-                        return False
-                    found = True
-                    break
-
-            if not found:
-                return False
-
-        return True
-
-    def __iter__(self):
-        """
-        Iterate over the map keys.
-        
-        Returns:
-            An iterator over the map keys
-        """
-        return iter(self.value.keys())
+        result = key_usable and value_usable
+        logger.debug(f"🔌🔍✅ CtyMap.usable_as: {result}")
+        return result
 
     def __str__(self) -> str:
-        """
-        Get a string representation of this map type.
-
-        Returns:
-            A string representation
-        """
-        return f"map({self.value_type.__class__.__name__})"
+        """Get string representation of the map type."""
+        return f"map({self.key_type.__class__.__name__}, {self.value_type.__class__.__name__})"
 
     def __repr__(self) -> str:
-        """
-        Get a detailed string representation of this map.
-
-        Returns:
-            A detailed string representation
-        """
+        """Get detailed string representation of the map type."""
         return f"CtyMap(key_type={self.key_type!r}, value_type={self.value_type!r})"
 
 # 🐍🏗️🐣

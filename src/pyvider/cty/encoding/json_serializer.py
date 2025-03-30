@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
+#
 # pyvider/cty/encoding/json_serializer.py
+#
 
 """
 JSON serializer implementation for Cty values.
@@ -26,6 +27,10 @@ from pyvider.cty.encoding.exceptions import (
     UnsupportedTypeError,
 )
 from pyvider.cty.encoding.registry import register_serializer
+from pyvider.cty.encoding.capsule_serializer import (
+    prepare_capsule_value,
+    process_capsule_value,
+) 
 
 
 class CtyType(str, Enum):
@@ -40,6 +45,7 @@ class CtyType(str, Enum):
     OBJECT = "object"
     DYNAMIC = "dynamic"
     NULL = "null"
+    CAPSULE = "capsule"
 
 
 class TypedValue(TypedDict):
@@ -604,6 +610,17 @@ class JsonSerializer(TypedSerializerProtocol):
             JSON-serializable value
         """
         match cty_type:
+            case CtyType.CAPSULE:
+                logger.debug("🧰📤🔄 Preparing capsule value for serialization")
+                from pyvider.cty.types.capsule import CtyCapsule
+                from pyvider.cty.exceptions import CapsuleSerializationError
+                
+                if not isinstance(cty_type, CtyCapsule):
+                    error_msg = f"Expected CtyCapsule, got {type(cty_type).__name__}"
+                    logger.error(f"🧰📤❌ {error_msg}")
+                    raise UnsupportedTypeError(type(cty_type), "json", value)
+                    
+                return prepare_capsule_value(self, value, cty_type)
             case CtyType.NULL:
                 return None
             case CtyType.STRING:
@@ -988,3 +1005,4 @@ class JsonSerializer(TypedSerializerProtocol):
                 # Process any value
                 return self._process_value(value)
 
+# 🐍🏗️🐣

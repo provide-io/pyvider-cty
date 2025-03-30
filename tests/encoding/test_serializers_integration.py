@@ -1,5 +1,6 @@
-
-# tests/encoding/test_serializers_integration.py
+#
+# tests/encoding/json/test_serializers_integration.py
+#
 
 """
 Integration tests for Cty serialization.
@@ -699,3 +700,4 @@ class TestEdgeCases:
         with pytest.raises(Exception):
             deserialize_with_type(serialized, CtyNumber())
 
+# 🐍🏗️🐣

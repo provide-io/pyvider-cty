@@ -28,7 +28,10 @@ from pyvider.cty.encoding.exceptions import (
     UnsupportedTypeError,
 )
 from pyvider.cty.encoding.registry import register_serializer
-
+from pyvider.cty.encoding.capsule_serializer import (
+    prepare_capsule_value,
+    process_capsule_value,
+)
 
 class CtyType(str, Enum):
     """Enumeration of Cty type names."""
@@ -42,6 +45,7 @@ class CtyType(str, Enum):
     OBJECT = "object"
     DYNAMIC = "dynamic"
     NULL = "null"
+    CAPSULE = "capsule"
 
 
 class ValuePayload(TypedDict, total=False):
@@ -770,6 +774,9 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     return CtyType.OBJECT
                 return CtyType.MAP
             case _:
+                if hasattr(value, '__class__') and isinstance(getattr(value, 'type', None), CtyCapsule):
+                    return CtyType.CAPSULE
+
                 # Check for custom classes with known conversions
                 if hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
                     return CtyType.OBJECT
@@ -1506,4 +1513,4 @@ def unmarshal(data: bytes) -> Any:
     except Exception as e:
         raise DeserializationError(f"Failed to unmarshal value: {e}", data=data, format_name="msgpack") from e
 
-# 🐍🏗️
+# 🐍🏗️🐣
