@@ -1,7 +1,6 @@
 #
 # pyvider/cty/encoding/msgpack_serializer.py
 #
-
 """
 MessagePack serializer implementation for Cty values.
 
@@ -28,10 +27,7 @@ from pyvider.cty.encoding.exceptions import (
     UnsupportedTypeError,
 )
 from pyvider.cty.encoding.registry import register_serializer
-from pyvider.cty.encoding.capsule_serializer import (
-    prepare_capsule_value,
-    process_capsule_value,
-)
+
 
 class CtyType(str, Enum):
     """Enumeration of Cty type names."""
@@ -65,6 +61,7 @@ EXT_TYPE_HINT: Final[int] = 3
 EXT_OBJECT: Final[int] = 4
 EXT_TUPLE: Final[int] = 5
 EXT_SET: Final[int] = 6
+EXT_CAPSULE: Final[int] = 7
 
 # Magic bytes for quickly identifying MessagePack format for Pyvider Cty values
 # "PCTY" + version (1) = [80, 67, 84, 89, 1]
@@ -155,7 +152,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
         # Higher than JSON since binary format is more specific
         return 10
 
-    def serialize(self, value: Any) -> bytes:
+    async def serialize(self, value: Any) -> bytes:
         """
         Serialize a value to MessagePack format.
 
@@ -172,10 +169,9 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
         try:
             # Check if it's a Cty value
-            if hasattr(value, 'type') and hasattr(value, 'value'):
+            if hasattr(value, 'type') and hasattr(value, 'value') and hasattr(value, 'is_known'):
                 logger.debug("🧮📤🔄 Unwrapping Cty value")
                 cty_type = value.type
-                actual_value = value.value
 
                 # Handle special value states
                 if hasattr(value, 'is_unknown') and value.is_unknown:
@@ -205,7 +201,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         unmarked_value, marks = value.unmark()
 
                         # Serialize the unmarked value (without magic bytes)
-                        unmarked_serialized = self.serialize(unmarked_value)
+                        unmarked_serialized = await self.serialize(unmarked_value)
                         if unmarked_serialized.startswith(CTY_MAGIC_BYTES):
                             unmarked_serialized = unmarked_serialized[len(CTY_MAGIC_BYTES):]
 
@@ -222,7 +218,28 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         logger.error(f"🧮📤❌ Error processing marked value: {e}")
                         raise
 
+                # Special handling for capsule types
+                from pyvider.cty.types.capsule import CtyCapsule
+                if isinstance(cty_type, CtyCapsule):
+                    logger.debug("🧮📤ℹ️ Handling capsule type")
+                    from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+
+                    # Get raw value for the capsule
+                    actual_value = value.value
+
+                    # Prepare capsule data - add await
+                    capsule_data = await prepare_capsule_value(actual_value, cty_type)
+                    serialized_capsule = msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS)
+
+                    # Wrap in capsule extension
+                    capsule_ext = msgpack.ExtType(EXT_CAPSULE, serialized_capsule)
+                    result = CTY_MAGIC_BYTES + msgpack.packb(capsule_ext, **DEFAULT_ENCODE_OPTIONS)
+
+                    logger.debug(f"🧮📤✅ Serialized capsule: {len(result)} bytes")
+                    return result
+
                 # For collection types, process element values
+                actual_value = value.value
                 if hasattr(actual_value, '__iter__') and not isinstance(actual_value, (str, bytes)):
                     if isinstance(actual_value, dict):
                         # Handle dictionary/map values
@@ -230,10 +247,10 @@ class MsgpackSerializer(TypedSerializerProtocol):
                             processed_value = {}
                             for k, v in actual_value.items():
                                 # Extract the actual key and value
-                                key = k.value if hasattr(k, 'value') else k
-                                val = v.value if hasattr(v, 'value') else v
+                                key = k.value if hasattr(k, 'value') and hasattr(k, 'is_known') else k
+                                val = v.value if hasattr(v, 'value') and hasattr(v, 'is_known') else v
                                 processed_value[str(key)] = val
-                            return self.serialize_with_type(processed_value, cty_type)
+                            return await self.serialize_with_type(processed_value, cty_type)
                         except Exception as e:
                             logger.error(f"🧮📤❌ Error processing dictionary values: {e}")
                             raise
@@ -241,16 +258,16 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         # Handle list/set/tuple values
                         try:
                             processed_value = [
-                                v.value if hasattr(v, 'value') else v
+                                v.value if hasattr(v, 'value') and hasattr(v, 'is_known') else v
                                 for v in actual_value
                             ]
-                            return self.serialize_with_type(processed_value, cty_type)
+                            return await self.serialize_with_type(processed_value, cty_type)
                         except Exception as e:
                             logger.error(f"🧮📤❌ Error processing collection values: {e}")
                             raise
 
                 # Serialize with type hint
-                return self.serialize_with_type(actual_value, cty_type)
+                return await self.serialize_with_type(actual_value, cty_type)
 
             # Handle regular Python types
             try:
@@ -275,7 +292,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
             logger.error(f"🧮📤❌ {error_msg}")
             raise SerializationError(error_msg, value) from e
 
-    def deserialize(self, data: bytes) -> Any:
+    async def deserialize(self, data: bytes) -> Any:
         """
         Deserialize MessagePack data to a Python value.
 
@@ -364,10 +381,20 @@ class MsgpackSerializer(TypedSerializerProtocol):
                             logger.error(f"🧮📥❌ Error decoding marked value: {e}")
                             raise
 
+                    case EXT_CAPSULE if True:
+                        logger.debug("🧮📥ℹ️ Decoding capsule value")
+                        try:
+                            capsule_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
+                            from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                            return process_capsule_value(capsule_data)
+                        except Exception as e:
+                            logger.error(f"🧮📥❌ Error decoding capsule value: {e}")
+                            raise
+
                     case EXT_OBJECT if True:
                         logger.debug("🧮📥ℹ️ Decoding object value")
                         try:
-                            # Parse the object data
+                            # Process as object
                             obj_data = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
 
                             # Process object attributes
@@ -398,13 +425,13 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
                             return CtyValue(type_=object_type, value=dict_obj)
                         except Exception as e:
-                            logger.error(f"🧮📥❌ Error decoding object value: {e}")
+                            logger.error(f"🧮📥❌ Error processing object extension: {e}")
                             raise
 
                     case EXT_TUPLE if True:
-                        logger.debug("🧮📥ℹ️ Decoding tuple value")
+                        logger.debug("🧮📥ℹ️ Processing tuple extension")
                         try:
-                            # Parse the tuple data
+                            # Process as tuple
                             tuple_data = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
 
                             # Process tuple elements
@@ -431,13 +458,13 @@ class MsgpackSerializer(TypedSerializerProtocol):
                             tuple_type = CtyTuple(element_types=tuple(element_types))
                             return CtyValue(type_=tuple_type, value=tuple(processed_items))
                         except Exception as e:
-                            logger.error(f"🧮📥❌ Error decoding tuple value: {e}")
+                            logger.error(f"🧮📥❌ Error processing tuple extension: {e}")
                             raise
 
                     case EXT_SET if True:
-                        logger.debug("🧮📥ℹ️ Decoding set value")
+                        logger.debug("🧮📥ℹ️ Processing set extension")
                         try:
-                            # Parse the set data
+                            # Process as set
                             set_data = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
 
                             # Process set elements
@@ -463,7 +490,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                             set_type = CtySet(element_type=element_type)
                             return CtyValue(type_=set_type, value=set(processed_items))
                         except Exception as e:
-                            logger.error(f"🧮📥❌ Error decoding set value: {e}")
+                            logger.error(f"🧮📥❌ Error processing set extension: {e}")
                             raise
 
                 # Return raw data for unknown extension types
@@ -478,14 +505,14 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 raw_value = msgpack.unpackb(data, **decode_options)
 
                 # Process the value
-                result = self._process_value(raw_value)
+                result = await self._process_value(raw_value)
                 logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__}")
                 return result
             except msgpack.exceptions.ExtraData as e:
                 logger.warning(f"🧮📥⚠️ Extra data after unpacking: {e}")
                 # Just use the first complete object and ignore extra data
                 raw_value = msgpack.unpackb(data[:e.unpacked_size], **decode_options)
-                result = self._process_value(raw_value)
+                result = await self._process_value(raw_value)
                 logger.debug(f"🧮📥✅ Deserialized (partial) to {type(result).__name__}")
                 return result
 
@@ -497,7 +524,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
             logger.error(f"🧮📥❌ {error_msg}")
             raise DeserializationError(error_msg, data=data, format_name="msgpack") from e
 
-    def serialize_with_type(self, value: Any, type_hint: Any = None) -> bytes:
+    async def serialize_with_type(self, value: Any, type_hint: Any = None) -> bytes:
         """
         Serialize a value with explicit type information.
 
@@ -515,11 +542,28 @@ class MsgpackSerializer(TypedSerializerProtocol):
         logger.debug(f"🧮📤🔄 Serializing with type: {type(value).__name__}, hint: {type_hint}")
 
         try:
+            # Handle special case for capsule types
+            from pyvider.cty.types.capsule import CtyCapsule
+            if isinstance(type_hint, CtyCapsule):
+                logger.debug("🧮📤ℹ️ Serializing capsule type with type hint")
+                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+
+                # Prepare capsule data
+                capsule_data = await prepare_capsule_value(value, type_hint)
+                serialized_capsule = msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS)
+
+                # Wrap in capsule extension
+                capsule_ext = msgpack.ExtType(EXT_CAPSULE, serialized_capsule)
+                result = CTY_MAGIC_BYTES + msgpack.packb(capsule_ext, **DEFAULT_ENCODE_OPTIONS)
+
+                logger.debug(f"🧮📤✅ Serialized capsule with type hint: {len(result)} bytes")
+                return result
+
             # Determine the CtyType
             cty_type = self._get_cty_type(value, type_hint)
 
             # Prepare the value based on its type
-            prepared_value = self._prepare_typed_value(value, cty_type)
+            prepared_value = await self._prepare_typed_value(value, cty_type)
 
             # Encode type information
             type_data = msgpack.packb(cty_type.value, **DEFAULT_ENCODE_OPTIONS)
@@ -546,7 +590,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
             logger.error(f"🧮📤❌ {error_msg}")
             raise SerializationError(error_msg, value) from e
 
-    def deserialize_with_type(self, data: bytes, type_hint: Any = None) -> Any:
+    async def deserialize_with_type(self, data: bytes, type_hint: Any = None) -> Any:
         """
         Deserialize MessagePack data with type information.
 
@@ -571,140 +615,125 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
-            from pyvider.cty.types import (
-                CtyString, CtyNumber, CtyBool,
-                CtyList, CtyMap, CtySet,
-                CtyObject, CtyTuple, CtyDynamic
-            )
+            from pyvider.cty.types.capsule import CtyCapsule
 
-            # Unpack the data
-            try:
-                raw_value = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
+            # Check if this is an extension type
+            if len(data) >= 2 and data[0] == 0xc7:  # MessagePack ext format byte
+                ext_code = data[2]
+                if ext_code == EXT_CAPSULE:
+                    logger.debug("🧮📥ℹ️ Detected capsule extension")
+                    ext_obj = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
+                    if isinstance(ext_obj, msgpack.ExtType) and ext_obj.code == EXT_CAPSULE:
+                        # Process capsule data
+                        capsule_data = msgpack.unpackb(ext_obj.data, **DEFAULT_DECODE_OPTIONS)
+                        from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                        return await process_capsule_value(capsule_data)
 
-                # Check for special states (extension types)
-                if isinstance(raw_value, msgpack.ExtType):
-                    match raw_value.code:
-                        case EXT_UNKNOWN if True:
-                            logger.debug("🧮📥ℹ️ Detected unknown value extension")
-                            try:
-                                if type_hint is not None:
-                                    return CtyValue.unknown(type_=type_hint)
+            # Handle special states first
+            raw_value = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
 
-                                # Try to decode type name from extension data
-                                type_name = self._decode_type_hint(raw_value.data)
-
-                                # Create appropriate type
-                                try:
-                                    module = __import__("pyvider.cty")
-                                    type_class = getattr(module.cty, f"Cty{type_name.capitalize()}")
-                                    return CtyValue.unknown(type_=type_class())
-                                except (ImportError, AttributeError) as e:
-                                    logger.warning(f"🧮📥⚠️ Could not create type for unknown value: {e}")
-                                    return {"_cty_unknown": True, "type": type_name}
-                            except Exception as e:
-                                logger.error(f"🧮📥❌ Error processing unknown value extension: {e}")
-                                raise
-
-                        case EXT_NULL if True:
-                            logger.debug("🧮📥ℹ️ Detected null value extension")
-                            try:
-                                if type_hint is not None:
-                                    return CtyValue.null(type_=type_hint)
-
-                                # Try to decode type name from extension data
-                                type_name = self._decode_type_hint(raw_value.data)
-
-                                # Create appropriate type
-                                try:
-                                    module = __import__("pyvider.cty")
-                                    type_class = getattr(module.cty, f"Cty{type_name.capitalize()}")
-                                    return CtyValue.null(type_=type_class())
-                                except (ImportError, AttributeError) as e:
-                                    logger.warning(f"🧮📥⚠️ Could not create type for null value: {e}")
-                                    return None
-                            except Exception as e:
-                                logger.error(f"🧮📥❌ Error processing null value extension: {e}")
-                                raise
-
-                        case EXT_MARKED if True:
-                            logger.debug("🧮📥ℹ️ Detected marked value extension")
-                            try:
-                                # Unpack the extension data
-                                marked_data = msgpack.unpackb(raw_value.data, **DEFAULT_DECODE_OPTIONS)
-
-                                # Deserialize the inner value
-                                value_data = marked_data["value"]
-                                value = self.deserialize_with_type(CTY_MAGIC_BYTES + value_data, type_hint)
-
-                                # Apply marks
-                                if isinstance(value, CtyValue) and "marks" in marked_data:
-                                    for mark in marked_data["marks"]:
-                                        value = value.mark(mark)
-
-                                return value
-                            except Exception as e:
-                                logger.error(f"🧮📥❌ Error processing marked value extension: {e}")
-                                raise
-
-                        case _:
-                            # Handle other extension types
-                            return self._process_value(raw_value)
-
-                # Check for typed value structure
-                if isinstance(raw_value, dict) and "type" in raw_value and "value" in raw_value:
-                    # Extract type and value
-                    type_data = raw_value["type"]
-                    value = raw_value["value"]
-
-                    try:
-                        # Decode the type
-                        type_str = msgpack.unpackb(type_data, **DEFAULT_DECODE_OPTIONS)
-                        cty_type = CtyType(type_str)
-
-                        # If we have a type_hint, verify type compatibility
+            # Check for extension types (unknown, null, marked, etc.)
+            if isinstance(raw_value, msgpack.ExtType):
+                match raw_value.code:
+                    case EXT_UNKNOWN if True:
+                        logger.debug("🧮📥ℹ️ Detected unknown value extension")
                         if type_hint is not None:
-                            expected_type = self._get_cty_type(None, type_hint)
-                            if expected_type != cty_type:
-                                error_msg = f"Expected {expected_type.value}, found {cty_type.value}"
-                                logger.error(f"🧮📥❌ {error_msg}")
-                                raise TypeMismatchError(expected_type, cty_type, data=data, format_name="msgpack")
+                            return CtyValue.unknown(type_=type_hint)
 
-                        # Process the value with the specified type
-                        result = self._process_typed_value(value, cty_type)
-                        logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__} with type {cty_type.value}")
-                        return result
-                    except ValueError as e:
-                        # Unknown type, fall back to regular processing
-                        logger.warning(f"🧮📥⚠️ Unknown type, falling back to regular processing: {e}")
-                        return self._process_value(value)
+                        # Try to decode type name from extension data
+                        type_name = self._decode_type_hint(raw_value.data)
 
-                # If type_hint is provided, use it for processing
-                if type_hint is not None:
-                    cty_type = self._get_cty_type(None, type_hint)
-                    result = self._process_typed_value(raw_value, cty_type)
-                    logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__} with type hint")
+                        # Create appropriate type
+                        try:
+                            module = __import__("pyvider.cty")
+                            type_class = getattr(module.cty, f"Cty{type_name.capitalize()}")
+                            return CtyValue.unknown(type_=type_class())
+                        except (ImportError, AttributeError) as e:
+                            logger.warning(f"🧮📥⚠️ Could not create type for unknown value: {e}")
+                            return {"_cty_unknown": True, "type": type_name}
+
+                    case EXT_NULL if True:
+                        logger.debug("🧮📥ℹ️ Detected null value extension")
+                        if type_hint is not None:
+                            return CtyValue.null(type_=type_hint)
+
+                        # Try to decode type name from extension data
+                        type_name = self._decode_type_hint(raw_value.data)
+
+                        # Create appropriate type
+                        try:
+                            module = __import__("pyvider.cty")
+                            type_class = getattr(module.cty, f"Cty{type_name.capitalize()}")
+                            return CtyValue.null(type_=type_class())
+                        except (ImportError, AttributeError) as e:
+                            logger.warning(f"🧮📥⚠️ Could not create type for null value: {e}")
+                            return None
+
+                    case EXT_MARKED if True:
+                        logger.debug("🧮📥ℹ️ Detected marked value extension")
+                        try:
+                            # Unpack the extension data
+                            marked_data = msgpack.unpackb(raw_value.data, **DEFAULT_DECODE_OPTIONS)
+
+                            # Deserialize the inner value
+                            value_data = marked_data["value"]
+                            value = await self.deserialize_with_type(CTY_MAGIC_BYTES + value_data, type_hint)
+
+                            # Apply marks
+                            if isinstance(value, CtyValue) and "marks" in marked_data:
+                                for mark in marked_data["marks"]:
+                                    value = value.mark(mark)
+
+                            return value
+                        except Exception as e:
+                            logger.error(f"🧮📥❌ Error processing marked value extension: {e}")
+                            raise
+
+                    case EXT_CAPSULE if True:
+                        logger.debug("🧮📥ℹ️ Detected capsule value extension")
+                        capsule_data = msgpack.unpackb(raw_value.data, **DEFAULT_DECODE_OPTIONS)
+                        from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                        return await process_capsule_value(capsule_data)
+
+            # Check for typed value structure
+            if isinstance(raw_value, dict) and b"type" in raw_value and b"value" in raw_value:
+                # Extract type and value
+                type_data = raw_value[b"type"]
+                value = raw_value[b"value"]
+
+                try:
+                    # Decode the type
+                    type_str = msgpack.unpackb(type_data, **DEFAULT_DECODE_OPTIONS)
+                    cty_type = CtyType(type_str)
+
+                    # If we have a type_hint, verify type compatibility
+                    if type_hint is not None:
+                        expected_type = self._get_cty_type(None, type_hint)
+                        if expected_type != cty_type:
+                            error_msg = f"Expected {expected_type.value}, found {cty_type.value}"
+                            logger.error(f"🧮📥❌ {error_msg}")
+                            raise TypeMismatchError(expected_type, cty_type, data=data, format_name="msgpack")
+
+                    # Process the value with the specified type
+                    result = await self._process_typed_value(value, cty_type)
+                    logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__} with type {cty_type.value}")
                     return result
+                except ValueError as e:
+                    # Unknown type, fall back to regular processing
+                    logger.warning(f"🧮📥⚠️ Unknown type, falling back to regular processing: {e}")
+                    return await self._process_value(value)
 
-                # Otherwise, process as regular value
-                result = self._process_value(raw_value)
-                logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__}")
+            # If type_hint is provided, use it for processing
+            if type_hint is not None:
+                cty_type = self._get_cty_type(None, type_hint)
+                result = await self._process_typed_value(raw_value, cty_type)
+                logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__} with type hint")
                 return result
 
-            except msgpack.exceptions.ExtraData as e:
-                logger.warning(f"🧮📥⚠️ Extra data after unpacking: {e}")
-                # Just use the first complete object and ignore extra data
-                raw_value = msgpack.unpackb(data[:e.unpacked_size], **DEFAULT_DECODE_OPTIONS)
-
-                # Process as above but with the partial data
-                if type_hint is not None:
-                    cty_type = self._get_cty_type(None, type_hint)
-                    result = self._process_typed_value(raw_value, cty_type)
-                    logger.debug(f"🧮📥✅ Deserialized (partial) to {type(result).__name__} with type hint")
-                    return result
-
-                result = self._process_value(raw_value)
-                logger.debug(f"🧮📥✅ Deserialized (partial) to {type(result).__name__}")
-                return result
+            # Otherwise, process as regular value
+            result = await self._process_value(raw_value)
+            logger.debug(f"🧮📥✅ Deserialized to {type(result).__name__}")
+            return result
 
         except DeserializationError:
             # Re-raise DeserializationError without wrapping
@@ -716,8 +745,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
             error_msg = f"Failed to deserialize with type: {e}"
             logger.error(f"🧮📥❌ {error_msg}")
             raise DeserializationError(error_msg, data=data, format_name="msgpack") from e
-
-
 
     def _get_cty_type(self, value: Any, type_hint: Any = None) -> CtyType:
         """
@@ -739,6 +766,11 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
         # If type_hint is a Cty type, extract the CtyType from it
         if type_hint is not None and hasattr(type_hint, '__class__'):
+            # Handle capsule types explicitly
+            from pyvider.cty.types.capsule import CtyCapsule
+            if isinstance(type_hint, CtyCapsule):
+                return CtyType.CAPSULE
+
             # Check for Cty type naming conventions (CtyString, CtyNumber, etc.)
             type_class_name = type_hint.__class__.__name__
             if type_class_name.startswith('Cty'):
@@ -753,7 +785,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
         if value is None:
             return CtyType.NULL
 
-        # Map Python types to CtyTypes using match/case
+        # Use Python 3.12+ match syntax for type-based handling
         match value:
             case str():
                 return CtyType.STRING
@@ -774,7 +806,9 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     return CtyType.OBJECT
                 return CtyType.MAP
             case _:
-                if hasattr(value, '__class__') and isinstance(getattr(value, 'type', None), CtyCapsule):
+                # Check for capsule type
+                from pyvider.cty.types.capsule import CtyCapsule
+                if hasattr(value, 'type') and isinstance(getattr(value, 'type', None), CtyCapsule):
                     return CtyType.CAPSULE
 
                 # Check for custom classes with known conversions
@@ -796,6 +830,11 @@ class MsgpackSerializer(TypedSerializerProtocol):
         Returns:
             Encoded type hint
         """
+        # Check for capsule type
+        from pyvider.cty.types.capsule import CtyCapsule
+        if isinstance(type_hint, CtyCapsule):
+            return msgpack.packb("capsule", **DEFAULT_ENCODE_OPTIONS)
+
         # If it's a Cty type, extract the type name
         if hasattr(type_hint, '__class__'):
             type_class_name = type_hint.__class__.__name__
@@ -836,7 +875,36 @@ class MsgpackSerializer(TypedSerializerProtocol):
         if value is None:
             return None
 
-        # Use match/case for type-based handling
+        # Check for capsule type
+        from pyvider.cty.types.capsule import CtyCapsule
+        if hasattr(value, 'type') and isinstance(getattr(value, 'type', None), CtyCapsule):
+            # This is a CtyValue with CtyCapsule type
+            logger.debug("🧮📤🔄 Preparing capsule CtyValue")
+
+            # Extract capsule info
+            capsule_data = {
+                "capsule_type": value.type.friendly_name,
+                "is_null": value.is_null,
+                "is_unknown": value.is_unknown
+            }
+
+            if not value.is_null and not value.is_unknown:
+                # Include encapsulated value
+                try:
+                    from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+                    # This function returns a dict, not awaitable
+                    capsule_data["capsule_data"] = {
+                        "type": "pickle",
+                        "value": str(value.value),
+                        "python_type": f"{type(value.value).__module__}.{type(value.value).__name__}"
+                    }
+                except Exception as e:
+                    logger.error(f"🧮📤❌ Error preparing capsule value: {e}")
+                    raise
+
+            return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
+
+        # Use Python 3.12+ match syntax for type-based handling
         match value:
             case str() | int() | float() | bool():
                 return value
@@ -880,7 +948,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 # Last resort: convert to string
                 return str(value)
 
-    def _prepare_typed_value(self, value: Any, cty_type: CtyType) -> Any:
+    async def _prepare_typed_value(self, value: Any, cty_type: CtyType) -> Any:
         """
         Prepare a value for typed MessagePack serialization.
 
@@ -892,6 +960,43 @@ class MsgpackSerializer(TypedSerializerProtocol):
             MessagePack-serializable value
         """
         match cty_type:
+            case CtyType.CAPSULE:
+                logger.debug("🧮📤🔄 Preparing capsule value for serialization")
+                from pyvider.cty.types.capsule import CtyCapsule
+                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+
+                if isinstance(value, CtyCapsule):
+                    # This is the capsule type itself
+                    capsule_type = value
+                    capsule_data = {
+                        "capsule_type": capsule_type.friendly_name,
+                        "is_null": True  # No value provided
+                    }
+                    return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
+
+                if hasattr(value, "type") and isinstance(value.type, CtyCapsule):
+                    # This is a CtyValue with CtyCapsule type
+                    capsule_type = value.type
+                    capsule_value = value.value
+
+                    # Prepare capsule data
+                    capsule_data = await prepare_capsule_value(capsule_value, capsule_type)
+                    return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
+
+                # Otherwise, need to find the capsule type from context
+                capsule_type = None
+                if hasattr(value, "_type") and isinstance(value._type, CtyCapsule):
+                    capsule_type = value._type
+
+                if capsule_type is None:
+                    error_msg = "Cannot determine capsule type for serialization"
+                    logger.error(f"🧮📤❌ {error_msg}")
+                    raise UnsupportedTypeError(type(value), "msgpack", value)
+
+                # Prepare the capsule data
+                capsule_data = await prepare_capsule_value(value, capsule_type)
+                return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
+
             case CtyType.NULL:
                 return None
             case CtyType.STRING:
@@ -931,7 +1036,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
             case CtyType.DYNAMIC:
                 return self._prepare_value(value)
 
-    def _process_value(self, value: Any) -> Any:
+    async def _process_value(self, value: Any) -> Any:
         """
         Process a deserialized MessagePack value.
 
@@ -946,12 +1051,23 @@ class MsgpackSerializer(TypedSerializerProtocol):
         from pyvider.cty.types import (
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
-            CtyObject, CtyTuple, CtyDynamic
+            CtyObject, CtyTuple, CtyDynamic,
+            CtyCapsule
         )
 
         # Handle extension types
         if isinstance(value, msgpack.ExtType):
             match value.code:
+                case EXT_CAPSULE if True:
+                    logger.debug("🧮🔍ℹ️ Processing capsule extension")
+                    try:
+                        capsule_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
+                        from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                        return await process_capsule_value(capsule_data)
+                    except Exception as e:
+                        logger.error(f"🧮🔍❌ Error processing capsule extension: {e}")
+                        raise
+
                 case EXT_OBJECT if True:
                     logger.debug("🧮🔍ℹ️ Processing object extension")
                     try:
@@ -963,7 +1079,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         attribute_types = {}
 
                         for k, v in obj_data.items():
-                            processed_val = self._process_value(v)
+                            processed_val = await self._process_value(v)
                             processed_dict[k] = processed_val
 
                             # Determine attribute type
@@ -980,12 +1096,15 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
                         # Create the object value
                         object_type = CtyObject(attribute_types=attribute_types)
+
+                        # Create a dictionary with _is_object attribute
                         dict_obj = ObjectDict(processed_dict)
 
                         return CtyValue(type_=object_type, value=dict_obj)
                     except Exception as e:
                         logger.error(f"🧮🔍❌ Error processing object extension: {e}")
                         raise
+
                 case EXT_TUPLE if True:
                     logger.debug("🧮🔍ℹ️ Processing tuple extension")
                     try:
@@ -997,7 +1116,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         element_types = []
 
                         for item in tuple_data:
-                            processed_val = self._process_value(item)
+                            processed_val = await self._process_value(item)
                             processed_items.append(processed_val)
 
                             # Determine element type
@@ -1018,6 +1137,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     except Exception as e:
                         logger.error(f"🧮🔍❌ Error processing tuple extension: {e}")
                         raise
+
                 case EXT_SET if True:
                     logger.debug("🧮🔍ℹ️ Processing set extension")
                     try:
@@ -1028,7 +1148,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         processed_items = []
 
                         for item in set_data:
-                            processed_val = self._process_value(item)
+                            processed_val = await self._process_value(item)
                             processed_items.append(processed_val)
 
                         # Determine element type
@@ -1049,28 +1169,21 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     except Exception as e:
                         logger.error(f"🧮🔍❌ Error processing set extension: {e}")
                         raise
+
                 case _:
                     # Unknown extension type
                     logger.debug(f"🧮🔍ℹ️ Unknown extension type: {value.code}")
                     return value
 
-        # Handle standard types
+        # Use Python 3.12+ match syntax for type-based processing
         match value:
             case None:
                 return None
-            case str():
-                # Check if it's a decimal string
-                try:
-                    if value and '.' in value:
-                        return Decimal(value)
-                except:
-                    pass
-                return value
-            case int() | float() | bool():
+            case str() | int() | float() | bool():
                 return value
             case list():
-                logger.debug("🧮🔍ℹ️ Processing list value")
-                processed_list = [self._process_value(item) for item in value]
+                # Process as a regular list
+                processed_list = [await self._process_value(item) for item in value]
 
                 # Create a CtyValue with a CtyList type if appropriate
                 try:
@@ -1086,29 +1199,74 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     logger.debug(f"🧮🔍⚠️ Could not create CtyList value: {e}")
                     return processed_list
             case dict():
-                logger.debug("🧮🔍ℹ️ Processing dictionary value")
                 # Process as a regular dict
-                processed_dict = {k: self._process_value(v) for k, v in value.items()}
+                processed_dict = {k: await self._process_value(v) for k, v in value.items()}
 
-                # For object types, we need to set the _is_object attribute
+                # Check if keys are byte strings and convert them to regular strings
+                if all(isinstance(k, bytes) for k in processed_dict.keys()):
+                    processed_dict = {k.decode('utf-8'): v for k, v in processed_dict.items()}
+
+                # Create an ObjectDict
+                dict_obj = ObjectDict(processed_dict)
+
+                # Create a CtyValue with a CtyMap or CtyObject type if appropriate
                 try:
                     # Check if we should treat this as an object
-                    if "_is_object" in processed_dict and processed_dict["_is_object"]:
-                        # Create a dictionary with _is_object attribute
-                        dict_obj = ObjectDict({k: v for k, v in processed_dict.items() if k != "_is_object"})
-                        return dict_obj
+                    if "_is_object" in processed_dict or hasattr(dict_obj, '_is_object'):
+                        # Create a CtyObject type with attribute types
+                        attr_types = {}
+                        for k, v in processed_dict.items():
+                            if k == "_is_object":
+                                continue  # Skip the _is_object indicator
+
+                            if isinstance(v, CtyValue):
+                                attr_types[k] = v.type
+                            elif isinstance(v, str):
+                                attr_types[k] = CtyString()
+                            elif isinstance(v, (int, float, Decimal)):
+                                attr_types[k] = CtyNumber()
+                            elif isinstance(v, bool):
+                                attr_types[k] = CtyBool()
+                            else:
+                                attr_types[k] = CtyDynamic()
+
+                        # Remove _is_object key from processed_dict if present
+                        if "_is_object" in processed_dict:
+                            processed_dict.pop("_is_object")
+
+                        # Create a CtyObject type
+                        object_type = CtyObject(attribute_types=attr_types)
+                        # Create a CtyValue with the object type and processed attributes
+                        return CtyValue(type_=object_type, value=dict_obj)
+
+                    # Check if keys and values indicate a map
+                    all_string_keys = all(isinstance(k, str) for k in processed_dict.keys())
+                    all_similar_values = False
+                    if processed_dict and all_string_keys:
+                        values = list(processed_dict.values())
+                        if all(isinstance(v, CtyValue) for v in values):
+                            # All values are CtyValues with the same type
+                            first_type = values[0].type.__class__
+                            all_similar_values = all(v.type.__class__ == first_type for v in values)
+                            if all_similar_values:
+                                # Create a CtyMap type
+                                map_type = CtyMap(
+                                    key_type=CtyString(),
+                                    value_type=values[0].type
+                                )
+                                # Create a CtyValue with the map type and processed key-value pairs
+                                return CtyValue(type_=map_type, value=processed_dict)
 
                     # Just return the processed dictionary
-                    return processed_dict
+                    return dict_obj
                 except Exception as e:
                     logger.debug(f"🧮🔍⚠️ Could not create structured value: {e}")
-                    return processed_dict
+                    return dict_obj
             case _:
-                # Unknown type
-                logger.debug(f"🧮🔍ℹ️ Unknown value type: {type(value).__name__}")
+                # Default case - shouldn't normally be reached with MessagePack
                 return value
 
-    def _process_typed_value(self, value: Any, cty_type: CtyType) -> Any:
+    async def _process_typed_value(self, value: Any, cty_type: CtyType) -> Any:
         """
         Process a deserialized value with type information.
 
@@ -1124,18 +1282,37 @@ class MsgpackSerializer(TypedSerializerProtocol):
         from pyvider.cty.types import (
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
-            CtyObject, CtyTuple, CtyDynamic
+            CtyObject, CtyTuple, CtyDynamic,
+            CtyCapsule
         )
 
         match cty_type:
-            case CtyType.NULL:
-                return None
+            case CtyType.CAPSULE:
+                logger.debug("🧮🔍ℹ️ Processing capsule type value")
+
+                # Check if it's already an ExtType with capsule data
+                if isinstance(value, msgpack.ExtType) and value.code == EXT_CAPSULE:
+                    capsule_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
+                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                    return await process_capsule_value(capsule_data)
+
+                # Check for dict with capsule data format
+                if isinstance(value, dict) and "capsule_type" in value:
+                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                    return await process_capsule_value(value)
+
+                logger.warning(f"🧮🔍⚠️ Invalid capsule data format: {value}")
+                # Return the raw value as fallback
+                return value
+
             case CtyType.STRING:
                 string_val = str(value) if value is not None else ""
                 return CtyValue(type_=CtyString(), value=string_val)
+
             case CtyType.BOOL:
                 bool_val = bool(value)
                 return CtyValue(type_=CtyBool(), value=bool_val)
+
             case CtyType.NUMBER:
                 num_val = None
                 if isinstance(value, str):
@@ -1154,19 +1331,23 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     num_val = 0
 
                 return CtyValue(type_=CtyNumber(), value=num_val)
+
             case CtyType.LIST:
                 processed_items = []
 
                 # Handle different input types
                 if isinstance(value, list):
-                    processed_items = [self._process_value(item) for item in value]
-                elif isinstance(value, msgpack.ExtType) and value.code == EXT_SET:
+                    processed_items = [await self._process_value(item) for item in value]
+                elif isinstance(value, (set, frozenset)):
                     # Convert set to list
+                    processed_items = [await self._process_value(item) for item in value]
+                elif isinstance(value, msgpack.ExtType) and value.code == EXT_SET:
+                    # Convert set extension to list
                     set_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                    processed_items = [self._process_value(item) for item in set_data]
+                    processed_items = [await self._process_value(item) for item in set_data]
                 else:
                     if value is not None:
-                        processed_items = [self._process_value(value)]
+                        processed_items = [await self._process_value(value)]
 
                 # Determine element type
                 element_type = CtyDynamic()
@@ -1183,6 +1364,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 # Create the list value
                 list_type = CtyList(element_type=element_type)
                 return CtyValue(type_=list_type, value=processed_items)
+
             case CtyType.TUPLE:
                 processed_items = []
 
@@ -1190,12 +1372,12 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 if isinstance(value, msgpack.ExtType) and value.code == EXT_TUPLE:
                     # Process tuple data
                     tuple_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                    processed_items = [self._process_value(item) for item in tuple_data]
-                elif isinstance(value, list):
-                    processed_items = [self._process_value(item) for item in value]
+                    processed_items = [await self._process_value(item) for item in tuple_data]
+                elif isinstance(value, (list, tuple)):
+                    processed_items = [await self._process_value(item) for item in value]
                 else:
                     if value is not None:
-                        processed_items = [self._process_value(value)]
+                        processed_items = [await self._process_value(value)]
 
                 # For tuples, we need the types of each element
                 element_types = []
@@ -1214,6 +1396,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 # Create the tuple value
                 tuple_type = CtyTuple(element_types=tuple(element_types))
                 return CtyValue(type_=tuple_type, value=tuple(processed_items))
+
             case CtyType.SET:
                 processed_items = []
 
@@ -1221,12 +1404,12 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 if isinstance(value, msgpack.ExtType) and value.code == EXT_SET:
                     # Process set data
                     set_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                    processed_items = [self._process_value(item) for item in set_data]
-                elif isinstance(value, list):
-                    processed_items = [self._process_value(item) for item in value]
+                    processed_items = [await self._process_value(item) for item in set_data]
+                elif isinstance(value, (list, set, frozenset)):
+                    processed_items = [await self._process_value(item) for item in value]
                 else:
                     if value is not None:
-                        processed_items = [self._process_value(value)]
+                        processed_items = [await self._process_value(value)]
 
                 # Determine element type
                 element_type = CtyDynamic()
@@ -1243,11 +1426,23 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 # Create the set value
                 set_type = CtySet(element_type=element_type)
                 return CtyValue(type_=set_type, value=set(processed_items))
+
             case CtyType.MAP:
                 if isinstance(value, dict):
+                    # Process as map
                     processed_dict = {}
+
+                    # Convert byte keys to strings if needed
+                    value_dict = {}
                     for k, v in value.items():
-                        processed_dict[k] = self._process_value(v)
+                        if isinstance(k, bytes):
+                            value_dict[k.decode('utf-8')] = v
+                        else:
+                            value_dict[k] = v
+
+                    # Process keys and values
+                    for k, v in value_dict.items():
+                        processed_dict[k] = await self._process_value(v)
 
                     # Determine value type
                     value_type = CtyDynamic()
@@ -1262,7 +1457,13 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 elif isinstance(value, msgpack.ExtType) and value.code == EXT_OBJECT:
                     # Convert object to map
                     obj_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                    processed_dict = {k: self._process_value(v) for k, v in obj_data.items()}
+                    processed_dict = {}
+
+                    for k, v in obj_data.items():
+                        # Convert byte keys to strings if needed
+                        if isinstance(k, bytes):
+                            k = k.decode('utf-8')
+                        processed_dict[k] = await self._process_value(v)
 
                     # Determine value type
                     value_type = CtyDynamic()
@@ -1278,23 +1479,26 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     if value is not None:
                         return CtyValue(
                             type_=CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
-                            value={"value": self._process_value(value)}
+                            value={"value": await self._process_value(value)}
                         )
                     return CtyValue(
                         type_=CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
                         value={}
                     )
+
             case CtyType.OBJECT:
                 if isinstance(value, msgpack.ExtType) and value.code == EXT_OBJECT:
                     # Process object data
                     obj_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-
-                    # Process attributes
                     processed_dict = {}
                     attribute_types = {}
 
                     for k, v in obj_data.items():
-                        processed_val = self._process_value(v)
+                        # Convert byte keys to strings if needed
+                        if isinstance(k, bytes):
+                            k = k.decode('utf-8')
+
+                        processed_val = await self._process_value(v)
                         processed_dict[k] = processed_val
 
                         # Determine attribute type
@@ -1319,8 +1523,16 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     processed_dict = {}
                     attribute_types = {}
 
+                    # Convert byte keys to strings if needed
+                    value_dict = {}
                     for k, v in value.items():
-                        processed_val = self._process_value(v)
+                        if isinstance(k, bytes):
+                            value_dict[k.decode('utf-8')] = v
+                        else:
+                            value_dict[k] = v
+
+                    for k, v in value_dict.items():
+                        processed_val = await self._process_value(v)
                         processed_dict[k] = processed_val
 
                         # Determine attribute type
@@ -1344,7 +1556,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     if value is not None:
                         # Create a simple object with a "value" attribute
                         object_type = CtyObject(attribute_types={"value": CtyDynamic()})
-                        dict_obj = ObjectDict({"value": self._process_value(value)})
+                        dict_obj = ObjectDict({"value": await self._process_value(value)})
 
                         return CtyValue(type_=object_type, value=dict_obj)
 
@@ -1352,14 +1564,15 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         type_=CtyObject(attribute_types={}),
                         value=ObjectDict({})
                     )
+
             case CtyType.DYNAMIC:
                 # Process any value
-                return self._process_value(value)
+                return await self._process_value(value)
 
 
 # Shorthand functions for use in modules that don't need the full class interface
 
-def serialize(value: Any) -> bytes:
+async def serialize(value: Any) -> bytes:
     """
     Serialize a value to MessagePack format.
 
@@ -1370,9 +1583,9 @@ def serialize(value: Any) -> bytes:
         MessagePack encoded data
     """
     serializer = MsgpackSerializer()
-    return serializer.serialize(value)
+    return await serializer.serialize(value)
 
-def deserialize(data: bytes) -> Any:
+async def deserialize(data: bytes) -> Any:
     """
     Deserialize MessagePack data to a Python value.
 
@@ -1383,9 +1596,9 @@ def deserialize(data: bytes) -> Any:
         Deserialized value
     """
     serializer = MsgpackSerializer()
-    return serializer.deserialize(data)
+    return await serializer.deserialize(data)
 
-def marshal(value: Any) -> bytes:
+async def marshal(value: Any) -> bytes:
     """
     Marshal a Cty value to MessagePack format, preserving type information.
 
@@ -1431,7 +1644,7 @@ def marshal(value: Any) -> bytes:
         # Serialize the value
         serializer = MsgpackSerializer()
         # Skip magic bytes in the inner value
-        value_serialized = serializer.serialize(value.value)
+        value_serialized = await serializer.serialize(value.value)
         if value_serialized.startswith(CTY_MAGIC_BYTES):
             value_serialized = value_serialized[len(CTY_MAGIC_BYTES):]
         payload["value"] = value_serialized

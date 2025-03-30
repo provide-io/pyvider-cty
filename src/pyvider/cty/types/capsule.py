@@ -155,7 +155,13 @@ class CtyCapsule(CtyType[Any]):
         Returns:
             The operation function if it exists, None otherwise
         """
-        return self.operations.get(name)
+        logger.debug(f"🧩🔍🔄 Getting operation: {name}")
+        operation = self.operations.get(name)
+        if operation:
+            logger.debug(f"🧩🔍✅ Found operation: {name}")
+        else:
+            logger.debug(f"🧩🔍⚠️ Operation not found: {name}")
+        return operation
     
     def has_operation(self, name: str) -> bool:
         """
@@ -167,7 +173,54 @@ class CtyCapsule(CtyType[Any]):
         Returns:
             True if the operation is supported
         """
-        return name in self.operations
+        result = name in self.operations
+        logger.debug(f"🧩🔍🔄 Checking for operation {name}: {result}")
+        return result
+    
+    def execute_operation(self, name: str, value: Any, *args, **kwargs) -> Any:
+        """
+        Execute a custom operation on a value.
+        
+        Args:
+            name: Name of the operation to execute
+            value: The encapsulated value to operate on
+            *args: Additional positional arguments for the operation
+            **kwargs: Additional keyword arguments for the operation
+            
+        Returns:
+            The result of the operation
+            
+        Raises:
+            TypeError: If the operation doesn't exist
+            ValueError: If the value is not compatible with this capsule type
+        """
+        logger.debug(f"🧩🔧🔄 Executing operation {name} on value")
+        
+        # Check if operation exists
+        operation = self.get_operation(name)
+        if operation is None:
+            error_msg = f"Operation '{name}' not found for capsule type {self.friendly_name}"
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise TypeError(error_msg)
+            
+        # Validate value type
+        if not isinstance(value, self.encapsulated_type):
+            error_msg = (
+                f"Value of type {type(value).__name__} is not compatible with "
+                f"capsule type {self.friendly_name} expecting {self.encapsulated_type.__name__}"
+            )
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise ValueError(error_msg)
+            
+        # Execute the operation
+        try:
+            result = operation(value, *args, **kwargs)
+            logger.debug(f"🧩🔧✅ Operation {name} executed successfully")
+            return result
+        except Exception as e:
+            error_msg = f"Error executing operation '{name}': {e}"
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise ValueError(error_msg) from e
     
     @classmethod
     def get_registered_type(cls, name: str) -> Optional['CtyCapsule']:
@@ -180,7 +233,23 @@ class CtyCapsule(CtyType[Any]):
         Returns:
             The capsule type if found, None otherwise
         """
-        return cls._registry.get(name)
+        registered_type = cls._registry.get(name)
+        if registered_type:
+            logger.debug(f"🧩🔍✅ Found registered capsule type: {name}")
+        else:
+            logger.debug(f"🧩🔍⚠️ Capsule type not found: {name}")
+        return registered_type
+    
+    @classmethod
+    def list_registered_types(cls) -> Dict[str, 'CtyCapsule']:
+        """
+        Get all registered capsule types.
+        
+        Returns:
+            A dictionary of friendly name to CtyCapsule instance
+        """
+        logger.debug(f"🧩🔍🔄 Listing {len(cls._registry)} registered capsule types")
+        return dict(cls._registry)
     
     def __hash__(self) -> int:
         """

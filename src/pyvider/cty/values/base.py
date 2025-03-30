@@ -13,9 +13,7 @@ from decimal import Decimal
 from typing import Any, FrozenSet, Generic, Iterator, Optional, Tuple, TypeVar, Union, cast
 
 from pyvider.cty.logger import logger
-from pyvider.cty.types import (
-    CtyType,
-)
+from pyvider.cty.types import CtyType
 
 
 T = TypeVar('T', covariant=True)
@@ -469,19 +467,16 @@ class CtyValue(Generic[T]):
 
     @classmethod
     def object(cls, attribute_types: dict, attributes: dict) -> "CtyValue":
-        """
-        Create an object value.
-
-        Args:
-            attribute_types: The types of the object attributes
-            attributes: The object attributes
-
-        Returns:
-            A new CtyValue with the object
-        """
+        """Create an object value."""
         from pyvider.cty.types import CtyObject
-
-        # Create object type and validate the attributes
+        from pyvider.cty.exceptions import ValidationError
+        
+        # Validate attribute_types contains CtyType instances
+        for attr_name, attr_type in attribute_types.items():
+            if not isinstance(attr_type, CtyType):
+                raise ValidationError(f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}")
+        
+        # Create object type and validate
         object_type = CtyObject(attribute_types=attribute_types)
         return object_type.validate(attributes)
 
@@ -533,8 +528,15 @@ class CtyValue(Generic[T]):
         elif self._is_null:
             result["is_null"] = True
         else:
+            # Special handling for capsule types
+            from pyvider.cty.types.capsule import CtyCapsule
+            if isinstance(self._type, CtyCapsule):
+                result["friendly_name"] = self._type.friendly_name
+                result["encapsulated_type"] = self._type.encapsulated_type.__name__
+                # Don't include the actual value in the dict representation
+                
             # Handle collection types
-            if isinstance(self._value, (set, frozenset)):
+            elif isinstance(self._value, (set, frozenset)):
                 result["value"] = list(self._value)
             elif isinstance(self._value, dict):
                 # For dictionaries, convert keys and values
@@ -689,6 +691,12 @@ class CtyValue(Generic[T]):
 
         # For known, non-null values, compare values
         if self.is_known and not self.is_null and other.is_known and not other.is_null:
+            # Special case for capsule types
+            from pyvider.cty.types.capsule import CtyCapsule
+            if isinstance(self._type, CtyCapsule) and isinstance(other._type, CtyCapsule):
+                # For capsule types, delegate to the encapsulated values' equality
+                return self._value == other._value
+                
             # For primitive values, compare directly
             if isinstance(self._value, (str, int, float, bool, Decimal)):
                 return self._value == other._value
