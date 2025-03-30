@@ -19,8 +19,14 @@ from pyvider.cty.types.structural import (
     CtyTuple,
 )
 
+from pyvider.cty.types.capsule import (
+    CtyCapsule,
+)
+
 __all__ = [
     "CtyType",
+
+    "CtyCapsule",
 
     "CtyBool",
     "CtyNumber",
@@ -34,3 +40,5 @@ __all__ = [
     "CtyObject",
     "CtyTuple",
 ]
+
+# 🐍🏗️🐣

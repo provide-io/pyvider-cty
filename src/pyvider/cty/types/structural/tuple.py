@@ -9,7 +9,7 @@ Provides a complete implementation of tuple types with fixed-position elements
 that may have different types from each other.
 """
 
-from typing import Any, ClassVar, Sequence, cast
+from typing import Any, ClassVar, Sequence, cast, List, Tuple
 
 import attrs
 
@@ -47,7 +47,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
         logger.debug(f"🧩✅🔄 Tuple element types validated successfully: {len(value)} types")
 
-    def validate(self, value: Any) -> tuple[Any, ...]:
+    def validate(self, value: Any) -> "CtyValue":
         """
         Validate a value against this tuple type.
 
@@ -60,6 +60,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         Raises:
             ValidationError: If the value doesn't match this tuple type
         """
+        from pyvider.cty.values import CtyValue
         logger.debug(f"🧩🔍🔄 Validating value against CtyTuple: {value}")
 
         # Validate basic type
@@ -75,13 +76,13 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             raise ValidationError(error_msg)
 
         # Validate each element against its corresponding type
-        result = []
+        validated_elements = []
 
         for i, (element, element_type) in enumerate(zip(value, self.element_types)):
             try:
                 logger.debug(f"🧩🔍🔄 Validating tuple element {i} against {element_type}")
                 validated_element = element_type.validate(element)
-                result.append(validated_element)
+                validated_elements.append(validated_element)
                 logger.debug(f"🧩✅🔄 Tuple element {i} validated successfully")
             except ValidationError as e:
                 error_msg = f"Invalid value for tuple element {i}: {e}"
@@ -92,10 +93,10 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 logger.error(f"🧩❌🔄 {error_msg}")
                 raise ValidationError(error_msg) from e
 
-        logger.debug(f"🧩✅🔄 Tuple validated successfully with {len(result)} elements")
-        return tuple(result)
+        logger.debug(f"🧩✅🔄 Tuple validated successfully with {len(validated_elements)} elements")
+        return CtyValue(type_=self, value=tuple(validated_elements))
 
-    def element_at(self, container: Any, index: int) -> Any:
+    def element_at(self, container: Any, index: int) -> "CtyValue":
         """
         Get an element at a specific index in the tuple.
 
@@ -112,27 +113,100 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         """
         logger.debug(f"🧩🔍🔄 Getting element at index {index} from tuple")
 
+        # Import locally to avoid circular imports
+        from pyvider.cty.values import CtyValue
+
         # Handle different container types
-        match container:
-            case CtyTuple():
-                container_value = container.value
-            case tuple() | list():
-                container_value = container
-            case _:
-                error_msg = f"Expected tuple, list, or CtyTuple, got {type(container).__name__}"
-                logger.error(f"🧩❌🔄 {error_msg}")
-                raise ValidationError(error_msg)
+        container_value = None
+        if hasattr(container, 'value'):
+            # Handle CtyValue containing a tuple
+            container_value = container.value
+        elif isinstance(container, (tuple, list)):
+            # Handle raw tuple
+            container_value = container
+        else:
+            error_msg = f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise ValidationError(error_msg)
+
+        # Handle negative indices
+        elem_count = len(container_value)
+        if index < 0:
+            index = elem_count + index
 
         # Check bounds
-        if not 0 <= index < len(container_value):
-            error_msg = f"Index {index} out of bounds (0-{len(container_value)-1})"
+        if not 0 <= index < elem_count:
+            error_msg = f"Index {index} out of bounds (0-{elem_count-1})"
             logger.error(f"🧩❌🔄 {error_msg}")
             raise IndexError(error_msg)
 
-        # Get element
-        result = container_value[index]
-        logger.debug(f"🧩✅🔄 Got element at index {index}: {result}")
-        return result
+        # Return the element at the specified index
+        element = container_value[index]
+        logger.debug(f"🧩✅🔄 Got element at index {index}")
+        return element
+
+    def slice(self, container: Any, start: int, end: int) -> "CtyValue":
+        """
+        Get a slice of the tuple.
+
+        Args:
+            container: The tuple to slice
+            start: The start index (inclusive)
+            end: The end index (exclusive)
+
+        Returns:
+            A new CtyValue with the sliced tuple
+
+        Raises:
+            ValidationError: If the container is not a tuple or CtyTuple
+            IndexError: If the indices are out of bounds
+        """
+        logger.debug(f"🧩🔍🔄 Slicing tuple from {start} to {end}")
+
+        # Import locally to avoid circular imports
+        from pyvider.cty.values import CtyValue
+
+        # Handle different container types
+        container_value = None
+        if hasattr(container, 'value'):
+            # Handle CtyValue containing a tuple
+            container_value = container.value
+        elif isinstance(container, (tuple, list)):
+            # Handle raw tuple
+            container_value = container
+        else:
+            error_msg = f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise ValidationError(error_msg)
+
+        # Handle negative indices
+        elem_count = len(container_value)
+        if start < 0:
+            start = elem_count + start
+        if end < 0:
+            end = elem_count + end
+
+        # Check bounds
+        if not 0 <= start <= elem_count:
+            error_msg = f"Start index {start} out of bounds (0-{elem_count})"
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise IndexError(error_msg)
+
+        if not 0 <= end <= elem_count:
+            error_msg = f"End index {end} out of bounds (0-{elem_count})"
+            logger.error(f"🧩❌🔄 {error_msg}")
+            raise IndexError(error_msg)
+
+        # Get the sliced values and types
+        sliced_values = container_value[start:end]
+        sliced_types = self.element_types[start:end]
+
+        # Create a new tuple type with the sliced types
+        sliced_type = CtyTuple(element_types=sliced_types)
+
+        # Create a new CtyValue with the sliced tuple
+        logger.debug(f"🧩✅🔄 Created sliced tuple with {len(sliced_values)} elements")
+        return CtyValue(type_=sliced_type, value=tuple(sliced_values))
 
     def equal(self, other: CtyType) -> bool:
         """
