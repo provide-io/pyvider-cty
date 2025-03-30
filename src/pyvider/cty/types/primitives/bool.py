@@ -20,78 +20,73 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
+
+# In google-pyv/pyvider-cty/types/primitives/bool.py
+
     def validate(self, value: Any) -> "CtyValue":
         """
-        Validate that the given value is a boolean.
-        
-        Args:
-            value: The value to validate
-            
-        Returns:
-            A CtyValue with the validated boolean
-            
-        Raises:
-            ValidationError: If the value is not a boolean
+        Validate that the given value is a boolean. Stricter validation.
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
-        logger.debug(f"🔄🔍🔄 Validating value as boolean: {value}")
-        
+        logger.debug(f"🔄🔍🔄 Validating value as boolean: {value!r}")
+
         # Handle CtyValue inputs
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyBool):
                 logger.debug(f"🔄🔍✅ Value is already a CtyValue with CtyBool type")
                 return value
-                
+            # --- Allow conversion from known, non-null CtyValue ---
             if value.is_known and not value.is_null:
-                # Try to convert inner value to boolean
-                inner_val = value.value
-                if isinstance(inner_val, bool):
-                    return CtyValue(type_=self, value=inner_val)
-                # Try to use truthiness
-                try:
-                    bool_val = bool(inner_val)
-                    logger.debug(f"🔄🔍✅ Converted inner value to boolean: {bool_val}")
-                    return CtyValue(type_=self, value=bool_val)
-                except Exception as e:
-                    error_msg = f"Failed to convert CtyValue to boolean: {e}"
-                    logger.error(f"🔄❗❌ {error_msg}")
-                    raise ValidationError(error_msg)
-        
-        # Handle None
-        if value is None:
-            logger.debug("🔄🔍✅ None value converted to False")
-            return CtyValue(type_=self, value=False)
-        
+                 inner_val = value.value
+                 # Try direct bool
+                 if isinstance(inner_val, bool):
+                     return CtyValue(type_=self, value=inner_val)
+                 # Try string conversion
+                 if isinstance(inner_val, str):
+                     if inner_val.lower() in ('true', 't', 'yes', 'y', '1'):
+                         return CtyValue(type_=self, value=True)
+                     elif inner_val.lower() in ('false', 'f', 'no', 'n', '0'):
+                         return CtyValue(type_=self, value=False)
+                 # Try numeric conversion
+                 if isinstance(inner_val, (int, float)):
+                     return CtyValue(type_=self, value=bool(inner_val))
+                 # else: fall through to raise error for other inner types
+            # --- End CtyValue Handling ---
+
+        # Handle None (consistent with go-cty? Often false, but depends on context)
+        # Let's make None invalid for bool unless explicitly handled elsewhere
+        # if value is None:
+        #     logger.debug("🔄🔍✅ None value converted to False") # Or raise error?
+        #     return CtyValue(type_=self, value=False) # Let's make None an error for now
+
         # Handle direct boolean
         if isinstance(value, bool):
             logger.debug(f"🔄🔍✅ Value is a boolean: {value}")
             return CtyValue(type_=self, value=value)
-            
-        # Handle string representations
+
+        # Handle specific string representations
         if isinstance(value, str):
-            if value.lower() in ('true', 't', 'yes', 'y', '1'):
+            low_val = value.lower()
+            if low_val in ('true', 't', 'yes', 'y', '1'):
                 logger.debug(f"🔄🔍✅ String '{value}' converted to True")
                 return CtyValue(type_=self, value=True)
-            elif value.lower() in ('false', 'f', 'no', 'n', '0'):
+            elif low_val in ('false', 'f', 'no', 'n', '0'):
                 logger.debug(f"🔄🔍✅ String '{value}' converted to False")
                 return CtyValue(type_=self, value=False)
-                
+            # else: fall through to raise error for other strings
+
         # Handle numbers (0 = False, non-0 = True)
         if isinstance(value, (int, float)):
+            # Note: float conversion might be unexpected, but aligns with Python bool()
             bool_val = bool(value)
-            logger.debug(f"🔄🔍✅ Number converted to boolean: {bool_val}")
+            logger.debug(f"🔄🔍✅ Number {value} converted to boolean: {bool_val}")
             return CtyValue(type_=self, value=bool_val)
-            
-        # Try general conversion
-        try:
-            bool_val = bool(value)
-            logger.debug(f"🔄🔍✅ Value converted to boolean using bool(): {bool_val}")
-            return CtyValue(type_=self, value=bool_val)
-        except Exception as e:
-            error_msg = f"Value must be a boolean, got {type(value).__name__}"
-            logger.error(f"🔄❗❌ {error_msg}")
-            raise ValidationError(error_msg)
+
+        # --- REJECT ALL OTHER TYPES ---
+        error_msg = f"Value must be a boolean or a specific convertible string/number, got {type(value).__name__}"
+        logger.error(f"🔄❗❌ {error_msg}")
+        raise ValidationError(error_msg)
 
     def equal(self, other: "CtyType[bool]") -> bool:
         """Check equality with another type."""

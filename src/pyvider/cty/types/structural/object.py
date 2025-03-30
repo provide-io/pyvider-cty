@@ -143,6 +143,13 @@ class CtyObject(CtyType[dict[str, Any]]):
                 # Get the attribute value
                 attr_value = value[name]
 
+                # Explicitly check for None in required attributes
+                if attr_value is None and name not in self.optional_attributes:
+                    error_msg = f"Attribute '{name}' is required and cannot be None"
+                    logger.error(f"🧩🔍❌ {error_msg}")
+                    validation_errors.append(error_msg)
+                    continue # Skip further validation for this attribute
+
                 # Handle special cases
                 match attr_value:
                     case None if name in self.optional_attributes:
@@ -495,13 +502,6 @@ class CtyObject(CtyType[dict[str, Any]]):
     def __eq__(self, other):
         """Allow direct comparison with == operator."""
         return isinstance(other, CtyObject) and self.equal(other)
-
-    def __getitem__(self, name):
-        """Enable dictionary-like access: obj['attr_name']."""
-        # This would be a wrapper around get_attribute
-        if not isinstance(name, str):
-            raise TypeError(f"Attribute name must be a string, got {type(name).__name__}")
-        return self.get_attribute(self, name)
 
     def __iter__(self):
         """Enable iteration over attribute names."""
