@@ -1,6 +1,5 @@
-#
+#!/usr/bin/env python3
 # pyvider/cty/encoding/json_serializer.py
-#
 
 """
 JSON serializer implementation for Cty values.
@@ -27,10 +26,6 @@ from pyvider.cty.encoding.exceptions import (
     UnsupportedTypeError,
 )
 from pyvider.cty.encoding.registry import register_serializer
-from pyvider.cty.encoding.capsule_serializer import (
-    prepare_capsule_value,
-    process_capsule_value,
-) 
 
 
 class CtyType(str, Enum):
@@ -63,27 +58,27 @@ class ObjectDict(dict):
 class JsonSerializer(TypedSerializerProtocol):
     """
     JSON serializer implementation.
-    
+
     This serializer uses JSON as the underlying format and preserves
     type information using a {"type": type_name, "value": actual_value} structure.
     """
-    
+
     format_name: ClassVar[str] = "json"
-    
+
     @classmethod
     def supports_format(cls, data: bytes) -> bool:
         """
         Check if the data is valid JSON format.
-        
+
         Args:
             data: The bytes data to check
-            
+
         Returns:
             True if the data is valid JSON, False otherwise
         """
         if not data:
             return False
-            
+
         # Check for standard JSON markers at the beginning
         first_byte = data[0:1]
         if first_byte in (b'{', b'[', b'"', b'n', b't', b'f', b'-') or first_byte.isdigit():
@@ -96,7 +91,7 @@ class JsonSerializer(TypedSerializerProtocol):
                 try:
                     # Try to parse the first few bytes to confirm it's JSON
                     test_data = data[:min(20, len(data))]
-                    
+
                     # Handle different JSON types
                     match test_data[0:1]:
                         case b'{':
@@ -112,39 +107,38 @@ class JsonSerializer(TypedSerializerProtocol):
                     logger.debug("🧰🔍❌ Not valid JSON based on prefix check")
                     return False
         return False
-    
+
     @classmethod
     def format_priority(cls) -> int:
         """
         Return the priority of this serializer for format auto-detection.
-        
+
         Returns:
             Priority value
         """
         return 5
-    
-    def serialize(self, value: Any) -> bytes:
+
+    async def serialize(self, value: Any) -> bytes:
         """
         Serialize a value to JSON bytes.
-        
+
         Args:
             value: The value to serialize
-            
+
         Returns:
             JSON bytes
-            
+
         Raises:
             SerializationError: If serialization fails
         """
         logger.debug(f"🧰📤🔄 Serializing to JSON: {type(value).__name__}")
-        
+
         try:
             # Check if it's a Cty value
-            if hasattr(value, 'type') and hasattr(value, 'value'):
+            if hasattr(value, 'type') and hasattr(value, 'value') and hasattr(value, 'is_known'):
                 logger.debug("🧰📤🔄 Unwrapping Cty value")
                 cty_type = value.type
-                actual_value = value.value
-                
+
                 # Handle special value states
                 if hasattr(value, 'is_unknown') and value.is_unknown:
                     logger.debug("🧰📤ℹ️ Encoding unknown value")
@@ -153,7 +147,7 @@ class JsonSerializer(TypedSerializerProtocol):
                         "type": type_name,
                         "unknown": True
                     }).encode('utf-8')
-                
+
                 if hasattr(value, 'is_null') and value.is_null:
                     logger.debug("🧰📤ℹ️ Encoding null value")
                     type_name = self._get_type_name(cty_type)
@@ -161,50 +155,64 @@ class JsonSerializer(TypedSerializerProtocol):
                         "type": type_name,
                         "null": True
                     }).encode('utf-8')
-                
+
                 # Handle marked values
                 if hasattr(value, '_marks') and value._marks:
                     logger.debug(f"🧰📤ℹ️ Encoding marked value with {len(value._marks)} marks")
                     # Use unmark method to get unmarked value and marks
                     unmarked_value, marks = value.unmark()
-                    
+
                     # Serialize the unmarked value
-                    unmarked_serialized = self.serialize(unmarked_value)
+                    unmarked_serialized = await self.serialize(unmarked_value)
                     unmarked_data = json.loads(unmarked_serialized.decode('utf-8'))
-                    
+
                     # Add marks to the serialized data
                     unmarked_data["marks"] = [str(mark) for mark in marks]
-                    
+
                     return json.dumps(unmarked_data).encode('utf-8')
-                
+
+                # Special handling for capsule types
+                from pyvider.cty.types.capsule import CtyCapsule
+                if isinstance(cty_type, CtyCapsule):
+                    logger.debug("🧰📤ℹ️ Handling capsule type")
+                    from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+                    
+                    # Get raw value for the capsule
+                    actual_value = value.value
+                    
+                    # Prepare capsule data - add await
+                    capsule_data = await prepare_capsule_value(actual_value, cty_type)
+                    return json.dumps(capsule_data).encode('utf-8')
+
                 # For collection types, process element values
+                actual_value = value.value
                 if hasattr(actual_value, '__iter__') and not isinstance(actual_value, (str, bytes)):
                     if isinstance(actual_value, dict):
                         # Handle dictionary/map values
                         processed_value = {}
                         for k, v in actual_value.items():
                             # Extract the actual key and value
-                            key = k.value if hasattr(k, 'value') else k
-                            val = v.value if hasattr(v, 'value') else v
+                            key = k.value if hasattr(k, 'value') and hasattr(k, 'is_known') else k
+                            val = v.value if hasattr(v, 'value') and hasattr(v, 'is_known') else v
                             processed_value[str(key)] = val
-                        return self.serialize_with_type(processed_value, cty_type)
+                        return await self.serialize_with_type(processed_value, cty_type)
                     else:
                         # Handle list/set/tuple values
                         processed_value = [
-                            v.value if hasattr(v, 'value') else v
+                            v.value if hasattr(v, 'value') and hasattr(v, 'is_known') else v
                             for v in actual_value
                         ]
-                        return self.serialize_with_type(processed_value, cty_type)
-                
-                return self.serialize_with_type(actual_value, cty_type)
-            
+                        return await self.serialize_with_type(processed_value, cty_type)
+
+                return await self.serialize_with_type(actual_value, cty_type)
+
             # Handle regular Python types
             prepared_value = self._prepare_value(value)
             json_str = json.dumps(prepared_value)
             result = json_str.encode('utf-8')
             logger.debug(f"🧰📤✅ Serialized {len(result)} bytes")
             return result
-            
+
         except TypeError as e:
             error_msg = f"Type error during JSON serialization: {e}"
             logger.error(f"🧰📤❌ {error_msg}")
@@ -213,32 +221,38 @@ class JsonSerializer(TypedSerializerProtocol):
             error_msg = f"Failed to serialize to JSON: {e}"
             logger.error(f"🧰📤❌ {error_msg}")
             raise SerializationError(error_msg, value) from e
-    
-    def deserialize(self, data: bytes) -> Any:
+
+    async def deserialize(self, data: bytes) -> Any:
         """
         Deserialize JSON bytes to a Python value.
-        
+
         Args:
             data: The JSON bytes to deserialize
-            
+
         Returns:
             Deserialized value
-            
+
         Raises:
             DeserializationError: If deserialization fails
         """
         logger.debug(f"🧰🔍🔄 Deserializing from JSON: {len(data)} bytes")
-        
+
         try:
             # Parse JSON
             decoded_str = data.decode('utf-8')
             raw_value = json.loads(decoded_str)
-            
+
+            # Check for capsule data format
+            if isinstance(raw_value, dict) and "capsule_type" in raw_value:
+                logger.debug("🧰🔍ℹ️ Detected capsule data format")
+                from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                return await process_capsule_value(raw_value)
+
             # Process the value, handling any type information
-            result = self._process_value(raw_value)
+            result = await self._process_value(raw_value)
             logger.debug(f"🧰🔍✅ Deserialized to {type(result).__name__}")
             return result
-            
+
         except json.JSONDecodeError as e:
             error_msg = f"Invalid JSON format: {e}"
             logger.error(f"🧰🔍❌ {error_msg}")
@@ -251,43 +265,51 @@ class JsonSerializer(TypedSerializerProtocol):
             error_msg = f"Failed to deserialize from JSON: {e}"
             logger.error(f"🧰🔍❌ {error_msg}")
             raise DeserializationError(error_msg, data=data, format_name="json") from e
-    
-    def serialize_with_type(self, value: Any, type_hint: Any = None) -> bytes:
+
+    async def serialize_with_type(self, value: Any, type_hint: Any = None) -> bytes:
         """
         Serialize a value with explicit type information.
-        
+
         Args:
             value: The value to serialize
             type_hint: Optional type hint to guide serialization
-            
+
         Returns:
             JSON bytes with type information
-            
+
         Raises:
             SerializationError: If serialization fails
             UnsupportedTypeError: If the type is not supported
         """
         logger.debug(f"🧰📤🔄 Serializing with type: {type(value).__name__}, hint: {type_hint}")
-        
+
         try:
+            # Handle special case for capsule types
+            from pyvider.cty.types.capsule import CtyCapsule
+            if isinstance(type_hint, CtyCapsule):
+                logger.debug("🧰📤ℹ️ Serializing capsule type with type hint")
+                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+                capsule_data = await prepare_capsule_value(value, type_hint)
+                return json.dumps(capsule_data).encode('utf-8')
+
             # Determine the CtyType
             cty_type = self._get_cty_type(value, type_hint)
-            
+
             # Prepare the value based on its type
-            prepared_value = self._prepare_typed_value(value, cty_type)
-            
+            prepared_value = await self._prepare_typed_value(value, cty_type)
+
             # Create the typed value structure
             typed_value = {
                 "type": cty_type.value,
                 "value": prepared_value
             }
-            
+
             # Serialize to JSON
             json_str = json.dumps(typed_value)
             result = json_str.encode('utf-8')
             logger.debug(f"🧰📤✅ Serialized {len(result)} bytes with type {cty_type.value}")
             return result
-            
+
         except TypeError as e:
             error_msg = f"Type error during typed serialization: {e}"
             logger.error(f"🧰📤❌ {error_msg}")
@@ -299,42 +321,49 @@ class JsonSerializer(TypedSerializerProtocol):
             error_msg = f"Failed to serialize with type: {e}"
             logger.error(f"🧰📤❌ {error_msg}")
             raise SerializationError(error_msg, value) from e
-    
-    def deserialize_with_type(self, data: bytes, type_hint: Any = None) -> Any:
+
+    async def deserialize_with_type(self, data: bytes, type_hint: Any = None) -> Any:
         """
         Deserialize JSON bytes with type information.
-        
+
         Args:
             data: The JSON bytes to deserialize
             type_hint: Optional type hint to guide deserialization
-            
+
         Returns:
             Deserialized value with preserved type information
-            
+
         Raises:
             DeserializationError: If deserialization fails
             TypeMismatchError: If the decoded type doesn't match the expected type
         """
         logger.debug(f"🧰🔍🔄 Deserializing with type: {len(data)} bytes, hint: {type_hint}")
-        
+
         try:
             # Parse JSON
             decoded_str = data.decode('utf-8')
             raw_value = json.loads(decoded_str)
-            
+
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
-            
+            from pyvider.cty.types.capsule import CtyCapsule
+
+            # Check for capsule data format
+            if isinstance(raw_value, dict) and "capsule_type" in raw_value:
+                logger.debug("🧰🔍ℹ️ Detected capsule data format")
+                from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                return await process_capsule_value(raw_value)
+
             # Handle special states first
             if isinstance(raw_value, dict):
                 # Check for unknown value
                 if raw_value.get('unknown', False) and 'type' in raw_value:
                     logger.debug("🧰🔍ℹ️ Detected unknown value")
-                    
+
                     # Create appropriate type from the type_hint or from the type field
                     if type_hint is not None:
                         return CtyValue.unknown(type_=type_hint)
-                    
+
                     # Try to import the type class
                     try:
                         # Get type from module
@@ -344,15 +373,15 @@ class JsonSerializer(TypedSerializerProtocol):
                     except (ImportError, AttributeError):
                         # Fallback for non-importable types
                         return {"_cty_unknown": True, "type": raw_value['type']}
-                    
+
                 # Check for null value
                 if raw_value.get('null', False) and 'type' in raw_value:
                     logger.debug("🧰🔍ℹ️ Detected null value")
-                    
+
                     # Create appropriate type from the type_hint or from the type field
                     if type_hint is not None:
                         return CtyValue.null(type_=type_hint)
-                    
+
                     # Try to import the type class
                     try:
                         # Get type from module
@@ -362,30 +391,43 @@ class JsonSerializer(TypedSerializerProtocol):
                     except (ImportError, AttributeError):
                         # Fallback for non-importable types
                         return None
-                        
+
                 # Check for marked value
                 if "marks" in raw_value:
                     logger.debug(f"🧰🔍ℹ️ Detected marked value with marks: {raw_value['marks']}")
-                    
+
                     # Extract marks
                     marks = raw_value.pop("marks")
-                    
+
                     # Process the value
-                    value = self._process_value(raw_value)
-                    
+                    value = await self._process_value(raw_value)
+
                     # Apply marks if it's a CtyValue
                     if isinstance(value, CtyValue):
                         for mark in marks:
                             value = value.mark(mark)
-                    
+
                     return value
-            
+
             # Check for typed value structure
             if isinstance(raw_value, dict) and "type" in raw_value and "value" in raw_value:
                 # Extract type and value
                 type_str = raw_value["type"]
                 value = raw_value["value"]
-                
+
+                # Handle capsule type special case
+                if type_str == CtyType.CAPSULE.value and isinstance(value, dict):
+                    logger.debug("🧰🔍ℹ️ Detected capsule value in typed format")
+                    # Convert to capsule data format and process
+                    capsule_data = {
+                        "capsule_type": value.get("friendly_name", "unknown"),
+                        "is_null": value.get("is_null", False),
+                        "is_unknown": value.get("is_unknown", False),
+                        "capsule_data": value.get("capsule_data", {})
+                    }
+                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                    return await process_capsule_value(capsule_data)
+
                 # If we have a type_hint, verify type compatibility
                 if type_hint is not None:
                     expected_type = self._get_cty_type(None, type_hint)
@@ -397,29 +439,29 @@ class JsonSerializer(TypedSerializerProtocol):
                             raise TypeMismatchError(expected_type, actual_type, data=data, format_name="json")
                     except ValueError:
                         logger.warning(f"🧰🔍⚠️ Unknown type: {type_str}")
-                
+
                 # Process the value with the specified type
                 try:
                     cty_type = CtyType(type_str)
-                    result = self._process_typed_value(value, cty_type)
-                    
+                    result = await self._process_typed_value(value, cty_type)
+
                     # Apply marks if present
                     if "marks" in raw_value and hasattr(result, 'mark'):
                         for mark in raw_value["marks"]:
                             result = result.mark(mark)
-                    
+
                     logger.debug(f"🧰🔍✅ Deserialized to {type(result).__name__} with type {cty_type.value}")
                     return result
                 except ValueError:
                     # Unknown type, fall back to regular processing
                     logger.warning(f"🧰🔍⚠️ Unknown type '{type_str}', falling back to regular processing")
-                    return self._process_value(value)
-            
+                    return await self._process_value(value)
+
             # Try array-style typed value format [type, value]
             if isinstance(raw_value, list) and len(raw_value) == 2 and isinstance(raw_value[0], str):
                 # Extract type and value
                 type_str, value = raw_value
-                
+
                 # If we have a type_hint, verify type compatibility
                 if type_hint is not None:
                     expected_type = self._get_cty_type(None, type_hint)
@@ -431,30 +473,30 @@ class JsonSerializer(TypedSerializerProtocol):
                             raise TypeMismatchError(expected_type, actual_type, data=data, format_name="json")
                     except ValueError:
                         logger.warning(f"🧰🔍⚠️ Unknown type: {type_str}")
-                
+
                 # Process the value with the specified type
                 try:
                     cty_type = CtyType(type_str)
-                    result = self._process_typed_value(value, cty_type)
+                    result = await self._process_typed_value(value, cty_type)
                     logger.debug(f"🧰🔍✅ Deserialized to {type(result).__name__} with type {cty_type.value}")
                     return result
                 except ValueError:
                     # Unknown type, fall back to regular processing
                     logger.warning(f"🧰🔍⚠️ Unknown type '{type_str}', falling back to regular processing")
-                    return self._process_value(value)
-            
+                    return await self._process_value(value)
+
             # If not a typed value or type_hint is provided, use type_hint for processing
             if type_hint is not None:
                 cty_type = self._get_cty_type(None, type_hint)
-                result = self._process_typed_value(raw_value, cty_type)
+                result = await self._process_typed_value(raw_value, cty_type)
                 logger.debug(f"🧰🔍✅ Deserialized to {type(result).__name__} with type hint")
                 return result
-            
+
             # Otherwise, process as regular value
-            result = self._process_value(raw_value)
+            result = await self._process_value(raw_value)
             logger.debug(f"🧰🔍✅ Deserialized to {type(result).__name__}")
             return result
-            
+
         except json.JSONDecodeError as e:
             error_msg = f"Invalid JSON format: {e}"
             logger.error(f"🧰🔍❌ {error_msg}")
@@ -470,27 +512,32 @@ class JsonSerializer(TypedSerializerProtocol):
             error_msg = f"Failed to deserialize with type: {e}"
             logger.error(f"🧰🔍❌ {error_msg}")
             raise DeserializationError(error_msg, data=data, format_name="json") from e
-    
+
     def _get_cty_type(self, value: Any, type_hint: Any = None) -> CtyType:
         """
         Determine the CtyType for a value.
-        
+
         Args:
             value: The value to get the type for
             type_hint: Optional type hint
-            
+
         Returns:
             CtyType
-            
+
         Raises:
             UnsupportedTypeError: If the type is not supported
         """
         # If type_hint is a CtyType enum, use it directly
         if isinstance(type_hint, CtyType):
             return type_hint
-            
+
         # If type_hint is a Cty type, extract the CtyType from it
         if type_hint is not None and hasattr(type_hint, '__class__'):
+            # Handle capsule types explicitly
+            from pyvider.cty.types.capsule import CtyCapsule
+            if isinstance(type_hint, CtyCapsule):
+                return CtyType.CAPSULE
+
             # Check for Cty type naming conventions (CtyString, CtyNumber, etc.)
             type_class_name = type_hint.__class__.__name__
             if type_class_name.startswith('Cty'):
@@ -500,11 +547,11 @@ class JsonSerializer(TypedSerializerProtocol):
                 except KeyError:
                     logger.warning(f"🧰🔍⚠️ Unknown Cty type: {type_class_name}")
                     # Fall through to value-based detection
-        
+
         # If no type_hint or not recognized, infer from value
         if value is None:
             return CtyType.NULL
-        
+
         # Use Python 3.12+ match syntax for type-based handling
         match value:
             case str():
@@ -526,46 +573,55 @@ class JsonSerializer(TypedSerializerProtocol):
                     return CtyType.OBJECT
                 return CtyType.MAP
             case _:
+                # Check for capsule type
+                from pyvider.cty.types.capsule import CtyCapsule
+                if hasattr(value, 'type') and isinstance(getattr(value, 'type', None), CtyCapsule):
+                    return CtyType.CAPSULE
+
                 # Check for custom classes with known conversions
                 if hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
                     return CtyType.OBJECT
-                
+
                 # Unsupported type
                 error_msg = f"Unsupported type for JSON serialization: {type(value).__name__}"
                 logger.error(f"🧰📤❌ {error_msg}")
                 raise UnsupportedTypeError(type(value), "json", value)
-    
+
     def _get_type_name(self, type_obj: Any) -> str:
         """
         Get a string name for a type object.
-        
+
         Args:
             type_obj: The type object to get the name for
-            
+
         Returns:
             String name for the type
         """
+        from pyvider.cty.types.capsule import CtyCapsule
+        if isinstance(type_obj, CtyCapsule):
+            return "capsule"
+
         if hasattr(type_obj, '__class__'):
             type_class_name = type_obj.__class__.__name__
             if type_class_name.startswith('Cty'):
                 return type_class_name[3:].lower()
-        
+
         return "dynamic"
-    
+
     def _prepare_value(self, value: Any) -> Any:
         """
         Prepare a value for JSON serialization.
-        
+
         Args:
             value: The value to prepare
-            
+
         Returns:
             JSON-serializable value
         """
         # Handle None
         if value is None:
             return None
-        
+
         # Use Python 3.12+ match syntax for type-based handling
         match value:
             case str() | int() | float() | bool():
@@ -586,26 +642,26 @@ class JsonSerializer(TypedSerializerProtocol):
                         field.name: self._prepare_value(getattr(value, field.name))
                         for field in attrs.fields(value.__class__)
                     }
-                
+
                 # Handle classes with to_dict method
                 if hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
                     return self._prepare_value(value.to_dict())
-                
+
                 # Handle other classes with __dict__
                 if hasattr(value, '__dict__'):
                     return self._prepare_value(value.__dict__)
-                
+
                 # Last resort: convert to string
                 return str(value)
-    
-    def _prepare_typed_value(self, value: Any, cty_type: CtyType) -> Any:
+
+    async def _prepare_typed_value(self, value: Any, cty_type: CtyType) -> Any:
         """
         Prepare a value for typed JSON serialization.
-        
+
         Args:
             value: The value to prepare
             cty_type: The CtyType
-            
+
         Returns:
             JSON-serializable value
         """
@@ -613,14 +669,31 @@ class JsonSerializer(TypedSerializerProtocol):
             case CtyType.CAPSULE:
                 logger.debug("🧰📤🔄 Preparing capsule value for serialization")
                 from pyvider.cty.types.capsule import CtyCapsule
-                from pyvider.cty.exceptions import CapsuleSerializationError
-                
-                if not isinstance(cty_type, CtyCapsule):
-                    error_msg = f"Expected CtyCapsule, got {type(cty_type).__name__}"
+                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
+
+                if not isinstance(value, CtyCapsule) and hasattr(value, "type") and isinstance(value.type, CtyCapsule):
+                    # This is a CtyValue with CtyCapsule type
+                    capsule_type = value.type
+                    capsule_value = value.value
+                    return await prepare_capsule_value(capsule_value, capsule_type)
+
+                # Find the capsule type from the context
+                capsule_type = None
+                if hasattr(value, "_type") and isinstance(value._type, CtyCapsule):
+                    capsule_type = value._type
+                elif hasattr(value, "encapsulated_type"):
+                    # This is already a CtyCapsule instance
+                    capsule_type = value
+
+                if capsule_type is None:
+                    error_msg = "Cannot determine capsule type for serialization"
                     logger.error(f"🧰📤❌ {error_msg}")
-                    raise UnsupportedTypeError(type(cty_type), "json", value)
-                    
-                return prepare_capsule_value(self, value, cty_type)
+                    raise UnsupportedTypeError(type(value), "json", value)
+
+                # Prepare the capsule data
+                capsule_data = await prepare_capsule_value(value, capsule_type)
+                return capsule_data
+
             case CtyType.NULL:
                 return None
             case CtyType.STRING:
@@ -651,14 +724,14 @@ class JsonSerializer(TypedSerializerProtocol):
                     raise UnsupportedTypeError(type(value), "json", value)
             case CtyType.DYNAMIC:
                 return self._prepare_value(value)
-    
-    def _process_value(self, value: Any) -> Any:
+
+    async def _process_value(self, value: Any) -> Any:
         """
         Process a deserialized JSON value.
-        
+
         Args:
             value: The raw deserialized value
-            
+
         Returns:
             Processed value
         """
@@ -667,9 +740,10 @@ class JsonSerializer(TypedSerializerProtocol):
         from pyvider.cty.types import (
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
-            CtyObject, CtyTuple, CtyDynamic
+            CtyObject, CtyTuple, CtyDynamic,
+            CtyCapsule
         )
-        
+
         # Use Python 3.12+ match syntax for type-based processing
         match value:
             case None:
@@ -681,14 +755,14 @@ class JsonSerializer(TypedSerializerProtocol):
                 if len(value) == 2 and isinstance(value[0], str):
                     try:
                         cty_type = CtyType(value[0])
-                        return self._process_typed_value(value[1], cty_type)
+                        return await self._process_typed_value(value[1], cty_type)
                     except ValueError:
                         # Not a CtyType, treat as a regular list
                         pass
-                
+
                 # Process as a regular list
-                processed_list = [self._process_value(item) for item in value]
-                
+                processed_list = [await self._process_value(item) for item in value]
+
                 # Create a CtyValue with a CtyList type if appropriate
                 try:
                     if processed_list and all(isinstance(item, CtyValue) for item in processed_list):
@@ -703,28 +777,34 @@ class JsonSerializer(TypedSerializerProtocol):
                     logger.debug(f"🧰🔍⚠️ Could not create CtyList value: {e}")
                     return processed_list
             case dict():
+                # Check for capsule data format
+                if "capsule_type" in value:
+                    logger.debug("🧰🔍ℹ️ Detected capsule data format")
+                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                    return await process_capsule_value(value)
+
                 # Check for special type indicators
                 if "type" in value and "value" in value and len(value) <= 3:  # Allow for marks
                     try:
                         cty_type = CtyType(value["type"])
-                        result = self._process_typed_value(value["value"], cty_type)
-                        
+                        result = await self._process_typed_value(value["value"], cty_type)
+
                         # Apply marks if present
                         if "marks" in value and hasattr(result, 'mark'):
                             for mark in value["marks"]:
                                 result = result.mark(mark)
-                        
+
                         return result
                     except ValueError:
                         # Not a CtyType, treat as a regular dict
                         pass
-                
+
                 # Process as a regular dict
-                processed_dict = {k: self._process_value(v) for k, v in value.items()}
-                
+                processed_dict = {k: await self._process_value(v) for k, v in value.items()}
+
                 # Create an ObjectDict
                 dict_obj = ObjectDict(processed_dict)
-                
+
                 # Create a CtyValue with a CtyMap or CtyObject type if appropriate
                 try:
                     # Check if we should treat this as an object
@@ -734,7 +814,7 @@ class JsonSerializer(TypedSerializerProtocol):
                         for k, v in processed_dict.items():
                             if k == "_is_object":
                                 continue  # Skip the _is_object indicator
-                            
+
                             if isinstance(v, CtyValue):
                                 attr_types[k] = v.type
                             elif isinstance(v, str):
@@ -745,16 +825,16 @@ class JsonSerializer(TypedSerializerProtocol):
                                 attr_types[k] = CtyBool()
                             else:
                                 attr_types[k] = CtyDynamic()
-                        
+
                         # Remove _is_object key from processed_dict if present
                         if "_is_object" in processed_dict:
                             processed_dict.pop("_is_object")
-                        
+
                         # Create a CtyObject type
                         object_type = CtyObject(attribute_types=attr_types)
                         # Create a CtyValue with the object type and processed attributes
                         return CtyValue(type_=object_type, value=dict_obj)
-                    
+
                     # Check if keys and values indicate a map
                     all_string_keys = all(isinstance(k, str) for k in processed_dict.keys())
                     all_similar_values = False
@@ -772,7 +852,7 @@ class JsonSerializer(TypedSerializerProtocol):
                                 )
                                 # Create a CtyValue with the map type and processed key-value pairs
                                 return CtyValue(type_=map_type, value=processed_dict)
-                    
+
                     # Just return the processed dictionary
                     return dict_obj
                 except Exception as e:
@@ -781,15 +861,15 @@ class JsonSerializer(TypedSerializerProtocol):
             case _:
                 # Default case - shouldn't normally be reached with JSON
                 return value
-                
-    def _process_typed_value(self, value: Any, cty_type: CtyType) -> Any:
+
+    async def _process_typed_value(self, value: Any, cty_type: CtyType) -> Any:
         """
         Process a deserialized value with type information.
-        
+
         Args:
             value: The raw deserialized value
             cty_type: The CtyType
-            
+
         Returns:
             Processed value with preserved type information
         """
@@ -798,39 +878,43 @@ class JsonSerializer(TypedSerializerProtocol):
         from pyvider.cty.types import (
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
-            CtyObject, CtyTuple, CtyDynamic
+            CtyObject, CtyTuple, CtyDynamic,
+            CtyCapsule
         )
-        
+
         match cty_type:
+            case CtyType.CAPSULE:
+                logger.debug("🧰🔍ℹ️ Processing capsule type value")
+                if isinstance(value, dict) and "capsule_type" in value:
+                    # Already in capsule data format
+                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                    return await process_capsule_value(value)
+                elif isinstance(value, dict) and "python_type" in value:
+                    # Convert to capsule data format and process
+                    capsule_data = {
+                        "capsule_type": value.get("friendly_name", "unknown"),
+                        "is_null": value.get("is_null", False),
+                        "is_unknown": value.get("is_unknown", False),
+                        "capsule_data": {
+                            "type": "simple_attributes",
+                            "python_type": value.get("python_type", ""),
+                            "attributes": value.get("attributes", {})
+                        }
+                    }
+                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
+                    return await process_capsule_value(capsule_data)
+                else:
+                    logger.warning(f"🧰🔍⚠️ Invalid capsule data format: {value}")
+                    # Return the raw value as fallback
+                    return value
+
             case CtyType.STRING:
                 string_val = str(value) if value is not None else ""
                 # Return the raw value instead of a CtyValue when direct comparison is expected
                 if isinstance(value, str):
                     return string_val
                 return CtyValue(type_=CtyString(), value=string_val)
-            
-            case CtyType.NUMBER:
-                num_val = None
-                if isinstance(value, str):
-                    # Try to convert string to number (potential decimal value)
-                    try:
-                        if '.' in value:
-                            num_val = Decimal(value)
-                        else:
-                            num_val = int(value)
-                    except ValueError:
-                        logger.warning(f"🧰🔍⚠️ Could not convert '{value}' to number, using default")
-                        num_val = 0
-                elif isinstance(value, (int, float, Decimal)):
-                    num_val = value
-                else:
-                    num_val = 0
-                
-                # Return the raw value instead of a CtyValue when direct comparison is expected
-                if isinstance(value, (int, float, Decimal)):
-                    return num_val
-                return CtyValue(type_=CtyNumber(), value=num_val)
-            
+
             case CtyType.BOOL:
                 bool_val = bool(value)
                 # Return the raw value instead of a CtyValue when direct comparison is expected
@@ -854,21 +938,22 @@ class JsonSerializer(TypedSerializerProtocol):
                     num_val = value
                 else:
                     num_val = 0
-                    
+
                 return CtyValue(type_=CtyNumber(), value=num_val)
+
             case CtyType.LIST:
                 processed_items = []
-                
+
                 # Handle different input types
                 if isinstance(value, list):
-                    processed_items = [self._process_value(item) for item in value]
+                    processed_items = [await self._process_value(item) for item in value]
                 elif isinstance(value, (set, frozenset)):
                     # Convert set to list
-                    processed_items = [self._process_value(item) for item in value]
+                    processed_items = [await self._process_value(item) for item in value]
                 else:
                     if value is not None:
-                        processed_items = [self._process_value(value)]
-                
+                        processed_items = [await self._process_value(value)]
+
                 # Determine element type
                 element_type = CtyDynamic()
                 if processed_items:
@@ -880,20 +965,21 @@ class JsonSerializer(TypedSerializerProtocol):
                         element_type = CtyNumber()
                     elif all(isinstance(item, bool) for item in processed_items):
                         element_type = CtyBool()
-                
+
                 # Create the list value
                 list_type = CtyList(element_type=element_type)
                 return CtyValue(type_=list_type, value=processed_items)
+
             case CtyType.TUPLE:
                 processed_items = []
-                
+
                 # Handle different input types
                 if isinstance(value, (list, tuple)):
-                    processed_items = [self._process_value(item) for item in value]
+                    processed_items = [await self._process_value(item) for item in value]
                 else:
                     if value is not None:
-                        processed_items = [self._process_value(value)]
-                
+                        processed_items = [await self._process_value(value)]
+
                 # For tuples, we need the types of each element
                 element_types = []
                 for item in processed_items:
@@ -907,20 +993,21 @@ class JsonSerializer(TypedSerializerProtocol):
                         element_types.append(CtyBool())
                     else:
                         element_types.append(CtyDynamic())
-                
+
                 # Create the tuple value
                 tuple_type = CtyTuple(element_types=tuple(element_types))
                 return CtyValue(type_=tuple_type, value=tuple(processed_items))
+
             case CtyType.SET:
                 processed_items = []
-                
+
                 # Handle different input types
                 if isinstance(value, (list, set, frozenset)):
-                    processed_items = [self._process_value(item) for item in value]
+                    processed_items = [await self._process_value(item) for item in value]
                 else:
                     if value is not None:
-                        processed_items = [self._process_value(value)]
-                
+                        processed_items = [await self._process_value(value)]
+
                 # Determine element type
                 element_type = CtyDynamic()
                 if processed_items:
@@ -932,23 +1019,24 @@ class JsonSerializer(TypedSerializerProtocol):
                         element_type = CtyNumber()
                     elif all(isinstance(item, bool) for item in processed_items):
                         element_type = CtyBool()
-                
+
                 # Create the set value
                 set_type = CtySet(element_type=element_type)
                 return CtyValue(type_=set_type, value=set(processed_items))
+
             case CtyType.MAP:
                 if isinstance(value, dict):
                     processed_dict = {}
                     for k, v in value.items():
-                        processed_dict[k] = self._process_value(v)
-                    
+                        processed_dict[k] = await self._process_value(v)
+
                     # Determine value type
                     value_type = CtyDynamic()
                     if processed_dict:
                         values = list(processed_dict.values())
                         if all(isinstance(v, CtyValue) for v in values):
                             value_type = values[0].type
-                    
+
                     # Create the map value
                     map_type = CtyMap(key_type=CtyString(), value_type=value_type)
                     return CtyValue(type_=map_type, value=processed_dict)
@@ -956,22 +1044,23 @@ class JsonSerializer(TypedSerializerProtocol):
                     if value is not None:
                         return CtyValue(
                             type_=CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
-                            value={"value": self._process_value(value)}
+                            value={"value": await self._process_value(value)}
                         )
                     return CtyValue(
                         type_=CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
                         value={}
                     )
+
             case CtyType.OBJECT:
                 if isinstance(value, dict):
                     # Process as object
                     processed_dict = {}
                     attribute_types = {}
-                    
+
                     for k, v in value.items():
-                        processed_val = self._process_value(v)
+                        processed_val = await self._process_value(v)
                         processed_dict[k] = processed_val
-                        
+
                         # Determine attribute type
                         if isinstance(processed_val, CtyValue):
                             attribute_types[k] = processed_val.type
@@ -983,26 +1072,27 @@ class JsonSerializer(TypedSerializerProtocol):
                             attribute_types[k] = CtyBool()
                         else:
                             attribute_types[k] = CtyDynamic()
-                    
+
                     # Create the object type
                     object_type = CtyObject(attribute_types=attribute_types)
                     dict_obj = ObjectDict(processed_dict)
-                    
+
                     return CtyValue(type_=object_type, value=dict_obj)
                 else:
                     if value is not None:
                         # Create a simple object with a "value" attribute
                         object_type = CtyObject(attribute_types={"value": CtyDynamic()})
-                        dict_obj = ObjectDict({"value": self._process_value(value)})
-                        
+                        dict_obj = ObjectDict({"value": await self._process_value(value)})
+
                         return CtyValue(type_=object_type, value=dict_obj)
-                    
+
                     return CtyValue(
                         type_=CtyObject(attribute_types={}),
                         value=ObjectDict({})
                     )
+
             case CtyType.DYNAMIC:
                 # Process any value
-                return self._process_value(value)
+                return await self._process_value(value)
 
 # 🐍🏗️🐣

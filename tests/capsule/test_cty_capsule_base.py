@@ -15,6 +15,17 @@ from pyvider.cty.capsule import capsule_type, capsule_val, capsule_type_with_ops
 from pyvider.cty.values import CtyValue
 
 
+class TestObj:
+    """Test class for encapsulation in capsule values."""
+    def __init__(self, name):
+        self.name = name
+        
+    def __eq__(self, other):
+        if not isinstance(other, TestObj):
+            return False
+        return self.name == other.name
+
+
 class TestCtyCapsuleType(unittest.TestCase):
     """Test CtyCapsule type functionality."""
     
@@ -114,6 +125,7 @@ class TestCtyCapsuleType(unittest.TestCase):
         # Get encapsulated value
         encapsulated = val.encapsulated_value()
         self.assertEqual(encapsulated, self.test_obj)
+        self.assertEqual(encapsulated.name, "test")
         
         # Test with null value
         null_val = capsule_val(self.obj_type, None)
@@ -164,16 +176,17 @@ class TestCapsuleSerialization(unittest.TestCase):
         # Create capsule values
         self.obj_val = capsule_val(self.obj_type, self.test_obj)
     
-    def test_json_serialization(self):
+    @pytest.mark.asyncio
+    async def test_json_serialization(self):
         """Test JSON serialization of capsule values."""
         from pyvider.cty.encoding import serialize, deserialize
         
         # Serialize to JSON
-        serialized = serialize(self.obj_val, "json")
+        serialized = await serialize(self.obj_val, "json")
         self.assertIsInstance(serialized, bytes)
         
         # Deserialize from JSON
-        deserialized = deserialize(serialized, "json")
+        deserialized = await deserialize(serialized, "json")
         
         # Verify the result
         self.assertIsInstance(deserialized, CtyValue)
@@ -184,16 +197,17 @@ class TestCapsuleSerialization(unittest.TestCase):
         self.assertEqual(encapsulated.name, self.test_obj.name)
         self.assertEqual(encapsulated.value, self.test_obj.value)
     
-    def test_msgpack_serialization(self):
+    @pytest.mark.asyncio
+    async def test_msgpack_serialization(self):
         """Test MessagePack serialization of capsule values."""
         from pyvider.cty.encoding import serialize, deserialize
         
         # Serialize to MessagePack
-        serialized = serialize(self.obj_val, "msgpack")
+        serialized = await serialize(self.obj_val, "msgpack")
         self.assertIsInstance(serialized, bytes)
         
         # Deserialize from MessagePack
-        deserialized = deserialize(serialized, "msgpack")
+        deserialized = await deserialize(serialized, "msgpack")
         
         # Verify the result
         self.assertIsInstance(deserialized, CtyValue)
@@ -204,7 +218,8 @@ class TestCapsuleSerialization(unittest.TestCase):
         self.assertEqual(encapsulated.name, self.test_obj.name)
         self.assertEqual(encapsulated.value, self.test_obj.value)
     
-    def test_non_serializable_value(self):
+    @pytest.mark.asyncio
+    async def test_non_serializable_value(self):
         """Test handling of non-serializable values."""
         from pyvider.cty.encoding import serialize
         
@@ -220,4 +235,4 @@ class TestCapsuleSerialization(unittest.TestCase):
         # Try to serialize
         from pyvider.cty.exceptions import CapsuleSerializationError
         with self.assertRaises(CapsuleSerializationError):
-            serialize(non_serializable_val, "json")
+            await serialize(non_serializable_val, "json")
