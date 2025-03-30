@@ -10,7 +10,7 @@ from pyvider.cty import (
     CtyValue, CtyTuple
 )
 from pyvider.cty.encoding import serialize_with_type, deserialize_with_type
-from pyvider.cty.path import Path
+from pyvider.cty.path import CtyPath
 from pyvider.cty.exceptions import ValidationError, AttributePathError
 
 # Define a complex infrastructure schema
@@ -124,14 +124,14 @@ try:
     async def path_navigation():
         try:
             # Get the CPU utilization metric using path navigation
-            metric_path = Path.get_attr("metadata").key_step("performance_metrics").key_step("cpu_utilization")
+            metric_path = CtyPath.get_attr("metadata").key_step("performance_metrics").key_step("cpu_utilization")
             cpu_metric = await metric_path.apply_path(instance_val.value)
             print(f"CPU Utilization: {cpu_metric.value}%")
             
             # Get the primary network interface
             for i, nic in enumerate(instance_val.value["network_interfaces"].value):
                 if nic["type"].value == "primary":
-                    ip_path = Path.get_attr("network_interfaces").index_step(i).child("ip_addresses").index_step(0)
+                    ip_path = CtyPath.get_attr("network_interfaces").index_step(i).child("ip_addresses").index_step(0)
                     primary_ip = await ip_path.apply_path(instance_val.value)
                     print(f"Primary IP: {primary_ip.value}")
                     break

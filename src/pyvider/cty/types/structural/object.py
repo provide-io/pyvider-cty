@@ -14,7 +14,7 @@ consistency throughout the validation process and maintaining proper type inform
 in nested structures.
 """
 
-from typing import Any, Dict, FrozenSet, Optional, Self
+from typing import Any, FrozenSet, Optional, Self, Union
 
 import attrs
 
@@ -38,7 +38,7 @@ class CtyObject(CtyType[dict[str, Any]]):
     as optional.
 
     Attributes:
-        attribute_types: Dictionary mapping attribute names to their types
+        attribute_types: dictionary mapping attribute names to their types
         optional_attributes: Set of attribute names that are optional
     """
     attribute_types: dict[str, CtyType] = attrs.field(factory=dict)
@@ -88,17 +88,19 @@ class CtyObject(CtyType[dict[str, Any]]):
         """
         logger.debug(f"🧩🔍🔄 Validating value against CtyObject: {value}")
 
-        # Handle null values
-        if value is None:
-            logger.debug("🧩🔍🔄 Received null value, returning null CtyValue")
-            return CtyValue.null(self)
-
-        # Value must be a dictionary
-        if not isinstance(value, dict):
-            type_name = type(value).__name__
-            error_msg = f"Expected a dictionary, got {type_name}: {value}"
-            logger.error(f"🧩🔍❌ {error_msg}")
-            raise ValidationError(error_msg)
+        # Handle different input types
+        match value:
+            case None:
+                logger.debug("🧩🔍✅ Received null value, returning null CtyValue")
+                return CtyValue.null(self)
+            case dict():
+                # Continue with dictionary validation
+                pass
+            case _:
+                type_name = type(value).__name__
+                error_msg = f"Expected a dictionary, got {type_name}: {value}"
+                logger.error(f"🧩🔍❌ {error_msg}")
+                raise ValidationError(error_msg)
 
         # Check for required attributes
         required_attrs = self.required_attributes()
@@ -118,91 +120,91 @@ class CtyObject(CtyType[dict[str, Any]]):
             raise ValidationError(error_msg)
 
         # Validate each attribute
-        validated = {}
+        validated_attrs = {}
+        validation_errors = []
 
         # Process each attribute in attribute_types
         for name, attr_type in self.attribute_types.items():
             logger.debug(f"🧩🔍🔄 Validating attribute {name} with type {attr_type}")
 
-            # Handle optional attributes that are missing from the input
-            if name not in value:
-                if name in self.optional_attributes:
-                    logger.debug(f"🧩🔍✅ Optional attribute {name} is missing, setting to null")
-                    validated[name] = CtyValue.null(attr_type)
-                    continue
-                else:
-                    # This should never happen due to the required check above
-                    error_msg = f"Missing required attribute: {name}"
-                    logger.error(f"🧩🔍❌ {error_msg}")
-                    raise ValidationError(error_msg)
-
-            # Get the attribute value
-            attr_value = value[name]
-
             try:
-                # When attr_value is None and it's an optional attribute, use null CtyValue
-                if attr_value is None and name in self.optional_attributes:
-                    logger.debug(f"🧩🔍✅ Optional attribute {name} is None, using null CtyValue")
-                    validated[name] = CtyValue.null(attr_type)
-                    continue
-
-                # Check if the value is already a CtyValue instance
-                if isinstance(attr_value, CtyValue):
-                    # Ensure the type matches
-                    if not attr_type.equal(attr_value.type) and not attr_value.type.usable_as(attr_type):
-                        error_msg = f"Invalid type for attribute '{name}': expected {attr_type}, got {attr_value.type}"
+                # Handle missing attributes (optional ones become null)
+                if name not in value:
+                    if name in self.optional_attributes:
+                        logger.debug(f"🧩🔍✅ Optional attribute {name} is missing, setting to null")
+                        validated_attrs[name] = CtyValue.null(attr_type)
+                        continue
+                    else:
+                        # This should never happen due to the required check above
+                        error_msg = f"Missing required attribute: {name}"
                         logger.error(f"🧩🔍❌ {error_msg}")
                         raise ValidationError(error_msg)
-                    
-                    # Use the CtyValue directly
-                    validated[name] = attr_value
-                    logger.debug(f"🧩🔍✅ Used existing CtyValue for attribute {name}")
-                    continue
 
-                # Validate the attribute using its type
-                validated_value = attr_type.validate(attr_value)
-                
-                # Ensure validated_value is a CtyValue
-                if not isinstance(validated_value, CtyValue):
-                    logger.debug(f"🧩🔍⚠️ Wrapping raw value from {attr_type.__class__.__name__}.validate() in CtyValue")
-                    validated_value = CtyValue(type_=attr_type, value=validated_value)
-                
-                # Store the validated value
-                validated[name] = validated_value
-                logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
+                # Get the attribute value
+                attr_value = value[name]
 
-            except ValidationError as e:
-                # Include full path information in error message
-                context = f"Invalid value for attribute '{name}'"
-                if hasattr(e, 'path'):
-                    # If the error already has path info, append to it
-                    path_info = f"{context}: {e}"
-                else:
-                    path_info = context
-                logger.error(f"🧩❌🔄 {path_info}")
-                raise ValidationError(path_info) from e
-
-
+                # Handle special cases
+                match attr_value:
+                    case None if name in self.optional_attributes:
+                        # None for optional attribute
+                        logger.debug(f"🧩🔍✅ Optional attribute {name} is None, using null CtyValue")
+                        validated_attrs[name] = CtyValue.null(attr_type)
+                        continue
+                    case CtyValue() as cty_value:
+                        # Already a CtyValue, check type compatibility
+                        logger.debug(f"🧩🔍🔄 Attribute {name} is already a CtyValue, checking type compatibility")
+                        if not attr_type.equal(cty_value.type) and not cty_value.type.usable_as(attr_type):
+                            error_msg = f"Invalid type for attribute '{name}': expected {attr_type}, got {cty_value.type}"
+                            logger.error(f"🧩🔍❌ {error_msg}")
+                            validation_errors.append(error_msg)
+                            continue
+                        
+                        # Use the CtyValue directly
+                        validated_attrs[name] = cty_value
+                        logger.debug(f"🧩🔍✅ Used existing CtyValue for attribute {name}")
+                        continue
+                    case _:
+                        # Regular value, validate it
+                        try:
+                            validated_value = attr_type.validate(attr_value)
+                            validated_attrs[name] = validated_value
+                            logger.debug(f"🧩🔍✅ Validated attribute {name}")
+                        except ValidationError as e:
+                            # Add context about which attribute failed
+                            error_msg = f"Invalid value for attribute '{name}': {e}"
+                            logger.error(f"🧩🔍❌ {error_msg}")
+                            validation_errors.append(error_msg)
+                        except Exception as e:
+                            error_msg = f"Error validating attribute '{name}': {e}"
+                            logger.error(f"🧩🔍❌ {error_msg}")
+                            validation_errors.append(error_msg)
+            
             except Exception as e:
-                error_msg = f"Error validating attribute '{name}': {e}"
-                logger.error(f"🧩❌🔄 {error_msg}")
-                raise ValidationError(error_msg) from e
+                error_msg = f"Unexpected error processing attribute '{name}': {e}"
+                logger.error(f"🧩🔍❌ {error_msg}")
+                validation_errors.append(error_msg)
 
-        logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated)} attributes")
+        # If we had any validation errors, raise an exception with all the details
+        if validation_errors:
+            error_msg = "Object validation failed:\n" + "\n".join(validation_errors)
+            logger.error(f"🧩🔍❌ {error_msg}")
+            raise ValidationError(error_msg)
+
+        logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated_attrs)} attributes")
         
         # Return the validated attributes wrapped in a CtyValue
-        return CtyValue(type_=self, value=validated)
+        return CtyValue(type_=self, value=validated_attrs)
 
-    def get_attribute(self, value: Dict[str, Any], name: str) -> CtyValue:
+    def get_attribute(self, value: Union[dict[str, Any], CtyValue], name: str) -> CtyValue:
         """
         Get an attribute value by name.
 
         Args:
-            value: Object value to access
+            value: Object value to access (dict or CtyValue)
             name: Name of attribute to get
 
         Returns:
-            CtyValue: The attribute value as a CtyValue
+            CtyValue: The attribute value
 
         Raises:
             AttributeValidationError: If attribute doesn't exist
@@ -210,33 +212,43 @@ class CtyObject(CtyType[dict[str, Any]]):
         """
         logger.debug(f"🧩🔍🔄 Getting attribute {name} from object")
 
-        # Validate input
+        # First, handle CtyValue input and unwrap it
+        if isinstance(value, CtyValue):
+            if value.is_null:
+                error_msg = "Cannot get attribute from null value"
+                logger.error(f"🧩❌🔄 {error_msg}")
+                raise AttributeValidationError(error_msg)
+            if value.is_unknown:
+                error_msg = "Cannot get attribute from unknown value"
+                logger.error(f"🧩❌🔄 {error_msg}")
+                raise AttributeValidationError(error_msg)
+            value = value.value
+
+        # Then check if the value is a dictionary
         if not isinstance(value, dict):
-            type_name = type(value).__name__
-            error_msg = f"Expected a dictionary, got {type_name}: {value}"
-            logger.error(f"🧩🔍❌ {error_msg}")
+            error_msg = f"Expected a dictionary, got {type(value).__name__}: {value}"
+            logger.error(f"🧩❌🔄 {error_msg}")
             raise ValidationError(error_msg)
 
         # Check attribute exists in schema
         if name not in self.attribute_types:
             error_msg = f"Unknown attribute: {name}"
-            logger.error(f"🧩🔍❌ {error_msg}")
+            logger.error(f"🧩❌🔄 {error_msg}")
             raise AttributeValidationError(error_msg)
 
-        # If attribute is missing, return null CtyValue for optional attributes
+        # Handle optional attributes
         if name not in value and name in self.optional_attributes:
-            logger.debug(f"🧩🔍✅ Optional attribute {name} not found, returning null CtyValue")
+            logger.debug(f"🧩🔍✅ Optional attribute {name} not found, returning null value")
             return CtyValue.null(self.attribute_types[name])
 
         # Get attribute from dict
         attr_value = value.get(name)
-        
+
         # Ensure it's a CtyValue
         if not isinstance(attr_value, CtyValue):
-            logger.debug(f"🧩🔍⚠️ Wrapping raw value in CtyValue for attribute {name}")
+            logger.debug(f"🧩🔍✅ Wrapping raw value in CtyValue for {name}")
             attr_value = CtyValue(type_=self.attribute_types[name], value=attr_value)
-        
-        logger.debug(f"🧩🔍✅ Found attribute {name}: {attr_value}")
+
         return attr_value
 
     def required_attributes(self) -> FrozenSet[str]:
