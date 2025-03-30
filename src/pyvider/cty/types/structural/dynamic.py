@@ -9,7 +9,7 @@ class CtyDynamic(CtyType):
     for attributes whose structure or type cannot be determined at schema definition time.
     """
 
-    def validate(self, value: object) -> None:
+    def validate(self, value: object) -> "CtyValue":
         """
         Validation for CtyDynamic is a no-op since it accepts any value.
 
@@ -19,8 +19,10 @@ class CtyDynamic(CtyType):
         Raises:
             ValidationError: If the value is explicitly set to an unsupported form.
         """
+        from pyvider.cty.values import CtyValue
+
         if isinstance(value, (dict, list, int, float, bool, str, type(None))):
-            return  # All standard types are acceptable
+            return CtyValue(type_=self, value=value) 
 
         raise ValidationError("Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None.")
 
@@ -53,16 +55,3 @@ class CtyDynamic(CtyType):
 
     def __repr__(self) -> str:
         return "CtyDynamic()"
-
-# Factory function for schema definition
-
-def tfdynamic(**kwargs) -> 'AttributeValue':
-    """
-    Factory method for creating a CtyDynamic attribute in schema definitions.
-
-    Returns:
-        AttributeValue: An attribute containing CtyDynamic as its type.
-    """
-    from pyvider.schema.attributes import AttributeMetadata, AttributeValue
-    meta = AttributeMetadata(**kwargs)
-    return AttributeValue(ctype=CtyDynamic(), metadata=meta)
