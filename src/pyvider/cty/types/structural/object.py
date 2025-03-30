@@ -1,10 +1,17 @@
-#!/usr/bin/env python3
+#
 # pyvider/cty/types/structural/object.py
+#
 
 """
 CtyObject implementation for Cty object values.
 
-Pure object type validation without Terraform-specific features.
+This module provides the CtyObject type implementation which represents an object
+with named attributes of specific types. Objects have a predefined schema with
+strictly typed attributes and support for optional attributes.
+
+CtyObject follows the design principles of go-cty's Object type, ensuring type
+consistency throughout the validation process and maintaining proper type information
+in nested structures.
 """
 
 from typing import Any, Dict, FrozenSet, Optional, Self
@@ -13,6 +20,7 @@ import attrs
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.values import CtyValue
 from pyvider.cty.exceptions import (
     AttributeValidationError,
     InvalidTypeError,
@@ -26,8 +34,12 @@ class CtyObject(CtyType[dict[str, Any]]):
     Represents a Cty object type with a fixed set of attributes.
 
     An object has a predefined schema with strictly typed attributes.
-    This implementation focuses on core type validation without
-    Terraform-specific features.
+    Each attribute has a name and a specific type, and may be marked
+    as optional.
+
+    Attributes:
+        attribute_types: Dictionary mapping attribute names to their types
+        optional_attributes: Set of attribute names that are optional
     """
     attribute_types: dict[str, CtyType] = attrs.field(factory=dict)
     optional_attributes: FrozenSet[str] = attrs.field(factory=frozenset)
@@ -61,7 +73,7 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         logger.debug(f"🧩✅🔄 CtyObject configuration validated successfully with {len(self.attribute_types)} attributes")
 
-    def validate(self, value: Any) -> Dict[str, Any]:
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate a value against this object type.
 
@@ -69,7 +81,7 @@ class CtyObject(CtyType[dict[str, Any]]):
             value: Value to validate (dictionary or None)
 
         Returns:
-            The validated value preserving Cty types
+            CtyValue: The validated object value wrapped in a CtyValue
 
         Raises:
             ValidationError: If the value doesn't match this type
@@ -78,8 +90,8 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         # Handle null values
         if value is None:
-            logger.debug("🧩🔍🔄 Received null value, returning empty dict")
-            return {}
+            logger.debug("🧩🔍🔄 Received null value, returning null CtyValue")
+            return CtyValue.null(self)
 
         # Value must be a dictionary
         if not isinstance(value, dict):
@@ -115,8 +127,8 @@ class CtyObject(CtyType[dict[str, Any]]):
             # Handle optional attributes that are missing from the input
             if name not in value:
                 if name in self.optional_attributes:
-                    logger.debug(f"🧩🔍✅ Optional attribute {name} is missing, setting to None")
-                    validated[name] = None
+                    logger.debug(f"🧩🔍✅ Optional attribute {name} is missing, setting to null")
+                    validated[name] = CtyValue.null(attr_type)
                     continue
                 else:
                     # This should never happen due to the required check above
@@ -128,18 +140,17 @@ class CtyObject(CtyType[dict[str, Any]]):
             attr_value = value[name]
 
             try:
-                # When attr_value is None and it's an optional attribute, use None
+                # When attr_value is None and it's an optional attribute, use null CtyValue
                 if attr_value is None and name in self.optional_attributes:
-                    logger.debug(f"🧩🔍✅ Optional attribute {name} is None")
-                    validated[name] = None
+                    logger.debug(f"🧩🔍✅ Optional attribute {name} is None, using null CtyValue")
+                    validated[name] = CtyValue.null(attr_type)
                     continue
 
                 # Check if the value is already a CtyValue instance
-                from pyvider.cty.values import CtyValue
                 if isinstance(attr_value, CtyValue):
                     # Ensure the type matches
-                    if not attr_value.type.__class__ == attr_type.__class__:
-                        error_msg = f"Invalid type for attribute '{name}': expected {attr_type.__class__.__name__}, got {attr_value.type.__class__.__name__}"
+                    if not attr_type.equal(attr_value.type) and not attr_value.type.usable_as(attr_type):
+                        error_msg = f"Invalid type for attribute '{name}': expected {attr_type}, got {attr_value.type}"
                         logger.error(f"🧩🔍❌ {error_msg}")
                         raise ValidationError(error_msg)
                     
@@ -148,33 +159,41 @@ class CtyObject(CtyType[dict[str, Any]]):
                     logger.debug(f"🧩🔍✅ Used existing CtyValue for attribute {name}")
                     continue
 
-                # Validate the attribute using its type to get a proper CtyValue
-                # Instead of raw values, we wrap them in CtyValue objects
+                # Validate the attribute using its type
                 validated_value = attr_type.validate(attr_value)
                 
-                # For primitive types, wrap in CtyValue
-                from pyvider.cty.values import CtyValue
+                # Ensure validated_value is a CtyValue
                 if not isinstance(validated_value, CtyValue):
+                    logger.debug(f"🧩🔍⚠️ Wrapping raw value from {attr_type.__class__.__name__}.validate() in CtyValue")
                     validated_value = CtyValue(type_=attr_type, value=validated_value)
-
+                
                 # Store the validated value
                 validated[name] = validated_value
                 logger.debug(f"🧩🔍✅ Validated attribute {name}: {validated_value}")
 
             except ValidationError as e:
-                # Properly propagate nested validation errors with context
-                error_msg = f"Invalid value for attribute '{name}': {e}"
-                logger.error(f"🧩❌🔄 {error_msg}")
-                raise ValidationError(error_msg) from e
+                # Include full path information in error message
+                context = f"Invalid value for attribute '{name}'"
+                if hasattr(e, 'path'):
+                    # If the error already has path info, append to it
+                    path_info = f"{context}: {e}"
+                else:
+                    path_info = context
+                logger.error(f"🧩❌🔄 {path_info}")
+                raise ValidationError(path_info) from e
+
+
             except Exception as e:
                 error_msg = f"Error validating attribute '{name}': {e}"
                 logger.error(f"🧩❌🔄 {error_msg}")
                 raise ValidationError(error_msg) from e
 
         logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated)} attributes")
-        return validated
+        
+        # Return the validated attributes wrapped in a CtyValue
+        return CtyValue(type_=self, value=validated)
 
-    def get_attribute(self, value: Dict[str, Any], name: str) -> Any:
+    def get_attribute(self, value: Dict[str, Any], name: str) -> CtyValue:
         """
         Get an attribute value by name.
 
@@ -183,7 +202,7 @@ class CtyObject(CtyType[dict[str, Any]]):
             name: Name of attribute to get
 
         Returns:
-            The attribute value (preserving Cty type)
+            CtyValue: The attribute value as a CtyValue
 
         Raises:
             AttributeValidationError: If attribute doesn't exist
@@ -204,19 +223,17 @@ class CtyObject(CtyType[dict[str, Any]]):
             logger.error(f"🧩🔍❌ {error_msg}")
             raise AttributeValidationError(error_msg)
 
-        # Return attribute value (may be None)
+        # If attribute is missing, return null CtyValue for optional attributes
         if name not in value and name in self.optional_attributes:
-            logger.debug(f"🧩🔍✅ Optional attribute {name} not found, returning None")
-            # Create a null value of the attribute type
-            from pyvider.cty.values import CtyValue
+            logger.debug(f"🧩🔍✅ Optional attribute {name} not found, returning null CtyValue")
             return CtyValue.null(self.attribute_types[name])
 
-        # Get attribute from dict, ensuring it's a CtyValue
+        # Get attribute from dict
         attr_value = value.get(name)
         
-        # Wrap in CtyValue if it's not already
-        from pyvider.cty.values import CtyValue
+        # Ensure it's a CtyValue
         if not isinstance(attr_value, CtyValue):
+            logger.debug(f"🧩🔍⚠️ Wrapping raw value in CtyValue for attribute {name}")
             attr_value = CtyValue(type_=self.attribute_types[name], value=attr_value)
         
         logger.debug(f"🧩🔍✅ Found attribute {name}: {attr_value}")
@@ -316,7 +333,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         for name in other_attrs:
             self_type = self.attribute_types[name]
             other_type = other.attribute_types[name]
-            if not self_type.equal(other_type):
+            if not self_type.usable_as(other_type):
                 logger.debug(f"🧩🔍❌ Not usable: attribute {name} type not compatible")
                 return False
 
@@ -463,3 +480,23 @@ class CtyObject(CtyType[dict[str, Any]]):
         logger.debug(f"🧩🔧✅ Created new object type with required attributes: {names}")
         return new_obj
 
+    def __eq__(self, other):
+        """Allow direct comparison with == operator."""
+        return isinstance(other, CtyObject) and self.equal(other)
+
+    def __getitem__(self, name):
+        """Enable dictionary-like access: obj['attr_name']."""
+        # This would be a wrapper around get_attribute
+        if not isinstance(name, str):
+            raise TypeError(f"Attribute name must be a string, got {type(name).__name__}")
+        return self.get_attribute(self, name)
+
+    def __iter__(self):
+        """Enable iteration over attribute names."""
+        return iter(self.attribute_types.keys())
+
+    def __len__(self):
+        """Return number of attributes."""
+        return len(self.attribute_types)
+
+# 🐍🏗️🐣
