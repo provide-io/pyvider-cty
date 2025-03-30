@@ -627,36 +627,43 @@ class CtyValue(Generic[T]):
     def __hash__(self) -> int:
         """
         Make CtyValue instances hashable for use in sets and as dict keys.
-
-        Returns:
-            A hash value
+        Now incorporates the actual value for primitives.
         """
-        # Hash based on type, value state, and value (if hashable)
+        # Hash based on type, value state, marks
         type_hash = hash(self._type.__class__)
         state_hash = hash((self._is_unknown, self._is_null))
+        marks_hash = hash(self._marks) # Hash the frozenset of marks
 
-        # Only include the value in the hash if it's hashable
         value_hash = 0
-        if self._value is None:
-            value_hash = hash(None)
-        elif isinstance(self._value, (str, int, float, bool, Decimal)):
-            value_hash = hash(self._value)
-        # For collection values, we use a type-specific approach
-        elif isinstance(self._value, (list, tuple)):
-            # For lists/tuples, hash their length
-            value_hash = hash(len(self._value))
-        elif isinstance(self._value, (set, frozenset)):
-            # For sets, hash their length
-            value_hash = hash(len(self._value))
-        elif isinstance(self._value, dict):
-            # For dictionaries, hash their size
-            value_hash = hash(len(self._value))
-        # For complex values, we only use their type in the hash
+        if self._is_unknown or self._is_null:
+            value_hash = hash(None) # Consistent hash for null/unknown
+        else:
+            # Use the actual value's hash for hashable primitives
+            # This is essential for dictionary keys!
+            if isinstance(self._value, (str, int, float, bool, Decimal, bytes)):
+                try:
+                    value_hash = hash(self._value)
+                except TypeError: # Should not happen for these types, but safeguard
+                    value_hash = hash(repr(self._value))
+            # For collections/objects, hashing gets complex. If they are intended
+            # as keys, they need a stable hash. Using repr is a fallback.
+            # Using only type+state+marks might be safer if values aren't hashable.
+            # Let's use repr as a moderately stable fallback for now.
+            else:
+                try:
+                     # For tuples, hash elements recursively? Risky if elements unhashable
+                     if isinstance(self._value, tuple):
+                         # Simplified: hash tuple representation
+                         value_hash = hash(tuple(repr(el) for el in self._value))
+                     else: # Fallback for lists, dicts, sets, other objects
+                         value_hash = hash(repr(self._value))
+                except TypeError:
+                     # If repr itself fails or value contains unhashable items
+                     value_hash = hash(id(self._value)) # Less ideal, identity hash
 
-        # Include marks in hash if present
-        marks_hash = hash(frozenset(str(m) for m in self._marks)) if self._marks else 0
-
+        # Combine component hashes
         return hash((type_hash, state_hash, value_hash, marks_hash))
+
 
     def __eq__(self, other) -> bool:
         """

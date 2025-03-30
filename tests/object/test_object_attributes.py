@@ -437,14 +437,14 @@ async def test_get_attribute_from_cty_value():
         "age": 30
     })
     
+    validated = obj_type.validate(value)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == value
+
     # Get attribute using CtyValue's __getitem__
     name_attr = value["name"]
-    
-    # Verify it's a CtyValue with correct type and value
-    assert isinstance(name_attr, CtyValue)
-    assert isinstance(name_attr.type, CtyString)
     assert name_attr.value == "Alice"
-    
+
     # Access a non-existent attribute
     with pytest.raises(AttributeValidationError):
         non_existent = value["non_existent"]
@@ -533,9 +533,12 @@ async def test_object_getitem():
         "age": CtyNumber()
     })
     
-    # Get attribute type via __getitem__
-    name_type = obj_type["name"]
-    
+    validated = obj_type.validate(obj_type)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == obj_type
+
+    name_type = obj_type.value["name"]
+
     # Verify correct type returned
     assert isinstance(name_type, CtyString)
     
