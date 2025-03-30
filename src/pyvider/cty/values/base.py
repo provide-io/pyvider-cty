@@ -758,8 +758,20 @@ class CtyValue(Generic[T]):
         # Import locally to avoid circular imports
         from pyvider.cty.types.collections import CtyMap, CtyList
         from pyvider.cty.types.structural import CtyObject, CtyTuple
+        from pyvider.cty.exceptions import AttributeValidationError
 
         try:
+           # Check for CtyObject type first for specific attribute handling
+            if isinstance(self._type, CtyObject):
+                if not isinstance(key, str):
+                     raise TypeError(f"Object attribute name must be a string, got {type(key).__name__}")
+                if not self._type.has_attribute(key):
+                    # Raise specific error if attribute doesn't exist in schema
+                    raise AttributeValidationError(f"Object has no attribute '{key}'")
+                # If attribute exists in schema, proceed to dictionary lookup
+                # (KeyError might still occur if internal state is inconsistent)
+                return self._value[key]
+
             # For maps, check key in values
             if isinstance(self._type, CtyMap):
                 for k, v in self._value.items():
@@ -802,6 +814,10 @@ class CtyValue(Generic[T]):
             error_msg = f"Value of type {self._type.__class__.__name__} doesn't support indexing"
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg)
+
+        except AttributeValidationError as e: # Add this except block
+             logger.error(f"🔄❗❌ {e}")
+             raise
 
         except IndexError as e:
             # Re-raise IndexError

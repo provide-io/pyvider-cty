@@ -24,56 +24,44 @@ class CtyString(CtyType[str]):
 
     def validate(self, value: Any) -> "CtyValue":
         """
-        Validate that the given value is a string.
-        
-        Args:
-            value: The value to validate
-            
-        Returns:
-            A CtyValue with the validated string
-            
-        Raises:
-            ValidationError: If the value is not a string
+        Validate that the given value is a string. Stricter validation.
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
-        logger.debug(f"🔤🔍🔄 Validating value as string: {value}")
-        
-        # Handle None as empty string
-        if value is None:
-            logger.debug("🔤🔍✅ None value converted to empty string")
-            return CtyValue(type_=self, value="")
-            
+        logger.debug(f"🔤🔍🔄 Validating value as string: {value!r}")
+
         # Handle CtyValue input
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyString):
                 logger.debug("🔤🔍✅ Value is already a CtyValue with CtyString type")
                 return value
+            # --- Allow conversion from known, non-null CtyValue using str() ---
+            # --- This is a common pattern, but be mindful if it causes issues ---
             if value.is_known and not value.is_null:
-                # Try to convert value.value to string
-                try:
-                    str_val = str(value.value)
-                    logger.debug(f"🔤🔍✅ Converted CtyValue to string: {str_val}")
-                    return CtyValue(type_=self, value=str_val)
-                except Exception as e:
-                    error_msg = f"Failed to convert CtyValue to string: {e}"
-                    logger.error(f"🔤❗❌ {error_msg}")
-                    raise ValidationError(error_msg)
-        
+                 try:
+                     str_val = str(value.value)
+                     logger.debug(f"🔤🔍✅ Converted known CtyValue's inner value to string: {str_val!r}")
+                     return CtyValue(type_=self, value=str_val)
+                 except Exception as e:
+                     error_msg = f"Failed to convert CtyValue's inner value to string: {e}"
+                     logger.error(f"🔤❗❌ {error_msg}")
+                     raise ValidationError(error_msg) from e
+            # --- End CtyValue Handling ---
+
+        # Handle None as empty string (consistent with go-cty)
+        if value is None:
+            logger.debug("🔤🔍✅ None value converted to empty string")
+            return CtyValue(type_=self, value="")
+
         # Handle direct string
         if isinstance(value, str):
             logger.debug("🔤🔍✅ Value is a string")
             return CtyValue(type_=self, value=value)
-            
-        # Try to convert to string
-        try:
-            str_val = str(value)
-            logger.debug(f"🔤🔍✅ Value converted to string: {str_val}")
-            return CtyValue(type_=self, value=str_val)
-        except Exception as e:
-            error_msg = f"Value must be a string, got {type(value).__name__}"
-            logger.error(f"🔤❗❌ {error_msg}")
-            raise ValidationError(error_msg)
+
+        # --- REJECT ALL OTHER TYPES ---
+        error_msg = f"Value must be a string, got {type(value).__name__}"
+        logger.error(f"🔤❗❌ {error_msg}")
+        raise ValidationError(error_msg)
 
     def equal(self, other: CtyType[Any]) -> bool:
         """
