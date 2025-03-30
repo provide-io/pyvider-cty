@@ -399,10 +399,13 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         Returns:
             The item at the specified index, or a new CtyList with the sliced values
         """
-        if isinstance(index, slice):
-            sliced_value = self.value[index]
-            return evolve(self, value=sliced_value)
-        
+
+        if isinstance(key, slice):
+            start = key.start if key.start is not None else 0
+            stop = key.stop if key.stop is not None else len(self._value)
+            if key.step == 1 or key.step is None:
+                return self._type.slice(start, stop)
+
         try:
             return self.value[index]
         except IndexError:
