@@ -14,6 +14,7 @@ uv sync --all-groups --dev
 source .venv/bin/activate
 
 export PYTHONPATH=$(pwd)/src:$(pwd)
-export PATH=$(pwd)
+
+alias get-pytest-errors="grep -E '(_ test_|^E)' | sed -E 's/ ?___+__+ /\n*** /g'"
 
 cd ${CWD}

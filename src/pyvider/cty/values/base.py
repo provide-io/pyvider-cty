@@ -793,10 +793,9 @@ class CtyValue(Generic[T]):
                     # Handle direct indexing
                     return self.element_at(key)
 
-            # For objects, get attribute by name
             elif isinstance(self._type, CtyObject):
                 if self._type.has_attribute(key):
-                    return self._type.get_attribute(self._value, key)
+                    return self._type.get_attribute(self.value, key)
                 raise KeyError(f"Object has no attribute '{key}'")
 
             # Value doesn't support indexing

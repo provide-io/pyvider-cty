@@ -3,7 +3,7 @@
 
 import asyncio
 from pyvider.cty import CtyObject, CtyList, CtyString, CtyNumber, CtyValue
-from pyvider.cty.path import Path
+from pyvider.cty.path import CtyPath
 
 # Define a complex nested type
 server_type = CtyObject(
@@ -44,10 +44,10 @@ server_val = CtyValue(type_=server_type, value=validated)
 
 async def navigate_paths():
     # Create different paths to navigate the data
-    name_path = Path.get_attr("name")
-    cpu_path = Path.get_attr("specs").child("cpu")
-    first_disk_path = Path.get_attr("specs").child("disks").index_step(0)
-    disk_type_path = Path.get_attr("specs").child("disks").index_step(0).child("type")
+    name_path = CtyPath.get_attr("name")
+    cpu_path = CtyPath.get_attr("specs").child("cpu")
+    first_disk_path = CtyPath.get_attr("specs").child("disks").index_step(0)
+    disk_type_path = CtyPath.get_attr("specs").child("disks").index_step(0).child("type")
     
     # Apply paths to get values
     name = await name_path.apply_path(server_val.value)

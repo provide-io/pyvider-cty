@@ -3,12 +3,14 @@
 #
 
 """
-Tests for CtyObject type implementation.
+Tests for CtyObject type implementation with complex nested structures.
 """
 
 import pytest
+import asyncio
 
 from pyvider.cty import (
+    CtyValue,
     CtyBool,
     CtyNumber,
     CtyString,
@@ -84,76 +86,109 @@ async def test_complex_nested_object():
     
     # Validate
     validated = server_type.validate(value)
-    assert validated is not None
-    assert isinstance(validated, dict)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == server_type
+
+    # Check top-level attributes exist
+    assert "name" in validated.value
+    assert "size" in validated.value
+    assert "network" in validated.value
+    assert "disks" in validated.value
+    assert "tags" in validated.value
     
-    # Check top-level attributes
-    assert isinstance(validated["name"], CtyString)
-    assert validated["name"].value == "web-server"
+    # Check top-level attribute values
+    assert validated.value["name"].value == "web-server"
+    assert validated.value["size"].value == "t3.large"
     
-    assert isinstance(validated["size"], CtyString)
-    assert validated["size"].value == "t3.large"
+    # Verify top-level attribute types
+    assert isinstance(validated.value["name"].type, CtyString)
+    assert isinstance(validated.value["size"].type, CtyString)
     
     # Check network block
-    assert isinstance(validated["network"], dict)
+    network = validated.value["network"]
+    assert isinstance(network, CtyValue)
+    assert isinstance(network.type, CtyObject)
     
-    assert isinstance(validated["network"]["subnet"], CtyString)
-    assert validated["network"]["subnet"].value == "subnet-123456"
+    # Check network attributes
+    assert "subnet" in network.value
+    assert "vpc_id" in network.value
+    assert "security_groups" in network.value
     
-    assert isinstance(validated["network"]["vpc_id"], CtyString)
-    assert validated["network"]["vpc_id"].value == "vpc-123456"
+    assert network.value["subnet"].value == "subnet-123456"
+    assert network.value["vpc_id"].value == "vpc-123456"
     
-    assert isinstance(validated["network"]["security_groups"], CtyList)
+    # Check security_groups
+    security_groups = network.value["security_groups"]
+    assert isinstance(security_groups, CtyValue)
+    assert isinstance(security_groups.type, CtyList)
     
     # Check security_groups list elements
-    security_groups = validated["network"]["security_groups"].value
-    assert isinstance(security_groups, list)
-    assert len(security_groups) == 2
-    assert all(isinstance(item, CtyString) for item in security_groups)
-    assert security_groups[0].value == "sg-1"
-    assert security_groups[1].value == "sg-2"
+    assert len(security_groups.value) == 2
+    assert security_groups.value[0].value == "sg-1"
+    assert security_groups.value[1].value == "sg-2"
+    assert all(isinstance(item.type, CtyString) for item in security_groups.value)
     
     # Check disks block
-    assert isinstance(validated["disks"], CtyList)
-    disks = validated["disks"].value
-    assert isinstance(disks, list)
-    assert len(disks) == 2
+    disks = validated.value["disks"]
+    assert isinstance(disks, CtyValue)
+    assert isinstance(disks.type, CtyList)
+    assert len(disks.value) == 2
     
     # Check first disk
-    assert isinstance(disks[0]["size_gb"], CtyNumber)
-    assert disks[0]["size_gb"].value == 100
+    disk1 = disks.value[0]
+    assert isinstance(disk1, CtyValue)
+    assert isinstance(disk1.type, CtyObject)
     
-    assert isinstance(disks[0]["type"], CtyString)
-    assert disks[0]["type"].value == "gp3"
+    assert "size_gb" in disk1.value
+    assert "type" in disk1.value
+    assert "iops" in disk1.value
     
-    assert isinstance(disks[0]["iops"], CtyNumber)
-    assert disks[0]["iops"].value == 3000
+    assert disk1.value["size_gb"].value == 100
+    assert disk1.value["type"].value == "gp3"
+    assert disk1.value["iops"].value == 3000
     
     # Check second disk
-    assert isinstance(disks[1]["size_gb"], CtyNumber)
-    assert disks[1]["size_gb"].value == 500
+    disk2 = disks.value[1]
+    assert isinstance(disk2, CtyValue)
+    assert isinstance(disk2.type, CtyObject)
     
-    assert isinstance(disks[1]["type"], CtyString)
-    assert disks[1]["type"].value == "io2"
+    assert "size_gb" in disk2.value
+    assert "type" in disk2.value
+    assert "iops" in disk2.value
     
-    assert disks[1]["iops"] is None  # Optional attribute
+    assert disk2.value["size_gb"].value == 500
+    assert disk2.value["type"].value == "io2"
+    assert disk2.value["iops"].is_null == True  # Optional attribute is null
     
     # Check tags
-    assert isinstance(validated["tags"], CtyMap)
-    tags = validated["tags"].value
+    tags = validated.value["tags"]
+    assert isinstance(tags, CtyValue)
+    assert isinstance(tags.type, CtyMap)
     
-    assert isinstance(tags["Environment"], CtyString)
-    assert tags["Environment"].value == "production"
+    # Find specific keys in the map (need to iterate)
+    environment_found = False
+    owner_found = False
     
-    assert isinstance(tags["Owner"], CtyString)
-    assert tags["Owner"].value == "devops"
+    for k, v in tags.value.items():
+        assert isinstance(k, CtyValue)
+        assert isinstance(v, CtyValue)
+        assert isinstance(k.type, CtyString)
+        assert isinstance(v.type, CtyString)
+        
+        if k.value == "Environment":
+            environment_found = True
+            assert v.value == "production"
+        elif k.value == "Owner":
+            owner_found = True
+            assert v.value == "devops"
+    
+    assert environment_found, "Missing 'Environment' key in tags"
+    assert owner_found, "Missing 'Owner' key in tags"
 
 @pytest.mark.asyncio
 async def test_validation_performance_large_object():
     """Test validation performance with large object."""
     # Create large object type with many attributes
-    import asyncio
-
     attr_count = 100
     attrs = {}
     
@@ -167,162 +202,27 @@ async def test_validation_performance_large_object():
     
     # Measure validation time
     start_time = asyncio.get_event_loop().time()
+
     validated = large_type.validate(value)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == large_type
+    
     end_time = asyncio.get_event_loop().time()
     
-    # Check validation was successful
-    assert validated is not None
-    assert isinstance(validated, dict)
-    assert len(validated) == attr_count
+    # Check attribute count
+    assert len(validated.value) == attr_count
     
-    # Verify each attribute is correctly wrapped in CtyString
+    # Verify attributes are correctly typed and valued
     for i in range(attr_count):
         key = f"attr_{i}"
-        assert isinstance(validated[key], CtyString)
-        assert validated[key].value == f"value_{i}"
+        assert key in validated.value
+        assert isinstance(validated.value[key], CtyValue)
+        assert isinstance(validated.value[key].type, CtyString)
+        assert validated.value[key].value == f"value_{i}"
     
-    # Validation should be reasonably fast (even for large objects)
-    # This is just a sanity check, not a strict performance test
+    # Validation should be reasonably fast
     duration = end_time - start_time
     assert duration < 1.0  # Should complete in under a second
-
-@pytest.mark.asyncio
-async def test_complex_nested_object():
-    """Test complex nested object type."""
-    # Create complex nested object type
-    server_type = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "size": CtyString(),
-            "network": CtyObject(
-                attribute_types={
-                    "subnet": CtyString(),
-                    "vpc_id": CtyString(),
-                    "security_groups": CtyList(element_type=CtyString()),
-                },
-                optional_attributes=frozenset(["security_groups"])
-            ),
-            "disks": CtyList(
-                element_type=CtyObject(
-                    attribute_types={
-                        "size_gb": CtyNumber(),
-                        "type": CtyString(),
-                        "iops": CtyNumber(),
-                    },
-                    optional_attributes=frozenset(["iops"])
-                )
-            ),
-            "tags": CtyMap(
-                key_type=CtyString(),
-                value_type=CtyString()
-            )
-        },
-        optional_attributes=frozenset(["tags"]),
-    )
-    
-    # Create valid complex value
-    value = {
-        "name": "web-server",
-        "size": "t3.large",
-        "network": {
-            "subnet": "subnet-123456",
-            "vpc_id": "vpc-123456",
-            "security_groups": ["sg-1", "sg-2"]
-        },
-        "disks": [
-            {
-                "size_gb": 100,
-                "type": "gp3",
-                "iops": 3000
-            },
-            {
-                "size_gb": 500,
-                "type": "io2"
-            }
-        ],
-        "tags": {
-            "Environment": "production",
-            "Owner": "devops"
-        }
-    }
-    
-    # Validate
-    validated = server_type.validate(value)
-    assert validated is not None
-    assert isinstance(validated, dict)
-    
-    # Check top-level attributes
-    assert isinstance(validated["name"], CtyString)
-    assert validated["name"].value == "web-server"
-    
-    assert isinstance(validated["size"], CtyString)
-    assert validated["size"].value == "t3.large"
-    
-    # Check network block
-    assert isinstance(validated["network"], dict)
-    
-    assert isinstance(validated["network"]["subnet"], CtyString)
-    assert validated["network"]["subnet"].value == "subnet-123456"
-    
-    assert isinstance(validated["network"]["vpc_id"], CtyString)
-    assert validated["network"]["vpc_id"].value == "vpc-123456"
-    
-    assert isinstance(validated["network"]["security_groups"], CtyList)
-    
-    # Check security_groups list elements
-    security_groups = validated["network"]["security_groups"].value
-    assert isinstance(security_groups, list)
-    assert len(security_groups) == 2
-    assert all(isinstance(item, CtyString) for item in security_groups)
-    assert security_groups[0].value == "sg-1"
-    assert security_groups[1].value == "sg-2"
-    
-    # Check disks block
-    assert isinstance(validated["disks"], CtyList)
-    disks = validated["disks"].value
-    assert isinstance(disks, list)
-    assert len(disks) == 2
-    
-    # Check first disk
-    assert isinstance(disks[0]["size_gb"], CtyNumber)
-    assert disks[0]["size_gb"].value == 100
-    
-    assert isinstance(disks[0]["type"], CtyString)
-    assert disks[0]["type"].value == "gp3"
-    
-    assert isinstance(disks[0]["iops"], CtyNumber)
-    assert disks[0]["iops"].value == 3000
-    
-    # Check second disk
-    assert isinstance(disks[1]["size_gb"], CtyNumber)
-    assert disks[1]["size_gb"].value == 500
-    
-    assert isinstance(disks[1]["type"], CtyString)
-    assert disks[1]["type"].value == "io2"
-    
-    assert disks[1]["iops"] is None  # Optional attribute
-    
-    # Check tags - iterate through map to find values
-    assert isinstance(validated["tags"], CtyMap)
-    tags = validated["tags"].value
-    
-    # Find the Environment key (must look for a CtyString with value "Environment")
-    environment_value = None
-    owner_value = None
-    
-    for k, v in tags.items():
-        if isinstance(k, CtyString) and k.value == "Environment":
-            environment_value = v
-        elif isinstance(k, CtyString) and k.value == "Owner":
-            owner_value = v
-    
-    assert environment_value is not None
-    assert isinstance(environment_value, CtyString)
-    assert environment_value.value == "production"
-    
-    assert owner_value is not None
-    assert isinstance(owner_value, CtyString)
-    assert owner_value.value == "devops"
 
 @pytest.mark.asyncio
 async def test_map_key_handling():
@@ -348,38 +248,172 @@ async def test_map_key_handling():
     
     # Validate
     validated = obj_type.validate(value)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == obj_type
     
-    # Check result
-    assert validated is not None
-    assert "simple_map" in validated
-    assert isinstance(validated["simple_map"], CtyMap)
+    # Check simple_map attribute
+    assert "simple_map" in validated.value
+    simple_map = validated.value["simple_map"]
+    assert isinstance(simple_map, CtyValue)
+    assert isinstance(simple_map.type, CtyMap)
     
-    # Get the map value
-    map_value = validated["simple_map"].value
+    # Check map entries
+    keys_found = set()
+    values_found = set()
     
-    # Check map keys and values
-    keys_found = []
-    values_found = []
-    
-    for k, v in map_value.items():
-        assert isinstance(k, CtyString)
-        assert isinstance(v, CtyNumber)
-        keys_found.append(k.value)
-        values_found.append(v.value)
+    for k, v in simple_map.value.items():
+        assert isinstance(k, CtyValue)
+        assert isinstance(v, CtyValue)
+        assert isinstance(k.type, CtyString)
+        assert isinstance(v.type, CtyNumber)
+        
+        keys_found.add(k.value)
+        values_found.add(v.value)
     
     # Check that all keys and values are present
-    assert sorted(keys_found) == ["one", "three", "two"]
-    assert sorted(values_found) == [1, 2, 3]
+    assert keys_found == {"one", "two", "three"}
+    assert values_found == {1, 2, 3}
     
     # Test lookup by finding a key with specific value
     one_value = None
-    for k, v in map_value.items():
+    for k, v in simple_map.value.items():
         if k.value == "one":
             one_value = v
             break
-            
+    
     assert one_value is not None
-    assert isinstance(one_value, CtyNumber)
+    assert isinstance(one_value, CtyValue)
+    assert isinstance(one_value.type, CtyNumber)
     assert one_value.value == 1
+
+@pytest.mark.asyncio
+async def test_null_handling():
+    """Test handling of null values in complex objects."""
+    # Create object type with optional attributes
+    person_type = CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "contact": CtyObject(
+                attribute_types={
+                    "email": CtyString(),
+                    "phone": CtyString(),
+                },
+                optional_attributes=frozenset(["phone"])
+            ),
+            "preferences": CtyObject(
+                attribute_types={
+                    "theme": CtyString(),
+                    "notifications": CtyBool(),
+                },
+                optional_attributes=frozenset(["theme", "notifications"])
+            )
+        },
+        optional_attributes=frozenset(["preferences"])
+    )
+    
+    # Create value with missing optional attributes at different levels
+    value = {
+        "name": "Alice",
+        "contact": {
+            "email": "alice@example.com",
+            # phone is missing (optional)
+        },
+        # preferences is missing (optional)
+    }
+    
+    # Validate
+    validated = person_type.validate(value)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == person_type
+    
+    # Check name
+    assert "name" in validated.value
+    assert validated.value["name"].value == "Alice"
+    
+    # Check contact
+    assert "contact" in validated.value
+    contact = validated.value["contact"]
+    assert isinstance(contact, CtyValue)
+    assert isinstance(contact.type, CtyObject)
+    
+    # Check contact attributes
+    assert "email" in contact.value
+    assert "phone" in contact.value
+    assert contact.value["email"].value == "alice@example.com"
+    assert contact.value["phone"].is_null == True  # Optional attribute is null
+    
+    # Check preferences (should be null since it's optional and missing)
+    assert "preferences" in validated.value
+    preferences = validated.value["preferences"]
+    assert preferences.is_null == True
+
+@pytest.mark.asyncio
+async def test_nested_validation_error_propagation():
+    """Test that validation errors from nested types are properly propagated."""
+    # Create nested object types
+    address_type = CtyObject(
+        attribute_types={
+            "street": CtyString(),
+            "city": CtyString(),
+            "zip": CtyNumber(),  # Expecting a number for zip
+        }
+    )
+    
+    person_type = CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "address": address_type,
+        }
+    )
+    
+    # Create value with invalid zip (should be a number)
+    value = {
+        "name": "Alice",
+        "address": {
+            "street": "123 Main St",
+            "city": "Anytown",
+            "zip": "not-a-number",  # This will fail validation
+        }
+    }
+    
+    # Validate should fail
+    with pytest.raises(ValidationError) as excinfo:
+        person_type.validate(value)
+    
+    # Check that error message contains context about which attribute failed
+    error_msg = str(excinfo.value)
+    assert "Invalid value for attribute 'address'" in error_msg
+    assert "zip" in error_msg
+
+@pytest.mark.asyncio
+async def test_attribute_access_error_handling():
+    """Test error handling during attribute access."""
+    # Create object type
+    person_type = CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "age": CtyNumber(),
+        }
+    )
+    
+    # Create and validate value
+    value = {
+        "name": "Alice",
+        "age": 30,
+    }
+    validated = person_type.validate(value)
+    
+    # Test accessing unknown attribute
+    with pytest.raises(AttributeValidationError):
+        person_type.get_attribute(validated.value, "unknown")
+    
+    # Test accessing attribute on non-object
+    with pytest.raises(ValidationError):
+        person_type.get_attribute("not an object", "name")
+    
+    # Test accessing attribute on null object
+    null_obj = CtyValue.null(person_type)
+    with pytest.raises(AttributeValidationError):
+        person_type.get_attribute(null_obj, "name")
 
 # 🐍🏗️🧪

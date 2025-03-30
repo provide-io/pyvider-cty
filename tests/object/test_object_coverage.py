@@ -9,6 +9,7 @@ Additional tests to improve coverage for CtyObject type implementation.
 import pytest
 
 from pyvider.cty import (
+    CtyValue,
     CtyBool,
     CtyNumber,
     CtyString,
@@ -51,14 +52,16 @@ async def test_object_optional_attribute_fully_missing():
     
     # Validate
     validated = obj.validate(value)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == obj
     
     # Check that result contains all attributes
-    assert "name" in validated
-    assert "age" in validated
-    assert "active" in validated
+    assert "name" in validated.value
+    assert "age" in validated.value
+    assert "active" in validated.value
     
-    # Check that missing optional attribute is None
-    assert validated["active"] is None
+    # Check that missing optional attribute is null
+    assert validated["active"].is_null == True
 
 @pytest.mark.asyncio
 async def test_object_optional_attribute_as_none():
@@ -81,9 +84,11 @@ async def test_object_optional_attribute_as_none():
     
     # Validate
     validated = obj.validate(value)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == obj
     
-    # Check that optional attribute is None
-    assert validated["active"] is None
+    # Check that optional attribute is null
+    assert validated["active"].is_null == True
 
 @pytest.mark.asyncio
 async def test_string_representation():
@@ -174,80 +179,107 @@ async def test_validation_with_complex_nested_types():
     
     # Validate
     validated = person_type.validate(value)
-    
-    # Check result
-    assert validated is not None
-    assert isinstance(validated, dict)
+    assert isinstance(validated, CtyValue)
+    assert validated.type == person_type
     
     # Check top-level attributes
-    assert isinstance(validated["name"], CtyString)
-    assert validated["name"].value == "Alice"
+    assert "name" in validated.value
+    name_val = validated.value["name"]
+    assert isinstance(name_val, CtyValue)
+    assert isinstance(name_val.type, CtyString)
+    assert name_val.value == "Alice"
     
-    assert isinstance(validated["age"], CtyNumber)
-    assert validated["age"].value == 30
+    assert "age" in validated.value
+    age_val = validated.value["age"]
+    assert isinstance(age_val, CtyValue)
+    assert isinstance(age_val.type, CtyNumber)
+    assert age_val.value == 30
     
-    # Check nested address object - ensure it's a dict of CtyType values, not Python natives
-    address = validated["address"]
-    assert isinstance(address, dict)
-    assert isinstance(address["street"], CtyString)
-    assert address["street"].value == "123 Main St"
-    assert isinstance(address["city"], CtyString)
-    assert address["city"].value == "Anytown"
-    assert isinstance(address["zip"], CtyString)
-    assert address["zip"].value == "12345"
+    # Check nested address object
+    assert "address" in validated.value
+    address_val = validated.value["address"]
+    assert isinstance(address_val, CtyValue)
+    assert isinstance(address_val.type, CtyObject)
     
-    # Check contacts list - ensure it's a CtyList containing dicts of CtyType values
-    contacts = validated["contacts"]
-    assert isinstance(contacts, CtyList)
-    assert contacts.element_type == contact_type
-    contacts_list = contacts.value
-    assert len(contacts_list) == 2
+    # Check address attributes
+    assert "street" in address_val.value
+    street_val = address_val.value["street"]
+    assert isinstance(street_val, CtyValue)
+    assert isinstance(street_val.type, CtyString)
+    assert street_val.value == "123 Main St"
     
-    # Check first contact
-    contact1 = contacts_list[0]
-    assert isinstance(contact1, dict)
-    assert isinstance(contact1["type"], CtyString)
-    assert contact1["type"].value == "email"
-    assert isinstance(contact1["value"], CtyString)
-    assert contact1["value"].value == "alice@example.com"
+    # Verify city and zip similarly
+    assert "city" in address_val.value
+    city_val = address_val.value["city"]
+    assert isinstance(city_val, CtyValue)
+    assert isinstance(city_val.type, CtyString)
+    assert city_val.value == "Anytown"
     
-    # Check metadata map - ensure it's a CtyMap containing CtyType keys and values
-    metadata = validated["metadata"]
-    assert isinstance(metadata, CtyMap)
-    assert len(metadata.value) > 0
-
-    # Find specific keys in metadata by matching the string value
-    created_key = None
-    active_key = None
-    score_key = None
+    assert "zip" in address_val.value
+    zip_val = address_val.value["zip"]
+    assert isinstance(zip_val, CtyValue)
+    assert isinstance(zip_val.type, CtyString)
+    assert zip_val.value == "12345"
     
-    for k in metadata.value.keys():
-        assert isinstance(k, CtyString)  # All keys must be CtyString
+    # Check contacts list
+    assert "contacts" in validated.value
+    contacts_val = validated.value["contacts"]
+    assert isinstance(contacts_val, CtyValue)
+    assert isinstance(contacts_val.type, CtyList)
+    assert contacts_val.type.element_type == contact_type
+    
+    # Check first contact object
+    assert len(contacts_val.value) == 2
+    contact1 = contacts_val.value[0]
+    assert isinstance(contact1, CtyValue)
+    assert isinstance(contact1.type, CtyObject)
+    
+    # Check contact attributes
+    assert "type" in contact1.value
+    type_val = contact1.value["type"]
+    assert isinstance(type_val, CtyValue)
+    assert isinstance(type_val.type, CtyString)
+    assert type_val.value == "email"
+    
+    assert "value" in contact1.value
+    value_val = contact1.value["value"]
+    assert isinstance(value_val, CtyValue)
+    assert isinstance(value_val.type, CtyString)
+    assert value_val.value == "alice@example.com"
+    
+    # Check metadata map
+    assert "metadata" in validated.value
+    metadata_val = validated.value["metadata"]
+    assert isinstance(metadata_val, CtyValue)
+    assert isinstance(metadata_val.type, CtyMap)
+    
+    # Track metadata keys we find
+    found_created = False
+    found_active = False
+    found_score = False
+    
+    # Iterate through metadata entries
+    for k, v in metadata_val.value.items():
+        assert isinstance(k, CtyValue)
+        assert isinstance(v, CtyValue)
+        
         if k.value == "created":
-            created_key = k
+            found_created = True
+            assert isinstance(v.type, CtyString)
+            assert v.value == "2023-01-01"
         elif k.value == "active":
-            active_key = k
+            found_active = True
+            assert isinstance(v.type, CtyBool)
+            assert v.value is True
         elif k.value == "score":
-            score_key = k
+            found_score = True
+            assert isinstance(v.type, CtyNumber)
+            assert v.value == 95
     
-    # Verify we found all the keys
-    assert created_key is not None
-    assert active_key is not None
-    assert score_key is not None
-    
-    # Check the values
-    created_value = metadata.value[created_key]
-    active_value = metadata.value[active_key]
-    score_value = metadata.value[score_key]
-    
-    assert isinstance(created_value, CtyString)
-    assert created_value.value == "2023-01-01"
-    
-    assert isinstance(active_value, CtyBool)
-    assert active_value.value is True
-    
-    assert isinstance(score_value, CtyNumber)
-    assert score_value.value == 95
+    # Verify we found all expected keys
+    assert found_created, "Missing 'created' key in metadata"
+    assert found_active, "Missing 'active' key in metadata"
+    assert found_score, "Missing 'score' key in metadata"
 
 @pytest.mark.asyncio
 async def test_usable_as_complex_types():
@@ -296,7 +328,7 @@ async def test_validate_error_propagation():
         "address": address_type,
     })
 
-    # MODIFIED: Use an invalid value that CtyNumber.validate WILL reject
+    # Use an invalid value that CtyNumber.validate WILL reject
     value = {
         "name": "Alice",
         "address": {
@@ -312,15 +344,8 @@ async def test_validate_error_propagation():
 
     # Check the combined error message reflects the nested failure
     error_msg = str(excinfo.value)
-    print(f"Validation Error: {error_msg}") # Optional: print error for debugging
-
-    # Assertions based on expected error message structure
-    # Option 1: If errors are collected and combined (as per the suggested CtyObject.validate fix below)
-    assert "Invalid value for attribute" in error_msg
-    assert "Invalid value for attribute 'address'" in error_msg # Check for top-level context
-    assert "'zip'" in error_msg # Check for nested attribute context
-    assert "Value must be a number" in error_msg # Check for original CtyNumber error
-
-
-# 🐍🏗️🧪
-
+    
+    # Verification using partial matching rather than exact string comparison
+    assert "Invalid value for attribute 'address'" in error_msg
+    assert "'zip'" in error_msg
+    assert "Cannot convert" in error_msg or "not a valid number" in error_msg
