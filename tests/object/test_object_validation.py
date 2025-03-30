@@ -23,59 +23,7 @@ from pyvider.cty.exceptions import (
 )
 
 @pytest.mark.asyncio
-async def test_validation_success_1():
-    """Test successful validation of object values."""
-    from decimal import Decimal
-
-    # Create object type
-    person_type = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber(),
-            "active": CtyBool(),
-        }
-    )
-    
-    # Valid values
-    valid_values = [
-        {
-            "name": "Alice",
-            "age": 30,
-            "active": True,
-        },
-        {
-            "name": "Bob",
-            "age": Decimal("25.5"),
-            "active": False,
-        },
-        {
-            "name": "",
-            "age": 0,
-            "active": False,
-        },
-    ]
-    
-    # Validate each value
-    for value in valid_values:
-        validated = person_type.validate(value)
-        assert validated is not None
-        assert isinstance(validated, dict)
-        assert "name" in validated
-        assert "age" in validated
-        assert "active" in validated
-        
-        # Check types and values
-        assert isinstance(validated["name"], CtyString)
-        assert validated["name"].value == value["name"]
-        
-        assert isinstance(validated["age"], CtyNumber)
-        assert validated["age"].value == value["age"]
-        
-        assert isinstance(validated["active"], CtyBool)
-        assert validated["active"].value == value["active"]
-
-@pytest.mark.asyncio
-async def test_validation_success_2():
+async def test_validation_success():
     """Test successful validation of object values."""
     from decimal import Decimal
 
