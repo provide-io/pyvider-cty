@@ -20,8 +20,8 @@ from pyvider.cty import (
 )
 
 from pyvider.cty.exceptions import (
-    AttributeValidationError,
-    ValidationError,
+    CtyAttributeValidationError,
+    CtyValidationError,
 )
 
 @pytest.mark.asyncio
@@ -377,7 +377,7 @@ async def test_nested_validation_error_propagation():
     }
     
     # Validate should fail
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(CtyValidationError) as excinfo:
         person_type.validate(value)
     
     # Check that error message contains context about which attribute failed
@@ -404,16 +404,16 @@ async def test_attribute_access_error_handling():
     validated = person_type.validate(value)
     
     # Test accessing unknown attribute
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         person_type.get_attribute(validated.value, "unknown")
     
     # Test accessing attribute on non-object
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyValidationError):
         person_type.get_attribute("not an object", "name")
     
     # Test accessing attribute on null object
     null_obj = CtyValue.null(person_type)
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         person_type.get_attribute(null_obj, "name")
 
 # 🐍🏗️🧪

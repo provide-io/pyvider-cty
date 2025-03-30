@@ -11,7 +11,7 @@ equality checking, and other operations.
 import pytest
 from typing import Any
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
 
 class TestCtySetType:
@@ -84,7 +84,7 @@ class TestCtySetType:
     async def test_validate_invalid_element_type(self):
         """Test validation with invalid element type."""
         invalid = {"apple", 2, True}  # Mixed types
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyValidationError):
             self.string_set.validate(invalid)
 
     @pytest.mark.asyncio
@@ -103,7 +103,7 @@ class TestCtySetType:
     @pytest.mark.asyncio
     async def test_validate_non_iterable(self):
         """Test validation with non-iterable value."""
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyValidationError):
             self.string_set.validate(123)
 
     @pytest.mark.asyncio
@@ -113,7 +113,7 @@ class TestCtySetType:
         nested_set = CtySet(element_type=CtySet(element_type=CtyString()))
 
         # A set element that tries to be another set should fail
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyValidationError):
             # We need to pass an actual nested set structure to trigger the error
             nested_set.validate([{"inner_set"}])
 
@@ -172,7 +172,7 @@ class TestCtySetType:
     async def test_add_invalid_element(self):
         """Test adding an invalid element to the set."""
         # Skip the actual test - focus on validation failures instead
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyValidationError):
             # Try validating a set with an invalid element
             self.string_set.validate({"valid", 123})
 

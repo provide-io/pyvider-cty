@@ -9,24 +9,43 @@ This module contains all the exceptions that can be raised by the pyvider.cty
 module, keeping them separate from the main pyvider.cty.exceptions module.
 """
 
+class PyviderError(Exception):
+    pass
+
 class CtyError(Exception):
     """Base exception for all pyvider.cty errors."""
     pass
 
 
-class ValidationError(CtyError):
-    """Raised when a value fails type validation."""
+################################################################################
+# Validation Errors
+#
+class CtyValidationError(CtyError):
     pass
 
-
-class TypeMismatchError(ValidationError):
-    """Raised when a value doesn't match the expected type."""
+class CtyBoolValidationError(CtyValidationError):
     pass
 
-class AttributeValidationError(ValidationError):
-    """Raised when an attribute fails validation in an object."""
+class CtyNumberValidationError(CtyValidationError):
     pass
 
+class CtyStringValidationError(CtyValidationError):
+    pass
+
+class CtyListValidationError(CtyValidationError):
+    pass
+
+class CtyMapValidationError(CtyValidationError):
+    pass
+
+class CtyTypeMismatchError(CtyValidationError):
+    pass
+
+class CtyAttributeValidationError(CtyValidationError):
+    pass
+
+#
+################################################################################
 
 class TransformationError(CtyError):
     """Raised when a schema fails validation."""
@@ -64,35 +83,4 @@ class DynamicValueError(SerializationError):
 
 class ConversionError(CtyError):
     """Raised when type conversion fails."""
-    pass
-
-class CapsuleError(CtyError):
-    """Base exception for capsule-related errors."""
-    pass
-
-
-class CapsuleTypeError(CapsuleError):
-    """Raised when a capsule type is invalid or incompatible."""
-    
-    def __init__(self, message: str, capsule_type: Optional['CtyCapsule'] = None):
-        self.capsule_type = capsule_type
-        super().__init__(message)
-
-
-class CapsuleValueError(CapsuleError):
-    """Raised when a capsule value is invalid or incompatible."""
-    
-    def __init__(self, message: str, value: Any = None, capsule_type: Optional['CtyCapsule'] = None):
-        self.value = value
-        self.capsule_type = capsule_type
-        super().__init__(message)
-
-
-class CapsuleSerializationError(CapsuleError, SerializationError):
-    """Raised when capsule serialization fails."""
-    pass
-
-
-class CapsuleDeserializationError(CapsuleError, DeserializationError):
-    """Raised when capsule deserialization fails."""
     pass

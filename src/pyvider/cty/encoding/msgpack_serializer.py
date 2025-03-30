@@ -41,7 +41,6 @@ class CtyType(str, Enum):
     OBJECT = "object"
     DYNAMIC = "dynamic"
     NULL = "null"
-    CAPSULE = "capsule"
 
 
 class ValuePayload(TypedDict, total=False):
@@ -61,7 +60,6 @@ EXT_TYPE_HINT: Final[int] = 3
 EXT_OBJECT: Final[int] = 4
 EXT_TUPLE: Final[int] = 5
 EXT_SET: Final[int] = 6
-EXT_CAPSULE: Final[int] = 7
 
 # Magic bytes for quickly identifying MessagePack format for Pyvider Cty values
 # "PCTY" + version (1) = [80, 67, 84, 89, 1]
@@ -218,26 +216,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         logger.error(f"🧮📤❌ Error processing marked value: {e}")
                         raise
 
-                # Special handling for capsule types
-                from pyvider.cty.types.capsule import CtyCapsule
-                if isinstance(cty_type, CtyCapsule):
-                    logger.debug("🧮📤ℹ️ Handling capsule type")
-                    from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-
-                    # Get raw value for the capsule
-                    actual_value = value.value
-
-                    # Prepare capsule data - add await
-                    capsule_data = await prepare_capsule_value(actual_value, cty_type)
-                    serialized_capsule = msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS)
-
-                    # Wrap in capsule extension
-                    capsule_ext = msgpack.ExtType(EXT_CAPSULE, serialized_capsule)
-                    result = CTY_MAGIC_BYTES + msgpack.packb(capsule_ext, **DEFAULT_ENCODE_OPTIONS)
-
-                    logger.debug(f"🧮📤✅ Serialized capsule: {len(result)} bytes")
-                    return result
-
                 # For collection types, process element values
                 actual_value = value.value
                 if hasattr(actual_value, '__iter__') and not isinstance(actual_value, (str, bytes)):
@@ -379,16 +357,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
                             return value
                         except Exception as e:
                             logger.error(f"🧮📥❌ Error decoding marked value: {e}")
-                            raise
-
-                    case EXT_CAPSULE if True:
-                        logger.debug("🧮📥ℹ️ Decoding capsule value")
-                        try:
-                            capsule_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                            from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                            return process_capsule_value(capsule_data)
-                        except Exception as e:
-                            logger.error(f"🧮📥❌ Error decoding capsule value: {e}")
                             raise
 
                     case EXT_OBJECT if True:
@@ -542,23 +510,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
         logger.debug(f"🧮📤🔄 Serializing with type: {type(value).__name__}, hint: {type_hint}")
 
         try:
-            # Handle special case for capsule types
-            from pyvider.cty.types.capsule import CtyCapsule
-            if isinstance(type_hint, CtyCapsule):
-                logger.debug("🧮📤ℹ️ Serializing capsule type with type hint")
-                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-
-                # Prepare capsule data
-                capsule_data = await prepare_capsule_value(value, type_hint)
-                serialized_capsule = msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS)
-
-                # Wrap in capsule extension
-                capsule_ext = msgpack.ExtType(EXT_CAPSULE, serialized_capsule)
-                result = CTY_MAGIC_BYTES + msgpack.packb(capsule_ext, **DEFAULT_ENCODE_OPTIONS)
-
-                logger.debug(f"🧮📤✅ Serialized capsule with type hint: {len(result)} bytes")
-                return result
-
             # Determine the CtyType
             cty_type = self._get_cty_type(value, type_hint)
 
@@ -615,19 +566,10 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
-            from pyvider.cty.types.capsule import CtyCapsule
 
             # Check if this is an extension type
             if len(data) >= 2 and data[0] == 0xc7:  # MessagePack ext format byte
                 ext_code = data[2]
-                if ext_code == EXT_CAPSULE:
-                    logger.debug("🧮📥ℹ️ Detected capsule extension")
-                    ext_obj = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
-                    if isinstance(ext_obj, msgpack.ExtType) and ext_obj.code == EXT_CAPSULE:
-                        # Process capsule data
-                        capsule_data = msgpack.unpackb(ext_obj.data, **DEFAULT_DECODE_OPTIONS)
-                        from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                        return await process_capsule_value(capsule_data)
 
             # Handle special states first
             raw_value = msgpack.unpackb(data, **DEFAULT_DECODE_OPTIONS)
@@ -688,12 +630,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
                         except Exception as e:
                             logger.error(f"🧮📥❌ Error processing marked value extension: {e}")
                             raise
-
-                    case EXT_CAPSULE if True:
-                        logger.debug("🧮📥ℹ️ Detected capsule value extension")
-                        capsule_data = msgpack.unpackb(raw_value.data, **DEFAULT_DECODE_OPTIONS)
-                        from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                        return await process_capsule_value(capsule_data)
 
             # Check for typed value structure
             if isinstance(raw_value, dict) and b"type" in raw_value and b"value" in raw_value:
@@ -766,11 +702,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
 
         # If type_hint is a Cty type, extract the CtyType from it
         if type_hint is not None and hasattr(type_hint, '__class__'):
-            # Handle capsule types explicitly
-            from pyvider.cty.types.capsule import CtyCapsule
-            if isinstance(type_hint, CtyCapsule):
-                return CtyType.CAPSULE
-
             # Check for Cty type naming conventions (CtyString, CtyNumber, etc.)
             type_class_name = type_hint.__class__.__name__
             if type_class_name.startswith('Cty'):
@@ -806,11 +737,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
                     return CtyType.OBJECT
                 return CtyType.MAP
             case _:
-                # Check for capsule type
-                from pyvider.cty.types.capsule import CtyCapsule
-                if hasattr(value, 'type') and isinstance(getattr(value, 'type', None), CtyCapsule):
-                    return CtyType.CAPSULE
-
                 # Check for custom classes with known conversions
                 if hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
                     return CtyType.OBJECT
@@ -830,11 +756,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
         Returns:
             Encoded type hint
         """
-        # Check for capsule type
-        from pyvider.cty.types.capsule import CtyCapsule
-        if isinstance(type_hint, CtyCapsule):
-            return msgpack.packb("capsule", **DEFAULT_ENCODE_OPTIONS)
-
         # If it's a Cty type, extract the type name
         if hasattr(type_hint, '__class__'):
             type_class_name = type_hint.__class__.__name__
@@ -874,35 +795,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
         # Handle None
         if value is None:
             return None
-
-        # Check for capsule type
-        from pyvider.cty.types.capsule import CtyCapsule
-        if hasattr(value, 'type') and isinstance(getattr(value, 'type', None), CtyCapsule):
-            # This is a CtyValue with CtyCapsule type
-            logger.debug("🧮📤🔄 Preparing capsule CtyValue")
-
-            # Extract capsule info
-            capsule_data = {
-                "capsule_type": value.type.friendly_name,
-                "is_null": value.is_null,
-                "is_unknown": value.is_unknown
-            }
-
-            if not value.is_null and not value.is_unknown:
-                # Include encapsulated value
-                try:
-                    from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-                    # This function returns a dict, not awaitable
-                    capsule_data["capsule_data"] = {
-                        "type": "pickle",
-                        "value": str(value.value),
-                        "python_type": f"{type(value.value).__module__}.{type(value.value).__name__}"
-                    }
-                except Exception as e:
-                    logger.error(f"🧮📤❌ Error preparing capsule value: {e}")
-                    raise
-
-            return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
 
         # Use Python 3.12+ match syntax for type-based handling
         match value:
@@ -960,43 +852,6 @@ class MsgpackSerializer(TypedSerializerProtocol):
             MessagePack-serializable value
         """
         match cty_type:
-            case CtyType.CAPSULE:
-                logger.debug("🧮📤🔄 Preparing capsule value for serialization")
-                from pyvider.cty.types.capsule import CtyCapsule
-                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-
-                if isinstance(value, CtyCapsule):
-                    # This is the capsule type itself
-                    capsule_type = value
-                    capsule_data = {
-                        "capsule_type": capsule_type.friendly_name,
-                        "is_null": True  # No value provided
-                    }
-                    return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
-
-                if hasattr(value, "type") and isinstance(value.type, CtyCapsule):
-                    # This is a CtyValue with CtyCapsule type
-                    capsule_type = value.type
-                    capsule_value = value.value
-
-                    # Prepare capsule data
-                    capsule_data = await prepare_capsule_value(capsule_value, capsule_type)
-                    return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
-
-                # Otherwise, need to find the capsule type from context
-                capsule_type = None
-                if hasattr(value, "_type") and isinstance(value._type, CtyCapsule):
-                    capsule_type = value._type
-
-                if capsule_type is None:
-                    error_msg = "Cannot determine capsule type for serialization"
-                    logger.error(f"🧮📤❌ {error_msg}")
-                    raise UnsupportedTypeError(type(value), "msgpack", value)
-
-                # Prepare the capsule data
-                capsule_data = await prepare_capsule_value(value, capsule_type)
-                return msgpack.ExtType(EXT_CAPSULE, msgpack.packb(capsule_data, **DEFAULT_ENCODE_OPTIONS))
-
             case CtyType.NULL:
                 return None
             case CtyType.STRING:
@@ -1052,22 +907,11 @@ class MsgpackSerializer(TypedSerializerProtocol):
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
             CtyObject, CtyTuple, CtyDynamic,
-            CtyCapsule
         )
 
         # Handle extension types
         if isinstance(value, msgpack.ExtType):
             match value.code:
-                case EXT_CAPSULE if True:
-                    logger.debug("🧮🔍ℹ️ Processing capsule extension")
-                    try:
-                        capsule_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                        from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                        return await process_capsule_value(capsule_data)
-                    except Exception as e:
-                        logger.error(f"🧮🔍❌ Error processing capsule extension: {e}")
-                        raise
-
                 case EXT_OBJECT if True:
                     logger.debug("🧮🔍ℹ️ Processing object extension")
                     try:
@@ -1283,28 +1127,9 @@ class MsgpackSerializer(TypedSerializerProtocol):
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
             CtyObject, CtyTuple, CtyDynamic,
-            CtyCapsule
         )
 
         match cty_type:
-            case CtyType.CAPSULE:
-                logger.debug("🧮🔍ℹ️ Processing capsule type value")
-
-                # Check if it's already an ExtType with capsule data
-                if isinstance(value, msgpack.ExtType) and value.code == EXT_CAPSULE:
-                    capsule_data = msgpack.unpackb(value.data, **DEFAULT_DECODE_OPTIONS)
-                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                    return await process_capsule_value(capsule_data)
-
-                # Check for dict with capsule data format
-                if isinstance(value, dict) and "capsule_type" in value:
-                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                    return await process_capsule_value(value)
-
-                logger.warning(f"🧮🔍⚠️ Invalid capsule data format: {value}")
-                # Return the raw value as fallback
-                return value
-
             case CtyType.STRING:
                 string_val = str(value) if value is not None else ""
                 return CtyValue(type_=CtyString(), value=string_val)

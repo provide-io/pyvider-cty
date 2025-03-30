@@ -20,10 +20,12 @@ from pyvider.cty.types import (
 )
 
 from pyvider.cty.values import CtyValue
+from pyvider.cty.path import CtyPath
 
 __all__ = [
     "CtyType",
     "CtyValue",
+    "CtyPath",
 
     "CtyBool",
     "CtyNumber",

@@ -13,7 +13,7 @@ from typing import (
 
 from attrs import define
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 
 T = TypeVar("T")
 
@@ -27,7 +27,7 @@ class CtyType(ABC, Generic[T]):
         """Convert raw Python types to CtyType instances."""
         if isinstance(value, cls):
             return value
-        raise ValidationError(
+        raise CtyValidationError(
             f"Cannot convert {type(value).__name__} to {cls.__name__}."
         )
 

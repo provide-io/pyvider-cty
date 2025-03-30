@@ -20,8 +20,8 @@ from pyvider.cty import (
 )
 
 from pyvider.cty.exceptions import (
-    AttributeValidationError,
-    ValidationError,
+    CtyAttributeValidationError,
+    CtyValidationError,
     InvalidTypeError,
 )
 
@@ -469,9 +469,9 @@ async def test_validate_error_propagation():
         }
     }
 
-    # Validate should fail and raise ValidationError
-    with pytest.raises(ValidationError) as excinfo:
-        person_type.validate(value) # Expecting ValidationError from nested failure
+    # Validate should fail and raise CtyValidationError
+    with pytest.raises(CtyValidationError) as excinfo:
+        person_type.validate(value) # Expecting CtyValidationError from nested failure
 
     # Check the combined error message reflects the nested failure
     error_msg = str(excinfo.value)

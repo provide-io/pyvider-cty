@@ -78,39 +78,6 @@ class CtyValue(Generic[T]):
             return None
         return self._value
     
-    def encapsulated_value(self) -> Any:
-        """
-        Get the encapsulated value from a capsule-typed value.
-        
-        Returns:
-            The encapsulated value
-            
-        Raises:
-            TypeError: If the value is not a capsule type
-            ValueError: If the value is unknown
-        """
-        from pyvider.cty.types.capsule import CtyCapsule
-        logger.debug("🔄🔍🔄 Accessing encapsulated value from capsule")
-        
-        if not isinstance(self._type, CtyCapsule):
-            error_msg = f"Not a capsule-typed value: {self._type.__class__.__name__}"
-            logger.error(f"🔄❗❌ {error_msg}")
-            raise TypeError(error_msg)
-            
-        if self._is_unknown:
-            error_msg = "Cannot get encapsulated value of unknown value"
-            logger.error(f"🔄❗❌ {error_msg}")
-            raise ValueError(error_msg)
-            
-        # For null values, return None
-        if self._is_null:
-            logger.debug("🔄🔍✅ Returning None for null capsule value")
-            return None
-            
-        # Return the actual encapsulated value
-        logger.debug(f"🔄🔍✅ Successfully retrieved encapsulated value: {type(self._value).__name__}")
-        return self._value
-
     @property
     def is_known(self) -> bool:
         """Check if this value is known (not unknown)."""
@@ -469,12 +436,12 @@ class CtyValue(Generic[T]):
     def object(cls, attribute_types: dict, attributes: dict) -> "CtyValue":
         """Create an object value."""
         from pyvider.cty.types import CtyObject
-        from pyvider.cty.exceptions import ValidationError
+        from pyvider.cty.exceptions import CtyValidationError
         
         # Validate attribute_types contains CtyType instances
         for attr_name, attr_type in attribute_types.items():
             if not isinstance(attr_type, CtyType):
-                raise ValidationError(f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}")
+                raise CtyValidationError(f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}")
         
         # Create object type and validate
         object_type = CtyObject(attribute_types=attribute_types)
@@ -528,15 +495,8 @@ class CtyValue(Generic[T]):
         elif self._is_null:
             result["is_null"] = True
         else:
-            # Special handling for capsule types
-            from pyvider.cty.types.capsule import CtyCapsule
-            if isinstance(self._type, CtyCapsule):
-                result["friendly_name"] = self._type.friendly_name
-                result["encapsulated_type"] = self._type.encapsulated_type.__name__
-                # Don't include the actual value in the dict representation
-                
             # Handle collection types
-            elif isinstance(self._value, (set, frozenset)):
+            if isinstance(self._value, (set, frozenset)):
                 result["value"] = list(self._value)
             elif isinstance(self._value, dict):
                 # For dictionaries, convert keys and values
@@ -698,12 +658,6 @@ class CtyValue(Generic[T]):
 
         # For known, non-null values, compare values
         if self.is_known and not self.is_null and other.is_known and not other.is_null:
-            # Special case for capsule types
-            from pyvider.cty.types.capsule import CtyCapsule
-            if isinstance(self._type, CtyCapsule) and isinstance(other._type, CtyCapsule):
-                # For capsule types, delegate to the encapsulated values' equality
-                return self._value == other._value
-                
             # For primitive values, compare directly
             if isinstance(self._value, (str, int, float, bool, Decimal)):
                 return self._value == other._value
@@ -765,7 +719,7 @@ class CtyValue(Generic[T]):
         # Import locally to avoid circular imports
         from pyvider.cty.types.collections import CtyMap, CtyList
         from pyvider.cty.types.structural import CtyObject, CtyTuple
-        from pyvider.cty.exceptions import AttributeValidationError
+        from pyvider.cty.exceptions import CtyAttributeValidationError
 
         try:
            # Check for CtyObject type first for specific attribute handling
@@ -774,7 +728,7 @@ class CtyValue(Generic[T]):
                      raise TypeError(f"Object attribute name must be a string, got {type(key).__name__}")
                 if not self._type.has_attribute(key):
                     # Raise specific error if attribute doesn't exist in schema
-                    raise AttributeValidationError(f"Object has no attribute '{key}'")
+                    raise CtyAttributeValidationError(f"Object has no attribute '{key}'")
                 # If attribute exists in schema, proceed to dictionary lookup
                 # (KeyError might still occur if internal state is inconsistent)
                 return self._value[key]
@@ -822,7 +776,7 @@ class CtyValue(Generic[T]):
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg)
 
-        except AttributeValidationError as e: # Add this except block
+        except CtyAttributeValidationError as e: # Add this except block
              logger.error(f"🔄❗❌ {e}")
              raise
 

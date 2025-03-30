@@ -40,7 +40,6 @@ class CtyType(str, Enum):
     OBJECT = "object"
     DYNAMIC = "dynamic"
     NULL = "null"
-    CAPSULE = "capsule"
 
 
 class TypedValue(TypedDict):
@@ -171,20 +170,6 @@ class JsonSerializer(TypedSerializerProtocol):
 
                     return json.dumps(unmarked_data).encode('utf-8')
 
-                # Special handling for capsule types
-                from pyvider.cty.types.capsule import CtyCapsule
-                if isinstance(cty_type, CtyCapsule):
-                    logger.debug("🧰📤ℹ️ Handling capsule type")
-                    from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-                    
-                    # Get raw value for the capsule
-                    actual_value = value.value
-                    
-                    # Prepare capsule data - add await
-                    capsule_data = await prepare_capsule_value(actual_value, cty_type)
-                    return json.dumps(capsule_data).encode('utf-8')
-
-                # For collection types, process element values
                 actual_value = value.value
                 if hasattr(actual_value, '__iter__') and not isinstance(actual_value, (str, bytes)):
                     if isinstance(actual_value, dict):
@@ -242,12 +227,6 @@ class JsonSerializer(TypedSerializerProtocol):
             decoded_str = data.decode('utf-8')
             raw_value = json.loads(decoded_str)
 
-            # Check for capsule data format
-            if isinstance(raw_value, dict) and "capsule_type" in raw_value:
-                logger.debug("🧰🔍ℹ️ Detected capsule data format")
-                from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                return await process_capsule_value(raw_value)
-
             # Process the value, handling any type information
             result = await self._process_value(raw_value)
             logger.debug(f"🧰🔍✅ Deserialized to {type(result).__name__}")
@@ -284,14 +263,6 @@ class JsonSerializer(TypedSerializerProtocol):
         logger.debug(f"🧰📤🔄 Serializing with type: {type(value).__name__}, hint: {type_hint}")
 
         try:
-            # Handle special case for capsule types
-            from pyvider.cty.types.capsule import CtyCapsule
-            if isinstance(type_hint, CtyCapsule):
-                logger.debug("🧰📤ℹ️ Serializing capsule type with type hint")
-                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-                capsule_data = await prepare_capsule_value(value, type_hint)
-                return json.dumps(capsule_data).encode('utf-8')
-
             # Determine the CtyType
             cty_type = self._get_cty_type(value, type_hint)
 
@@ -346,13 +317,6 @@ class JsonSerializer(TypedSerializerProtocol):
 
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
-            from pyvider.cty.types.capsule import CtyCapsule
-
-            # Check for capsule data format
-            if isinstance(raw_value, dict) and "capsule_type" in raw_value:
-                logger.debug("🧰🔍ℹ️ Detected capsule data format")
-                from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                return await process_capsule_value(raw_value)
 
             # Handle special states first
             if isinstance(raw_value, dict):
@@ -414,19 +378,6 @@ class JsonSerializer(TypedSerializerProtocol):
                 # Extract type and value
                 type_str = raw_value["type"]
                 value = raw_value["value"]
-
-                # Handle capsule type special case
-                if type_str == CtyType.CAPSULE.value and isinstance(value, dict):
-                    logger.debug("🧰🔍ℹ️ Detected capsule value in typed format")
-                    # Convert to capsule data format and process
-                    capsule_data = {
-                        "capsule_type": value.get("friendly_name", "unknown"),
-                        "is_null": value.get("is_null", False),
-                        "is_unknown": value.get("is_unknown", False),
-                        "capsule_data": value.get("capsule_data", {})
-                    }
-                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                    return await process_capsule_value(capsule_data)
 
                 # If we have a type_hint, verify type compatibility
                 if type_hint is not None:
@@ -533,11 +484,6 @@ class JsonSerializer(TypedSerializerProtocol):
 
         # If type_hint is a Cty type, extract the CtyType from it
         if type_hint is not None and hasattr(type_hint, '__class__'):
-            # Handle capsule types explicitly
-            from pyvider.cty.types.capsule import CtyCapsule
-            if isinstance(type_hint, CtyCapsule):
-                return CtyType.CAPSULE
-
             # Check for Cty type naming conventions (CtyString, CtyNumber, etc.)
             type_class_name = type_hint.__class__.__name__
             if type_class_name.startswith('Cty'):
@@ -573,11 +519,6 @@ class JsonSerializer(TypedSerializerProtocol):
                     return CtyType.OBJECT
                 return CtyType.MAP
             case _:
-                # Check for capsule type
-                from pyvider.cty.types.capsule import CtyCapsule
-                if hasattr(value, 'type') and isinstance(getattr(value, 'type', None), CtyCapsule):
-                    return CtyType.CAPSULE
-
                 # Check for custom classes with known conversions
                 if hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
                     return CtyType.OBJECT
@@ -597,10 +538,6 @@ class JsonSerializer(TypedSerializerProtocol):
         Returns:
             String name for the type
         """
-        from pyvider.cty.types.capsule import CtyCapsule
-        if isinstance(type_obj, CtyCapsule):
-            return "capsule"
-
         if hasattr(type_obj, '__class__'):
             type_class_name = type_obj.__class__.__name__
             if type_class_name.startswith('Cty'):
@@ -666,34 +603,6 @@ class JsonSerializer(TypedSerializerProtocol):
             JSON-serializable value
         """
         match cty_type:
-            case CtyType.CAPSULE:
-                logger.debug("🧰📤🔄 Preparing capsule value for serialization")
-                from pyvider.cty.types.capsule import CtyCapsule
-                from pyvider.cty.encoding.capsule_serializer import prepare_capsule_value
-
-                if not isinstance(value, CtyCapsule) and hasattr(value, "type") and isinstance(value.type, CtyCapsule):
-                    # This is a CtyValue with CtyCapsule type
-                    capsule_type = value.type
-                    capsule_value = value.value
-                    return await prepare_capsule_value(capsule_value, capsule_type)
-
-                # Find the capsule type from the context
-                capsule_type = None
-                if hasattr(value, "_type") and isinstance(value._type, CtyCapsule):
-                    capsule_type = value._type
-                elif hasattr(value, "encapsulated_type"):
-                    # This is already a CtyCapsule instance
-                    capsule_type = value
-
-                if capsule_type is None:
-                    error_msg = "Cannot determine capsule type for serialization"
-                    logger.error(f"🧰📤❌ {error_msg}")
-                    raise UnsupportedTypeError(type(value), "json", value)
-
-                # Prepare the capsule data
-                capsule_data = await prepare_capsule_value(value, capsule_type)
-                return capsule_data
-
             case CtyType.NULL:
                 return None
             case CtyType.STRING:
@@ -741,7 +650,6 @@ class JsonSerializer(TypedSerializerProtocol):
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
             CtyObject, CtyTuple, CtyDynamic,
-            CtyCapsule
         )
 
         # Use Python 3.12+ match syntax for type-based processing
@@ -777,12 +685,6 @@ class JsonSerializer(TypedSerializerProtocol):
                     logger.debug(f"🧰🔍⚠️ Could not create CtyList value: {e}")
                     return processed_list
             case dict():
-                # Check for capsule data format
-                if "capsule_type" in value:
-                    logger.debug("🧰🔍ℹ️ Detected capsule data format")
-                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                    return await process_capsule_value(value)
-
                 # Check for special type indicators
                 if "type" in value and "value" in value and len(value) <= 3:  # Allow for marks
                     try:
@@ -879,35 +781,9 @@ class JsonSerializer(TypedSerializerProtocol):
             CtyString, CtyNumber, CtyBool,
             CtyList, CtyMap, CtySet,
             CtyObject, CtyTuple, CtyDynamic,
-            CtyCapsule
         )
 
         match cty_type:
-            case CtyType.CAPSULE:
-                logger.debug("🧰🔍ℹ️ Processing capsule type value")
-                if isinstance(value, dict) and "capsule_type" in value:
-                    # Already in capsule data format
-                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                    return await process_capsule_value(value)
-                elif isinstance(value, dict) and "python_type" in value:
-                    # Convert to capsule data format and process
-                    capsule_data = {
-                        "capsule_type": value.get("friendly_name", "unknown"),
-                        "is_null": value.get("is_null", False),
-                        "is_unknown": value.get("is_unknown", False),
-                        "capsule_data": {
-                            "type": "simple_attributes",
-                            "python_type": value.get("python_type", ""),
-                            "attributes": value.get("attributes", {})
-                        }
-                    }
-                    from pyvider.cty.encoding.capsule_serializer import process_capsule_value
-                    return await process_capsule_value(capsule_data)
-                else:
-                    logger.warning(f"🧰🔍⚠️ Invalid capsule data format: {value}")
-                    # Return the raw value as fallback
-                    return value
-
             case CtyType.STRING:
                 string_val = str(value) if value is not None else ""
                 # Return the raw value instead of a CtyValue when direct comparison is expected

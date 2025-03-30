@@ -54,7 +54,7 @@ def test_nested_list_validation():
 
 # CORRECT - Error handling
 def test_validation_errors():
-    with pytest.raises(ValidationError) as cm:
+    with pytest.raises(CtyValidationError) as cm:
         CtyList(element_type=CtyString()).validate(None)
     assert "Cannot validate None as a list" in str(cm.value)
 ```

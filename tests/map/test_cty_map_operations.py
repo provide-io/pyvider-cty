@@ -5,7 +5,7 @@
 import pytest
 from decimal import Decimal
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import (
     CtyBool,
     CtyMap,
@@ -153,12 +153,12 @@ class TestCtyMapOperations:
         # Test get with string key (proper conversion must be handled)
         try:
             # Using key1_value string directly might fail if implementation requires CtyValue
-            # This should either work with proper conversion or raise ValidationError
+            # This should either work with proper conversion or raise CtyMapValidationError
             lookup_key = CtyValue(type_=CtyString(), value="key1")
             result = self.string_map.get(map_val, lookup_key)
             assert result is not None
             assert result.value == "value1"
-        except ValidationError:
+        except CtyMapValidationError:
             # If implementation strictly requires pre-validated keys, this is expected
             pass
         

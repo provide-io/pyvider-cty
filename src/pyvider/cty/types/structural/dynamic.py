@@ -1,5 +1,5 @@
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 
 class CtyDynamic(CtyType):
@@ -17,14 +17,14 @@ class CtyDynamic(CtyType):
             value (object): Any value to validate.
 
         Raises:
-            ValidationError: If the value is explicitly set to an unsupported form.
+            CtyValidationError: If the value is explicitly set to an unsupported form.
         """
         from pyvider.cty.values import CtyValue
 
         if isinstance(value, (dict, list, int, float, bool, str, type(None))):
             return CtyValue(type_=self, value=value) 
 
-        raise ValidationError("Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None.")
+        raise CtyValidationError("Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None.")
 
     def equal(self, other: CtyType) -> bool:
         """

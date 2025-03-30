@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, Generic, TypeVar, final
 from typing import Set as PySet
 from attrs import define, evolve, field
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.logger import logger
 
@@ -23,7 +23,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
     def __attrs_post_init__(self) -> None:
         """Validate element_type after initialization."""
         if not isinstance(self.element_type, CtyType):
-            raise ValidationError(
+            raise CtyValidationError(
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
@@ -39,7 +39,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             A CtyValue with the validated set
 
         Raises:
-            ValidationError: If validation fails
+            CtyValidationError: If validation fails
         """
         logger.debug(f"🔌📝🔄 Validating value as CtySet: {type(value).__name__}")
 
@@ -48,11 +48,11 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
 
         if value is None:
             logger.debug("🔌❗❌ Expected iterable, got NoneType")
-            raise ValidationError(f"Expected iterable, got NoneType")
+            raise CtyValidationError(f"Expected iterable, got NoneType")
 
         if not hasattr(value, '__iter__') or isinstance(value, (str, bytes)):
             logger.debug(f"🔌❗❌ Expected iterable, got {type(value).__name__}")
-            raise ValidationError(f"Expected iterable, got {type(value).__name__}")
+            raise CtyValidationError(f"Expected iterable, got {type(value).__name__}")
 
         if not value:
             logger.debug("🔌📝✅ Returning empty set for empty iterable")
@@ -65,7 +65,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             try:
                 if isinstance(item, (set, frozenset)):
                     logger.debug("🔌❗❌ Nested sets are not allowed in CtySet")
-                    raise ValidationError("Nested sets are not allowed in CtySet.")
+                    raise CtyValidationError("Nested sets are not allowed in CtySet.")
                     
                 # Validate the element
                 validated_item = self.element_type.validate(item)
@@ -81,7 +81,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
         if validation_errors:
             error_msg = "CtySet validation failed:\n" + "\n".join(validation_errors)
             logger.debug(f"🔌❗❌ {error_msg}")
-            raise ValidationError(error_msg)
+            raise CtyValidationError(error_msg)
 
         logger.debug(f"🔌📝✅ Successfully validated set with {len(validated)} items")
         return CtyValue(type_=self, value=validated)
@@ -98,7 +98,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             A new CtySet with the element added
 
         Raises:
-            ValidationError: If the element cannot be validated
+            CtyValidationError: If the element cannot be validated
         """
         try:
             # Validate the element
@@ -114,7 +114,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
                 value=new_set
             )
         except Exception as e:
-            raise ValidationError(f"Failed to add element: {e}")
+            raise CtyValidationError(f"Failed to add element: {e}")
 
     def remove(self, item: T) -> "CtySet":
         """
@@ -127,7 +127,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             A new CtySet with the item removed
 
         Raises:
-            ValidationError: If the item cannot be removed
+            CtyValidationError: If the item cannot be removed
         """
         try:
             validated_item = self.element_type.validate(item)
@@ -136,7 +136,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             return evolve(self, value=new_set)
         except Exception as e:
             logger.debug(f"🔌❗❌ Failed to remove item: {e}")
-            raise ValidationError(f"Failed to remove item: {e}")
+            raise CtyValidationError(f"Failed to remove item: {e}")
 
     def usable_as(self, other: "CtyType") -> bool:
         """
