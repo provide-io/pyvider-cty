@@ -6,7 +6,7 @@ from typing import Any, ClassVar, TypeVar
 
 from attrs import define, evolve, field
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 
@@ -45,7 +45,7 @@ class CtyString(CtyType[str]):
                  except Exception as e:
                      error_msg = f"Failed to convert CtyValue's inner value to string: {e}"
                      logger.error(f"🔤❗❌ {error_msg}")
-                     raise ValidationError(error_msg) from e
+                     raise CtyValidationError(error_msg) from e
             # --- End CtyValue Handling ---
 
         # Handle None as empty string (consistent with go-cty)
@@ -61,7 +61,7 @@ class CtyString(CtyType[str]):
         # --- REJECT ALL OTHER TYPES ---
         error_msg = f"Value must be a string, got {type(value).__name__}"
         logger.error(f"🔤❗❌ {error_msg}")
-        raise ValidationError(error_msg)
+        raise CtyValidationError(error_msg)
 
     def equal(self, other: CtyType[Any]) -> bool:
         """

@@ -3,7 +3,7 @@
 #
 
 import pytest
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import CtyBool, CtyMap, CtyNumber, CtyString, CtyValue
 
 class TestCtyMapValidation:
@@ -82,6 +82,51 @@ class TestCtyMapValidation:
         validated = self.string_map.validate(empty)
         assert len(validated.value) == 0
 
+    @pytest.mark.asyncio
+    async def test_cty_map_with_decimal_values(self):
+        """Test map with Decimal number values."""
+        # Create map with Decimal values
+        from decimal import Decimal
+        
+        data = {
+            "pi": Decimal("3.14159"),
+            "e": Decimal("2.71828"),
+            "zero": Decimal("0")
+        }
+
+        # Validate
+        validated = self.number_map.validate(data)
+
+        # Check structure
+        assert len(validated.value) == 3
+
+        # Check Decimal values
+        for k, v in validated.value.items():
+            assert isinstance(v, CtyNumber)
+            if k.value == "pi":
+                assert isinstance(v.value, Decimal)
+                assert v.value == Decimal("3.14159")
+            elif k.value == "e":
+                assert isinstance(v.value, Decimal)
+                assert v.value == Decimal("2.71828")
+
+    @pytest.mark.asyncio
+    async def test_cty_map_unhashable_key(self):
+        """Test validation with unhashable key."""
+        # Create a custom key type that rejects a specific key
+        class RejectingKeyType(CtyString):
+            def validate(self, value):
+                if value == "valid_key":
+                    raise CtyMapValidationError("Key validation failed: unhashable type")
+                return super().validate(value)
+        
+        # Create test map with rejecting key type
+        test_map = CtyMap(key_type=RejectingKeyType(), value_type=CtyString())
+        
+        # Test validation failure
+        with pytest.raises(CtyMapValidationError) as exc:
+            test_map.validate({"valid_key": "value"})
+
 @pytest.mark.asyncio
 async def test_cty_map_validate_none():
     """Test validation with None value."""
@@ -104,7 +149,7 @@ async def test_cty_map_validate_empty_dict():
 async def test_cty_map_validate_valid_data():
     """Test validation with valid data."""
     from decimal import Decimal
-    
+
     map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
     # Valid data
@@ -143,7 +188,7 @@ async def test_cty_map_validate_invalid_key():
         "three": 3
     }
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyMapValidationError):
         map_type.validate(data)
 
 @pytest.mark.asyncio
@@ -158,7 +203,7 @@ async def test_cty_map_validate_invalid_value():
         "three": 3
     }
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyMapValidationError):
         map_type.validate(data)
 
 @pytest.mark.asyncio
@@ -200,7 +245,7 @@ async def test_cty_map_validate_with_cty_instances():
     async def test_cty_map_validate_invalid_bool_map(self):
         """Test validation with invalid bool map."""
         invalid = {"is_active": 123}  # Not a boolean value
-        with pytest.raises(ValidationError) as excinfo:
+        with pytest.raises(CtyMapValidationError) as excinfo:
             self.bool_map.validate(invalid)
         assert "validation failed" in str(excinfo.value)
 
@@ -235,7 +280,7 @@ async def test_cty_map_validation_error_details():
     }
 
     # Validate and catch detailed error
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(CtyMapValidationError) as excinfo:
         map_type.validate(data)
 
     # Error message should contain details
@@ -251,18 +296,18 @@ async def test_cty_map_init_validation():
     assert valid_map.value_type == CtyNumber()
 
     # Invalid key_type
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyMapValidationError):
         CtyMap(key_type="not_a_cty_type", value_type=CtyNumber())
 
     # Invalid value_type
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyMapValidationError):
         CtyMap(key_type=CtyString(), value_type="not_a_cty_type")
 
 @pytest.mark.asyncio
 async def test_attribute_paths_with_cty_values():
     """Test paths with attribute access for proper CtyValues."""
     # Create object type with proper CtyType attributes
-    from pyvider.cty.path import CtyPath
+    from pyvider.cty import CtyObject, CtyPath
 
     person_type = CtyObject(attribute_types={
         "name": CtyString(),

@@ -19,8 +19,8 @@ from pyvider.cty import (
 )
 
 from pyvider.cty.exceptions import (
-    AttributeValidationError,
-    ValidationError,
+    CtyAttributeValidationError,
+    CtyValidationError,
 )
 
 @pytest.mark.asyncio
@@ -58,7 +58,7 @@ async def test_object_get_invalid_attribute():
     assert data.type == obj
 
     # Try to access non-existent attribute
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         obj.get_attribute(data.value, "unknown")
 
 @pytest.mark.asyncio
@@ -71,7 +71,7 @@ async def test_object_get_attribute_invalid_value():
     })
 
     # Try to access attribute on non-dict value
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyValidationError):
         obj.get_attribute("not an object", "title")
 
 @pytest.mark.asyncio
@@ -163,7 +163,7 @@ async def test_object_with_optional_attributes_unknown():
         "name": CtyString(),
         "age": CtyNumber()
     })
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         obj.with_optional_attributes("unknown")
 
 @pytest.mark.asyncio
@@ -176,7 +176,7 @@ async def test_object_with_required_attributes_unknown():
         },
         optional_attributes=frozenset(["age"])
     )
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         obj.with_required_attributes("unknown")
 
 @pytest.mark.asyncio
@@ -189,7 +189,7 @@ async def test_object_with_required_attributes_already_required():
         },
         optional_attributes=frozenset(["age"])
     )
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         obj.with_required_attributes("name")  # Already required
 
 @pytest.mark.asyncio
@@ -309,7 +309,7 @@ async def test_get_attribute_unknown():
     assert value.type == person_type
     
     # Try to get unknown attribute
-    with pytest.raises(AttributeValidationError) as excinfo:
+    with pytest.raises(CtyAttributeValidationError) as excinfo:
         person_type.get_attribute(value.value, "unknown")
     
     # Check error message
@@ -341,7 +341,7 @@ async def test_with_optional_attributes():
     assert "active" in new_type.optional_attributes
     
     # Try to add unknown attribute
-    with pytest.raises(AttributeValidationError) as excinfo:
+    with pytest.raises(CtyAttributeValidationError) as excinfo:
         person_type.with_optional_attributes("unknown")
     
     # Check error message
@@ -378,7 +378,7 @@ async def test_with_required_attributes():
     assert "email" not in new_type.optional_attributes
     
     # Try to make already required attribute required again
-    with pytest.raises(AttributeValidationError) as excinfo:
+    with pytest.raises(CtyAttributeValidationError) as excinfo:
         new_type.with_required_attributes("name")
     
     # Check error message
@@ -415,7 +415,7 @@ async def test_with_attribute():
     assert "email" in new_type.optional_attributes
     
     # Try to add existing attribute
-    with pytest.raises(AttributeValidationError) as excinfo:
+    with pytest.raises(CtyAttributeValidationError) as excinfo:
         new_type.with_attribute("email", CtyString())
     
     # Check error message
@@ -446,7 +446,7 @@ async def test_get_attribute_from_cty_value():
     assert name_attr.value == "Alice"
 
     # Access a non-existent attribute
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         non_existent = value["non_existent"]
 
 @pytest.mark.asyncio
@@ -484,7 +484,7 @@ async def test_object_unknown_attribute_access():
     unknown_val = CtyValue.unknown(obj_type)
     
     # Try to access attribute
-    with pytest.raises(AttributeValidationError) as excinfo:
+    with pytest.raises(CtyAttributeValidationError) as excinfo:
         obj_type.get_attribute(unknown_val, "name")
     
     # Check error message

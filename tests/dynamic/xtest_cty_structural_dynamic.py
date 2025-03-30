@@ -1,5 +1,5 @@
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.structural.dynamic import CtyDynamic
 
 
@@ -58,7 +58,7 @@ class TestCtyDynamic():
         
         # Try to validate an instance of the custom class
         custom_obj = CustomClass()
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(CtyValidationError):
             self.dynamic_type.validate(custom_obj)
     
     def test_equal_same_type(self):

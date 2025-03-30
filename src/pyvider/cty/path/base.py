@@ -23,7 +23,7 @@ from typing import Any, List, Optional, TypeVar, cast, Sequence
 import attrs
 
 from pyvider.cty.logger import logger
-from pyvider.cty.exceptions import AttributePathError, ValidationError
+from pyvider.cty.exceptions import AttributePathError, CtyValidationError
 from pyvider.cty.types import (
     CtyType,
     CtyList,
@@ -444,7 +444,7 @@ class KeyStep(PathStep):
             key_str = str(self.key)
             type_.key_type.validate(key_str)
             logger.debug(f"🧰✅🔄 Key {key_str} is valid for this map type")
-        except ValidationError as e:
+        except CtyValidationError as e:
             error_msg = f"Invalid key for map: {e}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)

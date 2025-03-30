@@ -5,7 +5,7 @@
 import pytest
 from decimal import Decimal
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import (
     CtyBool,
     CtyMap,

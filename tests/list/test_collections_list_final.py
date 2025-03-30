@@ -1,6 +1,10 @@
+#
+# tests/list/test_collections_list_final.py
+#
+
 import pytest
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import CtyString, CtyNumber, CtyList
 
 class TestFinalCoverage:
@@ -51,7 +55,7 @@ class TestExceptionCoverage:
         number_list = CtyList(element_type=CtyNumber())
 
         # Try to append a string (which will fail number validation)
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(CtyListValidationError) as exc:
             number_list.append("not a number")
 
         # Verify the correct error message
@@ -81,6 +85,27 @@ class TestExceptionCoverage:
 class TestAdditionalCoverage:
     """Additional tests targeting hard-to-hit code paths."""
 
+    def test_complex_append_failure_2(self):
+        """Test append with a more complex validation failure."""
+        # Add missing import to fix the NameError
+        from pyvider.cty import CtyValue
+        
+        # Create a special validator that will fail in a specific way
+        class FailingStringType(CtyString):
+            def validate(self, value):
+                # Return a properly constructed validation error
+                raise ValueError("Custom validation error")
+        
+        # Create a list with our failing validator
+        string_list = CtyList(element_type=FailingStringType())
+        
+        # Now try to append, which should hit the exception handler
+        with pytest.raises(CtyListValidationError) as exc:
+            string_list.append("test")
+            
+        assert "Failed to append item" in str(exc.value)
+        assert "Custom validation error" in str(exc.value)
+
     # FIX: Use a subclass instead of modifying a frozen instance
     def test_complex_append_failure(self):
         """Test append with a more complex validation failure."""
@@ -93,7 +118,7 @@ class TestAdditionalCoverage:
         string_list = CtyList(element_type=FailingStringType())
         
         # Now try to append, which should hit the exception handler
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(CtyListValidationError) as exc:
             string_list.append("test")
             
         assert "Failed to append item" in str(exc.value)
@@ -178,3 +203,5 @@ class TestLineSpecificCoverage:
         empty_slice = list_obj[1:]  # Should be empty slice
         assert isinstance(empty_slice, CtyList)
         assert len(empty_slice.value) == 0
+
+# 🐍🏗️🧪

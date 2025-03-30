@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 
@@ -86,7 +86,7 @@ class CtyBool(CtyType[bool]):
         # --- REJECT ALL OTHER TYPES ---
         error_msg = f"Value must be a boolean or a specific convertible string/number, got {type(value).__name__}"
         logger.error(f"🔄❗❌ {error_msg}")
-        raise ValidationError(error_msg)
+        raise CtyValidationError(error_msg)
 
     def equal(self, other: "CtyType[bool]") -> bool:
         """Check equality with another type."""

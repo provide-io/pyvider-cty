@@ -18,8 +18,8 @@ from pyvider.cty import (
 )
 
 from pyvider.cty.exceptions import (
-    AttributeValidationError,
-    ValidationError,
+    CtyAttributeValidationError,
+    CtyValidationError,
 )
 
 @pytest.mark.asyncio

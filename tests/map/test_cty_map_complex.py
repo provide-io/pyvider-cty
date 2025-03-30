@@ -5,7 +5,7 @@
 import pytest
 from decimal import Decimal
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import (
     CtyBool,
     CtyMap,
@@ -35,28 +35,28 @@ class TestCtyMapComplex:
     async def test_cty_map_with_invalid_inputs(self):
         """Test validation with invalid inputs."""
         # Test with non-dict input
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.string_map.validate([1, 2, 3])  # List, not dict
             
         # Test with invalid key type
         invalid_key = CtyValue(type_=CtyNumber(), value=123)  # Should be string
         valid_val = CtyValue(type_=CtyString(), value="value")
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.string_map.validate({invalid_key: valid_val})
             
         # Test with invalid value type
         valid_key = CtyValue(type_=CtyString(), value="key")
         invalid_val = CtyValue(type_=CtyNumber(), value=123)  # Should be string
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.string_map.validate({valid_key: invalid_val})
             
         # Test with null/unknown values
         null_key = CtyValue(type_=CtyString(), is_null=True)
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.string_map.validate({null_key: valid_val})
             
         unknown_key = CtyValue(type_=CtyString(), is_unknown=True)
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.string_map.validate({unknown_key: valid_val})
 
     @pytest.mark.asyncio
@@ -162,7 +162,7 @@ class TestCtyMapComplex:
             }
         }
         
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.nested_map.validate(invalid_data)
 
     @pytest.mark.asyncio
@@ -212,7 +212,7 @@ class TestCtyMapComplex:
             "mixed": ["string", 123, True]  # Should be all strings
         }
         
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             self.list_map.validate(invalid_data)
             
     @pytest.mark.asyncio
@@ -298,7 +298,7 @@ class TestCtyMapComplex:
         """Test validation with an invalid nested map."""
         nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
         invalid = {"config": {"filename": 123}}
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             nested_map.validate(invalid)
 
 

@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Sequence, cast, List, Tuple
 
 import attrs
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 
@@ -58,7 +58,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             The validated tuple value
 
         Raises:
-            ValidationError: If the value doesn't match this tuple type
+            CtyValidationError: If the value doesn't match this tuple type
         """
         from pyvider.cty.values import CtyValue
         logger.debug(f"🧩🔍🔄 Validating value against CtyTuple: {value}")
@@ -67,13 +67,13 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         if not isinstance(value, (tuple, list)):
             error_msg = f"Expected tuple or list, got {type(value).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
-            raise ValidationError(error_msg)
+            raise CtyValidationError(error_msg)
 
         # Check length
         if len(value) != len(self.element_types):
             error_msg = f"Expected {len(self.element_types)} elements, got {len(value)}"
             logger.error(f"🧩❌🔄 {error_msg}")
-            raise ValidationError(error_msg)
+            raise CtyValidationError(error_msg)
 
         # Validate each element against its corresponding type
         validated_elements = []
@@ -84,14 +84,14 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 validated_element = element_type.validate(element)
                 validated_elements.append(validated_element)
                 logger.debug(f"🧩✅🔄 Tuple element {i} validated successfully")
-            except ValidationError as e:
+            except CtyValidationError as e:
                 error_msg = f"Invalid value for tuple element {i}: {e}"
                 logger.error(f"🧩❌🔄 {error_msg}")
-                raise ValidationError(error_msg) from e
+                raise CtyValidationError(error_msg) from e
             except Exception as e:
                 error_msg = f"Unexpected error validating tuple element {i}: {e}"
                 logger.error(f"🧩❌🔄 {error_msg}")
-                raise ValidationError(error_msg) from e
+                raise CtyValidationError(error_msg) from e
 
         logger.debug(f"🧩✅🔄 Tuple validated successfully with {len(validated_elements)} elements")
         return CtyValue(type_=self, value=tuple(validated_elements))
@@ -108,7 +108,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             The element at the specified index
 
         Raises:
-            ValidationError: If the container is not a tuple or CtyTuple
+            CtyValidationError: If the container is not a tuple or CtyTuple
             IndexError: If the index is out of bounds
         """
         logger.debug(f"🧩🔍🔄 Getting element at index {index} from tuple")
@@ -127,7 +127,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         else:
             error_msg = f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
-            raise ValidationError(error_msg)
+            raise CtyValidationError(error_msg)
 
         # Handle negative indices
         elem_count = len(container_value)
@@ -158,7 +158,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             A new CtyValue with the sliced tuple
 
         Raises:
-            ValidationError: If the container is not a tuple or CtyTuple
+            CtyValidationError: If the container is not a tuple or CtyTuple
             IndexError: If the indices are out of bounds
         """
         logger.debug(f"🧩🔍🔄 Slicing tuple from {start} to {end}")
@@ -177,7 +177,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         else:
             error_msg = f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
-            raise ValidationError(error_msg)
+            raise CtyValidationError(error_msg)
 
         # Handle negative indices
         elem_count = len(container_value)

@@ -19,8 +19,8 @@ from pyvider.cty import (
 )
 
 from pyvider.cty.exceptions import (
-    AttributeValidationError,
-    ValidationError,
+    CtyAttributeValidationError,
+    CtyValidationError,
 )
 
 @pytest.mark.asyncio
@@ -116,7 +116,7 @@ async def test_validation_invalid_object_type():
         "name": CtyString(),
         "age": CtyNumber()
     })
-    with pytest.raises(ValidationError):
+    with pytest.raises(CtyValidationError):
         obj.validate({"name": "Alice"})  # Missing required "age"
 
 @pytest.mark.asyncio
@@ -151,7 +151,7 @@ async def test_validation_unknown_attribute():
         "name": CtyString(),
         "age": CtyNumber()
     })
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(CtyValidationError) as excinfo:
         obj.validate({
             "name": "Alice",
             "age": 30,
@@ -168,7 +168,7 @@ async def test_validation_invalid_attribute_value():
         "name": CtyString(),
         "age": CtyNumber()
     })
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(CtyValidationError) as excinfo:
         obj.validate({
             "name": "Alice",
             "age": "thirty"  # Should be a number
@@ -215,7 +215,7 @@ async def test_validation_failure_missing_required():
     
     # Validate each invalid value
     for value in invalid_values:
-        with pytest.raises(ValidationError) as excinfo:
+        with pytest.raises(CtyValidationError) as excinfo:
             person_type.validate(value)
         
         # Check error message mentions missing attribute
@@ -251,7 +251,7 @@ async def test_validation_failure_wrong_type():
     # Validate each invalid value
     for value in invalid_values:
         print(f"Testing invalid value: {value}") # Added for debugging
-        with pytest.raises(ValidationError) as excinfo:
+        with pytest.raises(CtyValidationError) as excinfo:
             person_type.validate(value)
 
         # Check error message mentions invalid value
@@ -275,7 +275,7 @@ async def test_validation_failure_wrong_type():
          print(f"Testing valid bool value conversion: {value}")
          try:
              person_type.validate(value)
-         except ValidationError as e:
+         except CtyValidationError as e:
              pytest.fail(f"Validation unexpectedly failed for {value}: {e}")
     # --- End Optional Add ---
 
@@ -303,7 +303,7 @@ async def test_validation_failure_not_dict():
     
     # Validate each invalid value
     for value in invalid_values:
-        with pytest.raises(ValidationError) as excinfo:
+        with pytest.raises(CtyValidationError) as excinfo:
             person_type.validate(value)
         
         # Check error message
@@ -493,7 +493,7 @@ async def test_validate_error_propagation():
     }
 
     # Validate should fail
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(CtyValidationError) as excinfo:
         person_type.validate(value)
 
     # Check the error message contains context

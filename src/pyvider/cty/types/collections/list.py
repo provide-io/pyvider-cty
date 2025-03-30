@@ -4,7 +4,7 @@
 
 from typing import Any, ClassVar, Generic, List as PyList, TypeVar, final, Sequence, Optional, Union, cast
 from attrs import define, evolve, field
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.logger import logger
 
@@ -33,48 +33,48 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         Validate element_type after initialization.
 
         Raises:
-            ValidationError: If element_type is not a CtyType
+            CtyListValidationError: If element_type is not a CtyType
         """
         if not isinstance(self.element_type, CtyType):
             message = f"Expected CtyType for element_type, got {type(self.element_type).__name__}"
             logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
+            raise CtyListValidationError(message)
 
     #### validate
     def validate(self, value: Any) -> "CtyValue":
         """
         Validate that the given value conforms to this list type.
-        
+
         Args:
             value: The value to validate
-            
+
         Returns:
             A CtyValue with the validated list
         """
         logger.debug(f"🔌📝🔄 Validating value as CtyList: {type(value).__name__}")
-        
+
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
-        
+
         # Handle None
         if value is None:
             logger.debug("🔌📝✅ None value - creating empty list")
             return CtyValue(type_=self, value=[])
-        
+
         # Ensure input is iterable
         if not isinstance(value, (list, tuple)):
             logger.debug(f"🔌❗❌ Expected list or tuple, got {type(value).__name__}")
-            raise ValidationError(f"Expected list or tuple, got {type(value).__name__}")
-        
+            raise CtyListValidationError(f"Expected list or tuple, got {type(value).__name__}")
+
         # Handle empty list
         if not value:
             logger.debug("🔌📝✅ Empty list - creating empty CtyList")
             return CtyValue(type_=self, value=[])
-        
+
         # Validate each element
         validated_list = []
         validation_errors = []
-        
+
         for i, item in enumerate(value):
             try:
                 # Already a CtyValue of correct type?
@@ -89,18 +89,18 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
                     else:
                         validated_item = CtyValue(type_=self.element_type, value=validated)
                     logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
-                
+
                 validated_list.append(validated_item)
             except Exception as e:
                 error_msg = f"Item {i}: {item} -> {e!s}"
                 logger.debug(f"🔌❗❌ {error_msg}")
                 validation_errors.append(error_msg)
-        
+
         if validation_errors:
             error_msg = "CtyList validation failed:\n" + "\n".join(validation_errors)
             logger.debug(f"🔌❗❌ {error_msg}")
-            raise ValidationError(error_msg)
-        
+            raise CtyListValidationError(error_msg)
+
         logger.debug(f"🔌📝✅ Successfully validated list with {len(validated_list)} items")
         return CtyValue(type_=self, value=validated_list)
 
@@ -108,27 +108,27 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
     def element_at(self, container: Any, index: int) -> "CtyValue":
         """
         Get an element at a specific index in the list.
-        
+
         Args:
             container: The list, tuple, or CtyValue containing a list
             index: The index to get the element at
-            
+
         Returns:
             The element at the specified index
         """
         logger.debug(f"🔌🔍🔄 Getting element at index {index}")
-        
+
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
-        
+
         # Handle CtyValue container
         if isinstance(container, CtyValue):
             if not isinstance(container.type, CtyList):
                 message = f"Expected CtyValue with CtyList type, got CtyValue with {type(container.type).__name__}"
                 logger.error(f"🔌❗❌ {message}")
-                raise ValidationError(message)
+                raise CtyListValidationError(message)
             return container.element_at(index)
-        
+
         # Handle CtyList container directly
         elif isinstance(container, CtyList):
             container_value = container.value
@@ -139,19 +139,19 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         else:
             message = f"Expected list, tuple, CtyList, or CtyValue with CtyList type, got {type(container).__name__}"
             logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
-        
+            raise CtyListValidationError(message)
+
         # Get the element at the specified index
         try:
             # Handle negative indices
             list_len = len(container_value)
             if index < 0:
                 index = list_len + index
-            
+
             # Check bounds
             if index < 0 or index >= list_len:
                 raise IndexError(f"Index {index} out of bounds (0-{list_len-1})")
-            
+
             # Return the element at the specified index
             result = container_value[index]
             logger.debug(f"🔌🔍✅ Got element at index {index}: {result}")
@@ -173,7 +173,7 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
             A new CtyList with the item appended
 
         Raises:
-            ValidationError: If the item cannot be validated
+            CtyListValidationError: If the item cannot be validated
         """
         logger.debug(f"🔌📝🔄 Appending item: {item}")
 
@@ -194,7 +194,7 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         except Exception as e:
             message = f"Failed to append item: {e}"
             logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
+            raise CtyListValidationError(message)
 
     #### slice
     def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
@@ -207,31 +207,22 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
 
         Returns:
             A new CtyList with the sliced values
-
-        Raises:
-            IndexError: If the indices are out of bounds
         """
         logger.debug(f"🔌🔍🔄 Slicing list from {start} to {end}")
 
+        list_length = len(self.value)
         if end is None:
-            end = len(self.value)
+            end = list_length
 
         # Convert negative indices to positive
         if start < 0:
-            start = len(self.value) + start
+            start = list_length + start
         if end < 0:
-            end = len(self.value) + end
+            end = list_length + end
 
-        # Validate indices are within bounds
-        if start < 0 or start > len(self.value):
-            message = f"Start index {start} out of bounds (0-{len(self.value)})"
-            logger.error(f"🔌❗❌ {message}")
-            raise IndexError(message)
-
-        if end < start or end > len(self.value):
-            message = f"End index {end} out of bounds ({start}-{len(self.value)})"
-            logger.error(f"🔌❗❌ {message}")
-            raise IndexError(message)
+        # Clamp indices to valid ranges - this fixes the extreme indices issue
+        start = max(0, min(start, list_length))
+        end = max(start, min(end, list_length))
 
         # Create a new list with the sliced values
         sliced_value = self.value[start:end]
@@ -250,7 +241,7 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
             A new CtyList with the concatenated values
 
         Raises:
-            ValidationError: If the other list has a different element type
+            CtyListValidationError: If the other list has a different element type
         """
         logger.debug(f"🔌📝🔄 Concatenating with another list")
 
@@ -258,13 +249,13 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         if not isinstance(other, CtyList):
             message = f"Expected CtyList, got {type(other).__name__}"
             logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
+            raise CtyListValidationError(message)
 
         # Ensure element types are compatible
         if not self.element_type.equal(other.element_type):
             message = f"Cannot concatenate lists with different element types: {self.element_type} and {other.element_type}"
             logger.error(f"🔌❗❌ {message}")
-            raise ValidationError(message)
+            raise CtyListValidationError(message)
 
         # Create a new list with the concatenated values
         concat_value = list(self.value) + list(other.value)
@@ -400,10 +391,10 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
             The item at the specified index, or a new CtyList with the sliced values
         """
 
-        if isinstance(key, slice):
-            start = key.start if key.start is not None else 0
-            stop = key.stop if key.stop is not None else len(self._value)
-            if key.step == 1 or key.step is None:
+        if isinstance(index, slice):
+            start = index.start if index.start is not None else 0
+            stop = index.stop if index.stop is not None else len(self._value)
+            if index.step == 1 or index.step is None:
                 return self._type.slice(start, stop)
 
         try:

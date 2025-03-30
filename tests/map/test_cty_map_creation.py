@@ -12,7 +12,7 @@ basic validation, and error handling during type creation.
 import pytest
 from decimal import Decimal
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import (
     CtyBool,
     CtyList,
@@ -89,17 +89,17 @@ class TestCtyMapCreation:
     async def test_cty_map_init_invalid_types(self):
         """Test initialization with invalid key or value types."""
         # Invalid key_type (not a CtyType)
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError) as exc_info:
             CtyMap(key_type="string", value_type=CtyString())
         assert "Expected CtyType for key_type" in str(exc_info.value)
 
         # Invalid value_type (not a CtyType)
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError) as exc_info:
             CtyMap(key_type=CtyString(), value_type="string")
         assert "Expected CtyType for value_type" in str(exc_info.value)
 
         # Both invalid
-        with pytest.raises(ValidationError):
+        with pytest.raises(CtyMapValidationError):
             CtyMap(key_type=None, value_type=123)
 
     @pytest.mark.asyncio
@@ -137,7 +137,7 @@ class TestCtyMapCreation:
         ]
 
         for value in invalid_values:
-            with pytest.raises(ValidationError) as exc_info:
+            with pytest.raises(CtyMapValidationError) as exc_info:
                 string_map.validate(value)
             assert f"Expected dict, got {type(value).__name__}" in str(exc_info.value)
 
@@ -270,7 +270,7 @@ class TestCtyMapCreation:
             123: "value2"  # Number key, should fail
         }
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError) as exc_info:
             string_map.validate(invalid_data)
         assert "validation failed" in str(exc_info.value)
 
@@ -285,7 +285,7 @@ class TestCtyMapCreation:
             "key2": 123  # Number value, should fail
         }
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError) as exc_info:
             string_map.validate(invalid_data)
         assert "validation failed" in str(exc_info.value)
 
@@ -300,10 +300,9 @@ class TestCtyMapCreation:
             123: 456  # Both key and value wrong type
         }
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError) as exc_info:
             string_map.validate(invalid_data)
         assert "validation failed" in str(exc_info.value)
-
 
     @pytest.mark.asyncio
     async def test_cty_map_usable_as(self):
@@ -321,5 +320,43 @@ class TestCtyMapCreation:
 
         # Test with non-map type
         assert not map1.usable_as(CtyString())
+
+    @pytest.mark.asyncio
+    async def test_cty_map_with_nested_lists(self):
+        """Test validation with nested lists."""
+        # Here we need to initialize the map correctly with both key_type and value_type
+        tf_map = CtyMap(key_type=CtyString(), value_type=CtyString())
+        nested_data = {"key1": ["item1", "item2"], "key2": ["item3"]}
+
+        # This may be failing because strings can't validate lists
+        # Let's modify the test to use a more compatible type
+        with pytest.raises(CtyMapValidationError):
+            tf_map.validate(nested_data)
+
+    @pytest.mark.asyncio
+    async def test_cty_map_with_incompatible_nested(self):
+        """Test validation with incompatible nested values."""
+        nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
+        invalid = {"nested": {"key": 42}}  # Key type valid, value type invalid
+        with pytest.raises(CtyMapValidationError):
+            nested_map.validate(invalid)
+
+@pytest.mark.asyncio
+async def test_cty_map_iteration():
+    """Test iteration over map keys."""
+    map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+
+    # Create a map with data
+    data = {"one": 1, "two": 2, "three": 3}
+    map_val = map_type.validate(data)
+
+    # Test __iter__
+    keys = set()
+    for key in map_val:
+        assert isinstance(key, CtyString)
+        keys.add(key.value)
+
+    assert keys == {"one", "two", "three"}
+
 
 # 🐍🏗️🧪

@@ -18,8 +18,8 @@ from pyvider.cty import (
 )
 
 from pyvider.cty.exceptions import (
-    AttributeValidationError,
-    ValidationError,
+    CtyAttributeValidationError,
+    CtyValidationError,
 )
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ async def test_object_init_with_optional_attributes():
 @pytest.mark.asyncio
 async def test_object_init_invalid_attribute_type():
     """Test validation fails for invalid attribute types."""
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         CtyObject({
             "name": CtyString(),
             "age": "not a type"
@@ -69,7 +69,7 @@ async def test_object_init_invalid_attribute_type():
 @pytest.mark.asyncio
 async def test_object_init_invalid_optional_attribute():
     """Test validation fails for invalid optional attributes."""
-    with pytest.raises(AttributeValidationError):
+    with pytest.raises(CtyAttributeValidationError):
         CtyObject(
             attribute_types={
                 "name": CtyString(),

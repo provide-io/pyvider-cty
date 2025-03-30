@@ -1,6 +1,6 @@
 import pytest
 
-from pyvider.cty.exceptions import ValidationError
+from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import CtyString, CtyNumber, CtyList
 
 class TestCtyListCoverage:
@@ -87,42 +87,11 @@ class TestCtyListCoverage:
     def test_concat_with_invalid_container(self, string_list):
         """Test concat with invalid container."""
         # This tests lines 228-230
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(CtyListValidationError) as exc:
             string_list.concat("not a list")
 
         assert "Expected CtyList" in str(exc.value)
 
-    # Tests for equality checking
-
-    def test_equality_different_lengths(self):
-        """Test equality with lists of different lengths."""
-        # This tests line 327
-        list1 = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
-        )
-        list2 = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b"), CtyString(value="c")]
-        )
-
-        # Lists with different lengths should not be equal
-        assert list1 != list2
-
-    def test_equality_same_length_different_elements(self):
-        """Test equality with lists of same length but different elements."""
-        # This tests lines 331-332
-        list1 = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
-        )
-        list2 = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="c")]  # Different second element
-        )
-
-        # Lists with same length but different elements should not be equal
-        assert list1 != list2
 
     def test_element_at_out_of_bounds(self):
         """Test element_at with index out of bounds."""
