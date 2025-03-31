@@ -7,17 +7,13 @@ Map type implementation for the Cty type system.
 
 CtyMap represents a map type with a fixed string key type and any value type.
 This implementation strictly follows Go-CTY's map type semantics, which:
-1. Uses native string keys (not CtyValue instances) in the internal dictionary
+1. Uses string keys internally but maintains original CtyValue keys
 2. Fails fast during validation (early error returns)
 3. Maintains immutability for all operations
 4. Preserves type safety throughout
-
-Unlike most collections, maps are a bit special in CTY: they always have string
-keys, regardless of what the schema specifies. This matches Go's implementation
-and makes maps more directly usable as lookup tables.
 """
 
-from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
+from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar, cast, TypeGuard
 
 import attrs
 
@@ -92,10 +88,14 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         match value:
             case None:
                 logger.debug("🔌🔍✅ None value converted to empty map")
-                return CtyValue(type_=self, value={})
+                result = CtyValue(type_=self, value={})
+                result._key_mapping = {}  # Add empty key mapping
+                return result
             case {}:
                 logger.debug("🔌🔍✅ Empty dict is valid")
-                return CtyValue(type_=self, value={})
+                result = CtyValue(type_=self, value={})
+                result._key_mapping = {}  # Add empty key mapping
+                return result
             case dict():
                 # Continue with validation
                 pass
@@ -107,6 +107,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         # Create new map for validated entries - Using string keys, not CtyValue keys
         validated_map: dict[str, CtyValue] = {}
+        key_mapping: dict[str, CtyValue] = {}  # Track original CtyValue keys
 
         # Validate each key-value pair, failing fast on errors
         for k, v in value.items():
@@ -127,6 +128,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
                     # Extract the string value from CtyValue for use as map key
                     map_key = str(k.value)
+                    key_mapping[map_key] = k  # Store original CtyValue key
                     logger.debug(f"🔌🔍✅ Using string representation of pre-validated key: {map_key}")
                 else:
                     # Raw key needs validation
@@ -140,6 +142,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
                         # Extract string value for use as map key
                         map_key = str(validated_key.value)
+                        key_mapping[map_key] = validated_key  # Store validated CtyValue key
                         logger.debug(f"🔌🔍✅ Validated key to string: {map_key}")
                     except Exception as e:
                         error_msg = f"Invalid key {k!r}: {e}"
@@ -182,7 +185,9 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 raise CtyMapValidationError(error_msg) from e
 
         logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
-        return CtyValue(type_=self, value=validated_map)
+        result = CtyValue(type_=self, value=validated_map)
+        result._key_mapping = key_mapping  # Attach key mapping to CtyValue
+        return result
 
     def get(self, map_value: "CtyValue", key: Any, default: Optional["CtyValue"] = None) -> Optional["CtyValue"]:
         """
@@ -190,7 +195,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         Args:
             map_value: CtyValue containing the map
-            key: Key to look up (will be converted to string)
+            key: Key to look up (can be string or CtyValue)
             default: Default value to return if key not found
 
         Returns:
@@ -249,7 +254,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         Args:
             map_value: CtyValue containing the map
-            key: Key to set (will be converted to string)
+            key: Key to set (can be string or CtyValue)
             value: Value to set
 
         Returns:
@@ -275,6 +280,11 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
 
+        # Create a new map with existing entries
+        new_map = dict(map_value.value)
+        # Get existing key mapping or create new one
+        key_mapping = dict(getattr(map_value, '_key_mapping', {}))
+
         # Validate key and convert to string
         if isinstance(key, CtyValue):
             if not isinstance(key.type, self.key_type.__class__):
@@ -288,6 +298,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 raise CtyMapValidationError(error_msg)
 
             str_key = str(key.value)
+            key_mapping[str_key] = key  # Store original CtyValue key
             logger.debug(f"🔌📝🔄 Using string from pre-validated key: {str_key}")
         else:
             # Validate raw key
@@ -298,6 +309,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 raise CtyMapValidationError(error_msg)
 
             str_key = str(validated_key.value)
+            key_mapping[str_key] = validated_key  # Store validated key
             logger.debug(f"🔌📝🔄 Validated key to string: {str_key}")
 
         # Validate value
@@ -314,14 +326,13 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             validated_value = self.value_type.validate(value)
             logger.debug(f"🔌📝✅ Validated value")
 
-        # Create a new map with the updated key-value pair
-        new_map = dict(map_value.value)
-
         # Set the value using the string key
         new_map[str_key] = validated_value
 
         logger.debug(f"🔌📝✅ Set key {str_key} to value")
-        return CtyValue(type_=self, value=new_map)
+        result = CtyValue(type_=self, value=new_map)
+        result._key_mapping = key_mapping  # Attach key mapping to result
+        return result
 
     def delete(self, map_value: "CtyValue", key: Any) -> "CtyValue":
         """
@@ -331,7 +342,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         Args:
             map_value: CtyValue containing the map
-            key: Key to delete (will be converted to string)
+            key: Key to delete (can be string or CtyValue)
 
         Returns:
             A new CtyValue with the updated map
@@ -356,6 +367,11 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
 
+        # Create a new map without the key
+        new_map = dict(map_value.value)
+        # Get existing key mapping
+        key_mapping = dict(getattr(map_value, '_key_mapping', {}))
+
         # Convert key to string
         try:
             if isinstance(key, CtyValue):
@@ -371,18 +387,20 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.debug(f"🔌📝⚠️ Key validation failed, map unchanged: {e}")
             return map_value
 
-        # Create a new map without the key
-        new_map = dict(map_value.value)
-
         # Remove the key if it exists
         if str_key in new_map:
             del new_map[str_key]
+            # Also remove from key mapping if present
+            if str_key in key_mapping:
+                del key_mapping[str_key]
             logger.debug(f"🔌📝✅ Deleted key {str_key}")
         else:
             logger.debug(f"🔌📝⚠️ Key {str_key} not found, map unchanged")
             return map_value
 
-        return CtyValue(type_=self, value=new_map)
+        result = CtyValue(type_=self, value=new_map)
+        result._key_mapping = key_mapping  # Attach key mapping to result
+        return result
 
     def element_iterator(self, map_value: "CtyValue") -> "ElementIterator":
         """
@@ -417,9 +435,11 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
 
-        # Create and return the iterator
-        # Note: The iterator needs to reconstruct CtyValue keys from string keys
-        return ElementIterator(self.key_type, map_value.value)
+        # Get key mapping from the CtyValue
+        key_mapping = getattr(map_value, '_key_mapping', {})
+
+        # Create and return the iterator with key mapping
+        return ElementIterator(self.key_type, map_value.value, key_mapping)
 
     def equal(self, other: CtyType) -> bool:
         """
@@ -527,13 +547,17 @@ class ElementIterator:
     string keys but returns CtyValue instances representing keys and values.
     """
 
-    def __init__(self, key_type: "CtyType", map_data: dict[str, "CtyValue"]):
+    def __init__(self, 
+                 key_type: "CtyType", 
+                 map_data: dict[str, "CtyValue"], 
+                 key_mapping: dict[str, "CtyValue"]):
         """
         Initialize the iterator.
 
         Args:
             key_type: The key type to use when creating CtyValue keys
             map_data: dictionary of string keys to value pairs to iterate over
+            key_mapping: mapping of string keys to original CtyValue keys
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
@@ -542,9 +566,12 @@ class ElementIterator:
         self.items = []
 
         # Convert string keys to CtyValue objects for iteration
+        # Use original keys from key_mapping if available
         for string_key, value in map_data.items():
-            # Create a CtyValue for the key
-            key_value = CtyValue(type_=key_type, value=string_key)
+            key_value = key_mapping.get(string_key)
+            if key_value is None:
+                # If original key not found, reconstruct it
+                key_value = CtyValue(type_=key_type, value=string_key)
             self.items.append((key_value, value))
 
         # Sort items by key for consistent iteration order (like Go)
