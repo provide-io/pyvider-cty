@@ -133,7 +133,8 @@ async def test_cty_map_validate_none():
     map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
     result = map_type.validate(None)
 
-    assert isinstance(result, CtyMap)
+    assert isinstance(result, CtyValue)
+    assert isinstance(result.type, CtyMap)
     assert len(result.value) == 0
 
 @pytest.mark.asyncio
@@ -142,7 +143,8 @@ async def test_cty_map_validate_empty_dict():
     map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
     result = map_type.validate({})
 
-    assert isinstance(result, CtyMap)
+    assert isinstance(result, CtyValue)
+    assert isinstance(result.type, CtyMap)
     assert len(result.value) == 0
 
 @pytest.mark.asyncio
@@ -161,7 +163,8 @@ async def test_cty_map_validate_valid_data():
 
     result = map_type.validate(data)
 
-    assert isinstance(result, CtyMap)
+    assert isinstance(result, CtyValue)
+    assert isinstance(result.type, CtyMap)
     assert len(result.value) == 3
 
     # Find values by iterating
@@ -226,7 +229,8 @@ async def test_cty_map_validate_with_cty_instances():
 
     result = map_type.validate(data)
 
-    assert isinstance(result, CtyMap)
+    assert isinstance(result, CtyValue)
+    assert isinstance(result.type, CtyMap)
     assert len(result.value) == 3
 
     # Verify CtyType instances are preserved
