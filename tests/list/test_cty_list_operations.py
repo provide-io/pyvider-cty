@@ -24,7 +24,7 @@ class TestCtyListOperations:
         self.number_list = CtyList(element_type=CtyNumber())
         self.bool_list = CtyList(element_type=CtyBool())
 
-    def test_list_access_methods(self):
+    def test_cty_list_access_methods(self):
         """Test advanced list access methods."""
         # Create a CtyList with CtyString values
         self.string_list = CtyList(
@@ -42,24 +42,25 @@ class TestCtyListOperations:
         sliced = self.string_list[1:4]
         assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
-        assert all(isinstance(item, CtyString) for item in sliced.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
+
         assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
         # Test slice method
         sliced = self.string_list.slice(1, 4)
         assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
-        assert all(isinstance(item, CtyString) for item in sliced.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
         assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
         # Test negative slicing
         sliced = self.string_list[-3:]
         assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
-        assert all(isinstance(item, CtyString) for item in sliced.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
         assert [item.value for item in sliced.value] == ["c", "d", "e"]
 
-    def test_list_concat_method(self):
+    def test_cty_list_concat(self):
         """Test concatenation of lists."""
         # Create two CtyLists with CtyString values
         list1 = CtyList(
@@ -78,7 +79,7 @@ class TestCtyListOperations:
 
 
         assert len(result.value) == 4
-        assert all(isinstance(item, CtyString) for item in result.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in results.value)
         assert [item.value for item in result.value] == ["a", "b", "c", "d"]
 
         # Test that original lists are unchanged
@@ -92,7 +93,7 @@ class TestCtyListOperations:
         with pytest.raises(CtyListValidationError):
             list1.concat(number_list)
 
-    def test_list_contains_method(self):
+    def test_cty_list_contains(self):
         """Test the contains method."""
         # Create a CtyList with CtyString values
         self.string_list = CtyList(
@@ -110,6 +111,28 @@ class TestCtyListOperations:
 
         # Test contains with invalid type (should return False, not raise)
         assert self.string_list.contains(123) is False
+
+    def test_alternative_slice_syntax(self):
+        """Test slice syntax variations."""
+        # Create a list
+        list_obj = CtyList(
+            element_type=CtyString(),
+            value=[
+                CtyString(value="a"),
+                CtyString(value="b"),
+                CtyString(value="c"),
+                CtyString(value="d"),
+                CtyString(value="e")
+            ]
+        )
+
+        # Try slicing with step and no end parameter
+        sliced = list_obj[::2]  # Should get elements at indices 0, 2, 4
+
+        assert isinstance(sliced, CtyValue)
+        assert isinstance(sliced.type, CtyList)
+        assert len(sliced.value) == 3
+        assert [item.value for item in sliced.value] == ["a", "c", "e"]
 
 def test_cty_list_len():
     """Test the __len__ method."""
@@ -226,62 +249,5 @@ def test_cty_list_append():
     assert len(list_obj.value) == 2
     assert list_obj[0].value == "a"
     assert list_obj[1].value == "b"
-
-def test_cty_list_concat():
-    """Test the concat method."""
-    # Create two CtyLists with CtyString values
-    list1 = CtyList(
-        element_type=CtyString(),
-        value=[CtyString(value="a"), CtyString(value="b")]
-    )
-    list2 = CtyList(
-        element_type=CtyString(),
-        value=[CtyString(value="c"), CtyString(value="d")]
-    )
-
-    # Concatenate the lists
-    result = list1.concat(list2)
-
-    # Test that we get back a new CtyList
-    assert isinstance(result, CtyValue)
-    assert isinstance(result.type, CtyList)
-    assert result is not list1
-    assert result is not list2
-
-    # Test that the result has all items
-    assert len(result.value) == 4
-    assert result[0].value == "a"
-    assert result[1].value == "b"
-    assert result[2].value == "c"
-    assert result[3].value == "d"
-
-    # Test that the original lists are unchanged
-    assert len(list1.value) == 2
-    assert list1[0].value == "a"
-    assert list1[1].value == "b"
-
-    assert len(list2.value) == 2
-    assert list2[0].value == "c"
-    assert list2[1].value == "d"
-
-    # Test with incompatible element types
-    number_list = CtyList(element_type=CtyNumber(), value=[])
-    with pytest.raises(CtyListValidationError):
-        list1.concat(number_list)
-
-def test_cty_list_contains():
-    """Test the contains method."""
-    # Create a CtyList with CtyString values
-    list_obj = CtyList(
-        element_type=CtyString(),
-        value=[CtyString(value="a"), CtyString(value="b"), CtyString(value="c")]
-    )
-
-    # Test contains with valid values
-    assert list_obj.contains("a") is True
-    assert list_obj.contains("d") is False
-
-    # Test contains with invalid type (should return False, not raise exception)
-    assert list_obj.contains(123) is False
 
 # 🐍🏗️🧪

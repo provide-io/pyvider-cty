@@ -193,7 +193,8 @@ class TestCtyMapComplex:
         
         # Check list content
         assert len(fruits_list.value) == 3
-        assert all(isinstance(item, CtyString) for item in fruits_list.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in fruits_list.value)
+
         assert [item.value for item in fruits_list.value] == ["apple", "banana", "cherry"]
         
         # Check empty list
