@@ -6,6 +6,7 @@ import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
+    CtyValue,
     CtyBool,
     CtyNumber,
     CtyString,
@@ -37,7 +38,8 @@ class TestCtyListWithNestedTypes:
         result = list_of_lists.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
 
         # Check that all elements are CtyList objects
@@ -71,7 +73,8 @@ class TestCtyListWithNestedTypes:
         result = list_of_lists.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
 
         # Check that all elements are CtyList objects
@@ -108,7 +111,8 @@ class TestCtyListWithNestedTypes:
         result = outer_list.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
 
         # Check first element (list of lists)
@@ -152,14 +156,15 @@ class TestCtyListWithNestedTypes:
     def test_validate_nested_lists(self):
         """Test validation of nested lists."""
         # Create a list of lists
-        self.nested_list_type = CtyList(element_type=self.string_list)
+        self.nested_list = CtyList(element_type=self.string_list)
         data = [["a", "b"], ["c", "d", "e"]]
 
         # Validate
-        result = nested_list_type.validate(data)
+        result = self.nested_list.validate(data)
 
         # Assertions - proper type checking first
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 2
 
         # Check first inner list
@@ -177,11 +182,11 @@ class TestCtyListWithNestedTypes:
     def test_validate_nested_list_with_errors(self):
         """Test validation of nested lists with errors."""
         # Create a list of lists with an error in the nested list
-        self.nested_list_type = CtyList(element_type=self.number_list)
+        self.nested_list = CtyList(element_type=self.number_list)
         data = [[1, 2], [3, "four", 5]]  # "four" is not a number
 
         # Validate
         with pytest.raises(CtyListValidationError):
-            nested_list_type.validate(data)
+            self.nested_list.validate(data)
 
 # 🐍🏗️🧪

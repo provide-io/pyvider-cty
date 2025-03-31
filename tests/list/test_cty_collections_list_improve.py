@@ -4,7 +4,15 @@
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
-from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
+from pyvider.cty import (
+    CtyValue,
+    CtyBool,
+    CtyList,
+    CtyNumber,
+    CtyString,
+    CtyTuple,
+)
+
 
 class TestCtyListAdvanced:
     """Advanced tests for the CtyList type to improve coverage."""
@@ -54,7 +62,8 @@ class TestCtyListWithNestedTypes:
         result = list_of_lists.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
 
         # Check that all elements are CtyList objects
@@ -88,7 +97,8 @@ class TestCtyListWithNestedTypes:
         result = list_of_lists.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
 
         # Check that all elements are CtyList objects
