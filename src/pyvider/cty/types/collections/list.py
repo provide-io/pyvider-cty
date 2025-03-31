@@ -270,23 +270,22 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
             # Validate the item
             validated_item = self.element_type.validate(item)
 
-            # Check each list item for equality
+            # Check each element in the list
             for list_item in self.value:
                 # Compare values within CtyValue objects
-                if (hasattr(list_item, 'value') and hasattr(validated_item, 'value') and 
-                    list_item.value == validated_item.value):
-                    logger.debug(f"🔌🔍✅ List contains item: {validated_item.value}")
-                    return True
-                    
-                # Direct comparison
+                if hasattr(list_item, 'value') and hasattr(validated_item, 'value'):
+                    if list_item.value == validated_item.value:
+                        logger.debug(f"🔌🔍✅ List contains item: {validated_item.value}")
+                        return True
+
+                # Try direct equality
                 if list_item == validated_item:
                     logger.debug(f"🔌🔍✅ List contains item: {validated_item}")
                     return True
 
             return False
         except Exception as e:
-            # Invalid items can't be in the list
-            logger.debug(f"🔌🔍❌ Item validation failed: {e}")
+            logger.debug(f"🔌🔍❌ Validation failed: {e}")
             return False
 
     #### usable_as

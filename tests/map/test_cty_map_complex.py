@@ -334,7 +334,8 @@ async def test_cty_map_with_nested_value_types():
     result = map_type.validate(data)
 
     # Verify structure
-    assert isinstance(result, CtyMap)
+    assert isinstance(result, CtyValue)
+    assert isinstance(result.type, CtyMap)
     assert len(result.value) == 2
 
     # Check values
