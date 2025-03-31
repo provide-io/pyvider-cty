@@ -220,7 +220,7 @@ async def test_attribute_paths_with_cty_values():
     
     # Test attribute access
     name_path = CtyPath.get_attr("name")
-    name_result = await name_path.apply_path(person)
+    name_result = name_path.apply_path(person)
     
     # Verify result maintains CtyType
     assert isinstance(name_result, CtyValue)

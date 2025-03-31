@@ -60,7 +60,7 @@ class TestJsonSerializer:
         string_value = CtyValue(CtyString(), "test")
         
         # Serialize with type
-        serialized = serializer.serialize_with_type(string_value.value, string_value.type)
+        serialized = await serializer.serialize_with_type(string_value.value, string_value.type)
         
         # Parse the JSON to check structure
         parsed = json.loads(serialized.decode('utf-8'))
@@ -80,7 +80,7 @@ class TestJsonSerializer:
         unknown_string = CtyValue(CtyString(), is_unknown=True)
         
         # Serialize
-        serialized = serializer.serialize(unknown_string)
+        serialized = await serializer.serialize(unknown_string)
         
         # Parse the JSON to check structure
         parsed = json.loads(serialized.decode('utf-8'))
@@ -100,7 +100,7 @@ class TestJsonSerializer:
         null_string = CtyValue(CtyString(), is_null=True)
         
         # Serialize
-        serialized = serializer.serialize(null_string)
+        serialized = await serializer.serialize(null_string)
         
         # Parse the JSON to check structure
         parsed = json.loads(serialized.decode('utf-8'))
@@ -120,7 +120,7 @@ class TestJsonSerializer:
         marked_string = CtyValue(CtyString(), "sensitive data").mark("sensitive")
         
         # Serialize
-        serialized = serializer.serialize(marked_string)
+        serialized = await serializer.serialize(marked_string)
         
         # Parse the JSON to check structure
         parsed = json.loads(serialized.decode('utf-8'))
@@ -164,7 +164,7 @@ class TestJsonSerializer:
         # Serialize and check each structure
         
         # List structure
-        list_serialized = serializer.serialize_with_type(list_value.value, list_value.type)
+        list_serialized = await serializer.serialize_with_type(list_value.value, list_value.type)
         list_parsed = json.loads(list_serialized.decode('utf-8'))
         
         assert list_parsed["type"] == "list"
@@ -172,7 +172,7 @@ class TestJsonSerializer:
         assert len(list_parsed["value"]) == 3
         
         # Set structure (serialized as an array)
-        set_serialized = serializer.serialize_with_type(set_value.value, set_value.type)
+        set_serialized = await serializer.serialize_with_type(set_value.value, set_value.type)
         set_parsed = json.loads(set_serialized.decode('utf-8'))
         
         assert set_parsed["type"] == "set"
@@ -180,7 +180,7 @@ class TestJsonSerializer:
         assert len(set_parsed["value"]) == 3
         
         # Map structure
-        map_serialized = serializer.serialize_with_type(map_value.value, map_value.type)
+        map_serialized = await serializer.serialize_with_type(map_value.value, map_value.type)
         map_parsed = json.loads(map_serialized.decode('utf-8'))
         
         assert map_parsed["type"] == "map"
@@ -256,11 +256,11 @@ class TestJsonSerializer:
         object_value = CtyValue(object_type, cty_structure)
         
         # Serialize
-        serialized = serializer.serialize(object_value)
+        serialized = await serializer.serialize(object_value)
         assert len(serialized) > 10000  # Should be a large JSON string
         
         # Deserialize
-        deserialized = serializer.deserialize(serialized)
+        deserialized = await serializer.deserialize(serialized)
         
         # Check structure integrity
         assert isinstance(deserialized, CtyValue)
@@ -297,10 +297,10 @@ class TestJsonSerializer:
             string_value = CtyValue(CtyString(), unicode_string)
             
             # Serialize
-            serialized = serializer.serialize(string_value)
+            serialized = await serializer.serialize(string_value)
             
             # Deserialize
-            deserialized = serializer.deserialize(serialized)
+            deserialized = await serializer.deserialize(serialized)
             
             # Check value is preserved exactly
             assert deserialized.value == unicode_string
@@ -315,13 +315,13 @@ class TestJsonSerializer:
         array_typed_json = json.dumps(array_typed_value).encode('utf-8')
         
         # Deserialize
-        deserialized = serializer.deserialize_with_type(array_typed_json)
+        deserialized = await serializer.deserialize_with_type(array_typed_json)
         
         # Check type and value
         assert deserialized == "test"
         
         # Try with type hint
-        deserialized_with_hint = serializer.deserialize_with_type(array_typed_json, CtyString())
+        deserialized_with_hint = await serializer.deserialize_with_type(array_typed_json, CtyString())
         assert deserialized_with_hint == "test"
    
     @pytest.mark.asyncio
@@ -382,7 +382,7 @@ class TestJsonSerializer:
         
         for invalid_json in invalid_jsons:
             with pytest.raises(Exception):
-                serializer.deserialize(invalid_json)
+                await serializer.deserialize(invalid_json)
     
     @pytest.mark.asyncio
     async def test_json_type_conversion(self):
@@ -393,22 +393,22 @@ class TestJsonSerializer:
         
         # String to number
         string_number_json = json.dumps({"type": "number", "value": "42"}).encode('utf-8')
-        string_number_result = serializer.deserialize_with_type(string_number_json, CtyNumber())
+        string_number_result = await serializer.deserialize_with_type(string_number_json, CtyNumber())
         assert string_number_result == 42
         
         # String to boolean
         string_bool_json = json.dumps({"type": "bool", "value": "true"}).encode('utf-8')
-        string_bool_result = serializer.deserialize_with_type(string_bool_json, CtyBool())
+        string_bool_result = await serializer.deserialize_with_type(string_bool_json, CtyBool())
         assert string_bool_result is True
         
         # Number to string
         number_string_json = json.dumps({"type": "string", "value": 42}).encode('utf-8')
-        number_string_result = serializer.deserialize_with_type(number_string_json, CtyString())
+        number_string_result = await serializer.deserialize_with_type(number_string_json, CtyString())
         assert number_string_result == "42"
         
         # List to set
         list_set_json = json.dumps({"type": "set", "value": [1, 2, 3]}).encode('utf-8')
-        list_set_result = serializer.deserialize_with_type(list_set_json, CtySet(element_type=CtyNumber()))
+        list_set_result = await serializer.deserialize_with_type(list_set_json, CtySet(element_type=CtyNumber()))
         assert isinstance(list_set_result, set)
         assert len(list_set_result) == 3
         assert 1 in list_set_result
