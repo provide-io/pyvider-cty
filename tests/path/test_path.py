@@ -59,14 +59,14 @@ class TestPathSystem:
 
         # Test direct attribute access
         name_path = CtyPath.get_attr("name")
-        name_result = await name_path.apply_path(person)
+        name_result = name_path.apply_path(person)
         assert isinstance(name_result, CtyValue)
         assert isinstance(name_result.type, CtyString)
         assert name_result.value == "Alice"
 
         # Test nested attribute access
         street_path = CtyPath.get_attr("address").child("street")
-        street_result = await street_path.apply_path(person)
+        street_result = street_path.apply_path(person)
         assert isinstance(street_result, CtyValue)
         assert isinstance(street_result.type, CtyString)
         assert street_result.value == "123 Main St"
@@ -74,20 +74,20 @@ class TestPathSystem:
         # Test invalid attribute
         invalid_path = CtyPath.get_attr("invalid")
         with pytest.raises(AttributePathError):
-            await invalid_path.apply_path(person)
+            invalid_path.apply_path(person)
 
         # Test type checking
-        name_type = await name_path.apply_path_type(person_type)
+        name_type = name_path.apply_path_type(person_type)
         assert isinstance(name_type, CtyString)
 
-        street_type = await street_path.apply_path_type(person_type)
+        street_type = street_path.apply_path_type(person_type)
         assert isinstance(street_type, CtyString)
 
         # Create an unknown value
         unknown_person = CtyValue(type_=person_type, is_unknown=True)
 
         # Test path to attribute should return unknown value of correct type
-        unknown_name_result = await name_path.apply_path(unknown_person)
+        unknown_name_result = name_path.apply_path(unknown_person)
         assert unknown_name_result.is_unknown
         assert isinstance(unknown_name_result.type, CtyString)
 
@@ -111,23 +111,23 @@ class TestPathSystem:
 
         # Test index access
         second_path = CtyPath.index(1)
-        second_result = await second_path.apply_path(numbers)
+        second_result = second_path.apply_path(numbers)
         assert isinstance(second_result, CtyValue)
         assert second_result.value == 20
 
         # Test negative index
         last_path = CtyPath.index(-1)
-        last_result = await last_path.apply_path(numbers)
+        last_result = last_path.apply_path(numbers)
         assert isinstance(last_result, CtyValue)
         assert last_result.value == 50
 
         # Test out of bounds
         out_of_bounds_path = CtyPath.index(10)
         with pytest.raises(AttributePathError):
-            await out_of_bounds_path.apply_path(numbers)
+            out_of_bounds_path.apply_path(numbers)
 
         # Test type checking
-        element_type = await second_path.apply_path_type(numbers_type)
+        element_type = second_path.apply_path_type(numbers_type)
         assert isinstance(element_type, CtyNumber)
 
         # Test with tuple
@@ -142,12 +142,12 @@ class TestPathSystem:
         )
 
         middle_path = CtyPath.index(1)
-        middle_result = await middle_path.apply_path(tuple_value)
+        middle_result = middle_path.apply_path(tuple_value)
         assert isinstance(middle_result, CtyValue)
         assert middle_result.value == 42
 
         # Test tuple type checking
-        middle_type = await middle_path.apply_path_type(tuple_type)
+        middle_type = middle_path.apply_path_type(tuple_type)
         assert isinstance(middle_type, CtyNumber)
 
     @pytest.mark.asyncio
@@ -169,17 +169,17 @@ class TestPathSystem:
 
         # Test key access
         bob_path = CtyPath.key("Bob")
-        bob_result = await bob_path.apply_path(scores)
+        bob_result = bob_path.apply_path(scores)
         assert isinstance(bob_result, CtyValue)
         assert bob_result.value == 87
 
         # Test invalid key
         invalid_path = CtyPath.key("Eve")
         with pytest.raises(AttributePathError):
-            await invalid_path.apply_path(scores)
+            invalid_path.apply_path(scores)
 
         # Test type checking
-        value_type = await bob_path.apply_path_type(scores_type)
+        value_type = bob_path.apply_path_type(scores_type)
         assert isinstance(value_type, CtyNumber)
 
     @pytest.mark.asyncio
@@ -245,19 +245,19 @@ class TestPathSystem:
         # Test complex path: second user's math score
         # users[1].scores["math"]
         path = CtyPath.index(1).child("scores").key_step("math")
-        result = await path.apply_path(users)
+        result = path.apply_path(users)
         assert isinstance(result, CtyValue)
         assert result.value == 87
 
         # Test another complex path: first user's name
         # users[0].name
         path = CtyPath.index(0).child("name")
-        result = await path.apply_path(users)
+        result = path.apply_path(users)
         assert isinstance(result, CtyValue)
         assert result.value == "Alice"
 
         # Test path type checking
-        name_type = await path.apply_path_type(users_type)
+        name_type = path.apply_path_type(users_type)
         assert isinstance(name_type, CtyString)
 
     @pytest.mark.asyncio
@@ -276,13 +276,13 @@ class TestPathSystem:
         # Path to attribute should fail for null
         name_path = CtyPath.get_attr("name")
         with pytest.raises(AttributePathError):
-            await name_path.apply_path(null_person)
+            name_path.apply_path(null_person)
 
         # Create an unknown value
         unknown_person = CtyValue(type_=person_type, is_unknown=True)
 
         # Path to attribute should return unknown value of correct type
-        name_result = await name_path.apply_path(unknown_person)
+        name_result = name_path.apply_path(unknown_person)
         assert name_result.is_unknown
         assert isinstance(name_result.type, CtyString)
 
@@ -307,7 +307,7 @@ class TestPathSystem:
         # Path to street should fail because address is null
         street_path = CtyPath.get_attr("address").child("street")
         with pytest.raises(AttributePathError):
-            await street_path.apply_path(person_with_null_address)
+            street_path.apply_path(person_with_null_address)
 
         # Test with unknown value in a nested structure
         person_with_unknown_address = CtyValue(
@@ -319,7 +319,7 @@ class TestPathSystem:
         )
 
         # Path to street should return unknown value of correct type
-        street_result = await street_path.apply_path(person_with_unknown_address)
+        street_result = street_path.apply_path(person_with_unknown_address)
         assert street_result.is_unknown
         assert isinstance(street_result.type, CtyString)
 
