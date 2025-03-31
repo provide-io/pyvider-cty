@@ -16,7 +16,6 @@ Paths can include:
 This follows go-cty's design for path handling.
 """
 
-import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, TypeVar, cast, Sequence
 
@@ -47,7 +46,7 @@ class PathStep(ABC):
     """
 
     @abstractmethod
-    async def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue") -> "CtyValue":
         """
         Apply this step to a value to get a nested value.
 
@@ -63,7 +62,7 @@ class PathStep(ABC):
         pass
 
     @abstractmethod
-    async def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, type_: "CtyType") -> "CtyType":
         """
         Apply this step to a type to get the nested value's type.
 
@@ -102,7 +101,7 @@ class GetAttrStep(PathStep):
             raise ValueError("Attribute name cannot be empty")
         logger.debug(f"🧰✅🔄 Attribute name {value} is valid")
 
-    async def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue") -> "CtyValue":
         """
         Get the attribute with the given name from an object value.
 
@@ -126,7 +125,7 @@ class GetAttrStep(PathStep):
         if value.is_unknown:
             logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown attribute")
             # Get the attribute's type
-            attr_type = await self.apply_type(value.type)
+            attr_type = self.apply_type(value.type)
             
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
@@ -159,7 +158,7 @@ class GetAttrStep(PathStep):
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-    async def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, type_: "CtyType") -> "CtyType":
         """
         Get the type of the attribute with the given name.
 
@@ -205,7 +204,7 @@ class IndexStep(PathStep):
     """
     index: int = attrs.field()
 
-    async def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue") -> "CtyValue":
         """
         Get the element at the given index from a list or tuple value.
 
@@ -229,7 +228,7 @@ class IndexStep(PathStep):
         if value.is_unknown:
             logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown element")
             # Get the element's type
-            elem_type = await self.apply_type(value.type)
+            elem_type = self.apply_type(value.type)
             
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
@@ -281,7 +280,7 @@ class IndexStep(PathStep):
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-    async def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, type_: "CtyType") -> "CtyType":
         """
         Get the type of the element at the given index.
 
@@ -341,7 +340,7 @@ class KeyStep(PathStep):
     """
     key: Any = attrs.field()
 
-    async def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue") -> "CtyValue":
         """
         Get the value associated with the given key from a map value.
 
@@ -365,7 +364,7 @@ class KeyStep(PathStep):
         if value.is_unknown:
             logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown map value")
             # Get the value's type
-            val_type = await self.apply_type(value.type)
+            val_type = self.apply_type(value.type)
             
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
@@ -417,7 +416,7 @@ class KeyStep(PathStep):
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-    async def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, type_: "CtyType") -> "CtyType":
         """
         Get the type of the value associated with the given key.
 
@@ -508,7 +507,7 @@ class CtyPath:
         logger.debug(f"🧰🔍🔄 Adding key step: {key}")
         return CtyPath(self.steps + [KeyStep(key)])
 
-    async def apply_path(self, value: Any) -> "CtyValue":
+    def apply_path(self, value: Any) -> "CtyValue":
         """
         Apply this path to a value to get a nested value.
 
@@ -544,7 +543,7 @@ class CtyPath:
         for i, step in enumerate(self.steps):
             logger.debug(f"🧰🔍🔄 Applying path step {i+1}/{len(self.steps)}: {step}")
             try:
-                current = await step.apply(current)
+                current = step.apply(current)
                 logger.debug(f"🧰✅🔄 Step result type: {type(current).__name__}")
             except AttributePathError as e:
                 # Preserve the original error message but add path context
@@ -555,9 +554,7 @@ class CtyPath:
         logger.debug(f"🧰✅🔄 Path application complete")
         return current
 
-####
-
-    async def apply_path_type(self, type_: "CtyType") -> "CtyType":
+    def apply_path_type(self, type_: "CtyType") -> "CtyType":
         """
         Apply this path to a type to get the nested value's type.
 
@@ -584,7 +581,7 @@ class CtyPath:
         for i, step in enumerate(self.steps):
             logger.debug(f"🧰🔍🔄 Applying type path step {i+1}/{len(self.steps)}: {step}")
             try:
-                current = await step.apply_type(current)
+                current = step.apply_type(current)
                 logger.debug(f"🧰✅🔄 Step result type: {current.__class__.__name__}")
             except AttributePathError as e:
                 # Preserve the original error message but add path context

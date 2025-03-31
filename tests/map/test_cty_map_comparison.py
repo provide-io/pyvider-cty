@@ -18,24 +18,24 @@ from pyvider.cty import (
 
 class TestCtyMapComparison:
     """Advanced tests for CtyMap implementation to improve code coverage."""
-    
+
     def setup_method(self):
         """Set up test fixtures before each test."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         self.bool_map = CtyMap(key_type=CtyString(), value_type=CtyBool())
-        
+
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
             value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
         )
-        
+
         self.list_map = CtyMap(
             key_type=CtyString(),
             value_type=CtyList(element_type=CtyString())
         )
-        
+
         self.object_map = CtyMap(
             key_type=CtyString(),
             value_type=CtyObject(
@@ -52,25 +52,25 @@ class TestCtyMapComparison:
         # Create two identical map types
         map_type1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_type2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        
+
         # Create a different map type
         map_type3 = CtyMap(key_type=CtyString(), value_type=CtyString())
-        
+
         # Test type equality
         assert map_type1.equal(map_type2)
         assert not map_type1.equal(map_type3)
         assert not map_type1.equal(CtyString())
-        
+
         # Test usable_as
         assert map_type1.usable_as(map_type2)
         assert not map_type1.usable_as(map_type3)
         assert not map_type1.usable_as(CtyString())
-        
+
         # Test instance equality
         map_val1 = map_type1.validate({"a": 1, "b": 2})
         map_val2 = map_type1.validate({"a": 1, "b": 2})
         map_val3 = map_type1.validate({"a": 1, "c": 3})
-        
+
         assert map_val1 == map_val2
         assert map_val1 != map_val3
         assert map_val1 != CtyString(value="not a map")
@@ -129,51 +129,5 @@ class TestCtyMapComparison:
         # Test with non-map type
         assert not map1.equal(CtyString())
         assert map1 != CtyString()
-
-################################################################################
-
-@pytest.mark.asyncio
-async def test_cty_map_equality_operators():
-    """Test equality and inequality operators."""
-    # Create two identical maps
-    map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-    map1 = map1.validate({"one": 1, "two": 2})
-
-    map2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-    map2 = map2.validate({"one": 1, "two": 2})
-
-    # Create a different map
-    map3 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-    map3 = map3.validate({"one": 1, "three": 3})
-
-    # Test equality
-    assert map1 == map2
-    assert not (map1 != map2)
-
-    # Test inequality
-    assert map1 != map3
-    assert not (map1 == map3)
-
-    # Test inequality with different types
-    assert map1 != "not_a_map"
-    assert map1 != CtyString(value="string")
-
-@pytest.mark.asyncio
-async def test_cty_map_equal_and_usable_as():
-    """Test equal() and usable_as() methods."""
-    # Create different map types
-    str_str_map = CtyMap(key_type=CtyString(), value_type=CtyString())
-    str_num_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-    str_str_map2 = CtyMap(key_type=CtyString(), value_type=CtyString())
-
-    # Test equal()
-    assert str_str_map.equal(str_str_map2)
-    assert not str_str_map.equal(str_num_map)
-    assert not str_str_map.equal(CtyString())
-
-    # Test usable_as()
-    assert str_str_map.usable_as(str_str_map2)
-    assert not str_str_map.usable_as(str_num_map)
-    assert not str_str_map.usable_as(CtyString())
 
 # 🐍🏗️🧪

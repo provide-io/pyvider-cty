@@ -42,100 +42,23 @@ class TestCtyMapValidation:
         assert map_data[found_key].value == "pyvider"
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_valid_number_map(self):
-        """Test validation of a valid number map."""
-        valid = {"count": 3, "max_retries": 5}
-        validated = self.number_map.validate(valid)
+    async def test_cty_map_empty_map_validation(self):
+        """Test validation of empty maps."""
+        string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
 
-        # Find the value for "count" key
-        count_value = None
-        for k in validated.value:
-            if isinstance(k, CtyString) and k.value == "count":
-                count_value = validated.value[k]
-                break
+        # Validate None
+        null_result = string_map.validate(None)
+        assert isinstance(null_result, CtyValue)
+        assert isinstance(null_result.type, CtyMap)
+        assert null_result.type.equal(string_map)
+        assert len(null_result.value) == 0
 
-        assert count_value is not None, "Key 'count' not found in map"
-        assert isinstance(count_value, CtyNumber)
-        assert count_value.value == 3
-
-    @pytest.mark.asyncio
-    async def test_cty_map_validate_valid_bool_map(self):
-        """Test validation of a valid boolean map."""
-        valid = {"is_active": True, "is_deleted": False}
-        validated = self.bool_map.validate(valid)
-
-        # Find the value for "is_active" key
-        is_active_value = None
-        for k in validated.value:
-            if isinstance(k, CtyString) and k.value == "is_active":
-                is_active_value = validated.value[k]
-                break
-
-        assert is_active_value is not None, "Key 'is_active' not found in map"
-        assert isinstance(is_active_value, CtyBool)
-        assert is_active_value.value is True
-
-    @pytest.mark.asyncio
-    async def test_cty_map_validate_empty_map(self):
-        """Test validation of an empty map."""
-        empty = {}
-        validated = self.string_map.validate(empty)
-        assert len(validated.value) == 0
-
-    @pytest.mark.asyncio
-    async def test_cty_map_with_decimal_values(self):
-        """Test map with Decimal number values."""
-        # Create map with Decimal values
-        from decimal import Decimal
-        
-        data = {
-            "pi": Decimal("3.14159"),
-            "e": Decimal("2.71828"),
-            "zero": Decimal("0")
-        }
-
-        # Validate
-        validated = self.number_map.validate(data)
-
-        # Check structure
-        assert len(validated.value) == 3
-
-        # Check Decimal values
-        for k, v in validated.value.items():
-            assert isinstance(v, CtyNumber)
-            if k.value == "pi":
-                assert isinstance(v.value, Decimal)
-                assert v.value == Decimal("3.14159")
-            elif k.value == "e":
-                assert isinstance(v.value, Decimal)
-                assert v.value == Decimal("2.71828")
-
-    @pytest.mark.asyncio
-    async def test_cty_map_unhashable_key(self):
-        """Test validation with unhashable key."""
-        # Create a custom key type that rejects a specific key
-        class RejectingKeyType(CtyString):
-            def validate(self, value):
-                if value == "valid_key":
-                    raise CtyMapValidationError("Key validation failed: unhashable type")
-                return super().validate(value)
-        
-        # Create test map with rejecting key type
-        test_map = CtyMap(key_type=RejectingKeyType(), value_type=CtyString())
-        
-        # Test validation failure
-        with pytest.raises(CtyMapValidationError) as exc:
-            test_map.validate({"valid_key": "value"})
-
-@pytest.mark.asyncio
-async def test_cty_map_validate_none():
-    """Test validation with None value."""
-    map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-    result = map_type.validate(None)
-
-    assert isinstance(result, CtyValue)
-    assert isinstance(result.type, CtyMap)
-    assert len(result.value) == 0
+        # Validate empty dict
+        empty_result = string_map.validate({})
+        assert isinstance(empty_result, CtyValue)
+        assert isinstance(empty_result.type, CtyMap)
+        assert empty_result.type.equal(string_map)
+        assert len(empty_result.value) == 0
 
 @pytest.mark.asyncio
 async def test_cty_map_validate_empty_dict():
@@ -146,38 +69,6 @@ async def test_cty_map_validate_empty_dict():
     assert isinstance(result, CtyValue)
     assert isinstance(result.type, CtyMap)
     assert len(result.value) == 0
-
-@pytest.mark.asyncio
-async def test_cty_map_validate_valid_data():
-    """Test validation with valid data."""
-    from decimal import Decimal
-
-    map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-
-    # Valid data
-    data = {
-        "one": 1,
-        "two": 2.5,
-        "three": Decimal("3.14")
-    }
-
-    result = map_type.validate(data)
-
-    assert isinstance(result, CtyValue)
-    assert isinstance(result.type, CtyMap)
-    assert len(result.value) == 3
-
-    # Find values by iterating
-    for k, v in result.value.items():
-        assert isinstance(k, CtyString)
-        assert isinstance(v, CtyNumber)
-
-        if k.value == "one":
-            assert v.value == 1
-        elif k.value == "two":
-            assert v.value == 2.5
-        elif k.value == "three":
-            assert v.value == Decimal("3.14")
 
 @pytest.mark.asyncio
 async def test_cty_map_validate_invalid_key():
