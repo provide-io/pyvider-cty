@@ -4,7 +4,14 @@
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
-from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
+
+from pyvider.cty import (
+    CtyValue,
+    CtyBool,
+    CtyNumber,
+    CtyString,
+    CtyList,
+)
 
 
 def test_cty_list_large_list():
@@ -14,7 +21,8 @@ def test_cty_list_large_list():
     validated = large_list.validate(data)
 
     # Test that we get back a CtyList
-    assert isinstance(validated, CtyList)
+    assert isinstance(validated, CtyValue)
+    assert isinstance(validated.type, CtyList)
 
     # Test that the length is correct
     assert len(validated) == 1000
@@ -30,7 +38,8 @@ def test_cty_list_dynamic_schema():
     validated = dynamic_list.validate([["one", "two"], ["three"]])
 
     # Test that we get back a CtyList
-    assert isinstance(validated, CtyList)
+    assert isinstance(validated, CtyValue)
+    assert isinstance(validated.type, CtyList)
 
     # Test that the first element is a CtyList with CtyString values
     assert isinstance(validated[0], CtyList)

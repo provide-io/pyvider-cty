@@ -57,7 +57,7 @@ class TestCtyListValidation:
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
-        assert all(isinstance(item, CtyString) for item in result.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value)
         assert [item.value for item in result.value] == ["apple", "banana", "cherry"]
 
     def test_validate_none_raises_error(self):
@@ -89,7 +89,7 @@ class TestCtyListValidation:
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 5
-        assert all(isinstance(item, CtyNumber) for item in result.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyNumber) for item in result.value)
         assert [item.value for item in result.value] == [1, 2, 3, 4, 5]
 
     def test_validate_heterogeneous_list_fails(self):
@@ -116,7 +116,8 @@ class TestCtyListValidation:
         validated = self.string_list.validate([])
 
         # Test that we get back a CtyList
-        assert isinstance(validated, CtyList)
+        assert isinstance(validated, CtyValue)
+        assert isinstance(validated.type, CtyList)
 
         # Test that the value is an empty list
         assert validated.value == []
@@ -150,7 +151,8 @@ class TestCtyListValidation:
         validated = self.nested_list.validate([["one", "two"], ["three"]])
 
         # Test that we get back a CtyList of CtyLists
-        assert isinstance(validated, CtyList)
+        assert isinstance(validated, CtyValue)
+        assert isinstance(validated.type, CtyList)
         assert len(validated.value) == 2
 
         # Test that the inner lists are CtyLists
