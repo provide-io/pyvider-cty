@@ -5,7 +5,14 @@
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
-from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
+from pyvider.cty import (
+    CtyValue,
+    CtyBool,
+    CtyList,
+    CtyNumber,
+    CtyString,
+    CtyTuple,
+)
 
 class TestCtyListValidation:
     """Advanced tests for the CtyList type to improve coverage."""
@@ -47,7 +54,8 @@ class TestCtyListValidation:
         result = self.string_list.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
         assert all(isinstance(item, CtyString) for item in result.value)
         assert [item.value for item in result.value] == ["apple", "banana", "cherry"]
@@ -78,7 +86,8 @@ class TestCtyListValidation:
         result = self.number_list.validate(data)
 
         # Assertions
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
         assert len(result.value) == 5
         assert all(isinstance(item, CtyNumber) for item in result.value)
         assert [item.value for item in result.value] == [1, 2, 3, 4, 5]

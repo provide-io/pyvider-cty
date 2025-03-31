@@ -5,8 +5,14 @@
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
-from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
-
+from pyvider.cty import (
+    CtyValue,
+    CtyBool,
+    CtyList,
+    CtyNumber,
+    CtyString,
+    CtyTuple,
+)
 
 class TestCtyListOperations:
     """Advanced tests for the CtyList type to improve coverage."""
@@ -67,7 +73,10 @@ class TestCtyListOperations:
 
         # Test concat method
         result = list1.concat(list2)
-        assert isinstance(result, CtyList)
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
+
+
         assert len(result.value) == 4
         assert all(isinstance(item, CtyString) for item in result.value)
         assert [item.value for item in result.value] == ["a", "b", "c", "d"]
@@ -234,7 +243,8 @@ def test_cty_list_concat():
     result = list1.concat(list2)
 
     # Test that we get back a new CtyList
-    assert isinstance(result, CtyList)
+    assert isinstance(result, CtyValue)
+    assert isinstance(result.type, CtyList)
     assert result is not list1
     assert result is not list2
 

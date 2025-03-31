@@ -5,7 +5,13 @@
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
-from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
+from pyvider.cty import (
+    CtyBool,
+    CtyList,
+    CtyNumber,
+    CtyString,
+    CtyTuple,
+)
 
 class TestCtyListTypeSafety:
     """Advanced tests for the CtyList type to improve coverage."""
@@ -16,6 +22,7 @@ class TestCtyListTypeSafety:
         self.string_list = CtyList(element_type=CtyString())
         self.number_list = CtyList(element_type=CtyNumber())
         self.bool_list = CtyList(element_type=CtyBool())
+        self.nested_list = CtyList(element_type=CtyList(element_type=CtyNumber()))
 
     def test_usable_as_same_type(self):
         """Test usable_as with same type."""
@@ -32,14 +39,6 @@ class TestCtyListTypeSafety:
 
         # Test string representation
         assert str(list_type) == "list(CtyString)"
-
-    def test_string_representation_complex(self):
-        """Test string representation of complex CtyList."""
-        # Create a nested list type
-        nested_list = CtyList(element_type=CtyList(element_type=CtyNumber()))
-
-        # Test string representation
-        assert str(test_cty_list_type_safety.pyested_list) == "list(list(CtyNumber))"
 
     def test_usable_as_different_type(self):
         """Test usable_as with different type."""

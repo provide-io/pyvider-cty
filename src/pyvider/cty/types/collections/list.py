@@ -264,36 +264,29 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
 
     #### contains
     def contains(self, item: Any) -> bool:
-        """
-        Check if this list contains an item.
-
-        Args:
-            item: The item to check for
-
-        Returns:
-            True if the item is in the list, False otherwise
-        """
         logger.debug(f"🔌🔍🔄 Checking if list contains item: {item}")
 
         try:
-            # Validate the item against element_type
-            if isinstance(item, CtyType) and item.__class__ == self.element_type.__class__:
-                validated_item = item
-                logger.debug(f"🔌🔍✅ Item is already a {self.element_type.__class__.__name__}, no validation needed")
-            else:
-                validated_item = self.element_type.validate(item)
+            # Validate the item
+            validated_item = self.element_type.validate(item)
 
-            # Check if any element in the list equals the validated item
+            # Check each list item for equality
             for list_item in self.value:
+                # Compare values within CtyValue objects
+                if (hasattr(list_item, 'value') and hasattr(validated_item, 'value') and 
+                    list_item.value == validated_item.value):
+                    logger.debug(f"🔌🔍✅ List contains item: {validated_item.value}")
+                    return True
+                    
+                # Direct comparison
                 if list_item == validated_item:
                     logger.debug(f"🔌🔍✅ List contains item: {validated_item}")
                     return True
 
-            logger.debug(f"🔌🔍❌ List does not contain item: {validated_item}")
             return False
         except Exception as e:
-            # If validation fails, the item can't be in the list
-            logger.debug(f"🔌🔍❌ Item is not valid for this list: {e}")
+            # Invalid items can't be in the list
+            logger.debug(f"🔌🔍❌ Item validation failed: {e}")
             return False
 
     #### usable_as
@@ -334,30 +327,25 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtyList.equal: {result}")
         return result
 
+
     def __eq__(self, other):
-        """
-        Check if this list is equal to another list.
-
-        Args:
-            other: The other list to check against
-
-        Returns:
-            True if the lists are equal
-        """
         if not isinstance(other, CtyList):
             return False
 
         # Check element type equality
-        if not self.element_type == other.element_type:
+        if not self.element_type.equal(other.element_type):
             return False
 
-        # Check if lists have the same length
+        # Check list length
         if len(self.value) != len(other.value):
             return False
 
-        # Check each element for equality
+        # Compare values, not just references
         for a, b in zip(self.value, other.value):
-            if a != b:
+            if hasattr(a, 'value') and hasattr(b, 'value'):
+                if a.value != b.value:
+                    return False
+            elif a != b:
                 return False
 
         return True
@@ -381,26 +369,25 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
         return iter(self.value)
 
     def __getitem__(self, index: Union[int, slice]):
-        """
-        Get an item from the list by index or slice.
-
-        Args:
-            index: The index or slice to get
-
-        Returns:
-            The item at the specified index, or a new CtyList with the sliced values
-        """
-
         if isinstance(index, slice):
             start = index.start if index.start is not None else 0
-            stop = index.stop if index.stop is not None else len(self._value)
-            if index.step == 1 or index.step is None:
-                return self._type.slice(start, stop)
+            stop = index.stop if index.stop is not None else len(self.value)
+            if index.step is None or index.step == 1:
+                return self.slice(start, stop)
+            else:
+                # Handle step parameter
+                result = []
+                for i in range(start, stop, index.step):
+                    if i < len(self.value):
+                        result.append(self.value[i])
+                return evolve(self, value=result)
 
         try:
             return self.value[index]
         except IndexError:
             raise IndexError("list index out of range")
+
+
 
     def __str__(self) -> str:
         """
