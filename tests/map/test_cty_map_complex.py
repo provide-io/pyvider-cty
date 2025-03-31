@@ -60,7 +60,7 @@ class TestCtyMapComplex:
             self.string_map.validate({unknown_key: valid_val})
 
     @pytest.mark.asyncio
-    async def test_nested_map_2(self):
+    async def test_nested_map(self):
         """Test nested map with proper value wrapping."""
         # Create inner map keys and values
         inner_key1 = CtyValue(type_=CtyString(), value="name")
@@ -217,54 +217,6 @@ class TestCtyMapComplex:
             self.list_map.validate(invalid_data)
             
     @pytest.mark.asyncio
-    async def test_nested_map_1(self):
-        """Test nested map with proper value wrapping."""
-        # Create inner map keys and values
-        inner_key1 = CtyValue(type_=CtyString(), value="name")
-        inner_val1 = CtyValue(type_=CtyString(), value="Alice")
-        inner_key2 = CtyValue(type_=CtyString(), value="email")
-        inner_val2 = CtyValue(type_=CtyString(), value="alice@example.com")
-        
-        # Create inner map
-        inner_map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
-        inner_map_raw = {inner_key1: inner_val1, inner_key2: inner_val2}
-        inner_map = inner_map_type.validate(inner_map_raw)
-        
-        # Create outer map key and value
-        outer_key = CtyValue(type_=CtyString(), value="user1")
-        
-        # Create outer map
-        outer_map_raw = {outer_key: inner_map}
-        outer_map = self.nested_map.validate(outer_map_raw)
-        
-        # Verify structure
-        assert len(outer_map.value) == 1
-        
-        # Find the nested value
-        found = False
-        for k, v in outer_map.value.items():
-            if k is outer_key:
-                found = True
-                assert isinstance(v, CtyValue)
-                assert isinstance(v.type, CtyMap)
-                
-                # Check inner map values
-                inner_found_name = False
-                inner_found_email = False
-                for ik, iv in v.value.items():
-                    if ik is inner_key1:
-                        inner_found_name = True
-                        assert iv is inner_val1
-                    elif ik is inner_key2:
-                        inner_found_email = True
-                        assert iv is inner_val2
-                
-                assert inner_found_name and inner_found_email
-                
-        assert found
-
-
-    @pytest.mark.asyncio
     async def test_cty_map_validate_nested_map(self):
         """Test validation with a nested map."""
         nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
@@ -301,7 +253,6 @@ class TestCtyMapComplex:
         invalid = {"config": {"filename": 123}}
         with pytest.raises(CtyMapValidationError):
             nested_map.validate(invalid)
-
 
 ################################################################################
 

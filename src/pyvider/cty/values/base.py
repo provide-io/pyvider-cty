@@ -8,6 +8,7 @@ CtyValue represents a value with its corresponding type in the Cty type system.
 This module provides the core value representation that combines a value with its
 type, along with additional metadata like whether the value is known or null.
 """
+from attrs import define
 
 from decimal import Decimal
 from typing import Any, FrozenSet, Generic, Iterator, Optional, Tuple, TypeVar, Union, cast
