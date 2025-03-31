@@ -1,0 +1,53 @@
+{
+  "main_server": {
+    "name": "web-server-01",
+    "instance_type": "t3.xlarge",
+    "active": true,
+    "cpu_cores": 4,
+    "ram_gb": 16.0,
+    "network": {
+      "subnet": "subnet-abcdef01234567890",
+      "vpc_id": "vpc-0123456789abcdef0",
+      "security_groups": [
+        "sg-web",
+        "sg-internal"
+      ],
+      "private_endpoints": []
+    },
+    "disks": [
+      {
+        "size_gb": 100,
+        "type": "gp3",
+        "iops": 3000
+      },
+      {
+        "size_gb": 500,
+        "type": "io2",
+        "iops": null
+      }
+    ],
+    "tags": {
+      "Environment": "production",
+      "Project": "WebApp",
+      "Owner": "PlatformTeam"
+    },
+    "metadata": {
+      "created_by": "automation",
+      "last_check_ok": true,
+      "check_interval": 300,
+      "nested_data": {
+        "key": "value"
+      }
+    },
+    "location": [
+      45.5231,
+      -122.6765,
+      15.0
+    ],
+    "extra_config": "some arbitrary config string",
+    "backup_policy": null,
+    "region": "__cty_unknown__"
+  },
+  "backup_server": null,
+  "future_server": "__cty_unknown_object__"
+}

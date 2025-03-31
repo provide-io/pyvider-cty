@@ -1,0 +1,98 @@
+{
+  "type": "map",
+  "elementType": {
+    "type": "object",
+    "attributes": {
+      "name": {
+        "type": "string"
+      },
+      "instance_type": {
+        "type": "string"
+      },
+      "active": {
+        "type": "bool"
+      },
+      "cpu_cores": {
+        "type": "number"
+      },
+      "ram_gb": {
+        "type": "number"
+      },
+      "network": {
+        "type": "object",
+        "attributes": {
+          "subnet": {
+            "type": "string"
+          },
+          "vpc_id": {
+            "type": "string"
+          },
+          "security_groups": {
+            "type": "list",
+            "elementType": {
+              "type": "string"
+            }
+          },
+          "private_endpoints": {
+            "type": "set",
+            "elementType": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "disks": {
+        "type": "list",
+        "elementType": {
+          "type": "object",
+          "attributes": {
+            "size_gb": {
+              "type": "number"
+            },
+            "type": {
+              "type": "string"
+            },
+            "iops": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "tags": {
+        "type": "map",
+        "elementType": {
+          "type": "string"
+        }
+      },
+      "metadata": {
+        "type": "map",
+        "elementType": {
+          "type": "dynamic"
+        }
+      },
+      "location": {
+        "type": "tuple",
+        "elements": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "extra_config": {
+        "type": "dynamic"
+      },
+      "backup_policy": {
+        "type": "string"
+      },
+      "region": {
+        "type": "string"
+      }
+    }
+  }
+}
