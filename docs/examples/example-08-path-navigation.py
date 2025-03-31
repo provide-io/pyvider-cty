@@ -50,10 +50,10 @@ async def navigate_paths():
     disk_type_path = CtyPath.get_attr("specs").child("disks").index_step(0).child("type")
     
     # Apply paths to get values
-    name = await name_path.apply_path(server_val.value)
-    cpu = await cpu_path.apply_path(server_val.value)
-    first_disk = await first_disk_path.apply_path(server_val.value)
-    disk_type = await disk_type_path.apply_path(server_val.value)
+    name = name_path.apply_path(server_val.value)
+    cpu = cpu_path.apply_path(server_val.value)
+    first_disk = first_disk_path.apply_path(server_val.value)
+    disk_type = disk_type_path.apply_path(server_val.value)
     
     print(f"Server name: {name.value}")
     print(f"CPU cores: {cpu.value}")
