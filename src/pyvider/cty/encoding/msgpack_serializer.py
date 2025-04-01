@@ -14,7 +14,8 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, ClassVar, Dict, Final, List, Optional, Set, Tuple, Type, TypedDict, Union, cast
 
-import attrs
+from attrs import fields
+
 import msgpack
 
 from pyvider.cty.logger import logger
@@ -824,7 +825,7 @@ class MsgpackSerializer(TypedSerializerProtocol):
                 if hasattr(value, '__attrs_attrs__'):
                     result = {
                         field.name: self._prepare_value(getattr(value, field.name))
-                        for field in attrs.fields(value.__class__)
+                        for field in fields(value.__class__)
                     }
                     # Encode as an object
                     return msgpack.ExtType(EXT_OBJECT, msgpack.packb(result, **DEFAULT_ENCODE_OPTIONS))

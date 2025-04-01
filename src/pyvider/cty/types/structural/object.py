@@ -14,9 +14,9 @@ consistency throughout the validation process and maintaining proper type inform
 in nested structures.
 """
 
-from typing import Any, FrozenSet, Optional, Self, Union
+from typing import Any, ClassVar, FrozenSet, Optional, Self, Union
 
-import attrs
+from attrs import define, evolve, field
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
@@ -28,7 +28,7 @@ from pyvider.cty.exceptions import (
 )
 
 
-@attrs.define(frozen=True, slots=True)
+@define(frozen=True, slots=True)
 class CtyObject(CtyType[dict[str, Any]]):
     """
     Represents a Cty object type with a fixed set of attributes.
@@ -41,8 +41,9 @@ class CtyObject(CtyType[dict[str, Any]]):
         attribute_types: dictionary mapping attribute names to their types
         optional_attributes: Set of attribute names that are optional
     """
-    attribute_types: dict[str, CtyType] = attrs.field(factory=dict)
-    optional_attributes: FrozenSet[str] = attrs.field(factory=frozenset)
+    ctype: ClassVar[str] = "object"
+    attribute_types: dict[str, CtyType] = field(factory=dict)
+    optional_attributes: FrozenSet[str] = field(factory=frozenset)
 
     def __attrs_post_init__(self) -> None:
         """Validate object type configuration."""
@@ -416,14 +417,12 @@ class CtyObject(CtyType[dict[str, Any]]):
         if optional:
             new_optional.add(name)
 
-        # Create new object type
-        new_obj = CtyObject(
+        logger.debug(f"🧩🔧✅ Created new object type with attribute: {name}")
+        return evolve(
+            self,
             attribute_types=new_attrs,
             optional_attributes=frozenset(new_optional)
         )
-
-        logger.debug(f"🧩🔧✅ Created new object type with attribute: {name}")
-        return new_obj
 
     def with_optional_attributes(self, *names: str) -> "CtyObject":
         """
@@ -450,14 +449,11 @@ class CtyObject(CtyType[dict[str, Any]]):
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) | set(names))
 
-        # Create new object type
-        new_obj = CtyObject(
+        return evolve(
+            self,
             attribute_types=self.attribute_types,
-            optional_attributes=new_optional
+            optional_attributes=frozenset(new_optional)
         )
-
-        logger.debug(f"🧩🔧✅ Created new object type with optional attributes: {names}")
-        return new_obj
 
     def with_required_attributes(self, *names: str) -> "CtyObject":
         """
@@ -490,14 +486,12 @@ class CtyObject(CtyType[dict[str, Any]]):
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) - set(names))
 
-        # Create new object type
-        new_obj = CtyObject(
-            attribute_types=self.attribute_types,
-            optional_attributes=new_optional
-        )
-
         logger.debug(f"🧩🔧✅ Created new object type with required attributes: {names}")
-        return new_obj
+        return evolve(
+            self,
+            attribute_types=self.attribute_types,
+            optional_attributes=frozenset(new_optional)
+        )
 
     def __eq__(self, other):
         """Allow direct comparison with == operator."""

@@ -19,7 +19,7 @@ This follows go-cty's design for path handling.
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, TypeVar, cast, Sequence
 
-import attrs
+from attrs import define, field
 
 from pyvider.cty.logger import logger
 from pyvider.cty.exceptions import AttributePathError, CtyValidationError
@@ -82,7 +82,7 @@ class PathStep(ABC):
         """String representation of the path step."""
         pass
 
-@attrs.define(frozen=True)
+@define(frozen=True)
 class GetAttrStep(PathStep):
     """
     A path step that gets an attribute from an object.
@@ -90,7 +90,7 @@ class GetAttrStep(PathStep):
     This step type is used for objects with named attributes, similar to
     JavaScript's obj.attr notation.
     """
-    name: str = attrs.field()
+    name: str = field()
 
     @name.validator
     def _validate_name(self, attribute, value):
@@ -194,7 +194,7 @@ class GetAttrStep(PathStep):
         """Get the string representation of this path step."""
         return f".{self.name}"
 
-@attrs.define(frozen=True)
+@define(frozen=True)
 class IndexStep(PathStep):
     """
     A path step that indexes into a list, tuple, or string.
@@ -202,7 +202,7 @@ class IndexStep(PathStep):
     This step type is used for collections with numeric indexes, similar to
     JavaScript's arr[i] notation.
     """
-    index: int = attrs.field()
+    index: int = field()
 
     def apply(self, value: "CtyValue") -> "CtyValue":
         """
@@ -330,7 +330,7 @@ class IndexStep(PathStep):
         """Get the string representation of this path step."""
         return f"[{self.index}]"
 
-@attrs.define(frozen=True)
+@define(frozen=True)
 class KeyStep(PathStep):
     """
     A path step that gets a value from a map by key.
@@ -338,7 +338,7 @@ class KeyStep(PathStep):
     This step type is used for maps with non-numeric keys, similar to
     JavaScript's obj["key"] notation.
     """
-    key: Any = attrs.field()
+    key: Any = field()
 
     def apply(self, value: "CtyValue") -> "CtyValue":
         """
@@ -457,7 +457,7 @@ class KeyStep(PathStep):
         # Use repr for the key to handle quoting strings
         return f"[{self.key!r}]"
 
-@attrs.define
+@define
 class CtyPath:
     """
     A path through a nested Cty value.
@@ -466,7 +466,7 @@ class CtyPath:
     value to a nested value. Paths can be constructed incrementally and then
     applied to values to extract nested data.
     """
-    steps: List[PathStep] = attrs.field(factory=list)
+    steps: List[PathStep] = field(factory=list)
 
     @classmethod
     def empty(cls) -> 'Path':

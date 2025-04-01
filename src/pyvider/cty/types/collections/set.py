@@ -108,11 +108,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             new_set = set(self.value)
             new_set.add(validated_item)
 
-            # Return a new CtySet
-            return CtySet(
-                element_type=self.element_type,
-                value=new_set
-            )
+            return evolve(self, value=new_set)
         except Exception as e:
             raise CtyValidationError(f"Failed to add element: {e}")
 

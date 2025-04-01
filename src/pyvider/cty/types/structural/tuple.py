@@ -11,14 +11,14 @@ that may have different types from each other.
 
 from typing import Any, ClassVar, Sequence, cast, List, Tuple
 
-import attrs
+from attrs import define, field
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 
 
-@attrs.define(frozen=True, slots=True)
+@define(frozen=True, slots=True)
 class CtyTuple(CtyType[tuple[Any, ...]]):
     """
     Represents a Cty tuple type with fixed-position elements of potentially different types.
@@ -27,7 +27,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
     having a different type. This matches Go-CTY's tuple type semantics.
     """
     ctype: ClassVar[str] = "tuple"
-    element_types: tuple[CtyType, ...] = attrs.field()
+    element_types: tuple[CtyType, ...] = field()
 
     @element_types.validator
     def _validate_element_types(self, attribute, value):
@@ -274,4 +274,4 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         elements = ", ".join(repr(t) for t in self.element_types)
         return f"CtyTuple(element_types=({elements}))"
 
-# 🐍🏗️
+# 🐍🏗️🐣

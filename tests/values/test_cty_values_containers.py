@@ -208,13 +208,15 @@ class TestCtyObjectValueOperations:
         self.num_type = CtyNumber()
         self.obj_type = CtyObject(attribute_types={
             "name": self.str_type,
-            "age": self.num_type
+            "height": self.str_type,
+            "age": self.num_type,
         })
         
         # Create sample object value
         self.obj_val = self.obj_type.validate({
             "name": "Alice",
-            "age": 30
+            "height": "5ft 9in",
+            "age": 30,
         })
     
     @pytest.mark.asyncio

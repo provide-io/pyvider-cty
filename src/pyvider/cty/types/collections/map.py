@@ -13,9 +13,9 @@ This implementation strictly follows Go-CTY's map type semantics, which:
 4. Preserves type safety throughout
 """
 
-from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar, cast, TypeGuard
+from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
 
-import attrs
+from attrs import define, field
 
 from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty.logger import logger
@@ -23,7 +23,7 @@ from pyvider.cty.types.base import CtyType
 
 V = TypeVar('V')  # Value type is variable
 
-@attrs.define(frozen=True, slots=True)
+@define(frozen=True, slots=True)
 class CtyMap(CtyType[dict[str, V]], Generic[V]):
     """
     CtyMap represents a string-keyed map type in the Cty type system.
@@ -38,9 +38,9 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         value: dictionary of validated values (optional, for pre-validated maps)
     """
     ctype: ClassVar[str] = "map"
-    key_type: CtyType[str] = attrs.field(kw_only=True)
-    value_type: CtyType[V] = attrs.field(kw_only=True)
-    value: dict[str, "CtyValue"] = attrs.field(factory=dict, kw_only=True)
+    key_type: CtyType[str] = field(kw_only=True)
+    value_type: CtyType[V] = field(kw_only=True)
+    value: dict[str, "CtyValue"] = field(factory=dict, kw_only=True)
 
     def __attrs_post_init__(self) -> None:
         """

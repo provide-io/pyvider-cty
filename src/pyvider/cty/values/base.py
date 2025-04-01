@@ -8,10 +8,10 @@ CtyValue represents a value with its corresponding type in the Cty type system.
 This module provides the core value representation that combines a value with its
 type, along with additional metadata like whether the value is known or null.
 """
-from attrs import define
-
 from decimal import Decimal
-from typing import Any, FrozenSet, Generic, Iterator, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, FrozenSet, Generic, Iterator, Optional, Self, Tuple, TypeVar, Union, cast
+
+from attrs import define, field, evolve
 
 from pyvider.cty.logger import logger
 from pyvider.cty.types import CtyType
@@ -19,6 +19,8 @@ from pyvider.cty.types import CtyType
 
 T = TypeVar('T', covariant=True)
 
+
+@define(frozen=True, slots=True)
 class CtyValue(Generic[T]):
     """
     Immutable representation of a Cty value.
@@ -28,33 +30,76 @@ class CtyValue(Generic[T]):
 
     CtyValue is the fundamental unit in the Cty type system. All operations preserve
     type information by returning new CtyValue instances rather than raw values.
+    
+    Attributes:
+        _type: The Cty type of this value
+        _value: The raw value (or None for null/unknown values)
+        _is_unknown: Whether this value is unknown
+        _is_null: Whether this value is null
+        _marks: Set of marks applied to this value
     """
+    # Core attributes
+    _type: CtyType[T] = field(alias="type_")
+    _value: Any = field(default=None)
+    _is_unknown: bool = field(default=False)
+    _is_null: bool = field(default=False)
+    _marks: FrozenSet = field(factory=frozenset)
 
-    def __init__(
-        self,
-        type_: CtyType[T],
-        value: Any = None,
-        is_unknown: bool = False,
-        is_null: bool = False,
-        marks: Optional[FrozenSet] = None
-    ):
+    def __attrs_post_init__(self) -> None:
+        """Log info about created CtyValue."""
+        logger.debug(f"🔄🔧✅ Creating CtyValue of type {self._type.__class__.__name__}")
+
+    # -------------------------------------------------------------------------
+    # Backward compatibility factory - handles type_/_type naming differences
+    # -------------------------------------------------------------------------
+    @classmethod
+    def __new__(cls, *args, **kwargs):
         """
-        Initialize a new CtyValue.
-
+        Create a new CtyValue instance, handling backward compatibility.
+        
+        This method ensures the class works with both old-style parameter names
+        (type_) and new-style parameter names (_type).
+        
         Args:
-            type_: The Cty type of this value
-            value: The raw value (or None for null/unknown values)
-            is_unknown: Whether this value is unknown
-            is_null: Whether this value is null
-            marks: Optional set of marks to apply to this value
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+            
+        Returns:
+            A new CtyValue instance
         """
-        logger.debug(f"🔄🔧✅ Creating CtyValue of type {type_.__class__.__name__}")
-        self._type = type_
-        self._value = value
-        self._is_unknown = is_unknown
-        self._is_null = is_null
-        self._marks = marks or frozenset()
+        # Handle type_ vs _type parameter
+        if 'type_' in kwargs and '_type' not in kwargs:
+            kwargs['_type'] = kwargs.pop('type_')
+        
+        # Handle value vs _value parameter  
+        if 'value' in kwargs and '_value' not in kwargs:
+            kwargs['_value'] = kwargs.pop('value')
+            
+        # Handle is_null vs _is_null parameter
+        if 'is_null' in kwargs and '_is_null' not in kwargs:
+            kwargs['_is_null'] = kwargs.pop('is_null')
+            
+        # Handle is_unknown vs _is_unknown parameter
+        if 'is_unknown' in kwargs and '_is_unknown' not in kwargs:
+            kwargs['_is_unknown'] = kwargs.pop('is_unknown')
+            
+        # Handle marks vs _marks parameter
+        if 'marks' in kwargs and '_marks' not in kwargs:
+            kwargs['_marks'] = kwargs.pop('marks')
+        
+        # Convert positional args to keyword args
+        if args and len(args) >= 1 and '_type' not in kwargs:
+            kwargs['_type'] = args[0]
+            args = args[1:]
+            if args and len(args) >= 1 and '_value' not in kwargs:
+                kwargs['_value'] = args[0]
+                args = args[1:]
+        
+        return super().__new__(cls)
 
+    # -------------------------------------------------------------------------
+    # Property accessors for backward compatibility
+    # -------------------------------------------------------------------------
     @property
     def type(self) -> CtyType[T]:
         """Get the type of this value."""
@@ -78,7 +123,7 @@ class CtyValue(Generic[T]):
             logger.warning("🔄❗⚠️ Attempted to get raw value of null value")
             return None
         return self._value
-    
+
     @property
     def is_known(self) -> bool:
         """Check if this value is known (not unknown)."""
@@ -111,7 +156,10 @@ class CtyValue(Generic[T]):
                 return True
         return False
 
-    def mark(self, mark: Any) -> "CtyValue[T]":
+    # -------------------------------------------------------------------------
+    # Value modification methods
+    # -------------------------------------------------------------------------
+    def mark(self, mark: Any) -> Self:
         """
         Add a mark to this value.
 
@@ -122,15 +170,12 @@ class CtyValue(Generic[T]):
             A new CtyValue with the mark added
         """
         logger.debug(f"🔄🔧✅ Adding mark {mark} to value")
-        return CtyValue(
-            type_=self._type,
-            value=self._value,
-            is_unknown=self._is_unknown,
-            is_null=self._is_null,
+        return evolve(
+            self,
             marks=frozenset(self._marks.union({mark}))
         )
 
-    def unmark(self) -> Tuple["CtyValue[T]", FrozenSet]:
+    def unmark(self) -> Tuple[Self, FrozenSet]:
         """
         Remove all marks from this value and return them.
 
@@ -138,16 +183,11 @@ class CtyValue(Generic[T]):
             tuple: (Unmarked value, Set of removed marks)
         """
         logger.debug(f"🔄🔧✅ Removing {len(self._marks)} marks from value")
-        return CtyValue(
-            type_=self._type,
-            value=self._value,
-            is_unknown=self._is_unknown,
-            is_null=self._is_null,
-            marks=frozenset()
-        ), self._marks
+        return evolve(self, marks=frozenset()), self._marks
 
-    # --- Container operations ---
-
+    # -------------------------------------------------------------------------
+    # Container operations
+    # -------------------------------------------------------------------------
     def get(self, key: Any, default: Any = None) -> "CtyValue":
         """
         Get a value by key, with a default if not found.
@@ -176,7 +216,7 @@ class CtyValue(Generic[T]):
         # For maps, use the map's get method
         if isinstance(self._type, CtyMap):
             try:
-                return self._type.get(self._value, key, default)
+                return self._type.get(self, key, default)
             except Exception as e:
                 logger.debug(f"🔄🔍⚠️ Map get failed: {e}")
                 return default
@@ -185,7 +225,7 @@ class CtyValue(Generic[T]):
         elif isinstance(self._type, CtyObject):
             try:
                 if self._type.has_attribute(key):
-                    return self._type.get_attribute(self._value, key)
+                    return self._type.get_attribute(self, key)
                 return default
             except Exception as e:
                 logger.debug(f"🔄🔍⚠️ Object attribute access failed: {e}")
@@ -195,7 +235,7 @@ class CtyValue(Generic[T]):
         logger.debug(f"🔄🔍⚠️ get() called on unsupported type: {self._type.__class__.__name__}")
         return default
 
-    def set(self, key: Any, value: Any) -> "CtyValue":
+    def set(self, key: Any, value: Any) -> Self:
         """
         Set a value in a container.
 
@@ -224,15 +264,15 @@ class CtyValue(Generic[T]):
 
         # For maps, use the map's set method
         if isinstance(self._type, CtyMap):
-            new_value = self._type.set(self._value, key, value)
-            return CtyValue(type_=self._type, value=new_value)
+            new_value = self._type.set(self, key, value)
+            return new_value
 
         # Value doesn't support key setting
         error_msg = f"set() method not supported for type {self._type.__class__.__name__}"
         logger.error(f"🔄❗❌ {error_msg}")
         raise TypeError(error_msg)
 
-    def delete(self, key: Any) -> "CtyValue":
+    def delete(self, key: Any) -> Self:
         """
         Delete a key from a container.
 
@@ -260,8 +300,8 @@ class CtyValue(Generic[T]):
 
         # For maps, use the map's delete method
         if isinstance(self._type, CtyMap):
-            new_value = self._type.delete(self._value, key)
-            return CtyValue(type_=self._type, value=new_value)
+            new_value = self._type.delete(self, key)
+            return new_value
 
         # Value doesn't support key deletion
         error_msg = f"delete() method not supported for type {self._type.__class__.__name__}"
@@ -316,8 +356,9 @@ class CtyValue(Generic[T]):
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg)
 
-    # --- Factory methods ---
-
+    # -------------------------------------------------------------------------
+    # Factory methods
+    # -------------------------------------------------------------------------
     @classmethod
     def bool(cls, value: bool) -> "CtyValue":
         """
@@ -330,6 +371,8 @@ class CtyValue(Generic[T]):
             A new CtyValue with the boolean value
         """
         from pyvider.cty.types import CtyBool
+        
+        logger.debug(f"🔄🔧✅ Creating bool value: {value}")
         return cls(type_=CtyBool(), value=value)
 
     @classmethod
@@ -344,6 +387,8 @@ class CtyValue(Generic[T]):
             A new CtyValue with the string value
         """
         from pyvider.cty.types import CtyString
+        
+        logger.debug(f"🔄🔧✅ Creating string value: {value}")
         return cls(type_=CtyString(), value=value)
 
     @classmethod
@@ -358,6 +403,8 @@ class CtyValue(Generic[T]):
             A new CtyValue with the number value
         """
         from pyvider.cty.types import CtyNumber
+        
+        logger.debug(f"🔄🔧✅ Creating number value: {value}")
         return cls(type_=CtyNumber(), value=value)
 
     @classmethod
@@ -374,6 +421,7 @@ class CtyValue(Generic[T]):
         """
         from pyvider.cty.types import CtyList
 
+        logger.debug(f"🔄🔧✅ Creating list value with {len(elements)} elements")
         # Create list type and validate the elements
         list_type = CtyList(element_type=element_type)
         return list_type.validate(elements)
@@ -393,6 +441,7 @@ class CtyValue(Generic[T]):
         """
         from pyvider.cty.types import CtyMap
 
+        logger.debug(f"🔄🔧✅ Creating map value with {len(items)} items")
         # Create map type and validate the items
         map_type = CtyMap(key_type=key_type, value_type=value_type)
         return map_type.validate(items)
@@ -411,6 +460,7 @@ class CtyValue(Generic[T]):
         """
         from pyvider.cty.types import CtySet
 
+        logger.debug(f"🔄🔧✅ Creating set value with {len(elements)} elements")
         # Create set type and validate the elements
         set_type = CtySet(element_type=element_type)
         return set_type.validate(elements)
@@ -429,21 +479,35 @@ class CtyValue(Generic[T]):
         """
         from pyvider.cty.types import CtyTuple
 
+        logger.debug(f"🔄🔧✅ Creating tuple value with {len(elements)} elements")
         # Create tuple type and validate the elements
         tuple_type = CtyTuple(element_types=element_types)
         return tuple_type.validate(elements)
 
     @classmethod
     def object(cls, attribute_types: dict, attributes: dict) -> "CtyValue":
-        """Create an object value."""
+        """
+        Create an object value.
+        
+        Args:
+            attribute_types: Dictionary mapping attribute names to their types
+            attributes: Dictionary of attribute values
+            
+        Returns:
+            A new CtyValue with the object
+            
+        Raises:
+            CtyValidationError: If validation fails
+        """
         from pyvider.cty.types import CtyObject
         from pyvider.cty.exceptions import CtyValidationError
-        
+
+        logger.debug(f"🔄🔧✅ Creating object value with {len(attributes)} attributes")
         # Validate attribute_types contains CtyType instances
         for attr_name, attr_type in attribute_types.items():
             if not isinstance(attr_type, CtyType):
                 raise CtyValidationError(f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}")
-        
+
         # Create object type and validate
         object_type = CtyObject(attribute_types=attribute_types)
         return object_type.validate(attributes)
@@ -476,8 +540,9 @@ class CtyValue(Generic[T]):
         logger.debug(f"🔄🔧✅ Creating null value of type {type_.__class__.__name__}")
         return cls(type_=type_, is_null=True)
 
-    # --- Conversion and representation ---
-
+    # -------------------------------------------------------------------------
+    # Serialization
+    # -------------------------------------------------------------------------
     def to_dict(self) -> dict:
         """
         Convert to dictionary representation for serialization.
@@ -522,8 +587,9 @@ class CtyValue(Generic[T]):
 
         return result
 
-    # --- Special methods ---
-
+    # -------------------------------------------------------------------------
+    # Python special methods
+    # -------------------------------------------------------------------------
     def __len__(self) -> int:
         """
         Get the length of this value, if it supports the operation.
@@ -589,6 +655,9 @@ class CtyValue(Generic[T]):
         """
         Make CtyValue instances hashable for use in sets and as dict keys.
         Now incorporates the actual value for primitives.
+        
+        Returns:
+            int: Hash value
         """
         # Hash based on type, value state, marks
         type_hash = hash(self._type.__class__)
@@ -624,7 +693,6 @@ class CtyValue(Generic[T]):
 
         # Combine component hashes
         return hash((type_hash, state_hash, value_hash, marks_hash))
-
 
     def __eq__(self, other) -> bool:
         """
@@ -753,7 +821,7 @@ class CtyValue(Generic[T]):
 
                     # Create sliced list of values
                     sliced_values = self._value[start:stop:step]
-                    
+
                     # For tuples, maintain tuple types
                     if isinstance(self._type, CtyTuple):
                         element_types = self._type.element_types[start:stop:step]
@@ -767,17 +835,12 @@ class CtyValue(Generic[T]):
                     # Handle direct indexing
                     return self.element_at(key)
 
-            elif isinstance(self._type, CtyObject):
-                if self._type.has_attribute(key):
-                    return self._type.get_attribute(self.value, key)
-                raise KeyError(f"Object has no attribute '{key}'")
-
             # Value doesn't support indexing
             error_msg = f"Value of type {self._type.__class__.__name__} doesn't support indexing"
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg)
 
-        except CtyAttributeValidationError as e: # Add this except block
+        except CtyAttributeValidationError as e:
              logger.error(f"🔄❗❌ {e}")
              raise
 
