@@ -1,13 +1,21 @@
+#
+# pyvider/cty/types/structural/dynamic.py
+#
+from typing import ClassVar
+
+from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 
+@define(frozen=True, slots=True)
 class CtyDynamic(CtyType):
     """
     CtyDynamic represents a dynamic Cty type that can accept any value.
     This type acts as a catch-all during schema validation, allowing flexibility 
     for attributes whose structure or type cannot be determined at schema definition time.
     """
+    ctype: ClassVar[str] = "dynamic"
 
     def validate(self, value: object) -> "CtyValue":
         """
@@ -55,3 +63,5 @@ class CtyDynamic(CtyType):
 
     def __repr__(self) -> str:
         return "CtyDynamic()"
+
+# 🐍🏗️🐣

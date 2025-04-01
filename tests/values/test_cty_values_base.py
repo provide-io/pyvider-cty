@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
+#
 # tests/values/test_cty_values_basic.py
+#
 
 import pytest
 import asyncio
@@ -216,3 +217,5 @@ class TestCtyValueBasicOperations:
         # Compare with non-CtyValue
         assert val1 != "test"
         assert val1 != 123
+
+# 🐍🏗️🧪

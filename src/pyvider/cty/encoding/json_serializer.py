@@ -13,7 +13,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Type, TypedDict, Union, cast
 
-import attrs
+from attrs import fields
 import json
 
 from pyvider.cty.logger import logger
@@ -577,7 +577,7 @@ class JsonSerializer(TypedSerializerProtocol):
                 if hasattr(value, '__attrs_attrs__'):
                     return {
                         field.name: self._prepare_value(getattr(value, field.name))
-                        for field in attrs.fields(value.__class__)
+                        for field in fields(value.__class__)
                     }
 
                 # Handle classes with to_dict method

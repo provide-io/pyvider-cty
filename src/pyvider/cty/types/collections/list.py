@@ -2,7 +2,7 @@
 # pyvider/cty/types/collections/list.py
 #
 
-from typing import Any, ClassVar, Generic, List as PyList, TypeVar, final, Sequence, Optional, Union, cast
+from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, cast
 from attrs import define, evolve, field
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
@@ -13,7 +13,7 @@ T = TypeVar('T')
 
 @final
 @define(frozen=True, slots=True)
-class CtyList(CtyType[PyList[T]], Generic[T]):
+class CtyList(CtyType[list[T]], Generic[T]):
     """
     CtyList represents a list type in the Cty type system.
 
@@ -26,7 +26,7 @@ class CtyList(CtyType[PyList[T]], Generic[T]):
     """
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: PyList[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
+    value: list[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
         """

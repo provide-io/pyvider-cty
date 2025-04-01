@@ -3,6 +3,9 @@
 
 from typing import Any
 
+from attrs import define
+
+@define(frozen=True, slots=True)
 class ValueSerializer:
     """Handles serialization of Cty values to raw bytes (without protocol awareness)."""
     
