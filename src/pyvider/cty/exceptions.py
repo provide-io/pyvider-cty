@@ -38,6 +38,9 @@ class CtyListValidationError(CtyValidationError):
 class CtyMapValidationError(CtyValidationError):
     pass
 
+class CtySetValidationError(CtyValidationError):
+    pass
+
 class CtyTypeMismatchError(CtyValidationError):
     pass
 

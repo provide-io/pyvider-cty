@@ -2,13 +2,22 @@
 # pyvider/cty/types/primitives/number.py
 #
 
+"""
+Number type implementation for the Cty type system.
+
+This module provides the CtyNumber type, representing numeric values in the Cty type system.
+It handles validation and conversion of various numeric formats (int, float, Decimal) with
+consistent precision handling. The implementation follows go-cty's number semantics,
+using Decimal internally for precision and supporting conversion from various input types.
+"""
+
 from decimal import Decimal, InvalidOperation
 
 from typing import Any, ClassVar, Union
 
 from attrs import define, evolve, field
 
-from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.cty.logger import logger
 
 from pyvider.cty.types.base import CtyType
@@ -16,17 +25,59 @@ from pyvider.cty.types.base import CtyType
 @define(frozen=True, slots=True)
 class CtyNumber(CtyType[Union[int, float, Decimal]]):
     """
-    CtyNumber represents a number type in the Cty type system.
+    Represents a numeric type in the Cty type system.
 
-    Numbers can be integers, floats, or Decimal objects.
-    This matches the Go-CTY number semantics.
+    CtyNumber handles validation and conversion of various numeric inputs including
+    integers, floats, and Decimal objects. It ensures precise representation by using
+    Decimal internally to avoid floating-point errors. This implementation matches
+    go-cty's number semantics.
+
+    The number type supports standard arithmetic operations with proper precision
+    handling and can convert string representations of numbers when appropriate.
+
+    Attributes:
+        ctype (ClassVar[str]): Type identifier constant, always "number".
+        value (Union[int, Decimal]): Default value for new instances, defaults to 0.
+            This attribute is primarily used when creating numbers directly.
+
+    Examples:
+        Creating a number type:
+        >>> number_type = CtyNumber()
+
+        Validating integer values:
+        >>> value = number_type.validate(42)
+        >>> print(value.value)
+        42
+
+        Validating decimal values:
+        >>> from decimal import Decimal
+        >>> value = number_type.validate(Decimal("3.14159265359"))
+        >>> print(value.value)
+        3.14159265359
     """
     ctype: ClassVar[str] = "number"
     value: Union[int, Decimal] = field(default=0)
 
     def validate(self, value: Any) -> "CtyValue":
         """
-        Validate that the given value is a number. Stricter validation.
+        Validate that the given value is a number or can be converted to one.
+
+        This method performs strict validation to ensure the value conforms to
+        the number type requirements. It accepts integers, floats, Decimal objects,
+        and strings that can be parsed as numbers. None values are converted to 0.
+
+        For precision, numeric values are stored as Decimal objects internally.
+        String values are converted to Decimal if they represent valid numbers.
+
+        Args:
+            value: The value to validate as a number. Can be an int, float, Decimal,
+                string representation of a number, None, or a CtyValue instance.
+
+        Returns:
+            CtyValue: A CtyValue instance containing the validated number value.
+
+        Raises:
+            CtyNumberValidationError: If the value cannot be converted to a number.
         """
         logger.debug(f"🔢🔍🔄 Validating value as number: {value!r}")
 
@@ -52,7 +103,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                      except (InvalidOperation, ValueError):
                          error_msg = f"String value '{inner_val}' inside CtyValue is not a valid number"
                          logger.error(f"🔢❗❌ {error_msg}")
-                         raise CtyValidationError(error_msg)
+                         raise CtyNumberValidationError(error_msg)
                  # else: fall through to raise error for other inner types
             # --- End CtyValue Handling ---
 
@@ -72,7 +123,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             except Exception as e: # Catch potential issues converting float inf/nan
                  error_msg = f"Cannot represent {type(value).__name__} value {value!r} as Decimal: {e}"
                  logger.error(f"🔢❗❌ {error_msg}")
-                 raise CtyValidationError(error_msg)
+                 raise CtyNumberValidationError(error_msg)
 
 
         # Try to convert strings that look like numbers
@@ -85,22 +136,26 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             except (InvalidOperation, ValueError): # Catch specific Decimal errors
                 error_msg = f"Cannot convert string '{value}' to number"
                 logger.debug(f"🔢❗❌ {error_msg}")
-                raise CtyValidationError(error_msg)
+                raise CtyNumberValidationError(error_msg)
 
         # --- REJECT ALL OTHER TYPES ---
         error_msg = f"Value must be a number or a string representation of a number, got {type(value).__name__}"
         logger.error(f"🔢❗❌ {error_msg}")
-        raise CtyValidationError(error_msg)
+        raise CtyNumberValidationError(error_msg)
 
     def equal(self, other: "CtyType") -> bool:
         """
         Check if this type is equal to another type.
 
+        Two number types are considered equal if they are both instances of
+        CtyNumber. This implements the type equality semantics for the Cty
+        type system.
+
         Args:
-            other: The other type to check against
+            other: The type to compare with this number type.
 
         Returns:
-            True if the types are equal
+            bool: True if the other type is also a CtyNumber, False otherwise.
         """
         result = isinstance(other, CtyNumber)
         logger.debug(f"🔢🔍✅ CtyNumber.equal: {result}")
@@ -108,45 +163,67 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
 
     def usable_as(self, other: "CtyType") -> bool:
         """
-        Check if this type can be used as another type.
+        Check if this type can be used where the other type is expected.
+
+        A number type is only usable as another number type. This method is used
+        for type compatibility checking when values are passed between contexts
+        with different type expectations.
 
         Args:
-            other: The other type to check against
+            other: The target type to check compatibility with.
 
         Returns:
-            True if this type can be used as the other type
+            bool: True if this type can be used as the other type, False otherwise.
         """
         result = isinstance(other, CtyNumber)
         logger.debug(f"🔢🔍✅ CtyNumber.usable_as: {result}")
         return result
 
     def __eq__(self, other):
-        return isinstance(other, CtyNumber)
-
-    def __repr__(self):
         """
-        Get a detailed string representation of this number.
+        Check equality with another object using Python's equality operator.
+
+        This implements the == operator for CtyNumber objects, making it possible
+        to compare number types directly.
+
+        Args:
+            other: The object to compare with.
 
         Returns:
-            A detailed string representation
+            bool: True if the other object is also a CtyNumber, False otherwise.
         """
-        return f"{self.__class__.__name__}()"
+        return isinstance(other, CtyNumber)
 
     def __hash__(self):
         """
-        Get a hash value for this number.
+        Calculate a hash value for this number type.
+
+        This makes CtyNumber instances usable as dictionary keys and in sets.
+        All CtyNumber instances have the same hash value since they represent
+        the same type.
 
         Returns:
-            A hash value
+            int: A hash value for this type.
         """
         return hash((self.__class__,))
 
-    def __str__(self):
+    def __repr__(self):
         """
-        Get a string representation of this number type.
+        Get a detailed string representation of this number type.
+
+        This representation is useful for debugging and introspection.
 
         Returns:
-            A string representation
+            str: A string representation showing the class name.
+        """
+        return f"{self.__class__.__name__}()"
+
+    def __str__(self):
+        """
+        Get a simple string representation of this type.
+
+        Returns:
+            str: The string "number".
         """
         return "number"
 
