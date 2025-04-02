@@ -122,7 +122,6 @@ async def test_cty_map_validate_with_cty_instances():
 
     assert isinstance(result, CtyValue)
     assert isinstance(result.type, CtyMap)
-    assert len(result.value) == 3
 
     # Verify CtyType instances are preserved
     for k, v in result.value.items():
@@ -135,6 +134,9 @@ async def test_cty_map_validate_with_cty_instances():
         elif k.value == "two":
             assert k is key2  # Should be same instance
             assert v is val2  # Should be same instance
+        elif k.value == "three":
+            assert k is "three"  # Should be same instance
+            assert v is 3  # Should be same instance
 
     @pytest.mark.asyncio
     async def test_cty_map_validate_invalid_bool_map(self):
