@@ -88,8 +88,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         match value:
             case None:
                 logger.debug("🔌🔍✅ None value converted to empty map")
-                result = CtyValue(type_=self, value={})
-                result._key_mapping = {}  # Add empty key mapping
+                result = CtyValue(type_=self, value={}, _key_mapping={})
                 return result
             case {}:
                 logger.debug("🔌🔍✅ Empty dict is valid")
@@ -185,8 +184,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 raise CtyMapValidationError(error_msg) from e
 
         logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
-        result = CtyValue(type_=self, value=validated_map)
-        result._key_mapping = key_mapping  # Attach key mapping to CtyValue
+        result = CtyValue(type_=self, value=validated_map, _key_mapping=key_mapping)
         return result
 
     def get(self, map_value: "CtyValue", key: Any, default: Optional["CtyValue"] = None) -> Optional["CtyValue"]:
@@ -330,8 +328,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         new_map[str_key] = validated_value
 
         logger.debug(f"🔌📝✅ Set key {str_key} to value")
-        result = CtyValue(type_=self, value=new_map)
-        result._key_mapping = key_mapping  # Attach key mapping to result
+
+        result = CtyValue(type_=self, value=new_map, _key_mapping=key_mapping)
         return result
 
     def delete(self, map_value: "CtyValue", key: Any) -> "CtyValue":
@@ -398,8 +396,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.debug(f"🔌📝⚠️ Key {str_key} not found, map unchanged")
             return map_value
 
-        result = CtyValue(type_=self, value=new_map)
-        result._key_mapping = key_mapping  # Attach key mapping to result
+        result = CtyValue(type_=self, value=new_map, _key_mapping=key_mapping)
         return result
 
     def element_iterator(self, map_value: "CtyValue") -> "ElementIterator":
