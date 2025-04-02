@@ -5,12 +5,18 @@
 """
 Map type implementation for the Cty type system.
 
-CtyMap represents a map type with a fixed string key type and any value type.
-This implementation strictly follows Go-CTY's map type semantics, which:
-1. Uses string keys internally but maintains original CtyValue keys
-2. Fails fast during validation (early error returns)
-3. Maintains immutability for all operations
-4. Preserves type safety throughout
+This module provides a complete implementation of the Map type for the Cty type system,
+following Go-CTY's map semantics. Maps are collections of key-value pairs with string
+keys and values of a consistent type. Key features include:
+
+1. String-keyed design with support for CtyValue key representation
+2. Immutable operations that return new instances on modification
+3. Strict type checking and validation
+4. Support for internal key mapping between string keys and CtyValue keys
+5. Consistent iteration order through ElementIterator
+
+Maps serve a similar role to Python dictionaries but with added type safety
+and immutability guarantees.
 """
 
 from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
@@ -26,16 +32,32 @@ V = TypeVar('V')  # Value type is variable
 @define(frozen=True, slots=True)
 class CtyMap(CtyType[dict[str, V]], Generic[V]):
     """
-    CtyMap represents a string-keyed map type in the Cty type system.
+    String-keyed map type in the Cty type system.
 
-    Maps are key-value collections with string keys and a fixed value type.
-    This implementation strictly follows go-cty's Map design, which only
-    permits string keys and provides strong type guarantees for values.
+    CtyMap implements a mapping type with string keys and a uniform value type.
+    Maps are immutable collections that support key-value operations similar to
+    Python dictionaries while maintaining strict type safety. All maps use string
+    keys internally but preserve CtyValue key objects for type integrity.
+
+    Unlike Python dictionaries, CtyMap enforces consistent value types and
+    never modifies the original structure during operations. All operations
+    return new instances.
 
     Attributes:
-        key_type: CtyType for map keys (must be CtyString)
-        value_type: CtyType for map values
-        value: dictionary of validated values (optional, for pre-validated maps)
+        ctype (ClassVar[str]): Type identifier constant, always "map".
+        key_type (CtyType[str]): Type for map keys, must be CtyString.
+        value_type (CtyType[V]): Type for map values, can be any CtyType.
+        value (dict[str, CtyValue]): Optional pre-validated map content.
+
+    Examples:
+        Creating a map type:
+        >>> from pyvider.cty import CtyString, CtyNumber
+        >>> string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
+        >>> number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+
+        Validating a map:
+        >>> data = {"name": "Alice", "email": "alice@example.com"}
+        >>> validated = string_map.validate(data)
     """
     ctype: ClassVar[str] = "map"
     key_type: CtyType[str] = field(kw_only=True)
@@ -44,17 +66,21 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def __attrs_post_init__(self) -> None:
         """
-        Validate CtyMap configuration.
+        Validate CtyMap configuration after initialization.
 
-        Ensures the key_type is CtyString and value_type is a valid CtyType.
-        Raises CtyMapValidationError on invalid configuration.
+        Performs sanity checks on the map type configuration to ensure that:
+        1. The key_type is a valid CtyString type
+        2. The value_type is a valid CtyType instance
+
+        Raises:
+            CtyMapValidationError: If key_type is not CtyString or value_type is invalid
         """
         logger.debug("🔌🔍🔄 Validating CtyMap configuration")
 
         # Verify key_type is CtyString - this is a strict requirement
         from pyvider.cty.types.primitives import CtyString
         if not isinstance(self.key_type, CtyString):
-            error_msg = f"Expected CtyType for key_type, got {type(self.key_type).__name__}"
+            error_msg = f"Map key type must be CtyString, got {type(self.key_type).__name__}"
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
 
@@ -68,16 +94,30 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def validate(self, value: Any) -> "CtyValue":
         """
-        Validate that the given value conforms to this map type.
+        Validate a value against this map type.
+
+        Performs comprehensive validation of the input value to ensure it conforms
+        to this map type's requirements. This method handles:
+
+        1. Empty values (None, {}) as valid empty maps
+        2. Dictionary-like values with proper key-value validation
+        3. Pre-validated CtyValue instances of compatible types
+        4. Type conversion where possible for keys and values
+        5. Key mapping between string keys and CtyValue keys
+
+        The validation process is "fail-fast", raising errors as soon as invalid
+        data is encountered rather than accumulating errors.
 
         Args:
-            value: The value to validate (dict, None, or empty)
+            value: The value to validate, typically a dict-like object, None for
+                  empty map, or a pre-validated CtyValue
 
         Returns:
-            A CtyValue wrapping the validated map
+            CtyValue: A validated map value wrapped in a CtyValue with type information
 
         Raises:
-            CtyMapValidationError: If validation fails
+            CtyMapValidationError: If validation fails for any reason, with a detailed
+                                  error message explaining the failure
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
@@ -191,13 +231,20 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Get a value from the map by key.
 
+        Retrieves a value from the map using the provided key. The key can be:
+        1. A string that matches a key in the map
+        2. A CtyValue with a string value that matches a key in the map
+        3. Any value that can be validated as a string
+
+        If the key is not found, the default value is returned.
+
         Args:
-            map_value: CtyValue containing the map
-            key: Key to look up (can be string or CtyValue)
-            default: Default value to return if key not found
+            map_value: CtyValue containing the map to search in
+            key: The key to look up (string, CtyValue, or convertible value)
+            default: Value to return if key not found (defaults to None)
 
         Returns:
-            The value for the key, or default if not found
+            The value associated with the key, or the default if not found
 
         Raises:
             TypeError: If map_value is not a CtyValue with CtyMap type
@@ -246,21 +293,27 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def set(self, map_value: "CtyValue", key: Any, value: Any) -> "CtyValue":
         """
-        Set a value in a container.
+        Set a value in a map, returning a new map.
 
-        This operation is immutable - it returns a new CtyValue with the updated container.
+        This is an immutable operation that:
+        1. Creates a new map with all existing entries
+        2. Validates the key and value
+        3. Sets the validated value at the validated key
+        4. Returns the new map as a CtyValue
+
+        The original map is not modified.
 
         Args:
-            map_value: CtyValue containing the map
-            key: Key to set (can be string or CtyValue)
-            value: Value to set
+            map_value: CtyValue containing the map to modify
+            key: The key to set (string, CtyValue, or convertible value)
+            value: The value to set at the key (raw value or CtyValue)
 
         Returns:
-            A new CtyValue with the updated map
+            A new CtyValue containing the updated map
 
         Raises:
             TypeError: If map_value is not a CtyValue with CtyMap type
-            CtyMapValidationError: If map_value is null or unknown, or validation fails
+            CtyMapValidationError: If validation fails for key or value
         """
         from pyvider.cty.values import CtyValue
 
@@ -336,14 +389,19 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Delete a key from a map, returning a new map.
 
-        This is an immutable operation that returns a new map without the specified key.
+        This is an immutable operation that:
+        1. Creates a new map with all existing entries except the deleted key
+        2. Returns the new map as a CtyValue
+
+        If the key doesn't exist, the original map is returned unchanged.
+        The original map is never modified.
 
         Args:
-            map_value: CtyValue containing the map
-            key: Key to delete (can be string or CtyValue)
+            map_value: CtyValue containing the map to modify
+            key: The key to delete (string, CtyValue, or convertible value)
 
         Returns:
-            A new CtyValue with the updated map
+            A new CtyValue containing the map without the deleted key
 
         Raises:
             TypeError: If map_value is not a CtyValue with CtyMap type
@@ -403,14 +461,16 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Get an iterator for the elements in a map.
 
-        This follows go-cty's ElementIterator pattern for consistent
-        iteration over collection types.
+        Creates an ElementIterator for consistent iteration over map elements.
+        The iterator preserves the map's key-value pairs and supports accessing
+        both keys and values during iteration. Map elements are sorted by key
+        for consistent iteration order.
 
         Args:
-            map_value: CtyValue containing the map
+            map_value: CtyValue containing the map to iterate over
 
         Returns:
-            An ElementIterator for the map
+            An ElementIterator that provides access to keys and values
 
         Raises:
             TypeError: If map_value is not a CtyValue with CtyMap type
@@ -442,13 +502,18 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Check if this type equals another type.
 
-        For maps, equality requires both key_type and value_type to be equal.
+        Two map types are equal if:
+        1. They are both CtyMap instances
+        2. They have equal key types
+        3. They have equal value types
+
+        This implements strict type equality for the Cty type system.
 
         Args:
-            other: Type to compare with
+            other: The type to compare with
 
         Returns:
-            True if the types are equal
+            True if the types are equal, False otherwise
         """
         logger.debug(f"🔌🔍🔄 Checking equality with {type(other).__name__}")
 
@@ -469,14 +534,18 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Check if this type can be used as another type.
 
-        For maps, usability requires key_type and value_type to be usable
-        as the corresponding types in the other map.
+        A map type is usable as another type if:
+        1. The other type is also a CtyMap
+        2. This map's key type is usable as the other map's key type
+        3. This map's value type is usable as the other map's value type
+
+        This implements type compatibility checking for the Cty type system.
 
         Args:
-            other: Type to check compatibility with
+            other: The target type to check compatibility with
 
         Returns:
-            True if this type can be used as the other type
+            True if this type can be used as the other type, False otherwise
         """
         logger.debug(f"🔌🔍🔄 Checking usability as {type(other).__name__}")
 
@@ -494,13 +563,29 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         return result
 
     def items(self):
-        """Return an ordered iterator of (key, value) pairs."""
+        """
+        Return an ordered iterator of (key, value) pairs.
+
+        This is a convenience method that creates an ElementIterator and
+        yields key-value pairs in order. Keys are sorted for consistent iteration.
+
+        Returns:
+            Generator yielding (key, value) pairs from the map
+        """
         iterator = self.element_iterator()
         while iterator.next():
             yield iterator.key(), iterator.value()
-            
+
     def keys(self):
-        """Return an ordered iterator of keys."""
+        """
+        Return an ordered iterator of map keys.
+
+        This is a convenience method that creates an ElementIterator and
+        yields only the keys in order. Keys are sorted for consistent iteration.
+
+        Returns:
+            Generator yielding keys from the map
+        """
         for key, _ in self.items():
             yield key
 
@@ -508,11 +593,14 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Equality operator implementation.
 
+        Implements the == operator for CtyMap instances.
+        Delegates to the equal() method for type-specific equality logic.
+
         Args:
             other: Object to compare with
 
         Returns:
-            True if equal
+            True if equal, False otherwise
         """
         if not isinstance(other, CtyMap):
             return False
@@ -522,8 +610,11 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Hash implementation for use in sets and as dict keys.
 
+        Makes CtyMap instances usable as dictionary keys and in sets.
+        The hash is based on the class and the hash of key and value types.
+
         Returns:
-            Hash value
+            A hash value based on the type information
         """
         return hash((self.__class__, hash(self.key_type), hash(self.value_type)))
 
@@ -531,8 +622,11 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Human-readable string representation.
 
+        Returns a concise string representation suitable for display
+        to users, showing the map type with key and value types.
+
         Returns:
-            String representation
+            A string representation of the map type
         """
         return f"map({self.key_type}, {self.value_type})"
 
@@ -540,32 +634,45 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         Detailed string representation for debugging.
 
+        Returns a more detailed string representation that includes
+        implementation details useful for debugging.
+
         Returns:
-            Detailed string representation
+            A detailed string representation of the map type
         """
         return f"CtyMap(key_type={repr(self.key_type)}, value_type={repr(self.value_type)})"
 
 
 class ElementIterator:
     """
-    Iterator for map elements.
+    Iterator for map elements with consistent ordering.
 
-    This follows go-cty's ElementIterator pattern for consistent
-    iteration over collection types. For maps, it iterates over
-    string keys but returns CtyValue instances representing keys and values.
+    ElementIterator provides a standardized way to iterate over map elements
+    while maintaining consistent ordering and preserving type information.
+    It follows Go-CTY's iterator pattern, with next(), key(), and value() methods.
+
+    Map elements are sorted by key for consistent iteration order.
+
+    Attributes:
+        key_type: The key type to use when creating CtyValue keys
+        items: The sorted list of (key, value) pairs to iterate over
+        index: The current position in the iteration
     """
 
-    def __init__(self, 
-                 key_type: "CtyType", 
-                 map_data: dict[str, "CtyValue"], 
+    def __init__(self,
+                 key_type: "CtyType",
+                 map_data: dict[str, "CtyValue"],
                  key_mapping: dict[str, "CtyValue"]):
         """
-        Initialize the iterator.
+        Initialize the iterator with map data and key mapping.
+
+        Prepares a sorted list of (key, value) pairs from the map data,
+        using the original CtyValue keys from key_mapping where available.
 
         Args:
             key_type: The key type to use when creating CtyValue keys
-            map_data: dictionary of string keys to value pairs to iterate over
-            key_mapping: mapping of string keys to original CtyValue keys
+            map_data: Dictionary of string keys to value pairs to iterate over
+            key_mapping: Mapping of string keys to original CtyValue keys
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
@@ -588,10 +695,13 @@ class ElementIterator:
 
     def next(self) -> bool:
         """
-        Advance to the next element.
+        Advance to the next element in the iteration.
+
+        Moves the iterator to the next element and returns whether
+        there is a next element available.
 
         Returns:
-            True if there is another element, False if at the end
+            True if there is a next element, False if at the end
         """
         if self.index < len(self.items):
             self.index += 1
@@ -601,6 +711,9 @@ class ElementIterator:
     def key(self) -> "CtyValue":
         """
         Get the current key as a CtyValue.
+
+        Retrieves the key at the current iterator position.
+        Must be called after next() returns True.
 
         Returns:
             The current key as a CtyValue
@@ -616,8 +729,11 @@ class ElementIterator:
         """
         Get the current value.
 
+        Retrieves the value at the current iterator position.
+        Must be called after next() returns True.
+
         Returns:
-            The current value
+            The current value as a CtyValue
 
         Raises:
             IndexError: If called before next() or after reaching the end

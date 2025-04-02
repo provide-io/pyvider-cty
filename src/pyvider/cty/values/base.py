@@ -3,10 +3,15 @@
 #
 
 """
-CtyValue represents a value with its corresponding type in the Cty type system.
+Core value representation for the Cty type system.
 
-This module provides the core value representation that combines a value with its
-type, along with additional metadata like whether the value is known or null.
+This module provides the CtyValue class, which is the fundamental building block
+of the Cty type system. A CtyValue combines a raw value with its type information
+and additional metadata like marks, unknown status, and null status.
+
+CtyValue instances are immutable and serve as the primary way to work with typed
+values throughout the Cty ecosystem. All operations preserve type information by
+returning new CtyValue instances rather than raw values.
 """
 from decimal import Decimal
 from typing import Any, FrozenSet, Generic, Iterator, Optional, Self, Tuple, TypeVar, Union, cast
@@ -24,20 +29,41 @@ T = TypeVar('T', covariant=True)
 @define(slots=True)
 class CtyValue(Generic[T]):
     """
-    Immutable representation of a Cty value.
+    Immutable representation of a Cty value with type information.
 
     A CtyValue combines a raw value with its type and metadata such as whether
-    the value is known (vs unknown) or null. This follows the Go-CTY value model.
+    the value is known (vs unknown) or null. This follows the Go-CTY value model
+    and provides a consistent interface for working with typed values.
 
-    CtyValue is the fundamental unit in the Cty type system. All operations preserve
-    type information by returning new CtyValue instances rather than raw values.
-    
+    CtyValues support a variety of operations including comparison, indexing,
+    membership testing, and container operations, all while preserving type safety.
+    Values can also carry marks which provide additional metadata.
+
     Attributes:
         _type: The Cty type of this value
         _value: The raw value (or None for null/unknown values)
         _is_unknown: Whether this value is unknown
         _is_null: Whether this value is null
         _marks: Set of marks applied to this value
+        _key_mapping: For map values, tracks original CtyValue keys by string representation
+
+    Examples:
+        Creating a string value:
+        >>> from pyvider.cty import CtyString, CtyValue
+        >>> string_type = CtyString()
+        >>> str_val = CtyValue(type_=string_type, value="hello")
+        >>> str_val.value
+        'hello'
+
+        Creating a null value:
+        >>> null_val = CtyValue.null(string_type)
+        >>> null_val.is_null
+        True
+
+        Creating an unknown value:
+        >>> unknown_val = CtyValue.unknown(string_type)
+        >>> unknown_val.is_unknown
+        True
     """
     # Core attributes
     _type: CtyType[T] = field(alias="type_")
@@ -49,7 +75,11 @@ class CtyValue(Generic[T]):
 
 
     def __attrs_post_init__(self) -> None:
-        """Log info about created CtyValue."""
+        """
+        Perform post-initialization validation and logging.
+
+        Logs information about the created CtyValue instance to aid in debugging.
+        """
         logger.debug(f"🔄🔧✅ Creating CtyValue of type {self._type.__class__.__name__}")
 
     # -------------------------------------------------------------------------
@@ -58,38 +88,39 @@ class CtyValue(Generic[T]):
     @classmethod
     def __new__(cls, *args, **kwargs):
         """
-        Create a new CtyValue instance, handling backward compatibility.
-        
+        Create a new CtyValue instance with backward compatibility support.
+
         This method ensures the class works with both old-style parameter names
-        (type_) and new-style parameter names (_type).
-        
+        (type_, value, is_null, is_unknown, marks) and new-style parameter names
+        (_type, _value, _is_null, _is_unknown, _marks).
+
         Args:
             *args: Positional arguments
             **kwargs: Keyword arguments
-            
+
         Returns:
-            A new CtyValue instance
+            A new CtyValue instance with normalized parameters
         """
         # Handle type_ vs _type parameter
         if 'type_' in kwargs and '_type' not in kwargs:
             kwargs['_type'] = kwargs.pop('type_')
-        
-        # Handle value vs _value parameter  
+
+        # Handle value vs _value parameter
         if 'value' in kwargs and '_value' not in kwargs:
             kwargs['_value'] = kwargs.pop('value')
-            
+
         # Handle is_null vs _is_null parameter
         if 'is_null' in kwargs and '_is_null' not in kwargs:
             kwargs['_is_null'] = kwargs.pop('is_null')
-            
+
         # Handle is_unknown vs _is_unknown parameter
         if 'is_unknown' in kwargs and '_is_unknown' not in kwargs:
             kwargs['_is_unknown'] = kwargs.pop('is_unknown')
-            
+
         # Handle marks vs _marks parameter
         if 'marks' in kwargs and '_marks' not in kwargs:
             kwargs['_marks'] = kwargs.pop('marks')
-        
+
         # Convert positional args to keyword args
         if args and len(args) >= 1 and '_type' not in kwargs:
             kwargs['_type'] = args[0]
@@ -97,7 +128,7 @@ class CtyValue(Generic[T]):
             if args and len(args) >= 1 and '_value' not in kwargs:
                 kwargs['_value'] = args[0]
                 args = args[1:]
-        
+
         return super().__new__(cls)
 
     # -------------------------------------------------------------------------
@@ -105,13 +136,22 @@ class CtyValue(Generic[T]):
     # -------------------------------------------------------------------------
     @property
     def type(self) -> CtyType[T]:
-        """Get the type of this value."""
+        """
+        Get the type of this value.
+
+        Returns:
+            CtyType: The type information for this value
+        """
         return self._type
 
     @property
     def value(self) -> Any:
         """
         Get the raw value of this CtyValue.
+
+        For known, non-null values, returns the underlying value.
+        For null values, returns None.
+        For unknown values, raises ValueError.
 
         Returns:
             The raw value
@@ -129,28 +169,55 @@ class CtyValue(Generic[T]):
 
     @property
     def is_known(self) -> bool:
-        """Check if this value is known (not unknown)."""
+        """
+        Check if this value is known (not unknown).
+
+        A value can be both known and null, but cannot be both unknown and null.
+
+        Returns:
+            bool: True if the value is known, False if unknown
+        """
         return not self._is_unknown
 
     @property
     def is_unknown(self) -> bool:
-        """Check if this value is unknown."""
+        """
+        Check if this value is unknown.
+
+        Unknown values represent placeholders for values that will be known later.
+        They support the same operations as regular values, but the result will
+        also be unknown.
+
+        Returns:
+            bool: True if the value is unknown, False otherwise
+        """
         return self._is_unknown
 
     @property
     def is_null(self) -> bool:
-        """Check if this value is null."""
+        """
+        Check if this value is null.
+
+        Null values represent the absence of a value. Unlike unknown values,
+        null values are known but have no content.
+
+        Returns:
+            bool: True if the value is null, False otherwise
+        """
         return self._is_null
 
     def has_mark(self, mark: Any) -> bool:
         """
         Check if this value has a specific mark.
 
+        Marks provide a way to attach metadata to values. This method checks
+        if the specified mark is present by comparing string representations.
+
         Args:
             mark: The mark to check for
 
         Returns:
-            bool: True if the value has the mark
+            bool: True if the value has the mark, False otherwise
         """
         # Use string equality rather than identity for more flexible comparison
         mark_str = str(mark)
@@ -166,11 +233,15 @@ class CtyValue(Generic[T]):
         """
         Add a mark to this value.
 
+        Creates a new CtyValue with the same content plus the additional mark.
+        Marks are useful for tracking metadata such as origin information or
+        processing flags through value transformations.
+
         Args:
             mark: The mark to add
 
         Returns:
-            A new CtyValue with the mark added
+            CtyValue: A new CtyValue with the mark added
         """
         logger.debug(f"🔄🔧✅ Adding mark {mark} to value")
         return evolve(
@@ -182,8 +253,11 @@ class CtyValue(Generic[T]):
         """
         Remove all marks from this value and return them.
 
+        Creates a new CtyValue without any marks and returns both the new
+        value and the set of marks that were removed.
+
         Returns:
-            tuple: (Unmarked value, Set of removed marks)
+            tuple: (Unmarked CtyValue, FrozenSet of removed marks)
         """
         logger.debug(f"🔄🔧✅ Removing {len(self._marks)} marks from value")
         return evolve(self, marks=frozenset()), self._marks
@@ -195,15 +269,19 @@ class CtyValue(Generic[T]):
         """
         Get a value by key, with a default if not found.
 
+        For map values, looks up the value associated with the key.
+        For object values, retrieves the attribute with the given name.
+        Other value types return the default.
+
         Args:
-            key: The key to look up
+            key: The key to look up (string or CtyValue)
             default: Value to return if key not found
 
         Returns:
-            CtyValue: The retrieved value as a CtyValue, or the default
+            CtyValue: The retrieved value, or the default if not found
 
         Raises:
-            TypeError: If the value doesn't support key lookup
+            TypeError: If the value doesn't support key lookup and no default is provided
         """
         logger.debug(f"🔄🔍🔄 Getting value for key: {key}")
 
@@ -242,10 +320,11 @@ class CtyValue(Generic[T]):
         """
         Set a value in a container.
 
+        For map values, associates the key with the value.
         This operation is immutable - it returns a new CtyValue with the updated container.
 
         Args:
-            key: The key to set
+            key: The key to set (string or CtyValue)
             value: The value to set
 
         Returns:
@@ -253,8 +332,9 @@ class CtyValue(Generic[T]):
 
         Raises:
             TypeError: If the value doesn't support key setting
+            CtyMapValidationError: If validation fails during the operation
         """
-        logger.debug(f"🔄📝🔄 Setting key {key} to value {value}")
+        logger.debug(f"🔄📝🔄 Setting key {key!r} to value {value!r}")
 
         # Cannot set on unknown or null values
         if self._is_unknown or self._is_null:
@@ -279,18 +359,20 @@ class CtyValue(Generic[T]):
         """
         Delete a key from a container.
 
+        For map values, removes the key and its associated value.
         This operation is immutable - it returns a new CtyValue with the updated container.
 
         Args:
-            key: The key to delete
+            key: The key to delete (string or CtyValue)
 
         Returns:
             CtyValue: A new CtyValue with the updated container
 
         Raises:
             TypeError: If the value doesn't support key deletion
+            CtyMapValidationError: If validation fails during the operation
         """
-        logger.debug(f"🔄📝🔄 Deleting key {key}")
+        logger.debug(f"🔄📝🔄 Deleting key {key!r}")
 
         # Cannot delete on unknown or null values
         if self._is_unknown or self._is_null:
@@ -315,11 +397,14 @@ class CtyValue(Generic[T]):
         """
         Get element at a specific index for list/tuple values.
 
+        For list values, returns the element at the specified index.
+        For tuple values, returns the element at the specified position.
+
         Args:
-            index: The index to get the element at
+            index: The index to get the element at (supports negative indices)
 
         Returns:
-            CtyValue: The element at that index as a CtyValue
+            CtyValue: The element at that index
 
         Raises:
             TypeError: If the value doesn't support indexing
@@ -367,14 +452,16 @@ class CtyValue(Generic[T]):
         """
         Create a boolean value.
 
+        Factory method to create a CtyValue with boolean type.
+
         Args:
-            value: The boolean value
+            value: The boolean value (True or False)
 
         Returns:
-            A new CtyValue with the boolean value
+            CtyValue: A new CtyValue with CtyBool type and the given value
         """
         from pyvider.cty.types import CtyBool
-        
+
         logger.debug(f"🔄🔧✅ Creating bool value: {value}")
         return cls(type_=CtyBool(), value=value)
 
@@ -383,14 +470,16 @@ class CtyValue(Generic[T]):
         """
         Create a string value.
 
+        Factory method to create a CtyValue with string type.
+
         Args:
             value: The string value
 
         Returns:
-            A new CtyValue with the string value
+            CtyValue: A new CtyValue with CtyString type and the given value
         """
         from pyvider.cty.types import CtyString
-        
+
         logger.debug(f"🔄🔧✅ Creating string value: {value}")
         return cls(type_=CtyString(), value=value)
 
@@ -399,14 +488,17 @@ class CtyValue(Generic[T]):
         """
         Create a number value.
 
+        Factory method to create a CtyValue with number type.
+        Accepts integers, floats, and Decimal values.
+
         Args:
             value: The number value (int, float, or Decimal)
 
         Returns:
-            A new CtyValue with the number value
+            CtyValue: A new CtyValue with CtyNumber type and the given value
         """
         from pyvider.cty.types import CtyNumber
-        
+
         logger.debug(f"🔄🔧✅ Creating number value: {value}")
         return cls(type_=CtyNumber(), value=value)
 
@@ -415,12 +507,15 @@ class CtyValue(Generic[T]):
         """
         Create a list value.
 
+        Factory method to create a CtyValue with list type.
+        The elements will be validated against the element_type.
+
         Args:
             element_type: The type of the list elements
-            elements: The list elements
+            elements: The list elements (will be validated)
 
         Returns:
-            A new CtyValue with the list
+            CtyValue: A new CtyValue with CtyList type containing the validated elements
         """
         from pyvider.cty.types import CtyList
 
@@ -434,13 +529,16 @@ class CtyValue(Generic[T]):
         """
         Create a map value.
 
+        Factory method to create a CtyValue with map type.
+        Both keys and values will be validated against their respective types.
+
         Args:
-            key_type: The type of map keys
+            key_type: The type of map keys (must be CtyString)
             value_type: The type of map values
-            items: The map items
+            items: The map items as a dictionary
 
         Returns:
-            A new CtyValue with the map
+            CtyValue: A new CtyValue with CtyMap type containing the validated items
         """
         from pyvider.cty.types import CtyMap
 
@@ -454,12 +552,15 @@ class CtyValue(Generic[T]):
         """
         Create a set value.
 
+        Factory method to create a CtyValue with set type.
+        The elements will be validated against the element_type.
+
         Args:
             element_type: The type of the set elements
-            elements: The set elements
+            elements: The set elements (will be validated)
 
         Returns:
-            A new CtyValue with the set
+            CtyValue: A new CtyValue with CtySet type containing the validated elements
         """
         from pyvider.cty.types import CtySet
 
@@ -473,12 +574,15 @@ class CtyValue(Generic[T]):
         """
         Create a tuple value.
 
+        Factory method to create a CtyValue with tuple type.
+        Each element will be validated against its corresponding type.
+
         Args:
-            element_types: The types of the tuple elements
-            elements: The tuple elements
+            element_types: A tuple of types for each position in the tuple
+            elements: The tuple elements (will be validated)
 
         Returns:
-            A new CtyValue with the tuple
+            CtyValue: A new CtyValue with CtyTuple type containing the validated elements
         """
         from pyvider.cty.types import CtyTuple
 
@@ -491,16 +595,19 @@ class CtyValue(Generic[T]):
     def object(cls, attribute_types: dict, attributes: dict) -> "CtyValue":
         """
         Create an object value.
-        
+
+        Factory method to create a CtyValue with object type.
+        Each attribute will be validated against its corresponding type.
+
         Args:
             attribute_types: Dictionary mapping attribute names to their types
             attributes: Dictionary of attribute values
-            
+
         Returns:
-            A new CtyValue with the object
-            
+            CtyValue: A new CtyValue with CtyObject type containing the validated attributes
+
         Raises:
-            CtyValidationError: If validation fails
+            CtyValidationError: If validation fails for any attribute
         """
         from pyvider.cty.types import CtyObject
         from pyvider.cty.exceptions import CtyValidationError
@@ -520,11 +627,14 @@ class CtyValue(Generic[T]):
         """
         Create an unknown value of the given type.
 
+        Factory method to create a CtyValue marked as unknown.
+        Unknown values represent placeholders for values that will be known later.
+
         Args:
             type_: The type of the unknown value
 
         Returns:
-            A new CtyValue marked as unknown
+            CtyValue: A new CtyValue marked as unknown with the specified type
         """
         logger.debug(f"🔄🔧✅ Creating unknown value of type {type_.__class__.__name__}")
         return cls(type_=type_, is_unknown=True)
@@ -534,11 +644,14 @@ class CtyValue(Generic[T]):
         """
         Create a null value of the given type.
 
+        Factory method to create a CtyValue marked as null.
+        Null values represent the absence of a value for a specific type.
+
         Args:
             type_: The type of the null value
 
         Returns:
-            A new CtyValue marked as null
+            CtyValue: A new CtyValue marked as null with the specified type
         """
         logger.debug(f"🔄🔧✅ Creating null value of type {type_.__class__.__name__}")
         return cls(type_=type_, is_null=True)
@@ -550,8 +663,12 @@ class CtyValue(Generic[T]):
         """
         Convert to dictionary representation for serialization.
 
+        Creates a dictionary representation of this value that can be used
+        for serialization to formats like JSON or MessagePack.
+
         Returns:
-            A dictionary representation of this value
+            dict: Dictionary representation of this value with type information,
+                  value state, and any marks
         """
         logger.debug(f"🔄🔧✅ Converting CtyValue to dictionary")
         result = {
@@ -597,11 +714,14 @@ class CtyValue(Generic[T]):
         """
         Get the length of this value, if it supports the operation.
 
+        For collections (lists, maps, sets, tuples), returns the number of elements.
+        For strings, returns the string length.
+
         Returns:
-            The length of the value
+            int: The length of the value
 
         Raises:
-            TypeError: If the value doesn't support length
+            TypeError: If the value doesn't support length operation
         """
         # Cannot get length of unknown values
         if self._is_unknown:
@@ -628,8 +748,11 @@ class CtyValue(Generic[T]):
         """
         Iterate over the elements in this value.
 
+        For collections (lists, maps, sets, tuples), yields each element.
+        For strings, yields each character.
+
         Returns:
-            An iterator over the elements
+            Iterator: An iterator over the elements
 
         Raises:
             TypeError: If the value doesn't support iteration
@@ -657,8 +780,10 @@ class CtyValue(Generic[T]):
     def __hash__(self) -> int:
         """
         Make CtyValue instances hashable for use in sets and as dict keys.
-        Now incorporates the actual value for primitives.
-        
+
+        Computes a hash based on type, value state, and marks. For primitive
+        types, includes the actual value in the hash computation.
+
         Returns:
             int: Hash value
         """
@@ -701,11 +826,14 @@ class CtyValue(Generic[T]):
         """
         Check if two CtyValue instances are equal.
 
+        Values are equal if they have the same type, state (known/unknown/null),
+        the same marks, and equal values (for known, non-null values).
+
         Args:
             other: The other value to compare with
 
         Returns:
-            True if the values are equal
+            bool: True if values are equal, False otherwise
         """
         # Direct comparison with native types for primitive values
         if not isinstance(other, CtyValue):
@@ -769,11 +897,15 @@ class CtyValue(Generic[T]):
         """
         Support for container indexing operations.
 
+        For maps, gets the value for the given key.
+        For lists/tuples, gets the element at the given index or slice.
+        For objects, gets the attribute with the given name.
+
         Args:
-            key: The key or index
+            key: The key, index, or attribute name
 
         Returns:
-            The value at the key/index
+            CtyValue: The value at the key/index
 
         Raises:
             TypeError: If the value doesn't support indexing
@@ -865,11 +997,16 @@ class CtyValue(Generic[T]):
         """
         Support for 'in' operator with proper value comparison.
 
+        For maps, checks if the key exists.
+        For lists/tuples/sets, checks if the item is present.
+        For objects, checks if the attribute exists.
+        For strings, checks if the substring is present.
+
         Args:
             item: The item to check for
 
         Returns:
-            True if the item is in the container, False otherwise
+            bool: True if the item is in the container, False otherwise
 
         Raises:
             TypeError: If the value doesn't support membership testing
@@ -935,13 +1072,11 @@ class CtyValue(Generic[T]):
         """
         Boolean evaluation of this value.
 
-        Returns:
-            True if the value is truthy, False otherwise
+        Unknown and null values are considered falsy.
+        For known, non-null values, delegates to Python's standard truthiness rules.
 
-        Notes:
-            - Unknown values are always falsy
-            - Null values are always falsy
-            - For known, non-null values, use Python's truthiness rules
+        Returns:
+            bool: True if the value is truthy, False otherwise
         """
         # Unknown and null values are always falsy
         if self._is_unknown or self._is_null:
@@ -954,8 +1089,10 @@ class CtyValue(Generic[T]):
         """
         String representation for display.
 
+        Returns a human-readable string representation of the value.
+
         Returns:
-            A string representation
+            str: String representation of this value
         """
         if self._is_unknown:
             return f"<unknown {self._type.__class__.__name__}>"
@@ -967,10 +1104,12 @@ class CtyValue(Generic[T]):
 
     def __repr__(self) -> str:
         """
-        Detailed string representation.
+        Detailed string representation for debugging.
+
+        Returns a detailed representation including type, state, marks, and value.
 
         Returns:
-            A detailed string representation
+            str: Detailed string representation
         """
         parts = [
             f"type_={self._type.__class__.__name__}",
