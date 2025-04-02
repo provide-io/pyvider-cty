@@ -1,67 +1,139 @@
 #
 # pyvider/cty/types/structural/dynamic.py
 #
-from typing import ClassVar
+
+"""
+Dynamic pseudo-type implementation for the Cty type system.
+
+This module provides the CtyDynamic type, which serves as a placeholder for unknown
+or not-yet-determined types in the Cty type system. Unlike concrete types, the
+dynamic type doesn't constrain values to a specific representation, making it useful
+for scenarios where type information is determined at runtime or for implementing
+schema-less data structures.
+
+The dynamic type follows go-cty's dynamic type semantics, supporting type compatibility
+checks and special validation behavior for maximum flexibility.
+"""
+
+from typing import ClassVar, Any, Optional, TypeVar, cast
 
 from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.logger import logger
+
+T = TypeVar('T')
 
 @define(frozen=True, slots=True)
-class CtyDynamic(CtyType):
+class CtyDynamic(CtyType[Any]):
     """
-    CtyDynamic represents a dynamic Cty type that can accept any value.
-    This type acts as a catch-all during schema validation, allowing flexibility 
-    for attributes whose structure or type cannot be determined at schema definition time.
+    Dynamic pseudo-type representation in the Cty type system.
+
+    CtyDynamic represents a special "any type" placeholder that can accept values
+    of any supported type. Unlike concrete types, it doesn't constrain values to
+    a specific representation, making it useful for:
+
+    1. Schema-less data structures where type is determined at runtime
+    2. Placeholder for not-yet-determined types during schema validation
+    3. Flexible interfaces that can accept multiple types of values
+
+    The dynamic type maintains go-cty compatibility by accepting primitive types,
+    collections, and structural values while rejecting complex Python objects
+    that don't map cleanly to the Cty type system.
+
+    Attributes:
+        ctype: Class variable identifying this as a dynamic type
     """
     ctype: ClassVar[str] = "dynamic"
 
-    def validate(self, value: object) -> "CtyValue":
+    def validate(self, value: Any) -> "CtyValue":
         """
-        Validation for CtyDynamic is a no-op since it accepts any value.
+        Validate a value against the dynamic type.
+
+        For dynamic types, validation is more permissive than for concrete types,
+        accepting any value that can be represented within the Cty type system.
+        This includes primitive types (bool, number, string), collections (list,
+        dict), and null values.
+
+        Complex Python objects that don't map cleanly to Cty types are rejected
+        to maintain compatibility with the go-cty semantics.
 
         Args:
-            value (object): Any value to validate.
+            value: Any value to validate against the dynamic type
+
+        Returns:
+            CtyValue: A CtyValue with this dynamic type and the provided value
 
         Raises:
-            CtyValidationError: If the value is explicitly set to an unsupported form.
+            CtyValidationError: If the value cannot be represented in the Cty type system
         """
         from pyvider.cty.values import CtyValue
 
-        if isinstance(value, (dict, list, int, float, bool, str, type(None))):
-            return CtyValue(type_=self, value=value) 
+        logger.debug(f"🧩🔍🔄 Validating value against CtyDynamic: {type(value).__name__}")
 
-        raise CtyValidationError("Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None.")
+        # Accept primitive types, collections, and None
+        if isinstance(value, (dict, list, int, float, bool, str, type(None))):
+            logger.debug(f"🧩🔍✅ Value is a supported type for CtyDynamic")
+            return CtyValue(type_=self, value=value)
+
+        # Reject complex Python objects that don't map to Cty types
+        error_msg = "Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None."
+        logger.error(f"🧩❗❌ {error_msg}")
+        raise CtyValidationError(error_msg)
 
     def equal(self, other: CtyType) -> bool:
         """
-        CtyDynamic instances are considered equal to any other instance of CtyDynamic.
+        Check if this dynamic type equals another type.
+
+        Two dynamic types are always considered equal to each other, but not to
+        any other type. This implements the type equality semantics specified
+        in the go-cty documentation.
 
         Args:
-            other (CtyType): Another CtyType instance.
+            other: The type to compare against
 
         Returns:
-            bool: True if the types are compatible, otherwise False.
+            bool: True if the other type is also a CtyDynamic, False otherwise
         """
-        return isinstance(other, CtyDynamic)
+        result = isinstance(other, CtyDynamic)
+        logger.debug(f"🧩🔍🔄 CtyDynamic.equal check: {result}")
+        return result
 
     def usable_as(self, other: CtyType) -> bool:
         """
-        CtyDynamic can be used interchangeably with any other CtyDynamic.
+        Check if this dynamic type can be used as another type.
+
+        The dynamic type is only usable as another dynamic type. While it can
+        theoretically hold any value, type system consistency requires that it
+        only be used where another dynamic type is expected.
 
         Args:
-            other (CtyType): Target CtyType to compare against.
+            other: The target type to check compatibility with
 
         Returns:
-            bool: True if usable as the target type.
+            bool: True if the other type is also a CtyDynamic, False otherwise
         """
-        return isinstance(other, CtyDynamic)
+        result = isinstance(other, CtyDynamic)
+        logger.debug(f"🧩🔍🔄 CtyDynamic.usable_as check: {result}")
+        return result
 
     def __str__(self) -> str:
+        """
+        Get a string representation of this dynamic type.
+
+        Returns:
+            str: The string "CtyDynamic" representing this type
+        """
         return "CtyDynamic"
 
     def __repr__(self) -> str:
+        """
+        Get a detailed string representation for debugging purposes.
+
+        Returns:
+            str: A string showing the class name in a format suitable for debugging
+        """
         return "CtyDynamic()"
 
 # 🐍🏗️🐣
