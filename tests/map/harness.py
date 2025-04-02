@@ -23,6 +23,6 @@ val1_get = string_map.get(result, key1)  # This is returning None when it should
 print(f"Result type: {type(result)}")
 print(f"Result value length: {len(result.value)}")
 print(f"Value keys: {list(result.value.keys())}")
-print(f"Key mapping: {getattr(result, '_key_mapping', {})}")
+print(f"Key mapping: {getattr(result, 'key_mapping', {})}")
 
 print(f"Get result: {val1_get}")

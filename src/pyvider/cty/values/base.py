@@ -20,7 +20,8 @@ from pyvider.cty.types import CtyType
 T = TypeVar('T', covariant=True)
 
 
-@define(frozen=True, slots=True)
+# @define(frozen=True, slots=True)
+@define(slots=True)
 class CtyValue(Generic[T]):
     """
     Immutable representation of a Cty value.
@@ -44,6 +45,8 @@ class CtyValue(Generic[T]):
     _is_unknown: bool = field(default=False)
     _is_null: bool = field(default=False)
     _marks: FrozenSet = field(factory=frozenset)
+    _key_mapping: dict[str, "CtyValue"] = attrs.field(factory=dict)
+
 
     def __attrs_post_init__(self) -> None:
         """Log info about created CtyValue."""
