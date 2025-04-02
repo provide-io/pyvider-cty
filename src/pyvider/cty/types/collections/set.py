@@ -8,7 +8,7 @@ Set type implementation for the Cty type system.
 This module provides CtySet, representing unordered collections of unique values
 in the Cty type system. Sets contain elements of a single specified type and
 enforce uniqueness constraints during validation. The implementation follows
-Go-CTY's set semantics, ensuring consistent behavior for collection operations
+go-cty's set semantics, ensuring consistent behavior for collection operations
 and maintaining type safety throughout the validation process.
 
 Sets support standard operations like adding and removing elements, checking

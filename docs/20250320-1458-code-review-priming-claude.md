@@ -1,7 +1,7 @@
 
 # Pyvider CTY: Strong Typing System Requirements
 
-I'm working on the `pyvider.cty` module, which is a Python implementation of the Go-CTY type system. This implementation has specific requirements that must be maintained:
+I'm working on the `pyvider.cty` module, which is a Python implementation of the go-cty type system. This implementation has specific requirements that must be maintained:
 
 ## Core Principles
 
@@ -20,7 +20,7 @@ When writing or fixing tests for this system:
 1. Tests must verify the correct typing is maintained, not just the correct values.
 2. If a method returns a `CtyString`, tests should assert it is a `CtyString` and then check its `.value` attribute.
 3. Do not change the type system to fit the tests. The tests must be adjusted to expect the proper strongly-typed behavior.
-4. The focus is on verifying the CTY type system works correctly according to Go-CTY specifications.
+4. The focus is on verifying the CTY type system works correctly according to go-cty specifications.
 
 ## Common Issues
 

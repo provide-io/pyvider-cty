@@ -34,7 +34,7 @@ class TestCtyMapCreation:
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         self.bool_map = CtyMap(key_type=CtyString(), value_type=CtyBool())
-        
+
         # Pre-create CtyValue instances for keys and values
         self.key1 = CtyValue(type_=CtyString(), value="key1")
         self.val1_str = CtyValue(type_=CtyString(), value="value1")
@@ -157,22 +157,22 @@ class TestCtyMapCreation:
         for value in invalid_values:
             with pytest.raises(CtyMapValidationError) as exc_info:
                 string_map.validate(value)
-            assert f"Expected dict, got {type(value).__name__}" in str(exc_info.value)
+            assert f"Expected dict or CtyValue map, got {type(value).__name__}" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_cty_map_validate_simple_values(self):
         """Test validation of maps with simple values using direct internal value access."""
         # Create map with pre-validated keys and values
         data = {
-            self.key1: self.val1_str, 
+            self.key1: self.val1_str,
             self.key2: self.val2_str
         }
-        
+
         # Validate the map
         result = self.string_map.validate(data)
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyMap)
-        
+
         # Access values directly from the internal map
         # The implementation stores keys as string values
         assert len(result.value) == 2
@@ -180,13 +180,13 @@ class TestCtyMapCreation:
         assert "key2" in result.value
         assert result.value["key1"] is self.val1_str
         assert result.value["key2"] is self.val2_str
-        
+
         # Test number map
         number_data = {
             self.key1: self.val1_num,
             self.key2: self.val2_num
         }
-        
+
         number_result = self.number_map.validate(number_data)
         assert isinstance(number_result, CtyValue)
         assert len(number_result.value) == 2
@@ -194,13 +194,13 @@ class TestCtyMapCreation:
         assert "key2" in number_result.value
         assert number_result.value["key1"] is self.val1_num
         assert number_result.value["key2"] is self.val2_num
-        
+
         # Test boolean map
         bool_data = {
             self.key1: self.val1_bool,
             self.key2: self.val2_bool
         }
-        
+
         bool_result = self.bool_map.validate(bool_data)
         assert isinstance(bool_result, CtyValue)
         assert len(bool_result.value) == 2
@@ -221,7 +221,7 @@ class TestCtyMapCreation:
         # Validate the map
         result = self.string_map.validate(data)
         assert isinstance(result, CtyValue)
-        
+
         # Direct access to internal dictionary
         assert len(result.value) == 2
         assert "key1" in result.value
@@ -242,20 +242,20 @@ class TestCtyMapCreation:
         # Validate the map
         result = self.string_map.validate(data)
         assert isinstance(result, CtyValue)
-        
+
         # Direct access to internal dictionary
         assert len(result.value) == 3
         assert "key1" in result.value
         assert "key2" in result.value
         assert "key3" in result.value
-        
+
         # Raw values should be wrapped in CtyValue
         assert isinstance(result.value["key1"], CtyValue)
         assert result.value["key1"].value == "value1"
-        
+
         # Pre-validated values should be preserved
         assert result.value["key2"] is self.val2_str
-        
+
         # Raw values should be wrapped in CtyValue
         assert isinstance(result.value["key3"], CtyValue)
         assert result.value["key3"].value == "value3"
@@ -274,13 +274,13 @@ class TestCtyMapCreation:
         except CtyMapValidationError:
             # Test passes - exception was raised as expected
             pass
-        
+
         # Invalid key using wrong CtyValue type
         invalid_key = CtyValue(type_=CtyNumber(), value=456)
         invalid_data = {
             invalid_key: self.val1_str
         }
-        
+
         try:
             self.string_map.validate(invalid_data)
             pytest.fail("Expected CtyMapValidationError but no exception was raised")
@@ -291,12 +291,12 @@ class TestCtyMapCreation:
 
 class TestCtyMapIteration:
     """Test map iteration operations."""
-    
+
     @pytest.mark.asyncio
     async def test_cty_map_iteration(self):
         """Test iteration over map keys using ElementIterator."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        
+
         # Create CtyValue keys and values
         key1 = CtyValue(type_=CtyString(), value="one")
         key2 = CtyValue(type_=CtyString(), value="two")
@@ -304,27 +304,27 @@ class TestCtyMapIteration:
         val1 = CtyValue(type_=CtyNumber(), value=1)
         val2 = CtyValue(type_=CtyNumber(), value=2)
         val3 = CtyValue(type_=CtyNumber(), value=3)
-        
+
         # Create map data dictionary
         data = {key1: val1, key2: val2, key3: val3}
-        
+
         # Validate the map
         map_val = map_type.validate(data)
-        
+
         # Direct verification using internal dictionary
         assert len(map_val.value) == 3
         assert "one" in map_val.value
         assert "two" in map_val.value
         assert "three" in map_val.value
         assert map_val.value["one"] is val1
-        assert map_val.value["two"] is val2 
+        assert map_val.value["two"] is val2
         assert map_val.value["three"] is val3
-        
+
         # Manual iteration test - collect keys from internal dictionary
         keys = set()
         for key_str in map_val.value:
             keys.add(key_str)
-            
+
         # Verify key strings from internal map
         assert keys == {"one", "two", "three"}
 
