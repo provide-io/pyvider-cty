@@ -45,7 +45,7 @@ class CtyValue(Generic[T]):
     _is_unknown: bool = field(default=False)
     _is_null: bool = field(default=False)
     _marks: FrozenSet = field(factory=frozenset)
-    _key_mapping: dict[str, "CtyValue"] = attrs.field(factory=dict)
+    _key_mapping: dict[str, "CtyValue"] = field(factory=dict)
 
 
     def __attrs_post_init__(self) -> None:

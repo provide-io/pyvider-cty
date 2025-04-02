@@ -54,7 +54,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         # Verify key_type is CtyString - this is a strict requirement
         from pyvider.cty.types.primitives import CtyString
         if not isinstance(self.key_type, CtyString):
-            error_msg = "Map key type must be CtyString"
+            error_msg = f"Expected CtyType for key_type, got {type(self.key_type).__name__}"
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
 
@@ -88,7 +88,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         match value:
             case None:
                 logger.debug("🔌🔍✅ None value converted to empty map")
-                result = CtyValue(type_=self, value={}, _key_mapping={})
+                result = CtyValue(type_=self, value={}, key_mapping={})
                 return result
             case {}:
                 logger.debug("🔌🔍✅ Empty dict is valid")
@@ -184,7 +184,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 raise CtyMapValidationError(error_msg) from e
 
         logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
-        result = CtyValue(type_=self, value=validated_map, _key_mapping=key_mapping)
+        result = CtyValue(type_=self, value=validated_map, key_mapping=key_mapping)
         return result
 
     def get(self, map_value: "CtyValue", key: Any, default: Optional["CtyValue"] = None) -> Optional["CtyValue"]:
@@ -329,7 +329,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         logger.debug(f"🔌📝✅ Set key {str_key} to value")
 
-        result = CtyValue(type_=self, value=new_map, _key_mapping=key_mapping)
+        result = CtyValue(type_=self, value=new_map, key_mapping=key_mapping)
         return result
 
     def delete(self, map_value: "CtyValue", key: Any) -> "CtyValue":
@@ -396,7 +396,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.debug(f"🔌📝⚠️ Key {str_key} not found, map unchanged")
             return map_value
 
-        result = CtyValue(type_=self, value=new_map, _key_mapping=key_mapping)
+        result = CtyValue(type_=self, value=new_map, key_mapping=key_mapping)
         return result
 
     def element_iterator(self, map_value: "CtyValue") -> "ElementIterator":
@@ -492,6 +492,17 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         logger.debug(f"🔌🔍✅ Usability check: {result}")
         return result
+
+    def items(self):
+        """Return an ordered iterator of (key, value) pairs."""
+        iterator = self.element_iterator()
+        while iterator.next():
+            yield iterator.key(), iterator.value()
+            
+    def keys(self):
+        """Return an ordered iterator of keys."""
+        for key, _ in self.items():
+            yield key
 
     def __eq__(self, other: object) -> bool:
         """
