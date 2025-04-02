@@ -31,7 +31,7 @@ class CtyValue(Generic[T]):
     Immutable representation of a Cty value with type information.
 
     A CtyValue combines a raw value with its type and metadata such as whether
-    the value is known (vs unknown) or null. This follows the Go-CTY value model
+    the value is known (vs unknown) or null. This follows the go-cty value model
     and provides a consistent interface for working with typed values.
 
     CtyValues support a variety of operations including comparison, indexing,

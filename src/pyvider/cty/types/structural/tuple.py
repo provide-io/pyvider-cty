@@ -24,7 +24,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
     Represents a Cty tuple type with fixed-position elements of potentially different types.
 
     A tuple is similar to a list but with a fixed number of elements, each potentially
-    having a different type. This matches Go-CTY's tuple type semantics.
+    having a different type. This matches go-cty's tuple type semantics.
     """
     ctype: ClassVar[str] = "tuple"
     element_types: tuple[CtyType, ...] = field()

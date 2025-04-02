@@ -26,7 +26,7 @@ class CtyBool(CtyType[bool]):
     Represents boolean (True/False) values with validation and type checking.
     Boolean values are immutable and support standard logical operations.
     CtyBool can convert various input types to boolean values according to
-    specific conversion rules that match Go-CTY's semantics.
+    specific conversion rules that match go-cty's semantics.
 
     Attributes:
         ctype: Class variable identifying this as a boolean type
