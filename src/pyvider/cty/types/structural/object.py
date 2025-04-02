@@ -177,18 +177,26 @@ class CtyObject(CtyType[dict[str, Any]]):
                             validated_value = attr_type.validate(attr_value)
                             validated_attrs[name] = validated_value
                             logger.debug(f"🧩🔍✅ Validated attribute {name}")
+
                         except CtyValidationError as e:
                             # Add context about which attribute failed
-                            error_msg = f"Invalid value for attribute '{name}': {e}"
+                            # Ensure detail even if str(e) is empty
+                            err_detail = str(e) if str(e).strip() else f"(CtyValidationError: {e!r})" 
+                            error_msg = f"Invalid value for attribute '{name}': {err_detail}"
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
                         except Exception as e:
-                            error_msg = f"Error validating attribute '{name}': {e}"
+                             # Ensure detail even if str(e) is empty
+                            err_detail = str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})"
+                            error_msg = f"Error validating attribute '{name}': {err_detail}"
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
-            
+
+            # Update the outer except block within the loop as well:
             except Exception as e:
-                error_msg = f"Unexpected error processing attribute '{name}': {e}"
+                # Ensure detail even if str(e) is empty
+                err_detail = str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})" 
+                error_msg = f"Unexpected error processing attribute '{name}': {err_detail}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 validation_errors.append(error_msg)
 
