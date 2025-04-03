@@ -199,6 +199,9 @@ class CtySetValidationError(CtyValidationError):
     def __init__(self, message: str, value: Any = None):
         super().__init__(message, value, "Set")
 
+class CtyTupleValidationError(CtyValidationError):
+    def __init__(self, message: str, value: Any = None):
+        super().__init__(message, value, "Set")
 
 class CtyTypeMismatchError(CtyValidationError):
     """
