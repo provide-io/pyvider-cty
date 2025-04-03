@@ -116,18 +116,6 @@ class CtyValue(Generic[T]):
         return self._value
 
     @property
-    def is_known(self) -> bool:
-        """
-        Check if this value is known (not unknown).
-
-        A value can be both known and null, but cannot be both unknown and null.
-
-        Returns:
-            bool: True if the value is known, False if unknown
-        """
-        return not self._is_unknown
-
-    @property
     def is_unknown(self) -> bool:
         """
         Check if this value is unknown.
@@ -860,7 +848,7 @@ class CtyValue(Generic[T]):
         # Check type first
         if not isinstance(other, CtyValue):
             # Allow comparison with raw primitives if self is a known, non-null primitive
-            if self.is_known and not self.is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
+            if not self._is_unknown and not self._is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
                 try:
                     # Handle Decimal comparison with float/int carefully
                     if isinstance(self._value, Decimal):

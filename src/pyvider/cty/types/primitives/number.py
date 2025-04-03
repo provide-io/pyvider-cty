@@ -90,7 +90,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                 logger.debug(f"🔢🔍✅ Value is already a CtyValue with CtyNumber type")
                 return value
             # --- Allow conversion from known, non-null CtyValue if numeric/string ---
-            if value.is_known and not value.is_null:
+            if not value._is_unknown and not value._is_null:
                  inner_val = value.value
                  if isinstance(inner_val, (int, float, Decimal)):
                       logger.debug(f"🔢🔍✅ Inner value is already numeric: {inner_val!r}")

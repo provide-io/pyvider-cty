@@ -62,7 +62,7 @@ class CtyBool(CtyType[bool]):
                 logger.debug(f"🔄🔍✅ Value is already a CtyValue with CtyBool type")
                 return value
             # --- Allow conversion from known, non-null CtyValue ---
-            if value.is_known and not value.is_null:
+            if value._is_unknown and not value._is_null:
                  inner_val = value.value
                  # Try direct bool
                  if isinstance(inner_val, bool):
@@ -101,6 +101,13 @@ class CtyBool(CtyType[bool]):
             bool_val = bool(value)
             logger.debug(f"🔄🔍✅ Number {value} converted to boolean: {bool_val}")
             return CtyValue(type_=self, value=bool_val)
+
+        if isinstance(value, (int, float)):
+            error_msg = f"Cannot convert number {value} to boolean"
+            logger.error(f"🔄❗❌ {error_msg}")
+            raise CtyBoolValidationError(error_msg)
+
+
 
         # --- REJECT ALL OTHER TYPES ---
         error_msg = f"Value must be a boolean or a specific convertible string/number, got {type(value).__name__}"

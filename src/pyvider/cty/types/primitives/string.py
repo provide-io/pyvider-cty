@@ -85,7 +85,7 @@ class CtyString(CtyType[str]):
                 return value
             # --- Allow conversion from known, non-null CtyValue using str() ---
             # --- This is a common pattern, but be mindful if it causes issues ---
-            if value.is_known and not value.is_null:
+            if not value._is_unknown and not value._is_null:
                  try:
                      str_val = str(value.value)
                      logger.debug(f"🔤🔍✅ Converted known CtyValue's inner value to string: {str_val!r}")

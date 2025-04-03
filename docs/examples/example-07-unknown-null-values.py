@@ -28,11 +28,11 @@ unknown_value = CtyValue.unknown(profile_type)
 null_value = CtyValue.null(profile_type)
 
 # Check state of values
-print(f"Known: {known_value.is_known}, Null: {known_value.is_null}")
+print(f"Unknown: {known_value.is_unknown}, Null: {known_value.is_null}")
 print(f"Unknown: {unknown_value.is_unknown}, Null: {unknown_value.is_null}")
-print(f"Known: {null_value.is_known}, Null: {null_value.is_null}")
+print(f"Unknown: {null_value.is_unknown}, Null: {null_value.is_null}")
 
 # Try to access properties (would raise an exception for unknown/null)
-if known_value.is_known and not known_value.is_null:
+if not known_value.is_unknown and not known_value.is_null:
     username = known_value.value.get("username")
     print(f"Username: {username.value}")

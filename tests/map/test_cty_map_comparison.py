@@ -47,7 +47,7 @@ class TestCtyMapComparison:
         )
 
     @pytest.mark.asyncio
-    async def test_cty_map_equality_and_type_comparison_1(self):
+    async def test_cty_map_equality_and_type_comparison(self):
         """Test map equality and type comparison methods."""
         # Create two identical map types
         map_type1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -71,7 +71,6 @@ class TestCtyMapComparison:
         map_val2 = map_type1.validate({"a": 1, "b": 2})
         map_val3 = map_type1.validate({"a": 1, "c": 3})
 
-        # Fix: use is_known instead of _is_known for any CtyValue property access
         assert map_val1 == map_val2
         assert map_val1 != map_val3
         assert map_val1 != CtyString(value="not a map")
