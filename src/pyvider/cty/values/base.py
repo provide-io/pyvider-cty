@@ -40,7 +40,7 @@ class CtyValue(Generic[T]):
 
     Attributes:
         _type: The Cty type of this value
-      , value: The raw value (or None for null/unknown values)
+        _value: The raw value (or None for null/unknown values)
         _is_unknown: Whether this value is unknown
         _is_null: Whether this value is null
         _marks: Set of marks applied to this value
@@ -218,7 +218,7 @@ class CtyValue(Generic[T]):
         # Need to pass all fields to evolve when frozen=True
         unmarked_value = evolve(
             self,
-            type=self._type,
+            type_=self._type,
             value=self._value,
             is_unknown=self._is_unknown,
             is_null=self._is_null,
@@ -860,7 +860,7 @@ class CtyValue(Generic[T]):
         # Check type first
         if not isinstance(other, CtyValue):
             # Allow comparison with raw primitives if self is a known, non-null primitive
-            if self.is_known and not self.is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
+            if self._is_known and not self._is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
                 try:
                     # Handle Decimal comparison with float/int carefully
                     if isinstance(self._value, Decimal):
@@ -888,8 +888,8 @@ class CtyValue(Generic[T]):
 
         # Check marks (only if needed based on requirements, often ignored for value equality)
         # If marks matter for equality, uncomment:
-        # if self._marks != other._marks:
-        #     return False
+        if self._marks != other._marks:
+            return False
 
         # --- Compare values for known, non-null values ---
         # Use direct comparison for primitives
