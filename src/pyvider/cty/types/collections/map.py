@@ -202,6 +202,27 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             else:
                 validation_errors.append(f"Internal error: validation passed but parts are None for key {k!r}")
 
+            # In the CtyMap.validate method
+            # Add explicit validation for boolean values
+            from pyvider.cty.types.primitives import CtyBool
+            if isinstance(self.value_type, CtyBool):
+                try:
+                    validated_value_cty = self.value_type.validate(v)
+                except Exception as e:
+                    error_msg = f"Invalid boolean value for key '{map_key_str}': {e}"
+                    logger.error(f"🔌❌🔄 {error_msg}")
+                    raise CtyMapValidationError(error_msg) from e
+
+        # Hmm.
+        # from pyvider.cty.types.primitives import CtyBool
+        # if isinstance(self.value_type, CtyBool):
+        #     try:
+        #         validated_value_cty = self.value_type.validate(v)
+        #     except Exception as e:
+        #         error_msg = f"Invalid boolean value for key '{map_key_str}': {e}"
+        #         logger.error(f"🔌❌🔄 {error_msg}")
+        #         raise CtyMapValidationError(error_msg) from e
+
         # --- Finalize ---
         if validation_errors:
             combined_error_msg = "Map validation failed:\n - " + "\n - ".join(validation_errors)

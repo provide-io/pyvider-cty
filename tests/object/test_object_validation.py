@@ -63,7 +63,7 @@ async def test_validation_success():
         assert validated.type == person_type
 
         # Check value is a CtyValue that's known and not null
-        assert validated.is_known
+        assert not validated.is_unknown
         assert not validated.is_null
 
         # Check all expected attributes exist in validated.value

@@ -149,11 +149,11 @@ class TestCtyMapComplex:
 
         # Find user1 data - adjusted for string keys
         user1_data = None
-        
+
         # Direct string key lookup
         if "user1" in validated.value:
             user1_data = validated.value["user1"]
-            
+
         assert user1_data is not None
         assert isinstance(user1_data, CtyValue)
         assert isinstance(user1_data.type, CtyMap)
@@ -161,7 +161,7 @@ class TestCtyMapComplex:
         # Check nested map content - adjusted for string keys
         name_value = None
         email_value = None
-        
+
         # Use string keys for nested map lookup
         if "name" in user1_data.value:
             name_value = user1_data.value["name"]
@@ -289,97 +289,83 @@ class TestCtyMapComplex:
         with pytest.raises(CtyMapValidationError):
             nested_map.validate(invalid)
 
-################################################################################
 
-    # @pytest.mark.asyncio
-    # async def test_cty_map_with_nested_value_types_1():
-    #     """Test map with complex nested value types."""
-    #     # Create an object type for the map value
-    #     person_type = CtyObject(
-    #         attribute_types={
-    #             "name": CtyString(),
-    #             "age": CtyNumber()
-    #         }
-    #     )
+    @pytest.mark.asyncio
+    async def test_cty_map_with_complex_nested_value_types(self):
+        """Test map with complex nested value types."""
+        # Create an object type for the map value
+        person_type = CtyObject(
+            attribute_types={
+                "name": CtyString(),
+                "age": CtyNumber()
+            }
+        )
 
-    #     # Create a map type with the object as its value type
-    #     map_type = CtyMap(key_type=CtyString(), value_type=person_type)
+        # Create a map type with the object as its value type
+        map_type = CtyMap(key_type=CtyString(), value_type=person_type)
 
-    #     # Create data
-    #     data = {
-    #         "person1": {
-    #             "name": "Alice",
-    #             "age": 30
-    #         },
-    #         "person2": {
-    #             "name": "Bob",
-    #             "age": 25
-    #         }
-    #     }
+        # Create data
+        data = {
+            "person1": {
+                "name": "Alice",
+                "age": 30
+            },
+            "person2": {
+                "name": "Bob",
+                "age": 25
+            }
+        }
 
-    #     # Validate
-    #     result = map_type.validate(data)
+        # Validate
+        result = map_type.validate(data)
 
-    #     # Verify structure
-    #     assert isinstance(result, CtyValue)
-    #     assert isinstance(result.type, CtyMap)
-    #     assert len(result.value) == 2
+        # Verify structure
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyMap)
+        assert len(result.value) == 2
 
-    #     # Check values
-    #     found_person1 = False
-    #     found_person2 = False
+        # Check values - adapted for string key access pattern
+        found_person1 = False
+        found_person2 = False
 
-    #     # Iterate through the items of the internal dictionary (result.value)
-    #     # k will be a string key ('person1', 'person2')
-    #     # v will be the CtyValue representing the nested person object
-    #     for k, v in result.value.items():
-    #         # --- REMOVE or COMMENT OUT the incorrect assertion ---
-    #         # assert hasattr(k, 'value'), "Key should be a CtyValue or have a value attribute"
+        # Direct string key lookup to access map elements
+        assert "person1" in result.value
+        assert "person2" in result.value
 
-    #         # --- Ensure k is treated as a string ---
-    #         assert isinstance(k, str), "Key should be a string"
-    #         # --- Ensure v is a CtyValue ---
-    #         assert isinstance(v, CtyValue), "Value should be a CtyValue"
-    #         # --- Ensure v's type is CtyObject ---
-    #         assert isinstance(v.type, CtyObject), "Value's type should be CtyObject"
+        # Get the person objects directly by string keys
+        person1_val = result.value["person1"]
+        person2_val = result.value["person2"]
 
-    #         # --- Check the content based on the string key ---
-    #         if k == "person1":
-    #             found_person1 = True
-    #             # v is the CtyValue for person1 object
-    #             person_obj_value = v.value # Get the inner dict { 'name': CtyValue(...), 'age': CtyValue(...) }
-    #             assert isinstance(person_obj_value, dict)
-    #             assert "name" in person_obj_value
-    #             assert "age" in person_obj_value
+        # Verify the person objects have the right type
+        assert isinstance(person1_val, CtyValue)
+        assert isinstance(person1_val.type, CtyObject)
+        assert isinstance(person2_val, CtyValue)
+        assert isinstance(person2_val.type, CtyObject)
 
-    #             name_val = person_obj_value["name"]
-    #             age_val = person_obj_value["age"]
+        # Access person1 attributes by key
+        assert "name" in person1_val.value
+        assert "age" in person1_val.value
 
-    #             assert isinstance(name_val, CtyValue)
-    #             assert isinstance(age_val, CtyValue)
-    #             assert name_val.value == "Alice"
-    #             assert age_val.value == 30
+        # Verify attribute values directly
+        assert person1_val.value["name"].value == "Alice"
+        assert person1_val.value["age"].value == 30
 
-    #         elif k == "person2":
-    #             found_person2 = True
-    #             # v is the CtyValue for person2 object
-    #             person_obj_value = v.value
-    #             assert isinstance(person_obj_value, dict)
-    #             assert "name" in person_obj_value
-    #             assert "age" in person_obj_value
+        # Access person2 attributes by key
+        assert "name" in person2_val.value
+        assert "age" in person2_val.value
 
-    #             name_val = person_obj_value["name"]
-    #             age_val = person_obj_value["age"]
+        # Verify attribute values directly
+        assert person2_val.value["name"].value == "Bob"
+        assert person2_val.value["age"].value == 25
 
-    #             assert isinstance(name_val, CtyValue)
-    #             assert isinstance(age_val, CtyValue)
-    #             assert name_val.value == "Bob"
-    #             assert age_val.value == 25
+        # Alternative approach using CtyPath
+        from pyvider.cty.path import CtyPath
 
-    #     # Ensure we found both test persons
-    #     assert found_person1, "person1 not found in map"
-    #     assert found_person2, "person2 not found in map"
-
-
+        # Test path to person1's name
+        person1_name_path = CtyPath.key("person1").child("name")
+        name_result = person1_name_path.apply_path(result)
+        assert isinstance(name_result, CtyValue)
+        assert isinstance(name_result.type, CtyString)
+        assert name_result.value == "Alice"
 
 # 🐍🏗️🧪

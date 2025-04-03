@@ -234,11 +234,19 @@ class CtyObject(CtyType[dict[str, Any]]):
                 error_msg = "Cannot get attribute from null value"
                 logger.error(f"🧩❌🔄 {error_msg}")
                 raise CtyAttributeValidationError(error_msg)
+
+            # Key fix: For unknown values, return unknown of attribute type
             if value.is_unknown:
-                error_msg = "Cannot get attribute from unknown value"
-                logger.error(f"🧩❌🔄 {error_msg}")
-                raise CtyAttributeValidationError(error_msg)
-            value = value.value
+                if name not in self.attribute_types:
+                    error_msg = f"Unknown attribute: {name}"
+                    logger.error(f"🧩❌🔄 {error_msg}")
+                    raise CtyAttributeValidationError(error_msg)
+
+                # Return unknown of the attribute's type
+                from pyvider.cty.values import CtyValue
+                return CtyValue.unknown(self.attribute_types[name])
+
+        value = value.value
 
         # Then check if the value is a dictionary
         if not isinstance(value, dict):

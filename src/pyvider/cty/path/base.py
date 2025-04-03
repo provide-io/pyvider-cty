@@ -101,6 +101,7 @@ class GetAttrStep(PathStep):
             raise ValueError("Attribute name cannot be empty")
         logger.debug(f"🧰✅🔄 Attribute name {value} is valid")
 
+
     def apply(self, value: "CtyValue") -> "CtyValue":
         """
         Get the attribute with the given name from an object value.
@@ -114,47 +115,33 @@ class GetAttrStep(PathStep):
         Raises:
             AttributePathError: If the value is not an object or has no such attribute
         """
-        logger.debug(f"🧰🔍🔄 Getting attribute {self.name} from object")
+        logger.debug(f"🧰🔍🔄 Applying path step {self.name} to value type {value.type.__class__.__name__}")
 
-        # Check for null values
-        if value.is_null:
-            logger.error(f"🧰❌🔄 Cannot get attribute from null value")
-            raise AttributePathError("Cannot get attribute from null value")
-
-        # Handle unknown values
-        if value.is_unknown:
-            logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown attribute")
-            # Get the attribute's type
-            attr_type = self.apply_type(value.type)
-            
-            # Import here to avoid circular imports
-            from pyvider.cty.values import CtyValue
-            # Create an unknown value of the attribute's type
-            return CtyValue(type_=attr_type, is_unknown=True)
-
-        # Check if the type is an object
+        # Handle different value types appropriately
         from pyvider.cty.types.structural import CtyObject
-        if not isinstance(value.type, CtyObject):
-            error_msg = f"Cannot get attribute from non-object value of type {type(value.type).__name__}"
-            logger.error(f"🧰❌🔄 {error_msg}")
-            raise AttributePathError(error_msg)
+        from pyvider.cty.types.collections import CtyMap
 
-        # Get the attribute
-        try:
-            # For CtyValue containing object data, the value is a dictionary
-            object_value = value.value
-            
-            for k, v in object_value.items():
-                if k == self.name:
-                    logger.debug(f"🧰✅🔄 Found attribute {self.name}")
-                    return v
-                    
-            # If we get here, the attribute was not found
-            error_msg = f"Object has no attribute '{self.name}'"
-            logger.error(f"🧰❌🔄 {error_msg}")
-            raise AttributePathError(error_msg)
-        except Exception as e:
-            error_msg = f"Failed to get attribute {self.name}: {e}"
+        # For object values, use get_attribute
+        if isinstance(value.type, CtyObject):
+            try:
+                return value.type.get_attribute(value, self.name)
+            except Exception as e:
+                error_msg = f"Cannot get attribute '{self.name}' from object: {e}"
+                logger.error(f"🧰❌🔄 {error_msg}")
+                raise AttributePathError(error_msg)
+
+        # For map values, use get method with string key
+        elif isinstance(value.type, CtyMap):
+            result = value.type.get(value, self.name)
+            if result is None:
+                error_msg = f"Key '{self.name}' not found in map"
+                logger.error(f"🧰❌🔄 {error_msg}")
+                raise AttributePathError(error_msg)
+            return result
+
+        # For other values, attribute access is not supported
+        else:
+            error_msg = f"Cannot get attribute from non-object value of type {value.type.__class__.__name__}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
@@ -229,7 +216,7 @@ class IndexStep(PathStep):
             logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown element")
             # Get the element's type
             elem_type = self.apply_type(value.type)
-            
+
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
             # Create an unknown value of the element's type
@@ -242,18 +229,18 @@ class IndexStep(PathStep):
         try:
             collection_value = value.value
             calculated_index = self.index
-            
+
             # Handle negative indices
             if calculated_index < 0:
                 logger.debug(f"🧰🔍🔄 Converting negative index {calculated_index} to positive")
                 collection_len = len(collection_value)
                 calculated_index = collection_len + calculated_index
                 logger.debug(f"🧰🔍🔄 Converted to positive index {calculated_index}")
-                
+
             # Check bounds (happens in both paths below but we do an explicit check here)
             if calculated_index < 0 or calculated_index >= len(collection_value):
                 raise IndexError(f"Index {self.index} out of bounds (0-{len(collection_value)-1})")
-                
+
             if isinstance(value.type, CtyList):
                 # For lists, use element_at method
                 logger.debug(f"🧰🔍🔄 Using element_at for list type")
@@ -270,7 +257,7 @@ class IndexStep(PathStep):
                 error_msg = f"Cannot index into value of type {type(value.type).__name__}"
                 logger.error(f"🧰❌🔄 {error_msg}")
                 raise AttributePathError(error_msg)
-                
+
         except IndexError as e:
             error_msg = f"Index out of bounds: {e}"
             logger.error(f"🧰❌🔄 {error_msg}")
@@ -310,13 +297,13 @@ class IndexStep(PathStep):
                 elem_type = type_.element_types[self.index]
                 logger.debug(f"🧰✅🔄 Found tuple element type at index {self.index}: {elem_type.__class__.__name__}")
                 return elem_type
-                
+
             if self.index < 0 and abs(self.index) <= len(type_.element_types):
                 # Handle negative indices for tuples
                 elem_type = type_.element_types[len(type_.element_types) + self.index]
                 logger.debug(f"🧰✅🔄 Found tuple element type at negative index {self.index}: {elem_type.__class__.__name__}")
                 return elem_type
-                
+
             error_msg = f"Tuple index {self.index} out of bounds (0-{len(type_.element_types)-1})"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
@@ -365,7 +352,7 @@ class KeyStep(PathStep):
             logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown map value")
             # Get the value's type
             val_type = self.apply_type(value.type)
-            
+
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
             # Create an unknown value of the value's type
@@ -382,7 +369,7 @@ class KeyStep(PathStep):
         try:
             # For map types, we need to validate and then search for the key
             map_value = value.value
-            
+
             # Try to validate the key
             key_type = value.type.key_type
             if not isinstance(self.key, type(key_type)):
@@ -390,7 +377,7 @@ class KeyStep(PathStep):
                 validated_key = key_type.validate(self.key)
             else:
                 validated_key = self.key
-                
+
             # Search for the key in the map
             for k, v in map_value.items():
                 if hasattr(k, 'value') and hasattr(validated_key, 'value'):
@@ -402,12 +389,12 @@ class KeyStep(PathStep):
                     # Direct comparison
                     logger.debug(f"🧰✅🔄 Found value for key {self.key}")
                     return v
-                    
+
             # Key not found
             error_msg = f"Map has no key {self.key}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
-                
+
         except AttributePathError:
             # Re-raise AttributePathError
             raise
@@ -538,7 +525,7 @@ class CtyPath:
             raise AttributePathError(error_msg)
 
         current = value
-        
+
         # Apply each step in sequence
         for i, step in enumerate(self.steps):
             logger.debug(f"🧰🔍🔄 Applying path step {i+1}/{len(self.steps)}: {step}")
@@ -576,7 +563,7 @@ class CtyPath:
 
         # Start with the given type
         current = type_
-        
+
         # Apply each step in sequence
         for i, step in enumerate(self.steps):
             logger.debug(f"🧰🔍🔄 Applying type path step {i+1}/{len(self.steps)}: {step}")
