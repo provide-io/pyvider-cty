@@ -860,7 +860,7 @@ class CtyValue(Generic[T]):
         # Check type first
         if not isinstance(other, CtyValue):
             # Allow comparison with raw primitives if self is a known, non-null primitive
-            if self._is_known and not self._is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
+            if self.is_known and not self.is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
                 try:
                     # Handle Decimal comparison with float/int carefully
                     if isinstance(self._value, Decimal):

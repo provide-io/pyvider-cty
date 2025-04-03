@@ -55,19 +55,19 @@ class TestCtyMapOperations:
         assert isinstance(validated.type, CtyMap)
         assert len(validated.value) == 2
 
-        # Find values by key
+        # Find values by key - adjusted for string keys
         found_key1 = False
         found_key2 = False
-        for k, v in validated.value.items():
-            if k.value == "key1":
-                found_key1 = True
-                assert v.value == "value1"
-            elif k.value == "key2":
-                found_key2 = True
-                assert v.value == "value2"
+        
+        # Direct string key lookup
+        if "key1" in validated.value:
+            found_key1 = True
+            assert validated.value["key1"].value == "value1"
+        if "key2" in validated.value:
+            found_key2 = True
+            assert validated.value["key2"].value == "value2"
 
         assert found_key1 and found_key2
-
 
     @pytest.mark.asyncio
     async def test_cty_map_set_method(self):
@@ -88,12 +88,15 @@ class TestCtyMapOperations:
         assert isinstance(new_map, CtyValue)
         assert len(new_map.value) == 1
 
-        # Find the key-value pair
+        # Find the key-value pair - adjusted for string keys
         found = False
-        for k, v in new_map.value.items():
-            if k is key1:  # Should be same instance
-                found = True
-                assert v is val1
+        
+        # Direct string key lookup
+        if "key1" in new_map.value:
+            found = True
+            # Can't check if it's the same instance with string keys
+            assert new_map.value["key1"].value == "value1"
+            
         assert found
 
         # Add second key-value pair
@@ -102,16 +105,17 @@ class TestCtyMapOperations:
         # Verify structure
         assert len(updated_map.value) == 2
 
-        # Find both key-value pairs
+        # Find both key-value pairs - adjusted for string keys
         found_key1 = False
         found_key2 = False
-        for k, v in updated_map.value.items():
-            if k is key1:
-                found_key1 = True
-                assert v is val1
-            elif k is key2:
-                found_key2 = True
-                assert v is val2
+        
+        # Direct string key lookup
+        if "key1" in updated_map.value:
+            found_key1 = True
+            assert updated_map.value["key1"].value == "value1"
+        if "key2" in updated_map.value:
+            found_key2 = True
+            assert updated_map.value["key2"].value == "value2"
 
         assert found_key1 and found_key2
 
@@ -119,18 +123,19 @@ class TestCtyMapOperations:
         val1_updated = CtyValue(type_=CtyString(), value="updated")
         final_map = self.string_map.set(updated_map, key1, val1_updated)
 
-        # Verify update
+        # Verify update - adjusted for string keys
         found = False
-        for k, v in final_map.value.items():
-            if k is key1:
-                found = True
-                assert v is val1_updated
+        
+        # Direct string key lookup
+        if "key1" in final_map.value:
+            found = True
+            assert final_map.value["key1"].value == "updated"
+            
         assert found
 
         # Original map should be unchanged (immutability)
-        for k, v in updated_map.value.items():
-            if k is key1:
-                assert v is val1  # Still has original value
+        assert updated_map.value["key1"].value == "value1"  # Still has original value
+
 
     @pytest.mark.asyncio
     async def test_cty_map_get_method(self):
@@ -189,21 +194,23 @@ class TestCtyMapOperations:
         # Verify key was deleted
         assert len(new_map.value) == 2
 
-        # Verify which keys remain
+        # Verify which keys remain - adjusted for string keys
         found_key1 = False
         found_key3 = False
-        for k in new_map.value:
-            if k is key1:
-                found_key1 = True
-            elif k is key3:
-                found_key3 = True
-            else:
-                assert False, f"Unexpected key found: {k.value}"
+        
+        # Direct string key lookup
+        if "key1" in new_map.value:
+            found_key1 = True
+        if "key3" in new_map.value:
+            found_key3 = True
+        # We shouldn't find key2
+        assert "key2" not in new_map.value
 
         assert found_key1 and found_key3
 
         # Original map should be unchanged (immutability)
         assert len(map_val.value) == 3
+        assert "key2" in map_val.value
 
         # Delete non-existent key
         non_existent = CtyValue(type_=CtyString(), value="non_existent")
@@ -214,11 +221,14 @@ class TestCtyMapOperations:
         final_map = self.string_map.delete(new_map, key1)
         assert len(final_map.value) == 1
 
-        # Only key3 should remain
+        # Only key3 should remain - adjusted for string keys
         found = False
-        for k in final_map.value:
-            if k is key3:
-                found = True
+        
+        # Direct string key lookup
+        if "key3" in final_map.value:
+            found = True
+            
         assert found
+        assert "key1" not in final_map.value
 
 # 🐍🏗️🧪

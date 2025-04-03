@@ -147,31 +147,33 @@ class TestCtyMapComplex:
         # Check structure
         assert len(validated.value) == 2
 
-        # Find user1 data
+        # Find user1 data - adjusted for string keys
         user1_data = None
-        for k, v in validated.value.items():
-            if k.value == "user1":
-                user1_data = v
-                break
-
+        
+        # Direct string key lookup
+        if "user1" in validated.value:
+            user1_data = validated.value["user1"]
+            
         assert user1_data is not None
-        assert isinstance(user1_data, CtyMap)
+        assert isinstance(user1_data, CtyValue)
+        assert isinstance(user1_data.type, CtyMap)
 
-        # Check nested map content
+        # Check nested map content - adjusted for string keys
         name_value = None
         email_value = None
-        for k, v in user1_data.value.items():
-            if k.value == "name":
-                name_value = v
-            elif k.value == "email":
-                email_value = v
+        
+        # Use string keys for nested map lookup
+        if "name" in user1_data.value:
+            name_value = user1_data.value["name"]
+        if "email" in user1_data.value:
+            email_value = user1_data.value["email"]
 
         assert name_value is not None
-        assert isinstance(name_value, CtyString)
+        assert isinstance(name_value, CtyValue)
         assert name_value.value == "Alice"
 
         assert email_value is not None
-        assert isinstance(email_value, CtyString)
+        assert isinstance(email_value, CtyValue)
         assert email_value.value == "alice@example.com"
 
         # Test with invalid nested value
@@ -186,7 +188,7 @@ class TestCtyMapComplex:
             self.nested_map.validate(invalid_data)
 
     @pytest.mark.asyncio
-    async def test_list_map_validation_2(self):
+    async def test_list_map_validation(self):
         """Test validation of maps with lists as values."""
         # Create map with list values
         data = {
@@ -228,57 +230,6 @@ class TestCtyMapComplex:
         assert empty_list is not None
         assert isinstance(empty_list, CtyValue)
         assert isinstance(empty_list.type, CtyList)
-        assert len(empty_list.value) == 0
-
-        # Test with invalid list elements
-        invalid_data = {
-            "mixed": ["string", 123, True]  # Should be all strings
-        }
-
-        with pytest.raises(CtyMapValidationError):
-            self.list_map.validate(invalid_data)
-
-    @pytest.mark.asyncio
-    async def test_list_map_validation_1(self):
-        """Test validation of maps with lists as values."""
-        # Create map with list values
-        data = {
-            "fruits": ["apple", "banana", "cherry"],
-            "vegetables": ["carrot", "broccoli"],
-            "empty": []
-        }
-
-        # Validate
-        validated = self.list_map.validate(data)
-
-        # Check structure
-        assert len(validated.value) == 3
-
-        # Find fruits list
-        fruits_list = None
-        for k, v in validated.value.items():
-            if k.value == "fruits":
-                fruits_list = v
-                break
-
-        assert fruits_list is not None
-        assert isinstance(fruits_list, CtyList)
-
-        # Check list content
-        assert len(fruits_list.value) == 3
-        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in fruits_list.value)
-
-        assert [item.value for item in fruits_list.value] == ["apple", "banana", "cherry"]
-
-        # Check empty list
-        empty_list = None
-        for k, v in validated.value.items():
-            if k.value == "empty":
-                empty_list = v
-                break
-
-        assert empty_list is not None
-        assert isinstance(empty_list, CtyList)
         assert len(empty_list.value) == 0
 
         # Test with invalid list elements
