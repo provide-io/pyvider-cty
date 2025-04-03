@@ -23,6 +23,8 @@ from pyvider.cty import (
     CtySet,
     CtyString,
     CtyTuple,
+    CtyValue,
+    CtyPath,
 )
 
 
@@ -92,12 +94,12 @@ class TestCtyMapCreation:
         # Invalid key_type (not a CtyType)
         with pytest.raises(CtyMapValidationError) as exc_info:
             CtyMap(key_type="string", value_type=CtyString())
-        assert "Expected CtyType" in str(exc_info.value)
+        assert "Map key type must be CtyString, got " in str(exc_info.value)
 
         # Invalid value_type (not a CtyType)
         with pytest.raises(CtyMapValidationError) as exc_info:
             CtyMap(key_type=CtyString(), value_type="string")
-        assert "Expected CtyType" in str(exc_info.value)
+        assert "Expected CtyType for value_type, got " in str(exc_info.value)
 
         # Both invalid
         with pytest.raises(CtyMapValidationError):

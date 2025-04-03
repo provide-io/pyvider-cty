@@ -225,26 +225,37 @@ class TestCtyMapComplex:
 
         # Find the value for "config" key
         config_value = None
+        # Iterate through the keys (strings) of the internal dictionary
         for k in validated.value:
-            if isinstance(k, CtyString) and k.value == "config":
+            # --- FIX: Check the string key directly ---
+            if k == "config":
+                # Access the value using the string key k
                 config_value = validated.value[k]
-                break
+                break # Found it, exit loop
 
+        # Now, config_value should be the CtyValue representing the nested map
         assert isinstance(validated, CtyValue)
-        assert isinstance(config_value, CtyMap)
+        # --- Check the TYPE of the retrieved CtyValue ---
+        assert isinstance(config_value, CtyValue), "Config value should be a CtyValue"
+        assert isinstance(config_value.type, CtyMap), "Config value's type should be CtyMap" # Check the type *within* the CtyValue
 
+        # You can add further checks on the nested map's content if needed:
         assert config_value is not None, "Key 'config' not found in map"
 
-        # Now find "filename" in the nested map
+        # Find "filename" in the nested map's internal dictionary
+        nested_map_data = config_value.value # Get the inner dict {'filename': CtyValue(...)}
+        assert isinstance(nested_map_data, dict)
         filename_value = None
-        for k in config_value.value:
-            if isinstance(k, CtyString) and k.value == "filename":
-                filename_value = config_value.value[k]
+        for nested_k in nested_map_data:
+            # nested_k is the string 'filename'
+            if nested_k == "filename":
+                filename_value = nested_map_data[nested_k] # This is the CtyValue for the filename
                 break
 
         assert filename_value is not None, "Key 'filename' not found in nested map"
-        assert isinstance(filename_value, CtyString)
-        assert filename_value.value == "test.txt"
+        assert isinstance(filename_value, CtyValue)
+        assert isinstance(filename_value.type, CtyString) # Check the type
+        assert filename_value.value == "test.txt" # Check the actual string value
 
     @pytest.mark.asyncio
     async def test_cty_map_validate_nested_map_invalid(self):
