@@ -118,17 +118,26 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         for i, item in enumerate(value):
             try:
+                # FIX: Proper handling of None values in lists
+                if item is None:
+                    error_msg = f"None is not a valid list element"
+                    logger.debug(f"🔌❗❌ {error_msg}")
+                    raise CtyListValidationError(error_msg)
+
                 # Already a CtyValue of correct type?
                 if isinstance(item, CtyValue) and isinstance(item.type, self.element_type.__class__):
                     validated_item = item
                     logger.debug(f"🔌📝✅ Item {i} is already a CtyValue: {item}")
+                # FIX: Properly handle nested CtyList instances
+                elif isinstance(item, CtyList) and isinstance(self.element_type, CtyList):
+                    # Convert CtyList to CtyValue wrapping a CtyList
+                    validated_item = CtyValue(type_=self.element_type, value=item.value)
+                    logger.debug(f"🔌📝✅ Item {i} is a CtyList, wrapping as CtyValue")
                 else:
                     # Validate and wrap
                     validated = self.element_type.validate(item)
-                    if isinstance(validated, CtyValue):
-                        validated_item = validated
-                    else:
-                        validated_item = CtyValue(type_=self.element_type, value=validated)
+                    # validate() always returns a CtyValue
+                    validated_item = validated
                     logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
 
                 validated_list.append(validated_item)
@@ -249,6 +258,8 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
+
+
     def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
         """
         Get a slice of this list, returning a new list.
@@ -283,7 +294,10 @@ class CtyList(CtyType[list[T]], Generic[T]):
         # Create a new list with the sliced values
         sliced_value = self.value[start:end]
         logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
-        return evolve(self, value=sliced_value)
+
+        # FIX: Return a CtyValue wrapping a new CtyList instance, not just a CtyList
+        from pyvider.cty.values import CtyValue
+        return CtyValue(type_=self, value=sliced_value)
 
     def concat(self, other: "CtyList[T]") -> "CtyList[T]":
         """
@@ -320,7 +334,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
         # Create a new list with the concatenated values
         concat_value = list(self.value) + list(other.value)
         logger.debug(f"🔌📝✅ Concatenated lists, result size: {len(concat_value)}")
-        return evolve(self, value=concat_value)
+
+        from pyvider.cty.values import CtyValue
+        return CtyValue(type_=self, value=concat_value)
 
     def contains(self, item: Any) -> bool:
         """
@@ -407,7 +423,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtyList.equal: {result}")
         return result
 
-
     def __eq__(self, other):
         """
         Equality operator implementation for list instances.
@@ -483,7 +498,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         Returns:
             CtyValue: The element at the specified index, or
-            CtyList: A new list containing the sliced elements
+            CtyValue: A new CtyValue containing the CtyList with sliced elements
 
         Raises:
             IndexError: If the index is out of range
@@ -499,14 +514,15 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 for i in range(start, stop, index.step):
                     if i < len(self.value):
                         result.append(self.value[i])
-                return evolve(self, value=result)
+
+                # FIX: Return a CtyValue with a new CtyList, not just the CtyList
+                from pyvider.cty.values import CtyValue
+                return CtyValue(type_=self, value=result)
 
         try:
             return self.value[index]
         except IndexError:
             raise IndexError("list index out of range")
-
-
 
     def __str__(self) -> str:
         """
