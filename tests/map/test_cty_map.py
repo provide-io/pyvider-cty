@@ -345,10 +345,12 @@ class TestCtyMapComparison:
         assert map1 == map2
         assert map1 != map3
 
-
 @pytest.mark.asyncio
 async def test_map_with_complex_nested_value_types():
     """Test map with complex nested value types."""
+    # Import CtyObject directly
+    from pyvider.cty.types.structural import CtyObject
+
     # Create an object type for the map value
     person_type = CtyObject(
         attribute_types={
@@ -378,12 +380,11 @@ async def test_map_with_complex_nested_value_types():
     # Check basic structure
     assert len(result.value) == 2
 
-    # Check we can access nested data
+    # Check we can access nested data - adjust for string keys
     p1 = map_type.get(result, "person1")
     assert p1 is not None
 
     # Verify attributes can be accessed
-    from pyvider.cty.types.structural import CtyObject
     assert isinstance(p1.type, CtyObject)
 
     # Access and verify nested attributes
@@ -391,3 +392,5 @@ async def test_map_with_complex_nested_value_types():
     p1_name_path = CtyPath.empty().child("person1").child("name")
     name_result = p1_name_path.apply_path(result)
     assert name_result.value == "Alice"
+
+# 🐍🏗️🧪
