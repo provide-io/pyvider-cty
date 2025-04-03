@@ -47,7 +47,7 @@ class TestCtyMapComparison:
         )
 
     @pytest.mark.asyncio
-    async def test_cty_map_equality_and_type_comparison(self):
+    async def test_cty_map_equality_and_type_comparison_1(self):
         """Test map equality and type comparison methods."""
         # Create two identical map types
         map_type1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -76,5 +76,59 @@ class TestCtyMapComparison:
         assert map_val1 != map_val3
         assert map_val1 != CtyString(value="not a map")
 
+    @pytest.mark.asyncio
+    async def test_cty_map_inequality(self):
+        """Test inequality of maps with different element types."""
+        map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        map2 = CtyMap(key_type=CtyString(), value_type=CtyString())
+        assert map1.equal(map2) is False
+
+    @pytest.mark.asyncio
+    async def test_cty_map_string_representation(self):
+        """Test string representation of map types."""
+        # Create map types
+        string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
+        number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        bool_map = CtyMap(key_type=CtyString(), value_type=CtyBool())
+
+        # Test __str__ method
+        assert "map" in str(string_map)
+        assert "CtyString" in str(string_map)
+
+        assert "map" in str(number_map)
+        assert "CtyString" in str(number_map)
+        assert "CtyNumber" in str(number_map)
+
+        assert "map" in str(bool_map)
+        assert "CtyBool" in str(bool_map)
+
+        # Test __repr__ method
+        assert "CtyMap" in repr(string_map)
+        assert "key_type" in repr(string_map)
+        assert "value_type" in repr(string_map)
+
+    @pytest.mark.asyncio
+    async def test_cty_map_equality(self):
+        """Test equality of map types."""
+        # Create similar map types
+        map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        map2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())  # Same types as map1
+        map3 = CtyMap(key_type=CtyString(), value_type=CtyString())  # Different value type
+
+        # Test equality
+        assert map1.equal(map2)
+        assert map2.equal(map1)
+        assert not map1.equal(map3)
+        assert not map3.equal(map1)
+
+        # Test equality operator
+        assert map1 == map2
+        assert map2 == map1
+        assert map1 != map3
+        assert map3 != map1
+
+        # Test with non-map type
+        assert not map1.equal(CtyString())
+        assert map1 != CtyString()
 
 # 🐍🏗️🧪

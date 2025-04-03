@@ -97,7 +97,6 @@ class TestCtyMapValidation:
         with pytest.raises(CtyMapValidationError):
             map_type.validate(data)
 
-
     @pytest.mark.asyncio
     async def test_cty_map_validate_invalid_value(self):
         """Test validation with invalid value type."""
@@ -113,7 +112,6 @@ class TestCtyMapValidation:
         with pytest.raises(CtyMapValidationError):
             map_type.validate(data)
 
-    # Option 1: Make it a class method (preferred if other tests in the class use shared setup)
     @pytest.mark.asyncio
     async def test_cty_map_validate_with_cty_instances(self):
         """Test validation with pre-created CtyType instances."""
@@ -209,9 +207,8 @@ class TestCtyMapValidation:
         with pytest.raises(CtyMapValidationError):
             CtyMap(key_type=CtyString(), value_type="not_a_cty_type")
 
-
     @pytest.mark.asyncio
-    async def test_attribute_paths_with_cty_values_1(self):
+    async def test_attribute_paths_with_cty_values(self):
         """Test paths with attribute access for proper CtyValues."""
         # Create object type with proper CtyType attributes
         from pyvider.cty import CtyObject, CtyPath

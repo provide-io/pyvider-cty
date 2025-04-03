@@ -350,7 +350,7 @@ async def test_map_with_complex_nested_value_types():
     """Test map with complex nested value types."""
     # Import CtyObject directly
     from pyvider.cty.types.structural import CtyObject
-
+    
     # Create an object type for the map value
     person_type = CtyObject(
         attribute_types={
