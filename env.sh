@@ -1,5 +1,5 @@
 #
-# env.sh
+# pyvider cty env.sh
 #
 
 ENV_SCRIPT_DIR=$(dirname ${0})
@@ -10,6 +10,7 @@ cd ${ENV_SCRIPT_DIR}
 
 uv venv
 uv sync --all-groups --dev
+uv pip install -e ../pyvider-cty
 
 source .venv/bin/activate
 
