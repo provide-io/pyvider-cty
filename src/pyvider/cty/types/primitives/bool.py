@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from pyvider.cty.exceptions import CtyBoolValidationError
+from pyvider.cty.exceptions import CtyBoolValidationError, CtyValidationError
 from pyvider.cty.logger import logger
 from pyvider.cty.types.base import CtyType
 
@@ -56,28 +56,29 @@ class CtyBool(CtyType[bool]):
         from pyvider.cty.values import CtyValue
         logger.debug(f"🔄🔍🔄 Validating value as boolean: {value!r}")
 
+        # Handle None
+        if value is None:
+            logger.debug("🔄🔍✅ Received null value, returning null CtyValue")
+            return CtyValue.null(self)
+
         # Handle CtyValue inputs
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyBool):
                 logger.debug(f"🔄🔍✅ Value is already a CtyValue with CtyBool type")
                 return value
-            # --- Allow conversion from known, non-null CtyValue ---
-            if value._is_unknown and not value._is_null:
-                 inner_val = value.value
-                 # Try direct bool
-                 if isinstance(inner_val, bool):
-                     return CtyValue(vtype=self, value=inner_val)
-                 # Try string conversion
-                 if isinstance(inner_val, str):
-                     if inner_val.lower() in ('true', 't', 'yes', 'y', '1'):
-                         return CtyValue(vtype=self, value=True)
-                     elif inner_val.lower() in ('false', 'f', 'no', 'n', '0'):
-                         return CtyValue(vtype=self, value=False)
-                 # Try numeric conversion
-                 if isinstance(inner_val, (int, float)):
-                     return CtyValue(vtype=self, value=bool(inner_val))
-                 # else: fall through to raise error for other inner types
-            # --- End CtyValue Handling ---
+            
+            # Check if types are compatible
+            if not value.type.equal(self) and not value.type.usable_as(self):
+                error_msg = f"Expected boolean, got {value.type}"
+                logger.error(f"🔄❗❌ {error_msg}")
+                raise CtyBoolValidationError(error_msg)
+            
+            # Return the value if it's unknown
+            if value.is_unknown:
+                return value
+                
+            # Extract the inner value for validation
+            value = value.value
 
         # Handle direct boolean
         if isinstance(value, bool):
@@ -87,30 +88,25 @@ class CtyBool(CtyType[bool]):
         # Handle specific string representations
         if isinstance(value, str):
             low_val = value.lower()
-            if low_val in ('true', 't', 'yes', 'y', '1'):
+            if low_val in ('true', 't', 'yes', 'y', '1', 'on'):
                 logger.debug(f"🔄🔍✅ String '{value}' converted to True")
                 return CtyValue(vtype=self, value=True)
-            elif low_val in ('false', 'f', 'no', 'n', '0'):
+            elif low_val in ('false', 'f', 'no', 'n', '0', 'off'):
                 logger.debug(f"🔄🔍✅ String '{value}' converted to False")
                 return CtyValue(vtype=self, value=False)
-            # else: fall through to raise error for other strings
+            else:
+                error_msg = f"Cannot convert string '{value}' to boolean"
+                logger.error(f"🔄❗❌ {error_msg}")
+                raise CtyBoolValidationError(error_msg)
 
         # Handle numbers (0 = False, non-0 = True)
         if isinstance(value, (int, float)):
-            # Note: float conversion might be unexpected, but aligns with Python bool()
             bool_val = bool(value)
             logger.debug(f"🔄🔍✅ Number {value} converted to boolean: {bool_val}")
             return CtyValue(vtype=self, value=bool_val)
 
-        if isinstance(value, (int, float)):
-            error_msg = f"Cannot convert number {value} to boolean"
-            logger.error(f"🔄❗❌ {error_msg}")
-            raise CtyBoolValidationError(error_msg)
-
-
-
         # --- REJECT ALL OTHER TYPES ---
-        error_msg = f"Value must be a boolean or a specific convertible string/number, got {type(value).__name__}"
+        error_msg = f"Value must be a boolean or a specific convertible string/number, got {type(value).__name__}: {value}"
         logger.error(f"🔄❗❌ {error_msg}")
         raise CtyBoolValidationError(error_msg)
 
