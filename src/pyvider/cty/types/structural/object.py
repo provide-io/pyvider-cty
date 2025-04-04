@@ -246,7 +246,7 @@ class CtyObject(CtyType[dict[str, Any]]):
                 from pyvider.cty.values import CtyValue
                 return CtyValue.unknown(self.attribute_types[name])
 
-        value = value.value
+            value = value.value
 
         # Then check if the value is a dictionary
         if not isinstance(value, dict):
