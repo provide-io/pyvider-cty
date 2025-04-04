@@ -323,9 +323,9 @@ async def test_validate_with_already_cty_types():
     )
     
     # Create CtyValue instances for attributes
-    name_val = CtyValue(type_=CtyString(), value="Alice")
-    age_val = CtyValue(type_=CtyNumber(), value=30)
-    active_val = CtyValue(type_=CtyBool(), value=True)
+    name_val = CtyValue(vtype=CtyString(), value="Alice")
+    age_val = CtyValue(vtype=CtyNumber(), value=30)
+    active_val = CtyValue(vtype=CtyBool(), value=True)
     
     # Create value with CtyValue instances
     value = {
@@ -445,8 +445,8 @@ async def test_validate_with_mixed_cty_types():
     )
     
     # Create CtyValue instances for some attributes
-    name_val = CtyValue(type_=CtyString(), value="Alice")
-    active_val = CtyValue(type_=CtyBool(), value=True)
+    name_val = CtyValue(vtype=CtyString(), value="Alice")
+    active_val = CtyValue(vtype=CtyBool(), value=True)
     
     # Create value with mix of CtyValue instances and native values
     value = {

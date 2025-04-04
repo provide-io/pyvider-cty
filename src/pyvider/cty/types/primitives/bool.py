@@ -66,33 +66,33 @@ class CtyBool(CtyType[bool]):
                  inner_val = value.value
                  # Try direct bool
                  if isinstance(inner_val, bool):
-                     return CtyValue(type_=self, value=inner_val)
+                     return CtyValue(vtype=self, value=inner_val)
                  # Try string conversion
                  if isinstance(inner_val, str):
                      if inner_val.lower() in ('true', 't', 'yes', 'y', '1'):
-                         return CtyValue(type_=self, value=True)
+                         return CtyValue(vtype=self, value=True)
                      elif inner_val.lower() in ('false', 'f', 'no', 'n', '0'):
-                         return CtyValue(type_=self, value=False)
+                         return CtyValue(vtype=self, value=False)
                  # Try numeric conversion
                  if isinstance(inner_val, (int, float)):
-                     return CtyValue(type_=self, value=bool(inner_val))
+                     return CtyValue(vtype=self, value=bool(inner_val))
                  # else: fall through to raise error for other inner types
             # --- End CtyValue Handling ---
 
         # Handle direct boolean
         if isinstance(value, bool):
             logger.debug(f"🔄🔍✅ Value is a boolean: {value}")
-            return CtyValue(type_=self, value=value)
+            return CtyValue(vtype=self, value=value)
 
         # Handle specific string representations
         if isinstance(value, str):
             low_val = value.lower()
             if low_val in ('true', 't', 'yes', 'y', '1'):
                 logger.debug(f"🔄🔍✅ String '{value}' converted to True")
-                return CtyValue(type_=self, value=True)
+                return CtyValue(vtype=self, value=True)
             elif low_val in ('false', 'f', 'no', 'n', '0'):
                 logger.debug(f"🔄🔍✅ String '{value}' converted to False")
-                return CtyValue(type_=self, value=False)
+                return CtyValue(vtype=self, value=False)
             # else: fall through to raise error for other strings
 
         # Handle numbers (0 = False, non-0 = True)
@@ -100,7 +100,7 @@ class CtyBool(CtyType[bool]):
             # Note: float conversion might be unexpected, but aligns with Python bool()
             bool_val = bool(value)
             logger.debug(f"🔄🔍✅ Number {value} converted to boolean: {bool_val}")
-            return CtyValue(type_=self, value=bool_val)
+            return CtyValue(vtype=self, value=bool_val)
 
         if isinstance(value, (int, float)):
             error_msg = f"Cannot convert number {value} to boolean"

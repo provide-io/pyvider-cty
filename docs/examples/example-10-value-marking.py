@@ -29,7 +29,7 @@ cred_data = {
 }
 
 validated = credential_type.validate(cred_data)
-cred_val = CtyValue(type_=credential_type, value=validated)
+cred_val = CtyValue(vtype=credential_type, value=validated)
 
 # Mark the password as sensitive
 password = cred_val.value["password"]

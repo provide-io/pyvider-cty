@@ -94,7 +94,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 raise CtyValidationError(error_msg) from e
 
         logger.debug(f"🧩✅🔄 Tuple validated successfully with {len(validated_elements)} elements")
-        return CtyValue(type_=self, value=tuple(validated_elements))
+        return CtyValue(vtype=self, value=tuple(validated_elements))
 
     def element_at(self, container: Any, index: int) -> "CtyValue":
         """
@@ -206,7 +206,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
         # Create a new CtyValue with the sliced tuple
         logger.debug(f"🧩✅🔄 Created sliced tuple with {len(sliced_values)} elements")
-        return CtyValue(type_=sliced_type, value=tuple(sliced_values))
+        return CtyValue(vtype=sliced_type, value=tuple(sliced_values))
 
     def equal(self, other: CtyType) -> bool:
         """
@@ -266,7 +266,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
     def __str__(self) -> str:
         """Get string representation of the tuple type."""
-        elements = ", ".join(type_.__class__.__name__ for type_ in self.element_types)
+        elements = ", ".join(vtype.__class__.__name__ for vtype in self.element_types)
         return f"tuple({elements})"
 
     def __repr__(self) -> str:

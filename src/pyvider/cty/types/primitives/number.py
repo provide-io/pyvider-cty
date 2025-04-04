@@ -94,12 +94,12 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                  inner_val = value.value
                  if isinstance(inner_val, (int, float, Decimal)):
                       logger.debug(f"🔢🔍✅ Inner value is already numeric: {inner_val!r}")
-                      return CtyValue(type_=self, value=inner_val)
+                      return CtyValue(vtype=self, value=inner_val)
                  elif isinstance(inner_val, str):
                      try:
                          num_val = Decimal(inner_val)
                          logger.debug(f"🔢🔍✅ Converted inner string to Decimal: {num_val}")
-                         return CtyValue(type_=self, value=num_val)
+                         return CtyValue(vtype=self, value=num_val)
                      except (InvalidOperation, ValueError):
                          error_msg = f"String value '{inner_val}' inside CtyValue is not a valid number"
                          logger.error(f"🔢❗❌ {error_msg}")
@@ -111,7 +111,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         # Handle None as 0 (consistent with go-cty)
         if value is None:
             logger.debug("🔢🔍✅ None value converted to 0")
-            return CtyValue(type_=self, value=Decimal(0)) # Use Decimal for consistency
+            return CtyValue(vtype=self, value=Decimal(0)) # Use Decimal for consistency
 
         # Accept numeric types: int, float, Decimal
         if isinstance(value, (int, float, Decimal)):
@@ -119,7 +119,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             try:
                  decimal_val = Decimal(value)
                  logger.debug(f"🔢🔍✅ Value is valid number type: {type(value).__name__}, stored as Decimal: {decimal_val}")
-                 return CtyValue(type_=self, value=decimal_val)
+                 return CtyValue(vtype=self, value=decimal_val)
             except Exception as e: # Catch potential issues converting float inf/nan
                  error_msg = f"Cannot represent {type(value).__name__} value {value!r} as Decimal: {e}"
                  logger.error(f"🔢❗❌ {error_msg}")
@@ -132,7 +132,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                 # Try to convert to a Decimal first for precision
                 decimal_val = Decimal(value)
                 logger.debug(f"🔢🔍✅ String converted to Decimal: {decimal_val}")
-                return CtyValue(type_=self, value=decimal_val)
+                return CtyValue(vtype=self, value=decimal_val)
             except (InvalidOperation, ValueError): # Catch specific Decimal errors
                 error_msg = f"Cannot convert string '{value}' to number"
                 logger.debug(f"🔢❗❌ {error_msg}")

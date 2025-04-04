@@ -89,7 +89,7 @@ class CtyString(CtyType[str]):
                  try:
                      str_val = str(value.value)
                      logger.debug(f"🔤🔍✅ Converted known CtyValue's inner value to string: {str_val!r}")
-                     return CtyValue(type_=self, value=str_val)
+                     return CtyValue(vtype=self, value=str_val)
                  except Exception as e:
                      error_msg = f"Failed to convert CtyValue's inner value to string: {e}"
                      logger.error(f"🔤❗❌ {error_msg}")
@@ -99,12 +99,12 @@ class CtyString(CtyType[str]):
         # Handle None as empty string (consistent with go-cty)
         if value is None:
             logger.debug("🔤🔍✅ None value converted to empty string")
-            return CtyValue(type_=self, value="")
+            return CtyValue(vtype=self, value="")
 
         # Handle direct string
         if isinstance(value, str):
             logger.debug("🔤🔍✅ Value is a string")
-            return CtyValue(type_=self, value=value)
+            return CtyValue(vtype=self, value=value)
 
         # --- REJECT ALL OTHER TYPES ---
         error_msg = f"Value must be a string, got {type(value).__name__}"

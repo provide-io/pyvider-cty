@@ -62,12 +62,12 @@ class PathStep(ABC):
         pass
 
     @abstractmethod
-    def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType") -> "CtyType":
         """
         Apply this step to a type to get the nested value's type.
 
         Args:
-            type_: The type to navigate through
+            vtype: The type to navigate through
 
         Returns:
             CtyType: The nested value's type
@@ -145,12 +145,12 @@ class GetAttrStep(PathStep):
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-    def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType") -> "CtyType":
         """
         Get the type of the attribute with the given name.
 
         Args:
-            type_: The object type
+            vtype: The object type
 
         Returns:
             CtyType: The attribute's type
@@ -162,18 +162,18 @@ class GetAttrStep(PathStep):
 
         # Check if the type is an object
         from pyvider.cty.types.structural import CtyObject
-        if not isinstance(type_, CtyObject):
-            error_msg = f"Cannot get attribute from non-object type {type_.__class__.__name__}"
+        if not isinstance(vtype, CtyObject):
+            error_msg = f"Cannot get attribute from non-object type {vtype.__class__.__name__}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
         # Get the attribute's type
-        if not type_.has_attribute(self.name):
+        if not vtype.has_attribute(self.name):
             error_msg = f"Object type has no attribute {self.name}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-        attr_type = type_.attribute_types[self.name]
+        attr_type = vtype.attribute_types[self.name]
         logger.debug(f"🧰✅🔄 Found attribute type: {attr_type.__class__.__name__}")
         return attr_type
 
@@ -220,7 +220,7 @@ class IndexStep(PathStep):
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
             # Create an unknown value of the element's type
-            return CtyValue(type_=elem_type, is_unknown=True)
+            return CtyValue(vtype=elem_type, is_unknown=True)
 
         # Check if the type is a list or tuple
         from pyvider.cty.types.collections import CtyList
@@ -267,12 +267,12 @@ class IndexStep(PathStep):
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-    def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType") -> "CtyType":
         """
         Get the type of the element at the given index.
 
         Args:
-            type_: The collection type
+            vtype: The collection type
 
         Returns:
             CtyType: The element's type
@@ -287,29 +287,29 @@ class IndexStep(PathStep):
         from pyvider.cty.types.structural import CtyTuple
 
         # Check if the type is a list
-        if isinstance(type_, CtyList):
-            logger.debug(f"🧰✅🔄 Found list type, element type is {type_.element_type.__class__.__name__}")
-            return type_.element_type
+        if isinstance(vtype, CtyList):
+            logger.debug(f"🧰✅🔄 Found list type, element type is {vtype.element_type.__class__.__name__}")
+            return vtype.element_type
 
         # Check if the type is a tuple
-        if isinstance(type_, CtyTuple):
-            if 0 <= self.index < len(type_.element_types):
-                elem_type = type_.element_types[self.index]
+        if isinstance(vtype, CtyTuple):
+            if 0 <= self.index < len(vtype.element_types):
+                elem_type = vtype.element_types[self.index]
                 logger.debug(f"🧰✅🔄 Found tuple element type at index {self.index}: {elem_type.__class__.__name__}")
                 return elem_type
 
-            if self.index < 0 and abs(self.index) <= len(type_.element_types):
+            if self.index < 0 and abs(self.index) <= len(vtype.element_types):
                 # Handle negative indices for tuples
-                elem_type = type_.element_types[len(type_.element_types) + self.index]
+                elem_type = vtype.element_types[len(vtype.element_types) + self.index]
                 logger.debug(f"🧰✅🔄 Found tuple element type at negative index {self.index}: {elem_type.__class__.__name__}")
                 return elem_type
 
-            error_msg = f"Tuple index {self.index} out of bounds (0-{len(type_.element_types)-1})"
+            error_msg = f"Tuple index {self.index} out of bounds (0-{len(vtype.element_types)-1})"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
         # Not a collection
-        error_msg = f"Cannot index into non-collection type {type_.__class__.__name__}"
+        error_msg = f"Cannot index into non-collection type {vtype.__class__.__name__}"
         logger.error(f"🧰❌🔄 {error_msg}")
         raise AttributePathError(error_msg)
 
@@ -356,7 +356,7 @@ class KeyStep(PathStep):
             # Import here to avoid circular imports
             from pyvider.cty.values import CtyValue
             # Create an unknown value of the value's type
-            return CtyValue(type_=val_type, is_unknown=True)
+            return CtyValue(vtype=val_type, is_unknown=True)
 
         # Check if the type is a map
         from pyvider.cty.types.collections import CtyMap
@@ -403,12 +403,12 @@ class KeyStep(PathStep):
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
-    def apply_type(self, type_: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType") -> "CtyType":
         """
         Get the type of the value associated with the given key.
 
         Args:
-            type_: The map type
+            vtype: The map type
 
         Returns:
             CtyType: The value's type
@@ -420,15 +420,15 @@ class KeyStep(PathStep):
 
         # Check if the type is a map
         from pyvider.cty.types.collections import CtyMap
-        if not isinstance(type_, CtyMap):
-            error_msg = f"Cannot get key from non-map type {type_.__class__.__name__}"
+        if not isinstance(vtype, CtyMap):
+            error_msg = f"Cannot get key from non-map type {vtype.__class__.__name__}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
         # Validate the key
         try:
             key_str = str(self.key)
-            type_.key_type.validate(key_str)
+            vtype.key_type.validate(key_str)
             logger.debug(f"🧰✅🔄 Key {key_str} is valid for this map type")
         except CtyValidationError as e:
             error_msg = f"Invalid key for map: {e}"
@@ -436,8 +436,8 @@ class KeyStep(PathStep):
             raise AttributePathError(error_msg)
 
         # Return the value type
-        logger.debug(f"🧰✅🔄 Found value type: {type_.value_type.__class__.__name__}")
-        return type_.value_type
+        logger.debug(f"🧰✅🔄 Found value type: {vtype.value_type.__class__.__name__}")
+        return vtype.value_type
 
     def __str__(self) -> str:
         """Get the string representation of this path step."""
@@ -541,12 +541,12 @@ class CtyPath:
         logger.debug(f"🧰✅🔄 Path application complete")
         return current
 
-    def apply_path_type(self, type_: "CtyType") -> "CtyType":
+    def apply_path_type(self, vtype: "CtyType") -> "CtyType":
         """
         Apply this path to a type to get the nested value's type.
 
         Args:
-            type_: The type to navigate through
+            vtype: The type to navigate through
 
         Returns:
             CtyType: The nested value's type
@@ -559,10 +559,10 @@ class CtyPath:
         # Handle empty path
         if not self.steps:
             logger.debug("🧰✅🔄 Empty path, returning type as is")
-            return type_
+            return vtype
 
         # Start with the given type
-        current = type_
+        current = vtype
 
         # Apply each step in sequence
         for i, step in enumerate(self.steps):

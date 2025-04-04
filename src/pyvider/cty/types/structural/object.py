@@ -57,8 +57,8 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         # Validate all types are CtyType instances
         invalid_types = [
-            name for name, type_ in self.attribute_types.items()
-            if not isinstance(type_, CtyType)
+            name for name, vtype in self.attribute_types.items()
+            if not isinstance(vtype, CtyType)
         ]
         if invalid_types:
             error_msg = f"Invalid types for attributes: {', '.join(invalid_types)}"
@@ -209,7 +209,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated_attrs)} attributes")
         
         # Return the validated attributes wrapped in a CtyValue
-        return CtyValue(type_=self, value=validated_attrs)
+        return CtyValue(vtype=self, value=validated_attrs)
 
     def get_attribute(self, value: Union[dict[str, Any], CtyValue], name: str) -> CtyValue:
         """
@@ -271,7 +271,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         # Ensure it's a CtyValue
         if not isinstance(attr_value, CtyValue):
             logger.debug(f"🧩🔍✅ Wrapping raw value in CtyValue for {name}")
-            attr_value = CtyValue(type_=self.attribute_types[name], value=attr_value)
+            attr_value = CtyValue(vtype=self.attribute_types[name], value=attr_value)
 
         return attr_value
 
@@ -326,9 +326,9 @@ class CtyObject(CtyType[dict[str, Any]]):
             return False
 
         # Must have same attribute types
-        for name, type_ in self.attribute_types.items():
+        for name, vtype in self.attribute_types.items():
             other_type = other.attribute_types[name]
-            if not type_.equal(other_type):
+            if not vtype.equal(other_type):
                 logger.debug(f"🧩🔍❌ Not equal: attribute {name} types differ")
                 return False
 
@@ -387,8 +387,8 @@ class CtyObject(CtyType[dict[str, Any]]):
     def __str__(self) -> str:
         """Get string representation of the type."""
         parts = []
-        for name, type_ in sorted(self.attribute_types.items()):
-            part = f"{name}: {type_.__class__.__name__}"
+        for name, vtype in sorted(self.attribute_types.items()):
+            part = f"{name}: {vtype.__class__.__name__}"
 
             flags = []
             if name in self.optional_attributes:
@@ -401,13 +401,13 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         return f"object({{{ ', '.join(parts) }}})"
 
-    def with_attribute(self, name: str, type_: CtyType, *, optional: bool = False) -> "CtyObject":
+    def with_attribute(self, name: str, vtype: CtyType, *, optional: bool = False) -> "CtyObject":
         """
         Create a new object type with an additional attribute.
 
         Args:
             name: Name of the new attribute
-            type_: Type of the new attribute
+            vtype: Type of the new attribute
             optional: Whether the attribute is optional
 
         Returns:
@@ -416,7 +416,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         Raises:
             CtyAttributeValidationError: If the name already exists
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with attribute: {name} ({type_.__class__.__name__})")
+        logger.debug(f"🧩🔧🔄 Creating new object type with attribute: {name} ({vtype.__class__.__name__})")
 
         # Validate attribute doesn't already exist
         if name in self.attribute_types:
@@ -426,7 +426,7 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         # Create new attribute_types dict
         new_attrs = dict(self.attribute_types)
-        new_attrs[name] = type_
+        new_attrs[name] = vtype
 
         # Update optional attributes if needed
         new_optional = set(self.optional_attributes)

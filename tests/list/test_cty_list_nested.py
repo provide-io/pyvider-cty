@@ -25,7 +25,8 @@ class TestCtyListWithNestedTypes:
         self.bool_list = CtyList(element_type=CtyBool())
         self.nested_list = CtyList(element_type=CtyList(element_type=CtyNumber()))
 
-    def test_list_of_lists_of_strings(self):
+
+    def test_list_of_lists_of_strings_2(self):
         """Test a list of lists of strings."""
         # Create a nested list type
         list_of_strings = CtyList(element_type=CtyString())
@@ -42,25 +43,25 @@ class TestCtyListWithNestedTypes:
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
 
-        # Check that all elements are CtyList objects
-        assert all(isinstance(item, CtyList) for item in result.value)
+        # Check that all elements are CtyValue objects containing CtyList objects
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyList) for item in result.value)
 
         # Check the contents of the first inner list
         assert len(result.value[0].value) == 2
-        assert all(isinstance(item, CtyString) for item in result.value[0].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[0].value)
         assert [item.value for item in result.value[0].value] == ["a", "b"]
 
         # Check the contents of the second inner list
         assert len(result.value[1].value) == 3
-        assert all(isinstance(item, CtyString) for item in result.value[1].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[1].value)
         assert [item.value for item in result.value[1].value] == ["c", "d", "e"]
 
         # Check the contents of the third inner list
         assert len(result.value[2].value) == 1
-        assert all(isinstance(item, CtyString) for item in result.value[2].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[2].value)
         assert [item.value for item in result.value[2].value] == ["f"]
 
-    def test_complex_nesting(self):
+    def test_complex_nesting_2(self):
         """Test complex nested list structures."""
         # Create a complex nested structure: List of List of List of Number
         inner_list = CtyList(element_type=CtyNumber())
@@ -84,31 +85,31 @@ class TestCtyListWithNestedTypes:
 
         # Check first element (list of lists)
         assert len(result.value[0].value) == 2
-        assert all(isinstance(item, CtyList) for item in result.value[0].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyList) for item in result.value[0].value)
 
         # Check first inner list
         assert len(result.value[0].value[0].value) == 2
-        assert all(isinstance(item, CtyNumber) for item in result.value[0].value[0].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyNumber) for item in result.value[0].value[0].value)
         assert [item.value for item in result.value[0].value[0].value] == [1, 2]
 
         # Check second inner list
         assert len(result.value[0].value[1].value) == 2
-        assert all(isinstance(item, CtyNumber) for item in result.value[0].value[1].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyNumber) for item in result.value[0].value[1].value)
         assert [item.value for item in result.value[0].value[1].value] == [3, 4]
 
         # Check second element (list with one list)
         assert len(result.value[1].value) == 1
-        assert all(isinstance(item, CtyList) for item in result.value[1].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyList) for item in result.value[1].value)
 
         # Check inner list of second element
         assert len(result.value[1].value[0].value) == 3
-        assert all(isinstance(item, CtyNumber) for item in result.value[1].value[0].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyNumber) for item in result.value[1].value[0].value)
         assert [item.value for item in result.value[1].value[0].value] == [5, 6, 7]
 
         # Check third element (empty list)
         assert len(result.value[2].value) == 0
 
-    def test_validate_nested_lists(self):
+    def test_cty_list_validate_nested_lists(self):
         """Test validation of nested lists."""
         # Create a list of lists
         self.nested_list = CtyList(element_type=self.string_list)
@@ -122,16 +123,18 @@ class TestCtyListWithNestedTypes:
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 2
 
-        # Check first inner list
-        assert isinstance(result.value[0], CtyList)
+        # Check first inner list - should be a CtyValue containing a CtyList, not a direct CtyList
+        assert isinstance(result.value[0], CtyValue)
+        assert isinstance(result.value[0].type, CtyList)
         assert len(result.value[0].value) == 2
-        assert all(isinstance(item, CtyString) for item in result.value[0].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[0].value)
         assert [item.value for item in result.value[0].value] == ["a", "b"]
 
         # Check second inner list
-        assert isinstance(result.value[1], CtyList)
+        assert isinstance(result.value[1], CtyValue)
+        assert isinstance(result.value[1].type, CtyList)
         assert len(result.value[1].value) == 3
-        assert all(isinstance(item, CtyString) for item in result.value[1].value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[1].value)
         assert [item.value for item in result.value[1].value] == ["c", "d", "e"]
 
     def test_validate_nested_list_with_errors(self):

@@ -145,10 +145,10 @@ class TestCtyMapValidation:
         )
         
         # Create sample CtyValue instances for tests
-        self.key1 = CtyValue(type_=CtyString(), value="key1")
-        self.key2 = CtyValue(type_=CtyString(), value="key2")
-        self.val1 = CtyValue(type_=CtyString(), value="value1")
-        self.val2 = CtyValue(type_=CtyString(), value="value2")
+        self.key1 = CtyValue(vtype=CtyString(), value="key1")
+        self.key2 = CtyValue(vtype=CtyString(), value="key2")
+        self.val1 = CtyValue(vtype=CtyString(), value="value1")
+        self.val2 = CtyValue(vtype=CtyString(), value="value2")
 
     @pytest.mark.asyncio
     async def test_cty_map_empty_map_validation(self):
@@ -242,17 +242,17 @@ class TestCtyMapValidation:
             self.string_map.validate({123: "value"})
         
         # Invalid CtyValue key type
-        invalid_key = CtyValue(type_=CtyNumber(), value=123)
+        invalid_key = CtyValue(vtype=CtyNumber(), value=123)
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({invalid_key: self.val1})
         
         # Null key
-        null_key = CtyValue(type_=CtyString(), is_null=True)
+        null_key = CtyValue(vtype=CtyString(), is_null=True)
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({null_key: self.val1})
         
         # Unknown key
-        unknown_key = CtyValue(type_=CtyString(), is_unknown=True)
+        unknown_key = CtyValue(vtype=CtyString(), is_unknown=True)
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({unknown_key: self.val1})
 
@@ -264,7 +264,7 @@ class TestCtyMapValidation:
             self.string_map.validate({"key": 123})
         
         # Invalid CtyValue value type
-        invalid_value = CtyValue(type_=CtyNumber(), value=123)
+        invalid_value = CtyValue(vtype=CtyNumber(), value=123)
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({self.key1: invalid_value})
 
@@ -303,18 +303,18 @@ class TestCtyMapValidation:
         """Test validation of maps with nested maps as values."""
         # Create nested map data with pre-validated values
         inner_map1 = {
-            CtyValue(type_=CtyString(), value="name"): CtyValue(type_=CtyString(), value="Alice"),
-            CtyValue(type_=CtyString(), value="email"): CtyValue(type_=CtyString(), value="alice@example.com")
+            CtyValue(vtype=CtyString(), value="name"): CtyValue(vtype=CtyString(), value="Alice"),
+            CtyValue(vtype=CtyString(), value="email"): CtyValue(vtype=CtyString(), value="alice@example.com")
         }
         
         inner_map2 = {
-            CtyValue(type_=CtyString(), value="name"): CtyValue(type_=CtyString(), value="Bob"),
-            CtyValue(type_=CtyString(), value="email"): CtyValue(type_=CtyString(), value="bob@example.com")
+            CtyValue(vtype=CtyString(), value="name"): CtyValue(vtype=CtyString(), value="Bob"),
+            CtyValue(vtype=CtyString(), value="email"): CtyValue(vtype=CtyString(), value="bob@example.com")
         }
         
         data = {
-            CtyValue(type_=CtyString(), value="user1"): inner_map1,
-            CtyValue(type_=CtyString(), value="user2"): inner_map2
+            CtyValue(vtype=CtyString(), value="user1"): inner_map1,
+            CtyValue(vtype=CtyString(), value="user2"): inner_map2
         }
         
         # Validate nested map
@@ -433,12 +433,12 @@ class TestCtyMapOperations:
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         
         # Create pre-validated keys and values
-        self.key1 = CtyValue(type_=CtyString(), value="key1")
-        self.key2 = CtyValue(type_=CtyString(), value="key2")
-        self.key3 = CtyValue(type_=CtyString(), value="key3")
-        self.val1 = CtyValue(type_=CtyString(), value="value1")
-        self.val2 = CtyValue(type_=CtyString(), value="value2")
-        self.val3 = CtyValue(type_=CtyString(), value="value3")
+        self.key1 = CtyValue(vtype=CtyString(), value="key1")
+        self.key2 = CtyValue(vtype=CtyString(), value="key2")
+        self.key3 = CtyValue(vtype=CtyString(), value="key3")
+        self.val1 = CtyValue(vtype=CtyString(), value="value1")
+        self.val2 = CtyValue(vtype=CtyString(), value="value2")
+        self.val3 = CtyValue(vtype=CtyString(), value="value3")
         
         # Create and validate maps
         self.empty_map = self.string_map.validate({})
@@ -462,7 +462,7 @@ class TestCtyMapOperations:
         assert result is self.val2
         
         # Get non-existent key with default
-        default_val = CtyValue(type_=CtyString(), value="default")
+        default_val = CtyValue(vtype=CtyString(), value="default")
         result = self.string_map.get(self.sample_map, "missing", default_val)
         assert result is default_val
         
@@ -474,12 +474,12 @@ class TestCtyMapOperations:
     async def test_cty_map_get_operation_invalid_inputs(self):
         """Test get operation with invalid inputs."""
         # Get from null map
-        null_map = CtyValue(type_=self.string_map, is_null=True)
+        null_map = CtyValue(vtype=self.string_map, is_null=True)
         with pytest.raises((TypeError, CtyMapValidationError)):
             self.string_map.get(null_map, "key")
         
         # Get from unknown map
-        unknown_map = CtyValue(type_=self.string_map, is_unknown=True)
+        unknown_map = CtyValue(vtype=self.string_map, is_unknown=True)
         with pytest.raises((TypeError, CtyMapValidationError)):
             self.string_map.get(unknown_map, "key")
         
@@ -491,8 +491,8 @@ class TestCtyMapOperations:
     async def test_cty_map_set_operation(self):
         """Test setting values in a map."""
         # Set new key with pre-validated key and value
-        new_key = CtyValue(type_=CtyString(), value="new_key")
-        new_val = CtyValue(type_=CtyString(), value="new_value")
+        new_key = CtyValue(vtype=CtyString(), value="new_key")
+        new_val = CtyValue(vtype=CtyString(), value="new_value")
         
         updated_map = self.string_map.set(self.empty_map, new_key, new_val)
         assert isinstance(updated_map, CtyValue)
@@ -529,7 +529,7 @@ class TestCtyMapOperations:
             self.string_map.set(self.empty_map, "key", 123)
         
         # Set on null map
-        null_map = CtyValue(type_=self.string_map, is_null=True)
+        null_map = CtyValue(vtype=self.string_map, is_null=True)
         with pytest.raises((TypeError, CtyMapValidationError)):
             self.string_map.set(null_map, "key", "value")
 
@@ -570,7 +570,7 @@ class TestCtyMapOperations:
         assert result.value == self.sample_map.value
         
         # Delete from null map
-        null_map = CtyValue(type_=self.string_map, is_null=True)
+        null_map = CtyValue(vtype=self.string_map, is_null=True)
         with pytest.raises((TypeError, CtyMapValidationError)):
             self.string_map.delete(null_map, "key")
 
@@ -624,15 +624,15 @@ class TestCtyMapComparison:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         
         # Create keys and values
-        key1 = CtyValue(type_=CtyString(), value="a")
-        key2 = CtyValue(type_=CtyString(), value="b")
-        val1 = CtyValue(type_=CtyNumber(), value=1)
-        val2 = CtyValue(type_=CtyNumber(), value=2)
+        key1 = CtyValue(vtype=CtyString(), value="a")
+        key2 = CtyValue(vtype=CtyString(), value="b")
+        val1 = CtyValue(vtype=CtyNumber(), value=1)
+        val2 = CtyValue(vtype=CtyNumber(), value=2)
         
         # Create maps with same content
         map1_data = {key1: val1, key2: val2}
         map2_data = {key1: val1, key2: val2}  # Same data as map1
-        map3_data = {key1: val1, CtyValue(type_=CtyString(), value="c"): val2}  # Different content
+        map3_data = {key1: val1, CtyValue(vtype=CtyString(), value="c"): val2}  # Different content
         
         map1 = map_type.validate(map1_data)
         map2 = map_type.validate(map2_data)

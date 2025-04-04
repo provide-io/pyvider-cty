@@ -38,20 +38,20 @@ class TestPathSystem:
 
         # Create a properly wrapped object value
         person = CtyValue(
-            type_=person_type, 
+            vtype=person_type, 
             value={
-                "name": CtyValue(type_=CtyString(), value="Alice"),
-                "age": CtyValue(type_=CtyNumber(), value=30),
+                "name": CtyValue(vtype=CtyString(), value="Alice"),
+                "age": CtyValue(vtype=CtyNumber(), value=30),
                 "address": CtyValue(
-                    type_=CtyObject(attribute_types={
+                    vtype=CtyObject(attribute_types={
                         "street": CtyString(),
                         "city": CtyString(),
                         "zip": CtyString()
                     }),
                     value={
-                        "street": CtyValue(type_=CtyString(), value="123 Main St"),
-                        "city": CtyValue(type_=CtyString(), value="Anytown"),
-                        "zip": CtyValue(type_=CtyString(), value="12345")
+                        "street": CtyValue(vtype=CtyString(), value="123 Main St"),
+                        "city": CtyValue(vtype=CtyString(), value="Anytown"),
+                        "zip": CtyValue(vtype=CtyString(), value="12345")
                     }
                 )
             }
@@ -84,7 +84,7 @@ class TestPathSystem:
         assert isinstance(street_type, CtyString)
 
         # Create an unknown value
-        unknown_person = CtyValue(type_=person_type, is_unknown=True)
+        unknown_person = CtyValue(vtype=person_type, is_unknown=True)
 
         # Test path to attribute should return unknown value of correct type
         unknown_name_result = name_path.apply_path(unknown_person)
@@ -99,13 +99,13 @@ class TestPathSystem:
 
         # Create a properly wrapped list value
         numbers = CtyValue(
-            type_=numbers_type, 
+            vtype=numbers_type, 
             value=[
-                CtyValue(type_=CtyNumber(), value=10),
-                CtyValue(type_=CtyNumber(), value=20),
-                CtyValue(type_=CtyNumber(), value=30),
-                CtyValue(type_=CtyNumber(), value=40),
-                CtyValue(type_=CtyNumber(), value=50)
+                CtyValue(vtype=CtyNumber(), value=10),
+                CtyValue(vtype=CtyNumber(), value=20),
+                CtyValue(vtype=CtyNumber(), value=30),
+                CtyValue(vtype=CtyNumber(), value=40),
+                CtyValue(vtype=CtyNumber(), value=50)
             ]
         )
 
@@ -133,11 +133,11 @@ class TestPathSystem:
         # Test with tuple
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool()))
         tuple_value = CtyValue(
-            type_=tuple_type, 
+            vtype=tuple_type, 
             value=(
-                CtyValue(type_=CtyString(), value="hello"),
-                CtyValue(type_=CtyNumber(), value=42),
-                CtyValue(type_=CtyBool(), value=True)
+                CtyValue(vtype=CtyString(), value="hello"),
+                CtyValue(vtype=CtyNumber(), value=42),
+                CtyValue(vtype=CtyBool(), value=True)
             )
         )
 
@@ -158,12 +158,12 @@ class TestPathSystem:
 
         # Create a properly wrapped map value
         scores = CtyValue(
-            type_=scores_type, 
+            vtype=scores_type, 
             value={
-                CtyValue(type_=CtyString(), value="Alice"): CtyValue(type_=CtyNumber(), value=95),
-                CtyValue(type_=CtyString(), value="Bob"): CtyValue(type_=CtyNumber(), value=87),
-                CtyValue(type_=CtyString(), value="Charlie"): CtyValue(type_=CtyNumber(), value=92),
-                CtyValue(type_=CtyString(), value="Dave"): CtyValue(type_=CtyNumber(), value=78)
+                CtyValue(vtype=CtyString(), value="Alice"): CtyValue(vtype=CtyNumber(), value=95),
+                CtyValue(vtype=CtyString(), value="Bob"): CtyValue(vtype=CtyNumber(), value=87),
+                CtyValue(vtype=CtyString(), value="Charlie"): CtyValue(vtype=CtyNumber(), value=92),
+                CtyValue(vtype=CtyString(), value="Dave"): CtyValue(vtype=CtyNumber(), value=78)
             }
         )
 
@@ -195,46 +195,46 @@ class TestPathSystem:
 
         # Create properly wrapped values
         users = CtyValue(
-            type_=users_type, 
+            vtype=users_type, 
             value=[
                 CtyValue(
-                    type_=user_type,
+                    vtype=user_type,
                     value={
-                        "name": CtyValue(type_=CtyString(), value="Alice"),
+                        "name": CtyValue(vtype=CtyString(), value="Alice"),
                         "scores": CtyValue(
-                            type_=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+                            vtype=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
                             value={
-                                CtyValue(type_=CtyString(), value="math"): CtyValue(type_=CtyNumber(), value=95),
-                                CtyValue(type_=CtyString(), value="science"): CtyValue(type_=CtyNumber(), value=92),
-                                CtyValue(type_=CtyString(), value="history"): CtyValue(type_=CtyNumber(), value=88)
+                                CtyValue(vtype=CtyString(), value="math"): CtyValue(vtype=CtyNumber(), value=95),
+                                CtyValue(vtype=CtyString(), value="science"): CtyValue(vtype=CtyNumber(), value=92),
+                                CtyValue(vtype=CtyString(), value="history"): CtyValue(vtype=CtyNumber(), value=88)
                             }
                         )
                     }
                 ),
                 CtyValue(
-                    type_=user_type,
+                    vtype=user_type,
                     value={
-                        "name": CtyValue(type_=CtyString(), value="Bob"),
+                        "name": CtyValue(vtype=CtyString(), value="Bob"),
                         "scores": CtyValue(
-                            type_=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+                            vtype=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
                             value={
-                                CtyValue(type_=CtyString(), value="math"): CtyValue(type_=CtyNumber(), value=87),
-                                CtyValue(type_=CtyString(), value="science"): CtyValue(type_=CtyNumber(), value=85),
-                                CtyValue(type_=CtyString(), value="history"): CtyValue(type_=CtyNumber(), value=92)
+                                CtyValue(vtype=CtyString(), value="math"): CtyValue(vtype=CtyNumber(), value=87),
+                                CtyValue(vtype=CtyString(), value="science"): CtyValue(vtype=CtyNumber(), value=85),
+                                CtyValue(vtype=CtyString(), value="history"): CtyValue(vtype=CtyNumber(), value=92)
                             }
                         )
                     }
                 ),
                 CtyValue(
-                    type_=user_type,
+                    vtype=user_type,
                     value={
-                        "name": CtyValue(type_=CtyString(), value="Charlie"),
+                        "name": CtyValue(vtype=CtyString(), value="Charlie"),
                         "scores": CtyValue(
-                            type_=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+                            vtype=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
                             value={
-                                CtyValue(type_=CtyString(), value="math"): CtyValue(type_=CtyNumber(), value=78),
-                                CtyValue(type_=CtyString(), value="science"): CtyValue(type_=CtyNumber(), value=90),
-                                CtyValue(type_=CtyString(), value="history"): CtyValue(type_=CtyNumber(), value=85)
+                                CtyValue(vtype=CtyString(), value="math"): CtyValue(vtype=CtyNumber(), value=78),
+                                CtyValue(vtype=CtyString(), value="science"): CtyValue(vtype=CtyNumber(), value=90),
+                                CtyValue(vtype=CtyString(), value="history"): CtyValue(vtype=CtyNumber(), value=85)
                             }
                         )
                     }
@@ -271,7 +271,7 @@ class TestPathSystem:
         })
 
         # Create a null value
-        null_person = CtyValue(type_=person_type, is_null=True)
+        null_person = CtyValue(vtype=person_type, is_null=True)
 
         # Path to attribute should fail for null
         name_path = CtyPath.get_attr("name")
@@ -279,7 +279,7 @@ class TestPathSystem:
             name_path.apply_path(null_person)
 
         # Create an unknown value
-        unknown_person = CtyValue(type_=person_type, is_unknown=True)
+        unknown_person = CtyValue(vtype=person_type, is_unknown=True)
 
         # Path to attribute should return unknown value of correct type
         name_result = name_path.apply_path(unknown_person)
@@ -297,10 +297,10 @@ class TestPathSystem:
         })
 
         person_with_null_address = CtyValue(
-            type_=person_with_address_type, 
+            vtype=person_with_address_type, 
             value={
-                "name": CtyValue(type_=CtyString(), value="Alice"),
-                "address": CtyValue(type_=address_type, is_null=True)
+                "name": CtyValue(vtype=CtyString(), value="Alice"),
+                "address": CtyValue(vtype=address_type, is_null=True)
             }
         )
 
@@ -311,10 +311,10 @@ class TestPathSystem:
 
         # Test with unknown value in a nested structure
         person_with_unknown_address = CtyValue(
-            type_=person_with_address_type, 
+            vtype=person_with_address_type, 
             value={
-                "name": CtyValue(type_=CtyString(), value="Alice"),
-                "address": CtyValue(type_=address_type, is_unknown=True)
+                "name": CtyValue(vtype=CtyString(), value="Alice"),
+                "address": CtyValue(vtype=address_type, is_unknown=True)
             }
         )
 

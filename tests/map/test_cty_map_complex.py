@@ -46,23 +46,23 @@ class TestCtyMapComplex:
             self.string_map.validate([1, 2, 3])  # List, not dict
 
         # Test with invalid key type
-        invalid_key = CtyValue(type_=CtyNumber(), value=123)  # Should be string
-        valid_val = CtyValue(type_=CtyString(), value="value")
+        invalid_key = CtyValue(vtype=CtyNumber(), value=123)  # Should be string
+        valid_val = CtyValue(vtype=CtyString(), value="value")
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({invalid_key: valid_val})
 
         # Test with invalid value type
-        valid_key = CtyValue(type_=CtyString(), value="key")
-        invalid_val = CtyValue(type_=CtyNumber(), value=123)  # Should be string
+        valid_key = CtyValue(vtype=CtyString(), value="key")
+        invalid_val = CtyValue(vtype=CtyNumber(), value=123)  # Should be string
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({valid_key: invalid_val})
 
         # Test with null/unknown values
-        null_key = CtyValue(type_=CtyString(), is_null=True)
+        null_key = CtyValue(vtype=CtyString(), is_null=True)
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({null_key: valid_val})
 
-        unknown_key = CtyValue(type_=CtyString(), is_unknown=True)
+        unknown_key = CtyValue(vtype=CtyString(), is_unknown=True)
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({unknown_key: valid_val})
 
@@ -71,10 +71,10 @@ class TestCtyMapComplex:
     async def test_nested_map(self):
         """Test nested map with proper value wrapping."""
         # Create inner map keys and values
-        inner_key1 = CtyValue(type_=CtyString(), value="name")
-        inner_val1 = CtyValue(type_=CtyString(), value="Alice")
-        inner_key2 = CtyValue(type_=CtyString(), value="email")
-        inner_val2 = CtyValue(type_=CtyString(), value="alice@example.com")
+        inner_key1 = CtyValue(vtype=CtyString(), value="name")
+        inner_val1 = CtyValue(vtype=CtyString(), value="Alice")
+        inner_key2 = CtyValue(vtype=CtyString(), value="email")
+        inner_val2 = CtyValue(vtype=CtyString(), value="alice@example.com")
 
         # Create inner map
         inner_map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
@@ -82,7 +82,7 @@ class TestCtyMapComplex:
         inner_map = inner_map_type.validate(inner_map_raw)
 
         # Create outer map key and value
-        outer_key = CtyValue(type_=CtyString(), value="user1")
+        outer_key = CtyValue(vtype=CtyString(), value="user1")
 
         # Create outer map
         outer_map_raw = {outer_key: inner_map}

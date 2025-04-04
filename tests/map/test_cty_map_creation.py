@@ -36,14 +36,14 @@ class TestCtyMapCreation:
         self.bool_map = CtyMap(key_type=CtyString(), value_type=CtyBool())
 
         # Pre-create CtyValue instances for keys and values
-        self.key1 = CtyValue(type_=CtyString(), value="key1")
-        self.val1_str = CtyValue(type_=CtyString(), value="value1")
-        self.key2 = CtyValue(type_=CtyString(), value="key2")
-        self.val2_str = CtyValue(type_=CtyString(), value="value2")
-        self.val1_num = CtyValue(type_=CtyNumber(), value=1)
-        self.val2_num = CtyValue(type_=CtyNumber(), value=2)
-        self.val1_bool = CtyValue(type_=CtyBool(), value=True)
-        self.val2_bool = CtyValue(type_=CtyBool(), value=False)
+        self.key1 = CtyValue(vtype=CtyString(), value="key1")
+        self.val1_str = CtyValue(vtype=CtyString(), value="value1")
+        self.key2 = CtyValue(vtype=CtyString(), value="key2")
+        self.val2_str = CtyValue(vtype=CtyString(), value="value2")
+        self.val1_num = CtyValue(vtype=CtyNumber(), value=1)
+        self.val2_num = CtyValue(vtype=CtyNumber(), value=2)
+        self.val1_bool = CtyValue(vtype=CtyBool(), value=True)
+        self.val2_bool = CtyValue(vtype=CtyBool(), value=False)
 
     @pytest.mark.asyncio
     async def test_cty_map_init_basic(self):
@@ -276,7 +276,7 @@ class TestCtyMapCreation:
             pass
 
         # Invalid key using wrong CtyValue type
-        invalid_key = CtyValue(type_=CtyNumber(), value=456)
+        invalid_key = CtyValue(vtype=CtyNumber(), value=456)
         invalid_data = {
             invalid_key: self.val1_str
         }
@@ -298,12 +298,12 @@ class TestCtyMapIteration:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
         # Create CtyValue keys and values
-        key1 = CtyValue(type_=CtyString(), value="one")
-        key2 = CtyValue(type_=CtyString(), value="two")
-        key3 = CtyValue(type_=CtyString(), value="three")
-        val1 = CtyValue(type_=CtyNumber(), value=1)
-        val2 = CtyValue(type_=CtyNumber(), value=2)
-        val3 = CtyValue(type_=CtyNumber(), value=3)
+        key1 = CtyValue(vtype=CtyString(), value="one")
+        key2 = CtyValue(vtype=CtyString(), value="two")
+        key3 = CtyValue(vtype=CtyString(), value="three")
+        val1 = CtyValue(vtype=CtyNumber(), value=1)
+        val2 = CtyValue(vtype=CtyNumber(), value=2)
+        val3 = CtyValue(vtype=CtyNumber(), value=3)
 
         # Create map data dictionary
         data = {key1: val1, key2: val2, key3: val3}

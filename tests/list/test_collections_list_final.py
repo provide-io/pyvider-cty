@@ -5,7 +5,12 @@
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
-from pyvider.cty import CtyString, CtyNumber, CtyList
+from pyvider.cty import (
+    CtyValue,
+    CtyString,
+    CtyNumber,
+    CtyList,
+)
 
 class TestFinalCoverage:
     """Tests specifically targeting the final uncovered lines."""
@@ -109,28 +114,26 @@ class TestFinalCoverage:
             _ = list_obj.__getitem__(10)
 
     def test_getitem_alternative_cases(self):
-        """Test alternative cases for __getitem__."""
+        """Test slice syntax variations."""
         # Create a list
         list_obj = CtyList(
             element_type=CtyString(),
             value=[
                 CtyString(value="a"),
                 CtyString(value="b"),
-                CtyString(value="c")
+                CtyString(value="c"),
+                CtyString(value="d"),
+                CtyString(value="e")
             ]
         )
 
-        # Try different slicing scenarios to hit all code paths
-        # We need to find which slicing operations trigger line 319
+        # Try slicing with step and no end parameter
+        sliced = list_obj[::2]  # Should get elements at indices 0, 2, 4
 
-        # Try unusual slices
-        slice1 = list_obj[1:1]  # Empty slice
-        assert isinstance(slice1, CtyList)
-        assert len(slice1.value) == 0
-
-        slice2 = list_obj[-100:100]  # Out of bounds both ways
-        assert isinstance(slice2, CtyList)
-        assert len(slice2.value) == 3  # Should give all elements
+        assert isinstance(sliced, CtyValue)
+        assert isinstance(sliced.type, CtyList)
+        assert len(sliced.value) == 3
+        assert [item.value for item in sliced.value] == ["a", "c", "e"]
 
     def test_getitem_unusual_indices(self):
         """Test more unusual indexing scenarios."""
@@ -148,7 +151,8 @@ class TestFinalCoverage:
 
         # Try special slice cases with single element list
         empty_slice = list_obj[1:]  # Should be empty slice
-        assert isinstance(empty_slice, CtyList)
+        assert isinstance(empty_slice, CtyValue)
+        assert isinstance(empty_slice.type, CtyList)
         assert len(empty_slice.value) == 0
 
 # 🐍🏗️🧪

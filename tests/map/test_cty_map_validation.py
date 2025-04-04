@@ -17,7 +17,7 @@ class TestCtyMapValidation:
     async def test_cty_map_validate_valid_string_map(self):
         """Test validation of a valid string map with pre‐validated keys/values."""
         valid = {
-            CtyValue(type_=CtyString(), value="name"): CtyValue(type_=CtyString(), value="pyvider")
+            CtyValue(vtype=CtyString(), value="name"): CtyValue(vtype=CtyString(), value="pyvider")
         }
         validated = self.string_map.validate(valid)
         assert isinstance(validated, CtyValue)
@@ -118,10 +118,10 @@ class TestCtyMapValidation:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
         # Create CtyValue instances for keys and values
-        key1 = CtyValue(type_=CtyString(), value="one")
-        key2 = CtyValue(type_=CtyString(), value="two")
-        val1 = CtyValue(type_=CtyNumber(), value=1)
-        val2 = CtyValue(type_=CtyNumber(), value=2)
+        key1 = CtyValue(vtype=CtyString(), value="one")
+        key2 = CtyValue(vtype=CtyString(), value="two")
+        val1 = CtyValue(vtype=CtyNumber(), value=1)
+        val2 = CtyValue(vtype=CtyNumber(), value=2)
 
         # Data with CtyValue instances
         data = {
@@ -159,8 +159,8 @@ class TestCtyMapValidation:
         # Create CtyValues
         from pyvider.cty.values import CtyValue
 
-        key1 = CtyValue(type_=CtyString(), value="key1")
-        val1 = CtyValue(type_=CtyString(), value="value1")
+        key1 = CtyValue(vtype=CtyString(), value="key1")
+        val1 = CtyValue(vtype=CtyString(), value="value1")
 
         # Try to create map with CtyValues
         # This test is exploratory - it may fail if CtyValues are not directly supported
@@ -220,10 +220,10 @@ class TestCtyMapValidation:
 
         # Create a value using proper CtyValue wrapping
         person = CtyValue(
-            type_=person_type,
+            vtype=person_type,
             value={
-                "name": CtyValue(type_=CtyString(), value="Alice"),
-                "age": CtyValue(type_=CtyNumber(), value=30)
+                "name": CtyValue(vtype=CtyString(), value="Alice"),
+                "age": CtyValue(vtype=CtyNumber(), value=30)
             }
         )
 

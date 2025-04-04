@@ -75,7 +75,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         input_dict: Optional[dict] = None
         if value is None:
             logger.debug("🔌🔍✅ None value converted to empty map")
-            return CtyValue(type_=self, value={}, key_mapping={})
+            return CtyValue(vtype=self, value={}, key_mapping={})
         elif isinstance(value, dict):
             input_dict = value
         elif isinstance(value, CtyValue):
@@ -100,7 +100,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                             if original_key:
                                 input_dict_with_cty_keys[original_key] = inner_val
                             else:
-                                fallback_key = CtyValue(type_=CtyString(), value=str_key)
+                                fallback_key = CtyValue(vtype=CtyString(), value=str_key)
                                 input_dict_with_cty_keys[fallback_key] = inner_val
                         input_dict = input_dict_with_cty_keys
                     except Exception as e:
@@ -122,7 +122,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         if not input_dict: # Handles empty dict case here now
              logger.debug("🔌🔍✅ Empty dictionary is valid")
-             return CtyValue(type_=self, value={}, key_mapping={})
+             return CtyValue(vtype=self, value={}, key_mapping={})
 
         # --- Validate Dictionary Items ---
         validated_map: dict[str, CtyValue] = {}
@@ -231,7 +231,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
         # Use keywords matching CtyValue field names
-        return CtyValue(type_=self, value=validated_map, key_mapping=key_mapping)
+        return CtyValue(vtype=self, value=validated_map, key_mapping=key_mapping)
 
     def get(self, map_value: "CtyValue", key: Any, default: Optional["CtyValue"] = None) -> Optional["CtyValue"]:
         """
@@ -522,7 +522,7 @@ class ElementIterator:
                 try:
                     key_value = key_type.validate(string_key)
                 except Exception:
-                    key_value = CtyValue(type_=key_type, value=string_key) # Fallback
+                    key_value = CtyValue(vtype=key_type, value=string_key) # Fallback
             self.items.append((key_value, value))
         try:
             self.items.sort(key=lambda item: str(item[0].value))

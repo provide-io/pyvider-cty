@@ -23,7 +23,7 @@ cluster_data = {
 }
 
 validated = cluster_type.validate(cluster_data)
-cluster_val = CtyValue(type_=cluster_type, value=validated)
+cluster_val = CtyValue(vtype=cluster_type, value=validated)
 
 # Serialize to different formats
 json_data = serialize(cluster_val, format_name="json")

@@ -24,7 +24,47 @@ class TestCtyListOperations:
         self.number_list = CtyList(element_type=CtyNumber())
         self.bool_list = CtyList(element_type=CtyBool())
 
-    def test_cty_list_access_methods(self):
+
+    def test_cty_list_access_methods_2(self):
+        """Test advanced list access methods."""
+        # Create a CtyList with CtyString values
+        self.string_list = CtyList(
+            element_type=CtyString(),
+            value=[
+                CtyString(value="a"),
+                CtyString(value="b"),
+                CtyString(value="c"),
+                CtyString(value="d"),
+                CtyString(value="e")
+            ]
+        )
+
+        # Test slicing
+        sliced = self.string_list[1:4]
+        # Expect a CtyValue containing a list, not a direct CtyList
+        assert isinstance(sliced, CtyValue)
+        assert isinstance(sliced.type, CtyList)
+        assert len(sliced.value) == 3
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
+        assert [item.value for item in sliced.value] == ["b", "c", "d"]
+
+        # Test slice method
+        sliced = self.string_list.slice(1, 4)
+        assert isinstance(sliced, CtyValue)
+        assert isinstance(sliced.type, CtyList)
+        assert len(sliced.value) == 3
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
+        assert [item.value for item in sliced.value] == ["b", "c", "d"]
+
+        # Test negative slicing
+        sliced = self.string_list[-3:]
+        assert isinstance(sliced, CtyValue)
+        assert isinstance(sliced.type, CtyList)
+        assert len(sliced.value) == 3
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
+        assert [item.value for item in sliced.value] == ["c", "d", "e"]
+
+    def test_cty_list_access_methods_1(self):
         """Test advanced list access methods."""
         # Create a CtyList with CtyString values
         self.string_list = CtyList(
@@ -60,7 +100,40 @@ class TestCtyListOperations:
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
         assert [item.value for item in sliced.value] == ["c", "d", "e"]
 
-    def test_cty_list_concat(self):
+
+    # Fix variable name error
+    def test_cty_list_concat_2(self):
+        """Test concatenation of lists."""
+        # Create two CtyLists with CtyString values
+        list1 = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="a"), CtyString(value="b")]
+        )
+        list2 = CtyList(
+            element_type=CtyString(),
+            value=[CtyString(value="c"), CtyString(value="d")]
+        )
+
+        # Test concat method
+        result = list1.concat(list2)
+        
+        # Test that we get back a CtyValue containing a list
+        assert isinstance(result, CtyValue)
+        assert isinstance(result.type, CtyList)
+
+        # Check content
+        assert len(result.value) == 4
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value)
+        assert [item.value for item in result.value] == ["a", "b", "c", "d"]
+
+        # Test that original lists are unchanged
+        assert len(list1.value) == 2
+        assert [item.value for item in list1.value] == ["a", "b"]
+        assert len(list2.value) == 2
+        assert [item.value for item in list2.value] == ["c", "d"]
+
+
+    def test_cty_list_concat_1(self):
         """Test concatenation of lists."""
         # Create two CtyLists with CtyString values
         list1 = CtyList(
@@ -79,7 +152,7 @@ class TestCtyListOperations:
 
 
         assert len(result.value) == 4
-        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in results.value)
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value)
         assert [item.value for item in result.value] == ["a", "b", "c", "d"]
 
         # Test that original lists are unchanged
@@ -191,19 +264,22 @@ def test_cty_list_slice():
 
     # Test using __getitem__ with slice
     sliced = list_obj[1:4]
-    assert isinstance(sliced, CtyList)
+    # Expect a CtyValue containing a list, not a direct CtyList
+    assert isinstance(sliced, CtyValue)
+    assert isinstance(sliced.type, CtyList)
     assert len(sliced.value) == 3
-    assert sliced[0].value == "b"
-    assert sliced[1].value == "c"
-    assert sliced[2].value == "d"
+    assert sliced.value[0].value == "b"
+    assert sliced.value[1].value == "c"
+    assert sliced.value[2].value == "d"
 
     # Test using slice method
     sliced = list_obj.slice(1, 4)
-    assert isinstance(sliced, CtyList)
+    assert isinstance(sliced, CtyValue)
+    assert isinstance(sliced.type, CtyList)
     assert len(sliced.value) == 3
-    assert sliced[0].value == "b"
-    assert sliced[1].value == "c"
-    assert sliced[2].value == "d"
+    assert sliced.value[0].value == "b"
+    assert sliced.value[1].value == "c"
+    assert sliced.value[2].value == "d"
 
 def test_cty_list_element_at():
     """Test the element_at method."""

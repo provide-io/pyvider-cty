@@ -110,7 +110,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         # Handle empty list
         if not value:
             logger.debug("🔌📝✅ Empty list - creating empty CtyList")
-            return CtyValue(type_=self, value=[])
+            return CtyValue(vtype=self, value=[])
 
         # Validate each element
         validated_list = []
@@ -131,7 +131,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 # FIX: Properly handle nested CtyList instances
                 elif isinstance(item, CtyList) and isinstance(self.element_type, CtyList):
                     # Convert CtyList to CtyValue wrapping a CtyList
-                    validated_item = CtyValue(type_=self.element_type, value=item.value)
+                    validated_item = CtyValue(vtype=self.element_type, value=item.value)
                     logger.debug(f"🔌📝✅ Item {i} is a CtyList, wrapping as CtyValue")
                 else:
                     # Validate and wrap
@@ -152,7 +152,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             raise CtyListValidationError(error_msg)
 
         logger.debug(f"🔌📝✅ Successfully validated list with {len(validated_list)} items")
-        return CtyValue(type_=self, value=validated_list)
+        return CtyValue(vtype=self, value=validated_list)
 
     def element_at(self, container: Any, index: int) -> "CtyValue":
         """
@@ -295,9 +295,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
         sliced_value = self.value[start:end]
         logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
 
-        # FIX: Return a CtyValue wrapping a new CtyList instance, not just a CtyList
+        ## FIX: Return a CtyValue wrapping a new CtyList instance, not just a CtyList
         from pyvider.cty.values import CtyValue
-        return CtyValue(type_=self, value=sliced_value)
+        return CtyValue(vtype=self, value=sliced_value)
 
     def concat(self, other: "CtyList[T]") -> "CtyList[T]":
         """
@@ -336,7 +336,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝✅ Concatenated lists, result size: {len(concat_value)}")
 
         from pyvider.cty.values import CtyValue
-        return CtyValue(type_=self, value=concat_value)
+        return CtyValue(vtype=self, value=concat_value)
 
     def contains(self, item: Any) -> bool:
         """
@@ -517,7 +517,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
                 # FIX: Return a CtyValue with a new CtyList, not just the CtyList
                 from pyvider.cty.values import CtyValue
-                return CtyValue(type_=self, value=result)
+                return CtyValue(vtype=self, value=result)
 
         try:
             return self.value[index]
