@@ -66,17 +66,17 @@ class CtyBool(CtyType[bool]):
             if isinstance(value.type, CtyBool):
                 logger.debug(f"🔄🔍✅ Value is already a CtyValue with CtyBool type")
                 return value
-            
+
             # Check if types are compatible
             if not value.type.equal(self) and not value.type.usable_as(self):
                 error_msg = f"Expected boolean, got {value.type}"
                 logger.error(f"🔄❗❌ {error_msg}")
                 raise CtyBoolValidationError(error_msg)
-            
+
             # Return the value if it's unknown
             if value.is_unknown:
                 return value
-                
+
             # Extract the inner value for validation
             value = value.value
 
