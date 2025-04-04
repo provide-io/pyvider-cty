@@ -129,7 +129,7 @@ class TestCtyMapValueOperations:
         assert self.map_val.get("z") is None
         
         # Test with default
-        default = CtyValue(type_=self.num_type, value=999)
+        default = CtyValue(vtype=self.num_type, value=999)
         assert self.map_val.get("z", default) is default
     
     @pytest.mark.asyncio
@@ -249,7 +249,7 @@ class TestCtyObjectValueOperations:
         assert self.obj_val.get("height") is None
         
         # Test with default
-        default = CtyValue(type_=self.num_type, value=0)
+        default = CtyValue(vtype=self.num_type, value=0)
         assert self.obj_val.get("height", default) is default
     
     @pytest.mark.asyncio

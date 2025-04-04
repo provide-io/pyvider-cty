@@ -40,7 +40,7 @@ server_data = {
 }
 
 validated = server_type.validate(server_data)
-server_val = CtyValue(type_=server_type, value=validated)
+server_val = CtyValue(vtype=server_type, value=validated)
 
 async def navigate_paths():
     # Create different paths to navigate the data

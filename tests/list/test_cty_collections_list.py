@@ -13,46 +13,51 @@ from pyvider.cty import (
     CtyList,
 )
 
-
-def test_cty_list_large_list():
+def test_cty_list_large_list_2():
     """Test validation of a large list."""
     large_list = CtyList(element_type=CtyString())
     data = ["item"] * 1000
     validated = large_list.validate(data)
 
-    # Test that we get back a CtyList
+    # Test that we get back a CtyValue containing a list
     assert isinstance(validated, CtyValue)
     assert isinstance(validated.type, CtyList)
 
     # Test that the length is correct
     assert len(validated) == 1000
 
-    # Test that all elements are CtyString objects with value "item"
+    # Test that all elements are CtyString values
     for item in validated.value:
-        assert isinstance(item, CtyString)
+        assert isinstance(item, CtyValue)
+        assert isinstance(item.type, CtyString)
         assert item.value == "item"
 
-def test_cty_list_dynamic_schema():
+def test_cty_list_dynamic_schema_2():
     """Test validation with dynamically nested structure."""
     dynamic_list = CtyList(element_type=CtyList(element_type=CtyString()))
     validated = dynamic_list.validate([["one", "two"], ["three"]])
 
-    # Test that we get back a CtyList
+    # Test that we get back a CtyValue containing a list
     assert isinstance(validated, CtyValue)
     assert isinstance(validated.type, CtyList)
 
-    # Test that the first element is a CtyList with CtyString values
-    assert isinstance(validated[0], CtyList)
-    assert len(validated[0].value) == 2
-    assert isinstance(validated[0][0], CtyString)
-    assert validated[0][0].value == "one"
-    assert isinstance(validated[0][1], CtyString)
-    assert validated[0][1].value == "two"
+    # Test that the first element is a CtyValue containing a CtyList with CtyString values
+    assert isinstance(validated.value[0], CtyValue)
+    assert isinstance(validated.value[0].type, CtyList)
+    assert len(validated.value[0].value) == 2
+    assert isinstance(validated.value[0].value[0], CtyValue)
+    assert isinstance(validated.value[0].value[0].type, CtyString)
+    assert validated.value[0].value[0].value == "one"
+    assert isinstance(validated.value[0].value[1], CtyValue)
+    assert isinstance(validated.value[0].value[1].type, CtyString)
+    assert validated.value[0].value[1].value == "two"
 
-    # Test that the second element is a CtyList with a CtyString value
-    assert isinstance(validated[1], CtyList)
-    assert len(validated[1].value) == 1
-    assert isinstance(validated[1][0], CtyString)
-    assert validated[1][0].value == "three"
+    # Test that the second element is a CtyValue containing a CtyList with CtyString values
+    assert isinstance(validated.value[1], CtyValue)
+    assert isinstance(validated.value[1].type, CtyList)
+    assert len(validated.value[1].value) == 1
+    assert isinstance(validated.value[1].value[0], CtyValue)
+    assert isinstance(validated.value[1].value[0].type, CtyString)
+    assert validated.value[1].value[0].value == "three"
 
 # 🐍🏗️🧪

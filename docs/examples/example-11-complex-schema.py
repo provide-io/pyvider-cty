@@ -110,7 +110,7 @@ try:
 
     # Validate the instance data
     validated = instance_type.validate(instance_data)
-    instance_val = CtyValue(type_=instance_type, value=validated)
+    instance_val = CtyValue(vtype=instance_type, value=validated)
     print(f"Successfully validated complex instance schema")
 
     # Serialize and deserialize

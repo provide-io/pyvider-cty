@@ -16,7 +16,7 @@ class TestCtyValueBasicOperations:
     def setup_values(self):
         """Set up test values."""
         self.str_type = CtyString()
-        self.str_val = CtyValue(type_=self.str_type, value="test")
+        self.str_val = CtyValue(vtype=self.str_type, value="test")
         self.unknown_val = CtyValue.unknown(self.str_type)
         self.null_val = CtyValue.null(self.str_type)
         self.marked_val = self.str_val.mark("test_mark")
@@ -182,12 +182,12 @@ class TestCtyValueBasicOperations:
     async def test_value_equality(self, setup_values):
         """Test value equality."""
         # Same values are equal
-        val1 = CtyValue(type_=self.str_type, value="test")
-        val2 = CtyValue(type_=self.str_type, value="test")
+        val1 = CtyValue(vtype=self.str_type, value="test")
+        val2 = CtyValue(vtype=self.str_type, value="test")
         assert val1 == val2
 
         # Different values are not equal
-        val3 = CtyValue(type_=self.str_type, value="different")
+        val3 = CtyValue(vtype=self.str_type, value="different")
         assert val1 != val3
 
         # Unknown values of same type are equal

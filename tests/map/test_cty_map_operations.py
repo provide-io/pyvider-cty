@@ -36,10 +36,10 @@ class TestCtyMapOperations:
     async def test_map_basic_validation(self):
         """Test basic validation with proper type patterns."""
         # Create pre-validated keys and values
-        key1 = CtyValue(type_=CtyString(), value="key1")
-        val1 = CtyValue(type_=CtyString(), value="value1")
-        key2 = CtyValue(type_=CtyString(), value="key2")
-        val2 = CtyValue(type_=CtyString(), value="value2")
+        key1 = CtyValue(vtype=CtyString(), value="key1")
+        val1 = CtyValue(vtype=CtyString(), value="value1")
+        key2 = CtyValue(vtype=CtyString(), value="key2")
+        val2 = CtyValue(vtype=CtyString(), value="value2")
 
         # Create proper map with pre-validated keys and values
         valid_map = {
@@ -76,10 +76,10 @@ class TestCtyMapOperations:
         empty_map = self.string_map.validate({})
 
         # Create keys and values
-        key1 = CtyValue(type_=CtyString(), value="key1")
-        val1 = CtyValue(type_=CtyString(), value="value1")
-        key2 = CtyValue(type_=CtyString(), value="key2")
-        val2 = CtyValue(type_=CtyString(), value="value2")
+        key1 = CtyValue(vtype=CtyString(), value="key1")
+        val1 = CtyValue(vtype=CtyString(), value="value1")
+        key2 = CtyValue(vtype=CtyString(), value="key2")
+        val2 = CtyValue(vtype=CtyString(), value="value2")
 
         # Add first key-value pair
         new_map = self.string_map.set(empty_map, key1, val1)
@@ -120,7 +120,7 @@ class TestCtyMapOperations:
         assert found_key1 and found_key2
 
         # Update existing key
-        val1_updated = CtyValue(type_=CtyString(), value="updated")
+        val1_updated = CtyValue(vtype=CtyString(), value="updated")
         final_map = self.string_map.set(updated_map, key1, val1_updated)
 
         # Verify update - adjusted for string keys
@@ -141,10 +141,10 @@ class TestCtyMapOperations:
     async def test_cty_map_get_method(self):
         """Test the get method with proper method call pattern."""
         # Create pre-validated keys and values
-        key1 = CtyValue(type_=CtyString(), value="key1")
-        val1 = CtyValue(type_=CtyString(), value="value1")
-        key2 = CtyValue(type_=CtyString(), value="key2")
-        val2 = CtyValue(type_=CtyString(), value="value2")
+        key1 = CtyValue(vtype=CtyString(), value="key1")
+        val1 = CtyValue(vtype=CtyString(), value="value1")
+        key2 = CtyValue(vtype=CtyString(), value="key2")
+        val2 = CtyValue(vtype=CtyString(), value="value2")
 
         # Create and validate map
         valid_map = {key1: val1, key2: val2}
@@ -159,7 +159,7 @@ class TestCtyMapOperations:
         try:
             # Using key1_value string directly might fail if implementation requires CtyValue
             # This should either work with proper conversion or raise CtyMapValidationError
-            lookup_key = CtyValue(type_=CtyString(), value="key1")
+            lookup_key = CtyValue(vtype=CtyString(), value="key1")
             result = self.string_map.get(map_val, lookup_key)
             assert result is not None
             assert result.value == "value1"
@@ -168,8 +168,8 @@ class TestCtyMapOperations:
             pass
 
         # Test get with non-existent key
-        default_val = CtyValue(type_=CtyString(), value="default")
-        missing_key = CtyValue(type_=CtyString(), value="missing")
+        default_val = CtyValue(vtype=CtyString(), value="default")
+        missing_key = CtyValue(vtype=CtyString(), value="missing")
         result = self.string_map.get(map_val, missing_key, default_val)
         assert result is default_val
 
@@ -177,12 +177,12 @@ class TestCtyMapOperations:
     async def test_cty_map_delete_method(self):
         """Test the delete method with proper method call pattern."""
         # Create keys and values
-        key1 = CtyValue(type_=CtyString(), value="key1")
-        val1 = CtyValue(type_=CtyString(), value="value1")
-        key2 = CtyValue(type_=CtyString(), value="key2")
-        val2 = CtyValue(type_=CtyString(), value="value2")
-        key3 = CtyValue(type_=CtyString(), value="key3")
-        val3 = CtyValue(type_=CtyString(), value="value3")
+        key1 = CtyValue(vtype=CtyString(), value="key1")
+        val1 = CtyValue(vtype=CtyString(), value="value1")
+        key2 = CtyValue(vtype=CtyString(), value="key2")
+        val2 = CtyValue(vtype=CtyString(), value="value2")
+        key3 = CtyValue(vtype=CtyString(), value="key3")
+        val3 = CtyValue(vtype=CtyString(), value="value3")
 
         # Create map with multiple entries
         valid_map = {key1: val1, key2: val2, key3: val3}
@@ -213,7 +213,7 @@ class TestCtyMapOperations:
         assert "key2" in map_val.value
 
         # Delete non-existent key
-        non_existent = CtyValue(type_=CtyString(), value="non_existent")
+        non_existent = CtyValue(vtype=CtyString(), value="non_existent")
         result = self.string_map.delete(new_map, non_existent)
         assert len(result.value) == 2  # No change
 

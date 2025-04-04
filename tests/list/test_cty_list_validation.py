@@ -32,10 +32,10 @@ class TestCtyListValidation:
             element_type=CtyString(),
             value=[CtyString(value="apple"), CtyString(value="banana"), CtyString(value="cherry")]
         )
-        
+
         # Get element at index
         element = list_obj.element_at(list_obj, 1)
-        
+
         # Check the value, not the wrapper type
         assert element.value == "banana"
 
@@ -129,7 +129,7 @@ class TestCtyListValidation:
         """Test successful validation of a simple string list."""
         self.string_list = CtyList(element_type=CtyString())
         validated = self.string_list.validate(["apple", "banana", "cherry"])
-        
+
         # Test that we get the list structure back
         assert len(validated) == 3
         assert validated[0].value == "apple"
@@ -144,35 +144,6 @@ class TestCtyListValidation:
         with pytest.raises(CtyListValidationError, match="CtyList validation failed:\nItem 1:"):
             self.string_list.validate(["apple", 123, "cherry"])
 
-    def test_cty_list_validate_nested_lists(self):
-        """Test validation of nested lists."""
-        # Create a list of lists of strings
-        self.nested_list = CtyList(element_type=CtyList(element_type=CtyString()))
-        validated = self.nested_list.validate([["one", "two"], ["three"]])
-
-        # Test that we get back a CtyList of CtyLists
-        assert isinstance(validated, CtyValue)
-        assert isinstance(validated.type, CtyList)
-        assert len(validated.value) == 2
-
-        # Test that the inner lists are CtyLists
-        assert isinstance(validated[0], CtyList)
-        assert isinstance(validated[1], CtyList)
-
-        # Test that the inner list elements are CtyString objects
-        assert len(validated[0].value) == 2
-        assert isinstance(validated[0][0], CtyString)
-        assert validated[0][0].value == "one"
-        assert isinstance(validated[0][1], CtyString)
-        assert validated[0][1].value == "two"
-
-        assert len(validated[1].value) == 1
-        assert isinstance(validated[1][0], CtyString)
-        assert validated[1][0].value == "three"
-
-        # Test nested validation failure
-        with pytest.raises(CtyListValidationError):
-            self.nested_list.validate([["one", 2], ["three"]])
 
     def test_cty_list_validate_none(self):
         """Test validation of None, which should raise an error."""

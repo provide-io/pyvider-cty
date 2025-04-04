@@ -75,7 +75,7 @@ class CtyDynamic(CtyType[Any]):
         # Accept primitive types, collections, and None
         if isinstance(value, (dict, list, int, float, bool, str, type(None))):
             logger.debug(f"🧩🔍✅ Value is a supported type for CtyDynamic")
-            return CtyValue(type_=self, value=value)
+            return CtyValue(vtype=self, value=value)
 
         # Reject complex Python objects that don't map to Cty types
         error_msg = "Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None."

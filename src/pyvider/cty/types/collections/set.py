@@ -97,7 +97,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
 
         if not value:
             logger.debug("🔌📝✅ Returning empty set for empty iterable")
-            return CtyValue(type_=self, value=set())
+            return CtyValue(vtype=self, value=set())
 
         validated = set()
         validation_errors = []
@@ -125,7 +125,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             raise CtySetValidationError(error_msg)
 
         logger.debug(f"🔌📝✅ Successfully validated set with {len(validated)} items")
-        return CtyValue(type_=self, value=validated)
+        return CtyValue(vtype=self, value=validated)
 
     def add(self, element) -> "CtySet":
         """

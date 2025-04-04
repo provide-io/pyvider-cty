@@ -16,7 +16,7 @@ profile_type = CtyObject(
 
 # Create values with different states
 known_value = CtyValue(
-    type_=profile_type, 
+    vtype=profile_type, 
     value={
         "username": CtyString(value="alice"),
         "age": CtyNumber(value=30),
