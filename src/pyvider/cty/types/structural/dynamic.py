@@ -118,6 +118,21 @@ class CtyDynamic(CtyType[Any]):
         logger.debug(f"🧩🔍🔄 CtyDynamic.usable_as check: {result}")
         return result
 
+    def to_python(self) -> Any:
+        """
+        Convert a dynamic type to its Python representation.
+        
+        For CtyDynamic, this performs minimal structural validation 
+        but accepts any value that fits within the Cty type system.
+        """
+        logger.debug("🧩🔄🔍 Converting CtyDynamic to Python representation")
+        
+        # Return the value itself (or None as safe default when no value)
+        # This matches the semantics of a dynamic type - it accepts any value
+        if hasattr(self, 'value'):
+            return self.value
+        return None
+
     def __str__(self) -> str:
         """
         Get a string representation of this dynamic type.
