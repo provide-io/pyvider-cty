@@ -21,7 +21,7 @@ from typing import Set as PySet
 from attrs import define, evolve, field
 from pyvider.cty.exceptions import CtySetValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 
 T = TypeVar('T')
 

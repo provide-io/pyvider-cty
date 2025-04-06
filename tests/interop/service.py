@@ -5,7 +5,7 @@ from typing import Any
 
 
 from pyvider.rpcplugin.protocol import RPCPluginProtocol
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 
 from .proto import ctytest_pb2, ctytest_pb2_grpc
 

@@ -18,7 +18,7 @@ from typing import Any, FrozenSet, Generic, Iterator, Optional, Self, Tuple, Typ
 
 from attrs import define, field, evolve
 
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.types import CtyType
 
 

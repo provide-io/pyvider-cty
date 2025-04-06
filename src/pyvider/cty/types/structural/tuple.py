@@ -14,7 +14,7 @@ from typing import Any, ClassVar, Sequence, cast, List, Tuple
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtyValidationError
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 
 

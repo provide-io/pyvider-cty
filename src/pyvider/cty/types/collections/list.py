@@ -18,7 +18,7 @@ from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, U
 from attrs import define, evolve, field
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 
 # Type variable representing the type of values in the list
 T = TypeVar('T')

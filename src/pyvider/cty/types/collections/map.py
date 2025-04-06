@@ -24,7 +24,7 @@ from attrs import define, field, evolve
 # Assuming CtyValue is imported correctly elsewhere, e.g., from pyvider.cty.values import CtyValue
 # Assuming CtyString is imported correctly elsewhere, e.g., from pyvider.cty.types.primitives import CtyString
 from pyvider.cty.exceptions import CtyMapValidationError, CtyValidationError
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 # These imports might need adjustment based on your actual project structure
 from pyvider.cty.values import CtyValue

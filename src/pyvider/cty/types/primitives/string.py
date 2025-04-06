@@ -19,7 +19,7 @@ from typing import Any, ClassVar, TypeVar
 from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import CtyStringValidationError
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 
 T = TypeVar('T', bound=str)

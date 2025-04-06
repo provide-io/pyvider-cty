@@ -18,7 +18,7 @@ from typing import Any, ClassVar, FrozenSet, Optional, Self, Union
 
 from attrs import define, evolve, field
 
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
 from pyvider.cty.exceptions import (

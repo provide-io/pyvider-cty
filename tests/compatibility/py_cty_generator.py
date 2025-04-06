@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 # Assume pyvider.cty is importable and provides its own logger instance
 try:
-    from pyvider.cty.logger import logger # Import the library's logger
+    from pyvider.telemetry import logger # Import the library's logger
     from pyvider.cty import (
         CtyValue, CtyType,
         CtyString, CtyNumber, CtyBool,
