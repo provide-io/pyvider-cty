@@ -21,7 +21,7 @@ from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 
 T = TypeVar('T')
 

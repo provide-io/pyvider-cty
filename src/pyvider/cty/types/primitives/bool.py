@@ -15,7 +15,7 @@ from typing import Any, ClassVar
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtyBoolValidationError, CtyValidationError
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 
 @define(frozen=True, slots=True)

@@ -18,7 +18,7 @@ from typing import Any, ClassVar, Union
 from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import CtyNumberValidationError
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 
 from pyvider.cty.types.base import CtyType
 

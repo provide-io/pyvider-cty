@@ -21,7 +21,7 @@ from typing import Any, List, Optional, TypeVar, cast, Sequence
 
 from attrs import define, field
 
-from pyvider.cty.logger import logger
+from pyvider.telemetry import logger
 from pyvider.cty.exceptions import AttributePathError, CtyValidationError
 from pyvider.cty.types import (
     CtyType,
