@@ -1,5 +1,5 @@
 #
-# pyvider/core/conversion/types.py
+# pyvider/cty/conversion/types.py
 #
 
 """
@@ -12,15 +12,16 @@ type definitions with full support for nested and collection types.
 """
 
 import re
-from typing import Any, Dict, Optional, Set, Tuple, Type, TypeVar, Union, cast, Literal, TypeGuard
+from typing import Any, Optional, Type, TypeVar, Union, cast, Literal, TypeGuard
 
 from pyvider.telemetry import logger
+
 from pyvider.core.exceptions import ConversionError, TypeConversionError
 from pyvider.cty import (
     CtyType, CtyString, CtyNumber, CtyBool,
-    CtyList, CtyMap, CtySet, CtyObject, CtyDynamic,
+    CtyList, CtyMap, CtySet, CtyTuple, CtyObject, CtyDynamic,
 )
-from pyvider.core.conversion.format import (
+from pyvider.cty.conversion.format import (
     TypeCategory,
     standardize_type_string,
     ensure_quoted_bytes,
@@ -34,7 +35,7 @@ T = TypeVar('T')
 TypeString = str
 TypeBytes = bytes
 
-def encode_type(type_obj: Any) -> bytes:
+def marshal_type(type_obj: Any) -> bytes:
     """
     Convert a type object to standard bytes representation.
 
@@ -60,7 +61,7 @@ def encode_type(type_obj: Any) -> bytes:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise ConversionError(error_msg) from e
 
-def decode_type(type_bytes: bytes, options: Optional[Dict[str, Any]] = None) -> CtyType:
+def marshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) -> CtyType:
     """
     Convert Terraform protocol type bytes to a CTY type.
 
@@ -106,7 +107,7 @@ def decode_type(type_bytes: bytes, options: Optional[Dict[str, Any]] = None) -> 
 
                 # Recursively convert element type
                 element_type_bytes = ensure_quoted_bytes(element_type_str)
-                element_type = decode_type(element_type_bytes)
+                element_type = unmarshal_type(element_type_bytes)
 
                 # Create the appropriate collection type
                 match collection_type:
@@ -116,6 +117,8 @@ def decode_type(type_bytes: bytes, options: Optional[Dict[str, Any]] = None) -> 
                         return CtyMap(key_type=CtyString(), value_type=element_type)
                     case "set":
                         return CtySet(element_type=element_type)
+                    case "tuple":
+                        return CtyTuple(element_type=element_type)
         except ValueError:
             # Continue to default case if parsing fails
             logger.warning(f"🧰🔍⚠️ Failed to parse collection type: {type_str}")
