@@ -344,4 +344,4 @@ def sanitize_type_representation(type_obj: Any) -> str:
         logger.warning(f"🧰🔄⚠️ Failed to sanitize type: {e}")
         return str(type_obj)
 
-# 🐍🏗️
+# 🐍🏗️🐣
