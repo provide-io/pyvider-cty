@@ -313,4 +313,4 @@ def normalize_type_object(type_obj: Any) -> TypeString:
             logger.warning(f"🧰🔄⚠️ Unknown type object: {type_obj!r}, defaulting to dynamic")
             return "dynamic"
 
-# 🐍🏗️
+# 🐍🏗️🐣
