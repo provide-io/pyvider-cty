@@ -61,7 +61,9 @@ from pyvider.cty.types import (
 
 from pyvider.cty.conversion import (
     TypeCategory,
+    parse_collection_type,
     classify_type,
+    standardize_type_string,
     validate_type_format,
     ensure_quoted_bytes,
     marshal_type,
@@ -97,8 +99,10 @@ __all__ = [
     "CtyDynamic", # Type-unknown placeholder for dynamic values
 
     "TypeCategory",
+    "parse_collection_type",
     "classify_type",
     "validate_type_format",
+    "standardize_type_string",
     "ensure_quoted_bytes",
 
     "marshal_type",

@@ -4,8 +4,10 @@
 
 from pyvider.cty.conversion.format import (
     TypeCategory,
+    parse_collection_type,
     classify_type,
     validate_type_format,
+    standardize_type_string,
     ensure_quoted_bytes,
 )
 
@@ -14,8 +16,10 @@ from pyvider.cty.conversion.json import marshal_json, unmarshal_json
 
 __all__ = [
     "TypeCategory",
+    "parse_collection_type",
     "classify_type",
     "validate_type_format",
+    "standardize_type_string",
     "ensure_quoted_bytes",
 
     "marshal_type",
