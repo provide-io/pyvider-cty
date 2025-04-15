@@ -75,7 +75,7 @@ def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) 
     Raises:
         ConversionError: If conversion fails
     """
-    logger.debug(f"🧰🔍📊 Converting type bytes to CTY type: {type_bytes}")
+    logger.debug(f"🧰🔍📊 Converting type bytes to CTY type: {type_bytes!r}")
 
     options = options or {}
 
@@ -86,46 +86,61 @@ def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) 
 
         # Parse type string using format module
         try:
-            type_str = standardize_type_string(type_bytes.decode("utf-8"))
+            decoded_str = type_bytes.decode("utf-8")
+            # Remove quotes if present
+            if decoded_str.startswith('"') and decoded_str.endswith('"'):
+                decoded_str = decoded_str[1:-1]
+            type_str = standardize_type_string(decoded_str)
+            logger.debug(f"🧰🔍📊 Standardized type string: {type_str!r}")
         except UnicodeDecodeError:
             raise ConversionError(f"Invalid type bytes: {type_bytes}")
 
-        # Check for primitive types
-        if type_str == "string":
-            return CtyString()
-        if type_str == "number":
-            return CtyNumber()
-        if type_str == "bool":
-            return CtyBool()
-        if type_str == "dynamic":
-            return CtyDynamic()
-
-        # Check for collection types
-        try:
-            if type_str.startswith(("list(", "map(", "set(")) and type_str.endswith(")"):
-                collection_type, element_type_str = parse_collection_type(type_str)
-
-                # Recursively convert element type
-                element_type_bytes = ensure_quoted_bytes(element_type_str)
-                element_type = unmarshal_type(element_type_bytes)
-
-                # Create the appropriate collection type
-                match collection_type:
-                    case "list":
-                        return CtyList(element_type=element_type)
-                    case "map":
-                        return CtyMap(key_type=CtyString(), value_type=element_type)
-                    case "set":
-                        return CtySet(element_type=element_type)
-                    case "tuple":
-                        return CtyTuple(element_type=element_type)
-        except ValueError:
-            # Continue to default case if parsing fails
-            logger.warning(f"🧰🔍⚠️ Failed to parse collection type: {type_str}")
-
-        # If we get here, we don't know how to handle this type
-        logger.warning(f"🧰🔍⚠️ Unknown type format: {type_str}, defaulting to dynamic")
-        return CtyDynamic()
+        # Use match/case for type categorization
+        match classify_type(type_str):
+            case TypeCategory.PRIMITIVE:
+                # Handle primitive types with match/case
+                match type_str:
+                    case "string":
+                        return CtyString()
+                    case "number":
+                        return CtyNumber()
+                    case "bool":
+                        return CtyBool()
+                    case "dynamic" | "null":
+                        return CtyDynamic()
+                    case _:
+                        logger.warning(f"🧰🔍⚠️ Unknown primitive type: {type_str}")
+                        return CtyDynamic()
+                        
+            case TypeCategory.COLLECTION:
+                # Handle collection types properly
+                try:
+                    collection_type, element_type_str = parse_collection_type(type_str)
+                    
+                    # Recursively convert element type
+                    element_type_bytes = ensure_quoted_bytes(element_type_str)
+                    logger.debug(f"🧰🔍📊 Recursively unmarshaling element type: {element_type_bytes!r}")
+                    element_type = unmarshal_type(element_type_bytes, options)
+                    
+                    # Create the appropriate collection type
+                    match collection_type:
+                        case "list":
+                            return CtyList(element_type=element_type)
+                        case "map":
+                            return CtyMap(key_type=CtyString(), value_type=element_type)
+                        case "set":
+                            return CtySet(element_type=element_type)
+                        case _:
+                            logger.warning(f"🧰🔍⚠️ Unsupported collection type: {collection_type}")
+                            return CtyDynamic()
+                except ValueError as e:
+                    logger.error(f"🧰🔍❌ Failed to parse collection type: {e}")
+                    raise ConversionError(f"Invalid collection type format: {type_str}") from e
+                    
+            case _:
+                # Handle unknown or structured types
+                logger.warning(f"🧰🔍⚠️ Unknown type format: {type_str}, defaulting to dynamic")
+                return CtyDynamic()
 
     except Exception as e:
         if isinstance(e, ConversionError):
