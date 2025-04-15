@@ -116,4 +116,4 @@ def unmarshal_json(marshalled: Union[bytes, str],
         logger.error(f"🧰🔍❌ Error decoding from JSON: {e}", exc_info=True)
         raise ConversionError(f"Failed to unmarshal from JSON: {e}") from e
 
-# 🐍🏗️
+# 🐍🏗️🐣

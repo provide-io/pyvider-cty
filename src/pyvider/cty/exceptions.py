@@ -1,4 +1,3 @@
-# pyvider/cty/exceptions.py
 #
 # pyvider/cty/exceptions.py
 #
