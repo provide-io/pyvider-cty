@@ -18,7 +18,7 @@ Features:
     - Format validation
 
 Usage:
-    from pyvider.core.conversion.format import standardize_type_string, ensure_quoted_bytes
+    from pyvider.cty.conversion.format import standardize_type_string, ensure_quoted_bytes
 
     # Normalize a type string
     normalized = standardize_type_string("list(string)")
