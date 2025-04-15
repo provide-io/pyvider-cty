@@ -17,7 +17,8 @@ from pyvider.core.exceptions import ConversionError
 from pyvider.core.conversion.base import FormatKind
 from pyvider.core.conversion.registry import register_converter
 
-from pyvider.cty import CtyValue, CtyType
+from pyvider.cty.types import CtyType
+from pyvider.cty.values import CtyValue
 
 def marshal_json(value: Any, options: Optional[dict[str, Any]] = None) -> bytes:
     """

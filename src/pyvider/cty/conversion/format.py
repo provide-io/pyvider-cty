@@ -139,7 +139,7 @@ def ensure_quoted_bytes(type_str: Optional[TypeString]) -> TypeBytes:
     return result
 
 # Improved implementation with nested support
-def parse_collection_type(type_str: str) -> tuple[str, str]:
+def Xparse_collection_type(type_str: str) -> tuple[str, str]:
     logger.debug("!!!! PARSING COLLECTION.")
     """Parse collection type with support for nested types."""
     if not type_str or '(' not in type_str or not type_str.endswith(')'):
@@ -155,7 +155,7 @@ def parse_collection_type(type_str: str) -> tuple[str, str]:
         
     return base_type.strip(), content.strip()
 
-def Xparse_collection_type(type_str: TypeString) -> tuple[str, str]:
+def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
     """
     Parse a collection type string into collection type and element type.
 
@@ -242,43 +242,6 @@ def validate_type_format(type_value: Union[TypeString, TypeBytes]) -> list[str]:
         logger.debug("🧰🔄✅ Type format validation passed")
 
     return errors
-
-def fix_collection_type(type_bytes: TypeBytes) -> TypeBytes:
-    """
-    Fix collection type bytes by ensuring proper element types.
-
-    Args:
-        type_bytes: The type bytes to fix
-
-    Returns:
-        Fixed type bytes
-    """
-    logger.debug(f"🧰🔄🔧 Fixing collection type: {type_bytes!r}")
-
-    try:
-        type_str = type_bytes.decode('utf-8')
-        normalized = standardize_type_string(type_str)
-
-        # Fix bare collection types
-        if normalized in COLLECTION_TYPES:
-            logger.warning(f"🧰🔄⚠️ Fixing bare collection type: {normalized}")
-            fixed = ensure_quoted_bytes(f"{normalized}(string)")
-            return fixed
-
-        # Fix incomplete collection syntax
-        for coll in COLLECTION_TYPES:
-            if normalized.startswith(f"{coll}(") and not normalized.endswith(")"):
-                logger.warning(f"🧰🔄⚠️ Fixing incomplete collection format: {normalized}")
-                fixed = ensure_quoted_bytes(f"{coll}(string)")
-                return fixed
-
-        # Already proper format
-        return ensure_quoted_bytes(normalized)
-
-    except Exception as e:
-        logger.error(f"🧰🔄❌ Error fixing collection type: {e}")
-        # Return as-is if we can't fix it
-        return type_bytes
 
 def normalize_type_object(type_obj: Any) -> TypeString:
     """
