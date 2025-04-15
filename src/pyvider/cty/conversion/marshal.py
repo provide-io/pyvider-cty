@@ -61,7 +61,7 @@ def marshal_type(type_obj: Any) -> bytes:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise ConversionError(error_msg) from e
 
-def marshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) -> CtyType:
+def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) -> CtyType:
     """
     Convert Terraform protocol type bytes to a CTY type.
 
