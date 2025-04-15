@@ -58,7 +58,7 @@ def _get_collection_pattern() -> Pattern[str]:
         Compiled regex pattern for collection types
     """
     # Matches patterns like: list(string), map(number), set(bool)
-    return re.compile(r'^([a-z]+)\(([^()]+)\)$')
+    return re.compile(r'^([a-z]+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)$')
 
 def classify_type(type_str: TypeString) -> TypeCategory:
     """
@@ -138,7 +138,24 @@ def ensure_quoted_bytes(type_str: Optional[TypeString]) -> TypeBytes:
     logger.debug(f"🧰🔄📊 Converted to quoted bytes: {result!r}")
     return result
 
-def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
+# Improved implementation with nested support
+def parse_collection_type(type_str: str) -> tuple[str, str]:
+    logger.debug("!!!! PARSING COLLECTION.")
+    """Parse collection type with support for nested types."""
+    if not type_str or '(' not in type_str or not type_str.endswith(')'):
+        raise ValueError(f"Invalid collection type format: {type_str}")
+        
+    # Extract base type and potentially nested content
+    base_type, rest = type_str.split('(', 1)
+    content = rest[:-1]  # Remove trailing ')'
+    
+    # Validate balanced parentheses for nested types
+    if content.count('(') != content.count(')'):
+        raise ValueError(f"Unbalanced parentheses in type: {type_str}")
+        
+    return base_type.strip(), content.strip()
+
+def Xparse_collection_type(type_str: TypeString) -> tuple[str, str]:
     """
     Parse a collection type string into collection type and element type.
 
