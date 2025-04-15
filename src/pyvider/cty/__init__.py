@@ -57,6 +57,17 @@ from pyvider.cty.types import (
     CtyTuple,
 )
 
+from pyvider.cty.conversion import (
+    TypeCategory,
+    classify_type,
+    validate_type_format,
+    ensure_quoted_bytes,
+    marshal_type,
+    unmarshal_type,
+    marshal_json,
+    unmarshal_json,
+)
+
 # Import value and path classes
 from pyvider.cty.values import CtyValue
 from pyvider.cty.path import CtyPath
@@ -82,6 +93,18 @@ __all__ = [
     "CtyObject", # Named attributes with potentially different types
     "CtyTuple",  # Fixed-length sequences with position-specific types
     "CtyDynamic", # Type-unknown placeholder for dynamic values
+
+    "TypeCategory",
+    "classify_type",
+    "validate_type_format",
+    "ensure_quoted_bytes",
+
+    "marshal_type",
+    "unmarshal_type",
+
+    "marshal_json",
+    "unmarshal_json",
+
 ]
 
 # 🐍🏗️🐣
