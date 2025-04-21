@@ -16,14 +16,11 @@ package:
 - Validation exceptions (CtyValidationError and subtypes)
 - Encoding exceptions (EncodingError and subtypes)
 - Transformation and path exceptions
-
-Applications using pyvider.cty should catch these exceptions specifically
-rather than catching generic Python exceptions to properly handle
-type-related errors.
 """
 
 from typing import Any, Optional, Union
 
+from pyvider.core.exceptions import ConversionError
 
 class CtyError(Exception):
     """
@@ -39,22 +36,6 @@ class CtyError(Exception):
     def __init__(self, message: str = "An error occurred in the cty type system"):
         self.message = message
         super().__init__(self.message)
-
-
-class PyviderError(CtyError):
-    """
-    Legacy error for backward compatibility.
-
-    This exception is maintained for backward compatibility with older code
-    that might catch PyviderError instead of CtyError. New code should use
-    CtyError and its subclasses.
-
-    Attributes:
-        message: A human-readable error description
-    """
-    def __init__(self, message: str = "An error occurred in the Pyvider system"):
-        super().__init__(message)
-
 
 ################################################################################
 # Validation Errors
@@ -82,7 +63,6 @@ class CtyValidationError(CtyError):
             message = f"{type_name} validation error: {message}"
 
         super().__init__(message)
-
 
 class CtyBoolValidationError(CtyValidationError):
     """
@@ -323,9 +303,16 @@ class EncodingError(CtyError):
     Attributes:
         message: A human-readable error description
         data: The data that caused the encoding error
+        encoding: The name of the encoding format that was being used
     """
-    def __init__(self, message: str, data: Any = None):
+    def __init__(self, message: str, data: Any = None, encoding: Optional[str] = None):
         self.data = data
+        self.encoding = encoding
+
+        # Add format information to the message if available
+        if encoding is not None:
+            message = f"{encoding.upper()} encoding error: {message}"
+
         super().__init__(message)
 
 
@@ -344,13 +331,7 @@ class SerializationError(EncodingError):
     """
     def __init__(self, message: str, value: Any = None, format_name: Optional[str] = None):
         self.value = value
-        self.format_name = format_name
-
-        # Add format information to the message if available
-        if format_name is not None:
-            message = f"{format_name} serialization error: {message}"
-
-        super().__init__(message, value)
+        super().__init__(message, value, format_name)
 
 
 class DeserializationError(EncodingError):
@@ -366,13 +347,7 @@ class DeserializationError(EncodingError):
         format_name: The name of the format that was being used
     """
     def __init__(self, message: str, data: Any = None, format_name: Optional[str] = None):
-        self.format_name = format_name
-
-        # Add format information to the message if available
-        if format_name is not None:
-            message = f"{format_name} deserialization error: {message}"
-
-        super().__init__(message, data)
+        super().__init__(message, data, format_name)
 
 
 class DynamicValueError(SerializationError):
@@ -391,35 +366,96 @@ class DynamicValueError(SerializationError):
         super().__init__(message, value, "DynamicValue")
 
 
-class ConversionError(CtyError):
+class JsonEncodingError(EncodingError):
     """
-    Raised when type conversion fails.
+    Raised when JSON encoding or decoding fails.
 
-    This exception occurs when a value cannot be converted from one type
-    to another, such as when attempting to convert between incompatible
-    types or when conversion would result in data loss.
+    This exception provides specific context for JSON serialization errors,
+    including details about the specific JSON operation that failed.
 
     Attributes:
         message: A human-readable error description
-        source_type: The source type in the conversion
-        target_type: The target type in the conversion
-        value: The value that failed conversion
+        data: The data that caused the encoding error
+        operation: The operation that failed (encode/decode)
+    """
+    def __init__(self, message: str, data: Any = None, operation: Optional[str] = None):
+        self.operation = operation
+
+        # Add operation context to the message
+        if operation:
+            message = f"JSON {operation} error: {message}"
+
+        super().__init__(message, data, "json")
+
+
+class MsgPackEncodingError(EncodingError):
+    """
+    Raised when MessagePack encoding or decoding fails.
+
+    This exception provides specific context for MessagePack serialization errors,
+    including details about the specific MessagePack operation that failed.
+
+    Attributes:
+        message: A human-readable error description
+        data: The data that caused the encoding error
+        operation: The operation that failed (encode/decode)
+    """
+    def __init__(self, message: str, data: Any = None, operation: Optional[str] = None):
+        self.operation = operation
+
+        # Add operation context to the message
+        if operation:
+            message = f"MessagePack {operation} error: {message}"
+
+        super().__init__(message, data, "msgpack")
+
+
+class DynamicValueError(SerializationError):
+    """
+    Raised when there's an error encoding or decoding a DynamicValue.
+
+    This exception is specific to the handling of dynamic values in
+    serialization contexts, where type information might be unknown
+    or ambiguous.
+
+    Attributes:
+        message: A human-readable error description
+        value: The dynamic value that caused the error
+    """
+    def __init__(self, message: str, value: Any = None):
+        super().__init__(message, value, "DynamicValue")
+
+class WireFormatError(ConversionError):
+    """
+    Raised when wire format encoding or decoding fails.
+
+    This exception is specific to the wire format system and provides
+    additional context about the operation that failed.
+
+    Attributes:
+        message: A human-readable error description
+        format_type: The wire format type that encountered an error
+        operation: The operation that failed (marshal/unmarshal)
     """
     def __init__(
         self,
         message: str,
-        source_type: Optional[Any] = None,
-        target_type: Optional[Any] = None,
-        value: Any = None
+        *,
+        format_type: Any = None,
+        operation: Optional[str] = None,
+        **kwargs
     ):
-        self.source_type = source_type
-        self.target_type = target_type
-        self.value = value
+        self.format_type = format_type
+        self.operation = operation
 
-        # Add type information to the message if available
-        if source_type is not None and target_type is not None:
-            message = f"Cannot convert {source_type} to {target_type}: {message}"
+        # Format a more detailed message including the format type
+        if format_type is not None:
+            format_info = f" using {format_type}"
+            if operation:
+                format_info = f" during {operation}{format_info}"
+            message = f"{message}{format_info}"
 
-        super().__init__(message)
+        super().__init__(message, **kwargs)
+
 
 # 🐍🏗️🐣

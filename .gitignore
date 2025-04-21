@@ -391,3 +391,7 @@ bin/
 
 # stupid code coverage result.
 result.json
+
+*.
+
+*-cty-*.json

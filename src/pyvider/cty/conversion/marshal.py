@@ -344,4 +344,54 @@ def sanitize_type_representation(type_obj: Any) -> str:
         logger.warning(f"🧰🔄⚠️ Failed to sanitize type: {e}")
         return str(type_obj)
 
+def marshal_json(value: Any, options: Optional[dict[str, Any]] = None) -> bytes:
+    """
+    Marshal a value to JSON format bytes.
+
+    This high-level function converts any value to JSON-encoded bytes,
+    maintaining type information and metadata.
+
+    Args:
+        value: The value to marshal (typically a CtyValue)
+        options: Optional JSON-specific encoding options
+
+    Returns:
+        JSON-encoded bytes
+
+    Raises:
+        EncodingError: If JSON encoding fails
+    """
+    logger.debug(f"🧩📝🔄 Marshaling value to JSON: {type(value).__name__}")
+    from pyvider.cty.conversion.formats.json import JsonEncoder
+    return JsonEncoder.encode(value, **(options or {}))
+
+def unmarshal_json(marshaled: Union[bytes, str],
+                  expected_type: Optional[CtyType] = None,
+                  options: Optional[dict[str, Any]] = None) -> Any:
+    """
+    Unmarshal JSON bytes to a value.
+
+    This high-level function converts JSON-encoded bytes back into a value,
+    restoring type information and metadata.
+
+    Args:
+        marshaled: The JSON bytes or string to unmarshal
+        expected_type: Optional type to validate against
+        options: Optional JSON-specific decoding options
+
+    Returns:
+        The unmarshaled value (typically a CtyValue)
+
+    Raises:
+        EncodingError: If JSON decoding fails
+    """
+    logger.debug(f"🧩🔍🔄 Unmarshaling from JSON")
+
+    # Convert string to bytes if needed
+    if isinstance(marshaled, str):
+        marshaled = marshaled.encode('utf-8')
+
+    from pyvider.cty.conversion.formats.json import JsonEncoder
+    return JsonEncoder.decode(marshaled, **(options or {}))
+
 # 🐍🏗️🐣
