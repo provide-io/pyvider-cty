@@ -141,7 +141,6 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             try:
                 if isinstance(k, CtyValue):
                     logger.debug(f"🔌🔍🔄 Processing pre-validated key: {k!r}")
-                    # *** FIX START: Correct handling for CtyValue keys ***
                     if not isinstance(k.type, CtyString):
                         # Key is CtyValue but not CtyString
                         raise CtyMapValidationError(f"Key type mismatch: expected CtyString, got {k.type.__class__.__name__}")
@@ -152,7 +151,6 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                     validated_key_cty = k
                     map_key_str = str(k.value) # Extract string value
                     logger.debug(f"🔌🔍✅ Using valid pre-validated CtyString key, str value: '{map_key_str}'")
-                    # *** FIX END ***
                 else:
                     # Input key k is NOT a CtyValue, validate it as a string
                     logger.debug(f"🔌🔍🔄 Validating raw key: {k!r}")

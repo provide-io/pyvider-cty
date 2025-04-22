@@ -41,6 +41,7 @@ class TestCtyListCoverage:
         # Should get elements from index 2 to end
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
+        assert isinstance(result, CtyList)
         assert len(result.value) == 3
         assert [item.value for item in result.value] == ["c", "d", "e"]
 

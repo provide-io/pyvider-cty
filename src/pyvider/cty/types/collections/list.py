@@ -118,7 +118,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         for i, item in enumerate(value):
             try:
-                # FIX: Proper handling of None values in lists
                 if item is None:
                     error_msg = f"None is not a valid list element"
                     logger.debug(f"🔌❗❌ {error_msg}")
@@ -128,7 +127,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 if isinstance(item, CtyValue) and isinstance(item.type, self.element_type.__class__):
                     validated_item = item
                     logger.debug(f"🔌📝✅ Item {i} is already a CtyValue: {item}")
-                # FIX: Properly handle nested CtyList instances
                 elif isinstance(item, CtyList) and isinstance(self.element_type, CtyList):
                     # Convert CtyList to CtyValue wrapping a CtyList
                     validated_item = CtyValue(vtype=self.element_type, value=item.value)
@@ -295,9 +293,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
         sliced_value = self.value[start:end]
         logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
 
-        ## FIX: Return a CtyValue wrapping a new CtyList instance, not just a CtyList
         from pyvider.cty.values import CtyValue
-        return CtyValue(vtype=self, value=sliced_value)
+        return evolve(self, value=sliced_value)
+        #return CtyValue(vtype=self, value=sliced_value)
 
     def concat(self, other: "CtyList[T]") -> "CtyList[T]":
         """
@@ -515,7 +513,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
                     if i < len(self.value):
                         result.append(self.value[i])
 
-                # FIX: Return a CtyValue with a new CtyList, not just the CtyList
                 from pyvider.cty.values import CtyValue
                 return CtyValue(vtype=self, value=result)
 
