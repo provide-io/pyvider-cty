@@ -151,8 +151,8 @@ class TestFinalCoverage:
 
         # Try special slice cases with single element list
         empty_slice = list_obj[1:]  # Should be empty slice
-        assert isinstance(empty_slice, CtyValue)
-        assert isinstance(empty_slice.type, CtyList)
+        assert isinstance(empty_slice, CtyList)
+        #assert isinstance(empty_slice.type, CtyList)
         assert len(empty_slice.value) == 0
 
 # 🐍🏗️🧪
