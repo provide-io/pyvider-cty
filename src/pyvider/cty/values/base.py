@@ -25,7 +25,7 @@ from pyvider.cty.types import CtyType
 T = TypeVar('T', covariant=True)
 
 
-@define(frozen=True, slots=True) # <<<< CORRECTED: Added frozen=True
+@define(frozen=True, slots=True)
 class CtyValue(Generic[T]):
     """
     Immutable representation of a Cty value with type information.
@@ -723,9 +723,6 @@ class CtyValue(Generic[T]):
              # Length of null is defined as 0 in some contexts (like Terraform)
             logger.debug("🔄🔍✅ Length of null value is 0")
             return 0
-            # error_msg = "Cannot get length of null value"
-            # logger.error(f"🔄❗❌ {error_msg}")
-            # raise TypeError(error_msg)
 
         # For known values, delegate to the underlying value
         if hasattr(self._value, "__len__"):
@@ -1204,5 +1201,59 @@ class CtyValue(Generic[T]):
              parts.append(f"key_mapping={self._key_mapping!r}")
 
         return f"CtyValue({', '.join(parts)})"
+
+    def __hash__(self) -> int:
+        """
+        Make CtyValue instances hashable for use in sets and as dict keys.
+
+        Computes a hash based on type, value state, and marks. For primitive
+        types, includes the actual value in the hash computation.
+
+        Returns:
+            int: Hash value
+        """
+        # Hash based on type, value state, marks
+        type_hash = hash(self._vtype.__class__) # Use class to ensure CtyString() == CtyString()
+        state_hash = hash((self._is_unknown, self._is_null))
+        marks_hash = hash(self._marks) # Hash the frozenset of marks
+
+        value_hash = 0
+        if self._is_unknown or self._is_null:
+            value_hash = hash(None) # Consistent hash for null/unknown
+        else:
+            # Use the actual value's hash for hashable primitives
+            if isinstance(self._value, (str, int, float, bool, Decimal, bytes)):
+                try:
+                    value_hash = hash(self._value)
+                except TypeError: # Should not happen for these types, but safeguard
+                    value_hash = hash(repr(self._value))
+            # For tuples, ensure elements are hashable (should be if validated)
+            elif isinstance(self._value, tuple):
+                 try:
+                    # Hash tuple elements (which should be CtyValues)
+                     value_hash = hash(self._value)
+                 except TypeError:
+                    # Fallback if elements aren't hashable CtyValues somehow
+                    value_hash = hash(repr(self._value))
+            # For frozensets (results of set validation)
+            elif isinstance(self._value, frozenset):
+                 try:
+                     value_hash = hash(self._value)
+                 except TypeError:
+                     value_hash = hash(repr(self._value))
+            # Dictionaries and lists are not typically hashable by value
+            # Hashing based on type/state/marks only for these might be sufficient
+            # or use repr as a less reliable fallback
+            elif isinstance(self._value, (dict, list, set)):
+                 value_hash = hash(repr(self._value)) # Fallback hash using repr
+            else:
+                # Fallback for other potentially unhashable types
+                try:
+                    value_hash = hash(repr(self._value))
+                except TypeError:
+                     value_hash = hash(id(self._value)) # Identity hash
+
+        # Combine component hashes
+        return hash((type_hash, state_hash, value_hash, marks_hash))
 
 # 🐍🏗️🐣
