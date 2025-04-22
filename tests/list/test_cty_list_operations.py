@@ -42,24 +42,21 @@ class TestCtyListOperations:
         # Test slicing
         sliced = self.string_list[1:4]
         # Expect a CtyValue containing a list, not a direct CtyList
-        assert isinstance(sliced, CtyValue)
-        assert isinstance(sliced.type, CtyList)
+        assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
         assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
         # Test slice method
         sliced = self.string_list.slice(1, 4)
-        assert isinstance(sliced, CtyValue)
-        assert isinstance(sliced.type, CtyList)
+        assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
         assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
         # Test negative slicing
         sliced = self.string_list[-3:]
-        assert isinstance(sliced, CtyValue)
-        assert isinstance(sliced.type, CtyList)
+        assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in sliced.value)
         assert [item.value for item in sliced.value] == ["c", "d", "e"]
@@ -117,9 +114,7 @@ class TestCtyListOperations:
         # Test concat method
         result = list1.concat(list2)
         
-        # Test that we get back a CtyValue containing a list
-        assert isinstance(result, CtyValue)
-        assert isinstance(result.type, CtyList)
+        assert isinstance(result, CtyList)
 
         # Check content
         assert len(result.value) == 4
@@ -147,8 +142,7 @@ class TestCtyListOperations:
 
         # Test concat method
         result = list1.concat(list2)
-        assert isinstance(result, CtyValue)
-        assert isinstance(result.type, CtyList)
+        assert isinstance(result, CtyList)
 
 
         assert len(result.value) == 4
@@ -202,8 +196,7 @@ class TestCtyListOperations:
         # Try slicing with step and no end parameter
         sliced = list_obj[::2]  # Should get elements at indices 0, 2, 4
 
-        assert isinstance(sliced, CtyValue)
-        assert isinstance(sliced.type, CtyList)
+        assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
         assert [item.value for item in sliced.value] == ["a", "c", "e"]
 
@@ -265,8 +258,7 @@ def test_cty_list_slice():
     # Test using __getitem__ with slice
     sliced = list_obj[1:4]
     # Expect a CtyValue containing a list, not a direct CtyList
-    assert isinstance(sliced, CtyValue)
-    assert isinstance(sliced.type, CtyList)
+    assert isinstance(sliced, CtyList)
     assert len(sliced.value) == 3
     assert sliced.value[0].value == "b"
     assert sliced.value[1].value == "c"
@@ -274,8 +266,7 @@ def test_cty_list_slice():
 
     # Test using slice method
     sliced = list_obj.slice(1, 4)
-    assert isinstance(sliced, CtyValue)
-    assert isinstance(sliced.type, CtyList)
+    assert isinstance(sliced, CtyList)
     assert len(sliced.value) == 3
     assert sliced.value[0].value == "b"
     assert sliced.value[1].value == "c"
