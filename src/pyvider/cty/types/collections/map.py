@@ -62,7 +62,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             raise CtyMapValidationError(error_msg)
         logger.debug("🔌✅🔄 CtyMap configuration validated successfully")
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate a value against this map type.
         (Docstring unchanged)
@@ -233,7 +233,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         # Use keywords matching CtyValue field names
         return CtyValue(vtype=self, value=validated_map, key_mapping=key_mapping)
 
-    def get(self, map_value: "CtyValue", key: Any, default: Optional["CtyValue"] = None) -> Optional["CtyValue"]:
+    def get(self, map_value: CtyValue, key: Any, default: Optional[CtyValue] = None) -> Optional[CtyValue]:
         """
         Get a value from the map by key.
         (Docstring unchanged - see previous context)
@@ -286,7 +286,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         logger.debug(f"🔌🔍⚠️ Key {str_key} not found, returning default")
         return default
 
-    def set(self, map_value: "CtyValue", key: Any, value: Any) -> "CtyValue":
+    def set(self, map_value: CtyValue, key: Any, value: Any) -> CtyValue:
         """
         Set a value in a map, returning a new map.
         (Docstring unchanged - see previous context)
@@ -359,7 +359,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             key_mapping=new_key_mapping # Pass the new key mapping
         )
 
-    def delete(self, map_value: "CtyValue", key: Any) -> "CtyValue":
+    def delete(self, map_value: CtyValue, key: Any) -> CtyValue:
         """
         Delete a key from a map, returning a new map.
         (Docstring unchanged - see previous context)
@@ -414,7 +414,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             key_mapping=new_key_mapping
         )
 
-    def element_iterator(self, map_value: "CtyValue") -> "ElementIterator":
+    def element_iterator(self, map_value: CtyValue) -> "ElementIterator":
         """
         Get an iterator for the elements in a map.
         (Docstring unchanged - see previous context)
@@ -436,8 +436,6 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         # Pass the internal dict and key mapping to the iterator
         return ElementIterator(self.key_type, internal_map, key_mapping)
 
-    # --- Other methods (equal, usable_as, __eq__, __hash__, __str__, __repr__) unchanged ---
-    # (See previous context for their implementations)
     def equal(self, other: CtyType) -> bool:
         """
         Check if this type equals another type.
@@ -462,27 +460,15 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if not isinstance(other, CtyMap):
             logger.debug(f"🔌🔍❌ Not usable as: {type(other).__name__} is not CtyMap")
             return False
-        key_usable = self.key_type.usable_as(other.key_type)
-        value_usable = self.value_type.usable_as(other.value_type)
-        result = key_usable and value_usable
-        logger.debug(f"🔌🔍✅ Usability check: {result}")
-        return result
 
-    def __eq__(self, other: object) -> bool:
-        """
-        Equality operator implementation.
-        (Implementation unchanged)
-        """
-        if not isinstance(other, CtyMap):
-            return False
-        return self.equal(other)
+        keys_ok = self.key_type.usable_as(other.key_type)
+        vals_ok = self.value_type.usable_as(other.value_type)
 
-    def __hash__(self) -> int:
-        """
-        Hash implementation for use in sets and as dict keys.
-        (Implementation unchanged)
-        """
-        return hash((self.__class__, hash(self.key_type), hash(self.value_type)))
+        logger.debug(
+            f"🗺️🔍🔄 key_type.usable_as → {keys_ok}   ",
+            f"value_type.usable_as → {vals_ok}",
+        )
+        return keys_ok and vals_ok
 
     def __str__(self) -> str:
         """
@@ -508,8 +494,8 @@ class ElementIterator:
     """
     def __init__(self,
                  key_type: "CtyType",
-                 map_data: dict[str, "CtyValue"],
-                 key_mapping: dict[str, "CtyValue"]):
+                 map_data: dict[str, CtyValue],
+                 key_mapping: dict[str, CtyValue]):
         """
         Initialize the iterator with map data and key mapping.
         (Implementation unchanged - see previous context)
@@ -541,7 +527,7 @@ class ElementIterator:
             return True
         return False
 
-    def key(self) -> "CtyValue":
+    def key(self) -> CtyValue:
         """
         Get the current key as a CtyValue.
         (Implementation unchanged)
@@ -550,7 +536,7 @@ class ElementIterator:
             raise IndexError("ElementIterator: no current element")
         return self.items[self.index][0]
 
-    def value(self) -> "CtyValue":
+    def value(self) -> CtyValue:
         """
         Get the current value.
         (Implementation unchanged)

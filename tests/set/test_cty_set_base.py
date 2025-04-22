@@ -208,7 +208,7 @@ class TestCtySetType:
     @pytest.mark.asyncio
     async def test_string_representation(self):
         """Test string representation of CtySet."""
-        assert str(self.string_set) == "set(CtyString)"
+        assert str(self.string_set) == "set(string)"
 
     @pytest.mark.asyncio
     async def test_iteration(self):

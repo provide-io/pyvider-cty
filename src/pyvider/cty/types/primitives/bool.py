@@ -35,116 +35,93 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> "CtyValue":  # noqa: N802 – external API
+        """Validate *value* and return a :class:`~pyvider.cty.values.CtyValue`.
+
+        Conversion matrix
+        -----------------
+        * **bool** – returned unchanged.
+        * **str**  – accepts the usual truthy / falsy keywords (case‑insensitive).
+        * **number** – *only* ``0`` / ``1`` (int|float|Decimal).  Anything else
+          raises :class:`CtyBoolValidationError` (aligns with go‑cty).
+        * **None** – becomes *null* CtyValue.
+        * **CtyValue** – passes through when compatible; otherwise re‑validated.
         """
-        Validate and convert a value to a boolean CtyValue.
 
-        Performs type checking and conversion of various input types to boolean.
-        Handles special cases like string representations ('true', 'false', etc.)
-        and numeric values (0 = False, non-0 = True).
-
-        Args:
-            value: Value to validate and convert to boolean
-
-        Returns:
-            CtyValue with validated boolean value
-
-        Raises:
-            CtyBoolValidationError: If the value cannot be converted to boolean
-        """
-        # Import locally to avoid circular imports
+        # Import here to avoid circular A → B → A
         from pyvider.cty.values import CtyValue
-        logger.debug(f"🔄🔍🔄 Validating value as boolean: {value!r}")
 
-        # Handle None
+        logger.debug("🧰🔍🔄 Validating boolean candidate: %r", value)
+
+        # 1️⃣ Null → dedicated null value
         if value is None:
-            logger.debug("🔄🔍✅ Received null value, returning null CtyValue")
+            logger.debug("🧰✅🔄 null → CtyValue.null")
             return CtyValue.null(self)
 
-        # Handle CtyValue inputs
+        # 2️⃣ Already a CtyValue
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyBool):
-                logger.debug(f"🔄🔍✅ Value is already a CtyValue with CtyBool type")
+                logger.debug("🧰✅🔄 already typed as CtyBool → passthrough")
                 return value
 
-            # Check if types are compatible
-            if not value.type.equal(self) and not value.type.usable_as(self):
-                error_msg = f"Expected boolean, got {value.type}"
-                logger.error(f"🔄❗❌ {error_msg}")
-                raise CtyBoolValidationError(error_msg)
-
-            # Return the value if it's unknown
+            # Unknown values propagate their unknown‑ness
             if value.is_unknown:
+                logger.debug("🧰✅🔄 value is unknown – propagate")
                 return value
 
-            # Extract the inner value for validation
-            value = value.value
+            # Otherwise re‑validate its *inner* value (may raise)
+            value = value.value  # unbox and continue
 
-        # Handle direct boolean
+        # 3️⃣ Native bool
         if isinstance(value, bool):
-            logger.debug(f"🔄🔍✅ Value is a boolean: {value}")
+            logger.debug("🧰✅🔄 python bool accepted → %s", value)
             return CtyValue(vtype=self, value=value)
 
-        # Handle specific string representations
+        # 4️⃣ String input
         if isinstance(value, str):
-            low_val = value.lower()
-            if low_val in ('true', 't', 'yes', 'y', '1', 'on'):
-                logger.debug(f"🔄🔍✅ String '{value}' converted to True")
+            low = value.casefold()
+            if low in _TRUE_STRINGS:
+                logger.debug("🧰✅🔄 string %r → True", value)
                 return CtyValue(vtype=self, value=True)
-            elif low_val in ('false', 'f', 'no', 'n', '0', 'off'):
-                logger.debug(f"🔄🔍✅ String '{value}' converted to False")
+            if low in _FALSE_STRINGS:
+                logger.debug("🧰✅🔄 string %r → False", value)
                 return CtyValue(vtype=self, value=False)
-            else:
-                error_msg = f"Cannot convert string '{value}' to boolean"
-                logger.error(f"🔄❗❌ {error_msg}")
-                raise CtyBoolValidationError(error_msg)
+            logger.error("🧰❌🔄 cannot convert string %r to bool", value)
+            raise CtyBoolValidationError(f"Cannot convert string {value!r} to boolean")
 
-        # Handle numbers (0 = False, non-0 = True)
-        if isinstance(value, (int, float)):
-            bool_val = bool(value)
-            logger.debug(f"🔄🔍✅ Number {value} converted to boolean: {bool_val}")
-            return CtyValue(vtype=self, value=bool_val)
+        # 5️⃣ Numeric input (strict – only 0 / 1)
+        if isinstance(value, (int, float, Decimal)):
+            try:
+                dec = Decimal(value)
+            except (InvalidOperation, ValueError) as exc:  # pragma: no cover – very rare
+                logger.error("🧰❌🔄 invalid numeric value %r: %s", value, exc)
+                raise CtyBoolValidationError(str(exc)) from exc
 
-        # --- REJECT ALL OTHER TYPES ---
-        error_msg = f"Value must be a boolean or a specific convertible string/number, got {type(value).__name__}: {value}"
-        logger.error(f"🔄❗❌ {error_msg}")
-        raise CtyBoolValidationError(error_msg)
+            if dec in (Decimal(0), Decimal(1)):
+                bool_val = bool(dec)
+                logger.debug("🧰✅🔄 numeric %s → %s", dec, bool_val)
+                return CtyValue(vtype=self, value=bool_val)
+
+            logger.error("🧰❌🔄 numeric boolean must be 0 or 1, got %s", dec)
+            raise CtyBoolValidationError("Numeric boolean must be 0 or 1, got " f"{value!r}")
+
+        # 6️⃣ Everything else → error
+        logger.error("🧰❌🔄 unsupported boolean value type: %s", type(value).__name__)
+        raise CtyBoolValidationError(
+            f"Value must be a boolean, 0/1, or convertible string; got {type(value).__name__}: {value!r}"
+        )
 
     def equal(self, other: "CtyType[bool]") -> bool:
-        """
-        Check if this type is equal to another type.
-
-        For boolean types, equality means the other type is also a CtyBool.
-        This implements type identity checking for the type system.
-
-        Args:
-            other: The type to compare with
-
-        Returns:
-            True if the other type is a CtyBool, False otherwise
-        """
         result = isinstance(other, CtyBool)
         logger.debug(f"🔄🔍✅ CtyBool.equal: {result}")
         return result
 
     def usable_as(self, other: "CtyType[bool]") -> bool:
-        """
-        Check if this type can be used in place of another type.
-
-        For boolean types, usability means the other type is also a CtyBool.
-        This implements type compatibility checking for the type system.
-
-        Args:
-            other: The target type to check compatibility with
-
-        Returns:
-            True if this type can be used as the target type, False otherwise
-        """
         result = isinstance(other, CtyBool)
         logger.debug(f"🔄🔍✅ CtyBool.usable_as: {result}")
         return result
 
-    def __str__(self):
+    def __str__(self):    # pragma: no cover – trivial
         return "bool"
 
 # 🐍🏗️🐣

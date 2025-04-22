@@ -19,7 +19,7 @@ information and maintaining immutability of the original values.
 from typing import Any, ClassVar, Generic, TypeVar, final
 from typing import Set as PySet
 from attrs import define, evolve, field
-from pyvider.cty.exceptions import CtySetValidationError
+from pyvider.cty.exceptions import CtyValidationError, CtySetValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
@@ -61,71 +61,71 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any):  # noqa: D401 – short description OK
+        """Validate *value* as a **set** matching :pyattr:`element_type`.
+
+        Acceptable *inputs*:
+        * **``None``** – returns a *null* :class:`~pyvider.cty.values.CtyValue`.
+        * An existing **CtyValue**.
+        * A plain *built‑in* ``set``/``frozenset``.  *Other* iterable types are
+          **rejected** to keep behaviour aligned with go‑cty's explicitness.
         """
-        Validate that the given value conforms to this set type.
-
-        Performs validation on the input to ensure it can be represented as a set
-        with elements of the specified type. The validation process includes checking
-        that the input is iterable, validating each element against the element_type,
-        and constructing a new set with the validated elements.
-
-        Args:
-            value: The value to validate as a set. Can be any iterable except
-                strings and bytes, which are treated as single values rather than
-                collections of characters.
-
-        Returns:
-            CtyValue: A CtyValue instance containing the validated set
-
-        Raises:
-            CtySetValidationError: If value is None, not an iterable, contains nested sets,
-                or contains elements that don't conform to the element_type
-        """
-        logger.debug(f"🔌📝🔄 Validating value as CtySet: {type(value).__name__}")
-
-        # Import locally to avoid circular imports
+        # Local import to avoid circular dependency
         from pyvider.cty.values import CtyValue
 
+        logger.debug("🟣🔍  Validating value %r as CtySet(%s)", value, self.element_type)
+
+        # ---------------------- Null handling ---------------------------
         if value is None:
-            logger.debug("🔌❗❌ Expected iterable, got NoneType")
-            raise CtySetValidationError(f"Expected iterable, got NoneType")
+            logger.debug("🟣✅  Received *None* – returning null CtyValue")
+            return CtyValue.null(self)
 
-        if not hasattr(value, '__iter__') or isinstance(value, (str, bytes)):
-            logger.debug(f"🔌❗❌ Expected iterable, got {type(value).__name__}")
-            raise CtySetValidationError(f"Expected iterable, got {type(value).__name__}")
+        # ------------------- Existing CtyValue -------------------------
+        if isinstance(value, CtyValue):
+            # Exact same set type – return as‑is
+            if isinstance(value.type, CtySet) and value.type.equal(self):
+                logger.debug("🟣✅  Value already a CtyValue with matching CtySet type")
+                return value
 
-        if not value:
-            logger.debug("🔌📝✅ Returning empty set for empty iterable")
-            return CtyValue(vtype=self, value=set())
+            # Unknown stays unknown so long as types are compatible
+            if value.is_unknown and value.type.usable_as(self):
+                logger.debug("🟣✅  Propagating unknown CtyValue through validation")
+                return CtyValue(vtype=self, is_unknown=True)
 
-        validated = set()
-        validation_errors = []
-
-        for i, item in enumerate(value):
+            # Otherwise extract inner content for re‑validation below
             try:
-                if isinstance(item, (set, frozenset)):
-                    logger.debug("🔌❗❌ Nested sets are not allowed in CtySet")
-                    raise CtySetValidationError("Nested sets are not allowed in CtySet.")
+                value = value.value  # may raise if unknown – caught above
+            except ValueError as exc:
+                raise CtySetValidationError(str(exc)) from exc
 
-                # Validate the element
-                validated_item = self.element_type.validate(item)
+        # -------------------- Set coercion -----------------------------
+        if not isinstance(value, (set, frozenset)):
+            err = (
+                "Expected a Python set/frozenset for CtySet validation; "
+                f"got {type(value).__name__}: {value!r}"
+            )
+            logger.error("🟣❌  %s", err)
+            raise CtySetValidationError(err)
 
-                # Add to the validated set
-                validated.add(validated_item)
-                logger.debug(f"🔌📝✅ Validated item {i}: {validated_item}")
-            except Exception as e:
-                error_msg = f"Item {i}: {item} -> {e!s}"
-                logger.debug(f"🔌❗❌ {error_msg}")
-                validation_errors.append(error_msg)
+        validated_items: set[CtyValue] = set()
+        errors: list[str] = []
 
-        if validation_errors:
-            error_msg = "CtySet validation failed:\n" + "\n".join(validation_errors)
-            logger.debug(f"🔌❗❌ {error_msg}")
-            raise CtySetValidationError(error_msg)
+        for idx, raw_item in enumerate(value):
+            try:
+                validated_item = self.element_type.validate(raw_item)
+                validated_items.add(validated_item)
+            except CtyValidationError as e:  # re‑wrap with position info
+                err_msg = f"element {idx}: {e}"
+                errors.append(err_msg)
 
-        logger.debug(f"🔌📝✅ Successfully validated set with {len(validated)} items")
-        return CtyValue(vtype=self, value=validated)
+        if errors:
+            # Aggregate multiple failures so users get the full picture
+            full_msg = "Set validation failed:\n" + "\n".join(errors)
+            logger.error("🟣❌  %s", full_msg)
+            raise CtySetValidationError(full_msg)
+
+        logger.debug("🟣✅  Successfully validated %d element(s)", len(validated_items))
+        return CtyValue(vtype=self, value=frozenset(validated_items))
 
     def add(self, element) -> "CtySet":
         """
@@ -186,20 +186,6 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             raise CtySetValidationError(f"Failed to remove item: {e}")
 
     def usable_as(self, other: "CtyType") -> bool:
-        """
-        Check if this type can be used as the other type.
-
-        Determines if values of this set type can be safely used in contexts
-        expecting the other type. For sets, this requires the other type to be
-        a CtySet with a compatible element type.
-
-        Args:
-            other: The other type to check compatibility with
-
-        Returns:
-            bool: True if this set type can be used as the other type,
-                False otherwise
-        """
         result = isinstance(other, CtySet) and self.element_type.usable_as(other.element_type)
         logger.debug(f"🔌📝✅ CtySet.usable_as: {result}")
         return result
@@ -210,12 +196,6 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
 
         For sets, equality requires the other type to be a CtySet with an
         equal element type. This implements strict type identity checking.
-
-        Args:
-            other: The other type to compare with
-
-        Returns:
-            bool: True if the types are equal, False otherwise
         """
         if not isinstance(other, CtySet):
             logger.debug(f"🔌📝❌ CtySet.equal: False (other is {type(other).__name__})")
@@ -224,50 +204,10 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtySet.equal: {result}")
         return result
 
-    def __eq__(self, other):
-        """
-        Equality operator implementation for direct comparison.
-
-        Compares this set type with another object for equality using Python's
-        standard equality operator (==). For CtySet instances, this checks
-        both type compatibility and set content equality.
-
-        Args:
-            other: Object to compare with
-
-        Returns:
-            bool: True if the objects are equal, False otherwise
-        """
-        if not isinstance(other, CtySet):
-            return False
-        return (
-            self.element_type == other.element_type
-            and self.value == other.value
-        )
-
     def __iter__(self):
-        """
-        Create an iterator over the set elements.
-
-        Allows iteration over the set using standard Python iteration syntax,
-        such as 'for element in set_instance'. Each iteration yields a value
-        from the underlying set.
-
-        Returns:
-            Iterator: An iterator over the set values
-        """
         return iter(self.value)
 
     def __str__(self) -> str:
-        """
-        Get a string representation of this set type.
-
-        Returns a human-readable string representation of the set type,
-        indicating that it's a set and showing the element type.
-
-        Returns:
-            str: A string representation of the form "set(element_type)"
-        """
         return f"set({self.element_type})"
 
 # 🐍🏗️🐣

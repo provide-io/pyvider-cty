@@ -242,8 +242,6 @@ class CtyObject(CtyType[dict[str, Any]]):
                     logger.error(f"🧩❌🔄 {error_msg}")
                     raise CtyAttributeValidationError(error_msg)
 
-                # Return unknown of the attribute's type
-                from pyvider.cty.values import CtyValue
                 return CtyValue.unknown(self.attribute_types[name])
 
             value = value.value
@@ -508,10 +506,6 @@ class CtyObject(CtyType[dict[str, Any]]):
             attribute_types=self.attribute_types,
             optional_attributes=frozenset(new_optional)
         )
-
-    def __eq__(self, other):
-        """Allow direct comparison with == operator."""
-        return isinstance(other, CtyObject) and self.equal(other)
 
     def __iter__(self):
         """Enable iteration over attribute names."""
