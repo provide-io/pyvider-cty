@@ -144,38 +144,7 @@ class CtyBool(CtyType[bool]):
         logger.debug(f"🔄🔍✅ CtyBool.usable_as: {result}")
         return result
 
-    def __eq__(self, other):
-        """
-        Equality operator for direct comparison.
-
-        Compares this boolean type with another object for equality.
-
-        Args:
-            other: Object to compare with
-
-        Returns:
-            True if other is a CtyBool, False otherwise
-        """
-        return isinstance(other, CtyBool)
-
-    def __repr__(self):
-        """
-        Get a detailed string representation of this boolean type.
-
-        Returns:
-            A string representation for debugging purposes
-        """
-        return f"{self.__class__.__name__}()"
-
-    def __hash__(self):
-        """
-        Get a hash value for this boolean type.
-
-        Makes CtyBool instances usable as dictionary keys and in sets.
-
-        Returns:
-            A hash value based on the class identity
-        """
-        return hash(self.__class__)
+    def __str__(self):
+        return "bool"
 
 # 🐍🏗️🐣

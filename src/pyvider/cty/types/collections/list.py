@@ -406,40 +406,23 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtyList.equal: {result}")
         return result
 
-    def __eq__(self, other):
+    def equal(self, other: "CtyType") -> bool:
         """
-        Equality operator implementation for list instances.
+        Two list types are equal when the other type is also a CtyList
+        and their element types are equal *recursively*.
 
-        Compares this list with another value for equality. For two lists
-        to be equal, they must have the same element type and contain
-        equal elements in the same order.
-
-        Args:
-            other: The value to compare with this list
-
-        Returns:
-            bool: True if the lists are equal, False otherwise
+        This method replaces the duplicated ``__eq__`` logic that many
+        subclasses were carrying around.
         """
+        logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s",
+                     self, other)
         if not isinstance(other, CtyList):
+            logger.debug("📋❌🔄  Other type is not CtyList → not equal")
             return False
 
-        # Check element type equality
-        if not self.element_type.equal(other.element_type):
-            return False
-
-        # Check list length
-        if len(self.value) != len(other.value):
-            return False
-
-        # Compare values, not just references
-        for a, b in zip(self.value, other.value):
-            if hasattr(a, 'value') and hasattr(b, 'value'):
-                if a.value != b.value:
-                    return False
-            elif a != b:
-                return False
-
-        return True
+        result = self.element_type.equal(other.element_type)
+        logger.debug("📋🔍✅  Element‑type equality result: %s", result)
+        return result
 
     def __len__(self):
         """

@@ -179,53 +179,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         logger.debug(f"🔢🔍✅ CtyNumber.usable_as: {result}")
         return result
 
-    def __eq__(self, other):
-        """
-        Check equality with another object using Python's equality operator.
-
-        This implements the == operator for CtyNumber objects, making it possible
-        to compare number types directly.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            bool: True if the other object is also a CtyNumber, False otherwise.
-        """
-        return isinstance(other, CtyNumber)
-
-    def __hash__(self):
-        """
-        Calculate a hash value for this number type.
-
-        This makes CtyNumber instances usable as dictionary keys and in sets.
-        All CtyNumber instances have the same hash value since they represent
-        the same type.
-
-        Returns:
-            int: A hash value for this type.
-        """
-        return hash((self.__class__,))
-
-    def __repr__(self):
-        """
-        Get a detailed string representation of this number type.
-
-        This representation is useful for debugging and introspection.
-
-        Returns:
-            str: A string representation showing the class name.
-        """
-        return f"{self.__class__.__name__}()"
-
     def __str__(self):
-        """
-        Get a simple string representation of this type.
-
-        Returns:
-            str: The string "number".
-        """
-        return "number"
-
+        return "string"
 
 # 🐍🏗️🐣

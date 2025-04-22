@@ -123,33 +123,10 @@ class CtyType(ABC, Generic[T]):
         """
         pass
 
-    def __eq__(self, other: "CtyType[T]") -> bool:
-        """
-        Equality operator implementation.
-
-        Provides a standard way to compare types using the == operator.
-        Delegates to the equal() method for type-specific equality logic.
-
-        Args:
-            other: The other type to compare with
-
-        Returns:
-            True if the types are equal, False otherwise
-        """
-        return isinstance(other, CtyType)
-
-    def __str__(self) -> str:
-        """
-        Get a human-readable string representation of the type.
-
-        Returns a concise string representation suitable for display
-        to users. Type implementations should override this to provide
-        type-specific representations.
-
-        Returns:
-            A string representation of the type
-        """
-        return f"{self.__class__.__name__}"
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CtyType):
+            return self.equal(other)
+        return NotImplemented
 
     def __repr__(self) -> str:
         """
@@ -163,5 +140,21 @@ class CtyType(ABC, Generic[T]):
             A detailed string representation of the type
         """
         return f"{self.__class__.__name__}()"
+
+    def __hash__(self) -> int:
+        return hash(repr(self))
+
+    def __str__(self) -> str:
+        """
+        Get a human-readable string representation of the type.
+
+        Returns a concise string representation suitable for display
+        to users. Type implementations should override this to provide
+        type-specific representations.
+
+        Returns:
+            A string representation of the type
+        """
+        return f"{self.__class__.__name__}"
 
 # 🐍🏗️🐣
