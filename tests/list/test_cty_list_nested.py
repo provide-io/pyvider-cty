@@ -26,7 +26,7 @@ class TestCtyListWithNestedTypes:
         self.nested_list = CtyList(element_type=CtyList(element_type=CtyNumber()))
 
 
-    def test_list_of_lists_of_strings_2(self):
+    def test_list_of_lists_of_strings(self):
         """Test a list of lists of strings."""
         # Create a nested list type
         list_of_strings = CtyList(element_type=CtyString())
@@ -61,7 +61,7 @@ class TestCtyListWithNestedTypes:
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[2].value)
         assert [item.value for item in result.value[2].value] == ["f"]
 
-    def test_complex_nesting_2(self):
+    def test_complex_nesting(self):
         """Test complex nested list structures."""
         # Create a complex nested structure: List of List of List of Number
         inner_list = CtyList(element_type=CtyNumber())

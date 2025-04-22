@@ -13,7 +13,7 @@ from pyvider.cty import (
     CtyList,
 )
 
-def test_cty_list_large_list_2():
+def test_cty_list_large_list():
     """Test validation of a large list."""
     large_list = CtyList(element_type=CtyString())
     data = ["item"] * 1000
@@ -32,7 +32,7 @@ def test_cty_list_large_list_2():
         assert isinstance(item.type, CtyString)
         assert item.value == "item"
 
-def test_cty_list_dynamic_schema_2():
+def test_cty_list_dynamic_schema():
     """Test validation with dynamically nested structure."""
     dynamic_list = CtyList(element_type=CtyList(element_type=CtyString()))
     validated = dynamic_list.validate([["one", "two"], ["three"]])
