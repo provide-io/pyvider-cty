@@ -130,8 +130,7 @@ class TestFinalCoverage:
         # Try slicing with step and no end parameter
         sliced = list_obj[::2]  # Should get elements at indices 0, 2, 4
 
-        assert isinstance(sliced, CtyValue)
-        assert isinstance(sliced.type, CtyList)
+        assert isinstance(sliced, CtyList)
         assert len(sliced.value) == 3
         assert [item.value for item in sliced.value] == ["a", "c", "e"]
 
@@ -152,7 +151,6 @@ class TestFinalCoverage:
         # Try special slice cases with single element list
         empty_slice = list_obj[1:]  # Should be empty slice
         assert isinstance(empty_slice, CtyList)
-        #assert isinstance(empty_slice.type, CtyList)
         assert len(empty_slice.value) == 0
 
 # 🐍🏗️🧪

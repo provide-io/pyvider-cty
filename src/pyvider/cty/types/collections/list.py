@@ -250,7 +250,8 @@ class CtyList(CtyType[list[T]], Generic[T]):
             new_list.append(validated_item)
 
             logger.debug(f"🔌📝✅ Appended item: {validated_item}")
-            return evolve(self, value=new_list)
+            from pyvider.cty.values import CtyValue
+            return CtyValue(vtype=self, value=new_list)
         except Exception as e:
             message = f"Failed to append item: {e}"
             logger.error(f"🔌❗❌ {message}")
@@ -294,8 +295,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
 
         from pyvider.cty.values import CtyValue
-        return evolve(self, value=sliced_value)
-        #return CtyValue(vtype=self, value=sliced_value)
+        return CtyValue(vtype=self, value=sliced_value)
 
     def concat(self, other: "CtyList[T]") -> "CtyList[T]":
         """
@@ -552,3 +552,4 @@ class CtyList(CtyType[list[T]], Generic[T]):
         return f"CtyList(element_type={self.element_type!r})"
 
 # 🐍🏗️🐣
+

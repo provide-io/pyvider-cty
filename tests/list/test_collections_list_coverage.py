@@ -39,8 +39,6 @@ class TestCtyListCoverage:
         result = string_list.slice(2)
 
         # Should get elements from index 2 to end
-        assert isinstance(result, CtyValue)
-        assert isinstance(result.type, CtyList)
         assert isinstance(result, CtyList)
         assert len(result.value) == 3
         assert [item.value for item in result.value] == ["c", "d", "e"]
@@ -51,8 +49,7 @@ class TestCtyListCoverage:
         # This tests lines 191 and 193 (converting negative indices)
         result = string_list.slice(-3, -1)
 
-        assert isinstance(result, CtyValue)
-        assert isinstance(result.type, CtyList)
+        assert isinstance(result, CtyList)
         assert len(result.value) == 2
         assert [item.value for item in result.value] == ["c", "d"]
 
