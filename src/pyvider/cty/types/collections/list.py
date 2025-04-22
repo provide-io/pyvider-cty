@@ -127,15 +127,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 if isinstance(item, CtyValue) and isinstance(item.type, self.element_type.__class__):
                     validated_item = item
                     logger.debug(f"🔌📝✅ Item {i} is already a CtyValue: {item}")
-                elif isinstance(item, CtyList) and isinstance(self.element_type, CtyList):
-                    # Convert CtyList to CtyValue wrapping a CtyList
-                    validated_item = CtyValue(vtype=self.element_type, value=item.value)
-                    logger.debug(f"🔌📝✅ Item {i} is a CtyList, wrapping as CtyValue")
                 else:
                     # Validate and wrap
-                    validated = self.element_type.validate(item)
-                    # validate() always returns a CtyValue
-                    validated_item = validated
+                    validated_item = self.element_type.validate(item)
                     logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
 
                 validated_list.append(validated_item)
@@ -239,25 +233,18 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         try:
             # Validate the item against element_type
-            if isinstance(item, CtyType) and item.__class__ == self.element_type.__class__:
-                validated_item = item
-                logger.debug(f"🔌📝✅ Item is already a {self.element_type.__class__.__name__}, no validation needed")
-            else:
-                validated_item = self.element_type.validate(item)
+            validated_item = self.element_type.validate(item)
 
             # Create a new list with the additional item
             new_list = list(self.value)
             new_list.append(validated_item)
 
             logger.debug(f"🔌📝✅ Appended item: {validated_item}")
-            from pyvider.cty.values import CtyValue
-            return CtyValue(vtype=self, value=new_list)
+            return evolve(self, value=new_list)
         except Exception as e:
             message = f"Failed to append item: {e}"
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
-
-
 
     def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
         """
@@ -286,7 +273,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         if end < 0:
             end = list_length + end
 
-        # Clamp indices to valid ranges - this fixes the extreme indices issue
+        # Clamp indices to valid ranges
         start = max(0, min(start, list_length))
         end = max(start, min(end, list_length))
 
@@ -294,8 +281,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         sliced_value = self.value[start:end]
         logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
 
-        from pyvider.cty.values import CtyValue
-        return CtyValue(vtype=self, value=sliced_value)
+        return evolve(self, value=sliced_value)
 
     def concat(self, other: "CtyList[T]") -> "CtyList[T]":
         """
@@ -333,8 +319,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         concat_value = list(self.value) + list(other.value)
         logger.debug(f"🔌📝✅ Concatenated lists, result size: {len(concat_value)}")
 
-        from pyvider.cty.values import CtyValue
-        return CtyValue(vtype=self, value=concat_value)
+        return evolve(self, value=concat_value)
 
     def contains(self, item: Any) -> bool:
         """
@@ -377,7 +362,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.debug(f"🔌🔍❌ Validation failed: {e}")
             return False
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: CtyType) -> bool:
         """
         Check if this type can be used as the other type.
 
@@ -399,7 +384,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtyList.usable_as: {result}")
         return result
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
         Check if this type is equal to the other type.
 
@@ -481,7 +466,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: Union[int, slice]):
+    def __getitem__(self, index: Union[int, slice]) -> Union["CtyValue", "CtyList"]:
         """
         Support for indexing and slicing operations.
 
@@ -495,8 +480,8 @@ class CtyList(CtyType[list[T]], Generic[T]):
             index: An integer index or slice object
 
         Returns:
-            CtyValue: The element at the specified index, or
-            CtyValue: A new CtyValue containing the CtyList with sliced elements
+            CtyValue: The element at the specified index (for integer indices)
+            CtyList: A new CtyList with sliced elements (for slice objects)
 
         Raises:
             IndexError: If the index is out of range
@@ -513,8 +498,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                     if i < len(self.value):
                         result.append(self.value[i])
 
-                from pyvider.cty.values import CtyValue
-                return CtyValue(vtype=self, value=result)
+                return evolve(self, value=result)
 
         try:
             return self.value[index]
@@ -552,4 +536,3 @@ class CtyList(CtyType[list[T]], Generic[T]):
         return f"CtyList(element_type={self.element_type!r})"
 
 # 🐍🏗️🐣
-
