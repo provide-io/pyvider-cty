@@ -410,10 +410,8 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         Two list types are equal when the other type is also a CtyList
         and their element types are equal *recursively*.
-
-        This method replaces the duplicated ``__eq__`` logic that many
-        subclasses were carrying around.
         """
+
         logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s",
                      self, other)
         if not isinstance(other, CtyList):
