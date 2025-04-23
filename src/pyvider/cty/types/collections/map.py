@@ -486,7 +486,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         """
         return f"CtyMap(key_type={self.key_type!r}, value_type={self.value_type!r})"
 
-
+@define
 class ElementIterator:
     """
     Iterator for map elements with consistent ordering.

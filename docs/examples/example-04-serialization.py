@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # docs/examples/example-04-serialization.py
 
+# Corrected imports and usage for serialization
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyValue
-from pyvider.cty.encoding.json_serializer import JsonSerializer
+from pyvider.cty.conversion import CtyWireFormat, WireFormatType, JSON
 
 # Create a value to serialize
 config_type = CtyObject(
@@ -17,14 +18,29 @@ config_data = {
     "timeout": 30
 }
 
-validated = config_type.validate(config_data)
-config_val = CtyValue(config_type, validated)
+# Validation returns a CtyValue now, no need to wrap again
+config_val = config_type.validate(config_data)
 
-# Serialize to JSON
-serializer = JsonSerializer()
-json_bytes = serializer.serialize(config_val)
-print(f"Serialized: {json_bytes.decode('utf-8')}")
+# --- Corrected Serialization/Deserialization ---
+# Use CtyWireFormat which delegates to registered formatters (like JsonEncoder)
+try:
+    # Marshal using the default format (JSON)
+    # Pass options={'format_type': JSON} if explicit format needed
+    json_bytes = CtyWireFormat.marshal(config_val, options={'format_type': JSON})
+    print(f"Serialized: {json_bytes.decode('utf-8')}")
 
-# Deserialize
-deserialized = serializer.deserialize(json_bytes)
-print(f"Deserialized: {deserialized}")
+    # Unmarshal, assuming JSON format (can add format detection if needed)
+    # Pass expected_type=config_type for validation upon unmarshalling
+    deserialized = CtyWireFormat.unmarshal(
+        json_bytes,
+        expected_type=config_type,
+        options={'format_type': JSON}
+    )
+    print(f"Deserialized: {deserialized}")
+    # Access deserialized data safely
+    if not deserialized.is_null and not deserialized.is_unknown:
+        print(f"Deserialized URL: {deserialized['api_url'].value}")
+        print(f"Deserialized Timeout: {deserialized['timeout'].value}")
+
+except Exception as e:
+    print(f"Serialization/Deserialization Error: {e}")

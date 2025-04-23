@@ -6,10 +6,11 @@ from decimal import Decimal
 from typing import Dict, List, Any
 
 from pyvider.cty import (
-    CtyObject, CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic, 
+    CtyObject, CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic,
     CtyValue, CtyTuple
 )
-from pyvider.cty.encoding import serialize_with_type, deserialize_with_type
+# Use the actual conversion API
+from pyvider.cty.conversion import CtyWireFormat, JSON, MSGPACK
 from pyvider.cty.path import CtyPath
 from pyvider.cty.exceptions import CtyValidationError, AttributePathError
 
@@ -42,7 +43,7 @@ instance_type = CtyObject(
         "name": CtyString(),
         "instance_type": CtyString(),
         "state": CtyString(),
-        "launched_at": CtyString(),
+        "launched_at": CtyString(), # Assuming string for simplicity
         "network_interfaces": CtyList(element_type=network_interface_type),
         "volumes": CtyList(element_type=volume_type),
         "tags": CtyMap(key_type=CtyString(), value_type=CtyString()),
@@ -109,37 +110,66 @@ try:
     }
 
     # Validate the instance data
-    validated = instance_type.validate(instance_data)
-    instance_val = CtyValue(vtype=instance_type, value=validated)
+    instance_val = instance_type.validate(instance_data)
     print(f"Successfully validated complex instance schema")
 
-    # Serialize and deserialize
-    serialized = serialize_with_type(instance_val)
-    print(f"Serialized size: {len(serialized)} bytes")
-    
-    deserialized = deserialize_with_type(serialized)
-    print(f"Deserialized instance ID: {deserialized.value['id'].value}")
+    # --- Corrected Serialization ---
+    # Serialize using CtyWireFormat
+    serialized = CtyWireFormat.marshal(instance_val, options={'format_type': JSON})
+    print(f"\nSerialized size: {len(serialized)} bytes")
 
-    # Navigate using path
-    async def path_navigation():
+    # Deserialize using CtyWireFormat
+    deserialized = CtyWireFormat.unmarshal(
+        serialized,
+        expected_type=instance_type,
+        options={'format_type': JSON}
+    )
+    if not deserialized.is_null and not deserialized.is_unknown:
+         print(f"Deserialized instance ID: {deserialized['id'].value}")
+    else:
+         print("Deserialized value is null or unknown.")
+
+    # --- Corrected Path Navigation ---
+    # Path navigation does not need to be async
+    def path_navigation():
         try:
             # Get the CPU utilization metric using path navigation
-            metric_path = CtyPath.get_attr("metadata").key_step("performance_metrics").key_step("cpu_utilization")
-            cpu_metric = await metric_path.apply_path(instance_val.value)
-            print(f"CPU Utilization: {cpu_metric.value}%")
-            
-            # Get the primary network interface
-            for i, nic in enumerate(instance_val.value["network_interfaces"].value):
-                if nic["type"].value == "primary":
-                    ip_path = CtyPath.get_attr("network_interfaces").index_step(i).child("ip_addresses").index_step(0)
-                    primary_ip = await ip_path.apply_path(instance_val.value)
-                    print(f"Primary IP: {primary_ip.value}")
-                    break
-                    
+            # Corrected: Use .key() instead of non-existent key_step
+            metric_path = CtyPath.get_attr("metadata") \
+                               .key("performance_metrics") \
+                               .key("cpu_utilization")
+            # apply_path is not async and operates on the CtyValue
+            cpu_metric = metric_path.apply_path(instance_val)
+            print(f"\nCPU Utilization: {cpu_metric.value}%")
+
+            # Get the primary network interface IP
+            primary_ip_val = None
+            if not instance_val['network_interfaces'].is_null:
+                for i, nic_val in enumerate(instance_val['network_interfaces'].value):
+                     if not nic_val.is_null and nic_val['type'].value == "primary":
+                          # Ensure ip_addresses is not null/unknown before indexing
+                          ip_list_val = nic_val['ip_addresses']
+                          if not ip_list_val.is_null and not ip_list_val.is_unknown and len(ip_list_val.value) > 0:
+                               ip_path = CtyPath.get_attr("network_interfaces") \
+                                            .index_step(i) \
+                                            .child("ip_addresses") \
+                                            .index_step(0)
+                               primary_ip_val = ip_path.apply_path(instance_val)
+                               break # Found primary
+
+            if primary_ip_val:
+                print(f"Primary IP: {primary_ip_val.value}")
+            else:
+                print("Primary IP not found or NIC/IP list was null/empty.")
+
         except AttributePathError as e:
             print(f"Path error: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred during path navigation: {e}")
 
-    asyncio.run(path_navigation())
+    path_navigation()
 
 except CtyValidationError as e:
     print(f"Validation error: {e}")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")

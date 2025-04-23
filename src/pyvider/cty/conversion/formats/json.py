@@ -200,35 +200,27 @@ class JsonEncoder(FormatEncoder):
             result[cls.NULL_MARKER] = True
             return result
 
-        # Add value based on type using match/case
-        match value.value:
-            case dict():
-                # For maps, convert keys and values
-                serialized_dict = {}
-                for k, v in value.value.items():
-                    v_dict = cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
-                    serialized_dict[k] = v_dict
-                result["value"] = serialized_dict
+        raw_internal_value = value.value # Get the internal Python value
 
-            case list():
-                # For lists, convert each element
-                result["value"] = [
-                    cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
-                    for v in value.value
-                ]
+        def recursively_encode_value(item: Any) -> Any:
+            """Helper to recursively convert items."""
+            if isinstance(item, CtyValue):
+                # If item is CtyValue, convert it to dict
+                return cls._value_to_dict(item, preserve_type)
+            elif isinstance(item, dict):
+                # If item is dict, recurse on its values
+                return {k: recursively_encode_value(v) for k, v in item.items()}
+            elif isinstance(item, (list, tuple)):
+                # If item is list/tuple, recurse on its elements
+                return [recursively_encode_value(elem) for elem in item]
+            elif isinstance(item, Decimal):
+                 # Explicitly handle Decimal here if needed, though _json_default covers it
+                 return str(item)
+            # Otherwise, return primitive types as is (int, float, bool, str, None)
+            return item
 
-            case Decimal():
-                # Convert Decimal to string for JSON compatibility
-                result["value"] = str(value.value)
-
-            case _:
-                # Use the raw value for primitives
-                result["value"] = value.value
-
-        # Add marks if present
-        marks = getattr(value, "_marks", None)
-        if marks:
-            result[cls.MARKS_MARKER] = list(str(m) for m in marks)
+        # Process the raw internal value using the recursive helper
+        result["value"] = recursively_encode_value(raw_internal_value)
 
         return result
 
