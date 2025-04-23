@@ -263,7 +263,7 @@ class CtyWireFormat(WireFormat):
         # Handle CtyValue with expected CtyType
         if isinstance(result, CtyValue) and issubclass(expected_type, CtyType):
             if isinstance(result.type, expected_type):
-                return cast(T, result.type)
+                return cast(T, result)
             else:
                 error_msg = f"Expected CtyType {expected_type.__name__}, got {result.type.__class__.__name__}"
                 logger.error(f"🧩🔍❌ {error_msg}")

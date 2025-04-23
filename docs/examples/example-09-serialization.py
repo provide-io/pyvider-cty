@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # docs/examples/example-09-serialization.py
 
+# Corrected imports and usage for serialization
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyValue
-from pyvider.cty.encoding import (
-    serialize, deserialize, serialize_with_type, deserialize_with_type
-)
+# Use the actual conversion API
+from pyvider.cty.conversion import CtyWireFormat, JSON, MSGPACK
 
 # Define a complex type
 cluster_type = CtyObject(
@@ -22,22 +22,40 @@ cluster_data = {
     "regions": ["us-west-1", "eu-west-1", "ap-southeast-1"]
 }
 
-validated = cluster_type.validate(cluster_data)
-cluster_val = CtyValue(vtype=cluster_type, value=validated)
+# Validate returns a CtyValue
+cluster_val = cluster_type.validate(cluster_data)
 
-# Serialize to different formats
-json_data = serialize(cluster_val, format_name="json")
-msgpack_data = serialize(cluster_val, format_name="msgpack")
+# --- Corrected Serialization/Deserialization ---
+try:
+    # Use CtyWireFormat marshal/unmarshal
+    json_data = CtyWireFormat.marshal(cluster_val, options={'format_type': JSON})
+    msgpack_data = CtyWireFormat.marshal(cluster_val, options={'format_type': MSGPACK})
 
-# Serialize with type preservation
-typed_data = serialize_with_type(cluster_val)
+    # "Serialize with type" implies ensuring type info is included,
+    # which marshal should do. We'll use JSON as the example typed data.
+    typed_data = json_data
 
-print(f"JSON size: {len(json_data)} bytes")
-print(f"MessagePack size: {len(msgpack_data)} bytes")
-print(f"Typed data size: {len(typed_data)} bytes")
+    print(f"JSON size: {len(json_data)} bytes")
+    print(f"MessagePack size: {len(msgpack_data)} bytes")
+    print(f"Typed data size (JSON): {len(typed_data)} bytes")
 
-# Deserialize with type information
-recovered = deserialize_with_type(typed_data)
-print(f"Recovered type: {recovered.type.__class__.__name__}")
-print(f"Recovered name: {recovered.value['name'].value}")
-print(f"Recovered regions: {[r.value for r in recovered.value['regions'].value]}")
+    # Deserialize with type information by providing expected_type
+    recovered = CtyWireFormat.unmarshal(
+        typed_data,
+        expected_type=cluster_type,
+        options={'format_type': JSON} # Specify format if not auto-detectable
+    )
+
+    print(f"\nRecovered type: {recovered.type.__class__.__name__}")
+    if not recovered.is_null and not recovered.is_unknown:
+        print(f"Recovered name: {recovered['name'].value}")
+        regions_list = recovered['regions']
+        if not regions_list.is_null and not regions_list.is_unknown:
+             print(f"Recovered regions: {[r.value for r in regions_list.value]}")
+        else:
+             print("Recovered regions: <null or unknown>")
+    else:
+        print("Recovered value is null or unknown.")
+
+except Exception as e:
+    print(f"Serialization/Deserialization Error: {e}")
