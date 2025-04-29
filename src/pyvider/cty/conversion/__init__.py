@@ -29,7 +29,6 @@ from pyvider.cty.conversion.format import (
     validate_type_format,
     standardize_type_string,
     ensure_quoted_bytes,
-    normalize_type_object, # Added normalize_type_object
 )
 
 # Re-export type marshaling utilities
@@ -40,36 +39,21 @@ from pyvider.cty.conversion.marshal import (
     unmarshal_json,
 )
 
-# Re-export JSON conversion utilities
-# from pyvider.cty.conversion.formats.json import JsonEncoder # Imported below
-# from pyvider.cty.conversion.formats.msgpack import MsgPackEncoder # Imported below
+# Import core wire format system
+from pyvider.core.conversion.wire_format import WireFormatType
 
-# Re-export wire format implementation
-from pyvider.cty.conversion.wire import CtyWireFormat # Imports the CTY-specific wire format
+# --- Ensure implementation modules are imported for registration ---
+import pyvider.cty.conversion.formats.json
+import pyvider.cty.conversion.formats.msgpack
+import pyvider.cty.conversion.wire
 
-# Export format-specific utilities
-from pyvider.cty.conversion.formats import (
+# Re-export format-specific utilities
+from pyvider.cty.conversion.formats.base import (
     FormatEncoder,
     register_formatter,
     get_formatter,
     list_formatters,
-    JSON,
-    MSGPACK,
 )
-
-# --- FIX: Explicitly import implementation modules to trigger registration ---
-# This ensures @register_formatter runs for JsonEncoder and MsgPackEncoder
-# Also ensures CtyWireFormat registration runs via its module import.
-from pyvider.cty.conversion.formats import json as _json_fmt
-from pyvider.cty.conversion.formats import msgpack as _msgpack_fmt
-from pyvider.cty.conversion import wire as _cty_wire_fmt # Ensure CtyWireFormat registers
-# --- END FIX ---
-
-# Re-export format types from core
-from pyvider.core.conversion.wire_format import WireFormatType
-
-# Register wire format (ensures CtyWireFormat registration happens)
-logger.debug("🧩🔄🔧 Initializing CTY conversion module")
 
 __all__ = [
     # Format standardization
@@ -79,30 +63,23 @@ __all__ = [
     "validate_type_format",
     "standardize_type_string",
     "ensure_quoted_bytes",
-    "normalize_type_object", # Added
 
     # Type marshaling
     "marshal_type",
     "unmarshal_type",
-
     "marshal_json",
     "unmarshal_json",
 
     # Wire format
-    "CtyWireFormat", # Export the CTY wire format implementation
-    "WireFormatType", # Re-export from core
+    "WireFormatType",
 
     # Format-specific utilities
     "FormatEncoder",
     "register_formatter",
     "get_formatter",
     "list_formatters",
-    "JSON",
-    "MSGPACK",
-
-    # Format implementations (can be accessed via get_formatter)
-    # "JsonEncoder",
-    # "MsgPackEncoder",
 ]
+
+logger.debug("🧩🔄🔧 CTY conversion module initialized")
 
 # 🐍🏗️🐣
