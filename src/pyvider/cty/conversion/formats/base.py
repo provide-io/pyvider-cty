@@ -1,5 +1,5 @@
 #
-# pyvider/cty/conversion/formats/__init__.py
+# pyvider/cty/conversion/formats/base.py
 #
 
 """
@@ -17,11 +17,14 @@ selection.
 from enum import Enum, auto
 from typing import ClassVar, Dict, Optional, Type, TypeVar, Any, Final
 
-
 from pyvider.telemetry import logger
 from pyvider.core.conversion.wire_format import WireFormatType
 
 T = TypeVar('T')
+
+# Wire format constants
+JSON = WireFormatType.JSON
+MSGPACK = WireFormatType.MSGPACK
 
 class FormatEncoder:
     """
@@ -78,7 +81,6 @@ class FormatEncoder:
 
 # Global registry of format encoders
 _ENCODERS: Dict[WireFormatType, Type[FormatEncoder]] = {}
-
 
 def register_formatter(format_type: WireFormatType):
     """
@@ -141,17 +143,5 @@ def list_formatters() -> Dict[WireFormatType, str]:
         Dictionary mapping format types to encoder class names
     """
     return {fmt: encoder.__name__ for fmt, encoder in _ENCODERS.items()}
-
-JSON: Final = WireFormatType.JSON
-MSGPACK: Final = WireFormatType.MSGPACK
-
-__all__ = [
-    'FormatEncoder',
-    'register_formatter',
-    'get_formatter',
-    'list_formatters',
-    'JSON',
-    'MSGPACK',
-]
 
 # 🐍🏗️🐣
