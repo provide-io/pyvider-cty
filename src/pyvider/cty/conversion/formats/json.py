@@ -25,7 +25,7 @@ from pyvider.telemetry import logger
 from pyvider.core.conversion.wire_format import WireFormatType
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.values import CtyValue
-from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
+from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 
 T = TypeVar('T')
 
