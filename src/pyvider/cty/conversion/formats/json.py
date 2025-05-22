@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # pyvider/cty/conversion/formats/json.py
 #
@@ -25,6 +24,8 @@ from pyvider.telemetry import logger
 from pyvider.core.conversion.wire_format import WireFormatType
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.values import CtyValue
+# Import Cty types for type checking
+from pyvider.cty.types import CtyString, CtyNumber, CtyBool, CtyList, CtyMap 
 from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 
 T = TypeVar('T')
@@ -202,25 +203,36 @@ class JsonEncoder(FormatEncoder):
 
         raw_internal_value = value.value # Get the internal Python value
 
-        def recursively_encode_value(item: Any) -> Any:
+        # Determine if the current CtyValue is a collection type
+        is_current_value_collection = isinstance(value.type, (CtyList, CtyMap))
+
+        def recursively_encode_value(item: Any, is_direct_collection_member: bool = False) -> Any:
             """Helper to recursively convert items."""
             if isinstance(item, CtyValue):
-                # If item is CtyValue, convert it to dict
+                # If item is a primitive CtyValue and directly in a collection, return its raw value
+                if is_direct_collection_member and isinstance(item.type, (CtyString, CtyNumber, CtyBool)):
+                    return item.value
+                # Otherwise, convert CtyValue to dict (applies to nested objects/collections or non-collection items)
                 return cls._value_to_dict(item, preserve_type)
             elif isinstance(item, dict):
-                # If item is dict, recurse on its values
-                return {k: recursively_encode_value(v) for k, v in item.items()}
+                # If item is dict, recurse on its values.
+                # The 'is_direct_collection_member' flag is passed based on whether the PARENT `value` is a CtyMap.
+                # This means values *within this dict* are considered direct members of the CtyMap.
+                return {k: recursively_encode_value(v, is_direct_collection_member=is_current_value_collection and isinstance(value.type, CtyMap)) for k, v in item.items()}
             elif isinstance(item, (list, tuple)):
-                # If item is list/tuple, recurse on its elements
-                return [recursively_encode_value(elem) for elem in item]
+                # If item is list/tuple, recurse on its elements.
+                # The 'is_direct_collection_member' flag is passed based on whether the PARENT `value` is a CtyList.
+                # This means elements *within this list* are considered direct members of the CtyList.
+                return [recursively_encode_value(elem, is_direct_collection_member=is_current_value_collection and isinstance(value.type, CtyList)) for elem in item]
             elif isinstance(item, Decimal):
-                 # Explicitly handle Decimal here if needed, though _json_default covers it
                  return str(item)
-            # Otherwise, return primitive types as is (int, float, bool, str, None)
+            # Otherwise, return primitive Python types as is
             return item
 
-        # Process the raw internal value using the recursive helper
-        result["value"] = recursively_encode_value(raw_internal_value)
+        # Process the raw internal value using the recursive helper.
+        # For the top-level "value" field, its contents are direct members of a collection
+        # if the CtyValue itself (`value`) is a CtyList or CtyMap.
+        result["value"] = recursively_encode_value(raw_internal_value, is_direct_collection_member=is_current_value_collection)
 
         return result
 
