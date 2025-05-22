@@ -5,7 +5,7 @@
 name = "pyvider-cty"
 description = "Pyvider Cty Package"
 version = "0.1.1"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 readme = "README.md"
 authors = [
     {name = "Tim Perkins", email = "code@tim.life"}
