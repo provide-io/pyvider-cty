@@ -10,7 +10,6 @@ cd ${ENV_SCRIPT_DIR}
 
 uv venv
 uv sync --all-groups --dev
-uv pip install -e ../pyvider-telemetry
 uv pip install -e ../pyvider-core
 
 source .venv/bin/activate
