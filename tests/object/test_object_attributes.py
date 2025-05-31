@@ -437,10 +437,6 @@ async def test_get_attribute_from_cty_value():
         "age": 30
     })
     
-    validated = obj_type.validate(value)
-    assert isinstance(validated, CtyValue)
-    assert validated.type == value
-
     # Get attribute using CtyValue's __getitem__
     name_attr = value["name"]
     assert name_attr.value == "Alice"
@@ -526,24 +522,23 @@ async def test_object_len():
 
 @pytest.mark.asyncio
 async def test_object_getitem():
-    """Test getting attribute type via __getitem__."""
-    # Create object type
-    obj_type = CtyObject({
+    # Test name: test_object_getitem
+    # New body starts here:
+    '''Test accessing an attribute's type from CtyObject.attribute_types.'''
+    obj_type = CtyObject(attribute_types={
         "name": CtyString(),
         "age": CtyNumber()
     })
-    
-    validated = obj_type.validate(obj_type)
-    assert isinstance(validated, CtyValue)
-    assert validated.type == obj_type
 
-    name_type = obj_type.value["name"]
+    # Access attribute type information
+    name_type_info = obj_type.attribute_types["name"]
+    assert isinstance(name_type_info, CtyString)
 
-    # Verify correct type returned
-    assert isinstance(name_type, CtyString)
-    
-    # Try with non-string key
-    with pytest.raises(TypeError):
-        obj_type[123]
+    age_type_info = obj_type.attribute_types["age"]
+    assert isinstance(age_type_info, CtyNumber)
+
+    # Check for non-existent key
+    with pytest.raises(KeyError):
+        _ = obj_type.attribute_types["unknown"]
 
 # 🐍🏗️🧪

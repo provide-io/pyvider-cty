@@ -10,6 +10,7 @@ It handles validation, conversion from various input types to boolean values,
 and implements type compatibility checking with strong validation guarantees.
 """
 
+from decimal import Decimal, InvalidOperation
 from typing import Any, ClassVar
 
 from attrs import define, field
@@ -17,6 +18,10 @@ from attrs import define, field
 from pyvider.cty.exceptions import CtyBoolValidationError, CtyValidationError
 from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
+
+# Define frozensets for true and false string representations
+_TRUE_STRINGS = frozenset({"1", "t", "T", "true", "TRUE", "True"})
+_FALSE_STRINGS = frozenset({"0", "f", "F", "false", "FALSE", "False"})
 
 @define(frozen=True, slots=True)
 class CtyBool(CtyType[bool]):
