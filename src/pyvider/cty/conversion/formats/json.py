@@ -221,10 +221,37 @@ class JsonEncoder(FormatEncoder):
                         temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
                     return temp_res
 
-                # If item is a primitive CtyValue and directly in a collection, return its raw value
-                if is_direct_collection_member and isinstance(item.type, (CtyString, CtyNumber, CtyBool)):
-                    return item.value
-                # Otherwise, convert CtyValue to dict
+                # Handle unknown and null CtyValues first (as done previously)
+                if item.is_unknown:
+                    temp_res = {cls.UNKNOWN_MARKER: True}
+                    if preserve_type: # preserve_type is from the outer scope of _value_to_dict
+                        temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
+                    return temp_res
+                if item.is_null:
+                    temp_res = {cls.NULL_MARKER: True}
+                    if preserve_type: # preserve_type is from the outer scope of _value_to_dict
+                        temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
+                    return temp_res
+
+                # Simplification logic for direct collection members
+                if is_direct_collection_member:
+                    actual_value = item.value # This is the raw Python value
+
+                    # Case 1: Item is CtyDynamic holding a primitive Python type
+                    # Need to import CtyDynamic for this check
+                    from pyvider.cty.types import CtyDynamic
+                    if isinstance(item.type, CtyDynamic) and isinstance(actual_value, (str, int, float, bool, Decimal)):
+                        if isinstance(actual_value, Decimal):
+                            return str(actual_value)
+                        return actual_value
+
+                    # Case 2: Item is directly a CtyString, CtyNumber, or CtyBool
+                    elif isinstance(item.type, (CtyString, CtyNumber, CtyBool)):
+                        if isinstance(actual_value, Decimal): # Specifically for CtyNumber holding Decimal
+                            return str(actual_value)
+                        return actual_value
+
+                # If not simplified (e.g., not direct member, or complex type, or CtyDynamic holding complex), then serialize fully.
                 return cls._value_to_dict(item, preserve_type)
             elif isinstance(item, dict):
                 # If item is dict, recurse on its values.

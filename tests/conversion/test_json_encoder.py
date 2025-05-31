@@ -230,21 +230,14 @@ def test_encode_collection_with_unknown_value():
 def test_encode_list_with_mixed_primitives_and_complex():
     """Test a list containing mixed primitive CtyValues and a CtyMap."""
     inner_map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
-    cty_list_val = CtyValue.list(
-        CtyString(), # Element type primarily for primitives, complex types will override
-        [
-            "text_element",
-            CtyValue.map(inner_map_type.key_type, inner_map_type.value_type, {"map_key": "map_value"}),
-            123
-        ]
-    )
+    cty_list_val = CtyValue.list(CtyString(), ["text_element", "another_string", "123"])
     # Need to refine CtyList creation if element types are truly heterogeneous.
     # CtyList has a single element_type. For mixed types, one typically uses CtyTuple or CtyDynamic for elements.
     # Let's assume CtyDynamic for the list element type for true mixed-type support.
 
     dynamic_list_val = CtyValue.list_of_dynamic([
         CtyValue.string("text_element"),
-        CtyValue.map(key_type=CtyString(), value_type=CtyString(), value={"map_key": "map_value"}),
+        CtyValue.map(key_type=CtyString(), value_type=CtyString(), items={"map_key": "map_value"}),
         CtyValue.number(123),
         CtyValue.bool(True)
     ])
@@ -270,7 +263,7 @@ def test_encode_map_with_mixed_primitives_and_complex_values():
         CtyString(), # Key type
         {
             "primitive_str": CtyValue.string("hello"),
-            "complex_list": CtyValue.list(element_type=CtyString(), value=["a", "b"]),
+            "complex_list": CtyValue.list(element_type=CtyString(), elements=["a", "b"]),
             "primitive_num": CtyValue.number(42)
         }
     )
