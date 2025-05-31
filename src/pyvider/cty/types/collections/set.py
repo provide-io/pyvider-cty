@@ -98,10 +98,23 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
             except ValueError as exc:
                 raise CtySetValidationError(str(exc)) from exc
 
+        # NEW: Handle list or tuple input by converting to a set
+        if isinstance(value, (list, tuple)):
+            try:
+                value = set(value)
+                logger.debug("🟣🔄  Converted input list/tuple to set for validation")
+            except TypeError as e: # Handles unhashable items if any
+                err = (
+                    f"Input list/tuple could not be converted to set (possibly unhashable elements): {e}; "
+                    f"got {type(value).__name__}: {value!r}"
+                )
+                logger.error("🟣❌  %s", err)
+                raise CtySetValidationError(err) from e
+
         # -------------------- Set coercion -----------------------------
         if not isinstance(value, (set, frozenset)):
             err = (
-                "Expected a Python set/frozenset for CtySet validation; "
+                "Expected a Python set/frozenset (or convertible list/tuple) for CtySet validation; "
                 f"got {type(value).__name__}: {value!r}"
             )
             logger.error("🟣❌  %s", err)

@@ -469,22 +469,22 @@ async def test_object_null_attribute_access():
 
 @pytest.mark.asyncio
 async def test_object_unknown_attribute_access():
-    """Test accessing attribute on unknown value."""
-    # Create object type
+    """Test accessing attributes on an unknown CtyObject value."""
     obj_type = CtyObject({
         "name": CtyString(),
         "age": CtyNumber()
     })
-    
-    # Create unknown value
-    unknown_val = CtyValue.unknown(obj_type)
-    
-    # Try to access attribute
-    with pytest.raises(CtyAttributeValidationError) as excinfo:
-        obj_type.get_attribute(unknown_val, "name")
-    
-    # Check error message
-    assert "Cannot get attribute from unknown value" in str(excinfo.value)
+    unknown_object_value = CtyValue.unknown(obj_type)
+
+    # Accessing an existing attribute on an unknown object should return an unknown CtyValue of the attribute's type
+    name_attr_val = obj_type.get_attribute(unknown_object_value, "name")
+    assert isinstance(name_attr_val, CtyValue)
+    assert name_attr_val.is_unknown is True
+    assert isinstance(name_attr_val.type, CtyString)
+
+    # Accessing a non-existent attribute should raise CtyAttributeValidationError
+    with pytest.raises(CtyAttributeValidationError, match="Unknown attribute: non_existent_attr"):
+        obj_type.get_attribute(unknown_object_value, "non_existent_attr")
 
 @pytest.mark.asyncio
 async def test_object_attribute_iteration():

@@ -72,6 +72,17 @@ class CtyDynamic(CtyType[Any]):
 
         logger.debug(f"🧩🔍🔄 Validating value against CtyDynamic: {type(value).__name__}")
 
+        # New logic for CtyValue inputs
+        if isinstance(value, CtyValue):
+            logger.debug("🧩🔍🔄 Input is already a CtyValue instance")
+            if isinstance(value.type, CtyDynamic): # or value.type == self, if self is appropriate here
+                logger.debug("🧩🔍✅ Input CtyValue is already CtyDynamic, returning as is")
+                return value
+            else:
+                # Re-wrap with CtyDynamic type, preserving state and marks
+                logger.debug(f"🧩🔍🔄 Re-wrapping CtyValue of type {value.type} with CtyDynamic")
+                return CtyValue(vtype=self, value=value.value, is_unknown=value.is_unknown, is_null=value.is_null, marks=value._marks)
+
         # Accept primitive types, collections, and None
         if isinstance(value, (dict, list, int, float, bool, str, type(None))):
             logger.debug(f"🧩🔍✅ Value is a supported type for CtyDynamic")
