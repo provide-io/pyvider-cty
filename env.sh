@@ -32,8 +32,8 @@ uv sync --all-groups
 echo "🔗 Activating virtual environment..."
 source .venv/bin/activate
 
-echo "🔍 Setting PYTHONPATH to include 'src' and project root..."
-# Adds 'src' for package imports and project root for potential top-level scripts/modules.
-export PYTHONPATH="${PWD}/src:${PWD}"
+# echo "🔍 Setting PYTHONPATH to include 'src' and project root..."
+# # Adds 'src' for package imports and project root for potential top-level scripts/modules.
+# export PYTHONPATH="${PWD}/src:${PWD}"
 
 echo "✅ Environment setup complete. PYTHONPATH set to: ${PYTHONPATH}"
