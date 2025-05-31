@@ -637,6 +637,21 @@ class CtyValue(Generic[T]):
         logger.debug(f"🔄🔧✅ Creating null value of type {vtype.__class__.__name__}")
         return cls(vtype=vtype, is_null=True) # Use internal names
 
+    @classmethod
+    def list_of_dynamic(cls, elements: list) -> "CtyValue":
+        from pyvider.cty.types import CtyDynamic, CtyList # Local import
+        logger.debug(f"🔄🔧✅ Creating dynamic list value with {len(elements)} elements")
+        list_type = CtyList(element_type=CtyDynamic())
+        return list_type.validate(elements)
+
+    @classmethod
+    def map_of_dynamic(cls, key_type: CtyType, items: dict) -> "CtyValue":
+        from pyvider.cty.types import CtyDynamic, CtyMap # Local import
+        # Consider adding a default for key_type=CtyString() if always string keys for maps
+        logger.debug(f"🔄🔧✅ Creating dynamic map value with {len(items)} items")
+        map_type = CtyMap(key_type=key_type, value_type=CtyDynamic())
+        return map_type.validate(items)
+
     # -------------------------------------------------------------------------
     # Serialization
     # -------------------------------------------------------------------------
@@ -1015,7 +1030,7 @@ class CtyValue(Generic[T]):
         except CtyAttributeValidationError as e:
              logger.error(f"🔄❗❌ {e}")
              # Reraise specific Cty errors
-             raise IndexError(str(e)) from e # Treat attribute error as index error for consistency? Or KeyError?
+             raise e
         except KeyError as e:
             # Re-raise KeyError
             logger.error(f"🔄❗❌ Key error: {e}")

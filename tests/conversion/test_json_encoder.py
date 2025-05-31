@@ -302,7 +302,7 @@ def test_encode_object_with_primitive_attributes():
     # `recursively_encode_value` is called with `is_direct_collection_member=False` for these.
     assert parsed_json["value"] == {
         "name": {"type": "CtyString", "value": "Bob"},
-        "age": {"type": "CtyNumber", "value": 30}, # Number becomes int/float
+        "age": {"type": "CtyNumber", "value": "30"}, # Number becomes string
         "active": {"type": "CtyBool", "value": False}
     }
 

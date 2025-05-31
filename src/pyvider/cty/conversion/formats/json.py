@@ -209,10 +209,22 @@ class JsonEncoder(FormatEncoder):
         def recursively_encode_value(item: Any, is_direct_collection_member: bool = False) -> Any:
             """Helper to recursively convert items."""
             if isinstance(item, CtyValue):
+                # Handle unknown and null CtyValues first
+                if item.is_unknown:
+                    temp_res = {cls.UNKNOWN_MARKER: True}
+                    if preserve_type: # preserve_type is from the outer scope of _value_to_dict
+                        temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
+                    return temp_res
+                if item.is_null:
+                    temp_res = {cls.NULL_MARKER: True}
+                    if preserve_type: # preserve_type is from the outer scope of _value_to_dict
+                        temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
+                    return temp_res
+
                 # If item is a primitive CtyValue and directly in a collection, return its raw value
                 if is_direct_collection_member and isinstance(item.type, (CtyString, CtyNumber, CtyBool)):
                     return item.value
-                # Otherwise, convert CtyValue to dict (applies to nested objects/collections or non-collection items)
+                # Otherwise, convert CtyValue to dict
                 return cls._value_to_dict(item, preserve_type)
             elif isinstance(item, dict):
                 # If item is dict, recurse on its values.
