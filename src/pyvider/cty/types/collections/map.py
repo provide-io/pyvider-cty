@@ -70,6 +70,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
         from pyvider.cty.types.primitives import CtyString
+        from pyvider.cty.types.dynamic import CtyDynamic # Added for CtyDynamic check
 
         logger.debug(f"🔌🔍🔄 Validating value as CtyMap: {type(value).__name__}")
 
@@ -135,7 +136,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             map_key_str: Optional[str] = None
             validated_key_cty: Optional[CtyValue] = None
             validated_value_cty: Optional[CtyValue] = None
-            item_errors = []
+            item_errors = [] # Errors specific to this key-value item
 
             # --- Validate Key ---
             try:
@@ -167,61 +168,45 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             except Exception as key_err:
                 item_errors.append(f"Unexpected error validating key {k!r}: {key_err}")
 
-            if item_errors:
+            if item_errors: # If key validation failed for this item
                 validation_errors.extend(item_errors)
-                continue # Skip value validation for this item
+                continue # Skip to the next item in input_dict
 
             # Ensure map_key_str is set (should be if no key errors)
-            if map_key_str is None:
-                 validation_errors.append(f"Internal error: map_key_str is None for key {k!r}")
-                 continue
+            # This assertion helps catch logic errors during development.
+            assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation"
+
 
             # --- Validate Value ---
             try:
-                if isinstance(v, CtyValue):
-                    if not v.type.usable_as(self.value_type):
-                        raise CtyMapValidationError(f"Value type mismatch for key '{map_key_str}': expected compatible with {self.value_type.__class__.__name__}, got {v.type.__class__.__name__}")
-                    validated_value_cty = v
-                else:
-                    validated_value_cty = self.value_type.validate(v)
-
+                # Always attempt to validate the value 'v' against the map's declared value_type.
+                # If self.value_type is CtyDynamic, CtyDynamic.validate() will handle
+                # converting/wrapping 'v' (raw Python or other CtyValue) appropriately.
+                # If self.value_type is a concrete type, it will validate 'v' against that.
+                validated_value_cty = self.value_type.validate(v)
             except (CtyValidationError, CtyMapValidationError) as val_err:
-                item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
-            except Exception as val_err:
+                item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}") # map_key_str should be defined before this
+            except Exception as val_err: # Catch broader errors during validation
                 item_errors.append(f"Unexpected error validating value for key '{map_key_str}': {val_err}")
 
-            if item_errors:
+            if item_errors: # This check is now specific to value validation errors for this item
                 validation_errors.extend(item_errors)
-                continue # Skip adding this item
+                # item_errors = [] # No need to reset if we continue, it's scoped to the loop
+                continue # Skip adding this item if value validation failed
+
 
             # --- Add Validated Item ---
-            if validated_key_cty is not None and validated_value_cty is not None and map_key_str is not None:
+            # Both key and value must have been successfully processed and validated_key_cty set
+            if validated_key_cty is not None and validated_value_cty is not None: # map_key_str already asserted not None
                 validated_map[map_key_str] = validated_value_cty
                 key_mapping[map_key_str] = validated_key_cty
                 logger.debug(f"🔌🔍✅ Added key-value pair ('{map_key_str}') to map, size: {len(validated_map)}")
             else:
-                validation_errors.append(f"Internal error: validation passed but parts are None for key {k!r}")
+                # This case should ideally not be reached if errors lead to 'continue'
+                # But as a safeguard:
+                if not item_errors: # If no specific error was logged for this item yet
+                     validation_errors.append(f"Internal error: validation passed but parts are None for key {k!r}")
 
-            # In the CtyMap.validate method
-            # Add explicit validation for boolean values
-            from pyvider.cty.types.primitives import CtyBool
-            if isinstance(self.value_type, CtyBool):
-                try:
-                    validated_value_cty = self.value_type.validate(v)
-                except Exception as e:
-                    error_msg = f"Invalid boolean value for key '{map_key_str}': {e}"
-                    logger.error(f"🔌❌🔄 {error_msg}")
-                    raise CtyMapValidationError(error_msg) from e
-
-        # Hmm.
-        # from pyvider.cty.types.primitives import CtyBool
-        # if isinstance(self.value_type, CtyBool):
-        #     try:
-        #         validated_value_cty = self.value_type.validate(v)
-        #     except Exception as e:
-        #         error_msg = f"Invalid boolean value for key '{map_key_str}': {e}"
-        #         logger.error(f"🔌❌🔄 {error_msg}")
-        #         raise CtyMapValidationError(error_msg) from e
 
         # --- Finalize ---
         if validation_errors:
