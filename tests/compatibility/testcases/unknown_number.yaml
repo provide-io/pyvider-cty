@@ -1,0 +1,4 @@
+name: TestUnknownNumber
+description: "Tests an unknown number value."
+type_definition: "number"
+raw_input: "__unknown__" # Special placeholder for unknown

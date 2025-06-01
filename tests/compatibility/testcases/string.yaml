@@ -1,0 +1,4 @@
+name: TestBasicString
+description: "Tests a simple string value."
+type_definition: "string"
+raw_input: "hello cty"
