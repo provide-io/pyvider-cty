@@ -2,18 +2,19 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil" // Added
+	"encoding/json" // Keep one
+	"flag"
+	"fmt" // Keep one
+	"io/ioutil"
 	"log"
 	// "math/big" // Removed
 	"os"
-	"path/filepath" // Added
+	"path/filepath"
 	"reflect"
-	"strings" // Added
+	"strings"
 
 	"github.com/zclconf/go-cty/cty"
-	"gopkg.in/yaml.v2" // Added
+	"gopkg.in/yaml.v2"
 )
 
 // --- Logging Setup ---
@@ -134,8 +135,58 @@ func parseTypeDefinition(typeStr string) (cty.Type, error) {
 		}
 		logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed to cty.List(%s)", innerType.FriendlyName())
 		return cty.List(innerType), nil
+	} else if strings.HasPrefix(typeStr, "map(") && strings.HasSuffix(typeStr, ")") {
+		valueTypeStr := typeStr[len("map(") : len(typeStr)-1]
+		valueType, err := parseTypeDefinition(valueTypeStr)
+		if err != nil {
+			logf(LogPrefix(domTypeSystem, actConvert, statError), "Error parsing value type for map: %v", err)
+			return cty.NilType, err
+		}
+		logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed to cty.Map(cty.String, %s)", valueType.FriendlyName())
+		return cty.Map(valueType), nil // cty maps always have string keys
+	} else if strings.HasPrefix(typeStr, "tuple([") && strings.HasSuffix(typeStr, "])") {
+		elementTypesStr := typeStr[len("tuple([") : len(typeStr)-2]
+		if elementTypesStr == "" { // Empty tuple
+			logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed to empty cty.Tuple")
+			return cty.EmptyTuple, nil
+		}
+		elemStrs := strings.Split(elementTypesStr, ",")
+		elemTypes := make([]cty.Type, len(elemStrs))
+		for i, s := range elemStrs {
+			ty, err := parseTypeDefinition(strings.TrimSpace(s))
+			if err != nil {
+				logf(LogPrefix(domTypeSystem, actConvert, statError), "Error parsing element type for tuple: %v", err)
+				return cty.NilType, err
+			}
+			elemTypes[i] = ty
+		}
+		logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed to cty.Tuple with %d elements", len(elemTypes))
+		return cty.Tuple(elemTypes), nil
+	} else if strings.HasPrefix(typeStr, "object({") && strings.HasSuffix(typeStr, "})") {
+		attrsStr := typeStr[len("object({") : len(typeStr)-2]
+		if attrsStr == "" { // Empty object
+			logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed to empty cty.Object")
+			return cty.EmptyObject, nil
+		}
+		attrPairs := strings.Split(attrsStr, ",")
+		attrTypes := make(map[string]cty.Type)
+		for _, pair := range attrPairs {
+			parts := strings.SplitN(pair, "=", 2)
+			if len(parts) != 2 {
+				return cty.NilType, fmt.Errorf("invalid attribute format '%s' in object type string: %s", pair, typeStr)
+			}
+			name := strings.TrimSpace(parts[0])
+			typeDef := strings.TrimSpace(parts[1])
+			attrT, err := parseTypeDefinition(typeDef)
+			if err != nil {
+				return cty.NilType, fmt.Errorf("error parsing attribute type for '%s': %w", name, err)
+			}
+			attrTypes[name] = attrT
+		}
+		logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed to cty.Object with attributes: %v", attrTypes)
+		return cty.Object(attrTypes), nil
 	}
-	// Add more types as needed
+
 	err := fmt.Errorf("unsupported type definition string: %s", typeStr)
 	logf(LogPrefix(domTypeSystem, actConvert, statError), "%v", err)
 	return cty.NilType, err
@@ -299,9 +350,27 @@ func goToCtyValue(v interface{}, targetType cty.Type) (cty.Value, error) {
 			if sliceVal, ok := v.([]interface{}); ok {
 				return sliceToCtyList(sliceVal, targetType.ElementType())
 			}
-			return cty.NilVal, fmt.Errorf("expected slice for list type, got %T", v)
+			return cty.NilVal, fmt.Errorf("expected slice for list type, got %T for target %s", v, targetType.FriendlyName())
+		} else if targetType.IsMapType() {
+			if mapVal, ok := v.(map[interface{}]interface{}); ok { // YAML gives map[interface{}]interface{}
+				return mapToCtyMap(mapVal, targetType.ElementType())
+			} else if mapStringVal, ok := v.(map[string]interface{}); ok { // Handle if already string keys
+				return mapStringToCtyMap(mapStringVal, targetType.ElementType())
+			}
+			return cty.NilVal, fmt.Errorf("expected map for map type, got %T for target %s", v, targetType.FriendlyName())
+		} else if targetType.IsTupleType() {
+			if sliceVal, ok := v.([]interface{}); ok {
+				return sliceToCtyTuple(sliceVal, targetType.TupleElementTypes())
+			}
+			return cty.NilVal, fmt.Errorf("expected slice for tuple type, got %T for target %s", v, targetType.FriendlyName())
+		} else if targetType.IsObjectType() {
+			if mapVal, ok := v.(map[interface{}]interface{}); ok {
+				return mapToCtyObject(mapVal, targetType.AttributeTypes())
+			} else if mapStringVal, ok := v.(map[string]interface{}); ok {
+                 return mapStringToCtyObject(mapStringVal, targetType.AttributeTypes())
+            }
+			return cty.NilVal, fmt.Errorf("expected map for object type, got %T for target %s", v, targetType.FriendlyName())
 		}
-		// Add map, object, etc. handling as needed
 		return cty.NilVal, fmt.Errorf("unhandled target cty.Type in goToCtyValue: %s", targetType.FriendlyName())
 	}
 }
@@ -316,16 +385,109 @@ func sliceToCtyList(data []interface{}, elementType cty.Type) (cty.Value, error)
 	}
 	vals := make([]cty.Value, len(data))
 	for i, item := range data {
-		val, err := goToCtyValue(item, elementType) // Pass element type for conversion
+		val, err := goToCtyValue(item, elementType)
 		if err != nil {
-			logf(LogPrefix(domError, actConvert, statError), "Failed converting slice element %d: %v", i, err)
-			return cty.NilVal, fmt.Errorf("error converting slice element %d: %w", i, err)
+			logf(LogPrefix(domError, actConvert, statError), "Failed converting slice element %d for list: %v", i, err)
+			return cty.NilVal, fmt.Errorf("error converting slice element %d for list: %w", i, err)
 		}
 		vals[i] = val
-		logf(LogPrefix(domValue, actConvert, statOK), "  Converted slice element %d to type %s", i, val.Type().FriendlyName())
 	}
 	logf(LogPrefix(domValue, actConvert, statOK), "Creating ListVal with element type: %s", elementType.FriendlyName())
 	return cty.ListVal(vals), nil
+}
+
+func mapToCtyMap(data map[interface{}]interface{}, valueType cty.Type) (cty.Value, error) {
+	pfx := LogPrefix(domValue, actConvert, statStart)
+	logf(pfx, "Converting map[interface{}]interface{} with %d elements to cty.MapVal (value type: %s)", len(data), valueType.FriendlyName())
+	if len(data) == 0 {
+		return cty.MapValEmpty(valueType), nil
+	}
+	mapValues := make(map[string]cty.Value)
+	for k, v := range data {
+		keyStr, ok := k.(string)
+		if !ok {
+			return cty.NilVal, fmt.Errorf("map key is not a string: %T", k)
+		}
+		val, err := goToCtyValue(v, valueType)
+		if err != nil {
+			return cty.NilVal, fmt.Errorf("error converting map value for key '%s': %w", keyStr, err)
+		}
+		mapValues[keyStr] = val
+	}
+	return cty.MapVal(mapValues), nil
+}
+func mapStringToCtyMap(data map[string]interface{}, valueType cty.Type) (cty.Value, error) {
+    pfx := LogPrefix(domValue, actConvert, statStart)
+    logf(pfx, "Converting map[string]interface{} with %d elements to cty.MapVal (value type: %s)", len(data), valueType.FriendlyName())
+    if len(data) == 0 {
+        return cty.MapValEmpty(valueType), nil
+    }
+    mapValues := make(map[string]cty.Value)
+    for k, v := range data {
+        val, err := goToCtyValue(v, valueType)
+        if err != nil {
+            return cty.NilVal, fmt.Errorf("error converting map value for key '%s': %w", k, err)
+        }
+        mapValues[k] = val
+    }
+    return cty.MapVal(mapValues), nil
+}
+
+
+func sliceToCtyTuple(data []interface{}, elementTypes []cty.Type) (cty.Value, error) {
+	if len(data) != len(elementTypes) {
+		return cty.NilVal, fmt.Errorf("tuple data length %d does not match element types length %d", len(data), len(elementTypes))
+	}
+	if len(data) == 0 {
+		return cty.EmptyTupleVal, nil
+	}
+	vals := make([]cty.Value, len(data))
+	for i, item := range data {
+		val, err := goToCtyValue(item, elementTypes[i])
+		if err != nil {
+			return cty.NilVal, fmt.Errorf("error converting tuple element %d: %w", i, err)
+		}
+		vals[i] = val
+	}
+	return cty.TupleVal(vals), nil
+}
+
+func mapToCtyObject(data map[interface{}]interface{}, attrTypes map[string]cty.Type) (cty.Value, error) {
+    mapValues := make(map[string]cty.Value)
+    for k, v := range data {
+        keyStr, ok := k.(string)
+        if !ok {
+            return cty.NilVal, fmt.Errorf("object attribute key is not a string: %T", k)
+        }
+        attrType, exists := attrTypes[keyStr]
+        if !exists { // Should ideally be handled by schema validation if strict
+            logf(LogPrefix(domValue, actConvert, statWarn), "Attribute '%s' not in object schema, attempting dynamic conversion", keyStr)
+            attrType = cty.DynamicPseudoType // Or skip/error based on strictness
+        }
+        val, err := goToCtyValue(v, attrType)
+        if err != nil {
+            return cty.NilVal, fmt.Errorf("error converting object attribute '%s': %w", keyStr, err)
+        }
+        mapValues[keyStr] = val
+    }
+     // Check for missing attributes that are not optional (not implemented here, cty.ObjectVal handles this)
+    return cty.ObjectVal(mapValues), nil
+}
+func mapStringToCtyObject(data map[string]interface{}, attrTypes map[string]cty.Type) (cty.Value, error) {
+    mapValues := make(map[string]cty.Value)
+    for k, v := range data {
+        attrType, exists := attrTypes[k]
+        if !exists {
+             logf(LogPrefix(domValue, actConvert, statWarn), "Attribute '%s' not in object schema, attempting dynamic conversion", k)
+            attrType = cty.DynamicPseudoType
+        }
+        val, err := goToCtyValue(v, attrType)
+        if err != nil {
+            return cty.NilVal, fmt.Errorf("error converting object attribute '%s': %w", k, err)
+        }
+        mapValues[k] = val
+    }
+    return cty.ObjectVal(mapValues), nil
 }
 
 
@@ -373,107 +535,104 @@ func describeType(ty cty.Type) interface{} {
 
 // --- Main Function ---
 func main() {
-	logf(LogPrefix(domTooling, actInfo, statStart), "Starting Go cty generator script for compatibility tests")
+	logf(LogPrefix(domTooling, actInfo, statStart), "Starting Go cty generator script for a single compatibility test")
 
-	testCasesDir := "../../tests/compatibility/testcases" // Relative to the Go binary if run from its dir
-	outputBaseDir := "../../tests/compatibility/output" // Relative to the Go binary
+	var outputToStdout bool
+	flag.BoolVar(&outputToStdout, "stdout", false, "Output value JSON to stdout instead of file")
+	flag.Parse()
 
-	// Alternative: Get paths relative to the Go file itself
-	// _, goFile, _, _ := runtime.Caller(0)
-	// baseDir := filepath.Dir(goFile)
-	// testCasesDir = filepath.Join(baseDir, "testcases")
-	// outputBaseDir = filepath.Join(baseDir, "output")
+	if flag.NArg() < 1 {
+		log.Fatalf("%s Usage: go run go_cty_generator.go [-stdout] <path_to_testcase.yaml>", LogPrefix(domError, actInfo, statError))
+	}
+	testCasePath := flag.Arg(0)
 
-
-	files, err := ioutil.ReadDir(testCasesDir)
-	if err != nil {
-		log.Fatalf("%s Failed to read test cases directory %s: %v", LogPrefix(domError, actInfo, statError), testCasesDir, err)
+	if _, err := os.Stat(testCasePath); os.IsNotExist(err) {
+		log.Fatalf("%s Test case file not found: %s", LogPrefix(domError, actInfo, statError), testCasePath)
 	}
 
-	for _, file := range files {
-		if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
-			continue
-		}
-		yamlFilePath := filepath.Join(testCasesDir, file.Name())
-		logf(LogPrefix(domTooling, actInfo, statStart), "Processing test case: %s", file.Name())
-
-		yamlFile, err := ioutil.ReadFile(yamlFilePath)
+	outputBaseDir := filepath.Join("tests", "compatibility", "output")
+	// Ensure outputBaseDir exists if not outputting to stdout
+	if !outputToStdout {
+		err := os.MkdirAll(outputBaseDir, 0755)
 		if err != nil {
-			logf(LogPrefix(domError, actInfo, statError), "Failed to read YAML file %s: %v", yamlFilePath, err)
-			continue
+			log.Fatalf("%s Failed to create base output directory %s: %v", LogPrefix(domError, actWrite, statError), outputBaseDir, err)
 		}
-
-		var testCaseData TestCaseData
-		err = yaml.Unmarshal(yamlFile, &testCaseData)
-		if err != nil {
-			logf(LogPrefix(domError, actInfo, statError), "Failed to unmarshal YAML from %s: %v", file.Name(), err)
-			continue
-		}
-		
-		if testCaseData.Name == "" {
-			testCaseData.Name = strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-		}
+	}
 
 
-		ctyType, err := parseTypeDefinition(testCaseData.TypeDefinition)
-		if err != nil {
-			logf(LogPrefix(domTypeSystem, actConvert, statError), "Failed to parse type definition for %s: %v", testCaseData.Name, err)
-			continue
-		}
-		logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed type for %s: %s", testCaseData.Name, ctyType.FriendlyName())
+	logf(LogPrefix(domTooling, actInfo, statStart), "Processing test case: %s", testCasePath)
 
+	yamlFile, err := ioutil.ReadFile(testCasePath)
+	if err != nil {
+		log.Fatalf("%s Failed to read YAML file %s: %v", LogPrefix(domError, actInfo, statError), testCasePath, err)
+	}
 
-		ctyVal, err := goToCtyValue(testCaseData.RawInput, ctyType)
-		if err != nil {
-			logf(LogPrefix(domValue, actDefine, statError), "Failed to create cty.Value for %s: %v", testCaseData.Name, err)
-			continue
-		}
-		logf(LogPrefix(domValue, actDefine, statOK), "Created cty.Value for %s: %s", testCaseData.Name, ctyVal.GoString())
+	var testCaseData TestCaseData
+	err = yaml.Unmarshal(yamlFile, &testCaseData)
+	if err != nil {
+		log.Fatalf("%s Failed to unmarshal YAML from %s: %v", LogPrefix(domError, actInfo, statError), testCasePath, err)
+	}
 
+	baseName := filepath.Base(testCasePath)
+	testCaseNameFromFile := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
-		// Prepare output directory
-		caseOutputDir := filepath.Join(outputBaseDir, testCaseData.Name)
+	effectiveTestCaseName := testCaseData.Name
+	if effectiveTestCaseName == "" {
+		effectiveTestCaseName = testCaseNameFromFile
+	}
+
+	ctyType, err := parseTypeDefinition(testCaseData.TypeDefinition)
+	if err != nil {
+		log.Fatalf("%s Failed to parse type definition for %s: %v", LogPrefix(domTypeSystem, actConvert, statError), effectiveTestCaseName, err)
+	}
+	logf(LogPrefix(domTypeSystem, actConvert, statOK), "Parsed type for %s: %s", effectiveTestCaseName, ctyType.FriendlyName())
+
+	ctyVal, err := goToCtyValue(testCaseData.RawInput, ctyType)
+	if err != nil {
+		log.Fatalf("%s Failed to create cty.Value for %s: %v", LogPrefix(domValue, actDefine, statError), effectiveTestCaseName, err)
+	}
+	logf(LogPrefix(domValue, actDefine, statOK), "Created cty.Value for %s: %s", effectiveTestCaseName, ctyVal.GoString())
+
+	jsonComparable, err := ctyValueToJSONComparable(ctyVal)
+	if err != nil {
+		log.Fatalf("%s Failed to convert cty.Value to JSONComparableValue for %s: %v", LogPrefix(domError, actMarshal, statError), effectiveTestCaseName, err)
+	}
+	goValueBytes, err := json.MarshalIndent(jsonComparable, "", "  ")
+	if err != nil {
+		log.Fatalf("%s Failed to marshal JSON for %s: %v", LogPrefix(domError, actMarshal, statError), effectiveTestCaseName, err)
+	}
+
+	if outputToStdout {
+		fmt.Println(string(goValueBytes))
+		logf(LogPrefix(domTooling, actWrite, statOK), "Successfully wrote go_value JSON to stdout for %s", effectiveTestCaseName)
+	} else {
+		caseOutputDir := filepath.Join(outputBaseDir, testCaseNameFromFile)
 		err = os.MkdirAll(caseOutputDir, 0755)
 		if err != nil {
-			logf(LogPrefix(domError, actWrite, statError), "Failed to create output directory %s: %v", caseOutputDir, err)
-			continue
+			log.Fatalf("%s Failed to create output directory %s: %v", LogPrefix(domError, actWrite, statError), caseOutputDir, err)
 		}
 		logf(LogPrefix(domTooling, actWrite, statStart), "Ensured output directory exists: %s", caseOutputDir)
 
-		// Generate go_value.json
-		jsonComparable, err := ctyValueToJSONComparable(ctyVal)
-		if err != nil {
-			logf(LogPrefix(domError, actMarshal, statError), "Failed to convert cty.Value to JSONComparableValue for %s: %v", testCaseData.Name, err)
-			continue
-		}
-		goValueBytes, err := json.MarshalIndent(jsonComparable, "", "  ")
-		if err != nil {
-			logf(LogPrefix(domError, actMarshal, statError), "Failed to marshal go_value.json for %s: %v", testCaseData.Name, err)
-			continue
-		}
 		goValueFile := filepath.Join(caseOutputDir, "go_value.json")
 		err = ioutil.WriteFile(goValueFile, goValueBytes, 0644)
 		if err != nil {
-			logf(LogPrefix(domError, actWrite, statError), "Failed to write %s: %v", goValueFile, err)
-			continue
+			log.Fatalf("%s Failed to write %s: %v", LogPrefix(domError, actWrite, statError), goValueFile, err)
 		}
 		logf(LogPrefix(domTooling, actWrite, statOK), "Successfully wrote %s", goValueFile)
 
-		// Generate go_type.json
+		// Still write go_type.json to file even if -stdout is for go_value.json
 		typeDescription := describeType(ctyType)
 		goTypeBytes, err := json.MarshalIndent(typeDescription, "", "  ")
 		if err != nil {
-			logf(LogPrefix(domError, actMarshal, statError), "Failed to marshal go_type.json for %s: %v", testCaseData.Name, err)
-			continue
+			log.Fatalf("%s Failed to marshal go_type.json for %s: %v", LogPrefix(domError, actMarshal, statError), effectiveTestCaseName, err)
 		}
 		goTypeFile := filepath.Join(caseOutputDir, "go_type.json")
 		err = ioutil.WriteFile(goTypeFile, goTypeBytes, 0644)
 		if err != nil {
-			logf(LogPrefix(domError, actWrite, statError), "Failed to write %s: %v", goTypeFile, err)
-			continue
+			log.Fatalf("%s Failed to write %s: %v", LogPrefix(domError, actWrite, statError), goTypeFile, err)
 		}
 		logf(LogPrefix(domTooling, actWrite, statOK), "Successfully wrote %s", goTypeFile)
 	}
 
-	logf(LogPrefix(domTooling, actInfo, statOK), "Finished processing all test cases.")
+	logf(LogPrefix(domTooling, actInfo, statOK), "Finished processing test case: %s", testCasePath)
 }

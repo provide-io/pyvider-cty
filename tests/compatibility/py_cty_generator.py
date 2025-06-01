@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 import yaml # Added import
 import pathlib # Added import
+import argparse # Added import
 
 # Assume pyvider.cty is importable and provides its own logger instance
 try:
@@ -106,7 +107,38 @@ def parse_type_definition(type_str: str) -> CtyType:
         inner_type = parse_type_definition(inner_type_str) # Recursive call
         logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyList with element type {inner_type.__class__.__name__}")
         return CtyList(element_type=inner_type)
-    # Add more types as needed (map, object, etc.) for future expansion
+    elif type_str.startswith("map(") and type_str.endswith(")"):
+        value_type_str = type_str[len("map("):-1]
+        value_type = parse_type_definition(value_type_str)
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyMap with value type {value_type.__class__.__name__}")
+        # cty spec implies string keys for maps, so CtyMap's key_type defaults to CtyString
+        return CtyMap(value_type=value_type)
+    elif type_str.startswith("tuple([") and type_str.endswith("])"):
+        element_types_str = type_str[len("tuple(["):-2]
+        if not element_types_str: # Empty tuple
+            logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to empty CtyTuple")
+            return CtyTuple([])
+        element_type_strs = [s.strip() for s in element_types_str.split(',')]
+        element_types = [parse_type_definition(s) for s in element_type_strs]
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyTuple with {len(element_types)} elements")
+        return CtyTuple(element_types)
+    elif type_str.startswith("object({") and type_str.endswith("})"):
+        attrs_str = type_str[len("object({"):-2]
+        if not attrs_str: # Empty object
+            logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to empty CtyObject")
+            return CtyObject({})
+        attr_pairs = [s.strip() for s in attrs_str.split(',')]
+        attribute_types = {}
+        for pair in attr_pairs:
+            try:
+                name, type_name = pair.split('=', 1)
+                attribute_types[name.strip()] = parse_type_definition(type_name.strip())
+            except ValueError:
+                err_msg = f"Invalid attribute format '{pair}' in object type string: {type_str}"
+                logger.error(f"{elp(domTypeSystem, actConvert, statError)} {err_msg}")
+                raise ValueError(err_msg)
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyObject with attributes: {list(attribute_types.keys())}")
+        return CtyObject(attribute_types)
     else:
         err_msg = f"Unsupported type definition string: {type_str}"
         logger.error(f"{elp(domTypeSystem, actConvert, statError)} {err_msg}")
@@ -159,99 +191,107 @@ def main():
     if os.getenv("CTY_SHOW_EMOJI_MATRIX") == "true":
         print_emoji_matrix()
 
-    logger.info(f"{elp(domTooling, actInfo, statStart)} Starting pyvider-cty generator script for compatibility tests")
+    script_dir = pathlib.Path(__file__).resolve().parent
+    logger.info(f"{elp(domTooling, actInfo, statStart)} Starting pyvider-cty generator script for a single compatibility test (running from: {script_dir})")
 
-    test_cases_dir = pathlib.Path("tests/compatibility/testcases")
-    output_base_dir = pathlib.Path("tests/compatibility/output")
+    parser = argparse.ArgumentParser(description="Generate pyvider.cty compatibility data for a single test case.")
+    parser.add_argument("test_case_path", type=pathlib.Path, help="Path to the YAML test case file.")
+    args = parser.parse_args()
 
-    if not test_cases_dir.is_dir():
-        logger.critical(f"{elp(domError, actInfo, statError)} Test cases directory not found: {test_cases_dir}")
+    test_case_file = args.test_case_path
+
+    if not test_case_file.is_file():
+        logger.critical(f"{elp(domError, actInfo, statError)} Test case file not found: {test_case_file}")
         sys.exit(1)
 
-    for yaml_file in test_cases_dir.glob("*.yaml"):
-        logger.info(f"{elp(domTooling, actInfo, statStart)} Processing test case: {yaml_file.name}")
+    output_base_dir = script_dir / "output"
+    # Ensure output base directory exists, though individual case_output_dir.mkdir will also do its part
+    output_base_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"{elp(domTooling, actInfo, statStart)} Processing test case: {test_case_file.name}")
+
+    try:
+        with open(test_case_file, 'r') as f:
+            test_case_data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        logger.error(f"{elp(domError, actRead, statError)} Error loading YAML from {test_case_file.name}: {e}")
+        sys.exit(1) # Exit if the specified file cannot be parsed
+    except IOError as e:
+        logger.error(f"{elp(domError, actRead, statError)} Error reading file {test_case_file.name}: {e}")
+        sys.exit(1) # Exit if the specified file cannot be read
+
+    # Use the file stem as the test case name for directory creation,
+    # but also allow 'name' from YAML to be part of logging if needed.
+    # For consistency with output structure, file stem is better for dir name.
+    test_case_name_from_file = test_case_file.stem
+    effective_test_case_name = test_case_data.get("name", test_case_name_from_file) # Use name from YAML if present for logging, etc.
+
+    type_definition_str = test_case_data.get("type_definition")
+    raw_input_data = test_case_data.get("raw_input")
+
+    if not type_definition_str:
+        logger.error(f"{elp(domError, actInfo, statWarn)} Missing 'type_definition' in {test_case_file.name}")
+        sys.exit(1) # A test case file must have a type definition
+
+    try:
+        cty_type = parse_type_definition(type_definition_str)
+        logger.info(f"{elp(domTypeSystem, actConvert, statOK)} Parsed type for {effective_test_case_name}: {cty_type.__class__.__name__}")
+
+        cty_value: ConcreteCtyValue
+        if raw_input_data == "__unknown__":
+            cty_value = ConcreteCtyValue.unknown(cty_type)
+            logger.info(f"{elp(domValue, actDefine, statOK)} Created unknown value for {effective_test_case_name}")
+        elif raw_input_data is None: # Assuming primitives allow null by default
+            cty_value = ConcreteCtyValue.null(cty_type)
+            logger.info(f"{elp(domValue, actDefine, statOK)} Created null value for {effective_test_case_name}")
+        else:
+            # More robust validation dispatch based on type might be needed if validate()
+            # methods differ significantly or if direct instantiation is preferred for collections.
+            # For now, assume CtyType.validate() can handle the raw_input_data appropriately
+            # once it's in the basic Python representation (list, dict, primitives).
+            # pyvider.cty's design is that CtyList().validate() takes a list of values,
+            # CtyMap().validate() takes a dict, CtyObject().validate() takes a dict.
+            # The raw_input_data from YAML should align with this.
+            cty_value = cty_type.validate(raw_input_data)
+            logger.info(f"{elp(domValue, actValidate, statOK)} Validated raw input for {effective_test_case_name}")
+
+        case_output_dir = output_base_dir / test_case_name_from_file # Use file stem for dir name
+        case_output_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"{elp(domTooling, actWrite, statStart)} Ensured output directory exists: {case_output_dir}")
+
+        py_value_file = case_output_dir / "py_value.json"
+        logger.info(f"{elp(domEncoding, actMarshal, statStart)} Generating py_value.json for {effective_test_case_name}")
         try:
-            with open(yaml_file, 'r') as f:
-                test_case_data = yaml.safe_load(f)
-        except yaml.YAMLError as e:
-            logger.error(f"{elp(domError, actRead, statError)} Error loading YAML from {yaml_file.name}: {e}")
-            continue # Skip to next file
-        except IOError as e:
-            logger.error(f"{elp(domError, actRead, statError)} Error reading file {yaml_file.name}: {e}")
-            continue
+            value_dict = cty_value.to_json_comparable_dict()
+            with open(py_value_file, 'w') as f:
+                json.dump(value_dict, f, indent=2)
+            logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote {py_value_file}")
+        except AttributeError as e:
+            logger.error(f"{elp(domError, actMarshal, statError)} Error: 'to_json_comparable_dict' method not found on CtyValue for {effective_test_case_name}. {e}")
+        except Exception as e:
+            logger.error(f"{elp(domError, actMarshal, statError)} Failed to generate py_value.json for {effective_test_case_name}: {e}", exc_info=True)
 
-
-        test_case_name = test_case_data.get("name", yaml_file.stem)
-        type_definition_str = test_case_data.get("type_definition")
-        raw_input_data = test_case_data.get("raw_input")
-
-        if not type_definition_str:
-            logger.error(f"{elp(domError, actInfo, statWarn)} Missing 'type_definition' in {yaml_file.name}")
-            continue
-
+        py_type_file = case_output_dir / "py_type.json"
+        logger.info(f"{elp(domTypeSystem, actConvert, statStart)} Generating py_type.json for {effective_test_case_name}")
         try:
-            cty_type = parse_type_definition(type_definition_str)
-            logger.info(f"{elp(domTypeSystem, actConvert, statOK)} Parsed type for {test_case_name}: {cty_type.__class__.__name__}")
+            type_description = describe_type(cty_type)
+            with open(py_type_file, 'w') as f:
+                json.dump(type_description, f, indent=2)
+            logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote {py_type_file}")
+        except Exception as e:
+            logger.error(f"{elp(domError, actMarshal, statError)} Failed to generate py_type.json for {effective_test_case_name}: {e}", exc_info=True)
 
-            cty_value: ConcreteCtyValue
-            if raw_input_data == "__unknown__":
-                cty_value = ConcreteCtyValue.unknown(cty_type)
-                logger.info(f"{elp(domValue, actDefine, statOK)} Created unknown value for {test_case_name}")
-            elif raw_input_data is None: # Assuming primitives allow null by default
-                cty_value = ConcreteCtyValue.null(cty_type)
-                logger.info(f"{elp(domValue, actDefine, statOK)} Created null value for {test_case_name}")
-            else:
-                # Special handling for list validation: CtyList.validate expects a list of raw values
-                if isinstance(cty_type, CtyList) and isinstance(raw_input_data, list):
-                    # If elements are simple, pass them directly.
-                    # If elements were complex (e.g., list of objects), they'd need pre-conversion
-                    # or the validator needs to handle raw Python dicts for object elements.
-                    # For POC, assume simple elements or elements CtyList validator can handle.
-                    cty_value = cty_type.validate(raw_input_data)
-                else:
-                    cty_value = cty_type.validate(raw_input_data)
-                logger.info(f"{elp(domValue, actValidate, statOK)} Validated raw input for {test_case_name}")
+    except ValueError as e:
+        logger.error(f"{elp(domError, actDefine, statError)} Value error processing {test_case_file.name}: {e}")
+        sys.exit(1)
+    except CtyValidationError as e:
+        logger.error(f"{elp(domError, actValidate, statError)} Validation error for {effective_test_case_name}: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"{elp(domError, actInfo, statError)} Unexpected error processing {test_case_file.name}: {e}", exc_info=True)
+        sys.exit(1)
 
-            # Prepare output directory
-            case_output_dir = output_base_dir / test_case_name
-            case_output_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"{elp(domTooling, actWrite, statStart)} Ensured output directory exists: {case_output_dir}")
-
-            # Generate py_value.json
-            py_value_file = case_output_dir / "py_value.json"
-            logger.info(f"{elp(domEncoding, actMarshal, statStart)} Generating py_value.json for {test_case_name}")
-            try:
-                # Ensure CtyValue has to_json_comparable_dict method
-                value_dict = cty_value.to_json_comparable_dict()
-                with open(py_value_file, 'w') as f:
-                    json.dump(value_dict, f, indent=2)
-                logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote {py_value_file}")
-            except AttributeError as e:
-                logger.error(f"{elp(domError, actMarshal, statError)} Error: 'to_json_comparable_dict' method not found on CtyValue. {e}")
-                # Potentially skip or handle error, for now, log and continue
-            except Exception as e:
-                logger.error(f"{elp(domError, actMarshal, statError)} Failed to generate py_value.json for {test_case_name}: {e}", exc_info=True)
-
-
-            # Generate py_type.json
-            py_type_file = case_output_dir / "py_type.json"
-            logger.info(f"{elp(domTypeSystem, actConvert, statStart)} Generating py_type.json for {test_case_name}")
-            try:
-                type_description = describe_type(cty_type)
-                with open(py_type_file, 'w') as f:
-                    json.dump(type_description, f, indent=2)
-                logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote {py_type_file}")
-            except Exception as e:
-                logger.error(f"{elp(domError, actMarshal, statError)} Failed to generate py_type.json for {test_case_name}: {e}", exc_info=True)
-
-        except ValueError as e: # Catch errors from parse_type_definition or CtyValue creation/validation
-            logger.error(f"{elp(domError, actDefine, statError)} Value error processing {yaml_file.name}: {e}")
-        except CtyValidationError as e:
-            logger.error(f"{elp(domError, actValidate, statError)} Validation error for {test_case_name}: {e}")
-        except Exception as e: # Catch-all for other unexpected errors during processing of a single file
-            logger.error(f"{elp(domError, actInfo, statError)} Unexpected error processing {yaml_file.name}: {e}", exc_info=True)
-
-    logger.info(f"\n{elp(domTooling, actInfo, statOK)} Finished processing all test cases.")
+    logger.info(f"\n{elp(domTooling, actInfo, statOK)} Finished processing test case: {test_case_file.name}")
 
 if __name__ == "__main__":
     main()
