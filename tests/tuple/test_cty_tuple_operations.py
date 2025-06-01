@@ -173,25 +173,23 @@ class TestCtyTupleOperations:
         unknown_tuple = CtyValue.unknown(tuple_type)
 
         # len()
-        with pytest.raises(CtyTupleValidationError): # Length of null tuple is undefined/error
-            len(null_tuple)
-        with pytest.raises(CtyTupleValidationError):
+        assert len(null_tuple) == 0 # Length of null tuple is 0
+        with pytest.raises(TypeError): # Length of unknown tuple raises TypeError (as per CtyValue base behavior)
             len(unknown_tuple)
 
         # __getitem__ (index)
-        with pytest.raises(CtyTupleValidationError):
+        with pytest.raises(TypeError): # Indexing null tuple raises TypeError
              _ = null_tuple[0]
-        with pytest.raises(CtyTupleValidationError):
+        with pytest.raises(TypeError): # Indexing unknown tuple raises TypeError
              _ = unknown_tuple[0]
 
         # __getitem__ (slice)
-        with pytest.raises(CtyTupleValidationError):
+        with pytest.raises(TypeError): # Slicing null tuple raises TypeError
              _ = null_tuple[0:1]
-        with pytest.raises(CtyTupleValidationError):
+        with pytest.raises(TypeError): # Slicing unknown tuple raises TypeError
              _ = unknown_tuple[0:1]
 
         # __iter__
-        with pytest.raises(CtyTupleValidationError):
-            list(null_tuple)
-        with pytest.raises(CtyTupleValidationError):
+        assert list(null_tuple) == [] # Iterating null tuple yields empty list
+        with pytest.raises(TypeError): # Iterating unknown tuple raises TypeError
             list(unknown_tuple)

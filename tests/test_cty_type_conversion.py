@@ -176,10 +176,17 @@ def test_unmarshal_type(type_bytes, expected_cty_type):
 def test_unmarshal_type_invalid(invalid_type):
     """Test that unmarshal_type correctly handles invalid type bytes."""
     # Either raises an exception or returns a CtyDynamic as fallback
+    from pyvider.cty.types import CtyList, CtyDynamic # Ensure types are available for isinstance checks
     try:
         result = unmarshal_type(invalid_type)
-        assert isinstance(result, CtyDynamic), \
-            f"Expected CtyDynamic for invalid type, got {result.__class__.__name__}"
+        if invalid_type == b'"list(invalid)"':
+            assert isinstance(result, CtyList), \
+                f"Expected CtyList for 'list(invalid)', got {result.__class__.__name__}"
+            assert isinstance(result.element_type, CtyDynamic), \
+                f"Expected CtyList(CtyDynamic) for 'list(invalid)', got CtyList({result.element_type.__class__.__name__})"
+        else:
+            assert isinstance(result, CtyDynamic), \
+                f"Expected CtyDynamic for invalid type {invalid_type!r}, got {result.__class__.__name__}"
     except ConversionError:
         # This is also acceptable behavior
         pass

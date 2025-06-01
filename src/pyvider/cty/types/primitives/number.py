@@ -180,6 +180,6 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         return result
 
     def __str__(self):
-        return "string"
+        return "number"
 
 # 🐍🏗️🐣

@@ -30,6 +30,7 @@ from pyvider.cty.types import (
     CtyObject,
     CtyTuple,
 )
+# Moved from local import in KeyStep.apply to module level
 from pyvider.cty.values import CtyValue
 
 # Type variables for better type hints
@@ -353,8 +354,6 @@ class KeyStep(PathStep):
             # Get the value's type
             val_type = self.apply_type(value.type)
 
-            # Import here to avoid circular imports
-            from pyvider.cty.values import CtyValue
             # Create an unknown value of the value's type
             return CtyValue(vtype=val_type, is_unknown=True)
 
@@ -370,25 +369,37 @@ class KeyStep(PathStep):
             # For map types, we need to validate and then search for the key
             map_value = value.value
 
-            # Try to validate the key
-            key_type = value.type.key_type
-            if not isinstance(self.key, type(key_type)):
-                # Validate the key
-                validated_key = key_type.validate(self.key)
-            else:
-                validated_key = self.key
+            # For map types, we need to validate and then search for the key
+            map_value = value.value # This is the Python dict: {'str_key': CtyValue_for_val, ...}
 
-            # Search for the key in the map
-            for k, v in map_value.items():
-                if hasattr(k, 'value') and hasattr(validated_key, 'value'):
-                    # Compare CtyValues by their internal values
-                    if k.value == validated_key.value:
-                        logger.debug(f"🧰✅🔄 Found value for key {self.key}")
-                        return v
-                elif k == validated_key:
-                    # Direct comparison
-                    logger.debug(f"🧰✅🔄 Found value for key {self.key}")
-                    return v
+            # self.key is the raw Python key from the PathStep (e.g., "person1")
+            # We need to compare it with the string keys of map_value.
+            # The original CtyValue keys are stored in _key_mapping of the CtyValue map instance,
+            # but for direct dict lookup, we use the string keys.
+
+            str_lookup_key: str
+            if isinstance(self.key, CtyValue):
+                # If the path key was somehow a CtyValue, get its string value
+                if self.key.is_known and not self.key.is_null and isinstance(self.key.type, value.type.key_type.__class__):
+                    str_lookup_key = str(self.key.value)
+                else:
+                    raise AttributePathError(f"Invalid CtyValue key in path step: {self.key!r}")
+            elif isinstance(self.key, str):
+                str_lookup_key = self.key
+            else:
+                # Attempt to convert other key types to string, mirroring CtyMap key validation
+                try:
+                    validated_raw_key = value.type.key_type.validate(self.key)
+                    if validated_raw_key.is_known and not validated_raw_key.is_null:
+                        str_lookup_key = str(validated_raw_key.value)
+                    else:
+                        raise AttributePathError(f"Key in path step is null or unknown after validation: {self.key!r}")
+                except CtyValidationError as e:
+                    raise AttributePathError(f"Invalid key type in path step: {self.key!r} ({e})")
+
+            if str_lookup_key in map_value:
+                logger.debug(f"🧰✅🔄 Found value for key {str_lookup_key}")
+                return map_value[str_lookup_key]
 
             # Key not found
             error_msg = f"Map has no key {self.key}"

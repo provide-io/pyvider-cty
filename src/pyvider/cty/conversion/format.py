@@ -101,8 +101,15 @@ def standardize_type_string(type_str: Optional[TypeString]) -> TypeString:
         logger.debug("🧰🔄📊 Empty type string, defaulting to 'dynamic'")
         return "dynamic"
 
-    # Remove outer quotes
-    normalized = type_str.strip('"')
+    # Strip leading/trailing whitespace first
+    stripped_type_str = type_str.strip()
+
+    # Remove one pair of surrounding quotes if present
+    if (stripped_type_str.startswith('"') and stripped_type_str.endswith('"')) or \
+       (stripped_type_str.startswith("'") and stripped_type_str.endswith("'")):
+        normalized = stripped_type_str[1:-1]
+    else:
+        normalized = stripped_type_str
 
     # Handle collection types using match/case
     match = _get_collection_pattern().match(normalized)
