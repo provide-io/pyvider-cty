@@ -1,7 +1,7 @@
 #
 # env.sh
 #
-# Sets up the development environment for pyvider-telemetry.
+# Sets up the development environment for pyvider.
 # Uses 'uv' for fast virtual environment and package management.
 #
 
@@ -28,12 +28,11 @@ uv venv
 echo "📦 Syncing dependencies using uv..."
 # Ensure all dependency groups, including 'dev', are synced.
 uv sync --all-groups
+uv pip install -e .
 
 echo "🔗 Activating virtual environment..."
 source .venv/bin/activate
 
-# echo "🔍 Setting PYTHONPATH to include 'src' and project root..."
-# # Adds 'src' for package imports and project root for potential top-level scripts/modules.
-# export PYTHONPATH="${PWD}/src:${PWD}"
+export PYTHONPATH="${PWD}/src:${PWD}"
 
 echo "✅ Environment setup complete. PYTHONPATH set to: ${PYTHONPATH}"
