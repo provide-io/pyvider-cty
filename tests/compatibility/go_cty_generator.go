@@ -550,7 +550,7 @@ func main() {
 		log.Fatalf("%s Test case file not found: %s", LogPrefix(domError, actInfo, statError), testCasePath)
 	}
 
-	outputBaseDir := filepath.Join("tests", "compatibility", "output")
+	outputBaseDir := filepath.Join("output")
 	// Ensure outputBaseDir exists if not outputting to stdout
 	if !outputToStdout {
 		err := os.MkdirAll(outputBaseDir, 0755)

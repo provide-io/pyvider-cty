@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# compare_outputs.py
+#
+
 import json
 import pathlib
 import sys
@@ -93,3 +97,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# 🐍🌊
