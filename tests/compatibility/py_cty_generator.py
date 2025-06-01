@@ -5,6 +5,8 @@ import os
 import sys
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
+import yaml # Added import
+import pathlib # Added import
 
 # Assume pyvider.cty is importable and provides its own logger instance
 try:
@@ -16,6 +18,8 @@ try:
         CtyObject, CtyTuple, CtyDynamic,
     )
     from pyvider.cty.exceptions import CtyValidationError, CtyAttributeValidationError
+    # Ensure this import path is correct based on your project structure for CtyValue
+    from pyvider.cty.values.base import CtyValue as ConcreteCtyValue # Assuming CtyValue from base is needed for to_json_comparable_dict
 except ImportError as e:
     print(f"ERROR: Could not import pyvider.cty or its logger. Make sure it's installed and accessible: {e}", file=sys.stderr)
     sys.exit(1)
@@ -85,154 +89,28 @@ def print_emoji_matrix():
     print(f"  {statEmpty} : Empty/Null/None")
     print("-----------------------------")
 
-# --- Cty Value Creation Helper Functions ---
-
-def python_to_cty_value(v: Any) -> CtyValue:
-    """Converts basic Python types to *concrete* CtyValue instances."""
-    pfx_start = elp(domValue, actConvert, statStart)
-    logger.debug(f"{pfx_start} Converting Python value of type {type(v).__name__} to CtyValue")
-
-    try:
-        match v:
-            case str():
-                pfx = elp(domValue, actConvert, statOK)
-                logger.debug(f"{pfx} Converted Python string")
-                return CtyValue.string(v)
-            case bool():
-                pfx = elp(domValue, actConvert, statOK)
-                logger.debug(f"{pfx} Converted Python bool")
-                return CtyValue.bool(v)
-            case int() | float():
-                pfx = elp(domValue, actConvert, statOK)
-                logger.debug(f"{pfx} Converted Python {type(v).__name__} to CtyNumber")
-                return CtyValue.number(Decimal(str(v))) # Use Decimal
-            case Decimal():
-                pfx = elp(domValue, actConvert, statOK)
-                logger.debug(f"{pfx} Converted Python Decimal to CtyNumber")
-                return CtyValue.number(v)
-            case dict():
-                logger.debug(f"{pfx_start} Handling nested dict -> map_to_cty_object")
-                return map_to_cty_object(v)
-            case list() | tuple():
-                logger.debug(f"{pfx_start} Handling nested list/tuple -> sequence_to_cty_list")
-                return sequence_to_cty_list(v)
-            case None:
-                err_msg = "Cannot convert bare Python None to CtyValue without target type"
-                pfx = elp(domValue, actConvert, statError)
-                logger.error(f"{pfx} {err_msg}")
-                raise ValueError(err_msg)
-            case _:
-                err_msg = f"Unhandled Python type in python_to_cty_value: {type(v).__name__}"
-                pfx = elp(domValue, actConvert, statError)
-                logger.error(f"{pfx} {err_msg}")
-                raise TypeError(err_msg)
-    except Exception as e:
-        # Catch potential errors from CtyValue factories or Decimal conversion
-        pfx = elp(domError, actConvert, statError)
-        logger.error(f"{pfx} Error during Python to CtyValue conversion: {e}", exc_info=True)
-        # Re-raise as ValueError or TypeError as appropriate
-        if isinstance(e, (ValueError, TypeError)):
-            raise
-        else:
-            raise ValueError(f"Failed conversion for {v}: {e}") from e
-
-
-def map_to_cty_object(data: Dict[str, Any]) -> CtyValue:
-    """Converts a Python dict to a CtyObject value."""
-    pfx_start = elp(domValue, actConvert, statStart)
-    logger.debug(f"{pfx_start} Converting dict with {len(data)} keys to CtyObject value")
-    attrs: Dict[str, CtyValue] = {}
-    attr_types: Dict[str, CtyType] = {}
-    for k, v in data.items():
-        if v is None:
-            pfx = elp(domValue, actConvert, statWarn)
-            logger.debug(f"{pfx} Skipping None value for key '{k}' in map_to_cty_object")
-            continue
-        try:
-            val = python_to_cty_value(v)
-            attrs[k] = val
-            attr_types[k] = val.type
-            pfx = elp(domValue, actConvert, statOK)
-            logger.debug(f"{pfx}   Converted key '{k}' to type {val.type.__class__.__name__}")
-        except (ValueError, TypeError) as e:
-            pfx = elp(domError, actConvert, statError)
-            logger.error(f"{pfx} Failed converting nested key '{k}': {e}")
-            raise ValueError(f"Error converting nested key '{k}': {e}") from e
-
-    obj_type = CtyObject(attribute_types=attr_types)
-    logger.debug(f"{elp(domValue, actConvert, statOK)} Successfully created attribute map for CtyObject value")
-    try:
-        # Need to pass raw values back for validation by CtyObject
-        # This assumes CtyValue has a .value property
-        raw_attrs = {}
-        for k, v_cty in attrs.items():
-            try:
-                 # Handle case where value might be None internally if created via CtyValue.null
-                 raw_attrs[k] = v_cty.value if not v_cty.is_null else None
-            except ValueError as e: # Catch error if trying to access .value of an unknown CtyValue
-                 pfx = elp(domError, actAccess, statError)
-                 logger.error(f"{pfx} Cannot get raw value for key '{k}' (possibly unknown?): {e}")
-                 # How to handle unknown? Maybe pass the CtyValue itself if validator accepts it?
-                 # For now, let's raise to indicate the issue clearly.
-                 raise ValueError(f"Cannot get raw value for key '{k}' needed for object creation: {e}") from e
-
-        # Assuming CtyValue.object exists and takes types dict + raw values dict
-        return CtyValue.object(attr_types, raw_attrs)
-    except CtyValidationError as e:
-         pfx = elp(domError, actValidate, statError)
-         logger.error(f"{pfx} Final object validation failed: {e}", exc_info=True)
-         raise
-    except AttributeError:
-         # Fallback if CtyValue.object factory doesn't exist
-         pfx = elp(domError, actValidate, statWarn)
-         logger.warning(f"{pfx} CtyValue.object factory not found, attempting direct validation.", exc_info=True)
-         return obj_type.validate(raw_attrs)
-
-
-def sequence_to_cty_list(data: Union[List[Any], Tuple[Any, ...]]) -> CtyValue:
-    """Converts a Python list or tuple to a CtyList value. Errors if types are inconsistent."""
-    pfx_start = elp(domValue, actConvert, statStart)
-    logger.debug(f"{pfx_start} Converting sequence with {len(data)} elements to CtyList value")
-    if not data:
-        pfx = elp(domValue, actConvert, statEmpty)
-        logger.debug(f"{pfx} Sequence is empty, creating empty CtyList(CtyDynamic)")
-        return CtyValue.list(CtyDynamic(), []) # Use factory method
-
-    vals: List[CtyValue] = []
-    first_type: Optional[CtyType] = None
-    for i, v in enumerate(data):
-        if v is None:
-            err_msg = f"Bare None value encountered at index {i} in sequence; CtyList requires typed nulls."
-            pfx = elp(domError, actConvert, statError)
-            logger.error(f"{pfx} {err_msg}")
-            raise ValueError(err_msg)
-        try:
-            val = python_to_cty_value(v)
-            vals.append(val)
-            if i == 0:
-                first_type = val.type
-                pfx = elp(domValue, actInfo, statOK)
-                logger.debug(f"{pfx}   Inferred list element type from first element: {first_type.__class__.__name__}")
-            else:
-                if not first_type or not val.type.equal(first_type):
-                    err_msg = f"Inconsistent types in sequence: expected {first_type.__class__.__name__ if first_type else 'N/A'}, got {val.type.__class__.__name__} at index {i}. Cannot create concrete CtyList."
-                    pfx = elp(domError, actConvert, statError)
-                    logger.error(f"{pfx} {err_msg}")
-                    raise TypeError(err_msg) # Raise TypeError for inconsistent list elements
-            pfx = elp(domValue, actConvert, statOK)
-            logger.debug(f"{pfx}   Converted sequence element {i} to type {val.type.__class__.__name__}")
-        except (ValueError, TypeError) as e:
-            pfx = elp(domError, actConvert, statError)
-            logger.error(f"{pfx} Failed converting sequence element {i}: {e}")
-            raise ValueError(f"Error converting sequence element {i}: {e}") from e
-
-    if not first_type: # Should not happen if data is not empty
-         first_type = CtyDynamic() # Fallback just in case
-    pfx = elp(domValue, actConvert, statOK)
-    logger.debug(f"{pfx} Creating CtyList with consistent element type: {first_type.__class__.__name__}")
-    # Use the factory method, passing raw values extracted from CtyValues created above
-    raw_list_values = [v.value for v in vals]
-    return CtyValue.list(first_type, raw_list_values)
+# --- Type Parsing Helper ---
+def parse_type_definition(type_str: str) -> CtyType:
+    logger.debug(f"{elp(domTypeSystem, actConvert, statStart)} Parsing type definition string: '{type_str}'")
+    if type_str == "string":
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyString")
+        return CtyString()
+    elif type_str == "number":
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyNumber")
+        return CtyNumber()
+    elif type_str == "bool":
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyBool")
+        return CtyBool()
+    elif type_str.startswith("list(") and type_str.endswith(")"):
+        inner_type_str = type_str[len("list("):-1]
+        inner_type = parse_type_definition(inner_type_str) # Recursive call
+        logger.debug(f"{elp(domTypeSystem, actConvert, statOK)} Parsed to CtyList with element type {inner_type.__class__.__name__}")
+        return CtyList(element_type=inner_type)
+    # Add more types as needed (map, object, etc.) for future expansion
+    else:
+        err_msg = f"Unsupported type definition string: {type_str}"
+        logger.error(f"{elp(domTypeSystem, actConvert, statError)} {err_msg}")
+        raise ValueError(err_msg)
 
 # --- Type Description Helper ---
 def describe_type(ty: CtyType) -> Any:
@@ -281,154 +159,99 @@ def main():
     if os.getenv("CTY_SHOW_EMOJI_MATRIX") == "true":
         print_emoji_matrix()
 
-    logger.info(f"{elp(domTooling, actInfo, statStart)} Starting pyvider-cty generator script")
+    logger.info(f"{elp(domTooling, actInfo, statStart)} Starting pyvider-cty generator script for compatibility tests")
 
-    # --- Define Basic Types ---
-    logger.info(f"{elp(domTypeSystem, actDefine, statStart)} Defining basic cty types")
-    string_type = CtyString()
-    number_type = CtyNumber()
-    bool_type = CtyBool()
-    dynamic_type = CtyDynamic()
-    logger.info(f"{elp(domTypeSystem, actDefine, statOK)} Basic types defined")
+    test_cases_dir = pathlib.Path("tests/compatibility/testcases")
+    output_base_dir = pathlib.Path("tests/compatibility/output")
 
-    # --- Define Complex Types ---
-    logger.info(f"{elp(domTypeSystem, actDefine, statStart)} Defining complex cty types (network, disk, coordinate)")
-    try:
-        network_object_type = CtyObject(attribute_types={
-            "subnet":            string_type,
-            "vpc_id":            string_type,
-            "security_groups":   CtyList(element_type=string_type),
-            "private_endpoints": CtySet(element_type=string_type),
-        })
-        disk_object_type = CtyObject(
-            attribute_types={
-                "size_gb": number_type,
-                "type":    string_type,
-                "iops":    number_type,
-            },
-            optional_attributes=frozenset(["iops"]) # Mark iops as optional
-        )
-        coordinate_tuple_type = CtyTuple(element_types=(
-            number_type, number_type, number_type,
-        ))
-        logger.info(f"{elp(domTypeSystem, actDefine, statOK)} Defined network, disk, coordinate object/tuple types")
-
-        logger.info(f"{elp(domTypeSystem, actDefine, statStart)} Defining main server object type")
-
-        server_object_type = CtyObject(
-            attribute_types={
-                "name":          string_type,
-                "instance_type": string_type,
-                "active":        bool_type,
-                "cpu_cores":     number_type,
-                "ram_gb":        number_type,
-                "network":       network_object_type,
-                "disks":         CtyList(element_type=disk_object_type),
-                "tags":          CtyMap(key_type=string_type, value_type=string_type),
-                "metadata":      CtyMap(key_type=string_type, value_type=dynamic_type),
-                "location":      coordinate_tuple_type,
-                "extra_config":  dynamic_type,
-                "backup_policy": string_type,
-                "region":        string_type,
-            },
-            optional_attributes=frozenset(["backup_policy", "tags", "metadata", "region"]) # Also add tags/metadata if they can be absent
-        )
-    except Exception as e:
-        logger.critical(f"{elp(domError, actDefine, statError)} Failed to define Cty types: {e}", exc_info=True)
+    if not test_cases_dir.is_dir():
+        logger.critical(f"{elp(domError, actInfo, statError)} Test cases directory not found: {test_cases_dir}")
         sys.exit(1)
 
-    # --- Define Raw Python Structure for Comparison ---
-    logger.info(f"{elp(domTooling, actDefine, statStart)} Defining raw Python structure (dict)")
-    # (Raw structure definition remains the same)
-    raw_network = {
-        "subnet": "subnet-abcdef01234567890", "vpc_id": "vpc-0123456789abcdef0",
-        "security_groups": ["sg-web", "sg-internal"], "private_endpoints": [],
-    }
-    raw_disk1 = {"size_gb": 100, "type": "gp3", "iops": 3000}
-    raw_disk2 = {"size_gb": 500, "type": "io2", "iops": None}
-    raw_disks = [raw_disk1, raw_disk2]
-    raw_tags = {"Environment": "production", "Project": "WebApp", "Owner": "PlatformTeam"}
-    raw_metadata = {
-        "created_by": "automation", "last_check_ok": True, "check_interval": 300,
-        "nested_data": {"key": "value"},
-    }
-    raw_location = [45.5231, -122.6765, 15.0]
-    raw_server = {
-        "name": "web-server-01", "instance_type": "t3.xlarge", "active": True,
-        "cpu_cores": 4, "ram_gb": 16.0, "network": raw_network, "disks": raw_disks,
-        "tags": raw_tags, "metadata": raw_metadata, "location": raw_location,
-        "extra_config": "some arbitrary config string",
-        "backup_policy": None, "region": "__cty_unknown__",
-    }
-    raw_top_level = {
-        "main_server": raw_server, "backup_server": None, "future_server": "__cty_unknown_object__",
-    }
-    logger.info(f"{elp(domTooling, actDefine, statOK)} Defined raw Python structure")
-
-    # --- Create cty Values (Simplified Top Level) ---
-    logger.info(f"{elp(domValue, actDefine, statStart)} Attempting to create top-level CtyMap value (simplified)")
-    try:
-        # Create the main server object first using validation (which uses helpers internally)
-        # This assumes CtyObject.validate exists and works
-        server_object_val = server_object_type.validate(raw_server)
-        logger.info(f"{elp(domValue, actValidate, statOK)} Validated main_server data against server_object_type")
-
-        # Assemble simplified top-level map value
-        top_level_map_type = CtyMap(key_type=string_type, value_type=server_object_type)
-        # Use validate to create the map value containing only the valid server object
-        top_level_value = top_level_map_type.validate({
-            "main_server": raw_server, # Pass raw dict again for validation by CtyMap
-        })
-        # Or potentially using the already validated object if CtyMap validation accepts CtyValue:
-        # top_level_value = top_level_map_type.validate({
-        #      "main_server": server_object_val,
-        # })
-
-        logger.info(f"{elp(domValue, actDefine, statOK)} Assembled top-level CtyMap value")
-        logger.debug(f"{elp(domTooling, actInfo, statOK)} Top Level Value repr: {top_level_value!r}")
+    for yaml_file in test_cases_dir.glob("*.yaml"):
+        logger.info(f"{elp(domTooling, actInfo, statStart)} Processing test case: {yaml_file.name}")
+        try:
+            with open(yaml_file, 'r') as f:
+                test_case_data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            logger.error(f"{elp(domError, actRead, statError)} Error loading YAML from {yaml_file.name}: {e}")
+            continue # Skip to next file
+        except IOError as e:
+            logger.error(f"{elp(domError, actRead, statError)} Error reading file {yaml_file.name}: {e}")
+            continue
 
 
-    except (AttributeError, CtyValidationError, TypeError, ValueError) as e:
-         logger.critical(f"{elp(domError, actDefine, statError)} Failed to create/validate CtyValue structure: {e}", exc_info=True)
-         sys.exit(1)
-    except Exception as e: # Catch any other unexpected errors
-        logger.critical(f"{elp(domError, actDefine, statError)} Unexpected error during CtyValue creation: {e}", exc_info=True)
-        sys.exit(1)
+        test_case_name = test_case_data.get("name", yaml_file.stem)
+        type_definition_str = test_case_data.get("type_definition")
+        raw_input_data = test_case_data.get("raw_input")
+
+        if not type_definition_str:
+            logger.error(f"{elp(domError, actInfo, statWarn)} Missing 'type_definition' in {yaml_file.name}")
+            continue
+
+        try:
+            cty_type = parse_type_definition(type_definition_str)
+            logger.info(f"{elp(domTypeSystem, actConvert, statOK)} Parsed type for {test_case_name}: {cty_type.__class__.__name__}")
+
+            cty_value: ConcreteCtyValue
+            if raw_input_data == "__unknown__":
+                cty_value = ConcreteCtyValue.unknown(cty_type)
+                logger.info(f"{elp(domValue, actDefine, statOK)} Created unknown value for {test_case_name}")
+            elif raw_input_data is None: # Assuming primitives allow null by default
+                cty_value = ConcreteCtyValue.null(cty_type)
+                logger.info(f"{elp(domValue, actDefine, statOK)} Created null value for {test_case_name}")
+            else:
+                # Special handling for list validation: CtyList.validate expects a list of raw values
+                if isinstance(cty_type, CtyList) and isinstance(raw_input_data, list):
+                    # If elements are simple, pass them directly.
+                    # If elements were complex (e.g., list of objects), they'd need pre-conversion
+                    # or the validator needs to handle raw Python dicts for object elements.
+                    # For POC, assume simple elements or elements CtyList validator can handle.
+                    cty_value = cty_type.validate(raw_input_data)
+                else:
+                    cty_value = cty_type.validate(raw_input_data)
+                logger.info(f"{elp(domValue, actValidate, statOK)} Validated raw input for {test_case_name}")
+
+            # Prepare output directory
+            case_output_dir = output_base_dir / test_case_name
+            case_output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"{elp(domTooling, actWrite, statStart)} Ensured output directory exists: {case_output_dir}")
+
+            # Generate py_value.json
+            py_value_file = case_output_dir / "py_value.json"
+            logger.info(f"{elp(domEncoding, actMarshal, statStart)} Generating py_value.json for {test_case_name}")
+            try:
+                # Ensure CtyValue has to_json_comparable_dict method
+                value_dict = cty_value.to_json_comparable_dict()
+                with open(py_value_file, 'w') as f:
+                    json.dump(value_dict, f, indent=2)
+                logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote {py_value_file}")
+            except AttributeError as e:
+                logger.error(f"{elp(domError, actMarshal, statError)} Error: 'to_json_comparable_dict' method not found on CtyValue. {e}")
+                # Potentially skip or handle error, for now, log and continue
+            except Exception as e:
+                logger.error(f"{elp(domError, actMarshal, statError)} Failed to generate py_value.json for {test_case_name}: {e}", exc_info=True)
 
 
-    # --- Generate Output Files ---
-    logger.info(f"{elp(domTooling, actInfo, statStart)} Generating output files...")
+            # Generate py_type.json
+            py_type_file = case_output_dir / "py_type.json"
+            logger.info(f"{elp(domTypeSystem, actConvert, statStart)} Generating py_type.json for {test_case_name}")
+            try:
+                type_description = describe_type(cty_type)
+                with open(py_type_file, 'w') as f:
+                    json.dump(type_description, f, indent=2)
+                logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote {py_type_file}")
+            except Exception as e:
+                logger.error(f"{elp(domError, actMarshal, statError)} Failed to generate py_type.json for {test_case_name}: {e}", exc_info=True)
 
-    # 1. Raw Python Structure JSON
-    raw_file_name = "pyvider-cty-raw-structure.json"
-    logger.info(f"{elp(domTooling, actMarshal, statStart)} Marshaling raw Python structure to JSON")
-    try:
-        with open(raw_file_name, 'w') as f:
-            json.dump(raw_top_level, f, indent=2, default=str) # default=str handles Decimal etc.
-        logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote raw structure to {raw_file_name}")
-    except IOError as e:
-        logger.error(f"{elp(domError, actWrite, statError)} Failed to write raw structure JSON to file '{raw_file_name}': {e}")
-    except TypeError as e:
-        logger.error(f"{elp(domError, actMarshal, statError)} Failed to marshal raw structure to JSON: {e}")
+        except ValueError as e: # Catch errors from parse_type_definition or CtyValue creation/validation
+            logger.error(f"{elp(domError, actDefine, statError)} Value error processing {yaml_file.name}: {e}")
+        except CtyValidationError as e:
+            logger.error(f"{elp(domError, actValidate, statError)} Validation error for {test_case_name}: {e}")
+        except Exception as e: # Catch-all for other unexpected errors during processing of a single file
+            logger.error(f"{elp(domError, actInfo, statError)} Unexpected error processing {yaml_file.name}: {e}", exc_info=True)
 
-    # 2. Type Structure JSON
-    type_file_name = "pyvider-cty-type-structure.json"
-    logger.info(f"{elp(domTypeSystem, actConvert, statStart)} Describing top-level cty.Type structure")
-    try:
-        type_description = describe_type(top_level_map_type) # Use the defined map type
-        logger.info(f"{elp(domTypeSystem, actMarshal, statStart)} Marshaling type structure to JSON")
-        with open(type_file_name, 'w') as f:
-            json.dump(type_description, f, indent=2, default=str)
-        logger.info(f"{elp(domTooling, actWrite, statOK)} Successfully wrote type structure to {type_file_name}")
-    except IOError as e:
-        logger.error(f"{elp(domError, actWrite, statError)} Failed to write type structure JSON to file '{type_file_name}': {e}")
-    except Exception as e:
-         logger.error(f"{elp(domError, actMarshal, statError)} Failed to describe or marshal type structure: {e}", exc_info=True)
-
-    # 3. Serialized CtyValue JSON - REMOVED
-    logger.info(f"{elp(domTooling, actInfo, statOK)} Skipping generation of serialized cty value JSON file as requested.")
-
-    print(f"\n{elp(domTooling, actInfo, statOK)} Successfully generated raw structure and type structure JSON files.")
+    logger.info(f"\n{elp(domTooling, actInfo, statOK)} Finished processing all test cases.")
 
 if __name__ == "__main__":
     main()

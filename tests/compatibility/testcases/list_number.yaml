@@ -1,0 +1,4 @@
+name: TestListNumber
+description: "Tests a list of numbers."
+type_definition: "list(number)"
+raw_input: [10, 20.5, 30] # Using simple numbers for POC

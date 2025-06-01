@@ -1,0 +1,6 @@
+{
+  "type": "list",
+  "elementType": {
+    "type": "number"
+  }
+}
