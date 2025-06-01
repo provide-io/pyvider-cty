@@ -1,4 +1,0 @@
-name: TestNullString
-description: "Tests a null string value."
-type_definition: "string"
-raw_input: null # Representing a null value input
