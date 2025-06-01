@@ -859,17 +859,7 @@ class CtyValue(Generic[T]):
         """
         # Check type first
         if not isinstance(other, CtyValue):
-            # Allow comparison with raw primitives if self is a known, non-null primitive
-            if not self._is_unknown and not self._is_null and isinstance(self._value, (str, int, float, bool, Decimal)):
-                try:
-                    # Handle Decimal comparison with float/int carefully
-                    if isinstance(self._value, Decimal):
-                        if isinstance(other, (int, float)):
-                            return self._value == Decimal(other)
-                    return self._value == other
-                except (TypeError, ValueError): # Catch errors during potential Decimal conversion
-                    return False
-            return False
+            return False # Or return NotImplemented for stricter Python semantics, False is simpler here.
 
         # Check CtyValue type compatibility
         if not isinstance(self._vtype, type(other._vtype)):

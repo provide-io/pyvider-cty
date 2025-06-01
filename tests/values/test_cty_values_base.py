@@ -141,9 +141,9 @@ class TestCtyValueBasicOperations:
 
     @pytest.mark.asyncio
     async def test_value_is_unknown_property(self, setup_values):
-        assert self.str_val.is_unknown
-        assert not self.unknown_val.is_unknown
-        assert self.null_val.is_unknown
+        assert self.str_val.is_unknown is False
+        assert self.unknown_val.is_unknown is True
+        assert self.null_val.is_unknown is False # A null value is known (it's null)
 
     @pytest.mark.asyncio
     async def test_value_is_null_property(self, setup_values):

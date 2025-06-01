@@ -157,15 +157,14 @@ class TestPathSystem:
         scores_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
         # Create a properly wrapped map value
-        scores = CtyValue(
-            vtype=scores_type, 
-            value={
-                CtyValue(vtype=CtyString(), value="Alice"): CtyValue(vtype=CtyNumber(), value=95),
-                CtyValue(vtype=CtyString(), value="Bob"): CtyValue(vtype=CtyNumber(), value=87),
-                CtyValue(vtype=CtyString(), value="Charlie"): CtyValue(vtype=CtyNumber(), value=92),
-                CtyValue(vtype=CtyString(), value="Dave"): CtyValue(vtype=CtyNumber(), value=78)
-            }
-        )
+        # Create a properly wrapped map value by validating a Python dict with string keys
+        raw_scores_data = {
+            "Alice": 95,
+            "Bob": 87,
+            "Charlie": 92,
+            "Dave": 78
+        }
+        scores = scores_type.validate(raw_scores_data)
 
         # Test key access
         bob_path = CtyPath.key("Bob")
@@ -194,53 +193,22 @@ class TestPathSystem:
         users_type = CtyList(element_type=user_type)
 
         # Create properly wrapped values
-        users = CtyValue(
-            vtype=users_type, 
-            value=[
-                CtyValue(
-                    vtype=user_type,
-                    value={
-                        "name": CtyValue(vtype=CtyString(), value="Alice"),
-                        "scores": CtyValue(
-                            vtype=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
-                            value={
-                                CtyValue(vtype=CtyString(), value="math"): CtyValue(vtype=CtyNumber(), value=95),
-                                CtyValue(vtype=CtyString(), value="science"): CtyValue(vtype=CtyNumber(), value=92),
-                                CtyValue(vtype=CtyString(), value="history"): CtyValue(vtype=CtyNumber(), value=88)
-                            }
-                        )
-                    }
-                ),
-                CtyValue(
-                    vtype=user_type,
-                    value={
-                        "name": CtyValue(vtype=CtyString(), value="Bob"),
-                        "scores": CtyValue(
-                            vtype=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
-                            value={
-                                CtyValue(vtype=CtyString(), value="math"): CtyValue(vtype=CtyNumber(), value=87),
-                                CtyValue(vtype=CtyString(), value="science"): CtyValue(vtype=CtyNumber(), value=85),
-                                CtyValue(vtype=CtyString(), value="history"): CtyValue(vtype=CtyNumber(), value=92)
-                            }
-                        )
-                    }
-                ),
-                CtyValue(
-                    vtype=user_type,
-                    value={
-                        "name": CtyValue(vtype=CtyString(), value="Charlie"),
-                        "scores": CtyValue(
-                            vtype=CtyMap(key_type=CtyString(), value_type=CtyNumber()),
-                            value={
-                                CtyValue(vtype=CtyString(), value="math"): CtyValue(vtype=CtyNumber(), value=78),
-                                CtyValue(vtype=CtyString(), value="science"): CtyValue(vtype=CtyNumber(), value=90),
-                                CtyValue(vtype=CtyString(), value="history"): CtyValue(vtype=CtyNumber(), value=85)
-                            }
-                        )
-                    }
-                )
-            ]
-        )
+        # Create properly wrapped values by validating Python dicts/lists
+        raw_users_data = [
+            {
+                "name": "Alice",
+                "scores": {"math": 95, "science": 92, "history": 88}
+            },
+            {
+                "name": "Bob",
+                "scores": {"math": 87, "science": 85, "history": 92}
+            },
+            {
+                "name": "Charlie",
+                "scores": {"math": 78, "science": 90, "history": 85}
+            }
+        ]
+        users = users_type.validate(raw_users_data)
 
         # Test complex path: second user's math score
         # users[1].scores["math"]

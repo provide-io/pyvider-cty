@@ -83,18 +83,31 @@ class CtyString(CtyType[str]):
             if isinstance(value.type, CtyString):
                 logger.debug("🔤🔍✅ Value is already a CtyValue with CtyString type")
                 return value
-            # --- Allow conversion from known, non-null CtyValue using str() ---
-            # --- This is a common pattern, but be mindful if it causes issues ---
+            # If it's a CtyValue of another type, it's a type mismatch for string validation.
+            # String conversion should be explicit via other mechanisms if needed, not implicit in validate.
+            # unless it's dynamic.
+            from pyvider.cty.types.structural import CtyDynamic
+            if not isinstance(value.type, CtyDynamic): # Allow CtyDynamic to be validated as string by converting its value
+                error_msg = f"Value is a CtyValue of type {value.type.__class__.__name__}, not CtyString or CtyDynamic"
+                logger.error(f"🔤❗❌ {error_msg}")
+                raise CtyStringValidationError(error_msg)
+
+            # If it's CtyDynamic, proceed to validate its inner value as a string
             if not value._is_unknown and not value._is_null:
-                 try:
-                     str_val = str(value.value)
-                     logger.debug(f"🔤🔍✅ Converted known CtyValue's inner value to string: {str_val!r}")
-                     return CtyValue(vtype=self, value=str_val)
-                 except Exception as e:
-                     error_msg = f"Failed to convert CtyValue's inner value to string: {e}"
-                     logger.error(f"🔤❗❌ {error_msg}")
-                     raise CtyStringValidationError(error_msg) from e
-            # --- End CtyValue Handling ---
+                try:
+                    # Convert inner value of CtyDynamic to string
+                    str_val = str(value.value)
+                    logger.debug(f"🔤🔍✅ Converted CtyDynamic's inner value to string: {str_val!r}")
+                    return CtyValue(vtype=self, value=str_val)
+                except Exception as e:
+                    error_msg = f"Failed to convert CtyDynamic's inner value to string: {e}"
+                    logger.error(f"🔤❗❌ {error_msg}")
+                    raise CtyStringValidationError(error_msg) from e
+            elif value._is_unknown: # Propagate unknown
+                 return CtyValue.unknown(self)
+            elif value._is_null: # Convert null dynamic to empty string CtyValue
+                 return CtyValue(vtype=self, value="")
+
 
         # Handle None as empty string (consistent with go-cty)
         if value is None:

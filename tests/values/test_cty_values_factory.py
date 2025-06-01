@@ -106,14 +106,14 @@ class TestCtyValueFactoryMethods:
         
         # Check keys and values
         for k, v in value.value.items():
-            assert isinstance(k, CtyValue)
-            assert isinstance(k.type, CtyString)
+            assert isinstance(k, str)
+            # For key type, we rely on CtyMap validation. Here k is Python str.
             assert isinstance(v, CtyValue)
             assert isinstance(v.type, CtyNumber)
-            assert k.value in ["a", "b"]
-            if k.value == "a":
+            assert k in ["a", "b"]  # k is a str, so no .value
+            if k == "a":  # k is a str
                 assert v.value == 1
-            elif k.value == "b":
+            elif k == "b":  # k is a str
                 assert v.value == 2
         
         # Empty map

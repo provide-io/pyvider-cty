@@ -170,15 +170,15 @@ async def test_complex_nested_object():
     owner_found = False
     
     for k, v in tags.value.items():
-        assert isinstance(k, CtyValue)
+        assert isinstance(k, str) # Map keys are native Python types (str, int, etc.)
         assert isinstance(v, CtyValue)
-        assert isinstance(k.type, CtyString)
+        # k.type is not applicable directly as k is now a Python str
         assert isinstance(v.type, CtyString)
         
-        if k.value == "Environment":
+        if k == "Environment": # k is now a str
             environment_found = True
             assert v.value == "production"
-        elif k.value == "Owner":
+        elif k == "Owner": # k is already a str
             owner_found = True
             assert v.value == "devops"
     
@@ -262,12 +262,12 @@ async def test_map_key_handling():
     values_found = set()
     
     for k, v in simple_map.value.items():
-        assert isinstance(k, CtyValue)
+        assert isinstance(k, str) # Map keys are native Python types
         assert isinstance(v, CtyValue)
-        assert isinstance(k.type, CtyString)
+        # k.type is not applicable directly as k is now a Python str
         assert isinstance(v.type, CtyNumber)
         
-        keys_found.add(k.value)
+        keys_found.add(k) # k is now a str
         values_found.add(v.value)
     
     # Check that all keys and values are present
@@ -277,7 +277,7 @@ async def test_map_key_handling():
     # Test lookup by finding a key with specific value
     one_value = None
     for k, v in simple_map.value.items():
-        if k.value == "one":
+        if k == "one": # k is now a str
             one_value = v
             break
     

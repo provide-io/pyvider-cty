@@ -260,35 +260,22 @@ async def test_validation_with_complex_nested_types_2():
     
     # Iterate through metadata entries
     for k, v in metadata_val.value.items():
-        assert isinstance(k, CtyValue)
-
-       
-
-
-
-
-
-
-
-
-
-
-
-
-
+        assert isinstance(k, str) # Map keys are native Python types
         assert isinstance(v, CtyValue)
-        
-        if k.value == "created":
+        assert isinstance(v.type, CtyDynamic) # All values in this map are CtyDynamic
+
+        if k == "created": # k is now a str
             found_created = True
-            assert isinstance(v, CtyString)
+            assert isinstance(v.value, str)
             assert v.value == "2023-01-01"
-        elif k.value == "active":
+        elif k == "active": # k is now a str
             found_active = True
-            assert isinstance(v, CtyBool)
+            assert isinstance(v.value, bool)
             assert v.value is True
-        elif k.value == "score":
+        elif k == "score": # k is now a str
             found_score = True
-            assert isinstance(v, CtyNumber)
+            from decimal import Decimal # Ensure Decimal is available for isinstance check
+            assert isinstance(v.value, (int, Decimal))
             assert v.value == 95
     
     # Verify we found all expected keys

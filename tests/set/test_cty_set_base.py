@@ -98,7 +98,7 @@ class TestCtySetType:
     async def test_validate_none_value(self):
         """Test validation with None value."""
         validated = self.string_set.validate(None)
-        assert len(validated.value) == 0
+        assert validated.is_null is True
 
     @pytest.mark.asyncio
     async def test_validate_non_iterable(self):

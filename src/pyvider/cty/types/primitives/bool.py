@@ -20,8 +20,8 @@ from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 
 # Define frozensets for true and false string representations
-_TRUE_STRINGS = frozenset({"1", "t", "T", "true", "TRUE", "True"})
-_FALSE_STRINGS = frozenset({"0", "f", "F", "false", "FALSE", "False"})
+_TRUE_STRINGS = frozenset({"1", "t", "T", "true", "TRUE", "True", "yes", "YES", "y", "Y"})
+_FALSE_STRINGS = frozenset({"0", "f", "F", "false", "FALSE", "False", "no", "NO", "n", "N"})
 
 @define(frozen=True, slots=True)
 class CtyBool(CtyType[bool]):

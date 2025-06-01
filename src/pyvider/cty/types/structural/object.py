@@ -87,7 +87,22 @@ class CtyObject(CtyType[dict[str, Any]]):
         Raises:
             CtyValidationError: If the value doesn't match this type
         """
+        # CtyValue is already imported at the module level
+        # from pyvider.cty.values import CtyValue
         logger.debug(f"🧩🔍🔄 Validating value against CtyObject: {value}")
+
+        from pyvider.cty.values import CtyValue # Make sure this import is available at the top of the file or method
+
+        if isinstance(value, CtyValue):
+            if isinstance(value.type, CtyObject) and value.type.equal(self):
+                logger.debug(f"🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is.")
+                return value
+            if value.is_unknown and value.type.usable_as(self):
+                logger.debug(f"🧩🔍✅ Propagating unknown CtyValue of a compatible type through object validation.")
+                return CtyValue.unknown(self)
+
+            logger.debug(f"🧩🔍🔄 Input is a CtyValue of type {value.type!r}; unwrapping to validate its inner content: {value.value!r}")
+            value = value.value # Unwrap to proceed with dict validation for the match statement
 
         # Handle different input types
         match value:
