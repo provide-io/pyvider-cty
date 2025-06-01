@@ -1350,4 +1350,29 @@ class CtyValue(Generic[T]):
             "marks": sorted_marks,
         }
 
+    # --- New Serialization/Deserialization Methods ---
+
+    def to_json_string(self) -> str:
+        """Serializes the CtyValue to a JSON string."""
+        from ..codec import cty_value_to_json_string # Local import
+        return cty_value_to_json_string(self)
+
+    @classmethod
+    def from_json_string(cls, json_str: str, target_type: 'CtyType') -> "CtyValue":
+        """Deserializes a CtyValue from a JSON string, targeting a specific CtyType."""
+        from ..codec import cty_value_from_json_string # Local import
+        # We use 'cls' indirectly by calling the codec function that returns a CtyValue instance
+        return cty_value_from_json_string(json_str, target_type)
+
+    def to_msgpack_bytes(self) -> bytes:
+        """Serializes the CtyValue to Msgpack bytes."""
+        from ..codec import cty_value_to_msgpack_bytes # Local import
+        return cty_value_to_msgpack_bytes(self)
+
+    @classmethod
+    def from_msgpack_bytes(cls, msgpack_bytes: bytes, target_type: 'CtyType') -> "CtyValue":
+        """Deserializes a CtyValue from Msgpack bytes, targeting a specific CtyType."""
+        from ..codec import cty_value_from_msgpack_bytes # Local import
+        return cty_value_from_msgpack_bytes(msgpack_bytes, target_type)
+
 # 🐍🏗️🐣
