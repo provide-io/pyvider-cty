@@ -651,4 +651,3 @@ def test_hypothesis_null_value_comparison(type_and_null_input):
 def test_hypothesis_unknown_value_comparison(type_and_unknown_input):
     type_str, raw_input_for_go = type_and_unknown_input
     run_comparison_for_special_value(type_str, raw_input_for_go, is_unknown=True)
-```

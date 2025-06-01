@@ -1,0 +1,29 @@
+{
+  "type_name": "list(number)",
+  "value": [
+    {
+      "type_name": "number",
+      "value": "10",
+      "is_unknown": false,
+      "is_null": false,
+      "marks": []
+    },
+    {
+      "type_name": "number",
+      "value": "20.5",
+      "is_unknown": false,
+      "is_null": false,
+      "marks": []
+    },
+    {
+      "type_name": "number",
+      "value": "30",
+      "is_unknown": false,
+      "is_null": false,
+      "marks": []
+    }
+  ],
+  "is_unknown": false,
+  "is_null": false,
+  "marks": []
+}
