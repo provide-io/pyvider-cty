@@ -239,30 +239,43 @@ class TestCtyValueFactoryMethods:
 class TestCtyValueFactoryLoggingAndValidation: # Renamed class for clarity
     """Tests for logging in dynamic factories and validation in object factory."""
 
-    def test_list_of_dynamic_factory_logs(self, caplog):
-        caplog.set_level(logging.DEBUG)
+    def test_list_of_dynamic_factory_logs(self, capsys): # Changed caplog to capsys
+        # caplog.set_level(logging.DEBUG) # Removed
         # The elements will be wrapped in CtyValue(CtyDynamic, element_value) by the factory/validation logic
         CtyValue.list_of_dynamic(["a", 1])
-        assert "Creating dynamic list value" in caplog.text
+        captured = capsys.readouterr()
+        assert "Creating dynamic list value" in captured.err
 
-    def test_map_of_dynamic_factory_logs(self, caplog):
-        caplog.set_level(logging.DEBUG)
+    def test_map_of_dynamic_factory_logs(self, capsys): # Changed caplog to capsys
+        # caplog.set_level(logging.DEBUG) # Removed
         # Key type is CtyString, values will be dynamic
         CtyValue.map_of_dynamic(CtyString(), {"key1": "b", "key2": 1})
-        assert "Creating dynamic map value" in caplog.text
+        captured = capsys.readouterr()
+        assert "Creating dynamic map value" in captured.err
 
-    def test_object_factory_invalid_attribute_type_spec_raises_validation_error(self, caplog):
+    def test_object_factory_invalid_attribute_type_spec_raises_validation_error(self, capsys): # Changed caplog to capsys
         # This test is primarily for the CtyValidationError, but good to set log level for any potential logs.
-        caplog.set_level(logging.DEBUG)
+        # caplog.set_level(logging.DEBUG)  # Removed
 
         # attribute_types uses Python types instead of CtyType instances for the error case
         invalid_attribute_types = {"name": str, "age": int}
         attributes_values = {"name": "test_name", "age": 30}
 
-        with pytest.raises(CtyValidationError, match="Expected CtyType for attribute 'name', got str"):
+        with pytest.raises(CtyValidationError) as excinfo: # Capture exception info
             CtyValue.object(attribute_types=invalid_attribute_types, attributes=attributes_values)
 
+        # Check for key parts of the message in the exception's string representation
+        error_message = str(excinfo.value)
+        assert "Expected CtyType for attribute" in error_message
+        # The error could be for 'name' or 'age' depending on dict iteration order in older Python,
+        # though for 3.7+ it's insertion order. Being slightly more general for the type part:
+        assert "got str" in error_message or "got int" in error_message
+        # To be more specific and ensure it's one of the problematic ones:
+        assert "attribute 'name', got str" in error_message or \
+               "attribute 'age', got int" in error_message
+
+        captured = capsys.readouterr()
         # We can also check if the initial "Creating object value" log was attempted if it occurs before validation,
         # or ensure no successful creation log if validation fails early.
         # The log "Creating object value with X attributes" happens before the loop that validates attribute_types.
-        assert "Creating object value with 2 attributes" in caplog.text
+        assert "Creating object value with 2 attributes" in captured.err
