@@ -881,7 +881,7 @@ class CtyValue(Generic[T]):
             return False # Or return NotImplemented for stricter Python semantics, False is simpler here.
 
         # Check CtyValue type compatibility
-        if not isinstance(self._vtype, type(other._vtype)):
+        if not self._vtype.equal(other._vtype):
             return False
 
         # Check state (unknown, null)
