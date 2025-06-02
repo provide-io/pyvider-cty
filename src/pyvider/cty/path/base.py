@@ -380,7 +380,7 @@ class KeyStep(PathStep):
             str_lookup_key: str
             if isinstance(self.key, CtyValue):
                 # If the path key was somehow a CtyValue, get its string value
-                if self.key.is_known and not self.key.is_null and isinstance(self.key.type, value.type.key_type.__class__):
+                if not self.key.is_unknown and not self.key.is_null and isinstance(self.key.type, value.type.key_type.__class__):
                     str_lookup_key = str(self.key.value)
                 else:
                     raise AttributePathError(f"Invalid CtyValue key in path step: {self.key!r}")
@@ -389,8 +389,11 @@ class KeyStep(PathStep):
             else:
                 # Attempt to convert other key types to string, mirroring CtyMap key validation
                 try:
+                    # Ensure key_type is a CtyType instance before calling validate
+                    if not isinstance(value.type.key_type, CtyType): # Should not happen with proper CtyMap setup
+                        raise TypeError(f"Map's key_type is not a CtyType: {value.type.key_type}")
                     validated_raw_key = value.type.key_type.validate(self.key)
-                    if validated_raw_key.is_known and not validated_raw_key.is_null:
+                    if not validated_raw_key.is_unknown and not validated_raw_key.is_null:
                         str_lookup_key = str(validated_raw_key.value)
                     else:
                         raise AttributePathError(f"Key in path step is null or unknown after validation: {self.key!r}")
@@ -437,12 +440,27 @@ class KeyStep(PathStep):
             raise AttributePathError(error_msg)
 
         # Validate the key
+        key_to_validate: Any
+        if isinstance(self.key, CtyValue):
+            # If the key in the path is a CtyValue, its type must be usable as the map's key_type.
+            # Also, null or unknown CtyValue keys are not valid for resolving a path type.
+            if not self.key.type.usable_as(vtype.key_type):
+                raise AttributePathError(f"Invalid CtyValue key type in path step: {self.key.type} is not usable as {vtype.key_type}")
+            if self.key.is_null or self.key.is_unknown:
+                raise AttributePathError(f"Key in path step is null or unknown: {self.key!r}")
+            key_to_validate = self.key.value # Validate the inner primitive value of the key
+        else:
+            # If the key is a raw Python value, it will be stringified by CtyString.validate if key_type is CtyString.
+            key_to_validate = self.key
+
         try:
-            key_str = str(self.key)
-            vtype.key_type.validate(key_str)
-            logger.debug(f"🧰✅🔄 Key {key_str} is valid for this map type")
+            # The map's key_type (e.g., CtyString) validates the key_to_validate.
+            vtype.key_type.validate(key_to_validate)
+            logger.debug(f"🧰✅🔄 Key {key_to_validate!r} is valid for this map type {vtype.key_type}")
         except CtyValidationError as e:
-            error_msg = f"Invalid key for map: {e}"
+            # This message should reflect that the key_to_validate (derived from self.key) is not valid.
+            raw_key_repr = self.key.value if isinstance(self.key, CtyValue) else self.key
+            error_msg = f"Invalid key for map: {raw_key_repr!r} is not a valid {vtype.key_type} (validation error: {e})"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
