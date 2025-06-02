@@ -25,6 +25,7 @@ dev = [
     "pytest-asyncio>=0.25.3",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
+    "pytest-mock>=3.14.0", # Added pytest-mock
     "reuse>=5.0.2",
     "ruff>=0.9.10",
     "ty>=0.0.1a7",

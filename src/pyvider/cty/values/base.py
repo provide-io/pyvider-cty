@@ -277,10 +277,12 @@ class CtyValue(Generic[T]):
                         default_cty = self._vtype.value_type.validate(default)
                     except Exception:
                         logger.warning(f"Default value {default!r} is not compatible with map value type {self._vtype.value_type}")
-                        return None # Or raise error? Returning None might be safer
+                        # Test expects None if the provided default cannot be validated against the map's value type
+                        return None
+                # Call the map's get method
                 return self._vtype.get(self, key, default_cty) # Pass CtyValue default
-            except Exception as e:
-                logger.debug(f"🔄🔍⚠️ Map get failed: {e}")
+            except Exception as e: # This broad exception now catches issues from self._vtype.get as well
+                logger.warning(f"JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: {e!r}")
                 return default # Return original python default
 
         # For objects, use the object's get_attribute method
@@ -291,11 +293,11 @@ class CtyValue(Generic[T]):
                     logger.debug(f"🔄🔍⚠️ Object attribute key must be string, got {type(key).__name__}")
                     return default
 
-                if self._vtype.has_attribute(key):
-                    return self._vtype.get_attribute(self, key)
-                return default
-            except Exception as e:
-                logger.debug(f"🔄🔍⚠️ Object attribute access failed: {e}")
+                # Call the object's get_attribute method
+                # This method should ideally handle 'has_attribute' check internally or raise appropriate Cty errors
+                return self._vtype.get_attribute(self, key)
+            except Exception as e: # This broad exception now catches issues from self._vtype.get_attribute
+                logger.warning(f"JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: {e!r}")
                 return default # Return original python default
 
         # Value doesn't support key lookup
@@ -545,7 +547,7 @@ class CtyValue(Generic[T]):
         return map_type.validate(items)
 
     @classmethod
-    def set(cls, element_type: CtyType, elements: set) -> "CtyValue":
+    def make_set(cls, element_type: CtyType, elements: set) -> "CtyValue": # Renamed from 'set'
         """
         Create a set value.
 
