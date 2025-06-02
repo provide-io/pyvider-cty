@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from pyvider.cty.path import CtyPath, PathStep, GetAttrStep
+from pyvider.cty.path import CtyPath, PathStep, GetAttrStep, IndexStep, KeyStep # Add IndexStep, KeyStep
 
 
 class TestPathStep:
@@ -74,40 +74,32 @@ class TestPath:
         assert new_path.steps[0].name == "user"
         assert new_path.steps[1].name == "address"
         assert new_path.steps[2].name == "city"
-    
-    @patch('pyvider.cty.path.base.IndexStep')
-    def test_path_index_step(self, mock_index_step_class):
+
+    def test_path_index_step(self): # Remove mock_index_step_class argument
         """Test CtyPath.index_step method."""
-        # Setup mock
-        mock_index_step = MagicMock()
-        mock_index_step_class.return_value = mock_index_step
-        
         # Call method
-        result = self.path.index_step(5)
-        
-        # Verify mock called
-        mock_index_step_class.assert_called_once_with(5)
+        new_path = self.path.index_step(5)
         
         # Verify steps
-        assert len(result.steps) == 1
-        assert result.steps[0] == mock_index_step
-    
-    @patch('pyvider.cty.path.base.KeyStep')
-    def test_path_key_step(self, mock_key_step_class):
+        assert len(new_path.steps) == 1
+        assert isinstance(new_path.steps[0], IndexStep)
+        assert new_path.steps[0].index == 5
+        
+        # Verify original path unchanged
+        assert len(self.path.steps) == 0
+
+    def test_path_key_step(self): # Remove mock_key_step_class argument
         """Test CtyPath.key_step method."""
-        # Setup mock
-        mock_key_step = MagicMock()
-        mock_key_step_class.return_value = mock_key_step
-        
         # Call method
-        result = self.path.key_step("test_key")
-        
-        # Verify mock called
-        mock_key_step_class.assert_called_once_with("test_key")
+        new_path = self.path.key_step("test_key")
         
         # Verify steps
-        assert len(result.steps) == 1
-        assert result.steps[0] == mock_key_step
+        assert len(new_path.steps) == 1
+        assert isinstance(new_path.steps[0], KeyStep)
+        assert new_path.steps[0].key == "test_key"
+
+        # Verify original path unchanged
+        assert len(self.path.steps) == 0
     
     def test_path_apply_path_empty(self):
         """Test applying an empty path."""
@@ -159,6 +151,8 @@ class TestPath:
         [
             (lambda: CtyPath.empty(), []),
             (lambda: CtyPath.get_attr("name"), [GetAttrStep("name")]),
+            (lambda: CtyPath.index(1), [IndexStep(1)]),
+            (lambda: CtyPath.key("mykey"), [KeyStep("mykey")]),
         ]
     )
     def test_path_class_methods(self, path_factory, expected):
@@ -175,3 +169,9 @@ class TestPath:
                 if isinstance(step, GetAttrStep):
                     assert isinstance(path.steps[i], GetAttrStep)
                     assert path.steps[i].name == step.name
+                elif isinstance(step, IndexStep):
+                    assert isinstance(path.steps[i], IndexStep)
+                    assert path.steps[i].index == step.index
+                elif isinstance(step, KeyStep):
+                    assert isinstance(path.steps[i], KeyStep)
+                    assert path.steps[i].key == step.key
