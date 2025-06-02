@@ -229,12 +229,16 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
     if marks_from_data:
         current_marks = set()
         for m_data in marks_from_data:
-            if isinstance(m_data, str): # Simple string mark
-                current_marks.add(CtyMark(m_data))
-            elif isinstance(m_data, dict): # Assuming dict can initialize CtyMark
-                current_marks.add(CtyMark(**m_data)) # Or however CtyMark is structured
-            # Add more sophisticated mark reconstruction if necessary
-            reconstructed_value = evolve(reconstructed_value, _marks=frozenset(current_marks))
+            if isinstance(m_data, dict) and "name" in m_data:
+                # Details can be None, so handle its absence or presence
+                details = m_data.get("details")
+                current_marks.add(CtyMark(name=m_data["name"], details=details))
+            # Add handling for old string format if backward compatibility is needed,
+            # otherwise, this will ignore/error on old stringified marks.
+            # For now, strictly expect the new dict format.
+        # This 'if' block is now correctly aligned with the 'for' loop above
+        if current_marks:
+            reconstructed_value = evolve(reconstructed_value, marks=frozenset(current_marks))
 
     return reconstructed_value
 

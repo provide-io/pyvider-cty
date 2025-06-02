@@ -216,6 +216,24 @@ class CtyValue(Generic[T]):
         )
         return unmarked_value, original_marks
 
+    def with_marks(self, new_marks_set: set) -> Self:
+        """
+        Replace all marks on this value with a new set of marks.
+
+        Creates a new CtyValue with the same content but with its marks
+        replaced by the provided set.
+
+        Args:
+            new_marks_set: A set of new marks.
+
+        Returns:
+            CtyValue: A new CtyValue with the specified marks.
+        """
+        return evolve(
+            self,
+            marks=frozenset(new_marks_set)
+        )
+
     # -------------------------------------------------------------------------
     # Container operations
     # -------------------------------------------------------------------------
@@ -1301,7 +1319,7 @@ class CtyValue(Generic[T]):
                 return f"object({{{', '.join(attrs_desc)}}})"
             if isinstance(cty_type_instance, CtyTuple):
                 elements_desc = [get_friendly_type_name(el_type) for el_type in cty_type_instance.element_types]
-                return f"tuple([{', '.join(elements_desc)}])"
+                return f"tuple({', '.join(elements_desc)})" # Corrected line
             # Fallback for other types not explicitly handled above
             return cty_type_instance.__class__.__name__[3:].lower() if cty_type_instance.__class__.__name__.startswith("Cty") else "unknown_type"
 
@@ -1341,18 +1359,19 @@ class CtyValue(Generic[T]):
                 processed_value = self.value
 
         # Ensure marks are strings and sorted for consistent output
-        # Assuming _marks stores mark objects that can be converted to string
-        # and are inherently sortable or don't need sorting if order doesn't matter.
-        # If marks can be complex objects, their string representation should be canonical.
-        sorted_marks = sorted([str(m) for m in self._marks])
-
+        # Serialize marks as a list of dictionaries
+        # Sort by mark name for consistent order, then by details if name is the same
+        serialized_marks = sorted(
+            [{"name": m.name, "details": m.details} for m in self._marks],
+            key=lambda m: (m["name"], str(m["details"])) # str(details) for sortability
+        )
 
         return {
             "type_name": type_name,
             "value": processed_value,
             "is_unknown": self.is_unknown,
             "is_null": self.is_null,
-            "marks": sorted_marks,
+            "marks": serialized_marks,
         }
 
     # --- New Serialization/Deserialization Methods ---
