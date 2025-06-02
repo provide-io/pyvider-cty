@@ -176,7 +176,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             bool: True if this type can be used as the other type, False otherwise.
         """
         result = isinstance(other, CtyNumber)
-        logger.debug(f"🔢🔍✅ CtyNumber.usable_as: {result}")
+        logger.debug(f"🔢🔍✅ CtyNumber.usable_as({other.__class__.__name__}): {result}")
         return result
 
     def __str__(self):
