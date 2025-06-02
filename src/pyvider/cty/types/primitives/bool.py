@@ -129,4 +129,8 @@ class CtyBool(CtyType[bool]):
     def __str__(self):    # pragma: no cover – trivial
         return "bool"
 
+    def is_primitive_type(self) -> bool:
+        """Check if this type is a primitive type."""
+        return True
+
 # 🐍🏗️🐣

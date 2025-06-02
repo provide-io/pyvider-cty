@@ -516,4 +516,12 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return f"CtyList(element_type={self.element_type!r})"
 
+    def is_collection_type(self) -> bool:
+        """Check if this type is a collection type."""
+        return True
+
+    def is_list_type(self) -> bool:
+        """Check if this type is a list type."""
+        return True
+
 # 🐍🏗️🐣

@@ -2,6 +2,8 @@
 # 🐍🧪🔒
 
 import pytest
+import json # Added for test_deserialization_corrupted_data
+import msgpack # Added for test_deserialization_corrupted_data
 from decimal import Decimal
 
 # CtyValue and CtyType imports
@@ -30,13 +32,13 @@ def check_serialization_deserialization(original_value: CtyValue, target_type: C
     json_str = original_value.to_json_string()
     deserialized_json = CtyValue.from_json_string(json_str, target_type)
 
-    assert original_value.type.equals(deserialized_json.type), \
+    assert original_value.type.equal(deserialized_json.type), \
         f"JSON: Type mismatch after deserialization. Expected {original_value.type}, got {deserialized_json.type}"
-    assert original_value.equals(deserialized_json).value, \
+    assert original_value == deserialized_json, \
         f"JSON: Value mismatch. Original: {original_value!r}, Deserialized: {deserialized_json!r}"
-    assert original_value.is_known == deserialized_json.is_known, "JSON: Known status mismatch"
     assert original_value.is_null == deserialized_json.is_null, "JSON: Null status mismatch"
     assert original_value.is_unknown == deserialized_json.is_unknown, "JSON: Unknown status mismatch"
+    # is_known is implicitly covered by is_null and is_unknown
     assert original_value._marks == deserialized_json._marks, "JSON: Marks mismatch"
 
 
@@ -44,13 +46,13 @@ def check_serialization_deserialization(original_value: CtyValue, target_type: C
     msgpack_bytes = original_value.to_msgpack_bytes()
     deserialized_msgpack = CtyValue.from_msgpack_bytes(msgpack_bytes, target_type)
 
-    assert original_value.type.equals(deserialized_msgpack.type), \
+    assert original_value.type.equal(deserialized_msgpack.type), \
         f"Msgpack: Type mismatch. Expected {original_value.type}, got {deserialized_msgpack.type}"
-    assert original_value.equals(deserialized_msgpack).value, \
+    assert original_value == deserialized_msgpack, \
         f"Msgpack: Value mismatch. Original: {original_value!r}, Deserialized: {deserialized_msgpack!r}"
-    assert original_value.is_known == deserialized_msgpack.is_known, "Msgpack: Known status mismatch"
     assert original_value.is_null == deserialized_msgpack.is_null, "Msgpack: Null status mismatch"
     assert original_value.is_unknown == deserialized_msgpack.is_unknown, "Msgpack: Unknown status mismatch"
+    # is_known is implicitly covered by is_null and is_unknown
     assert original_value._marks == deserialized_msgpack._marks, "Msgpack: Marks mismatch"
 
 
@@ -81,16 +83,16 @@ def test_bool_serialization():
     check_serialization_deserialization(original_value_false, CtyBool())
 
 def test_list_serialization_simple():
-    list_type = CtyList(CtyString())
+    list_type = CtyList(element_type=CtyString())
     original_value = list_type.validate(["a", "b", "c"])
     check_serialization_deserialization(original_value, list_type)
 
-    list_type_empty = CtyList(CtyNumber())
+    list_type_empty = CtyList(element_type=CtyNumber())
     original_value_empty = list_type_empty.validate([])
     check_serialization_deserialization(original_value_empty, list_type_empty)
 
 def test_list_serialization_nested():
-    nested_list_type = CtyList(CtyList(CtyNumber()))
+    nested_list_type = CtyList(element_type=CtyList(element_type=CtyNumber()))
     data = [[Decimal("1"), Decimal("2")], [Decimal("3")]]
     # Need to create CtyValues for inner lists if validate expects that
     # Assuming validate can handle raw python lists of appropriate types for now
@@ -101,17 +103,17 @@ def test_list_serialization_nested():
     check_serialization_deserialization(original_value, nested_list_type)
 
 def test_map_serialization_simple():
-    map_type = CtyMap(CtyNumber()) # Assumes string keys
+    map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
     original_value = map_type.validate({"a": Decimal("1"), "b": Decimal("2")})
     check_serialization_deserialization(original_value, map_type)
 
-    map_type_empty = CtyMap(CtyString())
+    map_type_empty = CtyMap(key_type=CtyString(), value_type=CtyString())
     original_value_empty = map_type_empty.validate({})
     check_serialization_deserialization(original_value_empty, map_type_empty)
 
 def test_map_serialization_nested():
     # map of lists of strings
-    map_type_nested = CtyMap(CtyList(CtyString()))
+    map_type_nested = CtyMap(key_type=CtyString(), value_type=CtyList(element_type=CtyString()))
     data = {"list1": ["x", "y"], "list2": ["z"]}
     original_value = map_type_nested.validate(data)
     check_serialization_deserialization(original_value, map_type_nested)
@@ -131,7 +133,7 @@ def test_object_serialization_nested():
         "id": CtyString(),
         "data": CtyObject({
             "value": CtyNumber(),
-            "tags": CtyList(CtyString())
+            "tags": CtyList(element_type=CtyString())
         })
     })
     data = {
@@ -145,22 +147,22 @@ def test_object_serialization_nested():
     check_serialization_deserialization(original_value, nested_object_type)
 
 def test_tuple_serialization_simple():
-    tuple_type = CtyTuple([CtyString(), CtyNumber(), CtyBool()])
+    tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool()))
     data = ("hello", Decimal("42"), True)
     original_value = tuple_type.validate(data)
     check_serialization_deserialization(original_value, tuple_type)
 
-    tuple_type_empty = CtyTuple([])
+    tuple_type_empty = CtyTuple(element_types=())
     original_value_empty = tuple_type_empty.validate(())
     check_serialization_deserialization(original_value_empty, tuple_type_empty)
 
 
 def test_tuple_serialization_nested():
-    tuple_type_nested = CtyTuple([
+    tuple_type_nested = CtyTuple(element_types=(
         CtyString(),
-        CtyList(CtyNumber()),
+        CtyList(element_type=CtyNumber()),
         CtyObject({"name": CtyString()})
-    ])
+    ))
     data = (
         "tuple_id",
         [Decimal("1"), Decimal("2"), Decimal("3")],
@@ -175,10 +177,10 @@ def test_null_value_serialization():
     null_string = CtyValue.null(CtyString())
     check_serialization_deserialization(null_string, CtyString())
 
-    null_list_of_numbers = CtyValue.null(CtyList(CtyNumber()))
-    check_serialization_deserialization(null_list_of_numbers, CtyList(CtyNumber()))
+    null_list_of_numbers = CtyValue.null(CtyList(element_type=CtyNumber()))
+    check_serialization_deserialization(null_list_of_numbers, CtyList(element_type=CtyNumber()))
 
-    complex_object_type = CtyObject({"a": CtyString(), "b": CtyList(CtyNumber())})
+    complex_object_type = CtyObject({"a": CtyString(), "b": CtyList(element_type=CtyNumber())})
     null_object = CtyValue.null(complex_object_type)
     check_serialization_deserialization(null_object, complex_object_type)
 
@@ -187,10 +189,10 @@ def test_unknown_value_serialization():
     unknown_number = CtyValue.unknown(CtyNumber())
     check_serialization_deserialization(unknown_number, CtyNumber())
 
-    unknown_map_of_bools = CtyValue.unknown(CtyMap(CtyBool()))
-    check_serialization_deserialization(unknown_map_of_bools, CtyMap(CtyBool()))
+    unknown_map_of_bools = CtyValue.unknown(CtyMap(key_type=CtyString(), value_type=CtyBool()))
+    check_serialization_deserialization(unknown_map_of_bools, CtyMap(key_type=CtyString(), value_type=CtyBool()))
 
-    complex_tuple_type = CtyTuple([CtyString(), CtyObject({"id": CtyNumber()})])
+    complex_tuple_type = CtyTuple(element_types=(CtyString(), CtyObject({"id": CtyNumber()})))
     unknown_tuple = CtyValue.unknown(complex_tuple_type)
     check_serialization_deserialization(unknown_tuple, complex_tuple_type)
 
@@ -206,7 +208,7 @@ def test_marked_value_serialization():
     check_serialization_deserialization(string_val, CtyString())
 
     # Marked list (mark on the list itself, not elements)
-    list_type = CtyList(CtyNumber())
+    list_type = CtyList(element_type=CtyNumber())
     marked_list = list_type.validate([Decimal("10"), Decimal("20")]).mark(mark1)
     check_serialization_deserialization(marked_list, list_type)
 
@@ -228,12 +230,12 @@ def test_dynamic_value_resolved_serialization():
     dynamic_val_holding_string = CtyDynamic().validate(concrete_string) # This should resolve type
 
     # The type of dynamic_val_holding_string should now be CtyString
-    assert dynamic_val_holding_string.type.equals(CtyString())
+    assert dynamic_val_holding_string.type.equal(CtyString())
     check_serialization_deserialization(dynamic_val_holding_string, CtyString())
 
     concrete_number_val = CtyNumber().validate(Decimal("123"))
     dynamic_val_holding_number = CtyDynamic().validate(concrete_number_val)
-    assert dynamic_val_holding_number.type.equals(CtyNumber())
+    assert dynamic_val_holding_number.type.equal(CtyNumber())
     check_serialization_deserialization(dynamic_val_holding_number, CtyNumber())
 
 # Potentially add tests for CtySet if it's a distinct type with specific serialization needs.

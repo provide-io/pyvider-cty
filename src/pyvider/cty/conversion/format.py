@@ -57,8 +57,9 @@ def _get_collection_pattern() -> Pattern[str]:
     Returns:
         Compiled regex pattern for collection types
     """
-    # Matches patterns like: list(string), map(number), set(bool)
-    return re.compile(r'^([a-z]+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)$')
+    # Simpler regex: captures base type and everything within parentheses
+    # The content within parentheses will be recursively processed/validated by other functions.
+    return re.compile(r'^([a-z]+)\((.*)\)$')
 
 def classify_type(type_str: TypeString) -> TypeCategory:
     """
@@ -79,7 +80,10 @@ def classify_type(type_str: TypeString) -> TypeCategory:
     # Check for collection types
     match = _get_collection_pattern().match(type_str)
     if match and match.group(1) in COLLECTION_TYPES:
+        logger.debug(f"🧰🔄📊 Matched collection: base='{match.group(1)}', element='{match.group(2)}'")
         return TypeCategory.COLLECTION
+    elif match:
+        logger.debug(f"🧰🔄📊 Matched collection pattern but base='{match.group(1)}' not in COLLECTION_TYPES")
         
     # For now, anything else is unknown
     # Could add STRUCTURED for object types later
@@ -314,6 +318,21 @@ def normalize_type_object(type_obj: Any) -> TypeString:
             elif class_name == "CtySet" and hasattr(type_obj, "element_type"):
                 element_type_str = normalize_type_object(type_obj.element_type)
                 return f"set({element_type_str})"
+            elif class_name == "CtyObject" and hasattr(type_obj, "attribute_types"):
+                attrs_desc = []
+                # Ensure attribute_types is a dict before iterating
+                if isinstance(type_obj.attribute_types, dict):
+                    for name, attr_type in sorted(type_obj.attribute_types.items()): # Sort for consistent order
+                        attrs_desc.append(f"{name}={normalize_type_object(attr_type)}")
+                return f"object({{{', '.join(attrs_desc)}}})"
+            elif class_name == "CtyTuple" and hasattr(type_obj, "element_types"):
+                # Ensure element_types is a tuple before iterating
+                elements_desc = []
+                if isinstance(type_obj.element_types, tuple):
+                    elements_desc = [normalize_type_object(el_type) for el_type in type_obj.element_types]
+                # Using () for tuple type strings as per common convention, vs [...] in CtyValue's helper
+                return f"tuple({', '.join(elements_desc)})"
+
 
         case _:
             # For unknown type objects, log and return dynamic

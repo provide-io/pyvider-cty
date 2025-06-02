@@ -123,6 +123,39 @@ class CtyType(ABC, Generic[T]):
         """
         pass
 
+    # Type checking methods
+    def is_primitive_type(self) -> bool:
+        """Check if this type is a primitive type (string, number, bool, dynamic)."""
+        return False
+
+    def is_collection_type(self) -> bool:
+        """Check if this type is a collection type (list, map, set)."""
+        return False
+
+    def is_list_type(self) -> bool:
+        """Check if this type is a list type."""
+        return False
+
+    def is_map_type(self) -> bool:
+        """Check if this type is a map type."""
+        return False
+
+    def is_set_type(self) -> bool:
+        """Check if this type is a set type."""
+        return False
+
+    def is_structured_type(self) -> bool:
+        """Check if this type is a structured type (object, tuple)."""
+        return False
+
+    def is_object_type(self) -> bool:
+        """Check if this type is an object type."""
+        return False
+
+    def is_tuple_type(self) -> bool:
+        """Check if this type is a tuple type."""
+        return False
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CtyType):
             return self.equal(other)

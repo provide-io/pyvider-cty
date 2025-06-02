@@ -74,14 +74,10 @@ class CtyDynamic(CtyType[Any]):
 
         # New logic for CtyValue inputs
         if isinstance(value, CtyValue):
-            logger.debug("🧩🔍🔄 Input is already a CtyValue instance")
-            if isinstance(value.type, CtyDynamic): # or value.type == self, if self is appropriate here
-                logger.debug("🧩🔍✅ Input CtyValue is already CtyDynamic, returning as is")
-                return value
-            else:
-                # Re-wrap with CtyDynamic type, preserving state and marks
-                logger.debug(f"🧩🔍🔄 Re-wrapping CtyValue of type {value.type} with CtyDynamic")
-                return CtyValue(vtype=self, value=value.value, is_unknown=value.is_unknown, is_null=value.is_null, marks=value._marks)
+            logger.debug("🧩🔍🔄 Input is already a CtyValue instance. CtyDynamic accepts any valid CtyValue.")
+            # If the input is already a CtyValue, its type is determined.
+            # CtyDynamic's role is to accept it as is.
+            return value
 
         # Accept primitive types, collections, and None
         if isinstance(value, (dict, list, int, float, bool, str, type(None))):
@@ -161,5 +157,9 @@ class CtyDynamic(CtyType[Any]):
             str: A string showing the class name in a format suitable for debugging
         """
         return "CtyDynamic()"
+
+    def is_primitive_type(self) -> bool:
+        """Check if this type is a primitive type (special case for dynamic)."""
+        return True
 
 # 🐍🏗️🐣
