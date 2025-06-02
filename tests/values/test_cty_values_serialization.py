@@ -288,12 +288,12 @@ def test_problem_description_string_serialization():
     # JSON
     json_str = original_value.to_json_string()
     deserialized_json = CtyValue.from_json_string(json_str, CtyString())
-    assert original_value.equals(deserialized_json).value
-    assert deserialized_json.type.equals(CtyString())
+    assert original_value == deserialized_json
+    assert deserialized_json.type.equal(CtyString()) # Also ensure .type.equal here
     # Msgpack
     msgpack_bytes = original_value.to_msgpack_bytes()
     deserialized_msgpack = CtyValue.from_msgpack_bytes(msgpack_bytes, CtyString())
-    assert original_value.equals(deserialized_msgpack).value
-    assert deserialized_msgpack.type.equals(CtyString())
+    assert original_value == deserialized_msgpack
+    assert deserialized_msgpack.type.equal(CtyString()) # Also ensure .type.equal here
 
 # 🐍🧪🔒

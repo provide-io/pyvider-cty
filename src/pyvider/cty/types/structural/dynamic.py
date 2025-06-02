@@ -16,11 +16,14 @@ checks and special validation behavior for maximum flexibility.
 """
 
 from typing import ClassVar, Any, Optional, TypeVar, cast
+from decimal import Decimal # Added import
 
 from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Added imports
+# from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
 from pyvider.telemetry import logger
 
 T = TypeVar('T')
@@ -79,13 +82,32 @@ class CtyDynamic(CtyType[Any]):
             # CtyDynamic's role is to accept it as is.
             return value
 
-        # Accept primitive types, collections, and None
-        if isinstance(value, (dict, list, int, float, bool, str, type(None))):
-            logger.debug(f"🧩🔍✅ Value is a supported type for CtyDynamic")
-            return CtyValue(vtype=self, value=value)
+        # Handle raw Python types by inferring their cty type
+        if isinstance(value, str):
+            concrete_type = CtyString()
+            return CtyValue(vtype=concrete_type, value=value)
+        elif isinstance(value, bool): # Check for bool BEFORE int/float
+            concrete_type = CtyBool()
+            return CtyValue(vtype=concrete_type, value=value)
+        elif isinstance(value, (int, float)):
+            concrete_type = CtyNumber()
+            return CtyValue(vtype=concrete_type, value=Decimal(value))
+        elif isinstance(value, list):
+            from pyvider.cty.types.collections import CtyList # Moved import
+            # For a raw list, the most specific type we can infer is list of dynamic.
+            concrete_type = CtyList(element_type=CtyDynamic())
+            return CtyValue(vtype=concrete_type, value=value)
+        elif isinstance(value, dict):
+            from pyvider.cty.types.collections import CtyMap # Moved import
+            # Similarly for dict, infer map of dynamic. Keys are implicitly strings.
+            concrete_type = CtyMap(key_type=CtyString(), value_type=CtyDynamic())
+            return CtyValue(vtype=concrete_type, value=value)
+        elif value is None:
+            # CtyDynamic validated with None should be null of CtyDynamic
+            return CtyValue.null(self)
 
         # Reject complex Python objects that don't map to Cty types
-        error_msg = "Unsupported value for CtyDynamic. Acceptable types are primitive types, dict, list, or None."
+        error_msg = "Unsupported value for CtyDynamic. Acceptable types are CtyValue, primitive types, dict, list, or None."
         logger.error(f"🧩❗❌ {error_msg}")
         raise CtyValidationError(error_msg)
 
