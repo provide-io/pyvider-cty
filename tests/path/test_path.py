@@ -314,12 +314,12 @@ class TestPathSystem:
             unknown_key_path.apply_path(cty_map_value)
 
         number_key_path = CtyPath.key(CtyNumber().validate(123))
-        with pytest.raises(AttributePathError, match=r"Invalid CtyValue key in path step: CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)"):
+        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)\]\): Map has no key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)"):
              number_key_path.apply_path(cty_map_value)
 
         list_key_path = CtyPath.key([])
         # str(KeyStep(key=[])) is "['[]']". The error message is f"Error at step 1 ({step}): {e}"
-        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\['\[\]'\]\): Invalid key type in path step: \[\] \(.*\)") : # Broader match for validation error
+        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[\[\]\]\): Unsupported key type in path step: .*"):
             list_key_path.apply_path(cty_map_value)
 
     @pytest.mark.anyio
