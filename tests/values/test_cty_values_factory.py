@@ -126,7 +126,7 @@ class TestCtyValueFactoryMethods:
     async def test_set_factory(self, setup_types):
         """Test set factory method."""
         # Create a set value
-        value = CtyValue.set(self.num_type, {1, 2, 3})
+        value = CtyValue.make_set(self.num_type, {1, 2, 3})
         
         # Verify result
         assert isinstance(value, CtyValue)
@@ -142,7 +142,7 @@ class TestCtyValueFactoryMethods:
         assert values == {1, 2, 3}
         
         # Empty set
-        value = CtyValue.set(self.num_type, set())
+        value = CtyValue.make_set(self.num_type, set())
         assert isinstance(value, CtyValue)
         assert isinstance(value.type, CtySet)
         assert len(value.value) == 0
