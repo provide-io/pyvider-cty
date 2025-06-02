@@ -241,6 +241,14 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         # Create and return a new CtyValue with the sliced tuple
         return CtyValue(vtype=sliced_tuple_type, value=sliced_values)
 
+    def is_structured_type(self) -> bool:
+        """Check if this type is a structured type."""
+        return True
+
+    def is_tuple_type(self) -> bool:
+        """Check if this type is a tuple type."""
+        return True
+
     def equal(self, other: CtyType) -> bool:
         """
         Check if this tuple type is equal to another type.

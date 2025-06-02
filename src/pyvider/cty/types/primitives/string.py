@@ -163,4 +163,8 @@ class CtyString(CtyType[str]):
     def __str__(self):
         return "string"
 
+    def is_primitive_type(self) -> bool:
+        """Check if this type is a primitive type."""
+        return True
+
 # 🐍🏗️🐣

@@ -7,6 +7,7 @@ from pyvider.cty.types import (
 )
 from pyvider.cty.values import CtyValue
 from pyvider.cty.path import CtyPath
+from pyvider.cty.marks import CtyMark
 from pyvider.cty.conversion import (
     TypeCategory, parse_collection_type, classify_type,
     standardize_type_string, register_formatter, validate_type_format,
@@ -17,7 +18,7 @@ from pyvider.cty.conversion import (
 # to avoid direct dependency from cty.__init__ to core.
 
 __all__ = [
-    "CtyType", "CtyValue", "CtyPath",
+    "CtyType", "CtyValue", "CtyPath", "CtyMark",
     "CtyBool", "CtyNumber", "CtyString",
     "CtyList", "CtyMap", "CtySet",
     "CtyObject", "CtyTuple", "CtyDynamic",

@@ -1314,6 +1314,11 @@ class CtyValue(Generic[T]):
                     v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                     for v in self.value
                 ]
+            elif isinstance(self.value, tuple): # For CtyTuple values
+                processed_value = tuple(
+                    v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
+                    for v in self.value
+                )
             elif isinstance(self.value, dict): # For CtyMap/CtyObject values
                 processed_value = {
                     # Map keys are strings. Object attribute names are strings.

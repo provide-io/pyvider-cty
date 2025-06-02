@@ -5,13 +5,16 @@ import json
 import msgpack
 from decimal import Decimal
 from typing import Any, TYPE_CHECKING, cast
+from attrs import evolve # Added for with_marks
+
+from pyvider.cty.conversion.format import normalize_type_object
+
+from pyvider.cty.conversion.format import normalize_type_object
 
 if TYPE_CHECKING:
     from .values.base import CtyValue
     from .types.base import CtyType
-    from .types.primitive import CtyPrimitiveType
-    from .types.collections import CtyListType, CtyMapType, CtySetType
-    from .types.structural import CtyObjectType, CtyTupleType
+    # Import CtyType for type hinting only
 
 
 # Sentinel for cases where direct type check on CtyValue is tricky due to circular imports
@@ -61,10 +64,19 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
     """
     from .types.base import CtyType
     from .values.base import CtyValue
-    from .types.primitive import CtyNumber, CtyString, CtyBool
-    from .types.collections import CtyList, CtyMap, CtySet # Assuming CtySet might be needed
-    from .types.structural import CtyObject, CtyTuple
+    from pyvider.cty.types import CtyNumber, CtyString, CtyBool
+    from pyvider.cty.types import CtyList, CtyMap, CtySet
+    from pyvider.cty.types import CtyObject, CtyTuple, CtyDynamic
     from .marks import CtyMark
+
+    # Basic structural validation for the incoming data dict
+    if not isinstance(data, dict) or \
+       "type_name" not in data or \
+       ("value" not in data and not data.get("is_null", False) and not data.get("is_unknown", False)):
+        raise ValueError(
+            "Invalid serialized CtyValue format: must be a dict with 'type_name' "
+            "and either 'value', 'is_null', or 'is_unknown'."
+        )
 
     # Extract core components from the serialized data
     type_name_from_data = data.get("type_name")
@@ -74,10 +86,12 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
     marks_from_data = data.get("marks", []) # Assuming marks are list of strings or dicts
 
     # Validate type consistency if type_name was in data
-    if type_name_from_data and type_name_from_data != str(target_type):
+    # Use normalize_type_object for a consistent string representation of the target type
+    normalized_target_type_str = normalize_type_object(target_type)
+    if type_name_from_data and type_name_from_data != normalized_target_type_str:
         raise ValueError(
             f"Type mismatch: Serialized data indicates type '{type_name_from_data}', "
-            f"but target type is '{str(target_type)}'."
+            f"but target type is '{normalized_target_type_str}' (normalized from {str(target_type)})."
         )
 
     # Handle unknown and null states first
@@ -100,9 +114,7 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
             reconstructed_value = target_type.validate(current_value_for_validation)
 
         elif target_type.is_list_type():
-            from .types.collections import CtyListType # Local import
-            list_target_type = cast('CtyListType', target_type)
-            element_type = list_target_type.element_type
+            element_type = target_type.element_type # type: ignore
 
             if not isinstance(value_from_data, list):
                 raise ValueError("List value expected for CtyListType")
@@ -131,9 +143,7 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
             reconstructed_value = CtyValue(target_type, elements)
 
         elif target_type.is_map_type():
-            from .types.collections import CtyMapType # Local import
-            map_target_type = cast('CtyMapType', target_type)
-            value_type = map_target_type.value_type
+            value_type = target_type.value_type # type: ignore
 
             if not isinstance(value_from_data, dict):
                 raise ValueError("Dict value expected for CtyMapType")
@@ -154,22 +164,22 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
             reconstructed_value = CtyValue(target_type, items)
 
         elif target_type.is_object_type():
-            from .types.structural import CtyObjectType # Local import
-            obj_target_type = cast('CtyObjectType', target_type)
-
             if not isinstance(value_from_data, dict):
                 raise ValueError("Dict value expected for CtyObjectType")
 
             attributes = {}
-            for attr_name, attr_type in obj_target_type.attribute_types.items():
+            for attr_name, attr_type in target_type.attribute_types.items(): # type: ignore
                 attr_data_item = value_from_data.get(attr_name)
-                if attr_data_item is None: # Attribute might be missing if it was null/unknown or optional
-                    # This needs careful handling based on how missing attributes are serialized
-                    # For now, assume if it's missing in value_from_data, it wasn't part of the known value.
-                    # If the type expects it, it might become null or unknown.
-                    # Let's assume _value_to_serializable includes all keys from the object type,
-                    # potentially with null/unknown flags.
-                    raise ValueError(f"Attribute '{attr_name}' missing in serialized object data.")
+                if attr_data_item is None:
+                    # Assuming to_json_comparable_dict ensures all expected keys are present,
+                    # possibly with null/unknown markers if that's the intended serialization.
+                    # If an attribute is truly missing from serialized data and is required,
+                    # this indicates an issue with serialization or the data itself.
+                    # For optional-but-missing, it should have been serialized as null.
+                    # This check might be too strict if nulls are omitted from serialization.
+                    # However, `_value_to_serializable` via `to_json_comparable_dict`
+                    # should represent all attributes.
+                    raise ValueError(f"Attribute '{attr_name}' missing in serialized object data for type {target_type}.")
 
                 if isinstance(attr_data_item, dict) and "type_name" in attr_data_item and "value" in attr_data_item:
                     pass
@@ -185,17 +195,14 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
             reconstructed_value = CtyValue(target_type, attributes)
 
         elif target_type.is_tuple_type():
-            from .types.structural import CtyTupleType # Local import
-            tuple_target_type = cast('CtyTupleType', target_type)
-
-            if not isinstance(value_from_data, list):
+            if not isinstance(value_from_data, list): # Tuples are serialized as JSON lists
                 raise ValueError("List value expected for CtyTupleType")
 
-            if len(value_from_data) != len(tuple_target_type.element_types):
+            if len(value_from_data) != len(target_type.element_types): # type: ignore
                 raise ValueError("Tuple element count mismatch.")
 
             elements = []
-            for i, elem_type in enumerate(tuple_target_type.element_types):
+            for i, elem_type in enumerate(target_type.element_types): # type: ignore
                 elem_data_item = value_from_data[i]
                 if isinstance(elem_data_item, dict) and "type_name" in elem_data_item and "value" in elem_data_item:
                     pass
@@ -227,7 +234,7 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
             elif isinstance(m_data, dict): # Assuming dict can initialize CtyMark
                 current_marks.add(CtyMark(**m_data)) # Or however CtyMark is structured
             # Add more sophisticated mark reconstruction if necessary
-        reconstructed_value = reconstructed_value.with_marks(current_marks)
+            reconstructed_value = evolve(reconstructed_value, _marks=frozenset(current_marks))
 
     return reconstructed_value
 

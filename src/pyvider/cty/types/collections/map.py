@@ -236,6 +236,14 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def __repr__(self) -> str:
         return f"CtyMap(key_type={self.key_type!r}, value_type={self.value_type!r})"
 
+    def is_collection_type(self) -> bool:
+        """Check if this type is a collection type."""
+        return True
+
+    def is_map_type(self) -> bool:
+        """Check if this type is a map type."""
+        return True
+
 @define
 class ElementIterator:
     """ Iterator for map elements with consistent ordering. """

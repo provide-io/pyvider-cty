@@ -316,6 +316,14 @@ class CtyObject(CtyType[dict[str, Any]]):
         logger.debug(f"🧩🔍🔄 Checking if attribute {name} exists: {result}")
         return result
 
+    def is_structured_type(self) -> bool:
+        """Check if this type is a structured type."""
+        return True
+
+    def is_object_type(self) -> bool:
+        """Check if this type is an object type."""
+        return True
+
     def equal(self, other: CtyType) -> bool:
         """
         Check if this type equals another type.
