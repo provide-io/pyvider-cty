@@ -11,8 +11,7 @@ from pyvider.cty.marks import CtyMark
 from pyvider.cty.conversion import (
     TypeCategory, parse_collection_type, classify_type,
     standardize_type_string, register_formatter, validate_type_format,
-    ensure_quoted_bytes, marshal_type, unmarshal_type,
-    marshal_json, unmarshal_json,
+    ensure_quoted_bytes,
 )
 # pyvider.core.conversion.wire_format.WireFormatType is imported in pyvider.cty.conversion
 # to avoid direct dependency from cty.__init__ to core.

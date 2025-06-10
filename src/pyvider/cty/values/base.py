@@ -1239,6 +1239,7 @@ class CtyValue(Generic[T]):
             dict: A dictionary with "type_name", "value", "is_unknown", "is_null", and "marks".
         """
         # Local imports to avoid circular dependencies at module load time
+        # Ensure CtyTuple is imported here if not already (it's used below)
         from pyvider.cty.types import CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtySet, CtyObject, CtyTuple, CtyDynamic
 
         type_name = "dynamic" # Default for CtyDynamic or if type not easily matched
@@ -1273,18 +1274,26 @@ class CtyValue(Generic[T]):
 
         type_name = get_friendly_type_name(self.type)
 
-        processed_value = None
+        processed_value = None # Initialize to None as a default for null/unknown or if not set by other conditions
+
         if not self.is_unknown and not self.is_null:
-            if isinstance(self.value, list): # For CtyList values
+            # Check for CtyTuple specifically BEFORE general tuple check
+            if isinstance(self.type, CtyTuple): # Accessing self.type here
+                if not self.value:  # If self.value is an empty tuple ()
+                    processed_value = None # Align with Go's 'null' for empty tuple value
+                else: # Non-empty tuple
+                    processed_value = tuple(
+                        v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
+                        for v in self.value
+                    )
+            elif isinstance(self.value, list): # For CtyList values
                 processed_value = [
                     v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                     for v in self.value
                 ]
-            elif isinstance(self.value, tuple): # For CtyTuple values
-                processed_value = tuple(
-                    v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
-                    for v in self.value
-                )
+            # Note: The generic 'elif isinstance(self.value, tuple):' might be removed if CtyTuple is the only tuple source
+            # or kept if self.value can be a tuple for non-CtyTuple types (unlikely).
+            # For safety, assuming CtyTuple is the definite source of tuple values.
             elif isinstance(self.value, dict): # For CtyMap/CtyObject values
                 processed_value = {
                     # Map keys are strings. Object attribute names are strings.
@@ -1300,8 +1309,36 @@ class CtyValue(Generic[T]):
 
 
             elif isinstance(self.value, Decimal):
-                # Ensure Decimals are strings for JSON compatibility and cross-language comparison
-                processed_value = str(self.value)
+                # Handle 0, -0, 0.0 etc. specifically first
+                if self.value.is_zero():
+                    if self.value.as_tuple().sign: # Check sign on the original value before normalization
+                        processed_value = "-0"
+                    else:
+                        processed_value = "0"
+                else:
+                    # Universal plain formatting for non-zero decimals
+                    normalized_d = self.value.normalize() # Canonical form for non-zero values
+                    sign_tuple, digits_tuple, exponent_int = normalized_d.as_tuple()
+                    val_str = ""
+                    if sign_tuple:
+                        val_str += "-"
+
+                    if exponent_int >= 0: # Number is integral or larger than 1, no leading "0."
+                        val_str += "".join(map(str, digits_tuple))
+                        if exponent_int > 0: # Append zeros if exponent was positive (e.g., 123E2)
+                            val_str += "0" * exponent_int
+                    else: # Number has a fractional part (exponent < 0)
+                        num_digits = len(digits_tuple)
+                        abs_exponent = abs(exponent_int)
+                        if abs_exponent > num_digits: # e.g., 0.00123 (123E-5)
+                            val_str += "0." + ("0" * (abs_exponent - num_digits)) + "".join(map(str, digits_tuple))
+                        elif abs_exponent == num_digits: # e.g., 0.123 (123E-3)
+                            val_str += "0." + "".join(map(str, digits_tuple))
+                        else: # e.g., 1.23 (123E-2) or 12.345 (12345E-3)
+                            val_str += "".join(map(str, digits_tuple[:num_digits - abs_exponent])) + \
+                                       "." + \
+                                       "".join(map(str, digits_tuple[num_digits - abs_exponent:]))
+                    processed_value = val_str
             else:
                 # For primitives like string, bool, int (though numbers are Decimal)
                 processed_value = self.value

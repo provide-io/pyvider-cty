@@ -53,7 +53,7 @@ COLLECTION_TYPES = frozenset(["list", "map", "set"])
 def _get_collection_pattern() -> Pattern[str]:
     """
     Get cached regex pattern for matching collection types.
-    
+
     Returns:
         Compiled regex pattern for collection types
     """
@@ -64,19 +64,19 @@ def _get_collection_pattern() -> Pattern[str]:
 def classify_type(type_str: TypeString) -> TypeCategory:
     """
     Classify a type string into its category.
-    
+
     Args:
         type_str: The type string to classify
-        
+
     Returns:
         TypeCategory enum indicating the category
     """
     logger.debug(f"🧰🔄📊 Classifying type: {type_str!r}")
-    
+
     # Check for primitive types
     if type_str in PRIMITIVE_TYPES:
         return TypeCategory.PRIMITIVE
-        
+
     # Check for collection types
     match = _get_collection_pattern().match(type_str)
     if match and match.group(1) in COLLECTION_TYPES:
@@ -84,7 +84,7 @@ def classify_type(type_str: TypeString) -> TypeCategory:
         return TypeCategory.COLLECTION
     elif match:
         logger.debug(f"🧰🔄📊 Matched collection pattern but base='{match.group(1)}' not in COLLECTION_TYPES")
-        
+
     # For now, anything else is unknown
     # Could add STRUCTURED for object types later
     return TypeCategory.UNKNOWN
@@ -155,15 +155,15 @@ def Xparse_collection_type(type_str: str) -> tuple[str, str]:
     """Parse collection type with support for nested types."""
     if not type_str or '(' not in type_str or not type_str.endswith(')'):
         raise ValueError(f"Invalid collection type format: {type_str}")
-        
+
     # Extract base type and potentially nested content
     base_type, rest = type_str.split('(', 1)
     content = rest[:-1]  # Remove trailing ')'
-    
+
     # Validate balanced parentheses for nested types
     if content.count('(') != content.count(')'):
         raise ValueError(f"Unbalanced parentheses in type: {type_str}")
-        
+
     return base_type.strip(), content.strip()
 
 def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
