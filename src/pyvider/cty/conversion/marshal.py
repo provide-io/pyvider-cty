@@ -16,7 +16,7 @@ from typing import Any, Optional, Type, TypeVar, Union, cast, Literal, TypeGuard
 
 from pyvider.telemetry import logger
 
-from pyvider.core.exceptions import ConversionError, TypeConversionError
+from pyvider.cty.exceptions import CtyConversionError
 from pyvider.cty import (
     CtyType, CtyString, CtyNumber, CtyBool,
     CtyList, CtyMap, CtySet, CtyTuple, CtyObject, CtyDynamic,
@@ -46,7 +46,7 @@ def marshal_type(type_obj: Any) -> bytes:
         bytes: The type as properly formatted bytes for Terraform protocol
 
     Raises:
-        ConversionError: If encoding fails
+        CtyConversionError: If encoding fails
     """
     logger.debug(f"🧰🔄📊 Converting {type(type_obj).__name__} to type bytes")
 
@@ -59,7 +59,7 @@ def marshal_type(type_obj: Any) -> bytes:
     except Exception as e:
         error_msg = f"Failed to encode type {type_obj!r}: {e}"
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
-        raise ConversionError(error_msg) from e
+        raise CtyConversionError(error_msg) from e
 
 def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) -> CtyType:
     """
@@ -73,7 +73,7 @@ def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) 
         CtyType: The corresponding CTY type
 
     Raises:
-        ConversionError: If conversion fails
+        CtyConversionError: If conversion fails
     """
     logger.debug(f"🧰🔍📊 Converting type bytes to CTY type: {type_bytes!r}")
 
@@ -93,7 +93,7 @@ def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) 
             type_str = standardize_type_string(decoded_str)
             logger.debug(f"🧰🔍📊 Standardized type string: {type_str!r}")
         except UnicodeDecodeError:
-            raise ConversionError(f"Invalid type bytes: {type_bytes}")
+            raise CtyConversionError(f"Invalid type bytes: {type_bytes}")
 
         # Use match/case for type categorization
         match classify_type(type_str):
@@ -135,7 +135,7 @@ def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) 
                             return CtyDynamic()
                 except ValueError as e:
                     logger.error(f"🧰🔍❌ Failed to parse collection type: {e}")
-                    raise ConversionError(f"Invalid collection type format: {type_str}") from e
+                    raise CtyConversionError(f"Invalid collection type format: {type_str}") from e
 
             case _:
                 # Handle unknown or structured types
@@ -143,11 +143,11 @@ def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) 
                 return CtyDynamic()
 
     except Exception as e:
-        if isinstance(e, ConversionError):
+        if isinstance(e, CtyConversionError):
             raise
         error_msg = f"Failed to decode type: {e}"
         logger.error(f"🧰🔍❌ {error_msg}", exc_info=True)
-        raise ConversionError(error_msg) from e
+        raise CtyConversionError(error_msg) from e
 
 def validate_collection_type(type_str: str) -> bool:
     """
@@ -203,7 +203,7 @@ def extract_element_type(type_str: str) -> str:
         str: The extracted element type string
 
     Raises:
-        TypeConversionError: If the input is not a valid collection type
+        TypeCtyConversionError: If the input is not a valid collection type
     """
     logger.debug(f"🧰🔄🔍 Extracting element type from: {type_str!r}")
 
@@ -213,7 +213,7 @@ def extract_element_type(type_str: str) -> str:
 
         # Check if it's a collection type
         if not validate_collection_type(normalized):
-            raise TypeConversionError(f"Not a valid collection type: {normalized}")
+            raise TypeCtyConversionError(f"Not a valid collection type: {normalized}")
 
         # Parse the collection type
         _, element_type = parse_collection_type(normalized)
@@ -222,11 +222,11 @@ def extract_element_type(type_str: str) -> str:
         return element_type
 
     except Exception as e:
-        if isinstance(e, TypeConversionError):
+        if isinstance(e, TypeCtyConversionError):
             raise
         error_msg = f"Failed to extract element type: {e}"
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
-        raise TypeConversionError(error_msg) from e
+        raise TypeCtyConversionError(error_msg) from e
 
 def get_type_category(type_obj: Any) -> TypeCategory:
     """

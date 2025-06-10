@@ -21,7 +21,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, ca
 from attrs import define, field
 
 from pyvider.telemetry import logger
-from pyvider.core.conversion.wire_format import WireFormatType
+from pyvider.cty.conversion.wire import WireFormatType
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.values import CtyValue
 # Import Cty types for type checking

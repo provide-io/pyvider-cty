@@ -25,13 +25,13 @@ from pyvider.cty.exceptions import (
     InvalidTypeError,
 )
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_object_init_invalid_attribute_types_dict():
     """Test validation fails for non-dictionary attribute_types."""
     with pytest.raises(InvalidTypeError):
         CtyObject(attribute_types="not a dict")
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_object_optional_attribute_fully_missing():
     """Test behavior when an optional attribute is completely missing from input."""
     obj = CtyObject(
@@ -63,7 +63,7 @@ async def test_object_optional_attribute_fully_missing():
     # Check that missing optional attribute is null
     assert validated["active"].is_null == True
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_object_optional_attribute_as_none():
     """Test behavior when an optional attribute is explicitly None."""
     obj = CtyObject(
@@ -90,7 +90,7 @@ async def test_object_optional_attribute_as_none():
     # Check that optional attribute is null
     assert validated["active"].is_null == True
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_string_representation():
     """Test string representation of CtyObject."""
     # Simple object type
@@ -121,7 +121,7 @@ async def test_string_representation():
     assert "name: CtyString" in str2
     assert "age: CtyNumber (optional)" in str2
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_validation_with_complex_nested_types_2():
     """Test validation with complex nested types."""
     # Create a complex type with nested objects, lists, and maps
@@ -286,7 +286,7 @@ async def test_validation_with_complex_nested_types_2():
     assert found_active, "Missing 'active' key in metadata"
     assert found_score, "Missing 'score' key in metadata"
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_validation_with_complex_nested_types_1():
     """Test validation with complex nested types."""
     # Create a complex type with nested objects, lists, and maps
@@ -402,7 +402,7 @@ async def test_validation_with_complex_nested_types_1():
             assert isinstance(v.type, CtyNumber)
             assert v.value == 95
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_usable_as_complex_types():
     """Test usable_as method with complex type hierarchies."""
     # Create a common address type
@@ -436,7 +436,7 @@ async def test_usable_as_complex_types():
     assert detailed_person.usable_as(basic_person) is True
     assert basic_person.usable_as(detailed_person) is False
 
-@pytest.mark.anyio # Changed from asyncio
+@pytest.mark.asyncio # Changed from asyncio
 async def test_validate_error_propagation():
     """Test that validation errors from nested types are properly propagated."""
     address_type = CtyObject(attribute_types={

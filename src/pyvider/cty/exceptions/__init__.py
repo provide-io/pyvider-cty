@@ -34,6 +34,10 @@ from pyvider.cty.exceptions.validation import (
     CtyAttributeValidationError,
 )
 
+from pyvider.cty.exceptions.conversion import (
+    CtyConversionError
+)
+
 from pyvider.cty.exceptions.encoding import (
     TransformationError,
     InvalidTypeError,
@@ -59,6 +63,8 @@ __all__ = [
     "CtyTupleValidationError",
     "CtyTypeMismatchError",
     "CtyAttributeValidationError",
+
+    "CtyConversionError",
 
     "TransformationError",
     "InvalidTypeError",

@@ -1,31 +1,51 @@
-# pyvider/cty/conversion/__init__.py
+# pyvider-cty/src/pyvider/cty/conversion/__init__.py
+
+from typing import Any
 
 from pyvider.telemetry import logger
-from pyvider.cty.conversion.format import (
-    TypeCategory, parse_collection_type, classify_type,
-    validate_type_format, standardize_type_string, ensure_quoted_bytes,
-)
-from pyvider.cty.conversion.marshal import (
-    marshal_type, unmarshal_type, marshal_json, unmarshal_json,
-)
-# Import WireFormatType from core, as cty.conversion needs to know about it for formatters
-from pyvider.core.conversion.wire_format import WireFormatType
 
-import pyvider.cty.conversion.formats.json
-import pyvider.cty.conversion.formats.msgpack
-# pyvider.cty.conversion.wire is where CtyWireFormat is defined, which depends on core.
-# This import is fine as it's within the cty package structure.
-import pyvider.cty.conversion.wire
+from pyvider.cty.context import OperationContext, get_current_operation, operation_context
+
+from pyvider.cty.conversion.wire import WireFormat, WireFormatType, WireFormatRegistry
+
+from pyvider.cty.conversion.schema_type_encoder import encode_type_to_wire # Import the moved function
+
+from pyvider.cty.conversion.format import (
+    TypeCategory,
+    parse_collection_type,
+    classify_type,
+    standardize_type_string,
+    validate_type_format,
+    ensure_quoted_bytes,
+)
 
 from pyvider.cty.conversion.formats.base import (
-    FormatEncoder, register_formatter, get_formatter, list_formatters,
+    register_formatter,
 )
 
+# Import concrete implementations to register them
+import pyvider.cty.conversion.terraform
+
+T = type["T"]
+
+def marshal(value: Any, format_kind: WireFormatType, operation: OperationContext | None = None, **options: Any) -> bytes:
+    op_ctx = operation or get_current_operation()
+    formatter = WireFormatRegistry.get_formatter(format_kind)
+    with operation_context(op_ctx):
+        return formatter.marshal(value, operation=op_ctx, **options)
+
+def unmarshal(data: bytes | Any, format_kind: WireFormatType, expected_type: T | None = None, operation: OperationContext | None = None, **options: Any) -> T:
+    op_ctx = operation or get_current_operation()
+    formatter = WireFormatRegistry.get_formatter(format_kind)
+    with operation_context(op_ctx):
+        return formatter.unmarshal(data, expected_type=expected_type, operation=op_ctx, **options)
+
 __all__ = [
-    "TypeCategory", "parse_collection_type", "classify_type",
-    "validate_type_format", "standardize_type_string", "ensure_quoted_bytes",
-    "marshal_type", "unmarshal_type", "marshal_json", "unmarshal_json",
-    "WireFormatType", # Re-export for convenience if needed by cty users
-    "FormatEncoder", "register_formatter", "get_formatter", "list_formatters",
+    "WireFormat", "WireFormatType", "WireFormatRegistry",
+    "OperationContext", "get_current_operation", "operation_context",
+    "marshal", "unmarshal",
+    "encode_type_to_wire",
+    "TypeCategory", "parse_collection_type", "classify_type", "standardize_type_string", "register_formatter", "validate_type_format", "ensure_quoted_bytes",
 ]
 logger.debug("🗣️ 🧩🔄🔧 CTY conversion module initialized")
+# 🐍🏗️

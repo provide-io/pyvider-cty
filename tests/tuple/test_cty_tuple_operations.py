@@ -5,6 +5,8 @@ Tests for CtyTuple operations (indexing, slicing) and related CtyValue operation
 """
 
 import pytest
+import pytest_asyncio
+
 from decimal import Decimal
 from pyvider.cty import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject, CtyTuple,

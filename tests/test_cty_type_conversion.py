@@ -21,7 +21,7 @@ from pyvider.cty.conversion.marshal import (
     marshal_type,
     unmarshal_type,
 )
-from pyvider.core.exceptions import ConversionError
+from pyvider.cty.exceptions import CtyConversionError
 
 # Test data: (type_str, expected_category)
 TYPE_CATEGORY_CASES = [
@@ -187,7 +187,7 @@ def test_unmarshal_type_invalid(invalid_type):
         else:
             assert isinstance(result, CtyDynamic), \
                 f"Expected CtyDynamic for invalid type {invalid_type!r}, got {result.__class__.__name__}"
-    except ConversionError:
+    except CtyConversionError:
         # This is also acceptable behavior
         pass
 

@@ -195,27 +195,35 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
             reconstructed_value = CtyValue(target_type, attributes)
 
         elif target_type.is_tuple_type():
-            if not isinstance(value_from_data, list): # Tuples are serialized as JSON lists
-                raise ValueError("List value expected for CtyTupleType")
+            # If value_from_data is None, and the target tuple type has no element_types,
+            # it means this was an empty tuple serialized with value: None.
+            if value_from_data is None and not target_type.element_types: # type: ignore
+                # An empty CtyTuple's internal representation is an empty Python tuple.
+                # The CtyValue constructor expects a list/tuple of already-wrapped CtyValues for its 'value'
+                # if the type is a collection. Since there are no elements, this is an empty tuple.
+                reconstructed_internal_value = tuple()
+            elif not isinstance(value_from_data, list): # Tuples are serialized as JSON lists
+                raise ValueError(f"List value expected for CtyTupleType, got {type(value_from_data).__name__} for type {target_type}")
+            elif len(value_from_data) != len(target_type.element_types): # type: ignore
+                raise ValueError(f"Tuple element count mismatch for type {target_type}. Expected {len(target_type.element_types)}, got {len(value_from_data)}") # type: ignore
+            else: # Process elements as before for non-empty tuples
+                processed_elements = []
+                for i, elem_type in enumerate(target_type.element_types): # type: ignore
+                    elem_data_item = value_from_data[i]
+                    # Ensure elem_data_item is a dict suitable for _serializable_to_value
+                    if not (isinstance(elem_data_item, dict) and "type_name" in elem_data_item):
+                         # This case implies raw values were in the list, wrap them
+                        elem_data_item = {
+                            "type_name": normalize_type_object(elem_type), # Use normalized type name
+                            "value": elem_data_item,
+                            "is_unknown": False, "is_null": False, "marks": []
+                        }
+                    processed_elements.append(_serializable_to_value(elem_data_item, elem_type))
+                reconstructed_internal_value = tuple(processed_elements)
 
-            if len(value_from_data) != len(target_type.element_types): # type: ignore
-                raise ValueError("Tuple element count mismatch.")
-
-            elements = []
-            for i, elem_type in enumerate(target_type.element_types): # type: ignore
-                elem_data_item = value_from_data[i]
-                if isinstance(elem_data_item, dict) and "type_name" in elem_data_item and "value" in elem_data_item:
-                    pass
-                else:
-                    elem_data_item = {
-                        "type_name": str(elem_type),
-                        "value": elem_data_item,
-                        "is_unknown": False,
-                        "is_null": False,
-                        "marks": []
-                    }
-                elements.append(_serializable_to_value(elem_data_item, elem_type))
-            reconstructed_value = CtyValue(target_type, elements)
+            # Construct the CtyValue. The second argument to CtyValue for tuple types
+            # should be a Python tuple of CtyValue instances.
+            reconstructed_value = CtyValue(target_type, reconstructed_internal_value)
 
         # TODO: Add CtySetType handling if/when it's fully implemented and part of CtyValue variations
         # elif target_type.is_set_type():

@@ -216,7 +216,7 @@ class TestPathSystem:
         complex_path = CtyPath.index(0).child("scores").key_step("math")
         assert str(complex_path) == "[0].scores['math']"
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_getattr_on_map_value(self):
         """Test GetAttrStep.apply on a CtyMap value."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -236,7 +236,7 @@ class TestPathSystem:
         with pytest.raises(AttributePathError, match="Cannot get attribute from non-object type CtyMap"):
              path_existing.apply_path_type(map_type)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_getattr_apply_type_errors(self):
         """Test error conditions for GetAttrStep.apply_type."""
         list_type = CtyList(element_type=CtyString()) # Corrected constructor
@@ -249,7 +249,7 @@ class TestPathSystem:
         with pytest.raises(AttributePathError, match="Object type has no attribute age"):
             path_missing_attr.apply_path_type(obj_type)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_index_step_apply_errors_and_unknown(self):
         """Test IndexStep.apply error conditions and unknown value handling."""
         null_list_value = CtyValue.null(CtyList(element_type=CtyString()))
@@ -267,7 +267,7 @@ class TestPathSystem:
         with pytest.raises(AttributePathError, match="Cannot index into value of type CtyString"):
             path_index.apply_path(string_value)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_index_step_apply_type_errors(self):
         """Test error conditions for IndexStep.apply_type."""
         string_type = CtyString()
@@ -288,7 +288,7 @@ class TestPathSystem:
         result_type = path_valid_neg.apply_path_type(tuple_type)
         assert isinstance(result_type, CtyNumber)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_key_step_apply_errors_and_unknown(self):
         """Test KeyStep.apply error conditions and unknown value handling."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -322,7 +322,7 @@ class TestPathSystem:
         with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[\[\]\]\): Unsupported key type in path step: .*"):
             list_key_path.apply_path(cty_map_value)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_key_step_apply_type_errors(self):
         """Test error conditions for KeyStep.apply_type."""
         list_type = CtyList(element_type=CtyString())
@@ -337,7 +337,7 @@ class TestPathSystem:
         resolved_type = invalid_cty_value_key_path.apply_path_type(map_type)
         assert isinstance(resolved_type, CtyNumber)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_cty_path_apply_errors(self):
         """Test error conditions for CtyPath.apply_path and CtyPath.apply_path_type."""
         path = CtyPath.get_attr("some_attr")
