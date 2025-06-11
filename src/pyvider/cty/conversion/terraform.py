@@ -2,7 +2,8 @@
 import json
 import functools
 from decimal import Decimal
-from typing import Any, Mapping, Protocol, Sequence, Literal, Type, TypeVar, cast, runtime_checkable
+from typing import Mapping, Protocol, Literal, Type, TypeVar, cast, runtime_checkable
+import collections.abc
 
 from pyvider.telemetry import logger
 from pyvider.cty.exceptions import CtyConversionError, WireFormatError
@@ -27,17 +28,17 @@ class TerraformWireFormatConstants:
 @WireFormatRegistry.register(WireFormatType.TERRAFORM)
 class TerraformFormatConverter(WireFormat):
     @staticmethod
-    def _json_default(obj: Any) -> Any:
+    def _json_default(obj: object) -> object:
         if isinstance(obj, Decimal): return str(obj)
         raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
     @staticmethod
-    def _msgpack_default(obj: Any) -> Any:
+    def _msgpack_default(obj: object) -> object:
         if isinstance(obj, Decimal): return str(obj)
         raise TypeError(f"Object of type {obj.__class__.__name__} is not msgpack serializable")
 
     @classmethod
-    def marshal(cls, value: Any, *, operation: OperationContext | None = None, use_msgpack: bool = False, **options: Any) -> bytes:
+    def marshal(cls, value: object, *, operation: OperationContext | None = None, use_msgpack: bool = False, **options: object) -> bytes:
         op_ctx = operation or get_current_operation()
         try:
             intermediate = serialize_value(value, operation=op_ctx)
@@ -49,9 +50,9 @@ class TerraformFormatConverter(WireFormat):
             raise WireFormatError(f"Marshal failed: {e}", format_type=WireFormatType.TERRAFORM, operation="marshal", source_value=value) from e
 
     @classmethod
-    def unmarshal(cls, data: bytes | Any, expected_type: Type[T] | None = None, *, operation: OperationContext | None = None, **options: Any) -> Any:
+    def unmarshal(cls, data: bytes | object, expected_type: Type[T] | None = None, *, operation: OperationContext | None = None, **options: object) -> object:
         op_ctx = operation or get_current_operation()
-        raw_value: Any = None
+        raw_value: object = None
         try:
             if hasattr(data, '__class__') and 'DynamicValue' in data.__class__.__name__:
                 source_bytes = data.msgpack or data.json
@@ -72,7 +73,7 @@ class TerraformFormatConverter(WireFormat):
             raise WireFormatError(f"Unmarshal failed: {e}", format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type) from e
 
 @functools.singledispatch
-def serialize_value(value: Any, operation: OperationContext) -> Any:
+def serialize_value(value: object, operation: OperationContext) -> object:
     if value is None: return [TerraformWireFormatConstants.NULL, None]
     match value:
         case bool(): return [TerraformWireFormatConstants.BOOL, value]
@@ -90,7 +91,7 @@ def serialize_value(value: Any, operation: OperationContext) -> Any:
             try: return [TerraformWireFormatConstants.STRING, str(value)]
             except: return [TerraformWireFormatConstants.NULL, None]
 
-def serialize_state_convertible(value: StateConvertible, operation: OperationContext) -> Any:
+def serialize_state_convertible(value: StateConvertible, operation: OperationContext) -> object:
     raw_dict = value.to_dict()
     if operation in (OperationContext.STATE, OperationContext.CONFIG, OperationContext.READ, OperationContext.PLAN, OperationContext.APPLY):
         prepared = {}
@@ -105,7 +106,7 @@ def serialize_state_convertible(value: StateConvertible, operation: OperationCon
     else:
         return [TerraformWireFormatConstants.OBJECT, {str(k): serialize_value(v, operation) for k, v in raw_dict.items()}]
 
-def extract_value(value: Any) -> Any:
+def extract_value(value: object) -> object:
     if not isinstance(value, list) or len(value) != 2:
         if isinstance(value, list): return [extract_value(item) for item in value]
         if isinstance(value, dict): return {str(k): extract_value(v) for k, v in value.items()}

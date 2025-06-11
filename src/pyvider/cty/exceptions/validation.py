@@ -1,7 +1,7 @@
 #
 # pyvider/cty/exceptions/validation.py
 #
-from typing import Any, Optional, Union
+from typing import Optional
 
 from pyvider.cty.exceptions.base import CtyError
 
@@ -37,7 +37,7 @@ class CtyValidationError(CtyError):
         value: The value that failed validation (if available)
         type_name: The name of the type that validation was attempted against
     """
-    def __init__(self, message: str, value: Any = None, type_name: Optional[str] = None):
+    def __init__(self, message: str, value: object = None, type_name: str | None = None):
         self.value = value
         self.type_name = type_name
 
@@ -59,7 +59,7 @@ class CtyBoolValidationError(CtyValidationError):
         message: A human-readable error description
         value: The value that failed validation
     """
-    def __init__(self, message: str, value: Any = None):
+    def __init__(self, message: str, value: object = None):
         super().__init__(message, value, "Boolean")
 
 
@@ -76,7 +76,7 @@ class CtyNumberValidationError(CtyValidationError):
         message: A human-readable error description
         value: The value that failed validation
     """
-    def __init__(self, message: str, value: Any = None):
+    def __init__(self, message: str, value: object = None):
         super().__init__(message, value, "Number")
 
 
@@ -93,7 +93,7 @@ class CtyStringValidationError(CtyValidationError):
         message: A human-readable error description
         value: The value that failed validation
     """
-    def __init__(self, message: str, value: Any = None):
+    def __init__(self, message: str, value: object = None):
         super().__init__(message, value, "String")
 
 
@@ -111,7 +111,7 @@ class CtyListValidationError(CtyValidationError):
         value: The value that failed validation
         index: Optional index where validation failed (for element validation)
     """
-    def __init__(self, message: str, value: Any = None, index: Optional[int] = None):
+    def __init__(self, message: str, value: object = None, index: int | None = None):
         self.index = index
 
         # Add index information to the message if available
@@ -135,7 +135,7 @@ class CtyMapValidationError(CtyValidationError):
         value: The value that failed validation
         key: Optional key where validation failed
     """
-    def __init__(self, message: str, value: Any = None, key: Optional[Any] = None):
+    def __init__(self, message: str, value: object = None, key: object | None = None):
         self.key = key
 
         # Add key information to the message if available
@@ -158,11 +158,11 @@ class CtySetValidationError(CtyValidationError):
         message: A human-readable error description
         value: The value that failed validation
     """
-    def __init__(self, message: str, value: Any = None):
+    def __init__(self, message: str, value: object = None):
         super().__init__(message, value, "Set")
 
 class CtyTupleValidationError(CtyValidationError):
-    def __init__(self, message: str, value: Any = None):
+    def __init__(self, message: str, value: object = None):
         super().__init__(message, value, "Tuple")
 
 class CtyTypeMismatchError(CtyValidationError):
@@ -178,7 +178,7 @@ class CtyTypeMismatchError(CtyValidationError):
         actual_type: The actual type encountered
         expected_type: The type that was expected
     """
-    def __init__(self, message: str, actual_type: Any = None, expected_type: Any = None):
+    def __init__(self, message: str, actual_type: object = None, expected_type: object = None):
         self.actual_type = actual_type
         self.expected_type = expected_type
 
@@ -204,7 +204,7 @@ class CtyAttributeValidationError(CtyValidationError):
         attribute_name: The name of the attribute that failed validation
         value: The value that failed validation
     """
-    def __init__(self, message: str, attribute_name: Optional[str] = None, value: Any = None):
+    def __init__(self, message: str, attribute_name: str | None = None, value: object = None):
         self.attribute_name = attribute_name
 
         # Add attribute information to the message if available

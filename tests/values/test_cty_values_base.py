@@ -542,7 +542,7 @@ class TestCtyValueElementAt:
 
     def test_element_at_on_unknown_value_raises_typeerror(self, capsys):
         # caplog.set_level(logging.ERROR) # Removed
-        unknown_list = CtyValue.unknown(CtyList(CtyString))
+        unknown_list = CtyValue.unknown(CtyList(element_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot get element from unknown or null value"):
             unknown_list.element_at(0)
         captured = capsys.readouterr()
@@ -550,7 +550,7 @@ class TestCtyValueElementAt:
 
     def test_element_at_on_null_value_raises_typeerror(self, capsys):
         # caplog.set_level(logging.ERROR) # Removed
-        null_list = CtyValue.null(CtyList(CtyString))
+        null_list = CtyValue.null(CtyList(element_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot get element from unknown or null value"):
             null_list.element_at(0)
         captured = capsys.readouterr()
@@ -625,7 +625,7 @@ class TestCtyValueElementAt:
 
     def test_element_at_on_list_with_invalid_internal_value_raises_typeerror(self, capsys): # Changed caplog to capsys
         # caplog.set_level(logging.ERROR) # Removed
-        invalid_list_val = CtyValue(vtype=CtyList(CtyString), value="this is not a list of CtyValues")
+        invalid_list_val = CtyValue(vtype=CtyList(element_type=CtyString()), value="this is not a list of CtyValues")
 
         with pytest.raises(TypeError, match="Cannot index list value of type str"):
             invalid_list_val.element_at(0)
@@ -670,7 +670,7 @@ class TestCtyValueToDictAdvanced:
         inner_str_val = CtyValue.string("nested_str")
         inner_num_val = CtyValue.number(42)
 
-        list_type = CtyList(CtyDynamic())
+        list_type = CtyList(element_type=CtyDynamic())
         list_val = CtyValue(vtype=list_type, value=[inner_str_val, inner_num_val])
 
         dict_list = list_val.to_dict()
@@ -688,7 +688,7 @@ class TestCtyValueToDictAdvanced:
         """Test to_dict for a CtyMap with CtyValue instances as map values."""
         inner_bool_val = CtyValue.bool(True)
 
-        map_type = CtyMap(CtyString(), CtyDynamic())
+        map_type = CtyMap(key_type=CtyString(), value_type=CtyDynamic())
         map_val = CtyValue(vtype=map_type, value={"myKey": inner_bool_val})
 
         dict_map = map_val.to_dict()
@@ -706,7 +706,7 @@ class TestCtyValueToDictAdvanced:
         inner_str_val1 = CtyValue.string("set_val1")
         inner_str_val2 = CtyValue.string("set_val2")
 
-        set_type = CtySet(CtyString())
+        set_type = CtySet(element_type=CtyString())
         # For CtySet, the internal _value should be a frozenset of CtyValue instances
         # when directly constructing. The factory `CtyValue.make_set` handles conversion.
         set_val = CtyValue(vtype=set_type, value=frozenset([inner_str_val1, inner_str_val2]))
@@ -779,7 +779,7 @@ class TestCtyValueLen:
 
     def test_len_on_unknown_value_raises_typeerror(self, capsys):
         """Test len() on an unknown value raises TypeError and logs error."""
-        unknown_list = CtyValue.unknown(CtyList(CtyString)) # type for unknown
+        unknown_list = CtyValue.unknown(CtyList(element_type=CtyString())) # type for unknown
 
         with pytest.raises(TypeError, match="Cannot get length of unknown value"):
             len(unknown_list)
@@ -894,7 +894,7 @@ class TestCtyValueIter:
 
     def test_iter_on_unknown_value_raises_typeerror(self, capsys):
         """Test iter() on an unknown value raises TypeError and logs error."""
-        unknown_val = CtyValue.unknown(CtyList(CtyString)) # Example type
+        unknown_val = CtyValue.unknown(CtyList(element_type=CtyString())) # Example type
 
         with pytest.raises(TypeError, match="Cannot iterate unknown value"):
             list(iter(unknown_val)) # Consume iterator to trigger error
@@ -1057,7 +1057,7 @@ class TestCtyValueHashFallbacks:
         unhashable_cty_element = CtyValue(CtyDynamic(), HashableReprOnly("set_elem"))
 
         # CtySet type with a CtyDynamic element type
-        set_type = CtySet(CtyDynamic())
+        set_type = CtySet(element_type=CtyDynamic())
         # The _value of the outer CtyValue will be a Python frozenset: frozenset({unhashable_cty_element})
         cty_set_val = CtyValue(vtype=set_type, value=frozenset({unhashable_cty_element}))
 
@@ -1333,14 +1333,14 @@ class TestCtyValueGetItem:
     """Tests for the CtyValue.__getitem__() special method."""
 
     def test_getitem_on_unknown_value_raises_typeerror(self, capsys):
-        unknown_map = CtyValue.unknown(CtyMap(CtyString(), CtyString()))
+        unknown_map = CtyValue.unknown(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot index into unknown or null value"):
             _ = unknown_map["some_key"]
         captured = capsys.readouterr()
         assert "🔄❗❌ Cannot index into unknown or null value" in captured.err
 
     def test_getitem_on_null_value_raises_typeerror(self, capsys):
-        null_map = CtyValue.null(CtyMap(CtyString(), CtyString()))
+        null_map = CtyValue.null(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot index into unknown or null value"):
             _ = null_map["some_key"]
         captured = capsys.readouterr()

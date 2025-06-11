@@ -18,7 +18,8 @@ This follows go-cty's design for path handling.
 
 from abc import ABC, abstractmethod
 from decimal import Decimal # Added for KeyStep.apply_type
-from typing import Any, List, Optional, TypeVar, cast, Sequence
+from typing import TypeVar, cast
+import collections.abc
 
 from attrs import define, field
 
@@ -327,7 +328,7 @@ class KeyStep(PathStep):
     This step type is used for maps with non-numeric keys, similar to
     JavaScript's obj["key"] notation.
     """
-    key: Any = field()
+    key: object = field()
 
     def apply(self, value: "CtyValue") -> "CtyValue":
         """
@@ -456,7 +457,7 @@ class KeyStep(PathStep):
             raise AttributePathError(error_msg)
 
         # Validate the key
-        key_to_validate: Any
+        key_to_validate: object
         original_key_for_error_reporting = self.key # Store original key for error messages
 
         if isinstance(self.key, CtyValue):
@@ -524,48 +525,48 @@ class CtyPath:
     value to a nested value. Paths can be constructed incrementally and then
     applied to values to extract nested data.
     """
-    steps: List[PathStep] = field(factory=list)
+    steps: list[PathStep] = field(factory=list)
 
     @classmethod
-    def empty(cls) -> 'Path':
+    def empty(cls) -> 'CtyPath':
         """Create an empty path."""
         logger.debug("🧰🔍🔄 Creating empty path")
         return cls([])
 
     @classmethod
-    def get_attr(cls, name: str) -> 'Path':
+    def get_attr(cls, name: str) -> 'CtyPath':
         """Create a path with a single attribute step."""
         logger.debug(f"🧰🔍🔄 Creating path with attribute step: {name}")
         return cls([GetAttrStep(name)])
 
     @classmethod
-    def index(cls, index: int) -> 'Path':
+    def index(cls, index: int) -> 'CtyPath':
         """Create a path with a single index step."""
         logger.debug(f"🧰🔍🔄 Creating path with index step: {index}")
         return cls([IndexStep(index)])
 
     @classmethod
-    def key(cls, key: Any) -> 'Path':
+    def key(cls, key: object) -> 'CtyPath':
         """Create a path with a single key step."""
         logger.debug(f"🧰🔍🔄 Creating path with key step: {key}")
         return cls([KeyStep(key)])
 
-    def child(self, name: str) -> 'Path':
+    def child(self, name: str) -> 'CtyPath':
         """Append an attribute step to this path."""
         logger.debug(f"🧰🔍🔄 Adding child attribute step: {name}")
         return CtyPath(self.steps + [GetAttrStep(name)])
 
-    def index_step(self, index: int) -> 'Path':
+    def index_step(self, index: int) -> 'CtyPath':
         """Append an index step to this path."""
         logger.debug(f"🧰🔍🔄 Adding index step: {index}")
         return CtyPath(self.steps + [IndexStep(index)])
 
-    def key_step(self, key: Any) -> 'Path':
+    def key_step(self, key: object) -> 'CtyPath':
         """Append a key step to this path."""
         logger.debug(f"🧰🔍🔄 Adding key step: {key}")
         return CtyPath(self.steps + [KeyStep(key)])
 
-    def apply_path(self, value: Any) -> "CtyValue":
+    def apply_path(self, value: object) -> "CtyValue":
         """
         Apply this path to a value to get a nested value.
 

@@ -1,6 +1,5 @@
 # pyvider-cty/src/pyvider/cty/conversion/__init__.py
 
-from typing import Any
 
 from pyvider.telemetry import logger
 
@@ -28,13 +27,13 @@ import pyvider.cty.conversion.terraform
 
 T = type["T"]
 
-def marshal(value: Any, format_kind: WireFormatType, operation: OperationContext | None = None, **options: Any) -> bytes:
+def marshal(value: object, format_kind: WireFormatType, operation: OperationContext | None = None, **options: object) -> bytes:
     op_ctx = operation or get_current_operation()
     formatter = WireFormatRegistry.get_formatter(format_kind)
     with operation_context(op_ctx):
         return formatter.marshal(value, operation=op_ctx, **options)
 
-def unmarshal(data: bytes | Any, format_kind: WireFormatType, expected_type: T | None = None, operation: OperationContext | None = None, **options: Any) -> T:
+def unmarshal(data: bytes | object, format_kind: WireFormatType, expected_type: T | None = None, operation: OperationContext | None = None, **options: object) -> T:
     op_ctx = operation or get_current_operation()
     formatter = WireFormatRegistry.get_formatter(format_kind)
     with operation_context(op_ctx):

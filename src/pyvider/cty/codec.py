@@ -4,7 +4,7 @@
 import json
 import msgpack
 from decimal import Decimal
-from typing import Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast
 from attrs import evolve # Added for with_marks
 
 from pyvider.cty.conversion.format import normalize_type_object
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 # We'll rely on its structure (e.g., presence of .type, .value attributes)
 # or pass CtyValue type dynamically if needed.
 
-def _value_to_serializable(cty_value: 'CtyValue') -> dict[str, Any]:
+def _value_to_serializable(cty_value: 'CtyValue') -> dict[str, object]:
     """
     Converts a CtyValue instance into a dictionary suitable for serialization.
     This leverages and extends the existing to_json_comparable_dict structure.
@@ -57,7 +57,7 @@ def _value_to_serializable(cty_value: 'CtyValue') -> dict[str, Any]:
     return data
 
 
-def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'CtyValue':
+def _serializable_to_value(data: dict[str, object], target_type: 'CtyType') -> 'CtyValue':
     """
     Recursively reconstructs a CtyValue from basic Python data and a target CtyType.
     'data' is expected to be a dictionary from _value_to_serializable.

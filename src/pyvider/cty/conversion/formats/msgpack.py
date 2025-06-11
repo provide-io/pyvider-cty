@@ -17,7 +17,7 @@ types and thorough error handling.
 
 import msgpack
 from decimal import Decimal
-from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import ClassVar, Type, TypeVar, cast
 
 from attrs import define, field
 
@@ -60,7 +60,7 @@ class MsgPackEncoder(FormatEncoder):
         return WireFormatType.MSGPACK
 
     @classmethod
-    def encode(cls, value: Any, **options) -> bytes:
+    def encode(cls, value: object, **options) -> bytes:
         """
         Encode a CTY value to MessagePack bytes.
 
@@ -114,7 +114,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack", data=value) from e
 
     @classmethod
-    def decode(cls, data: bytes, **options) -> Any:
+    def decode(cls, data: bytes, **options) -> object:
         """
         Decode MessagePack bytes to a CTY value.
 
@@ -163,7 +163,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack", data=data) from e
 
     @classmethod
-    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> Dict[str, Any]:
+    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> dict[str, object]:
         """
         Convert a CTY value to a serializable dictionary.
 
@@ -231,7 +231,7 @@ class MsgPackEncoder(FormatEncoder):
         return result
 
     @classmethod
-    def _dict_to_value(cls, data: Dict[str, Any], preserve_type: bool = True) -> CtyValue:
+    def _dict_to_value(cls, data: dict[str, object], preserve_type: bool = True) -> CtyValue:
         """
         Convert a dictionary to a CTY value.
 
@@ -267,7 +267,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack") from e
 
     @classmethod
-    def _create_unknown_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_unknown_value(cls, data: dict[str, object]) -> CtyValue:
         """
         Create an unknown CTY value from dictionary data.
 
@@ -289,7 +289,7 @@ class MsgPackEncoder(FormatEncoder):
         return CtyValue.unknown(cty_type)
 
     @classmethod
-    def _create_null_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_null_value(cls, data: dict[str, object]) -> CtyValue:
         """
         Create a null CTY value from dictionary data.
 
@@ -311,7 +311,7 @@ class MsgPackEncoder(FormatEncoder):
         return CtyValue.null(cty_type)
 
     @classmethod
-    def _create_typed_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_typed_value(cls, data: dict[str, object]) -> CtyValue:
         """
         Create a typed CTY value from dictionary data.
 
@@ -375,7 +375,7 @@ class MsgPackEncoder(FormatEncoder):
                 return cty_type.validate(value_data)
 
     @classmethod
-    def _create_untyped_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_untyped_value(cls, data: dict[str, object]) -> CtyValue:
         """
         Create an untyped CTY value from dictionary data.
 
@@ -417,7 +417,7 @@ class MsgPackEncoder(FormatEncoder):
                 raise EncodingError(f"Cannot infer type for value: {value}", encoding="msgpack")
 
     @classmethod
-    def _create_type_from_name(cls, type_name: str, data: Dict[str, Any]) -> 'CtyType':
+    def _create_type_from_name(cls, type_name: str, data: dict[str, object]) -> 'CtyType':
         """
         Create a CTY type from its name.
 

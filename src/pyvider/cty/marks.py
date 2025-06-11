@@ -2,7 +2,7 @@
 # 🐍✨
 
 from attrs import define, field
-from typing import Any, Optional
+from typing import Optional
 
 @define(frozen=True, slots=True)
 class CtyMark:
@@ -13,7 +13,7 @@ class CtyMark:
     provenance, or other operational concerns.
     """
     name: str = field()
-    details: Optional[Any] = field(default=None)
+    details: object | None = field(default=None)
 
     def __repr__(self) -> str:
         if self.details is not None:

@@ -1,10 +1,10 @@
 # pyvider/cty/exceptions/conversion.py
-from typing import Any
+
 from .base import CtyError
 
 class CtyConversionError(CtyError):
     """Base for CTY value or type conversion errors."""
-    def __init__(self, message: str, *, source_value: Any = None, target_type: Any = None) -> None:
+    def __init__(self, message: str, *, source_value: object = None, target_type: object = None) -> None:
         self.source_value = source_value
         self.target_type = target_type
         context_parts = []
@@ -19,7 +19,7 @@ class CtyConversionError(CtyError):
 
 class CtyTypeConversionError(CtyConversionError):
     """CTY type representation conversion failure."""
-    def __init__(self, message: str, *, type_name: str | None = None, source_value: Any = None, target_type: Any = None) -> None:
+    def __init__(self, message: str, *, type_name: str | None = None, source_value: object = None, target_type: object = None) -> None:
         self.type_name = type_name
         if type_name:
             message = f"CTY Type \"{type_name}\" representation conversion failed: {message}"
