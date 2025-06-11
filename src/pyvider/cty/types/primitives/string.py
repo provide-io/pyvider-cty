@@ -16,11 +16,11 @@ consistent behavior across the Cty ecosystem.
 
 from typing import Any, ClassVar, TypeVar
 
-from attrs import define, evolve, field
+from attrs import define, field
 
 from pyvider.cty.exceptions import CtyStringValidationError
-from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
+from pyvider.telemetry import logger
 
 T = TypeVar('T', bound=str)
 
@@ -124,7 +124,7 @@ class CtyString(CtyType[str]):
         logger.error(f"🔤❗❌ {error_msg}")
         raise CtyStringValidationError(error_msg)
 
-    def equal(self, other: CtyType[Any]) -> bool:
+    def equal(self, other: CtyType[object]) -> bool:
         """
         Check if this string type is equal to another type.
 
@@ -142,7 +142,7 @@ class CtyString(CtyType[str]):
         logger.debug(f"🔤🔍✅ CtyString.equal: {result}")
         return result
 
-    def usable_as(self, other: CtyType[Any]) -> bool:
+    def usable_as(self, other: CtyType[object]) -> bool:
         """
         Check if this string type can be used where the other type is expected.
 
@@ -160,7 +160,7 @@ class CtyString(CtyType[str]):
         logger.debug(f"🔤🔍✅ CtyString.usable_as: {result}")
         return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "string"
 
     def is_primitive_type(self) -> bool:

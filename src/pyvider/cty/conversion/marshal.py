@@ -11,24 +11,28 @@ It supports validation, extraction, categorization, and manipulation of
 type definitions with full support for nested and collection types.
 """
 
-import re
-from typing import Any, Optional, Type, TypeVar, Union, cast, Literal, TypeGuard
+from typing import Any, TypeVar
 
-from pyvider.telemetry import logger
-
-from pyvider.cty.exceptions import CtyConversionError
 from pyvider.cty import (
-    CtyType, CtyString, CtyNumber, CtyBool,
-    CtyList, CtyMap, CtySet, CtyTuple, CtyObject, CtyDynamic,
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtySet,
+    CtyString,
+    CtyType,
 )
 from pyvider.cty.conversion.format import (
     TypeCategory,
-    standardize_type_string,
-    ensure_quoted_bytes,
-    parse_collection_type,
     classify_type,
+    ensure_quoted_bytes,
     normalize_type_object,
+    parse_collection_type,
+    standardize_type_string,
 )
+from pyvider.cty.exceptions import CtyConversionError
+from pyvider.telemetry import logger
 
 # Type variables for generic conversions
 T = TypeVar('T')
@@ -61,7 +65,7 @@ def marshal_type(type_obj: Any) -> bytes:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise CtyConversionError(error_msg) from e
 
-def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) -> CtyType:
+def unmarshal_type(type_bytes: bytes, options: dict[str, Any | None] | None = None) -> CtyType:
     """
     Convert Terraform protocol type bytes to a CTY type.
 
@@ -344,7 +348,7 @@ def sanitize_type_representation(type_obj: Any) -> str:
         logger.warning(f"🧰🔄⚠️ Failed to sanitize type: {e}")
         return str(type_obj)
 
-def marshal_json(value: Any, options: Optional[dict[str, Any]] = None) -> bytes:
+def marshal_json(value: Any, options: dict[str, Any | None] | None = None) -> bytes:
     """
     Marshal a value to JSON format bytes.
 
@@ -365,9 +369,9 @@ def marshal_json(value: Any, options: Optional[dict[str, Any]] = None) -> bytes:
     from pyvider.cty.conversion.formats.json import JsonEncoder
     return JsonEncoder.encode(value, **(options or {}))
 
-def unmarshal_json(marshaled: Union[bytes, str],
-                  expected_type: Optional[CtyType] = None,
-                  options: Optional[dict[str, Any]] = None) -> Any:
+def unmarshal_json(marshaled: bytes | str,
+                  expected_type: CtyType | None = None,
+                  options: dict[str, Any | None] | None = None) -> Any:
     """
     Unmarshal JSON bytes to a value.
 
@@ -385,7 +389,7 @@ def unmarshal_json(marshaled: Union[bytes, str],
     Raises:
         EncodingError: If JSON decoding fails
     """
-    logger.debug(f"🧩🔍🔄 Unmarshaling from JSON")
+    logger.debug("🧩🔍🔄 Unmarshaling from JSON")
 
     # Convert string to bytes if needed
     if isinstance(marshaled, str):

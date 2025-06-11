@@ -1,19 +1,17 @@
 # src/pyvider/cty/codec.py
 # 🐍📦🔒
-
-import json
-import msgpack
 from decimal import Decimal
-from typing import Any, TYPE_CHECKING, cast
-from attrs import evolve # Added for with_marks
+import json
+from typing import TYPE_CHECKING, Any
 
-from pyvider.cty.conversion.format import normalize_type_object
+from attrs import evolve  # Added for with_marks
+import msgpack
 
 from pyvider.cty.conversion.format import normalize_type_object
 
 if TYPE_CHECKING:
-    from .values.base import CtyValue
     from .types.base import CtyType
+    from .values.base import CtyValue
     # Import CtyType for type hinting only
 
 
@@ -26,7 +24,6 @@ def _value_to_serializable(cty_value: 'CtyValue') -> dict[str, Any]:
     Converts a CtyValue instance into a dictionary suitable for serialization.
     This leverages and extends the existing to_json_comparable_dict structure.
     """
-    from .values.base import CtyValue # Lazy import for CtyValue
 
     # Start with the JSON-comparable dictionary
     # This already handles is_known, is_null, is_unknown, and value representation for primitives
@@ -62,12 +59,12 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
     Recursively reconstructs a CtyValue from basic Python data and a target CtyType.
     'data' is expected to be a dictionary from _value_to_serializable.
     """
-    from .types.base import CtyType
-    from .values.base import CtyValue
-    from pyvider.cty.types import CtyNumber, CtyString, CtyBool
-    from pyvider.cty.types import CtyList, CtyMap, CtySet
-    from pyvider.cty.types import CtyObject, CtyTuple, CtyDynamic
+    from pyvider.cty.types import (
+        CtyNumber,
+    )
+
     from .marks import CtyMark
+    from .values.base import CtyValue
 
     # Basic structural validation for the incoming data dict
     if not isinstance(data, dict) or \
@@ -91,7 +88,7 @@ def _serializable_to_value(data: dict[str, Any], target_type: 'CtyType') -> 'Cty
     if type_name_from_data and type_name_from_data != normalized_target_type_str:
         raise ValueError(
             f"Type mismatch: Serialized data indicates type '{type_name_from_data}', "
-            f"but target type is '{normalized_target_type_str}' (normalized from {str(target_type)})."
+            f"but target type is '{normalized_target_type_str}' (normalized from {target_type!s})."
         )
 
     # Handle unknown and null states first
