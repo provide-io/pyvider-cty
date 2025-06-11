@@ -16,7 +16,6 @@ from typing import (
     Any,
     ClassVar,
     Generic,
-    Optional,
     TypeVar,
 )
 
@@ -25,6 +24,7 @@ from attrs import define
 from pyvider.cty.exceptions import CtyValidationError
 
 T = TypeVar("T")
+
 
 @define(slots=True)
 class CtyType(ABC, Generic[T]):
@@ -42,7 +42,8 @@ class CtyType(ABC, Generic[T]):
     Attributes:
         ctype: Class variable identifying the type name in the Cty type system
     """
-    ctype: ClassVar[Optional[str]] = None  # Abstract class - no ctype by default
+
+    ctype: ClassVar[str | None] = None  # Abstract class - no ctype by default
 
     @classmethod
     def from_raw(cls, value: Any) -> "CtyType":
@@ -189,5 +190,6 @@ class CtyType(ABC, Generic[T]):
             A string representation of the type
         """
         return f"{self.__class__.__name__}"
+
 
 # 🐍🏗️🐣

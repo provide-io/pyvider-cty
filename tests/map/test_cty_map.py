@@ -10,29 +10,27 @@ CtyValue internals directly. All tests validate CtyMap operations and behavior
 rather than the wrapping/unwrapping details.
 """
 
-import pytest
 from decimal import Decimal
 
-from pyvider.cty.exceptions import CtyMapValidationError
+import pytest
+
 from pyvider.cty import (
     CtyBool,
     CtyList,
     CtyMap,
     CtyNumber,
     CtyObject,
-    CtySet,
     CtyString,
     CtyTuple,
-    CtyValue,
-    CtyPath,
 )
+from pyvider.cty.exceptions import CtyMapValidationError
 
 
 class TestCtyMapCreation:
     """Test CtyMap type creation and basic functionality."""
 
     @pytest.mark.asyncio
-    async def test_map_type_initialization(self):
+    async def test_map_type_initialization(self) -> None:
         """Test basic initialization of CtyMap types with different value types."""
         # String key, String value
         string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
@@ -53,7 +51,7 @@ class TestCtyMapCreation:
         assert isinstance(bool_map.value_type, CtyBool)
 
     @pytest.mark.asyncio
-    async def test_map_type_with_complex_values(self):
+    async def test_map_type_with_complex_values(self) -> None:
         """Test map creation with complex value types."""
         # Map with list value type
         list_type = CtyList(element_type=CtyString())
@@ -63,10 +61,9 @@ class TestCtyMapCreation:
         assert isinstance(list_map.value_type.element_type, CtyString)
 
         # Map with object value type
-        object_type = CtyObject(attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber()
-        })
+        object_type = CtyObject(
+            attribute_types={"name": CtyString(), "age": CtyNumber()}
+        )
         object_map = CtyMap(key_type=CtyString(), value_type=object_type)
         assert isinstance(object_map, CtyMap)
         assert isinstance(object_map.value_type, CtyObject)
@@ -89,7 +86,7 @@ class TestCtyMapCreation:
         assert isinstance(nested_map.value_type.value_type, CtyString)
 
     @pytest.mark.asyncio
-    async def test_map_type_with_invalid_types(self):
+    async def test_map_type_with_invalid_types(self) -> None:
         """Test initialization with invalid key or value types."""
         # Invalid key_type (not a CtyType)
         with pytest.raises(CtyMapValidationError) as exc_info:
@@ -106,10 +103,10 @@ class TestCtyMapCreation:
             CtyMap(key_type=None, value_type=123)
 
     @pytest.mark.asyncio
-    async def test_map_string_representation(self):
+    async def test_map_string_representation(self) -> None:
         """Test string representation of map types."""
         string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
-        number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
         # Test __str__ representation
         str_repr = str(string_map)
@@ -126,7 +123,7 @@ class TestCtyMapCreation:
 class TestCtyMapValidation:
     """Test validation of maps with various input types."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up common map types for tests."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -135,16 +132,15 @@ class TestCtyMapValidation:
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
-            value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
+            value_type=CtyMap(key_type=CtyString(), value_type=CtyString()),
         )
 
         self.list_map = CtyMap(
-            key_type=CtyString(),
-            value_type=CtyList(element_type=CtyString())
+            key_type=CtyString(), value_type=CtyList(element_type=CtyString())
         )
 
     @pytest.mark.asyncio
-    async def test_empty_map_validation(self):
+    async def test_empty_map_validation(self) -> None:
         """Test validation of empty maps."""
         # Validate None (should create empty map)
         result = self.string_map.validate(None)
@@ -155,7 +151,7 @@ class TestCtyMapValidation:
         assert len(result.value) == 0
 
     @pytest.mark.asyncio
-    async def test_simple_map_validation(self):
+    async def test_simple_map_validation(self) -> None:
         """Test validation of maps with simple key-value pairs."""
         # String map
         string_data = {"key1": "value1", "key2": "value2"}
@@ -173,7 +169,7 @@ class TestCtyMapValidation:
         assert len(result.value) == 2
 
     @pytest.mark.asyncio
-    async def test_map_with_invalid_inputs(self):
+    async def test_map_with_invalid_inputs(self) -> None:
         """Test validation with invalid inputs."""
         # Non-dict input
         with pytest.raises(CtyMapValidationError):
@@ -188,12 +184,12 @@ class TestCtyMapValidation:
             self.string_map.validate({"key": 123})  # Number value
 
     @pytest.mark.asyncio
-    async def test_nested_map_validation(self):
+    async def test_nested_map_validation(self) -> None:
         """Test validation of maps with nested maps as values."""
         # Valid nested data
         nested_data = {
             "user1": {"name": "Alice", "email": "alice@example.com"},
-            "user2": {"name": "Bob", "email": "bob@example.com"}
+            "user2": {"name": "Bob", "email": "bob@example.com"},
         }
         result = self.nested_map.validate(nested_data)
         assert len(result.value) == 2
@@ -206,13 +202,13 @@ class TestCtyMapValidation:
             self.nested_map.validate(invalid_data)
 
     @pytest.mark.asyncio
-    async def test_list_map_validation(self):
+    async def test_list_map_validation(self) -> None:
         """Test validation of maps with lists as values."""
         # Valid list data
         list_data = {
             "fruits": ["apple", "banana", "cherry"],
             "vegetables": ["carrot", "broccoli"],
-            "empty": []
+            "empty": [],
         }
         result = self.list_map.validate(list_data)
         assert len(result.value) == 3
@@ -226,21 +222,19 @@ class TestCtyMapValidation:
 class TestCtyMapOperations:
     """Test map operations like get, set, and delete."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up common map types for tests."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
         # Create and validate maps
         self.empty_map = self.string_map.validate({})
-        self.sample_map = self.string_map.validate({
-            "key1": "value1",
-            "key2": "value2",
-            "key3": "value3"
-        })
+        self.sample_map = self.string_map.validate(
+            {"key1": "value1", "key2": "value2", "key3": "value3"}
+        )
 
     @pytest.mark.asyncio
-    async def test_map_get_operation(self):
+    async def test_map_get_operation(self) -> None:
         """Test getting values from a map."""
         # Get existing key
         result = self.string_map.get(self.sample_map, "key1")
@@ -257,7 +251,7 @@ class TestCtyMapOperations:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_map_set_operation(self):
+    async def test_map_set_operation(self) -> None:
         """Test setting values in a map."""
         # Set new key
         updated_map = self.string_map.set(self.empty_map, "new_key", "new_value")
@@ -278,7 +272,7 @@ class TestCtyMapOperations:
         assert result.value == "new_value"
 
     @pytest.mark.asyncio
-    async def test_map_delete_operation(self):
+    async def test_map_delete_operation(self) -> None:
         """Test deleting keys from a map."""
         # Delete existing key
         updated_map = self.string_map.delete(self.sample_map, "key2")
@@ -305,12 +299,16 @@ class TestCtyMapComparison:
     """Test map comparison operations."""
 
     @pytest.mark.asyncio
-    async def test_map_equality(self):
+    async def test_map_equality(self) -> None:
         """Test equality of map types."""
         # Create similar map types
         map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        map2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())  # Same types as map1
-        map3 = CtyMap(key_type=CtyString(), value_type=CtyString())  # Different value type
+        map2 = CtyMap(
+            key_type=CtyString(), value_type=CtyNumber()
+        )  # Same types as map1
+        map3 = CtyMap(
+            key_type=CtyString(), value_type=CtyString()
+        )  # Different value type
 
         # Test equality using equal()
         assert map1.equal(map2)
@@ -329,7 +327,7 @@ class TestCtyMapComparison:
         assert not map1.usable_as(CtyString())
 
     @pytest.mark.asyncio
-    async def test_map_instance_equality(self):
+    async def test_map_instance_equality(self) -> None:
         """Test equality of map instances with values."""
         # Create map with same type
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -345,33 +343,23 @@ class TestCtyMapComparison:
         assert map1 == map2
         assert map1 != map3
 
+
 @pytest.mark.asyncio
-async def test_map_with_complex_nested_value_types():
+async def test_map_with_complex_nested_value_types() -> None:
     """Test map with complex nested value types."""
     # Import CtyObject directly
     from pyvider.cty.types.structural import CtyObject
-    
+
     # Create an object type for the map value
-    person_type = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber()
-        }
-    )
+    person_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
 
     # Create a map type with the object as its value type
     map_type = CtyMap(key_type=CtyString(), value_type=person_type)
 
     # Create data
     data = {
-        "person1": {
-            "name": "Alice",
-            "age": 30
-        },
-        "person2": {
-            "name": "Bob",
-            "age": 25
-        }
+        "person1": {"name": "Alice", "age": 30},
+        "person2": {"name": "Bob", "age": 25},
     }
 
     # Validate the map
@@ -389,8 +377,10 @@ async def test_map_with_complex_nested_value_types():
 
     # Access and verify nested attributes
     from pyvider.cty.path import CtyPath
+
     p1_name_path = CtyPath.empty().child("person1").child("name")
     name_result = p1_name_path.apply_path(result)
     assert name_result.value == "Alice"
+
 
 # 🐍🏗️🧪
