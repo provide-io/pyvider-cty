@@ -1,16 +1,10 @@
 # pyvider/schema/conversion/wire_type_encoder.py
 import json
 import re
-from typing import Any, cast
+from typing import Any, List, cast
 
-from pyvider.cty.conversion.format import (
-    TypeCategory,
-    classify_type,
-    parse_collection_type,
-    standardize_type_string,
-)
 from pyvider.telemetry import logger
-
+from pyvider.cty.conversion.format import standardize_type_string, classify_type, parse_collection_type, TypeCategory
 
 def _parse_comma_separated_elements(elements_str: str, is_object_attrs: bool) -> list[tuple[str, str]] | list[str]:
     elements = []
@@ -54,7 +48,7 @@ def _encode_wire_element(element_type_str: str) -> Any:
         attrs_str = match.group(1)
         if not attrs_str: return ["object", {}]
         parsed_attrs = _parse_comma_separated_elements(attrs_str, is_object_attrs=True)
-        attrs_dict_encoded = {name: _encode_wire_element(type_str) for name, type_str in cast(list[tuple[str,str]], parsed_attrs)}
+        attrs_dict_encoded = {name: _encode_wire_element(type_str) for name, type_str in cast(List[tuple[str,str]], parsed_attrs)}
         return ["object", attrs_dict_encoded]
     elif std_element_type.startswith("tuple("):
         match = re.match(r"tuple\((.*)\)$", std_element_type)
@@ -62,7 +56,7 @@ def _encode_wire_element(element_type_str: str) -> Any:
         elements_str = match.group(1)
         if not elements_str: return ["tuple", []]
         parsed_elements = _parse_comma_separated_elements(elements_str, is_object_attrs=False)
-        elements_list_encoded = [_encode_wire_element(type_str) for type_str in cast(list[str], parsed_elements)]
+        elements_list_encoded = [_encode_wire_element(type_str) for type_str in cast(List[str], parsed_elements)]
         return ["tuple", elements_list_encoded]
     logger.warning(f"Unhandled type string in _encode_wire_element: \"{std_element_type}\", defaulting to dynamic.")
     return "dynamic"
@@ -78,6 +72,6 @@ def encode_type_to_wire(type_repr_str: str) -> bytes:
         return result_bytes
     except Exception as e:
         logger.error(f"Error JSON dumping encoded content for \"{type_repr_str}\": {e}. Content: {encoded_content!r}")
-        return f"\"error_encoding_{standardized_type}\"".encode()
+        return f"\"error_encoding_{standardized_type}\"".encode("utf-8")
 
 __all__ = ["encode_type_to_wire"]

@@ -1,5 +1,3 @@
-from typing import Any, Generic
-
 #
 # pyvider/cty/types/base.py
 #
@@ -15,7 +13,10 @@ for values within the Cty ecosystem.
 
 from abc import ABC, abstractmethod
 from typing import (
+    Any,
     ClassVar,
+    Generic,
+    Optional,
     TypeVar,
 )
 
@@ -41,7 +42,7 @@ class CtyType(ABC, Generic[T]):
     Attributes:
         ctype: Class variable identifying the type name in the Cty type system
     """
-    ctype: ClassVar[str | None] = None  # Abstract class - no ctype by default
+    ctype: ClassVar[Optional[str]] = None  # Abstract class - no ctype by default
 
     @classmethod
     def from_raw(cls, value: Any) -> "CtyType":

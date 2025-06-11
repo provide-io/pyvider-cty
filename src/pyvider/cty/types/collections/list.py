@@ -1,5 +1,3 @@
-from typing import Generic
-
 #
 # pyvider/cty/types/collections/list.py
 #
@@ -16,10 +14,8 @@ while providing Pythonic operations like slicing and iteration. All operations m
 immutability by returning new instances rather than modifying existing ones.
 """
 
-from typing import Any, ClassVar, TypeVar, final
-
+from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, cast
 from attrs import define, evolve, field
-
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
@@ -104,10 +100,10 @@ class CtyList(CtyType[list[T]], Generic[T]):
         # Handle None
         if value is None:
             logger.debug("🔌📝❌ Expected list or tuple, got NoneType")
-            raise CtyListValidationError("Expected list or tuple, got NoneType")
+            raise CtyListValidationError(f"Expected list or tuple, got NoneType")
 
         # Ensure input is iterable
-        if not isinstance(value, list | tuple):
+        if not isinstance(value, (list, tuple)):
             logger.debug(f"🔌❗❌ Expected list or tuple, got {type(value).__name__}")
             raise CtyListValidationError(f"Expected list or tuple, got {type(value).__name__}")
 
@@ -123,7 +119,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         for i, item in enumerate(value):
             try:
                 if item is None:
-                    error_msg = "None is not a valid list element"
+                    error_msg = f"None is not a valid list element"
                     logger.debug(f"🔌❗❌ {error_msg}")
                     raise CtyListValidationError(error_msg)
 
@@ -188,7 +184,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         elif isinstance(container, CtyList):
             container_value = container.value
         # Handle raw list or tuple container
-        elif isinstance(container, list | tuple):
+        elif isinstance(container, (list, tuple)):
             container_value = container
         # Handle invalid container type
         else:
@@ -250,7 +246,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: int | None = None) -> "CtyList[T]":
+    def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
         """
         Get a slice of this list, returning a new list.
 
@@ -305,7 +301,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         Raises:
             CtyListValidationError: If the other list has an incompatible element type
         """
-        logger.debug("🔌📝🔄 Concatenating with another list")
+        logger.debug(f"🔌📝🔄 Concatenating with another list")
 
         # Ensure other is a CtyList
         if not isinstance(other, CtyList):
@@ -426,7 +422,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug("📋🔍✅  Element‑type equality result: %s", result)
         return result
 
-    def __len__(self) -> int:
+    def __len__(self):
         """
         Get the length of this list.
 
@@ -451,7 +447,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: int | slice) -> "CtyValue" | "CtyList":
+    def __getitem__(self, index: Union[int, slice]) -> Union["CtyValue", "CtyList"]:
         """
         Support for indexing and slicing operations.
 
@@ -504,7 +500,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         element_class = self.element_type.__class__.__name__
         if element_class == "CtyList":
             # For nested lists, include the inner element type
-            return f"list({self.element_type!s})"
+            return f"list({str(self.element_type)})"
         return f"list({element_class})"
 
     def __repr__(self) -> str:

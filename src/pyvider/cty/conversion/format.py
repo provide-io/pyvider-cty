@@ -27,17 +27,16 @@ Usage:
     type_bytes = ensure_quoted_bytes(normalized)
 """
 
-from enum import StrEnum, auto
-from functools import cache
 import re
-from re import Pattern
-from typing import Any
+from enum import StrEnum, auto
+from typing import Any, Optional, TypeAlias, Union, Pattern, Literal
+from functools import cache
 
 from pyvider.telemetry import logger
 
 # Type aliases for clarity
-type TypeString = str
-type TypeBytes = bytes
+TypeString: TypeAlias = str
+TypeBytes: TypeAlias = bytes
 
 class TypeCategory(StrEnum):
     """Enumeration of type categories for classification."""
@@ -90,7 +89,7 @@ def classify_type(type_str: TypeString) -> TypeCategory:
     # Could add STRUCTURED for object types later
     return TypeCategory.UNKNOWN
 
-def standardize_type_string(type_str: TypeString | None) -> TypeString:
+def standardize_type_string(type_str: Optional[TypeString]) -> TypeString:
     """
     Standardize type string format by removing outer quotes and normalizing inner types.
 
@@ -130,7 +129,7 @@ def standardize_type_string(type_str: TypeString | None) -> TypeString:
     logger.debug(f"🧰🔄📊 Normalized type string: {normalized!r}")
     return normalized
 
-def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
+def ensure_quoted_bytes(type_str: Optional[TypeString]) -> TypeBytes:
     """
     Convert a type string to properly quoted bytes format for Terraform protocol.
 
@@ -146,7 +145,7 @@ def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
 
     # Standardize then quote
     normalized = standardize_type_string(type_str)
-    result = f'"{normalized}"'.encode()
+    result = f'"{normalized}"'.encode('utf-8')
     logger.debug(f"🧰🔄📊 Converted to quoted bytes: {result!r}")
     return result
 
@@ -192,7 +191,7 @@ def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
     logger.debug(f"🧰🔄📊 Parsed collection: {collection_type}({element_type})")
     return collection_type, element_type
 
-def validate_type_format(type_value: TypeString | TypeBytes) -> list[str]:
+def validate_type_format(type_value: Union[TypeString, TypeBytes]) -> list[str]:
     """
     Validate a type string or bytes has proper format and return any errors.
 
@@ -285,7 +284,7 @@ def normalize_type_object(type_obj: Any) -> TypeString:
 
         case _ if hasattr(type_obj, "type_name"):
             # Handle PvsAttributeType
-            type_name = type_obj.type_name
+            type_name = getattr(type_obj, "type_name")
             element_type = getattr(type_obj, "element_type", None)
 
             base_type = normalize_type_object(type_name)

@@ -2,7 +2,7 @@
 # pyvider/cty/exceptions/encoding.py
 #
 
-from typing import Any
+from typing import Any, Optional, Union
 
 from pyvider.cty.exceptions.base import CtyError
 
@@ -22,7 +22,7 @@ class TransformationError(CtyError):
         message: A human-readable error description
         schema: The schema that failed transformation
     """
-    def __init__(self, message: str, schema: Any = None) -> None:
+    def __init__(self, message: str, schema: Any = None):
         self.schema = schema
         super().__init__(message)
 
@@ -39,7 +39,7 @@ class InvalidTypeError(CtyError):
         message: A human-readable error description
         invalid_type: The invalid type that caused the error
     """
-    def __init__(self, message: str, invalid_type: Any = None) -> None:
+    def __init__(self, message: str, invalid_type: Any = None):
         self.invalid_type = invalid_type
         super().__init__(message)
 
@@ -58,7 +58,7 @@ class AttributePathError(CtyError):
         path: The path that caused the error
         value: The value the path was being applied to
     """
-    def __init__(self, message: str, path: Any = None, value: Any = None) -> None:
+    def __init__(self, message: str, path: Any = None, value: Any = None):
         self.path = path
         self.value = value
         super().__init__(message)
@@ -80,7 +80,7 @@ class EncodingError(CtyError):
         data: The data that caused the encoding error
         encoding: The name of the encoding format that was being used
     """
-    def __init__(self, message: str, data: Any = None, encoding: str | None = None) -> None:
+    def __init__(self, message: str, data: Any = None, encoding: Optional[str] = None):
         self.data = data
         self.encoding = encoding
 
@@ -104,7 +104,7 @@ class SerializationError(EncodingError):
         value: The value that failed to serialize
         format_name: The name of the format that was being used
     """
-    def __init__(self, message: str, value: Any = None, format_name: str | None = None) -> None:
+    def __init__(self, message: str, value: Any = None, format_name: Optional[str] = None):
         self.value = value
         super().__init__(message, value, format_name)
 
@@ -121,7 +121,7 @@ class DeserializationError(EncodingError):
         data: The data that failed to deserialize
         format_name: The name of the format that was being used
     """
-    def __init__(self, message: str, data: Any = None, format_name: str | None = None) -> None:
+    def __init__(self, message: str, data: Any = None, format_name: Optional[str] = None):
         super().__init__(message, data, format_name)
 
 
@@ -137,7 +137,7 @@ class DynamicValueError(SerializationError):
         message: A human-readable error description
         value: The dynamic value that caused the error
     """
-    def __init__(self, message: str, value: Any = None) -> None:
+    def __init__(self, message: str, value: Any = None):
         super().__init__(message, value, "DynamicValue")
 
 
@@ -153,7 +153,7 @@ class JsonEncodingError(EncodingError):
         data: The data that caused the encoding error
         operation: The operation that failed (encode/decode)
     """
-    def __init__(self, message: str, data: Any = None, operation: str | None = None) -> None:
+    def __init__(self, message: str, data: Any = None, operation: Optional[str] = None):
         self.operation = operation
 
         # Add operation context to the message
@@ -175,7 +175,7 @@ class MsgPackEncodingError(EncodingError):
         data: The data that caused the encoding error
         operation: The operation that failed (encode/decode)
     """
-    def __init__(self, message: str, data: Any = None, operation: str | None = None) -> None:
+    def __init__(self, message: str, data: Any = None, operation: Optional[str] = None):
         self.operation = operation
 
         # Add operation context to the message
@@ -202,9 +202,9 @@ class WireFormatError(TransformationError):
         message: str,
         *,
         format_type: Any = None,
-        operation: str | None = None,
+        operation: Optional[str] = None,
         **kwargs
-    ) -> None:
+    ):
         self.format_type = format_type
         self.operation = operation
 

@@ -97,7 +97,7 @@ def test_list_serialization_nested():
     # Need to create CtyValues for inner lists if validate expects that
     # Assuming validate can handle raw python lists of appropriate types for now
     # If not, this would be:
-    # data = [CtyList(CtyNumber()).validate([Decimal("1"), Decimal("2")]), CtyList(CtyNumber()).validate([Decimal("3")])]
+    # data = [CtyList(element_type=CtyNumber()).validate([Decimal("1"), Decimal("2")]), CtyList(element_type=CtyNumber()).validate([Decimal("3")])]
     # However, the current CtyValue structure stores raw python values internally after validation.
     original_value = nested_list_type.validate(data)
     check_serialization_deserialization(original_value, nested_list_type)
@@ -242,7 +242,7 @@ def test_dynamic_value_resolved_serialization():
 # For now, assuming CtySet is handled by generic collection logic if its values are standard.
 # Example:
 # def test_set_serialization():
-#     set_type = CtySet(CtyString())
+#     set_type = CtySet(element_type=CtyString())
 #     # Note: CtySet validation might convert to frozenset of CtyValues internally
 #     original_value = set_type.validate({"apple", "banana"})
 #     check_serialization_deserialization(original_value, set_type)

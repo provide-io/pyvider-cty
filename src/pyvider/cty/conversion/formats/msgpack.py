@@ -15,16 +15,17 @@ the same fidelity as the JSON encoder, with specialized encoding for CTY-specifi
 types and thorough error handling.
 """
 
-from decimal import Decimal
-from typing import Any, ClassVar, TypeVar
-
 import msgpack
+from decimal import Decimal
+from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
+from attrs import define, field
+
+from pyvider.telemetry import logger
 from pyvider.core.conversion.wire_format import WireFormatType
-from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.values import CtyValue
-from pyvider.telemetry import logger
+from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
 
 T = TypeVar('T')
 
@@ -162,7 +163,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack", data=data) from e
 
     @classmethod
-    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> dict[str, Any]:
+    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> Dict[str, Any]:
         """
         Convert a CTY value to a serializable dictionary.
 
@@ -173,7 +174,7 @@ class MsgPackEncoder(FormatEncoder):
         Returns:
             Serializable dictionary representation
         """
-        logger.debug("🧩📝🔄 Converting CtyValue to dictionary for MessagePack")
+        logger.debug(f"🧩📝🔄 Converting CtyValue to dictionary for MessagePack")
 
         result = {}
 
@@ -230,7 +231,7 @@ class MsgPackEncoder(FormatEncoder):
         return result
 
     @classmethod
-    def _dict_to_value(cls, data: dict[str, Any], preserve_type: bool = True) -> CtyValue:
+    def _dict_to_value(cls, data: Dict[str, Any], preserve_type: bool = True) -> CtyValue:
         """
         Convert a dictionary to a CTY value.
 
@@ -244,7 +245,7 @@ class MsgPackEncoder(FormatEncoder):
         Raises:
             EncodingError: If conversion fails
         """
-        logger.debug("🧩🔍🔄 Converting MessagePack dictionary to CtyValue")
+        logger.debug(f"🧩🔍🔄 Converting MessagePack dictionary to CtyValue")
 
         try:
             # Handle special states
@@ -266,7 +267,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack") from e
 
     @classmethod
-    def _create_unknown_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_unknown_value(cls, data: Dict[str, Any]) -> CtyValue:
         """
         Create an unknown CTY value from dictionary data.
 
@@ -288,7 +289,7 @@ class MsgPackEncoder(FormatEncoder):
         return CtyValue.unknown(cty_type)
 
     @classmethod
-    def _create_null_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_null_value(cls, data: Dict[str, Any]) -> CtyValue:
         """
         Create a null CTY value from dictionary data.
 
@@ -310,7 +311,7 @@ class MsgPackEncoder(FormatEncoder):
         return CtyValue.null(cty_type)
 
     @classmethod
-    def _create_typed_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_typed_value(cls, data: Dict[str, Any]) -> CtyValue:
         """
         Create a typed CTY value from dictionary data.
 
@@ -347,8 +348,8 @@ class MsgPackEncoder(FormatEncoder):
                     data.get(b"$E", "CtyDynamic"), {})
                 elements = []
                 for item in value_data:
-                    if isinstance(item, dict) and (cls.TYPE_MARKER in item or
-                                                  cls.UNKNOWN_MARKER in item or
+                    if isinstance(item, dict) and (cls.TYPE_MARKER in item or 
+                                                  cls.UNKNOWN_MARKER in item or 
                                                   cls.NULL_MARKER in item):
                         elements.append(cls._dict_to_value(item))
                     else:
@@ -362,8 +363,8 @@ class MsgPackEncoder(FormatEncoder):
                     data.get(b"$V", "CtyDynamic"), {})
                 items = {}
                 for k, v in value_data.items():
-                    if isinstance(v, dict) and (cls.TYPE_MARKER in v or
-                                               cls.UNKNOWN_MARKER in v or
+                    if isinstance(v, dict) and (cls.TYPE_MARKER in v or 
+                                               cls.UNKNOWN_MARKER in v or 
                                                cls.NULL_MARKER in v):
                         items[k] = cls._dict_to_value(v)
                     else:
@@ -374,7 +375,7 @@ class MsgPackEncoder(FormatEncoder):
                 return cty_type.validate(value_data)
 
     @classmethod
-    def _create_untyped_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_untyped_value(cls, data: Dict[str, Any]) -> CtyValue:
         """
         Create an untyped CTY value from dictionary data.
 
@@ -416,7 +417,7 @@ class MsgPackEncoder(FormatEncoder):
                 raise EncodingError(f"Cannot infer type for value: {value}", encoding="msgpack")
 
     @classmethod
-    def _create_type_from_name(cls, type_name: str, data: dict[str, Any]) -> 'CtyType':
+    def _create_type_from_name(cls, type_name: str, data: Dict[str, Any]) -> 'CtyType':
         """
         Create a CTY type from its name.
 
@@ -435,13 +436,9 @@ class MsgPackEncoder(FormatEncoder):
         try:
             # Import all types
             from pyvider.cty.types import (
-                CtyBool,
-                CtyDynamic,
-                CtyList,
-                CtyMap,
-                CtyNumber,
-                CtySet,
-                CtyString,
+                CtyBool, CtyNumber, CtyString,
+                CtyList, CtyMap, CtySet,
+                CtyObject, CtyTuple, CtyDynamic,
             )
 
             # Create appropriate type using match/case

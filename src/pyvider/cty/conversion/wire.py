@@ -1,22 +1,12 @@
-from collections.abc import Callable
-from typing import Any
-
 # pyvider/conversion/wire_format.py
 """
 Wire format registry and interface definitions for Pyvider.
 """
 from enum import Enum, auto, unique
-from typing import (
-    ClassVar,
-    Protocol,
-    TypeGuard,
-    TypeVar,
-    final,
-    runtime_checkable,
-)
+from typing import Any, ClassVar, Type, TypeVar, final, Protocol, runtime_checkable, TypeGuard, Callable
 
+from pyvider.cty.exceptions import CtyConversionError, WireFormatError
 from pyvider.cty.context import OperationContext
-from pyvider.cty.exceptions import WireFormatError
 from pyvider.telemetry import logger
 
 T = TypeVar('T')
@@ -41,7 +31,7 @@ class TypeConvertible(Protocol):
     def type_info(self) -> dict[str, Any]: ...
 
 def is_state_convertible(obj: Any) -> TypeGuard[StateConvertible]:
-    return hasattr(obj, "to_dict") and callable(obj.to_dict)
+    return hasattr(obj, "to_dict") and callable(getattr(obj, "to_dict"))
 
 def is_type_convertible(obj: Any) -> TypeGuard[TypeConvertible]:
     return hasattr(obj, "type_info") and isinstance(getattr(obj, "type_info", None), property)
@@ -49,7 +39,7 @@ def is_type_convertible(obj: Any) -> TypeGuard[TypeConvertible]:
 @final
 class WireFormatRegistry:
     _instance: ClassVar[WFR | None] = None
-    _formats: ClassVar[dict[WireFormatType, type[S]]] = {}
+    _formats: ClassVar[dict[WireFormatType, Type[S]]] = {}
 
     def __new__(cls) -> WFR:
         if cls._instance is None:
@@ -58,9 +48,9 @@ class WireFormatRegistry:
         return cls._instance
 
     @classmethod
-    def register(cls, format_type: WireFormatType) -> Callable[[type['WireFormat']], type['WireFormat']]:
+    def register(cls, format_type: WireFormatType) -> Callable[[Type['WireFormat']], Type['WireFormat']]:
         logger.debug(f"🧰🔄🔧 Preparing registration for {format_type.name}")
-        def decorator(impl_class: type['WireFormat']) -> type['WireFormat']:
+        def decorator(impl_class: Type['WireFormat']) -> Type['WireFormat']:
             if not issubclass(impl_class, WireFormat):
                 raise TypeError(f"{impl_class.__name__} must extend WireFormat")
             if format_type in cls._formats:
@@ -71,7 +61,7 @@ class WireFormatRegistry:
         return decorator
 
     @classmethod
-    def get_formatter(cls, format_type: WireFormatType) -> type['WireFormat']:
+    def get_formatter(cls, format_type: WireFormatType) -> Type['WireFormat']:
         if format_type not in cls._formats:
             raise WireFormatError(f"No wire format registered for {format_type.name}", format_type=format_type)
         return cls._formats[format_type]
@@ -82,7 +72,7 @@ class WireFormat:
         raise NotImplementedError(f"{cls.__name__}.marshal() must be implemented")
 
     @classmethod
-    def unmarshal(cls, data: bytes, expected_type: type[T] | None = None, *, operation: OperationContext | None = None, **options: Any) -> Any:
+    def unmarshal(cls, data: bytes, expected_type: Type[T] | None = None, *, operation: OperationContext | None = None, **options: Any) -> Any:
         raise NotImplementedError(f"{cls.__name__}.unmarshal() must be implemented")
 
     @classmethod
