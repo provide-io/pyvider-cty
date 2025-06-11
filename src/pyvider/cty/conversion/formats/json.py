@@ -14,25 +14,19 @@ The implementation supports both compact and pretty-printed output,
 custom encoders for CTY-specific types, and robust error handling.
 """
 
-from decimal import Decimal
 import json
-from typing import Any, ClassVar, TypeVar
+from decimal import Decimal
+from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
-from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
+from attrs import define, field
+
+from pyvider.telemetry import logger
 from pyvider.cty.conversion.wire import WireFormatType
 from pyvider.cty.exceptions import EncodingError
-
-# Import Cty types for type checking
-from pyvider.cty.types import (  # Added all types for _create_type_from_name
-    CtyBool,
-    CtyDynamic,
-    CtyList,
-    CtyMap,
-    CtyNumber,
-    CtyString,
-)
 from pyvider.cty.values import CtyValue
-from pyvider.telemetry import logger
+# Import Cty types for type checking
+from pyvider.cty.types import CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic, CtySet, CtyObject, CtyTuple # Added all types for _create_type_from_name
+from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 
 T = TypeVar('T')
 
@@ -120,7 +114,7 @@ class JsonEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="json", data=data) from e
 
     @classmethod
-    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> dict[str, Any]:
+    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> Dict[str, Any]:
         result = {}
         if preserve_type:
             result[cls.TYPE_MARKER] = value.type.__class__.__name__
@@ -138,7 +132,7 @@ class JsonEncoder(FormatEncoder):
             return result
 
         raw_internal_value = value.value
-        is_current_value_collection = isinstance(value.type, CtyList | CtyMap)
+        is_current_value_collection = isinstance(value.type, (CtyList, CtyMap))
 
         def recursively_encode_value(item: Any, is_direct_collection_member: bool = False) -> Any:
             # Types are already imported at module level. No need for local import here if module level is sufficient.
@@ -149,13 +143,13 @@ class JsonEncoder(FormatEncoder):
             if isinstance(item, CtyValue):
                 # Handle unknown and null CtyValues first
                 if item.is_unknown:
-                    logger.debug("RECURSE_ENCODE: item is unknown.")
+                    logger.debug(f"RECURSE_ENCODE: item is unknown.")
                     temp_res = {cls.UNKNOWN_MARKER: True}
                     if preserve_type: # preserve_type is from the outer scope
                         temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
                     return temp_res
                 if item.is_null:
-                    logger.debug("RECURSE_ENCODE: item is null.")
+                    logger.debug(f"RECURSE_ENCODE: item is null.")
                     temp_res = {cls.NULL_MARKER: True}
                     if preserve_type: # preserve_type is from the outer scope
                         temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
@@ -172,37 +166,37 @@ class JsonEncoder(FormatEncoder):
                     is_item_type_dynamic = isinstance(item.type, CtyDynamic)
                     logger.debug(f"RECURSE_ENCODE: isinstance(item.type, CtyDynamic) = {is_item_type_dynamic}")
 
-                    is_actual_value_primitive = isinstance(actual_value, str | int | float | bool | Decimal)
+                    is_actual_value_primitive = isinstance(actual_value, (str, int, float, bool, Decimal))
                     logger.debug(f"RECURSE_ENCODE: isinstance(actual_value, PyPrimitive) = {is_actual_value_primitive}")
 
                     if is_item_type_dynamic and is_actual_value_primitive:
-                        logger.debug("RECURSE_ENCODE: Simplifying CtyDynamic with primitive.")
+                        logger.debug(f"RECURSE_ENCODE: Simplifying CtyDynamic with primitive.")
                         if isinstance(actual_value, Decimal):
                             return str(actual_value)
                         return actual_value
 
-                    is_item_type_primitive = isinstance(item.type, CtyString | CtyNumber | CtyBool)
+                    is_item_type_primitive = isinstance(item.type, (CtyString, CtyNumber, CtyBool))
                     logger.debug(f"RECURSE_ENCODE: isinstance(item.type, CtyPrimitive) = {is_item_type_primitive}")
 
                     if is_item_type_primitive:
-                        logger.debug("RECURSE_ENCODE: Simplifying direct CtyPrimitive.")
+                        logger.debug(f"RECURSE_ENCODE: Simplifying direct CtyPrimitive.")
                         if isinstance(actual_value, Decimal):
                             return str(actual_value)
                         return actual_value
 
-                    logger.debug("RECURSE_ENCODE: Did not meet simplification criteria for direct collection member.")
+                    logger.debug(f"RECURSE_ENCODE: Did not meet simplification criteria for direct collection member.")
 
                 logger.debug(f"RECURSE_ENCODE: Defaulting to full cls._value_to_dict for CtyValue item: {item!r}")
                 return cls._value_to_dict(item, preserve_type) # Fallback
 
             elif isinstance(item, dict):
-                logger.debug("RECURSE_ENCODE: item is dict, processing items...")
+                logger.debug(f"RECURSE_ENCODE: item is dict, processing items...")
                 return {k: recursively_encode_value(v, is_direct_collection_member=(is_current_value_collection and isinstance(value.type, CtyMap))) for k, v in item.items()}
-            elif isinstance(item, list | tuple):
-                logger.debug("RECURSE_ENCODE: item is list/tuple, processing elements...")
+            elif isinstance(item, (list, tuple)):
+                logger.debug(f"RECURSE_ENCODE: item is list/tuple, processing elements...")
                 return [recursively_encode_value(elem, is_direct_collection_member=(is_current_value_collection and isinstance(value.type, CtyList))) for elem in item]
             elif isinstance(item, Decimal):
-                logger.debug("RECURSE_ENCODE: item is Decimal, converting to str.")
+                logger.debug(f"RECURSE_ENCODE: item is Decimal, converting to str.")
                 return str(item)
 
             logger.debug(f"RECURSE_ENCODE: item is raw primitive, returning as is: {item!r}")
@@ -215,9 +209,9 @@ class JsonEncoder(FormatEncoder):
         return result
 
     @classmethod
-    def _dict_to_value(cls, data: dict[str, Any], preserve_type: bool = True) -> CtyValue:
+    def _dict_to_value(cls, data: Dict[str, Any], preserve_type: bool = True) -> CtyValue:
         # ... (rest of the file is unchanged from previous correct state) ...
-        logger.debug("🧩🔍🔄 Converting dictionary to CtyValue")
+        logger.debug(f"🧩🔍🔄 Converting dictionary to CtyValue")
 
         try:
             if data.get(cls.UNKNOWN_MARKER, False):
@@ -234,21 +228,21 @@ class JsonEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="json") from e
 
     @classmethod
-    def _create_unknown_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_unknown_value(cls, data: Dict[str, Any]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating unknown CtyValue")
         type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
         cty_type = cls._create_type_from_name(type_name, data)
         return CtyValue.unknown(cty_type)
 
     @classmethod
-    def _create_null_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_null_value(cls, data: Dict[str, Any]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating null CtyValue")
         type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
         cty_type = cls._create_type_from_name(type_name, data)
         return CtyValue.null(cty_type)
 
     @classmethod
-    def _create_typed_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_typed_value(cls, data: Dict[str, Any]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating typed CtyValue")
         type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
         value_data = data.get("value")
@@ -281,7 +275,7 @@ class JsonEncoder(FormatEncoder):
             case _: return cty_type.validate(value_data)
 
     @classmethod
-    def _create_untyped_value(cls, data: dict[str, Any]) -> CtyValue:
+    def _create_untyped_value(cls, data: Dict[str, Any]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating untyped CtyValue")
         value = data.get("value")
         match value:
@@ -297,12 +291,10 @@ class JsonEncoder(FormatEncoder):
                 raise EncodingError(f"Cannot infer type for value: {value}", encoding="json")
 
     @classmethod
-    def _create_type_from_name(cls, type_name: str, data: dict[str, Any]) -> 'CtyType':
+    def _create_type_from_name(cls, type_name: str, data: Dict[str, Any]) -> 'CtyType':
         logger.debug(f"🧩🔍🔄 Creating type from name: {type_name}")
         try:
-            from pyvider.cty.types import (  # Already imported: CtyBool, CtyNumber, CtyString, CtyList, CtyMap, CtyDynamic
-                CtySet,
-            )
+            from pyvider.cty.types import CtySet, CtyObject, CtyTuple # Already imported: CtyBool, CtyNumber, CtyString, CtyList, CtyMap, CtyDynamic
             match type_name:
                 case "CtyBool": return CtyBool()
                 case "CtyNumber": return CtyNumber()

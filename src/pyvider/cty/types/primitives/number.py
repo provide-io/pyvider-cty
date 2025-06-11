@@ -12,17 +12,18 @@ using Decimal internally for precision and supporting conversion from various in
 """
 
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar
 
-from attrs import define, field
+from typing import Any, ClassVar, Union
+
+from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import CtyNumberValidationError
-from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
+from pyvider.cty.types.base import CtyType
 
 @define(frozen=True, slots=True)
-class CtyNumber(CtyType[int | float, Decimal]):
+class CtyNumber(CtyType[Union[int, float, Decimal]]):
     """
     Represents a numeric type in the Cty type system.
 
@@ -36,7 +37,7 @@ class CtyNumber(CtyType[int | float, Decimal]):
 
     Attributes:
         ctype (ClassVar[str]): Type identifier constant, always "number".
-        value (int | Decimal): Default value for new instances, defaults to 0.
+        value (Union[int, Decimal]): Default value for new instances, defaults to 0.
             This attribute is primarily used when creating numbers directly.
 
     Examples:
@@ -55,7 +56,7 @@ class CtyNumber(CtyType[int | float, Decimal]):
         3.14159265359
     """
     ctype: ClassVar[str] = "number"
-    value: int | Decimal = field(default=0)
+    value: Union[int, Decimal] = field(default=0)
 
     def validate(self, value: Any) -> "CtyValue":
         """
@@ -86,12 +87,12 @@ class CtyNumber(CtyType[int | float, Decimal]):
         # Handle CtyValue inputs
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyNumber):
-                logger.debug("🔢🔍✅ Value is already a CtyValue with CtyNumber type")
+                logger.debug(f"🔢🔍✅ Value is already a CtyValue with CtyNumber type")
                 return value
             # --- Allow conversion from known, non-null CtyValue if numeric/string ---
             if not value._is_unknown and not value._is_null:
                  inner_val = value.value
-                 if isinstance(inner_val, int | float | Decimal):
+                 if isinstance(inner_val, (int, float, Decimal)):
                       logger.debug(f"🔢🔍✅ Inner value is already numeric: {inner_val!r}")
                       return CtyValue(vtype=self, value=inner_val)
                  elif isinstance(inner_val, str):
@@ -113,7 +114,7 @@ class CtyNumber(CtyType[int | float, Decimal]):
             return CtyValue(vtype=self, value=Decimal(0)) # Use Decimal for consistency
 
         # Accept numeric types: int, float, Decimal
-        if isinstance(value, int | float | Decimal):
+        if isinstance(value, (int, float, Decimal)):
             # Convert int/float to Decimal for internal consistency
             try:
                  decimal_val = Decimal(value)
@@ -178,7 +179,7 @@ class CtyNumber(CtyType[int | float, Decimal]):
         logger.debug(f"🔢🔍✅ CtyNumber.usable_as({other.__class__.__name__}): {result}")
         return result
 
-    def __str__(self) -> str:
+    def __str__(self):
         return "number"
 
     def is_primitive_type(self) -> bool:

@@ -1,5 +1,3 @@
-from typing import Generic
-
 #
 # pyvider/cty/types/collections/map.py
 #
@@ -21,15 +19,17 @@ Maps serve a similar role to Python dictionaries but with added type safety
 and immutability guarantees.
 """
 
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
 
-from attrs import define, evolve, field
+from attrs import define, field, evolve
 
-from pyvider.cty.exceptions import CtyMapValidationError
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyString
-from pyvider.cty.values import CtyValue
+from pyvider.cty.exceptions import CtyMapValidationError, CtyValidationError
 from pyvider.telemetry import logger
+from pyvider.cty.types.base import CtyType
+from pyvider.cty.values import CtyValue
+from pyvider.cty.types.primitives import CtyString
+from pyvider.cty.types.structural.dynamic import CtyDynamic # Reverted to direct import
+
 
 V = TypeVar('V')  # Value type is variable
 
@@ -57,7 +57,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def validate(self, value: Any) -> CtyValue:
         logger.debug(f"🔌🔍🔄 Validating value as CtyMap: {type(value).__name__}")
 
-        input_dict: dict | None = None
+        input_dict: Optional[dict] = None
         if value is None:
             logger.debug("🔌🔍✅ None value converted to empty map")
             return CtyValue(vtype=self, value={}, key_mapping={})
@@ -100,8 +100,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         validation_errors = []
 
         for k, v in input_dict.items():
-            map_key_str: str | None = None
-            validated_key_cty: CtyValue | None = None
+            map_key_str: Optional[str] = None
+            validated_key_cty: Optional[CtyValue] = None
             item_errors = []
 
             try:
@@ -120,7 +120,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             if item_errors: validation_errors.extend(item_errors); continue
             assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation"
 
-            validated_value_cty: CtyValue | None = None # ensure it's defined before try
+            validated_value_cty: Optional[CtyValue] = None # ensure it's defined before try
             try:
                 validated_value_cty = self.value_type.validate(v)
             except Exception as val_err: item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
@@ -139,15 +139,15 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
         return CtyValue(vtype=self, value=validated_map, key_mapping=key_mapping)
 
-    def get(self, map_value: CtyValue, key: Any, default: CtyValue | None = None) -> CtyValue | None:
+    def get(self, map_value: CtyValue, key: Any, default: Optional[CtyValue] = None) -> Optional[CtyValue]:
         logger.debug(f"🔌🔍🔄 Getting value for key {key!r} from map")
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown:
-            logger.debug("🔌🔍⚠️ Cannot get from null/unknown map, returning default or special value")
+            logger.debug(f"🔌🔍⚠️ Cannot get from null/unknown map, returning default or special value")
             if default is not None: return default
             return CtyValue.null(self.value_type) if map_value.is_null else CtyValue.unknown(self.value_type)
-        str_key: str | None = None
+        str_key: Optional[str] = None
         try:
             if isinstance(key, CtyValue):
                 if isinstance(key.type, CtyString) and not key.is_null and not key.is_unknown: str_key = str(key.value)
@@ -168,8 +168,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown:
             raise CtyMapValidationError("Cannot set on null or unknown map")
-        validated_key_cty: CtyValue | None = None
-        str_key: str | None = None
+        validated_key_cty: Optional[CtyValue] = None
+        str_key: Optional[str] = None
         try:
             if isinstance(key, CtyValue):
                 if not isinstance(key.type, CtyString): raise CtyMapValidationError(f"Key type mismatch: expected CtyString, got {key.type.__class__.__name__}")
@@ -193,7 +193,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown: raise CtyMapValidationError("Cannot delete from null or unknown map")
-        str_key: str | None = None
+        str_key: Optional[str] = None
         try:
             if isinstance(key, CtyValue):
                 if isinstance(key.type, CtyString) and not key.is_null and not key.is_unknown: str_key = str(key.value)
@@ -206,11 +206,11 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if str_key not in current_map: return map_value
         new_map = dict(current_map); new_key_mapping = dict(current_key_mapping)
         del new_map[str_key]
-        new_key_mapping.pop(str_key, None)
+        if str_key in new_key_mapping: del new_key_mapping[str_key]
         return evolve(map_value, value=new_map, key_mapping=new_key_mapping)
 
     def element_iterator(self, map_value: CtyValue) -> "ElementIterator":
-        logger.debug("🔌🔍🔄 Creating element iterator for map")
+        logger.debug(f"🔌🔍🔄 Creating element iterator for map")
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown:
@@ -247,7 +247,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 @define
 class ElementIterator:
     """ Iterator for map elements with consistent ordering. """
-    def __init__(self, key_type: "CtyType", map_data: dict[str, CtyValue], key_mapping: dict[str, CtyValue]) -> None:
+    def __init__(self, key_type: "CtyType", map_data: dict[str, CtyValue], key_mapping: dict[str, CtyValue]):
         self.key_type = key_type
         self.items = []
         for string_key, value in map_data.items():
