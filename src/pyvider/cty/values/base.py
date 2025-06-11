@@ -972,7 +972,7 @@ class CtyValue(Generic[T]):
         # Import locally to avoid circular imports
         from pyvider.cty.types.collections import CtyMap, CtyList
         from pyvider.cty.types.structural import CtyObject, CtyTuple
-        from pyvider.cty.exceptions import CtyAttributeValidationError, CtyMapValidationError
+        from pyvider.cty.exceptions import CtyAttributeValidationError, CtyMapValidationError, CtyValidationError
 
         try:
            # Check for CtyObject type first for specific attribute handling
@@ -999,7 +999,7 @@ class CtyValue(Generic[T]):
                         if validated_key.is_null or validated_key.is_unknown:
                            raise KeyError(f"Map key cannot be null or unknown: {key!r}")
                         str_key = str(validated_key.value)
-                    except CtyMapValidationError as e:
+                    except CtyValidationError as e: # Changed CtyMapValidationError to CtyValidationError
                         raise KeyError(f"Invalid key for map lookup: {key!r} ({e})")
 
                 if str_key in self._value:
