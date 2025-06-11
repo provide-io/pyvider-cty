@@ -14,18 +14,18 @@ consistency throughout the validation process and maintaining proper type inform
 in nested structures.
 """
 
-from typing import Any, ClassVar, FrozenSet, Optional, Self, Union
+from typing import Any, ClassVar
 
 from attrs import define, evolve, field
 
-from pyvider.telemetry import logger
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.values import CtyValue
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
-    InvalidTypeError,
     CtyValidationError,
+    InvalidTypeError,
 )
+from pyvider.cty.types.base import CtyType
+from pyvider.cty.values import CtyValue
+from pyvider.telemetry import logger
 
 
 @define(frozen=True, slots=True)
@@ -43,7 +43,7 @@ class CtyObject(CtyType[dict[str, Any]]):
     """
     ctype: ClassVar[str] = "object"
     attribute_types: dict[str, CtyType] = field(factory=dict)
-    optional_attributes: FrozenSet[str] = field(factory=frozenset)
+    optional_attributes: frozenset[str] = field(factory=frozenset)
 
     def __attrs_post_init__(self) -> None:
         """Validate object type configuration."""
@@ -91,14 +91,16 @@ class CtyObject(CtyType[dict[str, Any]]):
         # from pyvider.cty.values import CtyValue
         logger.debug(f"🧩🔍🔄 Validating value against CtyObject: {value}")
 
-        from pyvider.cty.values import CtyValue # Make sure this import is available at the top of the file or method
+        from pyvider.cty.values import (
+            CtyValue,  # Make sure this import is available at the top of the file or method
+        )
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyObject) and value.type.equal(self):
-                logger.debug(f"🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is.")
+                logger.debug("🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is.")
                 return value
             if value.is_unknown and value.type.usable_as(self):
-                logger.debug(f"🧩🔍✅ Propagating unknown CtyValue of a compatible type through object validation.")
+                logger.debug("🧩🔍✅ Propagating unknown CtyValue of a compatible type through object validation.")
                 return CtyValue.unknown(self)
 
             logger.debug(f"🧩🔍🔄 Input is a CtyValue of type {value.type!r}; unwrapping to validate its inner content: {value.value!r}")
@@ -181,7 +183,7 @@ class CtyObject(CtyType[dict[str, Any]]):
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
                             continue
-                        
+
                         # Use the CtyValue directly
                         validated_attrs[name] = cty_value
                         logger.debug(f"🧩🔍✅ Used existing CtyValue for attribute {name}")
@@ -196,7 +198,7 @@ class CtyObject(CtyType[dict[str, Any]]):
                         except CtyValidationError as e:
                             # Add context about which attribute failed
                             # Ensure detail even if str(e) is empty
-                            err_detail = str(e) if str(e).strip() else f"(CtyValidationError: {e!r})" 
+                            err_detail = str(e) if str(e).strip() else f"(CtyValidationError: {e!r})"
                             error_msg = f"Invalid value for attribute '{name}': {err_detail}"
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
@@ -210,7 +212,7 @@ class CtyObject(CtyType[dict[str, Any]]):
             # Update the outer except block within the loop as well:
             except Exception as e:
                 # Ensure detail even if str(e) is empty
-                err_detail = str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})" 
+                err_detail = str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})"
                 error_msg = f"Unexpected error processing attribute '{name}': {err_detail}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 validation_errors.append(error_msg)
@@ -222,11 +224,11 @@ class CtyObject(CtyType[dict[str, Any]]):
             raise CtyValidationError(error_msg)
 
         logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated_attrs)} attributes")
-        
+
         # Return the validated attributes wrapped in a CtyValue
         return CtyValue(vtype=self, value=validated_attrs)
 
-    def get_attribute(self, value: Union[dict[str, Any], CtyValue], name: str) -> CtyValue:
+    def get_attribute(self, value: dict[str | Any, CtyValue], name: str) -> CtyValue:
         """
         Get an attribute value by name.
 
@@ -288,7 +290,7 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         return attr_value
 
-    def required_attributes(self) -> FrozenSet[str]:
+    def required_attributes(self) -> frozenset[str]:
         """
         Get the set of required attribute names.
 
@@ -534,7 +536,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         """Enable iteration over attribute names."""
         return iter(self.attribute_types.keys())
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return number of attributes."""
         return len(self.attribute_types)
 

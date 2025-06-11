@@ -1,8 +1,10 @@
 # src/pyvider/cty/marks.py
 # 🐍✨
 
+from typing import Any
+
 from attrs import define, field
-from typing import Any, Optional
+
 
 @define(frozen=True, slots=True)
 class CtyMark:
@@ -13,7 +15,7 @@ class CtyMark:
     provenance, or other operational concerns.
     """
     name: str = field()
-    details: Optional[Any] = field(default=None)
+    details: Any | None = field(default=None)
 
     def __repr__(self) -> str:
         if self.details is not None:

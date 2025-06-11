@@ -1,3 +1,5 @@
+from typing import Generic
+
 #
 # pyvider/cty/types/collections/set.py
 #
@@ -16,10 +18,11 @@ for membership, and comparing with other sets, all while preserving type
 information and maintaining immutability of the original values.
 """
 
-from typing import Any, ClassVar, Generic, TypeVar, final
-from typing import Set as PySet
+from typing import Any, ClassVar, TypeVar, final
+
 from attrs import define, evolve, field
-from pyvider.cty.exceptions import CtyValidationError, CtySetValidationError
+
+from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
@@ -27,7 +30,7 @@ T = TypeVar('T')
 
 @final
 @define(frozen=True, slots=True)
-class CtySet(CtyType[PySet[T]], Generic[T]):
+class CtySet(CtyType[set[T]], Generic[T]):
     """
     Represents a set type in the Cty type system.
 
@@ -43,7 +46,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
     """
     ctype: ClassVar[str] = "set"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: PySet[T] = field(factory=set, kw_only=True)  # Allow passing value via kw_only
+    value: set[T] = field(factory=set, kw_only=True)  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
         """
@@ -61,7 +64,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any):  # noqa: D401 – short description OK
+    def validate(self, value: Any):
         """Validate *value* as a **set** matching :pyattr:`element_type`.
 
         Acceptable *inputs*:
@@ -99,7 +102,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
                 raise CtySetValidationError(str(exc)) from exc
 
         # NEW: Handle list or tuple input by converting to a set
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             try:
                 value = set(value)
                 logger.debug("🟣🔄  Converted input list/tuple to set for validation")
@@ -112,7 +115,7 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
                 raise CtySetValidationError(err) from e
 
         # -------------------- Set coercion -----------------------------
-        if not isinstance(value, (set, frozenset)):
+        if not isinstance(value, set | frozenset):
             err = (
                 "Expected a Python set/frozenset (or convertible list/tuple) for CtySet validation; "
                 f"got {type(value).__name__}: {value!r}"
