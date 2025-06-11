@@ -12,7 +12,7 @@ type definitions with full support for nested and collection types.
 """
 
 import re
-from typing import Any, Optional, Type, TypeVar, Union, cast, Literal, TypeGuard
+from typing import Type, TypeVar, cast, Literal, TypeGuard
 
 from pyvider.telemetry import logger
 
@@ -35,7 +35,7 @@ T = TypeVar('T')
 TypeString = str
 TypeBytes = bytes
 
-def marshal_type(type_obj: Any) -> bytes:
+def marshal_type(type_obj: object) -> bytes:
     """
     Convert a type object to standard bytes representation.
 
@@ -61,7 +61,7 @@ def marshal_type(type_obj: Any) -> bytes:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise CtyConversionError(error_msg) from e
 
-def unmarshal_type(type_bytes: bytes, options: Optional[dict[str, Any]] = None) -> CtyType:
+def unmarshal_type(type_bytes: bytes, options: dict[str, object] | None = None) -> CtyType:
     """
     Convert Terraform protocol type bytes to a CTY type.
 
@@ -228,7 +228,7 @@ def extract_element_type(type_str: str) -> str:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise TypeCtyConversionError(error_msg) from e
 
-def get_type_category(type_obj: Any) -> TypeCategory:
+def get_type_category(type_obj: object) -> TypeCategory:
     """
     Get the category of a type object.
 
@@ -257,7 +257,7 @@ def get_type_category(type_obj: Any) -> TypeCategory:
         logger.error(f"🧰🔄❌ Failed to determine type category: {e}", exc_info=True)
         return TypeCategory.UNKNOWN
 
-def is_primitive_type(type_obj: Any) -> bool:
+def is_primitive_type(type_obj: object) -> bool:
     """
     Check if a type object represents a primitive type.
 
@@ -276,7 +276,7 @@ def is_primitive_type(type_obj: Any) -> bool:
     except Exception:
         return False
 
-def is_collection_type(type_obj: Any) -> bool:
+def is_collection_type(type_obj: object) -> bool:
     """
     Check if a type object represents a collection type.
 
@@ -295,7 +295,7 @@ def is_collection_type(type_obj: Any) -> bool:
     except Exception:
         return False
 
-def is_structured_type(type_obj: Any) -> bool:
+def is_structured_type(type_obj: object) -> bool:
     """
     Check if a type object represents a structured type.
 
@@ -314,7 +314,7 @@ def is_structured_type(type_obj: Any) -> bool:
     except Exception:
         return False
 
-def sanitize_type_representation(type_obj: Any) -> str:
+def sanitize_type_representation(type_obj: object) -> str:
     """
     Create a clean, standardized string representation of a type.
 
@@ -344,7 +344,7 @@ def sanitize_type_representation(type_obj: Any) -> str:
         logger.warning(f"🧰🔄⚠️ Failed to sanitize type: {e}")
         return str(type_obj)
 
-def marshal_json(value: Any, options: Optional[dict[str, Any]] = None) -> bytes:
+def marshal_json(value: object, options: dict[str, object] | None = None) -> bytes:
     """
     Marshal a value to JSON format bytes.
 
@@ -365,9 +365,9 @@ def marshal_json(value: Any, options: Optional[dict[str, Any]] = None) -> bytes:
     from pyvider.cty.conversion.formats.json import JsonEncoder
     return JsonEncoder.encode(value, **(options or {}))
 
-def unmarshal_json(marshaled: Union[bytes, str],
-                  expected_type: Optional[CtyType] = None,
-                  options: Optional[dict[str, Any]] = None) -> Any:
+def unmarshal_json(marshaled: bytes | str,
+                  expected_type: CtyType | None = None,
+                  options: dict[str, object] | None = None) -> object:
     """
     Unmarshal JSON bytes to a value.
 

@@ -16,7 +16,7 @@ custom encoders for CTY-specific types, and robust error handling.
 
 import json
 from decimal import Decimal
-from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import ClassVar, Type, TypeVar, cast
 
 from attrs import define, field
 
@@ -60,7 +60,7 @@ class JsonEncoder(FormatEncoder):
         return WireFormatType.JSON
 
     @classmethod
-    def encode(cls, value: Any, **options) -> bytes:
+    def encode(cls, value: object, **options) -> bytes:
         """
         Encode a CTY value to JSON bytes.
         """
@@ -91,7 +91,7 @@ class JsonEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="json", data=value) from e
 
     @classmethod
-    def decode(cls, data: bytes, **options) -> Any:
+    def decode(cls, data: bytes, **options) -> object:
         """
         Decode JSON bytes to a CTY value.
         """
@@ -114,7 +114,7 @@ class JsonEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="json", data=data) from e
 
     @classmethod
-    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> Dict[str, Any]:
+    def _value_to_dict(cls, value: CtyValue, preserve_type: bool = True) -> dict[str, object]:
         result = {}
         if preserve_type:
             result[cls.TYPE_MARKER] = value.type.__class__.__name__
@@ -134,7 +134,7 @@ class JsonEncoder(FormatEncoder):
         raw_internal_value = value.value
         is_current_value_collection = isinstance(value.type, (CtyList, CtyMap))
 
-        def recursively_encode_value(item: Any, is_direct_collection_member: bool = False) -> Any:
+        def recursively_encode_value(item: object, is_direct_collection_member: bool = False) -> object:
             # Types are already imported at module level. No need for local import here if module level is sufficient.
             # from pyvider.cty.types import CtyDynamic, CtyString, CtyNumber, CtyBool
 
@@ -209,7 +209,7 @@ class JsonEncoder(FormatEncoder):
         return result
 
     @classmethod
-    def _dict_to_value(cls, data: Dict[str, Any], preserve_type: bool = True) -> CtyValue:
+    def _dict_to_value(cls, data: dict[str, object], preserve_type: bool = True) -> CtyValue:
         # ... (rest of the file is unchanged from previous correct state) ...
         logger.debug(f"🧩🔍🔄 Converting dictionary to CtyValue")
 
@@ -228,21 +228,21 @@ class JsonEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="json") from e
 
     @classmethod
-    def _create_unknown_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_unknown_value(cls, data: dict[str, object]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating unknown CtyValue")
         type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
         cty_type = cls._create_type_from_name(type_name, data)
         return CtyValue.unknown(cty_type)
 
     @classmethod
-    def _create_null_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_null_value(cls, data: dict[str, object]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating null CtyValue")
         type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
         cty_type = cls._create_type_from_name(type_name, data)
         return CtyValue.null(cty_type)
 
     @classmethod
-    def _create_typed_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_typed_value(cls, data: dict[str, object]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating typed CtyValue")
         type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
         value_data = data.get("value")
@@ -275,7 +275,7 @@ class JsonEncoder(FormatEncoder):
             case _: return cty_type.validate(value_data)
 
     @classmethod
-    def _create_untyped_value(cls, data: Dict[str, Any]) -> CtyValue:
+    def _create_untyped_value(cls, data: dict[str, object]) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating untyped CtyValue")
         value = data.get("value")
         match value:
@@ -291,7 +291,7 @@ class JsonEncoder(FormatEncoder):
                 raise EncodingError(f"Cannot infer type for value: {value}", encoding="json")
 
     @classmethod
-    def _create_type_from_name(cls, type_name: str, data: Dict[str, Any]) -> 'CtyType':
+    def _create_type_from_name(cls, type_name: str, data: dict[str, object]) -> 'CtyType':
         logger.debug(f"🧩🔍🔄 Creating type from name: {type_name}")
         try:
             from pyvider.cty.types import CtySet, CtyObject, CtyTuple # Already imported: CtyBool, CtyNumber, CtyString, CtyList, CtyMap, CtyDynamic

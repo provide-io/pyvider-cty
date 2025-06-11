@@ -1,6 +1,6 @@
 # pyvider/cty/conversion/formats/base.py
 from enum import Enum, auto
-from typing import ClassVar, Dict, Optional, Type, TypeVar, Any, Final
+from typing import ClassVar, Type, TypeVar, Final
 
 from pyvider.telemetry import logger
 from pyvider.cty.conversion.wire import WireFormatType
@@ -14,13 +14,13 @@ class FormatEncoder:
     def format_type(cls) -> WireFormatType:
         raise NotImplementedError(f"{cls.__name__}.format_type() must be implemented")
     @classmethod
-    def encode(cls, value: Any, **options) -> bytes:
+    def encode(cls, value: object, **options) -> bytes:
         raise NotImplementedError(f"{cls.__name__}.encode() must be implemented")
     @classmethod
-    def decode(cls, data: bytes, **options) -> Any:
+    def decode(cls, data: bytes, **options) -> object:
         raise NotImplementedError(f"{cls.__name__}.decode() must be implemented")
 
-_ENCODERS: Dict[WireFormatType, Type[FormatEncoder]] = {}
+_ENCODERS: dict[WireFormatType, Type[FormatEncoder]] = {}
 
 def register_formatter(format_type: WireFormatType):
     def decorator(encoder_class: Type[FormatEncoder]):
@@ -30,10 +30,10 @@ def register_formatter(format_type: WireFormatType):
         return encoder_class
     return decorator
 
-def get_formatter(format_type: WireFormatType) -> Optional[Type[FormatEncoder]]:
+def get_formatter(format_type: WireFormatType) -> Type[FormatEncoder] | None:
     return _ENCODERS.get(format_type)
 
-def list_formatters() -> Dict[WireFormatType, str]:
+def list_formatters() -> dict[WireFormatType, str]:
     return {fmt: encoder.__name__ for fmt, encoder in _ENCODERS.items()}
 
 # 🐍🏗️

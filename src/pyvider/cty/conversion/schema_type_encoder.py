@@ -1,7 +1,7 @@
 # pyvider/schema/conversion/wire_type_encoder.py
 import json
 import re
-from typing import Any, List, cast
+from typing import cast
 
 from pyvider.telemetry import logger
 from pyvider.cty.conversion.format import standardize_type_string, classify_type, parse_collection_type, TypeCategory
@@ -34,7 +34,7 @@ def _parse_comma_separated_elements(elements_str: str, is_object_attrs: bool) ->
     else:
         return elements
 
-def _encode_wire_element(element_type_str: str) -> Any:
+def _encode_wire_element(element_type_str: str) -> object:
     std_element_type = standardize_type_string(element_type_str)
     category = classify_type(std_element_type)
     if category == TypeCategory.PRIMITIVE: return std_element_type
@@ -48,7 +48,7 @@ def _encode_wire_element(element_type_str: str) -> Any:
         attrs_str = match.group(1)
         if not attrs_str: return ["object", {}]
         parsed_attrs = _parse_comma_separated_elements(attrs_str, is_object_attrs=True)
-        attrs_dict_encoded = {name: _encode_wire_element(type_str) for name, type_str in cast(List[tuple[str,str]], parsed_attrs)}
+        attrs_dict_encoded = {name: _encode_wire_element(type_str) for name, type_str in cast(list[tuple[str,str]], parsed_attrs)}
         return ["object", attrs_dict_encoded]
     elif std_element_type.startswith("tuple("):
         match = re.match(r"tuple\((.*)\)$", std_element_type)
@@ -56,7 +56,7 @@ def _encode_wire_element(element_type_str: str) -> Any:
         elements_str = match.group(1)
         if not elements_str: return ["tuple", []]
         parsed_elements = _parse_comma_separated_elements(elements_str, is_object_attrs=False)
-        elements_list_encoded = [_encode_wire_element(type_str) for type_str in cast(List[str], parsed_elements)]
+        elements_list_encoded = [_encode_wire_element(type_str) for type_str in cast(list[str], parsed_elements)]
         return ["tuple", elements_list_encoded]
     logger.warning(f"Unhandled type string in _encode_wire_element: \"{std_element_type}\", defaulting to dynamic.")
     return "dynamic"

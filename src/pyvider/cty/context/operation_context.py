@@ -2,7 +2,7 @@
 
 from contextvars import ContextVar
 from enum import Enum, auto
-from typing import ContextManager, Any
+from typing import ContextManager
 from pyvider.telemetry import logger
 
 class OperationContext(Enum):
@@ -32,7 +32,7 @@ def operation_context(context: OperationContext) -> ContextManager[None]:
             logger.debug(f"🧰🔄📊 Pushed operation context: {self._new_context.name}")
             self._token = _current_operation_context.set(self._new_context)
 
-        def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
             if self._token:
                 current_context_before_reset = _current_operation_context.get()
                 _current_operation_context.reset(self._token)

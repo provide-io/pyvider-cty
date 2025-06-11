@@ -3,7 +3,7 @@
 Wire format registry and interface definitions for Pyvider.
 """
 from enum import Enum, auto, unique
-from typing import Any, ClassVar, Type, TypeVar, final, Protocol, runtime_checkable, TypeGuard, Callable
+from typing import ClassVar, Type, TypeVar, final, Protocol, runtime_checkable, TypeGuard, Callable
 
 from pyvider.cty.exceptions import CtyConversionError, WireFormatError
 from pyvider.cty.context import OperationContext
@@ -23,17 +23,17 @@ class WireFormatType(Enum):
 
 @runtime_checkable
 class StateConvertible(Protocol):
-    def to_dict(self) -> dict[str, Any]: ...
+    def to_dict(self) -> dict[str, object]: ...
 
 @runtime_checkable
 class TypeConvertible(Protocol):
     @property
-    def type_info(self) -> dict[str, Any]: ...
+    def type_info(self) -> dict[str, object]: ...
 
-def is_state_convertible(obj: Any) -> TypeGuard[StateConvertible]:
+def is_state_convertible(obj: object) -> TypeGuard[StateConvertible]:
     return hasattr(obj, "to_dict") and callable(getattr(obj, "to_dict"))
 
-def is_type_convertible(obj: Any) -> TypeGuard[TypeConvertible]:
+def is_type_convertible(obj: object) -> TypeGuard[TypeConvertible]:
     return hasattr(obj, "type_info") and isinstance(getattr(obj, "type_info", None), property)
 
 @final
@@ -68,11 +68,11 @@ class WireFormatRegistry:
 
 class WireFormat:
     @classmethod
-    def marshal(cls, value: Any, *, operation: OperationContext | None = None, **options: Any) -> bytes:
+    def marshal(cls, value: object, *, operation: OperationContext | None = None, **options: object) -> bytes:
         raise NotImplementedError(f"{cls.__name__}.marshal() must be implemented")
 
     @classmethod
-    def unmarshal(cls, data: bytes, expected_type: Type[T] | None = None, *, operation: OperationContext | None = None, **options: Any) -> Any:
+    def unmarshal(cls, data: bytes, expected_type: Type[T] | None = None, *, operation: OperationContext | None = None, **options: object) -> object:
         raise NotImplementedError(f"{cls.__name__}.unmarshal() must be implemented")
 
     @classmethod
