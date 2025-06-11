@@ -1,45 +1,41 @@
-import pytest
-import json
 from decimal import Decimal
+import json
 
-from pyvider.cty.values import CtyValue
-from pyvider.cty.types import CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject
 from pyvider.cty.conversion.formats.json import JsonEncoder
+from pyvider.cty.types import CtyBool, CtyList, CtyMap, CtyNumber, CtyObject, CtyString
+from pyvider.cty.values import CtyValue
+
 
 # Helper to encode and parse JSON
 def encode_and_parse(cty_value, **options):
     json_bytes = JsonEncoder.encode(cty_value, **options)
-    return json.loads(json_bytes.decode('utf-8'))
+    return json.loads(json_bytes.decode("utf-8"))
 
-def test_encode_map_of_strings():
+
+def test_encode_map_of_strings() -> None:
     """Test encoding a CtyMap with CtyString values."""
     cty_map_val = CtyValue.map(
-        CtyString(),
-        CtyString(),
-        {"key1": "value1", "key2": "value2"}
+        CtyString(), CtyString(), {"key1": "value1", "key2": "value2"}
     )
     parsed_json = encode_and_parse(cty_map_val)
 
     assert parsed_json["type"] == "CtyMap"
     assert parsed_json["value"] == {"key1": "value1", "key2": "value2"}
 
-def test_encode_list_of_strings():
+
+def test_encode_list_of_strings() -> None:
     """Test encoding a CtyList with CtyString values."""
-    cty_list_val = CtyValue.list(
-        CtyString(),
-        ["apple", "banana"]
-    )
+    cty_list_val = CtyValue.list(CtyString(), ["apple", "banana"])
     parsed_json = encode_and_parse(cty_list_val)
 
     assert parsed_json["type"] == "CtyList"
     assert parsed_json["value"] == ["apple", "banana"]
 
-def test_encode_map_of_numbers():
+
+def test_encode_map_of_numbers() -> None:
     """Test encoding a CtyMap with CtyNumber values."""
     cty_map_val = CtyValue.map(
-        CtyString(),
-        CtyNumber(),
-        {"count": 10, "total": Decimal("123.45")}
+        CtyString(), CtyNumber(), {"count": 10, "total": Decimal("123.45")}
     )
     parsed_json = encode_and_parse(cty_map_val)
 
@@ -48,42 +44,34 @@ def test_encode_map_of_numbers():
     assert parsed_json["value"] == {"count": "10", "total": "123.45"}
 
 
-def test_encode_list_of_numbers():
+def test_encode_list_of_numbers() -> None:
     """Test encoding a CtyList with CtyNumber values."""
-    cty_list_val = CtyValue.list(
-        CtyNumber(),
-        [1, 20, Decimal("3.14")]
-    )
+    cty_list_val = CtyValue.list(CtyNumber(), [1, 20, Decimal("3.14")])
     parsed_json = encode_and_parse(cty_list_val)
 
     assert parsed_json["type"] == "CtyList"
     assert parsed_json["value"] == ["1", "20", "3.14"]
 
 
-def test_encode_map_of_bools():
+def test_encode_map_of_bools() -> None:
     """Test encoding a CtyMap with CtyBool values."""
-    cty_map_val = CtyValue.map(
-        CtyString(),
-        CtyBool(),
-        {"active": True, "admin": False}
-    )
+    cty_map_val = CtyValue.map(CtyString(), CtyBool(), {"active": True, "admin": False})
     parsed_json = encode_and_parse(cty_map_val)
 
     assert parsed_json["type"] == "CtyMap"
     assert parsed_json["value"] == {"active": True, "admin": False}
 
-def test_encode_list_of_bools():
+
+def test_encode_list_of_bools() -> None:
     """Test encoding a CtyList with CtyBool values."""
-    cty_list_val = CtyValue.list(
-        CtyBool(),
-        [True, False, True]
-    )
+    cty_list_val = CtyValue.list(CtyBool(), [True, False, True])
     parsed_json = encode_and_parse(cty_list_val)
 
     assert parsed_json["type"] == "CtyList"
     assert parsed_json["value"] == [True, False, True]
 
-def test_encode_nested_map_primitive_values():
+
+def test_encode_nested_map_primitive_values() -> None:
     """Test encoding a nested CtyMap where inner map values are primitive."""
     inner_map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
     outer_map_type = CtyMap(key_type=CtyString(), value_type=inner_map_type)
@@ -91,11 +79,13 @@ def test_encode_nested_map_primitive_values():
     cty_val = CtyValue.map(
         outer_map_type.key_type,
         outer_map_type.value_type,
-        {"outer_key": CtyValue.map(
-            inner_map_type.key_type,
-            inner_map_type.value_type,
-            {"inner_key": "inner_value"}
-        )}
+        {
+            "outer_key": CtyValue.map(
+                inner_map_type.key_type,
+                inner_map_type.value_type,
+                {"inner_key": "inner_value"},
+            )
+        },
     )
     parsed_json = encode_and_parse(cty_val)
 
@@ -103,7 +93,8 @@ def test_encode_nested_map_primitive_values():
     assert parsed_json["value"]["outer_key"]["type"] == "CtyMap"
     assert parsed_json["value"]["outer_key"]["value"] == {"inner_key": "inner_value"}
 
-def test_encode_map_with_object_values_having_primitives():
+
+def test_encode_map_with_object_values_having_primitives() -> None:
     """Test encoding a CtyMap with CtyObject values, where object attributes are primitives."""
     obj_type = CtyObject({"name": CtyString(), "active": CtyBool()})
     map_type = CtyMap(key_type=CtyString(), value_type=obj_type)
@@ -111,7 +102,11 @@ def test_encode_map_with_object_values_having_primitives():
     cty_val = CtyValue.map(
         map_type.key_type,
         map_type.value_type,
-        {"user1": CtyValue.object(obj_type.attribute_types, {"name": "Alice", "active": True})}
+        {
+            "user1": CtyValue.object(
+                obj_type.attribute_types, {"name": "Alice", "active": True}
+            )
+        },
     )
     parsed_json = encode_and_parse(cty_val)
 
@@ -156,21 +151,23 @@ def test_encode_map_with_object_values_having_primitives():
     #
     # So the expectation should be:
     assert user1_data["value"] == {
-        "name": {"type": "CtyString", "value": "Alice"}, # Expect full form
-        "active": {"type": "CtyBool", "value": True}    # Expect full form
+        "name": {"type": "CtyString", "value": "Alice"},  # Expect full form
+        "active": {"type": "CtyBool", "value": True},  # Expect full form
     }
     # If the task *intended* for CtyObject attributes to be simplified always, the core logic would need to change.
     # Given the subtask description "primitive CtyValues when they are direct children of CtyMap or CtyList collections",
     # the current code correctly implements *that*. Attributes of an object are not direct children of the *outer* map.
 
-def test_encode_top_level_primitive_string():
+
+def test_encode_top_level_primitive_string() -> None:
     """Test encoding a top-level CtyString value."""
     cty_string_val = CtyValue.string("hello")
     parsed_json = encode_and_parse(cty_string_val)
 
     assert parsed_json == {"type": "CtyString", "value": "hello"}
 
-def test_encode_top_level_primitive_number():
+
+def test_encode_top_level_primitive_number() -> None:
     """Test encoding a top-level CtyNumber value."""
     cty_num_val = CtyValue.number(Decimal("123.45"))
     parsed_json = encode_and_parse(cty_num_val)
@@ -178,14 +175,15 @@ def test_encode_top_level_primitive_number():
     assert parsed_json == {"type": "CtyNumber", "value": "123.45"}
 
 
-def test_encode_top_level_primitive_bool():
+def test_encode_top_level_primitive_bool() -> None:
     """Test encoding a top-level CtyBool value."""
     cty_bool_val = CtyValue.bool(True)
     parsed_json = encode_and_parse(cty_bool_val)
 
     assert parsed_json == {"type": "CtyBool", "value": True}
 
-def test_encode_empty_map():
+
+def test_encode_empty_map() -> None:
     """Test encoding an empty CtyMap."""
     empty_map = CtyValue.map(CtyString(), CtyString(), {})
     parsed_json = encode_and_parse(empty_map)
@@ -193,7 +191,8 @@ def test_encode_empty_map():
     assert parsed_json["type"] == "CtyMap"
     assert parsed_json["value"] == {}
 
-def test_encode_empty_list():
+
+def test_encode_empty_list() -> None:
     """Test encoding an empty CtyList."""
     empty_list = CtyValue.list(CtyString(), [])
     parsed_json = encode_and_parse(empty_list)
@@ -201,46 +200,59 @@ def test_encode_empty_list():
     assert parsed_json["type"] == "CtyList"
     assert parsed_json["value"] == []
 
-def test_encode_collection_with_null_value():
+
+def test_encode_collection_with_null_value() -> None:
     """Test encoding a CtyMap with a null CtyString value."""
     cty_map_val = CtyValue.map(
-        CtyString(),
-        CtyString(),
-        {"key1": "value1", "key2": CtyValue.null(CtyString())}
+        CtyString(), CtyString(), {"key1": "value1", "key2": CtyValue.null(CtyString())}
     )
     parsed_json = encode_and_parse(cty_map_val)
 
     assert parsed_json["type"] == "CtyMap"
     assert parsed_json["value"]["key1"] == "value1"
-    assert parsed_json["value"]["key2"] == {"type": "CtyString", "is_null": True} # Null values are not "primitive known values"
+    assert parsed_json["value"]["key2"] == {
+        "type": "CtyString",
+        "is_null": True,
+    }  # Null values are not "primitive known values"
 
-def test_encode_collection_with_unknown_value():
+
+def test_encode_collection_with_unknown_value() -> None:
     """Test encoding a CtyMap with an unknown CtyString value."""
     cty_map_val = CtyValue.map(
         CtyString(),
         CtyString(),
-        {"key1": "value1", "key2": CtyValue.unknown(CtyString())}
+        {"key1": "value1", "key2": CtyValue.unknown(CtyString())},
     )
     parsed_json = encode_and_parse(cty_map_val)
 
     assert parsed_json["type"] == "CtyMap"
     assert parsed_json["value"]["key1"] == "value1"
-    assert parsed_json["value"]["key2"] == {"type": "CtyString", "is_unknown": True} # Unknown values are not "primitive known values"
+    assert parsed_json["value"]["key2"] == {
+        "type": "CtyString",
+        "is_unknown": True,
+    }  # Unknown values are not "primitive known values"
 
-def test_encode_list_with_mixed_primitives_and_complex():
+
+def test_encode_list_with_mixed_primitives_and_complex() -> None:
     """Test a list containing mixed primitive CtyValues and a CtyMap."""
-    inner_map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
-    cty_list_val = CtyValue.list(CtyString(), ["text_element", "another_string", "123"])
+    CtyMap(key_type=CtyString(), value_type=CtyString())
+    CtyValue.list(CtyString(), ["text_element", "another_string", "123"])
     # Need to refine CtyList creation if element types are truly heterogeneous.
     # CtyList has a single element_type. For mixed types, one typically uses CtyTuple or CtyDynamic for elements.
     # Let's assume CtyDynamic for the list element type for true mixed-type support.
 
-    dynamic_list_val = CtyValue.list_of_dynamic([
-        CtyValue.string("text_element"),
-        CtyValue.map(key_type=CtyString(), value_type=CtyString(), items={"map_key": "map_value"}),
-        CtyValue.number(123),
-        CtyValue.bool(True)
-    ])
+    dynamic_list_val = CtyValue.list_of_dynamic(
+        [
+            CtyValue.string("text_element"),
+            CtyValue.map(
+                key_type=CtyString(),
+                value_type=CtyString(),
+                items={"map_key": "map_value"},
+            ),
+            CtyValue.number(123),
+            CtyValue.bool(True),
+        ]
+    )
 
     parsed_json = encode_and_parse(dynamic_list_val)
 
@@ -248,25 +260,30 @@ def test_encode_list_with_mixed_primitives_and_complex():
     # Element type for list_of_dynamic will be CtyDynamic
     assert parsed_json["element_type"] == "CtyDynamic"
 
-    assert parsed_json["value"][0] == "text_element" # Primitive string simplified
-    assert parsed_json["value"][1]["type"] == "CtyMap" # Expect concrete type
+    assert parsed_json["value"][0] == "text_element"  # Primitive string simplified
+    assert parsed_json["value"][1]["type"] == "CtyMap"  # Expect concrete type
     # Values within the map are simplified because the map is a direct child of the dynamic list
     assert parsed_json["value"][1]["value"] == {"map_key": "map_value"}
-    assert parsed_json["value"][2] == "123" # Primitive number simplified (becomes string)
-    assert parsed_json["value"][3] is True # Primitive bool simplified
+    assert (
+        parsed_json["value"][2] == "123"
+    )  # Primitive number simplified (becomes string)
+    assert parsed_json["value"][3] is True  # Primitive bool simplified
 
-def test_encode_map_with_mixed_primitives_and_complex_values():
+
+def test_encode_map_with_mixed_primitives_and_complex_values() -> None:
     """Test a map containing mixed primitive CtyValues and a CtyList as a value."""
-    inner_list_type = CtyList(element_type=CtyString())
+    CtyList(element_type=CtyString())
 
     # For mixed value types in a map, the map's value_type should be CtyDynamic.
     dynamic_map_val = CtyValue.map_of_dynamic(
-        CtyString(), # Key type
+        CtyString(),  # Key type
         {
             "primitive_str": CtyValue.string("hello"),
-            "complex_list": CtyValue.list(element_type=CtyString(), elements=["a", "b"]),
-            "primitive_num": CtyValue.number(42)
-        }
+            "complex_list": CtyValue.list(
+                element_type=CtyString(), elements=["a", "b"]
+            ),
+            "primitive_num": CtyValue.number(42),
+        },
     )
     parsed_json = encode_and_parse(dynamic_map_val)
 
@@ -275,18 +292,22 @@ def test_encode_map_with_mixed_primitives_and_complex_values():
     assert parsed_json["value_type"] == "CtyDynamic"
 
     assert parsed_json["value"]["primitive_str"] == "hello"
-    assert parsed_json["value"]["complex_list"]["type"] == "CtyList" # Expect concrete type
+    assert (
+        parsed_json["value"]["complex_list"]["type"] == "CtyList"
+    )  # Expect concrete type
     # Elements within the list are simplified because the list is a direct child of the dynamic map
     assert parsed_json["value"]["complex_list"]["value"] == ["a", "b"]
-    assert parsed_json["value"]["primitive_num"] == "42" # Primitive number simplified (becomes string)
+    assert (
+        parsed_json["value"]["primitive_num"] == "42"
+    )  # Primitive number simplified (becomes string)
+
 
 # Test case for CtyObject attributes specifically, as per re-evaluation in test_encode_map_with_object_values_having_primitives
-def test_encode_object_with_primitive_attributes():
+def test_encode_object_with_primitive_attributes() -> None:
     """Test encoding a CtyObject where attributes are primitives."""
     obj_type = CtyObject({"name": CtyString(), "age": CtyNumber(), "active": CtyBool()})
     cty_obj_val = CtyValue.object(
-        obj_type.attribute_types,
-        {"name": "Bob", "age": 30, "active": False}
+        obj_type.attribute_types, {"name": "Bob", "age": 30, "active": False}
     )
     parsed_json = encode_and_parse(cty_obj_val)
 
@@ -297,20 +318,23 @@ def test_encode_object_with_primitive_attributes():
     # `recursively_encode_value` is called with `is_direct_collection_member=False` for these.
     assert parsed_json["value"] == {
         "name": {"type": "CtyString", "value": "Bob"},
-        "age": {"type": "CtyNumber", "value": "30"}, # Number becomes string
-        "active": {"type": "CtyBool", "value": False}
+        "age": {"type": "CtyNumber", "value": "30"},  # Number becomes string
+        "active": {"type": "CtyBool", "value": False},
     }
 
-def test_encode_object_inside_list_with_primitive_attributes():
+
+def test_encode_object_inside_list_with_primitive_attributes() -> None:
     """Test CtyObject with primitive attributes when the object is inside a CtyList."""
     obj_type = CtyObject({"id": CtyString()})
-    list_of_objects = CtyValue.list(obj_type, [
-        CtyValue.object(obj_type.attribute_types, {"id": "obj1"})
-    ])
+    list_of_objects = CtyValue.list(
+        obj_type, [CtyValue.object(obj_type.attribute_types, {"id": "obj1"})]
+    )
     parsed_json = encode_and_parse(list_of_objects)
 
     assert parsed_json["type"] == "CtyList"
-    assert parsed_json["element_type"] == "CtyObject" # Or its concrete name if not generic
+    assert (
+        parsed_json["element_type"] == "CtyObject"
+    )  # Or its concrete name if not generic
 
     # The CtyObject itself is a child of CtyList. It's not a "primitive", so it's expanded.
     object_in_list = parsed_json["value"][0]
@@ -329,30 +353,32 @@ def test_encode_object_inside_list_with_primitive_attributes():
     #       `is_direct_collection_member` is False.
     #       So, it returns `cls._value_to_dict(CtyString("obj1"), preserve_type)`.
     # This means attributes of an object are NOT simplified, even if the object is in a list/map.
-    assert object_in_list["value"] == {
-        "id": {"type": "CtyString", "value": "obj1"}
-    }
+    assert object_in_list["value"] == {"id": {"type": "CtyString", "value": "obj1"}}
 
-def test_decimal_serialization_in_list():
+
+def test_decimal_serialization_in_list() -> None:
     """Ensure Decimals are serialized as strings in lists."""
     cty_list_val = CtyValue.list(CtyNumber(), [Decimal("1.23"), Decimal("4.56")])
     parsed_json = encode_and_parse(cty_list_val)
     assert parsed_json["value"] == ["1.23", "4.56"]
 
-def test_decimal_serialization_in_map():
+
+def test_decimal_serialization_in_map() -> None:
     """Ensure Decimals are serialized as strings in map values."""
     cty_map_val = CtyValue.map(CtyString(), CtyNumber(), {"a": Decimal("7.89")})
     parsed_json = encode_and_parse(cty_map_val)
     assert parsed_json["value"] == {"a": "7.89"}
 
-def test_decimal_serialization_top_level():
+
+def test_decimal_serialization_top_level() -> None:
     """Ensure Decimals are serialized as strings at the top level."""
     cty_val = CtyValue.number(Decimal("10.11"))
     parsed_json = encode_and_parse(cty_val)
     assert parsed_json["value"] == "10.11"
 
+
 # Test cases for preserve_type=False
-def test_encode_map_of_strings_no_preserve_type():
+def test_encode_map_of_strings_no_preserve_type() -> None:
     cty_map_val = CtyValue.map(CtyString(), CtyString(), {"key1": "value1"})
     parsed_json = encode_and_parse(cty_map_val, preserve_type=False)
     # When preserve_type is False, _value_to_dict returns an empty dict if not unknown/null
@@ -394,12 +420,13 @@ def test_encode_map_of_strings_no_preserve_type():
     assert parsed_json == {"value": {"key1": "value1"}}
 
 
-def test_encode_list_of_strings_no_preserve_type():
+def test_encode_list_of_strings_no_preserve_type() -> None:
     cty_list_val = CtyValue.list(CtyString(), ["apple"])
     parsed_json = encode_and_parse(cty_list_val, preserve_type=False)
     assert parsed_json == {"value": ["apple"]}
 
-def test_encode_top_level_string_no_preserve_type():
+
+def test_encode_top_level_string_no_preserve_type() -> None:
     cty_string_val = CtyValue.string("hello")
     parsed_json = encode_and_parse(cty_string_val, preserve_type=False)
     # _value_to_dict(CtyString("hello"), preserve_type=False)
@@ -412,7 +439,8 @@ def test_encode_top_level_string_no_preserve_type():
     #   Returns {"value": "hello"}
     assert parsed_json == {"value": "hello"}
 
-def test_encode_object_no_preserve_type():
+
+def test_encode_object_no_preserve_type() -> None:
     obj_type = CtyObject({"name": CtyString()})
     cty_obj_val = CtyValue.object(obj_type.attribute_types, {"name": "Bob"})
     parsed_json = encode_and_parse(cty_obj_val, preserve_type=False)
@@ -434,17 +462,21 @@ def test_encode_object_no_preserve_type():
     # This is indeed what the current logic should produce.
     assert parsed_json == {"value": {"name": {"value": "Bob"}}}
 
-def test_encode_null_string_no_preserve_type():
+
+def test_encode_null_string_no_preserve_type() -> None:
     cty_null_str_val = CtyValue.null(CtyString())
     parsed_json = encode_and_parse(cty_null_str_val, preserve_type=False)
     # _value_to_dict(null_val, preserve_type=False)
     #   result = {}
     #   if value.is_null: result[NULL_MARKER] = True; return result
     # This means it returns {"is_null": True}
-    assert parsed_json == {"is_null": True} # Type info is lost, only null marker remains
+    assert parsed_json == {
+        "is_null": True
+    }  # Type info is lost, only null marker remains
 
-def test_encode_unknown_string_no_preserve_type():
+
+def test_encode_unknown_string_no_preserve_type() -> None:
     cty_unknown_str_val = CtyValue.unknown(CtyString())
     parsed_json = encode_and_parse(cty_unknown_str_val, preserve_type=False)
     # Similar to null, returns {"is_unknown": True}
-    assert parsed_json == {"is_unknown": True} # Type info is lost
+    assert parsed_json == {"is_unknown": True}  # Type info is lost

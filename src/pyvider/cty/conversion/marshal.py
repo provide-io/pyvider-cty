@@ -11,29 +11,34 @@ It supports validation, extraction, categorization, and manipulation of
 type definitions with full support for nested and collection types.
 """
 
-import re
-from typing import Type, TypeVar, cast, Literal, TypeGuard
+from typing import TypeVar
 
-from pyvider.telemetry import logger
-
-from pyvider.cty.exceptions import CtyConversionError
 from pyvider.cty import (
-    CtyType, CtyString, CtyNumber, CtyBool,
-    CtyList, CtyMap, CtySet, CtyTuple, CtyObject, CtyDynamic,
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtySet,
+    CtyString,
+    CtyType,
 )
 from pyvider.cty.conversion.format import (
     TypeCategory,
-    standardize_type_string,
-    ensure_quoted_bytes,
-    parse_collection_type,
     classify_type,
+    ensure_quoted_bytes,
     normalize_type_object,
+    parse_collection_type,
+    standardize_type_string,
 )
+from pyvider.cty.exceptions import CtyConversionError
+from pyvider.telemetry import logger
 
 # Type variables for generic conversions
-T = TypeVar('T')
+T = TypeVar("T")
 TypeString = str
 TypeBytes = bytes
+
 
 def marshal_type(type_obj: object) -> bytes:
     """
@@ -61,7 +66,10 @@ def marshal_type(type_obj: object) -> bytes:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise CtyConversionError(error_msg) from e
 
-def unmarshal_type(type_bytes: bytes, options: dict[str, object] | None = None) -> CtyType:
+
+def unmarshal_type(
+    type_bytes: bytes, options: dict[str, object] | None = None
+) -> CtyType:
     """
     Convert Terraform protocol type bytes to a CTY type.
 
@@ -119,7 +127,9 @@ def unmarshal_type(type_bytes: bytes, options: dict[str, object] | None = None) 
 
                     # Recursively convert element type
                     element_type_bytes = ensure_quoted_bytes(element_type_str)
-                    logger.debug(f"🧰🔍📊 Recursively unmarshaling element type: {element_type_bytes!r}")
+                    logger.debug(
+                        f"🧰🔍📊 Recursively unmarshaling element type: {element_type_bytes!r}"
+                    )
                     element_type = unmarshal_type(element_type_bytes, options)
 
                     # Create the appropriate collection type
@@ -131,15 +141,21 @@ def unmarshal_type(type_bytes: bytes, options: dict[str, object] | None = None) 
                         case "set":
                             return CtySet(element_type=element_type)
                         case _:
-                            logger.warning(f"🧰🔍⚠️ Unsupported collection type: {collection_type}")
+                            logger.warning(
+                                f"🧰🔍⚠️ Unsupported collection type: {collection_type}"
+                            )
                             return CtyDynamic()
                 except ValueError as e:
                     logger.error(f"🧰🔍❌ Failed to parse collection type: {e}")
-                    raise CtyConversionError(f"Invalid collection type format: {type_str}") from e
+                    raise CtyConversionError(
+                        f"Invalid collection type format: {type_str}"
+                    ) from e
 
             case _:
                 # Handle unknown or structured types
-                logger.warning(f"🧰🔍⚠️ Unknown type format: {type_str}, defaulting to dynamic")
+                logger.warning(
+                    f"🧰🔍⚠️ Unknown type format: {type_str}, defaulting to dynamic"
+                )
                 return CtyDynamic()
 
     except Exception as e:
@@ -148,6 +164,7 @@ def unmarshal_type(type_bytes: bytes, options: dict[str, object] | None = None) 
         error_msg = f"Failed to decode type: {e}"
         logger.error(f"🧰🔍❌ {error_msg}", exc_info=True)
         raise CtyConversionError(error_msg) from e
+
 
 def validate_collection_type(type_str: str) -> bool:
     """
@@ -171,7 +188,9 @@ def validate_collection_type(type_str: str) -> bool:
         # Check if it matches collection pattern
         category = classify_type(normalized)
         if category != TypeCategory.COLLECTION:
-            logger.debug(f"🧰🔄⚠️ Not a collection type: {normalized} (category: {category.name})")
+            logger.debug(
+                f"🧰🔄⚠️ Not a collection type: {normalized} (category: {category.name})"
+            )
             return False
 
         # Parse to ensure element type is valid
@@ -188,6 +207,7 @@ def validate_collection_type(type_str: str) -> bool:
     except Exception as e:
         logger.debug(f"🧰🔄❌ Invalid collection type format: {e}")
         return False
+
 
 def extract_element_type(type_str: str) -> str:
     """
@@ -228,6 +248,7 @@ def extract_element_type(type_str: str) -> str:
         logger.error(f"🧰🔄❌ {error_msg}", exc_info=True)
         raise TypeCtyConversionError(error_msg) from e
 
+
 def get_type_category(type_obj: object) -> TypeCategory:
     """
     Get the category of a type object.
@@ -257,6 +278,7 @@ def get_type_category(type_obj: object) -> TypeCategory:
         logger.error(f"🧰🔄❌ Failed to determine type category: {e}", exc_info=True)
         return TypeCategory.UNKNOWN
 
+
 def is_primitive_type(type_obj: object) -> bool:
     """
     Check if a type object represents a primitive type.
@@ -275,6 +297,7 @@ def is_primitive_type(type_obj: object) -> bool:
         return get_type_category(type_obj) == TypeCategory.PRIMITIVE
     except Exception:
         return False
+
 
 def is_collection_type(type_obj: object) -> bool:
     """
@@ -295,6 +318,7 @@ def is_collection_type(type_obj: object) -> bool:
     except Exception:
         return False
 
+
 def is_structured_type(type_obj: object) -> bool:
     """
     Check if a type object represents a structured type.
@@ -313,6 +337,7 @@ def is_structured_type(type_obj: object) -> bool:
         return get_type_category(type_obj) == TypeCategory.STRUCTURED
     except Exception:
         return False
+
 
 def sanitize_type_representation(type_obj: object) -> str:
     """
@@ -344,6 +369,7 @@ def sanitize_type_representation(type_obj: object) -> str:
         logger.warning(f"🧰🔄⚠️ Failed to sanitize type: {e}")
         return str(type_obj)
 
+
 def marshal_json(value: object, options: dict[str, object] | None = None) -> bytes:
     """
     Marshal a value to JSON format bytes.
@@ -363,11 +389,15 @@ def marshal_json(value: object, options: dict[str, object] | None = None) -> byt
     """
     logger.debug(f"🧩📝🔄 Marshaling value to JSON: {type(value).__name__}")
     from pyvider.cty.conversion.formats.json import JsonEncoder
+
     return JsonEncoder.encode(value, **(options or {}))
 
-def unmarshal_json(marshaled: bytes | str,
-                  expected_type: CtyType | None = None,
-                  options: dict[str, object] | None = None) -> object:
+
+def unmarshal_json(
+    marshaled: bytes | str,
+    expected_type: CtyType | None = None,
+    options: dict[str, object] | None = None,
+) -> object:
     """
     Unmarshal JSON bytes to a value.
 
@@ -385,13 +415,15 @@ def unmarshal_json(marshaled: bytes | str,
     Raises:
         EncodingError: If JSON decoding fails
     """
-    logger.debug(f"🧩🔍🔄 Unmarshaling from JSON")
+    logger.debug("🧩🔍🔄 Unmarshaling from JSON")
 
     # Convert string to bytes if needed
     if isinstance(marshaled, str):
-        marshaled = marshaled.encode('utf-8')
+        marshaled = marshaled.encode("utf-8")
 
     from pyvider.cty.conversion.formats.json import JsonEncoder
+
     return JsonEncoder.decode(marshaled, **(options or {}))
+
 
 # 🐍🏗️🐣

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # docs/examples/example-07-unknown-null-values.py
 
-from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyObject, CtyValue
+from pyvider.cty import CtyBool, CtyNumber, CtyObject, CtyString, CtyValue
 
 # Define a user profile type
 profile_type = CtyObject(
@@ -9,19 +9,19 @@ profile_type = CtyObject(
         "username": CtyString(),
         "age": CtyNumber(),
         "verified": CtyBool(),
-        "bio": CtyString()
+        "bio": CtyString(),
     },
-    optional_attributes=frozenset(["bio"])
+    optional_attributes=frozenset(["bio"]),
 )
 
 # Create values with different states
 known_value = CtyValue(
-    vtype=profile_type, 
+    vtype=profile_type,
     value={
         "username": CtyString(value="alice"),
         "age": CtyNumber(value=30),
-        "verified": CtyBool(value=True)
-    }
+        "verified": CtyBool(value=True),
+    },
 )
 
 unknown_value = CtyValue.unknown(profile_type)

@@ -27,27 +27,31 @@ Usage:
     type_bytes = ensure_quoted_bytes(normalized)
 """
 
-import re
 from enum import StrEnum, auto
-from typing import TypeAlias, Pattern, Literal
 from functools import cache
+import re
+from re import Pattern
 
 from pyvider.telemetry import logger
 
 # Type aliases for clarity
-TypeString: TypeAlias = str
-TypeBytes: TypeAlias = bytes
+type TypeString = str
+type TypeBytes = bytes
+
 
 class TypeCategory(StrEnum):
     """Enumeration of type categories for classification."""
+
     PRIMITIVE = auto()
     COLLECTION = auto()
     STRUCTURED = auto()
     UNKNOWN = auto()
 
+
 # Define constants for primitive types
 PRIMITIVE_TYPES = frozenset(["string", "number", "bool", "dynamic", "null"])
 COLLECTION_TYPES = frozenset(["list", "map", "set"])
+
 
 @cache
 def _get_collection_pattern() -> Pattern[str]:
@@ -59,7 +63,8 @@ def _get_collection_pattern() -> Pattern[str]:
     """
     # Simpler regex: captures base type and everything within parentheses
     # The content within parentheses will be recursively processed/validated by other functions.
-    return re.compile(r'^([a-z]+)\((.*)\)$')
+    return re.compile(r"^([a-z]+)\((.*)\)$")
+
 
 def classify_type(type_str: TypeString) -> TypeCategory:
     """
@@ -80,14 +85,19 @@ def classify_type(type_str: TypeString) -> TypeCategory:
     # Check for collection types
     match = _get_collection_pattern().match(type_str)
     if match and match.group(1) in COLLECTION_TYPES:
-        logger.debug(f"🧰🔄📊 Matched collection: base='{match.group(1)}', element='{match.group(2)}'")
+        logger.debug(
+            f"🧰🔄📊 Matched collection: base='{match.group(1)}', element='{match.group(2)}'"
+        )
         return TypeCategory.COLLECTION
     elif match:
-        logger.debug(f"🧰🔄📊 Matched collection pattern but base='{match.group(1)}' not in COLLECTION_TYPES")
+        logger.debug(
+            f"🧰🔄📊 Matched collection pattern but base='{match.group(1)}' not in COLLECTION_TYPES"
+        )
 
     # For now, anything else is unknown
     # Could add STRUCTURED for object types later
     return TypeCategory.UNKNOWN
+
 
 def standardize_type_string(type_str: TypeString | None) -> TypeString:
     """
@@ -109,8 +119,9 @@ def standardize_type_string(type_str: TypeString | None) -> TypeString:
     stripped_type_str = type_str.strip()
 
     # Remove one pair of surrounding quotes if present
-    if (stripped_type_str.startswith('"') and stripped_type_str.endswith('"')) or \
-       (stripped_type_str.startswith("'") and stripped_type_str.endswith("'")):
+    if (stripped_type_str.startswith('"') and stripped_type_str.endswith('"')) or (
+        stripped_type_str.startswith("'") and stripped_type_str.endswith("'")
+    ):
         normalized = stripped_type_str[1:-1]
     else:
         normalized = stripped_type_str
@@ -129,6 +140,7 @@ def standardize_type_string(type_str: TypeString | None) -> TypeString:
     logger.debug(f"🧰🔄📊 Normalized type string: {normalized!r}")
     return normalized
 
+
 def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
     """
     Convert a type string to properly quoted bytes format for Terraform protocol.
@@ -145,26 +157,28 @@ def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
 
     # Standardize then quote
     normalized = standardize_type_string(type_str)
-    result = f'"{normalized}"'.encode('utf-8')
+    result = f'"{normalized}"'.encode()
     logger.debug(f"🧰🔄📊 Converted to quoted bytes: {result!r}")
     return result
+
 
 # Improved implementation with nested support
 def Xparse_collection_type(type_str: str) -> tuple[str, str]:
     logger.debug("!!!! PARSING COLLECTION.")
     """Parse collection type with support for nested types."""
-    if not type_str or '(' not in type_str or not type_str.endswith(')'):
+    if not type_str or "(" not in type_str or not type_str.endswith(")"):
         raise ValueError(f"Invalid collection type format: {type_str}")
 
     # Extract base type and potentially nested content
-    base_type, rest = type_str.split('(', 1)
+    base_type, rest = type_str.split("(", 1)
     content = rest[:-1]  # Remove trailing ')'
 
     # Validate balanced parentheses for nested types
-    if content.count('(') != content.count(')'):
+    if content.count("(") != content.count(")"):
         raise ValueError(f"Unbalanced parentheses in type: {type_str}")
 
     return base_type.strip(), content.strip()
+
 
 def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
     """
@@ -191,6 +205,7 @@ def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
     logger.debug(f"🧰🔄📊 Parsed collection: {collection_type}({element_type})")
     return collection_type, element_type
 
+
 def validate_type_format(type_value: TypeString | TypeBytes) -> list[str]:
     """
     Validate a type string or bytes has proper format and return any errors.
@@ -207,7 +222,7 @@ def validate_type_format(type_value: TypeString | TypeBytes) -> list[str]:
     # Convert bytes to string if needed
     if isinstance(type_value, bytes):
         try:
-            type_str = type_value.decode('utf-8')
+            type_str = type_value.decode("utf-8")
         except UnicodeDecodeError:
             errors.append(f"Invalid UTF-8 encoding: {type_value!r}")
             return errors
@@ -233,13 +248,17 @@ def validate_type_format(type_value: TypeString | TypeBytes) -> list[str]:
 
             # Check if element type is empty
             if not element_type:
-                errors.append(f"Collection type '{collection_type}' missing element type")
+                errors.append(
+                    f"Collection type '{collection_type}' missing element type"
+                )
 
             # Recursively validate element type
             element_errors = validate_type_format(element_type)
             if element_errors:
                 # Prefix with collection context
-                prefixed_errors = [f"In {collection_type}(): {err}" for err in element_errors]
+                prefixed_errors = [
+                    f"In {collection_type}(): {err}" for err in element_errors
+                ]
                 errors.extend(prefixed_errors)
 
         # Check if it's a bare collection type
@@ -253,6 +272,7 @@ def validate_type_format(type_value: TypeString | TypeBytes) -> list[str]:
         logger.debug("🧰🔄✅ Type format validation passed")
 
     return errors
+
 
 def normalize_type_object(type_obj: object) -> TypeString:
     """
@@ -276,7 +296,7 @@ def normalize_type_object(type_obj: object) -> TypeString:
 
         case bytes() as b:
             try:
-                decoded = b.decode('utf-8')
+                decoded = b.decode("utf-8")
                 return standardize_type_string(decoded)
             except UnicodeDecodeError:
                 logger.error(f"🧰🔄❌ Cannot decode type bytes: {b!r}")
@@ -284,7 +304,7 @@ def normalize_type_object(type_obj: object) -> TypeString:
 
         case _ if hasattr(type_obj, "type_name"):
             # Handle PvsAttributeType
-            type_name = getattr(type_obj, "type_name")
+            type_name = type_obj.type_name
             element_type = getattr(type_obj, "element_type", None)
 
             base_type = normalize_type_object(type_name)
@@ -296,7 +316,9 @@ def normalize_type_object(type_obj: object) -> TypeString:
 
             return base_type
 
-        case _ if hasattr(type_obj, "__class__") and type_obj.__class__.__name__.startswith("Cty"):
+        case _ if hasattr(
+            type_obj, "__class__"
+        ) and type_obj.__class__.__name__.startswith("Cty"):
             # Handle CtyType objects based on class name
             class_name = type_obj.__class__.__name__
 
@@ -322,21 +344,28 @@ def normalize_type_object(type_obj: object) -> TypeString:
                 attrs_desc = []
                 # Ensure attribute_types is a dict before iterating
                 if isinstance(type_obj.attribute_types, dict):
-                    for name, attr_type in sorted(type_obj.attribute_types.items()): # Sort for consistent order
+                    for name, attr_type in sorted(
+                        type_obj.attribute_types.items()
+                    ):  # Sort for consistent order
                         attrs_desc.append(f"{name}={normalize_type_object(attr_type)}")
                 return f"object({{{', '.join(attrs_desc)}}})"
             elif class_name == "CtyTuple" and hasattr(type_obj, "element_types"):
                 # Ensure element_types is a tuple before iterating
                 elements_desc = []
                 if isinstance(type_obj.element_types, tuple):
-                    elements_desc = [normalize_type_object(el_type) for el_type in type_obj.element_types]
+                    elements_desc = [
+                        normalize_type_object(el_type)
+                        for el_type in type_obj.element_types
+                    ]
                 # Using () for tuple type strings as per common convention, vs [...] in CtyValue's helper
                 return f"tuple({', '.join(elements_desc)})"
 
-
         case _:
             # For unknown type objects, log and return dynamic
-            logger.warning(f"🧰🔄⚠️ Unknown type object: {type_obj!r}, defaulting to dynamic")
+            logger.warning(
+                f"🧰🔄⚠️ Unknown type object: {type_obj!r}, defaulting to dynamic"
+            )
             return "dynamic"
+
 
 # 🐍🏗️🐣

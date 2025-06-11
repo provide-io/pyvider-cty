@@ -14,17 +14,20 @@ while providing Pythonic operations like slicing and iteration. All operations m
 immutability by returning new instances rather than modifying existing ones.
 """
 
-from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, cast
+from typing import Any, ClassVar, Generic, TypeVar, Union, final
+
 from attrs import define, evolve, field
+
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
 # Type variable representing the type of values in the list
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 @final
-@define(frozen=True, slots=True)
+@define(frozen=True, slots=True, eq=False)
 class CtyList(CtyType[list[T]], Generic[T]):
     """
     Represents an ordered list type in the Cty type system.
@@ -52,9 +55,12 @@ class CtyList(CtyType[list[T]], Generic[T]):
         >>> len(validated)
         3
     """
+
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: list[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
+    value: list[T] = field(
+        factory=list, kw_only=True
+    )  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
         """
@@ -100,12 +106,14 @@ class CtyList(CtyType[list[T]], Generic[T]):
         # Handle None
         if value is None:
             logger.debug("🔌📝❌ Expected list or tuple, got NoneType")
-            raise CtyListValidationError(f"Expected list or tuple, got NoneType")
+            raise CtyListValidationError("Expected list or tuple, got NoneType")
 
         # Ensure input is iterable
-        if not isinstance(value, (list, tuple)):
+        if not isinstance(value, list | tuple):
             logger.debug(f"🔌❗❌ Expected list or tuple, got {type(value).__name__}")
-            raise CtyListValidationError(f"Expected list or tuple, got {type(value).__name__}")
+            raise CtyListValidationError(
+                f"Expected list or tuple, got {type(value).__name__}"
+            )
 
         # Handle empty list
         if not value:
@@ -119,18 +127,22 @@ class CtyList(CtyType[list[T]], Generic[T]):
         for i, item in enumerate(value):
             try:
                 if item is None:
-                    error_msg = f"None is not a valid list element"
+                    error_msg = "None is not a valid list element"
                     logger.debug(f"🔌❗❌ {error_msg}")
                     raise CtyListValidationError(error_msg)
 
                 # Already a CtyValue of correct type?
-                if isinstance(item, CtyValue) and isinstance(item.type, self.element_type.__class__):
+                if isinstance(item, CtyValue) and isinstance(
+                    item.type, self.element_type.__class__
+                ):
                     validated_item = item
                     logger.debug(f"🔌📝✅ Item {i} is already a CtyValue: {item}")
                 else:
                     # Validate and wrap
                     validated_item = self.element_type.validate(item)
-                    logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
+                    logger.debug(
+                        f"🔌📝✅ Validated item {i}: {item} -> {validated_item}"
+                    )
 
                 validated_list.append(validated_item)
             except Exception as e:
@@ -143,7 +155,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.debug(f"🔌❗❌ {error_msg}")
             raise CtyListValidationError(error_msg)
 
-        logger.debug(f"🔌📝✅ Successfully validated list with {len(validated_list)} items")
+        logger.debug(
+            f"🔌📝✅ Successfully validated list with {len(validated_list)} items"
+        )
         return CtyValue(vtype=self, value=validated_list)
 
     def element_at(self, container: Any, index: int) -> "CtyValue":
@@ -184,7 +198,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         elif isinstance(container, CtyList):
             container_value = container.value
         # Handle raw list or tuple container
-        elif isinstance(container, (list, tuple)):
+        elif isinstance(container, list | tuple):
             container_value = container
         # Handle invalid container type
         else:
@@ -201,7 +215,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
             # Check bounds
             if index < 0 or index >= list_len:
-                raise IndexError(f"Index {index} out of bounds (0-{list_len-1})")
+                raise IndexError(f"Index {index} out of bounds (0-{list_len - 1})")
 
             # Return the element at the specified index
             result = container_value[index]
@@ -246,7 +260,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
+    def slice(self, start: int, end: int | None = None) -> "CtyList[T]":
         """
         Get a slice of this list, returning a new list.
 
@@ -279,7 +293,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         # Create a new list with the sliced values
         sliced_value = self.value[start:end]
-        logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
+        logger.debug(
+            f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}"
+        )
 
         return evolve(self, value=sliced_value)
 
@@ -301,7 +317,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         Raises:
             CtyListValidationError: If the other list has an incompatible element type
         """
-        logger.debug(f"🔌📝🔄 Concatenating with another list")
+        logger.debug("🔌📝🔄 Concatenating with another list")
 
         # Ensure other is a CtyList
         if not isinstance(other, CtyList):
@@ -347,9 +363,11 @@ class CtyList(CtyType[list[T]], Generic[T]):
             # Check each element in the list
             for list_item in self.value:
                 # Compare values within CtyValue objects
-                if hasattr(list_item, 'value') and hasattr(validated_item, 'value'):
+                if hasattr(list_item, "value") and hasattr(validated_item, "value"):
                     if list_item.value == validated_item.value:
-                        logger.debug(f"🔌🔍✅ List contains item: {validated_item.value}")
+                        logger.debug(
+                            f"🔌🔍✅ List contains item: {validated_item.value}"
+                        )
                         return True
 
                 # Try direct equality
@@ -377,7 +395,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
             bool: True if this type can be used as the other type, False otherwise
         """
         if not isinstance(other, CtyList):
-            logger.debug(f"🔌📝❌ CtyList.usable_as: False (other is {type(other).__name__})")
+            logger.debug(
+                f"🔌📝❌ CtyList.usable_as: False (other is {type(other).__name__})"
+            )
             return False
 
         result = self.element_type.usable_as(other.element_type)
@@ -399,7 +419,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
             bool: True if the types are equal, False otherwise
         """
         if not isinstance(other, CtyList):
-            logger.debug(f"🔌📝❌ CtyList.equal: False (other is {type(other).__name__})")
+            logger.debug(
+                f"🔌📝❌ CtyList.equal: False (other is {type(other).__name__})"
+            )
             return False
 
         result = self.element_type.equal(other.element_type)
@@ -412,8 +434,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         and their element types are equal *recursively*.
         """
 
-        logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s",
-                     self, other)
+        logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s", self, other)
         if not isinstance(other, CtyList):
             logger.debug("📋❌🔄  Other type is not CtyList → not equal")
             return False
@@ -422,7 +443,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug("📋🔍✅  Element‑type equality result: %s", result)
         return result
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Get the length of this list.
 
@@ -447,7 +468,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: Union[int, slice]) -> Union["CtyValue", "CtyList"]:
+    def __getitem__(self, index: int | slice) -> Union["CtyValue", "CtyList"]:
         """
         Support for indexing and slicing operations.
 
@@ -500,7 +521,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         element_class = self.element_type.__class__.__name__
         if element_class == "CtyList":
             # For nested lists, include the inner element type
-            return f"list({str(self.element_type)})"
+            return f"list({self.element_type!s})"
         return f"list({element_class})"
 
     def __repr__(self) -> str:
@@ -523,5 +544,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
     def is_list_type(self) -> bool:
         """Check if this type is a list type."""
         return True
+
 
 # 🐍🏗️🐣

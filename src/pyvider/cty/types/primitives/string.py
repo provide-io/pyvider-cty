@@ -16,13 +16,14 @@ consistent behavior across the Cty ecosystem.
 
 from typing import Any, ClassVar, TypeVar
 
-from attrs import define, evolve, field
+from attrs import define, field
 
 from pyvider.cty.exceptions import CtyStringValidationError
-from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
+from pyvider.telemetry import logger
 
-T = TypeVar('T', bound=str)
+T = TypeVar("T", bound=str)
+
 
 @define(frozen=True, slots=True)
 class CtyString(CtyType[str]):
@@ -52,6 +53,7 @@ class CtyString(CtyType[str]):
         >>> print(null_value.value)
         ''
     """
+
     ctype: ClassVar[str] = "string"
     value: str = field(default="")
 
@@ -76,6 +78,7 @@ class CtyString(CtyType[str]):
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
+
         logger.debug(f"🔤🔍🔄 Validating value as string: {value!r}")
 
         # Handle CtyValue input
@@ -87,7 +90,10 @@ class CtyString(CtyType[str]):
             # String conversion should be explicit via other mechanisms if needed, not implicit in validate.
             # unless it's dynamic.
             from pyvider.cty.types.structural import CtyDynamic
-            if not isinstance(value.type, CtyDynamic): # Allow CtyDynamic to be validated as string by converting its value
+
+            if not isinstance(
+                value.type, CtyDynamic
+            ):  # Allow CtyDynamic to be validated as string by converting its value
                 error_msg = f"Value is a CtyValue of type {value.type.__class__.__name__}, not CtyString or CtyDynamic"
                 logger.error(f"🔤❗❌ {error_msg}")
                 raise CtyStringValidationError(error_msg)
@@ -97,17 +103,20 @@ class CtyString(CtyType[str]):
                 try:
                     # Convert inner value of CtyDynamic to string
                     str_val = str(value.value)
-                    logger.debug(f"🔤🔍✅ Converted CtyDynamic's inner value to string: {str_val!r}")
+                    logger.debug(
+                        f"🔤🔍✅ Converted CtyDynamic's inner value to string: {str_val!r}"
+                    )
                     return CtyValue(vtype=self, value=str_val)
                 except Exception as e:
-                    error_msg = f"Failed to convert CtyDynamic's inner value to string: {e}"
+                    error_msg = (
+                        f"Failed to convert CtyDynamic's inner value to string: {e}"
+                    )
                     logger.error(f"🔤❗❌ {error_msg}")
                     raise CtyStringValidationError(error_msg) from e
-            elif value._is_unknown: # Propagate unknown
-                 return CtyValue.unknown(self)
-            elif value._is_null: # Convert null dynamic to empty string CtyValue
-                 return CtyValue(vtype=self, value="")
-
+            elif value._is_unknown:  # Propagate unknown
+                return CtyValue.unknown(self)
+            elif value._is_null:  # Convert null dynamic to empty string CtyValue
+                return CtyValue(vtype=self, value="")
 
         # Handle None as empty string (consistent with go-cty)
         if value is None:
@@ -146,9 +155,8 @@ class CtyString(CtyType[str]):
         """
         Check if this string type can be used where the other type is expected.
 
-        A string type is only usable as another string type. This method is used
-        for type compatibility checking when values are passed between contexts
-        with different type expectations.
+        A string type is usable as another string type or as a dynamic type.
+        This method is used for type compatibility checking.
 
         Args:
             other: The target type to check compatibility with.
@@ -156,15 +164,21 @@ class CtyString(CtyType[str]):
         Returns:
             bool: True if this type can be used as the other type, False otherwise.
         """
-        result = isinstance(other, CtyString)
-        logger.debug(f"🔤🔍✅ CtyString.usable_as: {result}")
+        # Import locally to avoid circular dependency if CtyDynamic imports CtyString too early
+        from pyvider.cty.types.structural.dynamic import CtyDynamic
+
+        result = isinstance(other, CtyString | CtyDynamic)
+        logger.debug(
+            f"🔤🔍✅ CtyString.usable_as ({other.__class__.__name__}): {result}"
+        )
         return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "string"
 
     def is_primitive_type(self) -> bool:
         """Check if this type is a primitive type."""
         return True
+
 
 # 🐍🏗️🐣

@@ -2,13 +2,13 @@
 # pyvider/cty/exceptions/encoding.py
 #
 
-from typing import Optional
 
 from pyvider.cty.exceptions.base import CtyError
 
 ################################################################################
 # Transformation and Path Errors
 ################################################################################
+
 
 class TransformationError(CtyError):
     """
@@ -22,7 +22,8 @@ class TransformationError(CtyError):
         message: A human-readable error description
         schema: The schema that failed transformation
     """
-    def __init__(self, message: str, schema: object = None):
+
+    def __init__(self, message: str, schema: object = None) -> None:
         self.schema = schema
         super().__init__(message)
 
@@ -39,7 +40,8 @@ class InvalidTypeError(CtyError):
         message: A human-readable error description
         invalid_type: The invalid type that caused the error
     """
-    def __init__(self, message: str, invalid_type: object = None):
+
+    def __init__(self, message: str, invalid_type: object = None) -> None:
         self.invalid_type = invalid_type
         super().__init__(message)
 
@@ -58,7 +60,8 @@ class AttributePathError(CtyError):
         path: The path that caused the error
         value: The value the path was being applied to
     """
-    def __init__(self, message: str, path: object = None, value: object = None):
+
+    def __init__(self, message: str, path: object = None, value: object = None) -> None:
         self.path = path
         self.value = value
         super().__init__(message)
@@ -67,6 +70,7 @@ class AttributePathError(CtyError):
 ################################################################################
 # Encoding Errors
 ################################################################################
+
 
 class EncodingError(CtyError):
     """
@@ -80,7 +84,10 @@ class EncodingError(CtyError):
         data: The data that caused the encoding error
         encoding: The name of the encoding format that was being used
     """
-    def __init__(self, message: str, data: object = None, encoding: str | None = None):
+
+    def __init__(
+        self, message: str, data: object = None, encoding: str | None = None
+    ) -> None:
         self.data = data
         self.encoding = encoding
 
@@ -104,7 +111,10 @@ class SerializationError(EncodingError):
         value: The value that failed to serialize
         format_name: The name of the format that was being used
     """
-    def __init__(self, message: str, value: object = None, format_name: str | None = None):
+
+    def __init__(
+        self, message: str, value: object = None, format_name: str | None = None
+    ) -> None:
         self.value = value
         super().__init__(message, value, format_name)
 
@@ -121,7 +131,10 @@ class DeserializationError(EncodingError):
         data: The data that failed to deserialize
         format_name: The name of the format that was being used
     """
-    def __init__(self, message: str, data: object = None, format_name: str | None = None):
+
+    def __init__(
+        self, message: str, data: object = None, format_name: str | None = None
+    ) -> None:
         super().__init__(message, data, format_name)
 
 
@@ -137,7 +150,8 @@ class DynamicValueError(SerializationError):
         message: A human-readable error description
         value: The dynamic value that caused the error
     """
-    def __init__(self, message: str, value: object = None):
+
+    def __init__(self, message: str, value: object = None) -> None:
         super().__init__(message, value, "DynamicValue")
 
 
@@ -153,7 +167,10 @@ class JsonEncodingError(EncodingError):
         data: The data that caused the encoding error
         operation: The operation that failed (encode/decode)
     """
-    def __init__(self, message: str, data: object = None, operation: str | None = None):
+
+    def __init__(
+        self, message: str, data: object = None, operation: str | None = None
+    ) -> None:
         self.operation = operation
 
         # Add operation context to the message
@@ -175,7 +192,10 @@ class MsgPackEncodingError(EncodingError):
         data: The data that caused the encoding error
         operation: The operation that failed (encode/decode)
     """
-    def __init__(self, message: str, data: object = None, operation: str | None = None):
+
+    def __init__(
+        self, message: str, data: object = None, operation: str | None = None
+    ) -> None:
         self.operation = operation
 
         # Add operation context to the message
@@ -197,14 +217,15 @@ class WireFormatError(TransformationError):
         format_type: The wire format type that encountered an error
         operation: The operation that failed (marshal/unmarshal)
     """
+
     def __init__(
         self,
         message: str,
         *,
         format_type: object = None,
         operation: str | None = None,
-        **kwargs
-    ):
+        **kwargs,
+    ) -> None:
         self.format_type = format_type
         self.operation = operation
 

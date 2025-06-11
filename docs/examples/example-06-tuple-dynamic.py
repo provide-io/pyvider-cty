@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # docs/examples/example-06-tuple-dynamic.py
 
-from pyvider.cty import CtyTuple, CtyString, CtyNumber, CtyBool, CtyDynamic, CtyValue
+from pyvider.cty import CtyDynamic, CtyNumber, CtyString, CtyTuple, CtyValue
 
 # Define a tuple type with mixed element types
 coordinate_type = CtyTuple(

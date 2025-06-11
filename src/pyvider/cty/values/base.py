@@ -13,17 +13,23 @@ CtyValue instances are immutable and serve as the primary way to work with typed
 values throughout the Cty ecosystem. All operations preserve type information by
 returning new CtyValue instances rather than raw values.
 """
-import json # Added for json.dumps in to_json_comparable_dict
+
+from collections.abc import Iterator
 from decimal import Decimal
-from typing import Any, FrozenSet, Generic, Iterator, Optional, Self, Tuple, TypeVar, Union, cast
+import json  # Added for json.dumps in to_json_comparable_dict
+from typing import (
+    Any,
+    Generic,
+    Self,
+    TypeVar,
+)
 
-from attrs import define, field, evolve
+from attrs import define, evolve, field
 
-from pyvider.telemetry import logger
 from pyvider.cty.types import CtyType
+from pyvider.telemetry import logger
 
-
-T = TypeVar('T', covariant=True)
+T = TypeVar("T", covariant=True)
 
 
 @define(frozen=True, slots=True)
@@ -65,14 +71,14 @@ class CtyValue(Generic[T]):
         >>> unknown_val.is_unknown
         True
     """
+
     # Core attributes
     _vtype: CtyType[T] = field()
     _value: Any = field(default=None)
     _is_unknown: bool = field(default=False)
     _is_null: bool = field(default=False)
-    _marks: FrozenSet = field(factory=frozenset)
+    _marks: frozenset = field(factory=frozenset)
     _key_mapping: dict[str, "CtyValue"] = field(factory=dict)
-
 
     def __attrs_post_init__(self) -> None:
         """
@@ -81,7 +87,9 @@ class CtyValue(Generic[T]):
         Logs information about the created CtyValue instance to aid in debugging.
         """
         # No validation needed here as attrs handles frozen=True
-        logger.debug(f"🔄🔧✅ Creating CtyValue of type {self._vtype.__class__.__name__}")
+        logger.debug(
+            f"🔄🔧✅ Creating CtyValue of type {self._vtype.__class__.__name__}"
+        )
 
     @property
     def type(self) -> CtyType[T]:
@@ -112,7 +120,9 @@ class CtyValue(Generic[T]):
             logger.warning("🔄❗⚠️ Attempted to get raw value of unknown value")
             raise ValueError("Cannot get raw value of unknown value")
         if self._is_null:
-            logger.debug("🔄🔍✅ Getting raw value of null value (returns None)") # Changed from warning
+            logger.debug(
+                "🔄🔍✅ Getting raw value of null value (returns None)"
+            )  # Changed from warning
             return None
         return self._value
 
@@ -158,10 +168,7 @@ class CtyValue(Generic[T]):
         """
         # Use string equality rather than identity for more flexible comparison
         mark_str = str(mark)
-        for m in self._marks:
-            if str(m) == mark_str:
-                return True
-        return False
+        return any(str(m) == mark_str for m in self._marks)
 
     # -------------------------------------------------------------------------
     # Value modification methods
@@ -189,10 +196,10 @@ class CtyValue(Generic[T]):
             is_unknown=self._is_unknown,
             is_null=self._is_null,
             marks=frozenset(self._marks.union({mark})),
-            key_mapping=self._key_mapping # Preserve key mapping
+            key_mapping=self._key_mapping,  # Preserve key mapping
         )
 
-    def unmark(self) -> Tuple[Self, FrozenSet]:
+    def unmark(self) -> tuple[Self, frozenset]:
         """
         Remove all marks from this value and return them.
 
@@ -211,8 +218,8 @@ class CtyValue(Generic[T]):
             value=self._value,
             is_unknown=self._is_unknown,
             is_null=self._is_null,
-            marks=frozenset(), # Clear marks
-            key_mapping=self._key_mapping # Preserve key mapping
+            marks=frozenset(),  # Clear marks
+            key_mapping=self._key_mapping,  # Preserve key mapping
         )
         return unmarked_value, original_marks
 
@@ -229,10 +236,7 @@ class CtyValue(Generic[T]):
         Returns:
             CtyValue: A new CtyValue with the specified marks.
         """
-        return evolve(
-            self,
-            marks=frozenset(new_marks_set)
-        )
+        return evolve(self, marks=frozenset(new_marks_set))
 
     # -------------------------------------------------------------------------
     # Container operations
@@ -259,7 +263,7 @@ class CtyValue(Generic[T]):
 
         # Cannot get from unknown or null values
         if self._is_unknown or self._is_null:
-            logger.debug(f"🔄🔍⚠️ Cannot get from unknown/null value, returning default")
+            logger.debug("🔄🔍⚠️ Cannot get from unknown/null value, returning default")
             return default
 
         # Import locally to avoid circular imports
@@ -272,37 +276,45 @@ class CtyValue(Generic[T]):
                 # Ensure default is also a CtyValue if not None
                 default_cty = None
                 if default is not None:
-                     # Attempt to validate default against map's value type
+                    # Attempt to validate default against map's value type
                     try:
                         default_cty = self._vtype.value_type.validate(default)
                     except Exception:
-                        logger.warning(f"Default value {default!r} is not compatible with map value type {self._vtype.value_type}")
+                        logger.warning(
+                            f"Default value {default!r} is not compatible with map value type {self._vtype.value_type}"
+                        )
                         # Test expects None if the provided default cannot be validated against the map's value type
                         return None
                 # Call the map's get method
-                return self._vtype.get(self, key, default_cty) # Pass CtyValue default
-            except Exception as e: # This broad exception now catches issues from self._vtype.get as well
+                return self._vtype.get(self, key, default_cty)  # Pass CtyValue default
+            except Exception as e:  # This broad exception now catches issues from self._vtype.get as well
                 logger.warning(f"JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: {e!r}")
-                return default # Return original python default
+                return default  # Return original python default
 
         # For objects, use the object's get_attribute method
         elif isinstance(self._vtype, CtyObject):
             try:
                 # Key for object must be a string attribute name
                 if not isinstance(key, str):
-                    logger.debug(f"🔄🔍⚠️ Object attribute key must be string, got {type(key).__name__}")
+                    logger.debug(
+                        f"🔄🔍⚠️ Object attribute key must be string, got {type(key).__name__}"
+                    )
                     return default
 
                 # Call the object's get_attribute method
                 # This method should ideally handle 'has_attribute' check internally or raise appropriate Cty errors
                 return self._vtype.get_attribute(self, key)
-            except Exception as e: # This broad exception now catches issues from self._vtype.get_attribute
-                logger.warning(f"JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: {e!r}")
-                return default # Return original python default
+            except Exception as e:  # This broad exception now catches issues from self._vtype.get_attribute
+                logger.warning(
+                    f"JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: {e!r}"
+                )
+                return default  # Return original python default
 
         # Value doesn't support key lookup
-        logger.debug(f"🔄🔍⚠️ get() called on unsupported type: {self._vtype.__class__.__name__}")
-        return default # Return original python default
+        logger.debug(
+            f"🔄🔍⚠️ get() called on unsupported type: {self._vtype.__class__.__name__}"
+        )
+        return default  # Return original python default
 
     def set(self, key: Any, value: Any) -> Self:
         """
@@ -326,7 +338,7 @@ class CtyValue(Generic[T]):
 
         # Cannot set on unknown or null values
         if self._is_unknown or self._is_null:
-            error_msg = f"Cannot set key on unknown/null value"
+            error_msg = "Cannot set key on unknown/null value"
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg)
 
@@ -339,7 +351,9 @@ class CtyValue(Generic[T]):
             return new_value
 
         # Value doesn't support key setting
-        error_msg = f"set() method not supported for type {self._vtype.__class__.__name__}"
+        error_msg = (
+            f"set() method not supported for type {self._vtype.__class__.__name__}"
+        )
         logger.error(f"🔄❗❌ {error_msg}")
         raise TypeError(error_msg)
 
@@ -364,7 +378,7 @@ class CtyValue(Generic[T]):
 
         # Cannot delete on unknown or null values
         if self._is_unknown or self._is_null:
-            error_msg = f"Cannot delete key from unknown/null value"
+            error_msg = "Cannot delete key from unknown/null value"
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg)
 
@@ -377,7 +391,9 @@ class CtyValue(Generic[T]):
             return new_value
 
         # Value doesn't support key deletion
-        error_msg = f"delete() method not supported for type {self._vtype.__class__.__name__}"
+        error_msg = (
+            f"delete() method not supported for type {self._vtype.__class__.__name__}"
+        )
         logger.error(f"🔄❗❌ {error_msg}")
         raise TypeError(error_msg)
 
@@ -413,14 +429,13 @@ class CtyValue(Generic[T]):
         # Direct implementation to avoid recursion with __getitem__
         if isinstance(self._vtype, CtyList):
             # Ensure the underlying value is a list or tuple
-            if not isinstance(self._value, (list, tuple)):
-                 raise TypeError(f"Cannot index list value of type {type(self._value).__name__}")
+            if not isinstance(self._value, list | tuple):
+                raise TypeError(
+                    f"Cannot index list value of type {type(self._value).__name__}"
+                )
             # Handle negative indices
             list_len = len(self._value)
-            if index < 0:
-                actual_index = list_len + index
-            else:
-                actual_index = index
+            actual_index = list_len + index if index < 0 else index
 
             # Check bounds
             if actual_index < 0 or actual_index >= list_len:
@@ -429,7 +444,7 @@ class CtyValue(Generic[T]):
                 raise IndexError(error_msg)
 
             # Get the element at the specified index
-            return self._value[actual_index] # Assume, value contains CtyValues
+            return self._value[actual_index]  # Assume, value contains CtyValues
         elif isinstance(self._vtype, CtyTuple):
             # Delegate to the tuple type's method, passing the internal value
             return self._vtype.element_at(self._value, index)
@@ -458,7 +473,7 @@ class CtyValue(Generic[T]):
         from pyvider.cty.types import CtyBool
 
         logger.debug(f"🔄🔧✅ Creating bool value: {value}")
-        return cls(vtype=CtyBool(), value=value) # Use internal names
+        return cls(vtype=CtyBool(), value=value)  # Use internal names
 
     @classmethod
     def string(cls, value: str) -> "CtyValue":
@@ -476,10 +491,10 @@ class CtyValue(Generic[T]):
         from pyvider.cty.types import CtyString
 
         logger.debug(f"🔄🔧✅ Creating string value: {value}")
-        return cls(vtype=CtyString(), value=value) # Use internal names
+        return cls(vtype=CtyString(), value=value)  # Use internal names
 
     @classmethod
-    def number(cls, value: Union[int, float, Decimal]) -> "CtyValue":
+    def number(cls, value: int | float | Decimal) -> "CtyValue":
         """
         Create a number value.
 
@@ -547,7 +562,9 @@ class CtyValue(Generic[T]):
         return map_type.validate(items)
 
     @classmethod
-    def make_set(cls, element_type: CtyType, elements: set) -> "CtyValue": # Renamed from 'set'
+    def make_set(
+        cls, element_type: CtyType, elements: set
+    ) -> "CtyValue":  # Renamed from 'set'
         """
         Create a set value.
 
@@ -610,14 +627,16 @@ class CtyValue(Generic[T]):
         Raises:
             CtyValidationError: If validation fails for any attribute
         """
-        from pyvider.cty.types import CtyObject
         from pyvider.cty.exceptions import CtyValidationError
+        from pyvider.cty.types import CtyObject
 
         logger.debug(f"🔄🔧✅ Creating object value with {len(attributes)} attributes")
         # Validate attribute_types contains CtyType instances
         for attr_name, attr_type in attribute_types.items():
             if not isinstance(attr_type, CtyType):
-                raise CtyValidationError(f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}")
+                raise CtyValidationError(
+                    f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}"
+                )
 
         # Create object type and validate
         object_type = CtyObject(attribute_types=attribute_types)
@@ -638,8 +657,10 @@ class CtyValue(Generic[T]):
         Returns:
             CtyValue: A new CtyValue marked as unknown with the specified type
         """
-        logger.debug(f"🔄🔧✅ Creating unknown value of type {vtype.__class__.__name__}")
-        return cls(vtype=vtype, is_unknown=True) # Use internal names
+        logger.debug(
+            f"🔄🔧✅ Creating unknown value of type {vtype.__class__.__name__}"
+        )
+        return cls(vtype=vtype, is_unknown=True)  # Use internal names
 
     @classmethod
     def null(cls, vtype: CtyType) -> "CtyValue":
@@ -656,18 +677,22 @@ class CtyValue(Generic[T]):
             CtyValue: A new CtyValue marked as null with the specified type
         """
         logger.debug(f"🔄🔧✅ Creating null value of type {vtype.__class__.__name__}")
-        return cls(vtype=vtype, is_null=True) # Use internal names
+        return cls(vtype=vtype, is_null=True)  # Use internal names
 
     @classmethod
     def list_of_dynamic(cls, elements: list) -> "CtyValue":
-        from pyvider.cty.types import CtyDynamic, CtyList # Local import
-        logger.debug(f"🔄🔧✅ Creating dynamic list value with {len(elements)} elements")
+        from pyvider.cty.types import CtyDynamic, CtyList  # Local import
+
+        logger.debug(
+            f"🔄🔧✅ Creating dynamic list value with {len(elements)} elements"
+        )
         list_type = CtyList(element_type=CtyDynamic())
         return list_type.validate(elements)
 
     @classmethod
     def map_of_dynamic(cls, key_type: CtyType, items: dict) -> "CtyValue":
-        from pyvider.cty.types import CtyDynamic, CtyMap # Local import
+        from pyvider.cty.types import CtyDynamic, CtyMap  # Local import
+
         # Consider adding a default for key_type=CtyString() if always string keys for maps
         logger.debug(f"🔄🔧✅ Creating dynamic map value with {len(items)} items")
         map_type = CtyMap(key_type=key_type, value_type=CtyDynamic())
@@ -687,7 +712,7 @@ class CtyValue(Generic[T]):
             dict: Dictionary representation of this value with type information,
                   value state, and any marks
         """
-        logger.debug(f"🔄🔧✅ Converting CtyValue to dictionary")
+        logger.debug("🔄🔧✅ Converting CtyValue to dictionary")
         result = {
             "type": self._vtype.__class__.__name__,
         }
@@ -699,11 +724,10 @@ class CtyValue(Generic[T]):
             result["is_null"] = True
         else:
             # Handle collection types
-            if isinstance(self._value, (set, frozenset)):
+            if isinstance(self._value, set | frozenset):
                 # Recursively call to_dict on set elements if they are CtyValues
                 result["value"] = [
-                    v.to_dict() if isinstance(v, CtyValue) else v
-                    for v in self._value
+                    v.to_dict() if isinstance(v, CtyValue) else v for v in self._value
                 ]
             elif isinstance(self._value, dict):
                 # For dictionaries, convert keys and values
@@ -713,17 +737,16 @@ class CtyValue(Generic[T]):
                     value = v.to_dict() if isinstance(v, CtyValue) else v
                     serialized_dict[k] = value
                 result["value"] = serialized_dict
-            elif isinstance(self._value, (list, tuple)):
+            elif isinstance(self._value, list | tuple):
                 # For lists/tuples, convert each element
                 result["value"] = [
-                    v.to_dict() if isinstance(v, CtyValue) else v
-                    for v in self._value
+                    v.to_dict() if isinstance(v, CtyValue) else v for v in self._value
                 ]
             elif isinstance(self._value, Decimal):
-                 # Convert Decimal to string for JSON compatibility
+                # Convert Decimal to string for JSON compatibility
                 result["value"] = str(self._value)
             elif self._value is not None:
-                 # Use the raw value for primitives
+                # Use the raw value for primitives
                 result["value"] = self._value
 
         # Add marks if present
@@ -756,7 +779,7 @@ class CtyValue(Generic[T]):
 
         # Cannot get length of null values
         if self._is_null:
-             # Length of null is defined as 0 in some contexts (like Terraform)
+            # Length of null is defined as 0 in some contexts (like Terraform)
             logger.debug("🔄🔍✅ Length of null value is 0")
             return 0
 
@@ -789,7 +812,7 @@ class CtyValue(Generic[T]):
             raise TypeError(error_msg)
 
         if self._is_null:
-             # Allow iterating over null (yields nothing)
+            # Allow iterating over null (yields nothing)
             logger.debug("🔄🔍✅ Iterating over null value (yields nothing)")
             return iter([])
             # error_msg = "Cannot iterate null value"
@@ -799,11 +822,10 @@ class CtyValue(Generic[T]):
         # For collections, iterate over the values
         if hasattr(self._value, "__iter__") and not isinstance(self._value, dict):
             # Iterate directly for lists, tuples, sets, strings
-             return iter(self._value)
+            return iter(self._value)
         elif isinstance(self._value, dict):
             # For maps/objects, iterate over keys (strings)
             return iter(self._value.keys())
-
 
         # Value doesn't support iteration
         error_msg = f"Value of type {self._vtype.__class__.__name__} (inner: {type(self._value).__name__}) doesn't support iteration"
@@ -821,45 +843,47 @@ class CtyValue(Generic[T]):
             int: Hash value
         """
         # Hash based on type, value state, marks
-        type_hash = hash(self._vtype.__class__) # Use class to ensure CtyString() == CtyString()
+        type_hash = hash(
+            self._vtype.__class__
+        )  # Use class to ensure CtyString() == CtyString()
         state_hash = hash((self._is_unknown, self._is_null))
-        marks_hash = hash(self._marks) # Hash the frozenset of marks
+        marks_hash = hash(self._marks)  # Hash the frozenset of marks
 
         value_hash = 0
         if self._is_unknown or self._is_null:
-            value_hash = hash(None) # Consistent hash for null/unknown
+            value_hash = hash(None)  # Consistent hash for null/unknown
         else:
             # Use the actual value's hash for hashable primitives
-            if isinstance(self._value, (str, int, float, bool, Decimal, bytes)):
+            if isinstance(self._value, str | int | float | bool | Decimal | bytes):
                 try:
                     value_hash = hash(self._value)
-                except TypeError: # Should not happen for these types, but safeguard
+                except TypeError:  # Should not happen for these types, but safeguard
                     value_hash = hash(repr(self._value))
             # For tuples, ensure elements are hashable (should be if validated)
             elif isinstance(self._value, tuple):
-                 try:
+                try:
                     # Hash tuple elements (which should be CtyValues)
-                     value_hash = hash(self._value)
-                 except TypeError:
+                    value_hash = hash(self._value)
+                except TypeError:
                     # Fallback if elements aren't hashable CtyValues somehow
                     value_hash = hash(repr(self._value))
             # For frozensets (results of set validation)
             elif isinstance(self._value, frozenset):
-                 try:
-                     value_hash = hash(self._value)
-                 except TypeError:
-                     value_hash = hash(repr(self._value))
+                try:
+                    value_hash = hash(self._value)
+                except TypeError:
+                    value_hash = hash(repr(self._value))
             # Dictionaries and lists are not typically hashable by value
             # Hashing based on type/state/marks only for these might be sufficient
             # or use repr as a less reliable fallback
-            elif isinstance(self._value, (dict, list, set)):
-                 value_hash = hash(repr(self._value)) # Fallback hash using repr
+            elif isinstance(self._value, dict | list | set):
+                value_hash = hash(repr(self._value))  # Fallback hash using repr
             else:
                 # Fallback for other potentially unhashable types
                 try:
                     value_hash = hash(repr(self._value))
                 except TypeError:
-                     value_hash = hash(id(self._value)) # Identity hash
+                    value_hash = hash(id(self._value))  # Identity hash
 
         # Combine component hashes
         return hash((type_hash, state_hash, value_hash, marks_hash))
@@ -880,7 +904,7 @@ class CtyValue(Generic[T]):
         """
         # Check type first
         if not isinstance(other, CtyValue):
-            return False # Or return NotImplemented for stricter Python semantics, False is simpler here.
+            return False  # Or return NotImplemented for stricter Python semantics, False is simpler here.
 
         # Check CtyValue type compatibility
         if not self._vtype.equal(other._vtype):
@@ -893,9 +917,10 @@ class CtyValue(Generic[T]):
             return False
 
         # If both are unknown or both are null (and same type), they are equal
-        if (self._is_unknown and other._is_unknown) or \
-           (self._is_null and other._is_null):
-            return True # Marks must also match for true equality if needed
+        if (self._is_unknown and other._is_unknown) or (
+            self._is_null and other._is_null
+        ):
+            return True  # Marks must also match for true equality if needed
 
         # Check marks (only if needed based on requirements, often ignored for value equality)
         # If marks matter for equality, uncomment:
@@ -904,29 +929,33 @@ class CtyValue(Generic[T]):
 
         # --- Compare values for known, non-null values ---
         # Use direct comparison for primitives
-        if isinstance(self._value, (str, int, float, bool, Decimal, bytes)):
+        if isinstance(self._value, str | int | float | bool | Decimal | bytes):
             # Handle Decimal comparison carefully
             if isinstance(self._value, Decimal):
-                 if isinstance(other._value, (int, float, str)):
-                     try:
-                         return self._value == Decimal(other._value)
-                     except Exception:
-                         return False
+                if isinstance(other._value, int | float | str):
+                    try:
+                        return self._value == Decimal(other._value)
+                    except Exception:
+                        return False
             return self._value == other._value
 
         # For lists and tuples, compare element-wise
-        if isinstance(self._value, (list, tuple)) and isinstance(other._value, (list, tuple)):
+        if isinstance(self._value, list | tuple) and isinstance(
+            other._value, list | tuple
+        ):
             if len(self._value) != len(other._value):
                 return False
             # Elements should be CtyValues, rely on their __eq__
-            return all(a == b for a, b in zip(self._value, other._value))
+            return all(a == b for a, b in zip(self._value, other._value, strict=False))
 
         # For sets (represented as frozenset internally after validation)
-        if isinstance(self._value, (set, frozenset)) and isinstance(other._value, (set, frozenset)):
+        if isinstance(self._value, set | frozenset) and isinstance(
+            other._value, set | frozenset
+        ):
             # Elements should be CtyValues, rely on their __eq__ and hash
-             if len(self._value) != len(other._value):
-                 return False
-             return self._value == other._value # Relies on CtyValue hash/eq
+            if len(self._value) != len(other._value):
+                return False
+            return self._value == other._value  # Relies on CtyValue hash/eq
 
         # For maps (dictionaries), compare content, ignore _key_mapping
         # Keys i, value are strings, values are CtyValues
@@ -940,7 +969,7 @@ class CtyValue(Generic[T]):
         try:
             return self._value == other._value
         except Exception:
-            return False # If comparison fails
+            return False  # If comparison fails
 
     def __getitem__(self, key) -> "CtyValue":
         """
@@ -970,46 +999,61 @@ class CtyValue(Generic[T]):
             raise TypeError(error_msg)
 
         # Import locally to avoid circular imports
-        from pyvider.cty.types.collections import CtyMap, CtyList
+        from pyvider.cty.exceptions import (
+            CtyAttributeValidationError,
+            CtyValidationError,
+        )
+        from pyvider.cty.types.collections import CtyList, CtyMap
         from pyvider.cty.types.structural import CtyObject, CtyTuple
-        from pyvider.cty.exceptions import CtyAttributeValidationError, CtyMapValidationError, CtyValidationError
 
         try:
-           # Check for CtyObject type first for specific attribute handling
+            # Check for CtyObject type first for specific attribute handling
             if isinstance(self._vtype, CtyObject):
                 if not isinstance(key, str):
-                     raise TypeError(f"Object attribute name must be a string, got {type(key).__name__}")
+                    raise TypeError(
+                        f"Object attribute name must be a string, got {type(key).__name__}"
+                    )
                 # Use get_attribute which handles schema checking and optional nulls
                 return self._vtype.get_attribute(self, key)
-
 
             # For maps, check key in values
             elif isinstance(self._vtype, CtyMap):
                 # Convert input key to string for lookup
                 str_key = None
                 if isinstance(key, CtyValue):
-                     if isinstance(key.type, self._vtype.key_type.__class__) and not key.is_null and not key.is_unknown:
-                         str_key = str(key.value)
-                     else:
-                         raise KeyError(f"Invalid CtyValue key type or state for map lookup: {key!r}")
+                    if (
+                        isinstance(key.type, self._vtype.key_type.__class__)
+                        and not key.is_null
+                        and not key.is_unknown
+                    ):
+                        str_key = str(key.value)
+                    else:
+                        raise KeyError(
+                            f"Invalid CtyValue key type or state for map lookup: {key!r}"
+                        )
                 else:
                     # Try to validate the raw key
                     try:
                         validated_key = self._vtype.key_type.validate(key)
                         if validated_key.is_null or validated_key.is_unknown:
-                           raise KeyError(f"Map key cannot be null or unknown: {key!r}")
+                            raise KeyError(
+                                f"Map key cannot be null or unknown: {key!r}"
+                            )
                         str_key = str(validated_key.value)
-                    except CtyValidationError as e: # Changed CtyMapValidationError to CtyValidationError
+                    except (
+                        CtyValidationError
+                    ) as e:  # Changed CtyMapValidationError to CtyValidationError
                         raise KeyError(f"Invalid key for map lookup: {key!r} ({e})")
 
                 if str_key in self._value:
                     return self._value[str_key]
                 else:
-                    raise KeyError(f"Key not found in map: {key!r} (lookup: '{str_key}')")
-
+                    raise KeyError(
+                        f"Key not found in map: {key!r} (lookup: '{str_key}')"
+                    )
 
             # For lists/tuples, handle both direct indexing and slices
-            elif isinstance(self._vtype, (CtyList, CtyTuple)):
+            elif isinstance(self._vtype, CtyList | CtyTuple):
                 if isinstance(key, slice):
                     # Handle slice operations
                     start = key.start if key.start is not None else 0
@@ -1022,16 +1066,19 @@ class CtyValue(Generic[T]):
                     # For tuples, create a new tuple type for the slice
                     if isinstance(self._vtype, CtyTuple):
                         element_types = self._vtype.element_types[start:stop:step]
-                        from pyvider.cty.types import CtyTuple # Local import
+                        from pyvider.cty.types import CtyTuple  # Local import
+
                         tuple_type = CtyTuple(element_types=element_types)
-                        return CtyValue(vtype=tuple_type, value=tuple(sliced_values)) # Return CtyValue
+                        return CtyValue(
+                            vtype=tuple_type, value=tuple(sliced_values)
+                        )  # Return CtyValue
                     # For lists, maintain element type
                     else:
                         # Return a new CtyValue wrapping the sliced list
                         return CtyValue(vtype=self._vtype, value=sliced_values)
                 else:
                     # Handle direct indexing using element_at for bounds checking
-                    return self.element_at(key) # element_at handles IndexError
+                    return self.element_at(key)  # element_at handles IndexError
 
             # Value doesn't support indexing
             error_msg = f"Value of type {self._vtype.__class__.__name__} doesn't support indexing with '{key!r}'"
@@ -1039,9 +1086,9 @@ class CtyValue(Generic[T]):
             raise TypeError(error_msg)
 
         except CtyAttributeValidationError as e:
-             logger.error(f"🔄❗❌ {e}")
-             # Reraise specific Cty errors
-             raise e
+            logger.error(f"🔄❗❌ {e}")
+            # Reraise specific Cty errors
+            raise e
         except KeyError as e:
             # Re-raise KeyError
             logger.error(f"🔄❗❌ Key error: {e}")
@@ -1083,9 +1130,8 @@ class CtyValue(Generic[T]):
             # Following Python's lead, 'in' on None raises TypeError
             raise TypeError(error_msg)
 
-
         # Import locally to avoid circular imports
-        from pyvider.cty.types.collections import CtyMap, CtyList, CtySet
+        from pyvider.cty.types.collections import CtyList, CtyMap, CtySet
         from pyvider.cty.types.structural import CtyObject
 
         try:
@@ -1094,31 +1140,37 @@ class CtyValue(Generic[T]):
                 str_key = None
                 if isinstance(item, CtyValue):
                     # Check if key is valid type and state
-                    if isinstance(item.type, self._vtype.key_type.__class__) and not item.is_null and not item.is_unknown:
-                         str_key = str(item.value)
+                    if (
+                        isinstance(item.type, self._vtype.key_type.__class__)
+                        and not item.is_null
+                        and not item.is_unknown
+                    ):
+                        str_key = str(item.value)
                     else:
-                        return False # Invalid key type/state cannot be in map
+                        return False  # Invalid key type/state cannot be in map
                 else:
                     # Try validating the raw item as a key
                     try:
                         validated_key = self._vtype.key_type.validate(item)
                         if validated_key.is_null or validated_key.is_unknown:
-                            return False # Null/unknown keys cannot be in map
+                            return False  # Null/unknown keys cannot be in map
                         str_key = str(validated_key.value)
                     except Exception:
-                        return False # If item cannot be validated as key, it's not in the map
+                        return False  # If item cannot be validated as key, it's not in the map
 
-                return str_key in self._value # Check string key presence
+                return str_key in self._value  # Check string key presence
 
             # For lists/sets/tuples, check elements using CtyValue equality
-            elif isinstance(self._vtype, (CtyList, CtySet)) or \
-                 (hasattr(self._vtype, 'element_type') and hasattr(self._value, '__iter__')): # General collection check
+            elif isinstance(self._vtype, CtyList | CtySet) or (
+                hasattr(self._vtype, "element_type")
+                and hasattr(self._value, "__iter__")
+            ):  # General collection check
                 # Try to validate the item against the element type
                 try:
-                     validated_item = self._vtype.element_type.validate(item)
+                    validated_item = self._vtype.element_type.validate(item)
                 except Exception:
-                     # If item cannot be validated, it cannot be contained
-                     return False
+                    # If item cannot be validated, it cannot be contained
+                    return False
                 # Check if the validated item is in the collection
                 # Assume, value contains CtyValue elements after validation
                 return validated_item in self._value
@@ -1132,9 +1184,8 @@ class CtyValue(Generic[T]):
                 return isinstance(item, str) and item in self._value
 
             # Fallback for other iterable types
-            elif hasattr(self._value, '__contains__'):
+            elif hasattr(self._value, "__contains__"):
                 return item in self._value
-
 
             # Value doesn't support membership testing
             error_msg = f"Value of type {self._vtype.__class__.__name__} doesn't support membership testing for '{item!r}'"
@@ -1142,8 +1193,8 @@ class CtyValue(Generic[T]):
             raise TypeError(error_msg)
 
         except TypeError as e:
-             # Propagate TypeErrors from underlying operations
-             raise e
+            # Propagate TypeErrors from underlying operations
+            raise e
         except Exception as e:
             # Catch other potential errors during validation/comparison
             logger.debug(f"🔄❗⚠️ Error during membership test for '{item!r}': {e}")
@@ -1185,15 +1236,15 @@ class CtyValue(Generic[T]):
         if isinstance(self._value, list):
             return f"[{', '.join(str(v) for v in self._value)}]"
         if isinstance(self._value, dict):
-             # Use string keys fro, value
+            # Use string keys fro, value
             return f"{{{', '.join(f'{k!r}: {v}' for k, v in self._value.items())}}}"
-        if isinstance(self._value, (set, frozenset)):
+        if isinstance(self._value, set | frozenset):
             # Sort set elements for consistent string representation
-             try:
-                 sorted_elements = sorted(self._value, key=repr)
-                 return f"{{{', '.join(str(v) for v in sorted_elements)}}}"
-             except TypeError: # Handle unorderable elements
-                 return f"{{{', '.join(str(v) for v in self._value)}}}"
+            try:
+                sorted_elements = sorted(self._value, key=repr)
+                return f"{{{', '.join(str(v) for v in sorted_elements)}}}"
+            except TypeError:  # Handle unorderable elements
+                return f"{{{', '.join(str(v) for v in self._value)}}}"
 
         return str(self._value)
 
@@ -1223,8 +1274,9 @@ class CtyValue(Generic[T]):
             parts.append(f"marks={self._marks!r}")
         # Include key_mapping if it's not empty and type is map
         from pyvider.cty.types.collections import CtyMap
+
         if isinstance(self._vtype, CtyMap) and self._key_mapping:
-             parts.append(f"key_mapping={self._key_mapping!r}")
+            parts.append(f"key_mapping={self._key_mapping!r}")
 
         return f"CtyValue({', '.join(parts)})"
 
@@ -1240,53 +1292,90 @@ class CtyValue(Generic[T]):
         """
         # Local imports to avoid circular dependencies at module load time
         # Ensure CtyTuple is imported here if not already (it's used below)
-        from pyvider.cty.types import CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtySet, CtyObject, CtyTuple, CtyDynamic
+        from pyvider.cty.types import (
+            CtyBool,
+            CtyDynamic,
+            CtyList,
+            CtyMap,
+            CtyNumber,
+            CtyObject,
+            CtySet,
+            CtyString,
+            CtyTuple,
+        )
 
-        type_name = "dynamic" # Default for CtyDynamic or if type not easily matched
+        type_name = "dynamic"  # Default for CtyDynamic or if type not easily matched
 
         # Helper to get the friendly type name, including for nested types in collections
         def get_friendly_type_name(cty_type_instance: CtyType) -> str:
-            if isinstance(cty_type_instance, CtyString): return "string"
-            if isinstance(cty_type_instance, CtyNumber): return "number"
-            if isinstance(cty_type_instance, CtyBool): return "bool"
-            if isinstance(cty_type_instance, CtyDynamic): return "dynamic"
+            if isinstance(cty_type_instance, CtyString):
+                return "string"
+            if isinstance(cty_type_instance, CtyNumber):
+                return "number"
+            if isinstance(cty_type_instance, CtyBool):
+                return "bool"
+            if isinstance(cty_type_instance, CtyDynamic):
+                return "dynamic"
             if isinstance(cty_type_instance, CtyList):
-                element_friendly_name = get_friendly_type_name(cty_type_instance.element_type)
+                element_friendly_name = get_friendly_type_name(
+                    cty_type_instance.element_type
+                )
                 return f"list({element_friendly_name})"
-            if isinstance(cty_type_instance, CtySet): # Assuming CtySet has element_type
-                element_friendly_name = get_friendly_type_name(cty_type_instance.element_type)
+            if isinstance(
+                cty_type_instance, CtySet
+            ):  # Assuming CtySet has element_type
+                element_friendly_name = get_friendly_type_name(
+                    cty_type_instance.element_type
+                )
                 return f"set({element_friendly_name})"
-            if isinstance(cty_type_instance, CtyMap): # Assuming CtyMap has value_type for elements
+            if isinstance(
+                cty_type_instance, CtyMap
+            ):  # Assuming CtyMap has value_type for elements
                 # For POC, map keys are strings, so we describe the value type.
                 # A full map type description might be like "map(string, number)"
-                element_friendly_name = get_friendly_type_name(cty_type_instance.value_type)
-                return f"map({element_friendly_name})" # Simplified, assumes string keys
+                element_friendly_name = get_friendly_type_name(
+                    cty_type_instance.value_type
+                )
+                return (
+                    f"map({element_friendly_name})"  # Simplified, assumes string keys
+                )
             if isinstance(cty_type_instance, CtyObject):
                 attrs_desc = []
-                for name, attr_type in sorted(cty_type_instance.attribute_types.items()): # Sort for consistent order
+                for name, attr_type in sorted(
+                    cty_type_instance.attribute_types.items()
+                ):  # Sort for consistent order
                     attrs_desc.append(f"{name}={get_friendly_type_name(attr_type)}")
                 return f"object({{{', '.join(attrs_desc)}}})"
             if isinstance(cty_type_instance, CtyTuple):
-                elements_desc = [get_friendly_type_name(el_type) for el_type in cty_type_instance.element_types]
-                return f"tuple({', '.join(elements_desc)})" # Corrected line
+                elements_desc = [
+                    get_friendly_type_name(el_type)
+                    for el_type in cty_type_instance.element_types
+                ]
+                return f"tuple({', '.join(elements_desc)})"  # Corrected line
             # Fallback for other types not explicitly handled above
-            return cty_type_instance.__class__.__name__[3:].lower() if cty_type_instance.__class__.__name__.startswith("Cty") else "unknown_type"
+            return (
+                cty_type_instance.__class__.__name__[3:].lower()
+                if cty_type_instance.__class__.__name__.startswith("Cty")
+                else "unknown_type"
+            )
 
         type_name = get_friendly_type_name(self.type)
 
-        processed_value = None # Initialize to None as a default for null/unknown or if not set by other conditions
+        processed_value = None  # Initialize to None as a default for null/unknown or if not set by other conditions
 
         if not self.is_unknown and not self.is_null:
             # Check for CtyTuple specifically BEFORE general tuple check
-            if isinstance(self.type, CtyTuple): # Accessing self.type here
+            if isinstance(self.type, CtyTuple):  # Accessing self.type here
                 if not self.value:  # If self.value is an empty tuple ()
-                    processed_value = None # Align with Go's 'null' for empty tuple value
-                else: # Non-empty tuple
+                    processed_value = (
+                        None  # Align with Go's 'null' for empty tuple value
+                    )
+                else:  # Non-empty tuple
                     processed_value = tuple(
                         v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                         for v in self.value
                     )
-            elif isinstance(self.value, list): # For CtyList values
+            elif isinstance(self.value, list):  # For CtyList values
                 processed_value = [
                     v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                     for v in self.value
@@ -1294,62 +1383,84 @@ class CtyValue(Generic[T]):
             # Note: The generic 'elif isinstance(self.value, tuple):' might be removed if CtyTuple is the only tuple source
             # or kept if self.value can be a tuple for non-CtyTuple types (unlikely).
             # For safety, assuming CtyTuple is the definite source of tuple values.
-            elif isinstance(self.value, dict): # For CtyMap/CtyObject values
+            elif isinstance(self.value, dict):  # For CtyMap/CtyObject values
                 processed_value = {
                     # Map keys are strings. Object attribute names are strings.
                     k: v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                     for k, v in self.value.items()
                 }
-            elif isinstance(self.value, frozenset): # For CtySet values
-                 # Sort for consistent output, then process
-                processed_value = sorted([
-                    v.to_json_comparable_dict() if isinstance(v, CtyValue) else str(v) # Ensure hashable if not CtyValue
-                    for v in self.value
-                ], key=lambda x: json.dumps(x, sort_keys=True) if isinstance(x, dict) else str(x))
-
+            elif isinstance(self.value, frozenset):  # For CtySet values
+                # Sort for consistent output, then process
+                processed_value = sorted(
+                    [
+                        v.to_json_comparable_dict()
+                        if isinstance(v, CtyValue)
+                        else str(v)  # Ensure hashable if not CtyValue
+                        for v in self.value
+                    ],
+                    key=lambda x: json.dumps(x, sort_keys=True)
+                    if isinstance(x, dict)
+                    else str(x),
+                )
 
             elif isinstance(self.value, Decimal):
                 # Handle 0, -0, 0.0 etc. specifically first
                 if self.value.is_zero():
-                    if self.value.as_tuple().sign: # Check sign on the original value before normalization
+                    if (
+                        self.value.as_tuple().sign
+                    ):  # Check sign on the original value before normalization
                         processed_value = "-0"
                     else:
                         processed_value = "0"
                 else:
                     # Universal plain formatting for non-zero decimals
-                    normalized_d = self.value.normalize() # Canonical form for non-zero values
+                    normalized_d = (
+                        self.value.normalize()
+                    )  # Canonical form for non-zero values
                     sign_tuple, digits_tuple, exponent_int = normalized_d.as_tuple()
                     val_str = ""
                     if sign_tuple:
                         val_str += "-"
 
-                    if exponent_int >= 0: # Number is integral or larger than 1, no leading "0."
+                    if (
+                        exponent_int >= 0
+                    ):  # Number is integral or larger than 1, no leading "0."
                         val_str += "".join(map(str, digits_tuple))
-                        if exponent_int > 0: # Append zeros if exponent was positive (e.g., 123E2)
+                        if (
+                            exponent_int > 0
+                        ):  # Append zeros if exponent was positive (e.g., 123E2)
                             val_str += "0" * exponent_int
-                    else: # Number has a fractional part (exponent < 0)
+                    else:  # Number has a fractional part (exponent < 0)
                         num_digits = len(digits_tuple)
                         abs_exponent = abs(exponent_int)
-                        if abs_exponent > num_digits: # e.g., 0.00123 (123E-5)
-                            val_str += "0." + ("0" * (abs_exponent - num_digits)) + "".join(map(str, digits_tuple))
-                        elif abs_exponent == num_digits: # e.g., 0.123 (123E-3)
+                        if abs_exponent > num_digits:  # e.g., 0.00123 (123E-5)
+                            val_str += (
+                                "0."
+                                + ("0" * (abs_exponent - num_digits))
+                                + "".join(map(str, digits_tuple))
+                            )
+                        elif abs_exponent == num_digits:  # e.g., 0.123 (123E-3)
                             val_str += "0." + "".join(map(str, digits_tuple))
-                        else: # e.g., 1.23 (123E-2) or 12.345 (12345E-3)
-                            val_str += "".join(map(str, digits_tuple[:num_digits - abs_exponent])) + \
-                                       "." + \
-                                       "".join(map(str, digits_tuple[num_digits - abs_exponent:]))
+                        else:  # e.g., 1.23 (123E-2) or 12.345 (12345E-3)
+                            val_str += (
+                                "".join(
+                                    map(str, digits_tuple[: num_digits - abs_exponent])
+                                )
+                                + "."
+                                + "".join(
+                                    map(str, digits_tuple[num_digits - abs_exponent :])
+                                )
+                            )
                     processed_value = val_str
             else:
                 # For primitives like string, bool, int (though numbers are Decimal)
                 processed_value = self.value
 
         # Ensure marks are strings and sorted for consistent output
-        # Serialize marks as a list of dictionaries
-        # Sort by mark name for consistent order, then by details if name is the same
-        serialized_marks = sorted(
-            [{"name": m.name, "details": m.details} for m in self._marks],
-            key=lambda m: (m["name"], str(m["details"])) # str(details) for sortability
-        )
+        serialized_marks = []
+        if self._marks:
+            # Convert all marks to string and sort for consistent output
+            serialized_marks = sorted([str(m) for m in self._marks])
 
         return {
             "type_name": type_name,
@@ -1363,25 +1474,32 @@ class CtyValue(Generic[T]):
 
     def to_json_string(self) -> str:
         """Serializes the CtyValue to a JSON string."""
-        from ..codec import cty_value_to_json_string # Local import
+        from ..codec import cty_value_to_json_string  # Local import
+
         return cty_value_to_json_string(self)
 
     @classmethod
-    def from_json_string(cls, json_str: str, target_type: 'CtyType') -> "CtyValue":
+    def from_json_string(cls, json_str: str, target_type: "CtyType") -> "CtyValue":
         """Deserializes a CtyValue from a JSON string, targeting a specific CtyType."""
-        from ..codec import cty_value_from_json_string # Local import
+        from ..codec import cty_value_from_json_string  # Local import
+
         # We use 'cls' indirectly by calling the codec function that returns a CtyValue instance
         return cty_value_from_json_string(json_str, target_type)
 
     def to_msgpack_bytes(self) -> bytes:
         """Serializes the CtyValue to Msgpack bytes."""
-        from ..codec import cty_value_to_msgpack_bytes # Local import
+        from ..codec import cty_value_to_msgpack_bytes  # Local import
+
         return cty_value_to_msgpack_bytes(self)
 
     @classmethod
-    def from_msgpack_bytes(cls, msgpack_bytes: bytes, target_type: 'CtyType') -> "CtyValue":
+    def from_msgpack_bytes(
+        cls, msgpack_bytes: bytes, target_type: "CtyType"
+    ) -> "CtyValue":
         """Deserializes a CtyValue from Msgpack bytes, targeting a specific CtyType."""
-        from ..codec import cty_value_from_msgpack_bytes # Local import
+        from ..codec import cty_value_from_msgpack_bytes  # Local import
+
         return cty_value_from_msgpack_bytes(msgpack_bytes, target_type)
+
 
 # 🐍🏗️🐣
