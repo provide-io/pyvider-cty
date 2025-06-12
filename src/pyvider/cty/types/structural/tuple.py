@@ -9,14 +9,14 @@ Provides a complete implementation of tuple types with fixed-position elements
 that may have different types from each other.
 """
 
-from typing import Any, ClassVar, Union
+from typing import Any, ClassVar, Sequence, cast, List, Tuple, Optional, Union
 
 from attrs import define, field
 
-from pyvider.cty.exceptions import CtyTupleValidationError, CtyValidationError
+from pyvider.cty.exceptions import CtyValidationError, CtyTupleValidationError
+from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
-from pyvider.telemetry import logger
 
 
 @define(frozen=True, slots=True)
@@ -27,12 +27,11 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
     A tuple is similar to a list but with a fixed number of elements, each potentially
     having a different type. This matches go-cty's tuple type semantics.
     """
-
     ctype: ClassVar[str] = "tuple"
     element_types: tuple[CtyType, ...] = field()
 
     @element_types.validator
-    def _validate_element_types(self, attribute, value) -> None:
+    def _validate_element_types(self, attribute, value):
         """Validate that element_types contains only CtyType instances."""
         logger.debug(f"🧩🔍🔄 Validating tuple element types: {value}")
 
@@ -48,9 +47,8 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 logger.error(f"🧩❌🔄 {error_msg}")
                 raise CtyTupleValidationError(error_msg)
 
-        logger.debug(
-            f"🧩✅🔄 Tuple element types validated successfully: {len(value)} types"
-        )
+        logger.debug(f"🧩✅🔄 Tuple element types validated successfully: {len(value)} types")
+
 
     def validate(self, value: Any) -> "CtyValue":
         """
@@ -65,13 +63,13 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         Raises:
             CtyValidationError: If the value doesn't match this tuple type
         """
-
         from pyvider.cty.values import CtyValue
+        from decimal import Decimal
 
         logger.debug(f"🧩🔍🔄 Validating value against CtyTuple: {value}")
 
         # Validate basic type
-        if not isinstance(value, tuple | list):
+        if not isinstance(value, (tuple, list)):
             error_msg = f"Expected tuple or list, got {type(value).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
             raise CtyValidationError(error_msg)
@@ -85,28 +83,21 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         # Validate each element against its corresponding type
         validated_elements = []
 
-        for i, (element, element_type) in enumerate(
-            zip(value, self.element_types, strict=False)
-        ):
+        for i, (element, element_type) in enumerate(zip(value, self.element_types)):
             try:
-                logger.debug(
-                    f"🧩🔍🔄 Validating tuple element {i} against {element_type}"
-                )
+                logger.debug(f"🧩🔍🔄 Validating tuple element {i} against {element_type}")
 
                 # Handle CtyValue wrapping
                 if isinstance(element, CtyValue):
                     # Ensure types are compatible
                     if not element.type.usable_as(element_type):
                         # FIX: Match expected error message for CtyNumber validation
-                        from pyvider.cty.types.primitives import CtyBool, CtyNumber
-
-                        if isinstance(element_type, CtyNumber) and isinstance(
-                            element.type, CtyBool
-                        ):
+                        from pyvider.cty.types.primitives import CtyNumber, CtyBool
+                        if isinstance(element_type, CtyNumber) and isinstance(element.type, CtyBool):
                             error_msg = "Value must be a number"
                             logger.error(f"🧩❌🔄 {error_msg}")
                             raise CtyValidationError(error_msg)
-
+                        
                         error_msg = f"Value type mismatch for element {i}: expected {element_type.__class__.__name__}, got {element.type.__class__.__name__}"
                         logger.error(f"🧩❌🔄 {error_msg}")
                         raise CtyValidationError(error_msg)
@@ -114,12 +105,10 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                     validated_element = element
                 else:
                     # For decimal values, ensure consistent precision
-                    if (
-                        hasattr(element_type, "ctype")
-                        and element_type.ctype == "number"
-                    ) and isinstance(element, int | float):
-                        # Use string conversion for exact decimal representation
-                        element = str(element)
+                    if hasattr(element_type, 'ctype') and element_type.ctype == "number":
+                        if isinstance(element, (int, float)):
+                            # Use string conversion for exact decimal representation
+                            element = str(element)
 
                     validated_element = element_type.validate(element)
 
@@ -134,9 +123,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 logger.error(f"🧩❌🔄 {error_msg}")
                 raise CtyValidationError(error_msg) from e
 
-        logger.debug(
-            f"🧩✅🔄 Tuple validated successfully with {len(validated_elements)} elements"
-        )
+        logger.debug(f"🧩✅🔄 Tuple validated successfully with {len(validated_elements)} elements")
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
     def element_at(self, container: Any, index: int) -> "CtyValue":
@@ -168,16 +155,14 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
         # Handle different container types
         container_value = None
-        if hasattr(container, "value"):
+        if hasattr(container, 'value'):
             # Handle CtyValue containing a tuple
             container_value = container.value
-        elif isinstance(container, tuple | list):
+        elif isinstance(container, (tuple, list)):
             # Handle raw tuple
             container_value = container
         else:
-            error_msg = (
-                f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
-            )
+            error_msg = f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
             raise CtyTupleValidationError(error_msg)
 
@@ -188,7 +173,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
         # Check bounds
         if not 0 <= index < elem_count:
-            error_msg = f"Index {index} out of bounds (0-{elem_count - 1})"
+            error_msg = f"Index {index} out of bounds (0-{elem_count-1})"
             logger.error(f"🧩❌🔄 {error_msg}")
             raise IndexError(error_msg)
 
@@ -197,7 +182,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug(f"🧩✅🔄 Got element at index {index}")
         return element
 
-    def slice(self, container: Any, start: int, end: int | None = None) -> "CtyValue":
+    def slice(self, container: Any, start: int, end: Optional[int] = None) -> "CtyValue":
         """
         Get a slice of the tuple.
 
@@ -205,56 +190,54 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             container: The tuple to slice (either CtyValue or raw tuple)
             start: The start index (inclusive)
             end: The end index (exclusive), or None for end of tuple
-
+            
         Returns:
             CtyValue: A CtyValue with the sliced tuple
         """
         logger.debug(f"🧩🔍🔄 Slicing tuple from {start} to {end}")
-
+        
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
-
+        
         # Handle null or unknown values
         if isinstance(container, CtyValue):
             if container.is_null or container.is_unknown:
                 error_msg = "Cannot slice null or unknown tuple value"
                 logger.error(f"🧩❌🔄 {error_msg}")
                 raise CtyTupleValidationError(error_msg)
-
+            
             # Extract values from CtyValue container
             container_value = container.value
-        elif isinstance(container, tuple | list):
+        elif isinstance(container, (tuple, list)):
             # Use raw tuple/list directly
             container_value = container
         else:
-            error_msg = (
-                f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
-            )
+            error_msg = f"Expected tuple, list, or CtyValue, got {type(container).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
             raise CtyTupleValidationError(error_msg)
-
+        
         # Handle bounds and indexing
         elem_count = len(container_value)
         if end is None:
             end = elem_count
-
+            
         # Convert negative indices to positive
         if start < 0:
             start = max(0, elem_count + start)
         if end < 0:
             end = max(start, elem_count + end)
-
+            
         # Clamp indices to valid ranges
         start = max(0, min(start, elem_count))
         end = max(start, min(end, elem_count))
-
+        
         # Get the sliced values and types
         sliced_values = container_value[start:end]
         sliced_types = self.element_types[start:end]
-
+        
         # Create the new tuple type and wrap the values
         sliced_tuple_type = CtyTuple(element_types=sliced_types)
-
+        
         # Create and return a new CtyValue with the sliced tuple
         return CtyValue(vtype=sliced_tuple_type, value=sliced_values)
 
@@ -279,20 +262,14 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug(f"🧩🔍🔄 Checking equality with {other.__class__.__name__}")
 
         if not isinstance(other, CtyTuple):
-            logger.debug(
-                f"🧩❌🔄 Not equal: {other.__class__.__name__} is not CtyTuple"
-            )
+            logger.debug(f"🧩❌🔄 Not equal: {other.__class__.__name__} is not CtyTuple")
             return False
 
         if len(self.element_types) != len(other.element_types):
-            logger.debug(
-                f"🧩❌🔄 Not equal: different number of elements ({len(self.element_types)} vs {len(other.element_types)})"
-            )
+            logger.debug(f"🧩❌🔄 Not equal: different number of elements ({len(self.element_types)} vs {len(other.element_types)})")
             return False
 
-        for i, (self_type, other_type) in enumerate(
-            zip(self.element_types, other.element_types, strict=False)
-        ):
+        for i, (self_type, other_type) in enumerate(zip(self.element_types, other.element_types)):
             if not self_type.equal(other_type):
                 logger.debug(f"🧩❌🔄 Not equal: element type at index {i} differs")
                 return False
@@ -314,40 +291,31 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
         # Check for CtyDynamic
         from pyvider.cty.types.structural import CtyDynamic
-
         if isinstance(other, CtyDynamic):
             logger.debug("🧩✅🔄 Tuple type is usable as CtyDynamic")
             return True
 
         if not isinstance(other, CtyTuple):
-            logger.debug(
-                f"🧩❌🔄 Not usable as: {other.__class__.__name__} is not CtyTuple"
-            )
+            logger.debug(f"🧩❌🔄 Not usable as: {other.__class__.__name__} is not CtyTuple")
             return False
 
         if len(self.element_types) != len(other.element_types):
-            logger.debug(
-                f"🧩❌🔄 Not usable as: different number of elements ({len(self.element_types)} vs {len(other.element_types)})"
-            )
+            logger.debug(f"🧩❌🔄 Not usable as: different number of elements ({len(self.element_types)} vs {len(other.element_types)})")
             return False
 
-        for i, (self_type, other_type) in enumerate(
-            zip(self.element_types, other.element_types, strict=False)
-        ):
+        for i, (self_type, other_type) in enumerate(zip(self.element_types, other.element_types)):
             # Check if other type is CtyDynamic (which accepts any type)
             if isinstance(other_type, CtyDynamic):
                 continue
 
             if not self_type.usable_as(other_type):
-                logger.debug(
-                    f"🧩❌🔄 Not usable as: element type at index {i} not compatible"
-                )
+                logger.debug(f"🧩❌🔄 Not usable as: element type at index {i} not compatible")
                 return False
 
         logger.debug("🧩✅🔄 Tuple type is usable as target type")
         return True
 
-    def __getitem__(self, index: int | slice) -> Union["CtyType", "CtyTuple"]:
+    def __getitem__(self, index: Union[int, slice]) -> Union["CtyType", "CtyTuple"]:
         """
         Support for indexing and slicing operations on tuple types.
 
@@ -373,11 +341,8 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 return CtyTuple(element_types=sliced_types)
             else:
                 # Handle step parameter
-                sliced_types = tuple(
-                    self.element_types[i]
-                    for i in range(start, stop, index.step)
-                    if i < len(self.element_types)
-                )
+                sliced_types = tuple(self.element_types[i] for i in range(start, stop, index.step)
+                                   if i < len(self.element_types))
                 return CtyTuple(element_types=sliced_types)
 
         try:
@@ -389,7 +354,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         """Get string representation of the tuple type."""
         if not self.element_types:
             return "tuple()"
-
+        
         elements = ", ".join(str(vtype) for vtype in self.element_types)
         return f"tuple({elements})"
 
@@ -397,6 +362,5 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         """Get detailed string representation of the tuple type."""
         elements = ", ".join(repr(t) for t in self.element_types)
         return f"CtyTuple(element_types=({elements}))"
-
 
 # 🐍🏗️🐣

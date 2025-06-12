@@ -4,37 +4,33 @@
 
 import pytest
 
+from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
+    CtyValue,
     CtyBool,
     CtyList,
     CtyNumber,
     CtyString,
-    CtyValue,
+    CtyTuple,
 )
-from pyvider.cty.exceptions import CtyListValidationError
-
 
 class TestCtyListValidation:
     """Advanced tests for the CtyList type to improve coverage."""
 
     @pytest.fixture(autouse=True)
-    def setup(self) -> None:
+    def setup(self):
         """Set up objects for testing."""
         self.string_list = CtyList(element_type=CtyString())
         self.number_list = CtyList(element_type=CtyNumber())
         self.bool_list = CtyList(element_type=CtyBool())
 
     @pytest.mark.asyncio
-    async def test_element_at_valid_index(self) -> None:
+    async def test_element_at_valid_index(self):
         """Test retrieving an element at a valid index."""
         # Create a list with strings
         list_obj = CtyList(
             element_type=CtyString(),
-            value=[
-                CtyString(value="apple"),
-                CtyString(value="banana"),
-                CtyString(value="cherry"),
-            ],
+            value=[CtyString(value="apple"), CtyString(value="banana"), CtyString(value="cherry")]
         )
 
         # Get element at index
@@ -43,15 +39,13 @@ class TestCtyListValidation:
         # Check the value, not the wrapper type
         assert element.value == "banana"
 
-    def test_post_init_validates_element_type(self) -> None:
+    def test_post_init_validates_element_type(self):
         """Test that __post_init__ validates element_type is a CtyType."""
         # Try to create a CtyList with an invalid element_type
-        with pytest.raises(
-            CtyListValidationError, match="Expected CtyType for element_type"
-        ):
+        with pytest.raises(CtyListValidationError, match="Expected CtyType for element_type"):
             CtyList(element_type="not_a_cty_type")
 
-    def test_validate_tuple_as_list(self) -> None:
+    def test_validate_tuple_as_list(self):
         """Test that validate accepts tuples and converts them to lists."""
         # Create a tuple of strings
         data = ("apple", "banana", "cherry")
@@ -63,20 +57,17 @@ class TestCtyListValidation:
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
-        assert all(
-            isinstance(item, CtyValue) and isinstance(item.type, CtyString)
-            for item in result.value
-        )
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value)
         assert [item.value for item in result.value] == ["apple", "banana", "cherry"]
 
-    def test_validate_none_raises_error(self) -> None:
+    def test_validate_none_raises_error(self):
         """Test that None is rejected with error (not converted to empty list)."""
         with pytest.raises(CtyListValidationError) as cm:
             self.string_list.validate(None)
 
         assert "Expected list or tuple, got NoneType" in str(cm.value)
 
-    def test_validate_invalid_container_type(self) -> None:
+    def test_validate_invalid_container_type(self):
         """Test validation fails for non-list/tuple containers."""
         # Try to validate a dictionary
         with pytest.raises(CtyListValidationError, match="Expected list or tuple"):
@@ -86,7 +77,7 @@ class TestCtyListValidation:
         with pytest.raises(CtyListValidationError, match="Expected list or tuple"):
             self.string_list.validate("not_a_list")
 
-    def test_validate_homogeneous_list(self) -> None:
+    def test_validate_homogeneous_list(self):
         """Test validation of a homogeneous list."""
         # Create a list of numbers
         data = [1, 2, 3, 4, 5]
@@ -98,13 +89,10 @@ class TestCtyListValidation:
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 5
-        assert all(
-            isinstance(item, CtyValue) and isinstance(item.type, CtyNumber)
-            for item in result.value
-        )
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyNumber) for item in result.value)
         assert [item.value for item in result.value] == [1, 2, 3, 4, 5]
 
-    def test_validate_heterogeneous_list_fails(self) -> None:
+    def test_validate_heterogeneous_list_fails(self):
         """Test validation fails for heterogeneous lists."""
         # Create a mixed list
         data = [1, "two", 3, True]
@@ -113,16 +101,16 @@ class TestCtyListValidation:
         with pytest.raises(CtyListValidationError):
             self.number_list.validate(data)
 
-    def test_element_at_invalid_index(self) -> None:
+    def test_element_at_invalid_index(self):
         """Test retrieving an element at an invalid index."""
         # Create and validate a list
         data = ["apple", "banana", "cherry"]
         validated = self.string_list.validate(data)
 
-        with pytest.raises(IndexError):
+        with pytest.raises(IndexError) as exc:
             self.string_list.element_at(validated, 5)
 
-    def test_cty_list_validate_empty_list(self) -> None:
+    def test_cty_list_validate_empty_list(self):
         """Test validation of an empty list."""
         self.string_list = CtyList(element_type=CtyString())
         validated = self.string_list.validate([])
@@ -137,7 +125,7 @@ class TestCtyListValidation:
         # Test that the length is 0
         assert len(validated) == 0
 
-    def test_cty_list_validate_success(self) -> None:
+    def test_cty_list_validate_success(self):
         """Test successful validation of a simple string list."""
         self.string_list = CtyList(element_type=CtyString())
         validated = self.string_list.validate(["apple", "banana", "cherry"])
@@ -148,62 +136,54 @@ class TestCtyListValidation:
         assert validated[1].value == "banana"
         assert validated[2].value == "cherry"
 
-    def test_cty_list_validate_failure(self) -> None:
+    def test_cty_list_validate_failure(self):
         """Test validation failure with mixed types."""
         self.string_list = CtyList(element_type=CtyString())
 
         # Second element is a number, not a string
-        with pytest.raises(
-            CtyListValidationError, match="CtyList validation failed:\nItem 1:"
-        ):
+        with pytest.raises(CtyListValidationError, match="CtyList validation failed:\nItem 1:"):
             self.string_list.validate(["apple", 123, "cherry"])
 
-    def test_cty_list_validate_none(self) -> None:
+
+    def test_cty_list_validate_none(self):
         """Test validation of None, which should raise an error."""
         self.string_list = CtyList(element_type=CtyString())
 
         # None should raise an error, not return an empty list
-        with pytest.raises(
-            CtyListValidationError, match="Expected list or tuple, got NoneType"
-        ):
+        with pytest.raises(CtyListValidationError, match="Expected list or tuple, got NoneType"):
             self.string_list.validate(None)
 
-    def test_cty_list_invalid_element_type(self) -> None:
+    def test_cty_list_invalid_element_type(self):
         """Test constructor with invalid element_type."""
-        with pytest.raises(
-            CtyListValidationError, match="Expected CtyType for element_type"
-        ):
+        with pytest.raises(CtyListValidationError, match="Expected CtyType for element_type"):
             CtyList(element_type="invalid")  # Non-CtyType passed
 
-    def test_cty_list_invalid_structure(self) -> None:
+    def test_cty_list_invalid_structure(self):
         """Test validation with non-list structure."""
         list_of_numbers = CtyList(element_type=CtyNumber())
         with pytest.raises(CtyListValidationError, match="Expected list or tuple"):
             list_of_numbers.validate("not_a_list")  # String is not a valid list
 
-    def test_cty_list_validate_none_in_list(self) -> None:
+    def test_cty_list_validate_none_in_list(self):
         """Test validation with None element in list."""
         self.string_list = CtyList(element_type=CtyString())
 
         # None element should cause validation failure
-        with pytest.raises(
-            CtyListValidationError, match="CtyList validation failed:\nItem 0:"
-        ):
+        with pytest.raises(CtyListValidationError, match="CtyList validation failed:\nItem 0:"):
             self.string_list.validate([None, "value"])
 
-    def test_element_at_invalid_container(self) -> None:
+    def test_element_at_invalid_container(self):
         """Test element_at with an invalid container."""
         # Try to get element from non-list
         with pytest.raises(CtyListValidationError):
             self.string_list.element_at("not_a_list", 0)
 
-    def test_usable_as_non_list_type(self) -> None:
+    def test_usable_as_non_list_type(self):
         """Test usable_as with non-list type."""
         # Create a CtyString
         string_type = CtyString()
 
         # Test non-usability
         assert not self.string_list.usable_as(string_type)
-
 
 # 🐍🏗️🧪

@@ -1,10 +1,21 @@
 # tests/test_cty_type_conversion.py
 
+import pytest
 
-from pyvider.cty import CtyString
+import re
 
+from pyvider.cty import (
+    CtyType, CtyString, CtyNumber, CtyBool, CtyDynamic,
+    CtyList, CtyMap, CtySet, CtyTuple
+)
 
-def test_type_eq_hash_consistency() -> None:
+def test_type_eq_hash_consistency():
+
+    from pyvider.cty import (
+        CtyType, CtyString, CtyNumber, CtyBool, CtyDynamic,
+        CtyList, CtyMap, CtySet, CtyTuple
+    )
+
     t = CtyString()
 
     assert t == t

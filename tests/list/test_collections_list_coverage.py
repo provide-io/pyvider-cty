@@ -1,11 +1,14 @@
 import pytest
 
+from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
+    CtyValue,
     CtyList,
+    CtyNumber,
     CtyString,
 )
-from pyvider.cty.exceptions import CtyListValidationError
 
+from pyvider.cty import CtyString, CtyNumber, CtyList
 
 class TestCtyListCoverage:
     """Tests specifically targeting uncovered lines in CtyList."""
@@ -20,8 +23,8 @@ class TestCtyListCoverage:
                 CtyString(value="b"),
                 CtyString(value="c"),
                 CtyString(value="d"),
-                CtyString(value="e"),
-            ],
+                CtyString(value="e")
+            ]
         )
 
     @pytest.fixture
@@ -30,7 +33,7 @@ class TestCtyListCoverage:
         return CtyList(element_type=CtyString(), value=[])
 
     @pytest.mark.asyncio
-    async def test_slice_default_end(self, string_list) -> None:
+    async def test_slice_default_end(self, string_list):
         """Test slice with default end parameter."""
         # This will test line 187: end = len(self.value)
         result = string_list.slice(2)
@@ -41,7 +44,7 @@ class TestCtyListCoverage:
         assert [item.value for item in result.value] == ["c", "d", "e"]
 
     @pytest.mark.asyncio
-    async def test_slice_negative_indices(self, string_list) -> None:
+    async def test_slice_negative_indices(self, string_list):
         """Test slice with negative indices."""
         # This tests lines 191 and 193 (converting negative indices)
         result = string_list.slice(-3, -1)
@@ -50,8 +53,9 @@ class TestCtyListCoverage:
         assert len(result.value) == 2
         assert [item.value for item in result.value] == ["c", "d"]
 
+
     @pytest.mark.asyncio
-    async def test_concat_with_invalid_container(self, string_list) -> None:
+    async def test_concat_with_invalid_container(self, string_list):
         """Test concat with invalid container."""
         # This tests lines 228-230
         with pytest.raises(CtyListValidationError) as exc:
@@ -59,12 +63,14 @@ class TestCtyListCoverage:
 
         assert "Expected CtyList" in str(exc.value)
 
+
     @pytest.mark.asyncio
-    async def test_element_at_out_of_bounds(self) -> None:
+    async def test_element_at_out_of_bounds(self):
         """Test element_at with index out of bounds."""
         # Create a CtyList with CtyString values
         list_obj = CtyList(
-            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(),
+            value=[CtyString(value="a"), CtyString(value="b")]
         )
 
         # This tests the error raised in element_at method

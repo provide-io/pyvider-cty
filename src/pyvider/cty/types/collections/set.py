@@ -17,19 +17,17 @@ information and maintaining immutability of the original values.
 """
 
 from typing import Any, ClassVar, Generic, TypeVar, final
-
+from typing import Set as PySet
 from attrs import define, evolve, field
-
-from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
+from pyvider.cty.exceptions import CtyValidationError, CtySetValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
-T = TypeVar("T")
-
+T = TypeVar('T')
 
 @final
 @define(frozen=True, slots=True)
-class CtySet(CtyType[set[T]], Generic[T]):
+class CtySet(CtyType[PySet[T]], Generic[T]):
     """
     Represents a set type in the Cty type system.
 
@@ -43,10 +41,9 @@ class CtySet(CtyType[set[T]], Generic[T]):
         element_type: The Cty type of elements in the set
         value: The actual set of values, all of which are of type T
     """
-
     ctype: ClassVar[str] = "set"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: set[T] = field(factory=set, kw_only=True)  # Allow passing value via kw_only
+    value: PySet[T] = field(factory=set, kw_only=True)  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
         """
@@ -64,7 +61,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any):
+    def validate(self, value: Any):  # noqa: D401 – short description OK
         """Validate *value* as a **set** matching :pyattr:`element_type`.
 
         Acceptable *inputs*:
@@ -76,9 +73,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
         # Local import to avoid circular dependency
         from pyvider.cty.values import CtyValue
 
-        logger.debug(
-            "🟣🔍  Validating value %r as CtySet(%s)", value, self.element_type
-        )
+        logger.debug("🟣🔍  Validating value %r as CtySet(%s)", value, self.element_type)
 
         # ---------------------- Null handling ---------------------------
         if value is None:
@@ -104,11 +99,11 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 raise CtySetValidationError(str(exc)) from exc
 
         # NEW: Handle list or tuple input by converting to a set
-        if isinstance(value, list | tuple):
+        if isinstance(value, (list, tuple)):
             try:
                 value = set(value)
                 logger.debug("🟣🔄  Converted input list/tuple to set for validation")
-            except TypeError as e:  # Handles unhashable items if any
+            except TypeError as e: # Handles unhashable items if any
                 err = (
                     f"Input list/tuple could not be converted to set (possibly unhashable elements): {e}; "
                     f"got {type(value).__name__}: {value!r}"
@@ -117,7 +112,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 raise CtySetValidationError(err) from e
 
         # -------------------- Set coercion -----------------------------
-        if not isinstance(value, set | frozenset):
+        if not isinstance(value, (set, frozenset)):
             err = (
                 "Expected a Python set/frozenset (or convertible list/tuple) for CtySet validation; "
                 f"got {type(value).__name__}: {value!r}"
@@ -204,9 +199,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
             raise CtySetValidationError(f"Failed to remove item: {e}")
 
     def usable_as(self, other: "CtyType") -> bool:
-        result = isinstance(other, CtySet) and self.element_type.usable_as(
-            other.element_type
-        )
+        result = isinstance(other, CtySet) and self.element_type.usable_as(other.element_type)
         logger.debug(f"🔌📝✅ CtySet.usable_as: {result}")
         return result
 
@@ -218,9 +211,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
         equal element type. This implements strict type identity checking.
         """
         if not isinstance(other, CtySet):
-            logger.debug(
-                f"🔌📝❌ CtySet.equal: False (other is {type(other).__name__})"
-            )
+            logger.debug(f"🔌📝❌ CtySet.equal: False (other is {type(other).__name__})")
             return False
         result = self.element_type.equal(other.element_type)
         logger.debug(f"🔌📝✅ CtySet.equal: {result}")
@@ -239,6 +230,5 @@ class CtySet(CtyType[set[T]], Generic[T]):
     def is_set_type(self) -> bool:
         """Check if this type is a set type."""
         return True
-
 
 # 🐍🏗️🐣

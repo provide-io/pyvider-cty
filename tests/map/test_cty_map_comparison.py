@@ -2,23 +2,24 @@
 # tests/map/test_cty_map_comparison.py
 #
 
-
 import pytest
+from decimal import Decimal
 
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import (
     CtyBool,
-    CtyList,
     CtyMap,
     CtyNumber,
-    CtyObject,
     CtyString,
+    CtyObject,
+    CtyList,
+    CtyValue,
 )
-
 
 class TestCtyMapComparison:
     """Advanced tests for CtyMap implementation to improve code coverage."""
 
-    def setup_method(self) -> None:
+    def setup_method(self):
         """Set up test fixtures before each test."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -27,11 +28,12 @@ class TestCtyMapComparison:
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
-            value_type=CtyMap(key_type=CtyString(), value_type=CtyString()),
+            value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
         )
 
         self.list_map = CtyMap(
-            key_type=CtyString(), value_type=CtyList(element_type=CtyString())
+            key_type=CtyString(),
+            value_type=CtyList(element_type=CtyString())
         )
 
         self.object_map = CtyMap(
@@ -41,11 +43,11 @@ class TestCtyMapComparison:
                     "name": CtyString(),
                     "age": CtyNumber(),
                 }
-            ),
+            )
         )
 
     @pytest.mark.asyncio
-    async def test_cty_map_equality_and_type_comparison(self) -> None:
+    async def test_cty_map_equality_and_type_comparison(self):
         """Test map equality and type comparison methods."""
         # Create two identical map types
         map_type1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -74,14 +76,14 @@ class TestCtyMapComparison:
         assert map_val1 != CtyString(value="not a map")
 
     @pytest.mark.asyncio
-    async def test_cty_map_inequality(self) -> None:
+    async def test_cty_map_inequality(self):
         """Test inequality of maps with different element types."""
         map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map2 = CtyMap(key_type=CtyString(), value_type=CtyString())
         assert map1.equal(map2) is False
 
     @pytest.mark.asyncio
-    async def test_cty_map_string_representation(self) -> None:
+    async def test_cty_map_string_representation(self):
         """Test string representation of map types."""
         # Create map types
         string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
@@ -105,16 +107,12 @@ class TestCtyMapComparison:
         assert "value_type" in repr(string_map)
 
     @pytest.mark.asyncio
-    async def test_cty_map_equality(self) -> None:
+    async def test_cty_map_equality(self):
         """Test equality of map types."""
         # Create similar map types
         map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        map2 = CtyMap(
-            key_type=CtyString(), value_type=CtyNumber()
-        )  # Same types as map1
-        map3 = CtyMap(
-            key_type=CtyString(), value_type=CtyString()
-        )  # Different value type
+        map2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())  # Same types as map1
+        map3 = CtyMap(key_type=CtyString(), value_type=CtyString())  # Different value type
 
         # Test equality
         assert map1.equal(map2)
@@ -131,6 +129,5 @@ class TestCtyMapComparison:
         # Test with non-map type
         assert not map1.equal(CtyString())
         assert map1 != CtyString()
-
 
 # 🐍🏗️🧪

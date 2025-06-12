@@ -2,23 +2,25 @@
 # tests/map/test_cty_map_operations.py
 #
 
-
 import pytest
+from decimal import Decimal
 
+from pyvider.cty.exceptions import CtyMapValidationError
 from pyvider.cty import (
     CtyBool,
     CtyMap,
     CtyNumber,
     CtyString,
+    CtyObject,
+    CtyList,
     CtyValue,
 )
-from pyvider.cty.exceptions import CtyMapValidationError
 
 
 class TestCtyMapOperations:
     """Tests for CtyMap implementation with proper method calls and value wrapping."""
 
-    def setup_method(self) -> None:
+    def setup_method(self):
         """Set up test fixtures before each test."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -27,11 +29,11 @@ class TestCtyMapOperations:
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
-            value_type=CtyMap(key_type=CtyString(), value_type=CtyString()),
+            value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
         )
 
     @pytest.mark.asyncio
-    async def test_map_basic_validation(self) -> None:
+    async def test_map_basic_validation(self):
         """Test basic validation with proper type patterns."""
         # Create pre-validated keys and values
         key1 = CtyValue(vtype=CtyString(), value="key1")
@@ -40,7 +42,10 @@ class TestCtyMapOperations:
         val2 = CtyValue(vtype=CtyString(), value="value2")
 
         # Create proper map with pre-validated keys and values
-        valid_map = {key1: val1, key2: val2}
+        valid_map = {
+            key1: val1,
+            key2: val2
+        }
 
         # Validate the map
         validated = self.string_map.validate(valid_map)
@@ -53,7 +58,7 @@ class TestCtyMapOperations:
         # Find values by key - adjusted for string keys
         found_key1 = False
         found_key2 = False
-
+        
         # Direct string key lookup
         if "key1" in validated.value:
             found_key1 = True
@@ -65,7 +70,7 @@ class TestCtyMapOperations:
         assert found_key1 and found_key2
 
     @pytest.mark.asyncio
-    async def test_cty_map_set_method(self) -> None:
+    async def test_cty_map_set_method(self):
         """Test the set method with proper method call pattern."""
         # Create empty map
         empty_map = self.string_map.validate({})
@@ -85,13 +90,13 @@ class TestCtyMapOperations:
 
         # Find the key-value pair - adjusted for string keys
         found = False
-
+        
         # Direct string key lookup
         if "key1" in new_map.value:
             found = True
             # Can't check if it's the same instance with string keys
             assert new_map.value["key1"].value == "value1"
-
+            
         assert found
 
         # Add second key-value pair
@@ -103,7 +108,7 @@ class TestCtyMapOperations:
         # Find both key-value pairs - adjusted for string keys
         found_key1 = False
         found_key2 = False
-
+        
         # Direct string key lookup
         if "key1" in updated_map.value:
             found_key1 = True
@@ -120,19 +125,20 @@ class TestCtyMapOperations:
 
         # Verify update - adjusted for string keys
         found = False
-
+        
         # Direct string key lookup
         if "key1" in final_map.value:
             found = True
             assert final_map.value["key1"].value == "updated"
-
+            
         assert found
 
         # Original map should be unchanged (immutability)
         assert updated_map.value["key1"].value == "value1"  # Still has original value
 
+
     @pytest.mark.asyncio
-    async def test_cty_map_get_method(self) -> None:
+    async def test_cty_map_get_method(self):
         """Test the get method with proper method call pattern."""
         # Create pre-validated keys and values
         key1 = CtyValue(vtype=CtyString(), value="key1")
@@ -168,7 +174,7 @@ class TestCtyMapOperations:
         assert result is default_val
 
     @pytest.mark.asyncio
-    async def test_cty_map_delete_method(self) -> None:
+    async def test_cty_map_delete_method(self):
         """Test the delete method with proper method call pattern."""
         # Create keys and values
         key1 = CtyValue(vtype=CtyString(), value="key1")
@@ -191,7 +197,7 @@ class TestCtyMapOperations:
         # Verify which keys remain - adjusted for string keys
         found_key1 = False
         found_key3 = False
-
+        
         # Direct string key lookup
         if "key1" in new_map.value:
             found_key1 = True
@@ -217,13 +223,12 @@ class TestCtyMapOperations:
 
         # Only key3 should remain - adjusted for string keys
         found = False
-
+        
         # Direct string key lookup
         if "key3" in final_map.value:
             found = True
-
+            
         assert found
         assert "key1" not in final_map.value
-
 
 # 🐍🏗️🧪
