@@ -1,16 +1,19 @@
 #
 # tests/list/test_cty_collections_list.py
 #
+import pytest
 
+from pyvider.cty.exceptions import CtyListValidationError
 
 from pyvider.cty import (
-    CtyList,
-    CtyString,
     CtyValue,
+    CtyBool,
+    CtyNumber,
+    CtyString,
+    CtyList,
 )
 
-
-def test_cty_list_large_list() -> None:
+def test_cty_list_large_list():
     """Test validation of a large list."""
     large_list = CtyList(element_type=CtyString())
     data = ["item"] * 1000
@@ -29,8 +32,7 @@ def test_cty_list_large_list() -> None:
         assert isinstance(item.type, CtyString)
         assert item.value == "item"
 
-
-def test_cty_list_dynamic_schema() -> None:
+def test_cty_list_dynamic_schema():
     """Test validation with dynamically nested structure."""
     dynamic_list = CtyList(element_type=CtyList(element_type=CtyString()))
     validated = dynamic_list.validate([["one", "two"], ["three"]])
@@ -57,6 +59,5 @@ def test_cty_list_dynamic_schema() -> None:
     assert isinstance(validated.value[1].value[0], CtyValue)
     assert isinstance(validated.value[1].value[0].type, CtyString)
     assert validated.value[1].value[0].value == "three"
-
 
 # 🐍🏗️🧪

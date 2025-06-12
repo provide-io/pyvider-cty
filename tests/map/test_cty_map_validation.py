@@ -3,45 +3,42 @@
 #
 
 import pytest
-
-from pyvider.cty import CtyBool, CtyMap, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyMapValidationError
-
+from pyvider.cty import CtyBool, CtyMap, CtyNumber, CtyString, CtyValue
 
 class TestCtyMapValidation:
-    def setup_method(self) -> None:
+    def setup_method(self):
         """Set up test fixtures before each test."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         self.bool_map = CtyMap(key_type=CtyString(), value_type=CtyBool())
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_valid_string_map(self) -> None:
+    async def test_cty_map_validate_valid_string_map(self):
         """Test validation of a valid string map with pre‐validated keys/values."""
         valid = {
-            CtyValue(vtype=CtyString(), value="name"): CtyValue(
-                vtype=CtyString(), value="pyvider"
-            )
+            CtyValue(vtype=CtyString(), value="name"): CtyValue(vtype=CtyString(), value="pyvider")
         }
         validated = self.string_map.validate(valid)
         assert isinstance(validated, CtyValue)
         assert isinstance(validated.type, CtyMap)
         map_data = validated.value
         assert isinstance(map_data, dict)
-
+        
         # Test retrieval using the get() method - adjusted for string keys
         name_value = self.string_map.get(validated, "name")
         assert name_value is not None
         assert isinstance(name_value, CtyValue)
         assert isinstance(name_value.type, CtyString)
         assert name_value.value == "pyvider"
-
+        
         # Test direct access via string key
+        found_key = None
         assert "name" in map_data, "Key 'name' not found in map"
         assert map_data["name"].value == "pyvider"
 
     @pytest.mark.asyncio
-    async def test_cty_map_empty_map_validation(self) -> None:
+    async def test_cty_map_empty_map_validation(self):
         """Test validation of empty maps."""
         string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
 
@@ -60,7 +57,7 @@ class TestCtyMapValidation:
         assert len(empty_result.value) == 0
 
     @pytest.mark.asyncio
-    async def test_cty_map_init_validation(self) -> None:
+    async def test_cty_map_init_validation(self):
         """Test validation during CtyMap initialization."""
         # Valid initialization
         valid_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -76,7 +73,7 @@ class TestCtyMapValidation:
             CtyMap(key_type=CtyString(), value_type="not_a_cty_type")
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_empty_dict(self) -> None:
+    async def test_cty_map_validate_empty_dict(self):
         """Test validation with empty dictionary."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         result = map_type.validate({})
@@ -86,7 +83,7 @@ class TestCtyMapValidation:
         assert len(result.value) == 0
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_invalid_key(self) -> None:
+    async def test_cty_map_validate_invalid_key(self):
         """Test validation with invalid key type."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
@@ -94,14 +91,14 @@ class TestCtyMapValidation:
         data = {
             "one": 1,
             2: 2,  # Invalid key type (int instead of string)
-            "three": 3,
+            "three": 3
         }
 
         with pytest.raises(CtyMapValidationError):
             map_type.validate(data)
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_invalid_value(self) -> None:
+    async def test_cty_map_validate_invalid_value(self):
         """Test validation with invalid value type."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
@@ -109,14 +106,14 @@ class TestCtyMapValidation:
         data = {
             "one": 1,
             "two": "not_a_number",  # Invalid value type (string instead of number)
-            "three": 3,
+            "three": 3
         }
 
         with pytest.raises(CtyMapValidationError):
             map_type.validate(data)
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_with_cty_instances(self) -> None:
+    async def test_cty_map_validate_with_cty_instances(self):
         """Test validation with pre-created CtyType instances."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
@@ -130,7 +127,7 @@ class TestCtyMapValidation:
         data = {
             key1: val1,
             key2: val2,
-            "three": 3,  # Mixed with raw value
+            "three": 3  # Mixed with raw value
         }
 
         result = map_type.validate(data)
@@ -142,14 +139,14 @@ class TestCtyMapValidation:
         assert "one" in result.value
         assert "two" in result.value
         assert "three" in result.value
-
+        
         # Check values
         assert result.value["one"].value == 1
         assert result.value["two"].value == 2
         assert result.value["three"].value == 3
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_invalid_bool_map(self) -> None:
+    async def test_cty_map_validate_invalid_bool_map(self):
         """Test validation with invalid bool map."""
         invalid = {"is_active": 123}  # Not a boolean value
         with pytest.raises(CtyMapValidationError) as excinfo:
@@ -157,7 +154,7 @@ class TestCtyMapValidation:
         assert "validation failed" in str(excinfo.value)
 
     @pytest.mark.asyncio
-    async def test_cty_map_with_cty_values(self) -> None:
+    async def test_cty_map_with_cty_values(self):
         """Test creating maps using CtyValue instances."""
         # Create CtyValues
         from pyvider.cty.values import CtyValue
@@ -175,7 +172,7 @@ class TestCtyMapValidation:
             pass
 
     @pytest.mark.asyncio
-    async def test_cty_map_validation_error_details(self) -> None:
+    async def test_cty_map_validation_error_details(self):
         """Test that validation errors provide detailed information."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
 
@@ -195,7 +192,7 @@ class TestCtyMapValidation:
         assert "validation failed" in error_msg
 
     @pytest.mark.asyncio
-    async def test_cty_map_init_validation(self) -> None:
+    async def test_cty_map_init_validation(self):
         """Test validation during CtyMap initialization."""
         # Valid initialization
         valid_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -211,22 +208,23 @@ class TestCtyMapValidation:
             CtyMap(key_type=CtyString(), value_type="not_a_cty_type")
 
     @pytest.mark.asyncio
-    async def test_attribute_paths_with_cty_values(self) -> None:
+    async def test_attribute_paths_with_cty_values(self):
         """Test paths with attribute access for proper CtyValues."""
         # Create object type with proper CtyType attributes
         from pyvider.cty import CtyObject, CtyPath
 
-        person_type = CtyObject(
-            attribute_types={"name": CtyString(), "age": CtyNumber()}
-        )
+        person_type = CtyObject(attribute_types={
+            "name": CtyString(),
+            "age": CtyNumber()
+        })
 
         # Create a value using proper CtyValue wrapping
         person = CtyValue(
             vtype=person_type,
             value={
                 "name": CtyValue(vtype=CtyString(), value="Alice"),
-                "age": CtyValue(vtype=CtyNumber(), value=30),
-            },
+                "age": CtyValue(vtype=CtyNumber(), value=30)
+            }
         )
 
         # Test attribute access
@@ -237,6 +235,5 @@ class TestCtyMapValidation:
         assert isinstance(name_result, CtyValue)
         assert isinstance(name_result.type, CtyString)
         assert name_result.value == "Alice"
-
 
 # 🐍🏗️🧪

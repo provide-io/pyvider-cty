@@ -7,9 +7,9 @@ from pyvider.cty.types.collections.map import CtyMap
 from pyvider.cty.types.collections.set import CtySet
 
 __all__ = [
-    "CtyList",
-    "CtyMap",
-    "CtySet",
+    'CtyList',
+    'CtyMap',
+    'CtySet',
 ]
 
 # 🐍🏗️🐣

@@ -5,16 +5,12 @@ Tests for CtyTuple type comparison (equal, usable_as) and CtyValue equality.
 """
 
 import pytest
-
+from decimal import Decimal
 from pyvider.cty import (
-    CtyBool,
-    CtyDynamic,
-    CtyList,
-    CtyNumber,
-    CtyString,
-    CtyTuple,
-    CtyValue,
+    CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject, CtyTuple,
+    CtyDynamic, CtyType, CtyValue
 )
+from pyvider.cty.exceptions import CtyValidationError
 
 
 class TestCtyTupleComparison:
@@ -23,16 +19,16 @@ class TestCtyTupleComparison:
     # --- Type Comparison (equal, usable_as) ---
 
     @pytest.mark.asyncio
-    async def test_type_equal_identical(self) -> None:
+    async def test_type_equal_identical(self):
         """Test CtyTuple.equal for identical types."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t2 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         assert t1.equal(t2)
         assert t2.equal(t1)
-        assert t1 == t2  # Test __eq__
+        assert t1 == t2 # Test __eq__
 
     @pytest.mark.asyncio
-    async def test_type_equal_different_length(self) -> None:
+    async def test_type_equal_different_length(self):
         """Test CtyTuple.equal for types with different lengths."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t2 = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool()))
@@ -41,14 +37,14 @@ class TestCtyTupleComparison:
         assert not t2.equal(t1)
         assert not t1.equal(t3)
         assert not t3.equal(t1)
-        assert t1 != t2  # Test __eq__
+        assert t1 != t2 # Test __eq__
 
     @pytest.mark.asyncio
-    async def test_type_equal_different_element_types(self) -> None:
+    async def test_type_equal_different_element_types(self):
         """Test CtyTuple.equal for types with different element types."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
-        t2 = CtyTuple(element_types=(CtyString(), CtyString()))  # Second type differs
-        t3 = CtyTuple(element_types=(CtyNumber(), CtyNumber()))  # First type differs
+        t2 = CtyTuple(element_types=(CtyString(), CtyString())) # Second type differs
+        t3 = CtyTuple(element_types=(CtyNumber(), CtyNumber())) # First type differs
         assert not t1.equal(t2)
         assert not t2.equal(t1)
         assert not t1.equal(t3)
@@ -56,7 +52,7 @@ class TestCtyTupleComparison:
         assert t1 != t2
 
     @pytest.mark.asyncio
-    async def test_type_equal_different_type_class(self) -> None:
+    async def test_type_equal_different_type_class(self):
         """Test CtyTuple.equal against other CtyType classes."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t_list = CtyList(element_type=CtyString())
@@ -66,7 +62,7 @@ class TestCtyTupleComparison:
         assert t1 != t_list
 
     @pytest.mark.asyncio
-    async def test_type_usable_as_identical(self) -> None:
+    async def test_type_usable_as_identical(self):
         """Test CtyTuple.usable_as for identical types."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t2 = CtyTuple(element_types=(CtyString(), CtyNumber()))
@@ -74,7 +70,7 @@ class TestCtyTupleComparison:
         assert t2.usable_as(t1)
 
     @pytest.mark.asyncio
-    async def test_type_usable_as_different_length(self) -> None:
+    async def test_type_usable_as_different_length(self):
         """Test CtyTuple.usable_as fails for different lengths."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t2 = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool()))
@@ -82,7 +78,7 @@ class TestCtyTupleComparison:
         assert not t2.usable_as(t1)
 
     @pytest.mark.asyncio
-    async def test_type_usable_as_compatible_elements(self) -> None:
+    async def test_type_usable_as_compatible_elements(self):
         """Test CtyTuple.usable_as with compatible element types (e.g., dynamic)."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t2_dynamic = CtyTuple(element_types=(CtyDynamic(), CtyDynamic()))
@@ -97,17 +93,15 @@ class TestCtyTupleComparison:
         assert not t3_specific.usable_as(t1)
 
     @pytest.mark.asyncio
-    async def test_type_usable_as_incompatible_elements(self) -> None:
+    async def test_type_usable_as_incompatible_elements(self):
         """Test CtyTuple.usable_as fails with incompatible element types."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
-        t2 = CtyTuple(
-            element_types=(CtyString(), CtyBool())
-        )  # Number not usable as Bool
+        t2 = CtyTuple(element_types=(CtyString(), CtyBool())) # Number not usable as Bool
         assert not t1.usable_as(t2)
         assert not t2.usable_as(t1)
 
     @pytest.mark.asyncio
-    async def test_type_usable_as_different_type_class(self) -> None:
+    async def test_type_usable_as_different_type_class(self):
         """Test CtyTuple.usable_as against other CtyType classes."""
         t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         t_list = CtyList(element_type=CtyString())
@@ -116,7 +110,7 @@ class TestCtyTupleComparison:
     # --- CtyValue Instance Equality ---
 
     @pytest.mark.asyncio
-    async def test_value_equality_equal_content(self) -> None:
+    async def test_value_equality_equal_content(self):
         """Test equality of CtyValue tuples with the same content."""
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
         v1 = tuple_type.validate(("test", 10))
@@ -124,29 +118,29 @@ class TestCtyTupleComparison:
         assert isinstance(v1, CtyValue)
         assert isinstance(v2, CtyValue)
         assert v1 == v2
-        assert hash(v1) == hash(v2)  # Check hash consistency
+        assert hash(v1) == hash(v2) # Check hash consistency
 
     @pytest.mark.asyncio
-    async def test_value_equality_different_content(self) -> None:
+    async def test_value_equality_different_content(self):
         """Test inequality of CtyValue tuples with different content."""
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
         v1 = tuple_type.validate(("test", 10))
-        v2 = tuple_type.validate(("test", 20))  # Different number
-        v3 = tuple_type.validate(("other", 10))  # Different string
+        v2 = tuple_type.validate(("test", 20)) # Different number
+        v3 = tuple_type.validate(("other", 10)) # Different string
         assert v1 != v2
         assert v1 != v3
 
     @pytest.mark.asyncio
-    async def test_value_equality_different_types(self) -> None:
+    async def test_value_equality_different_types(self):
         """Test inequality of CtyValue tuples with different types."""
         tuple_type1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
         tuple_type2 = CtyTuple(element_types=(CtyString(), CtyString()))
         v1 = tuple_type1.validate(("test", 10))
-        v2 = tuple_type2.validate(("test", "10"))  # Same logical value, different type
+        v2 = tuple_type2.validate(("test", "10")) # Same logical value, different type
         assert v1 != v2
 
     @pytest.mark.asyncio
-    async def test_value_equality_special_values(self) -> None:
+    async def test_value_equality_special_values(self):
         """Test equality involving null and unknown values."""
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
         v_known = tuple_type.validate(("test", 10))
@@ -162,7 +156,7 @@ class TestCtyTupleComparison:
         assert v_null1 != v_unknown1
 
     @pytest.mark.asyncio
-    async def test_value_equality_with_marks(self) -> None:
+    async def test_value_equality_with_marks(self):
         """Test equality considers marks."""
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
         v1 = tuple_type.validate(("test", 10))
@@ -172,6 +166,6 @@ class TestCtyTupleComparison:
         v2_marked_same = v2.mark("mark1")
 
         assert v1 == v2
-        assert v1 != v1_marked  # Different marks
-        assert v1_marked != v2_marked  # Different marks
-        assert v1_marked == v2_marked_same  # Same marks
+        assert v1 != v1_marked # Different marks
+        assert v1_marked != v2_marked # Different marks
+        assert v1_marked == v2_marked_same # Same marks
