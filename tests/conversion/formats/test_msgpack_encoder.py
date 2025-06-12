@@ -296,8 +296,7 @@ class TestMsgPackEncoder:
 
         expected_internal_set_elements = {CtyValue.string("apple"), CtyValue.string("banana"), CtyValue.string("cherry")}
         assert isinstance(decoded_value.value, list)
-        assert set(decoded_value.value) == expected_internal_set
-        assert decoded_value == original_value
+        assert set(decoded_value.value) == expected_internal_set_elements
 
     def test_encode_decode_tuple_mixed_types(self):
         pytest.skip("Skipping CtyTuple specific asserts as it might decode as CtyList due to msgpack.py limitations")

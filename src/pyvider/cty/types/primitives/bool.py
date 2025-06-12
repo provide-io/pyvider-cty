@@ -122,8 +122,12 @@ class CtyBool(CtyType[bool]):
         return result
 
     def usable_as(self, other: "CtyType[bool]") -> bool:
+        from pyvider.cty.types.structural import CtyDynamic # Import locally
+        if isinstance(other, CtyDynamic):
+            logger.debug(f"🔄🔍✅ CtyBool.usable_as(CtyDynamic): True")
+            return True
         result = isinstance(other, CtyBool)
-        logger.debug(f"🔄🔍✅ CtyBool.usable_as: {result}")
+        logger.debug(f"🔄🔍✅ CtyBool.usable_as({other.__class__.__name__}): {result}") # Use other.__class__.__name__ for safety
         return result
 
     def __str__(self):    # pragma: no cover – trivial

@@ -21,6 +21,7 @@ from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.telemetry import logger
 
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.structural import CtyDynamic
 
 @define(frozen=True, slots=True)
 class CtyNumber(CtyType[Union[int, float, Decimal]]):
@@ -165,9 +166,8 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         """
         Check if this type can be used where the other type is expected.
 
-        A number type is only usable as another number type. This method is used
-        for type compatibility checking when values are passed between contexts
-        with different type expectations.
+        A number type is usable as another number type or as CtyDynamic.
+        This method is used for type compatibility checking.
 
         Args:
             other: The target type to check compatibility with.
@@ -175,6 +175,9 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         Returns:
             bool: True if this type can be used as the other type, False otherwise.
         """
+        if isinstance(other, CtyDynamic): # Check against CtyDynamic first
+            logger.debug(f"🔢🔍✅ CtyNumber.usable_as(CtyDynamic): True")
+            return True
         result = isinstance(other, CtyNumber)
         logger.debug(f"🔢🔍✅ CtyNumber.usable_as({other.__class__.__name__}): {result}")
         return result

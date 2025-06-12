@@ -158,13 +158,13 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 # If the item itself is a CtyValue (e.g. from a CtyValue(CtyList) input),
                 # we need to validate its underlying value against self.element_type.
                 # If item is a raw Python value, validate it directly.
-                value_to_validate = item.value if isinstance(item, CtyValue) else item
 
                 # Special case: if self.element_type is CtyDynamic and item is already a CtyValue,
                 # we can accept it as is, as CtyDynamic can hold any CtyValue.
                 if isinstance(self.element_type, CtyDynamic) and isinstance(item, CtyValue):
-                    validated_item = item
+                    validated_item = item  # Pass through if list is dynamic and item is already CtyValue
                 else:
+                    value_to_validate = item.value if isinstance(item, CtyValue) else item
                     validated_item = self.element_type.validate(value_to_validate)
 
                 logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
