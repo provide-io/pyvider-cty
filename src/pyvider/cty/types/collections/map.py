@@ -44,12 +44,20 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def __attrs_post_init__(self) -> None:
         logger.debug("🔌🔍🔄 Validating CtyMap configuration")
-        if not isinstance(self.key_type, CtyString):
-            error_msg = f"Map key type must be CtyString, got {type(self.key_type).__name__}"
+        if not isinstance(self.key_type, CtyType):
+            error_msg = f"key_type must be a CtyType instance, got {type(self.key_type).__name__}"
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
+
+        # CtyDynamic is a primitive type and is allowed as a key type.
+        # All other key types must also be primitive.
+        if not self.key_type.is_primitive_type():
+            error_msg = f"Map key_type must be a primitive type, got {self.key_type.__class__.__name__}"
+            logger.error(f"🔌❌🔄 {error_msg}")
+            raise CtyMapValidationError(error_msg)
+
         if not isinstance(self.value_type, CtyType): # Check if it's a CtyType instance
-            error_msg = f"Expected CtyType for value_type, got {type(self.value_type).__name__}"
+            error_msg = f"value_type must be a CtyType instance, got {type(self.value_type).__name__}"
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
         logger.debug("🔌✅🔄 CtyMap configuration validated successfully")
@@ -59,8 +67,9 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         input_dict: Optional[dict] = None
         if value is None:
-            logger.debug("🔌🔍✅ None value converted to empty map")
-            return CtyValue(vtype=self, value={}, key_mapping={})
+            # logger.debug("🔌🔍✅ None value converted to empty map") # No longer converting
+            # return CtyValue(vtype=self, value={}, key_mapping={})
+            raise CtyMapValidationError("Input to CtyMap.validate cannot be None.")
         elif isinstance(value, dict):
             input_dict = value
         elif isinstance(value, CtyValue):
@@ -226,9 +235,51 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         return self.key_type.equal(other.key_type) and self.value_type.equal(other.value_type)
 
     def usable_as(self, other: CtyType) -> bool:
-        logger.debug(f"🔌🔍🔄 Checking usability as {type(other).__name__}")
-        if not isinstance(other, CtyMap): return False
-        return self.key_type.usable_as(other.key_type) and self.value_type.usable_as(other.value_type)
+        logger.debug(f"🔌🔍🔄 Checking map usability: self({self!s}) as other({other!s})")
+        if isinstance(other, CtyDynamic):
+            logger.debug(f"🔌🔍✅ Map type is usable as CtyDynamic")
+            return True
+        if not isinstance(other, CtyMap):
+            logger.debug(f"🔌🔍❌ Target type is not CtyMap or CtyDynamic, got {other.__class__.__name__}")
+            return False
+
+        # Both self and other are CtyMap instances at this point.
+        self_key_is_dyn = isinstance(self.key_type, CtyDynamic)
+        other_key_is_dyn = isinstance(other.key_type, CtyDynamic)
+        self_val_is_dyn = isinstance(self.value_type, CtyDynamic)
+        other_val_is_dyn = isinstance(other.value_type, CtyDynamic)
+
+        # Key compatibility:
+        # 1. If this map's key type is Dynamic, the other's key type must be primitive (or also Dynamic).
+        # 2. If the other map's key type is Dynamic, any key from this map is fine.
+        # 3. Otherwise, key types must be directly usable.
+        key_ok = False
+        if self_key_is_dyn: # map(dynamic, V1) usable as map(K2, V2)
+            key_ok = other.key_type.is_primitive_type() # K2 must be primitive
+        elif other_key_is_dyn: # map(K1, V1) usable as map(dynamic, V2)
+            key_ok = self.key_type.is_primitive_type() # K1 must be primitive (already enforced by __init__)
+        else: # map(K1, V1) usable as map(K2, V2)
+            key_ok = self.key_type.usable_as(other.key_type)
+
+        logger.debug(f"🔌🔍🔄 Key usability detail: self.key({self.key_type!s}), other.key({other.key_type!s}) -> {key_ok}")
+
+        # Value compatibility:
+        # 1. If this map's value type is Dynamic, any value type in the other map is fine (dynamic can hold anything).
+        # 2. If the other map's value type is Dynamic, any value from this map is fine.
+        # 3. Otherwise, value types must be directly usable.
+        val_ok = False
+        if self_val_is_dyn: # map(K1, dynamic) usable as map(K2, V2)
+            val_ok = True # Dynamic can provide for any V2
+        elif other_val_is_dyn: # map(K1, V1) usable as map(K2, dynamic)
+            val_ok = True # V1 can be placed into a Dynamic value type
+        else: # map(K1, V1) usable as map(K2, V2)
+            val_ok = self.value_type.usable_as(other.value_type)
+
+        logger.debug(f"🔌🔍🔄 Value usability detail: self.value({self.value_type!s}), other.value({other.value_type!s}) -> {val_ok}")
+
+        final_usability = key_ok and val_ok
+        logger.debug(f"🔌🔍✅ Final map usability: {final_usability}")
+        return final_usability
 
     def __str__(self) -> str:
         return f"map({self.key_type.__class__.__name__}, {self.value_type.__class__.__name__})"

@@ -18,6 +18,12 @@ class TestCtyStringType(unittest.TestCase):
         with self.assertRaises(CtyValidationError):
             self.string_type.validate(123)
 
+    def test_validate_none_string(self):
+        """Test that validating None raises CtyStringValidationError."""
+        from pyvider.cty.exceptions import CtyStringValidationError  # Ensure specific exception
+        with self.assertRaisesRegex(CtyStringValidationError, "String value cannot be None."):
+            self.string_type.validate(None)
+
 class TestCtyNumberType(unittest.TestCase):
     def setUp(self):
         self.number_type = CtyNumber()

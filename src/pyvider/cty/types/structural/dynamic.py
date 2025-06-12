@@ -22,7 +22,7 @@ from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Added imports
+# from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Moved into validate method
 # from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
 from pyvider.telemetry import logger
 
@@ -72,6 +72,10 @@ class CtyDynamic(CtyType[Any]):
             CtyValidationError: If the value cannot be represented in the Cty type system
         """
         from pyvider.cty.values import CtyValue
+        # Moved imports to avoid circular dependencies
+        from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
+        from pyvider.cty.types.collections import CtyList, CtyMap
+
 
         logger.debug(f"🧩🔍🔄 Validating value against CtyDynamic: {type(value).__name__}")
 
@@ -106,8 +110,9 @@ class CtyDynamic(CtyType[Any]):
             # CtyDynamic validated with None should be null of CtyDynamic
             return CtyValue.null(self)
 
-        # Reject complex Python objects that don't map to Cty types
-        error_msg = "Unsupported value for CtyDynamic. Acceptable types are CtyValue, primitive types, dict, list, or None."
+        # For other types not explicitly handled (e.g. custom objects), reject.
+        # This ensures CtyDynamic only accepts values that can map to the Cty type system.
+        error_msg = f"Unsupported value type {type(value).__name__} for CtyDynamic."
         logger.error(f"🧩❗❌ {error_msg}")
         raise CtyValidationError(error_msg)
 

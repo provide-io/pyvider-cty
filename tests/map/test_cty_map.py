@@ -92,18 +92,20 @@ class TestCtyMapCreation:
     async def test_map_type_with_invalid_types(self):
         """Test initialization with invalid key or value types."""
         # Invalid key_type (not a CtyType)
-        with pytest.raises(CtyMapValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError, match=r"key_type must be a CtyType instance, got str"):
             CtyMap(key_type="string", value_type=CtyString())
-        assert "Map key type must be CtyString, got " in str(exc_info.value)
 
         # Invalid value_type (not a CtyType)
-        with pytest.raises(CtyMapValidationError) as exc_info:
+        with pytest.raises(CtyMapValidationError, match=r"value_type must be a CtyType instance, got str"):
             CtyMap(key_type=CtyString(), value_type="string")
-        assert "Expected CtyType for value_type, got " in str(exc_info.value)
 
-        # Both invalid
-        with pytest.raises(CtyMapValidationError):
-            CtyMap(key_type=None, value_type=123)
+        # Both invalid - key_type=None should be caught first
+        with pytest.raises(CtyMapValidationError, match=r"key_type must be a CtyType instance, got NoneType"):
+            CtyMap(key_type=None, value_type=123) # This will hit key_type check first
+
+        # Invalid key_type (not primitive)
+        with pytest.raises(CtyMapValidationError, match=r"Map key_type must be a primitive type, got CtyList"):
+            CtyMap(key_type=CtyList(element_type=CtyString()), value_type=CtyString())
 
     @pytest.mark.asyncio
     async def test_map_string_representation(self):
@@ -146,8 +148,8 @@ class TestCtyMapValidation:
     @pytest.mark.asyncio
     async def test_empty_map_validation(self):
         """Test validation of empty maps."""
-        # Validate None (should create empty map)
-        result = self.string_map.validate(None)
+        # Validate empty dict (None now raises error)
+        result = self.string_map.validate({})
         assert len(result.value) == 0
 
         # Validate empty dict
