@@ -228,16 +228,20 @@ class TestCtyMapCoverage:
         map_type2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_type3 = CtyMap(key_type=CtyString(), value_type=CtyString())
 
-        with caplog.at_level("DEBUG", logger="pyvider.cty.types.collections.map"):
+        with caplog.at_level("DEBUG", logger="pyvider.telemetry"):
             map_type1.equal(map_type2)
             map_type1.equal(map_type3)
 
-        assert "Checking equality with CtyMap" in caplog.text # More generic check
-        assert "Key types are equal: True" in caplog.text
-        assert "Value types are equal: True" in caplog.text
-        assert "Map types are equal: True" in caplog.text
-        assert "Value types are equal: False" in caplog.text
-        assert "Map types are equal: False" in caplog.text
+            # Assertions moved inside the 'with' block
+            assert "Checking equality with CtyMap" in caplog.text
+            assert "Key types are equal: True" in caplog.text
+            assert "Value types are equal: True" in caplog.text
+            assert "Map types are equal: True" in caplog.text
+            # For the second call map_type1.equal(map_type3)
+            # "Checking equality with CtyMap" will appear again
+            # "Key types are equal: True" will appear again
+            assert "Value types are equal: False" in caplog.text
+            assert "Map types are equal: False" in caplog.text
 
 
     def test_usable_as_branches_with_dynamic(self):

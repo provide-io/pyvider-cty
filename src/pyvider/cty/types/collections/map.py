@@ -81,17 +81,17 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 elif value.type.usable_as(self):
                     logger.debug("🔌🔍🔄 Input CtyValue has usable map type, attempting conversion/validation")
                     try:
-                        inner_value = value.value
-                        inner_key_mapping = getattr(value,'_key_mapping',{})
+                        inner_value = value.value # This is the dict like {CtyValue.number(1): CtyValue.string("v1")}
+                        # inner_key_mapping = getattr(value,'_key_mapping',{}) # This line is not strictly needed if we use inner_value directly
                         if not isinstance(inner_value, dict):
                              raise CtyMapValidationError(f"Internal value of CtyValue map is not a dict: {type(inner_value).__name__}")
-                        input_dict_with_cty_keys = {}
-                        for str_key, inner_val in inner_value.items():
-                            original_key = inner_key_mapping.get(str_key)
-                            if original_key: input_dict_with_cty_keys[original_key] = inner_val
-                            else: input_dict_with_cty_keys[CtyValue(vtype=CtyString(), value=str_key)] = inner_val
-                        input_dict = input_dict_with_cty_keys
-                    except Exception as e:
+
+                        # The keys of inner_value are already the CtyValue instances (e.g. CtyValue.number(1))
+                        # that need to be validated against self.key_type.
+                        # So, input_dict should be inner_value itself.
+                        input_dict = inner_value
+
+                    except Exception as e: # Broad exception catch for safety during this processing
                         raise CtyMapValidationError(f"Error processing CtyValue input map: {e}") from e
                 else:
                     raise CtyMapValidationError(f"Input CtyValue map type {value.type} is not compatible with target type {self}")
@@ -115,14 +115,22 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
             try:
                 if isinstance(k, CtyValue):
-                    if not isinstance(k.type, CtyString): raise CtyMapValidationError(f"Key type mismatch: expected CtyString, got {k.type.__class__.__name__}")
-                    if k.is_null or k.is_unknown: raise CtyMapValidationError("Map keys cannot be null or unknown")
-                    validated_key_cty = k
-                    map_key_str = str(k.value)
+                    # if not isinstance(k.type, CtyString): raise CtyMapValidationError(f"Key type mismatch: expected CtyString, got {k.type.__class__.__name__}")
+                    # if k.is_null or k.is_unknown: raise CtyMapValidationError("Map keys cannot be null or unknown")
+                    # validated_key_cty = k
+                    # map_key_str = str(k.value)
+                    validated_key_cty = self.key_type.validate(k)
+                    if validated_key_cty.is_null or validated_key_cty.is_unknown: # Check result of validation
+                        raise CtyMapValidationError("Validated map key cannot be null or unknown")
+                    map_key_str = str(validated_key_cty.value) # Get the string form of the validated key
                 else:
-                    string_validator = CtyString()
-                    validated_key_cty = string_validator.validate(k)
-                    if validated_key_cty.is_null or validated_key_cty.is_unknown: raise CtyMapValidationError("Map keys cannot be null or unknown after validation")
+                    # string_validator = CtyString()
+                    # validated_key_cty = string_validator.validate(k)
+                    # if validated_key_cty.is_null or validated_key_cty.is_unknown: raise CtyMapValidationError("Map keys cannot be null or unknown after validation")
+                    # map_key_str = str(validated_key_cty.value)
+                    validated_key_cty = self.key_type.validate(k) # Validate raw key against target key type
+                    if validated_key_cty.is_null or validated_key_cty.is_unknown:
+                        raise CtyMapValidationError("Validated map key cannot be null or unknown")
                     map_key_str = str(validated_key_cty.value)
             except Exception as key_err: item_errors.append(f"Invalid key {k!r}: {key_err}")
 
@@ -232,7 +240,16 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def equal(self, other: CtyType) -> bool:
         logger.debug(f"🔌🔍🔄 Checking equality with {type(other).__name__}")
         if not isinstance(other, CtyMap): return False
-        return self.key_type.equal(other.key_type) and self.value_type.equal(other.value_type)
+        # Key equality check
+        key_eq = self.key_type.equal(other.key_type)
+        logger.debug(f"🔌🔍🔄 Key types are equal: {key_eq}")
+        # Value equality check
+        value_eq = self.value_type.equal(other.value_type)
+        logger.debug(f"🔌🔍🔄 Value types are equal: {value_eq}")
+        # Overall map equality
+        map_eq = key_eq and value_eq
+        logger.debug(f"🔌🔍🔄 Map types are equal: {map_eq}")
+        return map_eq
 
     def usable_as(self, other: CtyType) -> bool:
         logger.debug(f"🔌🔍🔄 Checking map usability: self({self!s}) as other({other!s})")

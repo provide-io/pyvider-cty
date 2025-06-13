@@ -43,11 +43,11 @@ class MsgPackEncoder(FormatEncoder):
     concepts.
     """
 
-    # Type marker constants for binary format
-    TYPE_MARKER: ClassVar[bytes] = b"$T"
-    UNKNOWN_MARKER: ClassVar[bytes] = b"$U"
-    NULL_MARKER: ClassVar[bytes] = b"$N"
-    MARKS_MARKER: ClassVar[bytes] = b"$M"
+    # Type marker constants for dictionary representation
+    TYPE_MARKER: ClassVar[str] = "$T"
+    UNKNOWN_MARKER: ClassVar[str] = "$U"
+    NULL_MARKER: ClassVar[str] = "$N"
+    MARKS_MARKER: ClassVar[str] = "$M"
 
     @classmethod
     def format_type(cls) -> WireFormatType:
@@ -180,23 +180,25 @@ class MsgPackEncoder(FormatEncoder):
 
         # Add type information
         if preserve_type:
-            result["$T"] = value.type.__class__.__name__ # Use string key
+            result[cls.TYPE_MARKER] = value.type.__class__.__name__
 
             # Add collection type details if applicable
             if hasattr(value.type, "element_type"): # For CtyList, CtySet
-                result["$E"] = cls._serialize_type_info(value.type.element_type) # Use string key
+                # Using arbitrary string keys like "$E" for element type details
+                result["$E"] = cls._serialize_type_info(value.type.element_type)
             elif hasattr(value.type, "value_type"): # For CtyMap
-                result["$K"] = cls._serialize_type_info(value.type.key_type) # Use string key
-                result["$V"] = cls._serialize_type_info(value.type.value_type) # Use string key
+                # Using arbitrary string keys like "$K", "$V" for key/value type details
+                result["$K"] = cls._serialize_type_info(value.type.key_type)
+                result["$V"] = cls._serialize_type_info(value.type.value_type)
             # TODO: Add CtyTuple and CtyObject if they need detailed type serialization for elements/attributes
 
         # Add state information
         if value.is_unknown:
-            result["$U"] = True # Use string key
+            result[cls.UNKNOWN_MARKER] = True
             return result
 
         if value.is_null:
-            result["$N"] = True # Use string key
+            result[cls.NULL_MARKER] = True
             return result
 
         # Add value based on type using match/case
@@ -233,7 +235,7 @@ class MsgPackEncoder(FormatEncoder):
         # Add marks if present
         marks = getattr(value, "_marks", None)
         if marks:
-            result["$M"] = list(str(m) for m in marks) # Use string key
+            result[cls.MARKS_MARKER] = list(str(m) for m in marks)
 
         return result
 
@@ -257,27 +259,21 @@ class MsgPackEncoder(FormatEncoder):
         try:
             cty_value_intermediate = None # Ensure cty_value_intermediate is defined in all paths
 
-            # Decode byte keys to strings for consistent lookup
-            unknown_key_str = cls.UNKNOWN_MARKER.decode('utf-8')
-            null_key_str = cls.NULL_MARKER.decode('utf-8')
-            type_key_str = cls.TYPE_MARKER.decode('utf-8')
-            marks_key_str = cls.MARKS_MARKER.decode('utf-8')
-
             # Handle special states
-            if unknown_key_str in data and data[unknown_key_str] is True:
+            if cls.UNKNOWN_MARKER in data and data[cls.UNKNOWN_MARKER] is True:
                 cty_value_intermediate = cls._create_unknown_value(data)
-            elif null_key_str in data and data[null_key_str] is True:
+            elif cls.NULL_MARKER in data and data[cls.NULL_MARKER] is True:
                 cty_value_intermediate = cls._create_null_value(data)
             # Create value based on type
-            elif preserve_type and type_key_str in data:
+            elif preserve_type and cls.TYPE_MARKER in data:
                 cty_value_intermediate = cls._create_typed_value(data)
             else:
                 # This path is taken if preserve_type is False AND no $U or $N marker was True
                 cty_value_intermediate = cls._create_untyped_value(data)
 
             # Restore marks if present and value is created
-            if cty_value_intermediate and marks_key_str in data:
-                marks_data = data.get(marks_key_str)
+            if cty_value_intermediate and cls.MARKS_MARKER in data:
+                marks_data = data.get(cls.MARKS_MARKER)
                 if isinstance(marks_data, list):
                     # Assuming marks are strings, if not, adjust Mark class or storage
                     cty_value_intermediate = cty_value_intermediate.with_marks(tuple(str(m) for m in marks_data))
@@ -311,10 +307,12 @@ class MsgPackEncoder(FormatEncoder):
         logger.debug("🧩🔍🔄 Creating unknown CtyValue from MessagePack data")
 
         # Get type information
-        type_name_str = data.get("$T")
-        if not isinstance(type_name_str, str):
+        type_name_str = data.get(cls.TYPE_MARKER)
+        if not isinstance(type_name_str, str): # Should only happen if preserve_type=False and $T is missing
             type_name_str = "CtyDynamic"
+
         initial_type_info = {"name": type_name_str}
+        # Using arbitrary string keys like "$E", "$K", "$V" for collection type details
         if type_name_str == "CtyList" and "$E" in data:
             initial_type_info["element_type_details"] = data["$E"]
         elif type_name_str == "CtySet" and "$E" in data:
@@ -340,10 +338,11 @@ class MsgPackEncoder(FormatEncoder):
         logger.debug("🧩🔍🔄 Creating null CtyValue from MessagePack data")
 
         # Get type information
-        type_name_str = data.get("$T")
-        if not isinstance(type_name_str, str):
+        type_name_str = data.get(cls.TYPE_MARKER)
+        if not isinstance(type_name_str, str): # Should only happen if preserve_type=False and $T is missing
             type_name_str = "CtyDynamic"
         initial_type_info = {"name": type_name_str}
+        # Using arbitrary string keys like "$E", "$K", "$V" for collection type details
         if type_name_str == "CtyList" and "$E" in data:
             initial_type_info["element_type_details"] = data["$E"]
         elif type_name_str == "CtySet" and "$E" in data:
@@ -369,18 +368,18 @@ class MsgPackEncoder(FormatEncoder):
         logger.debug("🧩🔍🔄 Creating typed CtyValue from MessagePack data")
 
         # Get type information
-        type_name_str = data.get("$T") # Use string key
-        if not isinstance(type_name_str, str):
-            type_name_str = "CtyDynamic"
+        type_name_str = data.get(cls.TYPE_MARKER)
+        if not isinstance(type_name_str, str): # Should only happen if $T is missing (e.g. preserve_type=False)
+            type_name_str = "CtyDynamic" # Default type if not specified
 
         initial_type_info = {"name": type_name_str}
 
-        # Use string keys for lookups in `data`
-        if type_name_str == "CtyList" and "$E" in data:
+        # Using arbitrary string keys like "$E", "$K", "$V" for collection type details
+        if type_name_str == "CtyList" and "$E" in data: # Check existence of arbitrary key
             initial_type_info["element_type_details"] = data["$E"]
-        elif type_name_str == "CtySet" and "$E" in data:
+        elif type_name_str == "CtySet" and "$E" in data: # Check existence of arbitrary key
             initial_type_info["element_type_details"] = data["$E"]
-        elif type_name_str == "CtyMap" and "$K" in data and "$V" in data:
+        elif type_name_str == "CtyMap" and "$K" in data and "$V" in data: # Check existence of arbitrary keys
             initial_type_info["key_type_details"] = data["$K"]
             initial_type_info["value_type_details"] = data["$V"]
         # TODO: Add CtyTuple, CtyObject if they store detailed type info under special keys in `data`
@@ -410,22 +409,25 @@ class MsgPackEncoder(FormatEncoder):
                 # element_type details are now part of cty_type (which is a CtyList instance)
                 elements = []
                 for item in value_data: # value_data is a list
-                    if isinstance(item, dict) and ("$T" in item or "$U" in item or "$N" in item): # Use string keys
+                    if isinstance(item, dict) and \
+                       (cls.TYPE_MARKER in item or \
+                        cls.UNKNOWN_MARKER in item or \
+                        cls.NULL_MARKER in item):
                         elements.append(cls._dict_to_value(item))
                     else:
-                        elements.append(item)
+                        elements.append(item) # Assumed primitive or already processed
                 return CtyValue.list(cty_type.element_type, elements)
             case "CtySet":
                 # element_type details are now part of cty_type (which is a CtySet instance)
                 elements_for_set_validation = []
-                if isinstance(value_data, list): # value_data is list from msgpack (e.g., list of dicts or primitives)
-                    for item_as_dict_or_primitive in value_data: # value_data is a list
+                if isinstance(value_data, list): # value_data is list from msgpack
+                    for item_as_dict_or_primitive in value_data:
                         if isinstance(item_as_dict_or_primitive, dict) and \
-                           ("$T" in item_as_dict_or_primitive or \
-                            "$U" in item_as_dict_or_primitive or \
-                            "$N" in item_as_dict_or_primitive): # Use string keys
+                           (cls.TYPE_MARKER in item_as_dict_or_primitive or \
+                            cls.UNKNOWN_MARKER in item_as_dict_or_primitive or \
+                            cls.NULL_MARKER in item_as_dict_or_primitive):
                             elements_for_set_validation.append(cls._dict_to_value(item_as_dict_or_primitive))
-                        else: # Assumed primitive, suitable for element_type.validate() by CtySet.validate
+                        else: # Assumed primitive
                             elements_for_set_validation.append(item_as_dict_or_primitive)
                 # cty_type here is already CtySet(element_type=...)
                 # Use the specific factory to ensure proper validation and construction
@@ -435,10 +437,13 @@ class MsgPackEncoder(FormatEncoder):
                 # key_type and value_type details are now part of cty_type (which is a CtyMap instance)
                 items = {}
                 for k, v_item in value_data.items(): # value_data is a dict
-                    if isinstance(v_item, dict) and ("$T" in v_item or "$U" in v_item or "$N" in v_item): # Use string keys
+                    if isinstance(v_item, dict) and \
+                       (cls.TYPE_MARKER in v_item or \
+                        cls.UNKNOWN_MARKER in v_item or \
+                        cls.NULL_MARKER in v_item):
                         items[k] = cls._dict_to_value(v_item)
                     else:
-                        items[k] = v
+                        items[k] = v_item # Corrected from `v` to `v_item`
                 return CtyValue.map(cty_type.key_type, cty_type.value_type, items)
             case _:
                 # For other types, validate raw value against type
