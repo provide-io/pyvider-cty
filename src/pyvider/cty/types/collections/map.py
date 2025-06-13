@@ -23,7 +23,7 @@ from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
 
 from attrs import define, field, evolve
 
-from pyvider.cty.exceptions import CtyMapValidationError, CtyValidationError
+from pyvider.cty.exceptions import CtyMapValidationError, CtyValidationError, CtyStringValidationError, CtyNumberValidationError
 from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
@@ -114,66 +114,63 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             item_errors = []
 
             try:
-                if isinstance(k, CtyValue):
-                    # Target key type is self.key_type (e.g., CtyString)
-                    # Input key k is a CtyValue (e.g., CtyNumber(1))
-                    if isinstance(self.key_type, CtyDynamic):
-                        validated_key_cty = k # Target is dynamic, accept original key
-                    elif self.key_type.equal(k.type): # Target type matches input key's type
-                        validated_key_cty = k
-                    else:
-                        # This is the case for tests like test_validate_ctyvalue_map_key_type_dynamic_target_incompatible
-                        # where a CtyNumber key is presented to a map expecting CtyString keys.
-                        # We should raise based on this type mismatch directly, rather than trying to validate k.value.
-                        # The error message from CtyString().validate(CtyValue(CtyNumber(X))) is what the test expects.
-                        # So, we call self.key_type.validate(k) to get that specific error.
-                        # This will call, e.g., CtyString().validate(CtyValue(CtyNumber(1)))
-                        validated_key_cty = self.key_type.validate(k)
-                        # If validate didn't raise but returned, it implies some conversion happened that
-                        # might not be desired for keys (e.g. CtyString from CtyDynamic containing number).
-                        # However, CtyString.validate(CtyValue(CtyNumber)) *should* raise.
-                        # If it does, key_err below will catch it.
-                        # If it does not, and validated_key_cty is now, e.g. CtyString('1'), this is the implicit conversion.
-                        # The tests that are failing (DID NOT RAISE) imply that CtyMapValidationError is not being triggered.
-                        # This means this path is taken AND no exception occurs in self.key_type.validate(k)
-                        # AND the resulting validated_key_cty is then used.
-                        # This is the core of the problem for those two tests.
-                        # The fix is to ensure CtyString.validate(CtyValue(CtyNumber)) actually errors out.
-                        # For now, let's assume it *will* error out if types are incompatible for keying.
-                        # The original code in CtyString.validate should handle this.
-                        # If self.key_type.validate(k) raises, it's caught by "except Exception as key_err".
-                        # If it does not raise, then validated_key_cty is the result of that validation.
-                        pass # Let the validate call do its job.
+                # Regardless of whether k is a CtyValue or a raw Python value,
+                # it must be validated against self.key_type.
+                # self.key_type is guaranteed to be a primitive type by __attrs_post_init__.
+                # If self.key_type is CtyDynamic, it will accept any primitive CtyValue or raw value.
+                # If self.key_type is, e.g., CtyString, it will ensure the key is a valid string.
+                validated_key_cty = self.key_type.validate(k)
 
-                    if validated_key_cty.is_null or validated_key_cty.is_unknown:
-                        raise CtyMapValidationError("Map keys cannot be null or unknown")
-                    map_key_str = str(validated_key_cty.value)
-                else: # k is a raw Python value
-                    validated_key_cty = self.key_type.validate(k)
-                    if validated_key_cty.is_null or validated_key_cty.is_unknown:
-                        raise CtyMapValidationError("Map keys cannot be null or unknown after validation")
-                    map_key_str = str(validated_key_cty.value)
+                if validated_key_cty.is_null or validated_key_cty.is_unknown:
+                    # This check might be redundant if self.key_type.validate(k) already disallows null/unknown
+                    # for non-CtyDynamic types, but it's a good safeguard.
+                    # CtyDynamic itself doesn't produce null/unknown unless k is already null/unknown CtyValue.
+                    raise CtyMapValidationError("Map keys cannot be null or unknown after validation against map's key_type.")
+
+                map_key_str = str(validated_key_cty.value)
+
+                # If the original key 'k' was already a CtyValue and compatible (after validation),
+                # we prefer to use it in the key_mapping for type fidelity.
+                # However, validated_key_cty is the one that has passed self.key_type validation.
+                # For simplicity and correctness against self.key_type, we use validated_key_cty.
+                # This means if k was CtyNumber(1) and self.key_type was CtyDynamic(),
+                # validated_key_cty would be CtyNumber(1).
+                # If k was CtyNumber(1) and self.key_type was CtyString(), validate() would raise an error.
+
             except Exception as key_err:
-                # Ensure the path for the specific test error:
-                # "Invalid key CtyValue(...): String validation error: Value is a CtyValue of type CtyNumber..."
-                # This means key_err should be the CtyStringValidationError.
-                item_errors.append(f"Invalid key {k!r}: {key_err}")
+                # Preserve the original key k in the error message for clarity
+                error_prefix = ""
+                if isinstance(key_err, CtyStringValidationError): error_prefix = "String validation error: "
+                elif isinstance(key_err, CtyNumberValidationError): error_prefix = "Number validation error: "
+                elif isinstance(key_err, CtyValidationError): error_prefix = f"{key_err.__class__.__name__}: "
+                item_errors.append(f"Invalid key {k!r}: {error_prefix}{key_err}")
 
-            if item_errors: validation_errors.extend(item_errors); continue
-            assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation"
+            if item_errors:
+                validation_errors.extend(item_errors)
+                continue
 
-            validated_value_cty: Optional[CtyValue] = None # ensure it's defined before try
+            # map_key_str should be non-None if no exception occurred and key is not null/unknown
+            assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation, without errors."
+
+            validated_value_cty: Optional[CtyValue] = None
             try:
                 validated_value_cty = self.value_type.validate(v)
-            except Exception as val_err: item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
+            except Exception as val_err:
+                item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
 
-            if item_errors: validation_errors.extend(item_errors); continue
+            if item_errors: # Check again if value validation added errors
+                validation_errors.extend(item_errors)
+                continue
 
-            if validated_key_cty is not None and validated_value_cty is not None :
+            # Both key and value have been validated successfully and are not None CtyValues themselves
+            if validated_key_cty is not None and validated_value_cty is not None:
                 validated_map[map_key_str] = validated_value_cty
+                # Store the key that was successfully validated against self.key_type
                 key_mapping[map_key_str] = validated_key_cty
             else:
-                if not item_errors: validation_errors.append(f"Internal error: validation parts are None for key {k!r}")
+                 # This case should ideally not be reached if assertions and checks above are correct
+                if not item_errors: # Avoid adding redundant generic error if specific one exists
+                    validation_errors.append(f"Internal error: validated key or value is None for original key {k!r}")
 
         if validation_errors:
             raise CtyMapValidationError("Map validation failed:\n - " + "\n - ".join(validation_errors))
@@ -263,22 +260,9 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         return ElementIterator(self.key_type, internal_map, key_mapping)
 
     def equal(self, other: CtyType) -> bool:
-        other_repr = str(other) if isinstance(other, CtyType) else repr(other)
-        # Using print for testability with capsys
-        print(f"DEBUG_MAP_EQUAL: Checking equality of CtyMap({self!s}) with {type(other).__name__}({other_repr})")
-        if not isinstance(other, CtyMap):
-            print(f"DEBUG_MAP_EQUAL: Other type is not CtyMap (got {type(other).__name__}), types are not equal.")
-            return False
-
-        key_types_equal = self.key_type.equal(other.key_type)
-        print(f"DEBUG_MAP_EQUAL: Key types are equal: {key_types_equal} (Self: {self.key_type!s}, Other: {other.key_type!s})")
-
-        value_types_equal = self.value_type.equal(other.value_type)
-        print(f"DEBUG_MAP_EQUAL: Value types are equal: {value_types_equal} (Self: {self.value_type!s}, Other: {other.value_type!s})")
-
-        result = key_types_equal and value_types_equal
-        print(f"DEBUG_MAP_EQUAL: Overall map type equality: {result}")
-        return result
+        logger.debug(f"🔌🔍🔄 Checking equality with {type(other).__name__}")
+        if not isinstance(other, CtyMap): return False
+        return self.key_type.equal(other.key_type) and self.value_type.equal(other.value_type)
 
     def usable_as(self, other: CtyType) -> bool:
         logger.debug(f"🔌🔍🔄 Checking map usability: self({self!s}) as other({other!s})")

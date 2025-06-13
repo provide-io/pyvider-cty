@@ -183,16 +183,11 @@ class MsgPackEncoder(FormatEncoder):
             result[cls.TYPE_MARKER] = value.type.__class__.__name__
 
             # Add collection type details if applicable
-            if hasattr(value.type, "element_type"): # For CtyList, CtySet
-                # Recursively get type information for nested types
-                result[b"$E"] = cls._type_to_dict(value.type.element_type)
-            elif hasattr(value.type, "value_type"): # For CtyMap
-                result[b"$K"] = cls._type_to_dict(value.type.key_type)
-                result[b"$V"] = cls._type_to_dict(value.type.value_type)
-            elif hasattr(value.type, "element_types"): # For CtyTuple
-                result[b"$ET"] = [cls._type_to_dict(et) for et in value.type.element_types]
-            elif hasattr(value.type, "attribute_types"): # For CtyObject
-                result[b"$AT"] = {name: cls._type_to_dict(attr_type) for name, attr_type in value.type.attribute_types.items()}
+            if hasattr(value.type, "element_type"):
+                result[b"$E"] = value.type.element_type.__class__.__name__
+            elif hasattr(value.type, "value_type"):
+                result[b"$K"] = value.type.key_type.__class__.__name__
+                result[b"$V"] = value.type.value_type.__class__.__name__
 
         # Add state information
         if value.is_unknown:
@@ -240,35 +235,6 @@ class MsgPackEncoder(FormatEncoder):
             result[cls.MARKS_MARKER] = list(str(m) for m in marks)
 
         return result
-
-    @classmethod
-    def _type_to_dict(cls, cty_type_obj) -> dict[str, object] | str:
-        """
-        Convert a CtyType object to a serializable dictionary or string representation.
-        """
-        type_name = cty_type_obj.__class__.__name__
-        if hasattr(cty_type_obj, "element_type"): # CtyList, CtySet
-            return {
-                cls.TYPE_MARKER: type_name,
-                b"$E": cls._type_to_dict(cty_type_obj.element_type)
-            }
-        elif hasattr(cty_type_obj, "value_type"): # CtyMap
-            return {
-                cls.TYPE_MARKER: type_name,
-                b"$K": cls._type_to_dict(cty_type_obj.key_type),
-                b"$V": cls._type_to_dict(cty_type_obj.value_type)
-            }
-        elif hasattr(cty_type_obj, "element_types"): # CtyTuple
-            return {
-                cls.TYPE_MARKER: type_name,
-                b"$ET": [cls._type_to_dict(et) for et in cty_type_obj.element_types]
-            }
-        elif hasattr(cty_type_obj, "attribute_types"): # CtyObject
-            return {
-                cls.TYPE_MARKER: type_name,
-                b"$AT": {name: cls._type_to_dict(attr_type) for name, attr_type in cty_type_obj.attribute_types.items()}
-            }
-        return type_name # For primitive types or CtyDynamic
 
     @classmethod
     def _dict_to_value(cls, data: dict[str, object], preserve_type: bool = True) -> CtyValue:
@@ -380,17 +346,8 @@ class MsgPackEncoder(FormatEncoder):
         logger.debug("🧩🔍🔄 Creating typed CtyValue from MessagePack data")
 
         # Get type information
-        type_name_bytes = data.get(cls.TYPE_MARKER)
-        if isinstance(type_name_bytes, bytes): # raw=True might make keys bytes
-            type_name = type_name_bytes.decode('utf-8')
-        elif isinstance(type_name_bytes, str):
-            type_name = type_name_bytes
-        else: # Default or missing
-            type_name = "CtyDynamic"
-
-        # value_data could be under "value" or b"value" if raw=True
-        value_data = data.get("value", data.get(b"value"))
-
+        type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
+        value_data = data.get("value")
 
         # Create appropriate CtyType
         cty_type = cls._create_type_from_name(type_name, data)
@@ -398,11 +355,6 @@ class MsgPackEncoder(FormatEncoder):
         # Create value based on type using match/case
         match type_name:
             case "CtyString":
-                if isinstance(value_data, bytes):
-                    # If raw=True resulted in bytes for a CtyString type,
-                    # the test expects it to become CtyDynamic with raw bytes.
-                    from pyvider.cty.types import CtyDynamic
-                    return CtyValue(CtyDynamic(), value_data)
                 return CtyValue.string(value_data)
             case "CtyNumber":
                 # Handle numeric conversions
@@ -413,80 +365,48 @@ class MsgPackEncoder(FormatEncoder):
             case "CtyBool":
                 return CtyValue.bool(value_data)
             case "CtyList":
-                # cty_type is CtyList(element_type=...) created by _create_type_from_name
-                # which correctly used data.get(b"$E") etc.
+                # Handle list elements
+                element_type = cls._create_type_from_name(
+                    data.get(b"$E", "CtyDynamic"), {})
                 elements = []
-                if isinstance(value_data, list):
-                    for item_data in value_data:
-                        # If item_data is a dict representing a CtyValue, convert it
-                        if isinstance(item_data, dict) and (
-                            cls.TYPE_MARKER in item_data or b'$T' in item_data or # Check both str and bytes keys
-                            cls.UNKNOWN_MARKER in item_data or b'$U' in item_data or
-                            cls.NULL_MARKER in item_data or b'$N' in item_data
-                        ):
-                            elements.append(cls._dict_to_value(item_data))
-                        else: # Primitive or already converted
-                            elements.append(item_data)
-                return CtyValue(cty_type, elements)
+                for item in value_data:
+                    if isinstance(item, dict) and (cls.TYPE_MARKER in item or 
+                                                  cls.UNKNOWN_MARKER in item or 
+                                                  cls.NULL_MARKER in item):
+                        elements.append(cls._dict_to_value(item))
+                    else:
+                        elements.append(item)
+                return CtyValue.list(element_type, elements)
             case "CtySet":
-                # cty_type is CtySet(element_type=...)
+                element_type = cls._create_type_from_name(
+                    data.get(b"$E", "CtyDynamic"), {})
                 elements_for_set_validation = []
-                if isinstance(value_data, list):
-                    for item_data in value_data:
-                        if isinstance(item_data, dict) and (
-                            cls.TYPE_MARKER in item_data or b'$T' in item_data or
-                            cls.UNKNOWN_MARKER in item_data or b'$U' in item_data or
-                            cls.NULL_MARKER in item_data or b'$N' in item_data
-                        ):
-                            elements_for_set_validation.append(cls._dict_to_value(item_data))
-                        else:
-                            elements_for_set_validation.append(item_data)
+                if isinstance(value_data, list): # value_data is list from msgpack (e.g., list of dicts or primitives)
+                    for item_as_dict_or_primitive in value_data:
+                        if isinstance(item_as_dict_or_primitive, dict) and \
+                           (cls.TYPE_MARKER in item_as_dict_or_primitive or \
+                            cls.UNKNOWN_MARKER in item_as_dict_or_primitive or \
+                            cls.NULL_MARKER in item_as_dict_or_primitive):
+                            elements_for_set_validation.append(cls._dict_to_value(item_as_dict_or_primitive))
+                        else: # Assumed primitive, suitable for element_type.validate() by CtySet.validate
+                            elements_for_set_validation.append(item_as_dict_or_primitive)
+                # cty_type here is already CtySet(element_type=element_type)
                 return CtyValue(cty_type, elements_for_set_validation)
             case "CtyMap":
-                # cty_type is CtyMap(key_type=..., value_type=...)
+                # Handle map entries
+                key_type = cls._create_type_from_name(
+                    data.get(b"$K", "CtyString"), {})
+                value_type = cls._create_type_from_name(
+                    data.get(b"$V", "CtyDynamic"), {})
                 items = {}
-                if isinstance(value_data, dict):
-                    for k_bytes_or_str, v_item_data in value_data.items():
-                        # Key in msgpack dict could be bytes if raw=True
-                        k_str = k_bytes_or_str.decode('utf-8') if isinstance(k_bytes_or_str, bytes) else k_bytes_or_str
-                        if isinstance(v_item_data, dict) and (
-                            cls.TYPE_MARKER in v_item_data or b'$T' in v_item_data or
-                            cls.UNKNOWN_MARKER in v_item_data or b'$U' in v_item_data or
-                            cls.NULL_MARKER in v_item_data or b'$N' in v_item_data
-                        ):
-                            items[k_str] = cls._dict_to_value(v_item_data)
-                        else: # Primitive or already converted
-                            items[k_str] = v_item_data
-                return CtyValue(cty_type, items)
-            case "CtyTuple":
-                # cty_type is CtyTuple(element_types=[...])
-                elements = []
-                if isinstance(value_data, list):
-                    for item_data in value_data:
-                        if isinstance(item_data, dict) and (
-                            cls.TYPE_MARKER in item_data or b'$T' in item_data or
-                            cls.UNKNOWN_MARKER in item_data or b'$U' in item_data or
-                            cls.NULL_MARKER in item_data or b'$N' in item_data
-                        ):
-                            elements.append(cls._dict_to_value(item_data))
-                        else: # Primitive or already converted
-                            elements.append(item_data)
-                return CtyValue(cty_type, elements)
-            case "CtyObject":
-                # cty_type is CtyObject(attribute_types={...})
-                attributes = {}
-                if isinstance(value_data, dict):
-                    for attr_name_bytes_or_str, attr_val_item_data in value_data.items():
-                        attr_name_str = attr_name_bytes_or_str.decode('utf-8') if isinstance(attr_name_bytes_or_str, bytes) else attr_name_bytes_or_str
-                        if isinstance(attr_val_item_data, dict) and (
-                            cls.TYPE_MARKER in attr_val_item_data or b'$T' in attr_val_item_data or
-                            cls.UNKNOWN_MARKER in attr_val_item_data or b'$U' in attr_val_item_data or
-                            cls.NULL_MARKER in attr_val_item_data or b'$N' in attr_val_item_data
-                        ):
-                            attributes[attr_name_str] = cls._dict_to_value(attr_val_item_data)
-                        else: # Primitive or already converted
-                            attributes[attr_name_str] = attr_val_item_data
-                return CtyValue(cty_type, attributes)
+                for k, v in value_data.items():
+                    if isinstance(v, dict) and (cls.TYPE_MARKER in v or 
+                                               cls.UNKNOWN_MARKER in v or 
+                                               cls.NULL_MARKER in v):
+                        items[k] = cls._dict_to_value(v)
+                    else:
+                        items[k] = v
+                return CtyValue.map(key_type, value_type, items)
             case _:
                 # For other types, validate raw value against type
                 return cty_type.validate(value_data)
@@ -534,7 +454,7 @@ class MsgPackEncoder(FormatEncoder):
                 raise EncodingError(f"Cannot infer type for value: {value}", encoding="msgpack")
 
     @classmethod
-    def _create_type_from_name(cls, type_info: dict[str, object] | str, legacy_data_for_collections: dict[str, object] | None = None) -> 'CtyType':
+    def _create_type_from_name(cls, type_name: str, data: dict[str, object]) -> 'CtyType':
         """
         Create a CTY type from its name.
 
@@ -548,40 +468,18 @@ class MsgPackEncoder(FormatEncoder):
         Raises:
             EncodingError: If type creation fails
         """
-        logger.debug(f"🧩🔍🔄 Creating type from info: {type_info}")
+        logger.debug(f"🧩🔍🔄 Creating type from name: {type_name}")
 
         try:
             # Import all types
             from pyvider.cty.types import (
                 CtyBool, CtyNumber, CtyString,
                 CtyList, CtyMap, CtySet,
-                CtyObject, CtyTuple, CtyDynamic, CtyType,
+                CtyObject, CtyTuple, CtyDynamic,
             )
 
-            if isinstance(type_info, bytes): # Handle bytes from raw unpacking
-                type_name_str = type_info.decode('utf-8')
-                data_source = legacy_data_for_collections if legacy_data_for_collections else {}
-            elif isinstance(type_info, str): # Primitive type name or legacy collection
-                type_name_str = type_info
-                # Handle legacy data for collections if present
-                if legacy_data_for_collections and type_name_str in ["CtyList", "CtySet", "CtyMap"]:
-                    data_source = legacy_data_for_collections
-                else: # Primitive or dynamic
-                    data_source = {} # No further type info needed for primitives from string
-            elif isinstance(type_info, dict): # Nested type structure
-                type_name_candidate = type_info.get(cls.TYPE_MARKER, "CtyDynamic")
-                if isinstance(type_name_candidate, bytes):
-                    type_name_str = type_name_candidate.decode('utf-8')
-                else:
-                    type_name_str = type_name_candidate
-                data_source = type_info # The dict itself contains further type info
-            else:
-                logger.error(f"🧩🔍❌ Invalid type_info format: {type_info}")
-                raise EncodingError(f"Invalid type_info format: {type_info}", encoding="msgpack")
-
-
             # Create appropriate type using match/case
-            match type_name_str:
+            match type_name:
                 case "CtyBool":
                     return CtyBool()
                 case "CtyNumber":
@@ -589,36 +487,25 @@ class MsgPackEncoder(FormatEncoder):
                 case "CtyString":
                     return CtyString()
                 case "CtyList":
-                    element_type_info = data_source.get(b"$E", "CtyDynamic")
-                    element_type = cls._create_type_from_name(element_type_info) # Recursive call
+                    element_type_name = data.get(b"$E", "CtyDynamic")
+                    element_type = cls._create_type_from_name(element_type_name, {})
                     return CtyList(element_type=element_type)
                 case "CtyMap":
-                    key_type_info = data_source.get(b"$K", "CtyString")
-                    value_type_info = data_source.get(b"$V", "CtyDynamic")
-                    key_type = cls._create_type_from_name(key_type_info) # Recursive call
-                    value_type = cls._create_type_from_name(value_type_info) # Recursive call
+                    key_type_name = data.get(b"$K", "CtyString")
+                    value_type_name = data.get(b"$V", "CtyDynamic")
+                    key_type = cls._create_type_from_name(key_type_name, {})
+                    value_type = cls._create_type_from_name(value_type_name, {})
                     return CtyMap(key_type=key_type, value_type=value_type)
                 case "CtySet":
-                    element_type_info = data_source.get(b"$E", "CtyDynamic")
-                    element_type = cls._create_type_from_name(element_type_info) # Recursive call
+                    element_type_name = data.get(b"$E", "CtyDynamic")
+                    element_type = cls._create_type_from_name(element_type_name, {})
                     return CtySet(element_type=element_type)
-                case "CtyTuple":
-                    element_type_infos = data_source.get(b"$ET", [])
-                    element_types = [cls._create_type_from_name(eti) for eti in element_type_infos] # Recursive calls
-                    return CtyTuple(element_types=cast(list[CtyType], element_types))
-                case "CtyObject":
-                    attribute_type_infos = data_source.get(b"$AT", {})
-                    attribute_types = {
-                        (name.decode('utf-8') if isinstance(name, bytes) else name): cls._create_type_from_name(ati)
-                        for name, ati in attribute_type_infos.items()
-                    } # Recursive calls
-                    return CtyObject(attribute_types=cast(dict[str, CtyType], attribute_types))
                 case "CtyDynamic" | _:
                     return CtyDynamic()
 
         except Exception as e:
-            error_msg = f"Failed to create type from info {type_info}: {e}"
-            logger.error(f"🧩🔍❌ {error_msg}", exc_info=True)
+            error_msg = f"Failed to create type from name {type_name}: {e}"
+            logger.error(f"🧩🔍❌ {error_msg}")
             raise EncodingError(error_msg, encoding="msgpack") from e
 
     @classmethod

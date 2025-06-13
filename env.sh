@@ -1,38 +1,134 @@
+#!/bin/bash
 #
 # env.sh
 #
-# Sets up the development environment for pyvider.
-# Uses 'uv' for fast virtual environment and package management.
+# Standardized development environment setup script for all 'pyvider' packages.
+#
+# This script uses 'uv' for high-performance virtual environment creation
+# and dependency management. It ensures that all related 'pyvider' sibling
+# packages are installed in editable mode for a seamless development experience
+# across a multi-package project.
+#
+# Usage: From the root of any pyvider package, run: ./env.sh
 #
 
-# Ensure the script is run from its own directory to correctly locate .venv
-ENV_SCRIPT_DIR=$(dirname "${0}")
-CWD=$(pwd)
+# --- Configuration and Setup ---
 
-echo "ENV_SCRIPT_DIR=${ENV_SCRIPT_DIR}"
-echo "CWD: ${CWD}"
+# Use colors for better readability in the terminal.
+COLOR_BLUE='\033[0;34m'
+COLOR_GREEN='\033[0;32m'
+COLOR_YELLOW='\033[0;33m'
+COLOR_NC='\033[0m' # No Color
 
-if ! command -v uv >/dev/null 2>&1; then
-  echo "🚀 Installing 'uv'..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  source "${HOME}/.local/bin/env"
-  echo "✅ 'uv' installed at $(which uv)"
-  uv -V
+# A small helper function to print formatted section headers.
+print_header() {
+    echo -e "\n${COLOR_BLUE}--- ${1} ---${COLOR_NC}"
+}
+
+# Ensure the script is run from a project root containing pyproject.toml.
+if [ ! -f "pyproject.toml" ]; then
+    echo -e "${COLOR_YELLOW}⚠️  Warning: 'pyproject.toml' not found.${COLOR_NC}"
+    echo "Please run this script from the root directory of a pyvider package."
+    exit 1
 fi
 
-echo "🐍 Setting up Python virtual environment using uv..."
+PROJECT_NAME=$(basename "$(pwd)")
+print_header "Setting up environment for '${PROJECT_NAME}'"
 
-echo $(pwd)
+# --- 'uv' Installation ---
+
+# Check for 'uv' and install it if it's not present. 'uv' is a modern,
+# extremely fast Python package manager from Astral.
+if ! command -v uv &> /dev/null; then
+    print_header "🚀 Installing 'uv' package manager"
+    # The official installer from astral.sh
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # --- THIS BLOCK IS THE FIX ---
+    # The uv installer places the binary in either ~/.local/bin or ~/.cargo/bin.
+    # We must source the corresponding environment file to update the shell's PATH.
+    # This logic robustly checks for the correct file before sourcing.
+    UV_ENV_PATH_LOCAL="$HOME/.local/bin/env"
+    UV_ENV_PATH_CARGO="$HOME/.cargo/env"
+
+    if [ -f "$UV_ENV_PATH_LOCAL" ]; then
+        echo "Sourcing environment from '$UV_ENV_PATH_LOCAL' to update PATH..."
+        source "$UV_ENV_PATH_LOCAL"
+    elif [ -f "$UV_ENV_PATH_CARGO" ]; then
+        echo "Sourcing environment from '$UV_ENV_PATH_CARGO' to update PATH..."
+        source "$UV_ENV_PATH_CARGO"
+    else
+        echo -e "${COLOR_YELLOW}⚠️  Warning: Could not find 'uv' environment file to source.${COLOR_NC}"
+        echo "Please ensure '$HOME/.local/bin' or '$HOME/.cargo/bin' is in your PATH."
+    fi
+    # --- END FIX ---
+
+    echo -e "${COLOR_GREEN}✅ 'uv' installed successfully.${COLOR_NC}"
+    uv --version
+else
+    echo -e "${COLOR_GREEN}✅ 'uv' is already installed.${COLOR_NC}"
+    uv --version
+fi
+
+# --- Virtual Environment and Dependencies ---
+
+print_header "🐍 Creating Python virtual environment with 'uv'"
 uv venv
 
-echo "📦 Syncing dependencies using uv..."
-# Ensure all dependency groups, including 'dev', are synced.
-uv sync --all-groups
-uv pip install -e .
-
-echo "🔗 Activating virtual environment..."
+print_header "🔗 Activating the virtual environment"
+# Activation is done before installing dependencies so that any console
+# scripts provided by those dependencies are immediately on the PATH.
 source .venv/bin/activate
+echo "Virtual environment activated at '$(pwd)/.venv'"
 
-export PYTHONPATH="${PWD}/src:${PWD}"
+print_header "📦 Syncing base and development dependencies"
+# 'uv sync' is the modern, fast way to install dependencies from pyproject.toml.
+# Using --all-groups ensures that optional dependencies, like those for
+# testing and linting, are also installed.
+uv sync --all-groups
 
-echo "✅ Environment setup complete. PYTHONPATH set to: ${PYTHONPATH}"
+print_header "✏️ Installing '${PROJECT_NAME}' in editable mode"
+# This allows local source code changes to be reflected immediately without
+# needing to reinstall the package. The --no-deps flag prevents re-installing
+# dependencies that `uv sync` just handled.
+uv pip install --no-deps -e .
+
+# --- Cross-Package Editable Installs ---
+
+print_header "🤝 Installing sibling 'pyvider' packages in editable mode"
+# This is the key logic for multi-package development. It ensures that local,
+# unpublished changes in one pyvider package are used by others that depend on it.
+
+# Correctly handle the case where we are in '/' and '..' is still '/'
+PARENT_DIR=$(dirname "$(pwd)")
+if [ "$PARENT_DIR" = "/" ] && [ "$(pwd)" = "/" ]; then
+    echo "Running in root directory, skipping sibling search."
+else
+    for dir in "${PARENT_DIR}"/pyvider*; do
+        # Check if the matched item is actually a directory.
+        if [ -d "${dir}" ]; then
+            SIBLING_PACKAGE_NAME=$(basename "${dir}")
+            echo "Found sibling package: '${SIBLING_PACKAGE_NAME}'. Installing in editable mode..."
+            # We use --no-deps here for a crucial reason: the main `uv sync` has
+            # already resolved and installed the complete dependency graph.
+            # This command's only job is to create a "link" (.pth file) to the
+            # sibling's source code, effectively overriding the PyPI version.
+            uv pip install --no-deps -e "${dir}"
+        fi
+    done
+fi
+
+
+# --- Finalization ---
+
+print_header "🔧 Configuring PYTHONPATH"
+# Prepending the current directory's src and root to PYTHONPATH ensures
+# that local modules are resolved correctly, supporting both 'src' and flat layouts.
+export PYTHONPATH="${PWD}/src:${PWD}:${PYTHONPATH}"
+echo "PYTHONPATH set to: ${PYTHONPATH}"
+
+print_header "✅ Environment setup complete!"
+echo -e "The '${COLOR_GREEN}${PROJECT_NAME}${COLOR_NC}' development environment is ready."
+echo "The virtual environment is active in this shell."
+echo "To exit, simply run 'deactivate'."
+

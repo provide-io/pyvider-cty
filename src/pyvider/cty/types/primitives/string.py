@@ -79,56 +79,63 @@ class CtyString(CtyType[str]):
         logger.debug(f"🔤🔍🔄 Validating value as string: {value!r}")
 
         # Handle CtyValue input
-        from pyvider.cty.values import CtyValue
-        from pyvider.cty.types.structural import CtyDynamic
-        logger.debug(f"🔤🔍🔄 ENTER CtyString.validate with value type: {type(value)}, value: {value!r}")
-
         if isinstance(value, CtyValue):
-            logger.debug(f"🔤🔍 CtyString.validate received CtyValue. value.type is {value.type!r} (class: {value.type.__class__.__name__})")
-
-            is_type_string = isinstance(value.type, CtyString)
-            logger.debug(f"🔤🔍 Condition: isinstance(value.type, CtyString) is {is_type_string}")
-            if is_type_string:
-                logger.debug("🔤🔍✅ Path 1: Value is CtyValue(CtyString)")
-                return value
-
-            is_type_dynamic = isinstance(value.type, CtyDynamic)
-            logger.debug(f"🔤🔍 Condition: isinstance(value.type, CtyDynamic) is {is_type_dynamic}")
-            if is_type_dynamic:
-                logger.debug(f"🔤🔍 Path 2: Handling CtyDynamic. Unknown: {value.is_unknown}, Null: {value.is_null}")
-                if value.is_unknown:
-                    logger.debug("🔤🔍✅ CtyDynamic input is unknown, returning unknown CtyString")
-                    return CtyValue.unknown(self)
-                if value.is_null:
-                    logger.debug("🔤🔍✅ CtyDynamic input is null, returning CtyString('')")
-                    return CtyValue(vtype=self, value="")
-                try:
-                    str_val = str(value.value)
-                    logger.debug(f"🔤🔍✅ Converted CtyDynamic's inner value ({value.value!r}) to string: {str_val!r}")
-                    return CtyValue(vtype=self, value=str_val)
-                except Exception as e:
-                    error_msg = f"Failed to convert CtyDynamic's inner value ({value.value!r}) to string: {e}"
+            if isinstance(value.type, CtyString):
+                # NEW CHECK: Ensure the inner value of a CtyString-typed CtyValue is actually a string
+                if not isinstance(value.value, str):
+                    # This is the malformed case like CtyValue(CtyString, CtyValue(CNumber,...))
+                    error_msg = (f"Value is a CtyValue typed as CtyString, but its internal value "
+                                 f"is not a Python string, got {type(value.value).__name__}. "
+                                 f"This may indicate a malformed CtyValue.")
+                    # Assuming logger is available as in the original code
                     logger.error(f"🔤❗❌ {error_msg}")
-                    raise CtyStringValidationError(error_msg) from e
-            else: # Path 3: CtyValue of other type (e.g. CtyNumber)
-                error_msg = f"Value is a CtyValue of type {value.type.__class__.__name__}, which cannot be automatically converted to CtyString. Expected CtyString or CtyDynamic."
-                logger.error(f"🔤❗❌ Path 3 RAISING ERROR: {error_msg}")
+                    raise CtyStringValidationError(error_msg)
+                # If this check passes, then it's a correctly formed CtyValue(CtyString, "some_python_string")
+                # The original log message for this path can be kept or updated if desired.
+                logger.debug("🔤🔍✅ Value is already a CtyValue with CtyString type and valid internal string")
+                return value
+            # If it's a CtyValue of another type, it's a type mismatch for string validation.
+            # String conversion should be explicit via other mechanisms if needed, not implicit in validate.
+            # unless it's dynamic.
+            from pyvider.cty.types.structural import CtyDynamic
+            if not isinstance(value.type, CtyDynamic): # Allow CtyDynamic to be validated as string by converting its value
+                error_msg = f"Value is a CtyValue of type {value.type.__class__.__name__}, not CtyString or CtyDynamic"
+                logger.error(f"🔤❗❌ {error_msg}")
                 raise CtyStringValidationError(error_msg)
 
-        # Path 4: Raw Python types
-        logger.debug(f"🔤🔍 Path 4: Handling as raw Python type: {value!r}")
+            # If it's CtyDynamic, proceed to validate its inner value as a string
+            if not value._is_unknown and not value._is_null:
+                try:
+                    # Convert inner value of CtyDynamic to string
+                    str_val = str(value.value)
+                    logger.debug(f"🔤🔍✅ Converted CtyDynamic's inner value to string: {str_val!r}")
+                    return CtyValue(vtype=self, value=str_val)
+                except Exception as e:
+                    error_msg = f"Failed to convert CtyDynamic's inner value to string: {e}"
+                    logger.error(f"🔤❗❌ {error_msg}")
+                    raise CtyStringValidationError(error_msg) from e
+            elif value._is_unknown: # Propagate unknown
+                 return CtyValue.unknown(self)
+            elif value._is_null: # Convert null dynamic to empty string CtyValue
+                # Even if it's a null CtyDynamic, when validating as string, it should become an empty string.
+                # This behavior might need review if strict None validation is desired universally.
+                # For now, aligning with "None becomes empty string" for direct None.
+                 return CtyValue(vtype=self, value="")
+
+        # Raise error for None input
         if value is None:
             error_msg = "String value cannot be None."
             logger.error(f"🔤❗❌ {error_msg}")
             raise CtyStringValidationError(error_msg)
 
+        # Handle direct string
         if isinstance(value, str):
-            logger.debug("🔤🔍✅ Value is a raw string")
+            logger.debug("🔤🔍✅ Value is a string")
             return CtyValue(vtype=self, value=value)
 
-        # Path 5: Other raw types (int, bool etc.)
+        # --- REJECT ALL OTHER TYPES ---
         error_msg = f"Value must be a string, got {type(value).__name__}"
-        logger.error(f"🔤❗❌ RAISING ERROR (raw type path): {error_msg}")
+        logger.error(f"🔤❗❌ {error_msg}")
         raise CtyStringValidationError(error_msg)
 
     def equal(self, other: CtyType[Any]) -> bool:
