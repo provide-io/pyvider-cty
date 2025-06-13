@@ -79,47 +79,9 @@ class CtyValue(Generic[T]):
         Perform post-initialization validation and logging.
 
         Logs information about the created CtyValue instance to aid in debugging.
-        Also, corrects _is_null if it's True for a non-unknown value that has a non-None _value.
         """
-        # Standard log
-        try:
-            value_repr = repr(self._value)
-        except TypeError:
-            value_repr = f"<UnhashableRepr for type {type(self._value).__name__}>"
-        logger.debug(f"🔄🔧✅ Creating CtyValue of type {self._vtype.__class__.__name__}, unknown: {self._is_unknown}, null: {self._is_null}, value: {value_repr}")
-
-        # Correction logic for _is_null
-        # self is frozen, so use object.__setattr__
-        if not self._is_unknown and self._value is not None and self._is_null:
-            logger.warning(
-                f"Correcting _is_null to False for CtyValue of type {self._vtype.__class__.__name__} "
-                f"with non-None _value ({self._value!r}) and _is_unknown=False."
-            )
-            object.__setattr__(self, '_is_null', False)
-
-        # Ensure that if a value is unknown, it's not also null, and its internal value is None.
-        if self._is_unknown:
-            if self._is_null:
-                logger.warning(
-                    f"Correcting _is_null to False for CtyValue of type {self._vtype.__class__.__name__} "
-                    f"because it is unknown."
-                )
-                object.__setattr__(self, '_is_null', False)
-            if self._value is not None:
-                logger.warning(
-                    f"Correcting _value to None for CtyValue of type {self._vtype.__class__.__name__} "
-                    f"because it is unknown."
-                )
-                object.__setattr__(self, '_value', None)
-        # Ensure that if a value is null (and not unknown), its internal value is None.
-        elif self._is_null: # self._is_unknown is False here
-            if self._value is not None:
-                logger.warning(
-                    f"Correcting _value to None for CtyValue of type {self._vtype.__class__.__name__} "
-                    f"because it is null and not unknown."
-                )
-                object.__setattr__(self, '_value', None)
-
+        # No validation needed here as attrs handles frozen=True
+        logger.debug(f"🔄🔧✅ Creating CtyValue of type {self._vtype.__class__.__name__}")
 
     @property
     def type(self) -> CtyType[T]:
@@ -179,17 +141,7 @@ class CtyValue(Generic[T]):
         Returns:
             bool: True if the value is null, False otherwise
         """
-        logger.debug(f"CtyValue.is_null accessed for id {id(self)}: _is_null field is {self._is_null}, _value is {self._value!r}, type is {self._vtype.__class__.__name__}")
-        # Original logic restored:
-        if self._is_null:
-            return True
-        # Dynamic null check: A CtyDynamic value is considered null if its internal value is None.
-        # Ensure CtyDynamic is imported if used like this, or compare by name.
-        # Assuming CtyDynamic is available in the scope (it should be via from ..types import CtyDynamic or similar)
-        from pyvider.cty.types import CtyDynamic # Ensure it's in scope for isinstance
-        if isinstance(self._vtype, CtyDynamic) and self._value is None:
-            return True
-        return False
+        return self._is_null
 
     def has_mark(self, mark: Any) -> bool:
         """
