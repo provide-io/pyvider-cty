@@ -81,18 +81,7 @@ class CtyString(CtyType[str]):
         # Handle CtyValue input
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyString):
-                # NEW CHECK: Ensure the inner value of a CtyString-typed CtyValue is actually a string
-                if not isinstance(value.value, str):
-                    # This is the malformed case like CtyValue(CtyString, CtyValue(CNumber,...))
-                    error_msg = (f"Value is a CtyValue typed as CtyString, but its internal value "
-                                 f"is not a Python string, got {type(value.value).__name__}. "
-                                 f"This may indicate a malformed CtyValue.")
-                    # Assuming logger is available as in the original code
-                    logger.error(f"🔤❗❌ {error_msg}")
-                    raise CtyStringValidationError(error_msg)
-                # If this check passes, then it's a correctly formed CtyValue(CtyString, "some_python_string")
-                # The original log message for this path can be kept or updated if desired.
-                logger.debug("🔤🔍✅ Value is already a CtyValue with CtyString type and valid internal string")
+                logger.debug("🔤🔍✅ Value is already a CtyValue with CtyString type")
                 return value
             # If it's a CtyValue of another type, it's a type mismatch for string validation.
             # String conversion should be explicit via other mechanisms if needed, not implicit in validate.

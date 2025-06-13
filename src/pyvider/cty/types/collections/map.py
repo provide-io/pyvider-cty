@@ -23,7 +23,7 @@ from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
 
 from attrs import define, field, evolve
 
-from pyvider.cty.exceptions import CtyMapValidationError, CtyValidationError, CtyStringValidationError, CtyNumberValidationError
+from pyvider.cty.exceptions import CtyMapValidationError, CtyValidationError
 from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
@@ -114,63 +114,33 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             item_errors = []
 
             try:
-                # Regardless of whether k is a CtyValue or a raw Python value,
-                # it must be validated against self.key_type.
-                # self.key_type is guaranteed to be a primitive type by __attrs_post_init__.
-                # If self.key_type is CtyDynamic, it will accept any primitive CtyValue or raw value.
-                # If self.key_type is, e.g., CtyString, it will ensure the key is a valid string.
-                validated_key_cty = self.key_type.validate(k)
+                if isinstance(k, CtyValue):
+                    if not isinstance(k.type, CtyString): raise CtyMapValidationError(f"Key type mismatch: expected CtyString, got {k.type.__class__.__name__}")
+                    if k.is_null or k.is_unknown: raise CtyMapValidationError("Map keys cannot be null or unknown")
+                    validated_key_cty = k
+                    map_key_str = str(k.value)
+                else:
+                    string_validator = CtyString()
+                    validated_key_cty = string_validator.validate(k)
+                    if validated_key_cty.is_null or validated_key_cty.is_unknown: raise CtyMapValidationError("Map keys cannot be null or unknown after validation")
+                    map_key_str = str(validated_key_cty.value)
+            except Exception as key_err: item_errors.append(f"Invalid key {k!r}: {key_err}")
 
-                if validated_key_cty.is_null or validated_key_cty.is_unknown:
-                    # This check might be redundant if self.key_type.validate(k) already disallows null/unknown
-                    # for non-CtyDynamic types, but it's a good safeguard.
-                    # CtyDynamic itself doesn't produce null/unknown unless k is already null/unknown CtyValue.
-                    raise CtyMapValidationError("Map keys cannot be null or unknown after validation against map's key_type.")
+            if item_errors: validation_errors.extend(item_errors); continue
+            assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation"
 
-                map_key_str = str(validated_key_cty.value)
-
-                # If the original key 'k' was already a CtyValue and compatible (after validation),
-                # we prefer to use it in the key_mapping for type fidelity.
-                # However, validated_key_cty is the one that has passed self.key_type validation.
-                # For simplicity and correctness against self.key_type, we use validated_key_cty.
-                # This means if k was CtyNumber(1) and self.key_type was CtyDynamic(),
-                # validated_key_cty would be CtyNumber(1).
-                # If k was CtyNumber(1) and self.key_type was CtyString(), validate() would raise an error.
-
-            except Exception as key_err:
-                # Preserve the original key k in the error message for clarity
-                error_prefix = ""
-                if isinstance(key_err, CtyStringValidationError): error_prefix = "String validation error: "
-                elif isinstance(key_err, CtyNumberValidationError): error_prefix = "Number validation error: "
-                elif isinstance(key_err, CtyValidationError): error_prefix = f"{key_err.__class__.__name__}: "
-                item_errors.append(f"Invalid key {k!r}: {error_prefix}{key_err}")
-
-            if item_errors:
-                validation_errors.extend(item_errors)
-                continue
-
-            # map_key_str should be non-None if no exception occurred and key is not null/unknown
-            assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation, without errors."
-
-            validated_value_cty: Optional[CtyValue] = None
+            validated_value_cty: Optional[CtyValue] = None # ensure it's defined before try
             try:
                 validated_value_cty = self.value_type.validate(v)
-            except Exception as val_err:
-                item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
+            except Exception as val_err: item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
 
-            if item_errors: # Check again if value validation added errors
-                validation_errors.extend(item_errors)
-                continue
+            if item_errors: validation_errors.extend(item_errors); continue
 
-            # Both key and value have been validated successfully and are not None CtyValues themselves
-            if validated_key_cty is not None and validated_value_cty is not None:
+            if validated_key_cty is not None and validated_value_cty is not None :
                 validated_map[map_key_str] = validated_value_cty
-                # Store the key that was successfully validated against self.key_type
                 key_mapping[map_key_str] = validated_key_cty
             else:
-                 # This case should ideally not be reached if assertions and checks above are correct
-                if not item_errors: # Avoid adding redundant generic error if specific one exists
-                    validation_errors.append(f"Internal error: validated key or value is None for original key {k!r}")
+                if not item_errors: validation_errors.append(f"Internal error: validation parts are None for key {k!r}")
 
         if validation_errors:
             raise CtyMapValidationError("Map validation failed:\n - " + "\n - ".join(validation_errors))

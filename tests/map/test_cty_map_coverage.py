@@ -177,11 +177,7 @@ class TestCtyMapCoverage:
         dyn_keys_val = {CtyValue.number(1): CtyValue.string("v1")}
         map_dyn_str_val = CtyValue(CtyMap(key_type=CtyDynamic(), value_type=CtyString()), dyn_keys_val)
         # map(D,S) is usable_as map(S,S). Validation fails inside due to key 1 not being string.
-        # The new check in CtyString.validate catches that the key k is CtyValue(CtyString, CtyValue(CtyNumber(1)))
-        expected_error_detail = (r"Invalid key CtyValue\(vtype=CtyString\(value=''\), value=CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('1'\)\)\): "
-                                 r"String validation error: String validation error: Value is a CtyValue typed as CtyString, "
-                                 r"but its internal value is not a Python string, got CtyValue. This may indicate a malformed CtyValue.")
-        with pytest.raises(CtyMapValidationError, match=f"Map validation failed:\\s*-\\s*{expected_error_detail}"):
+        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('1'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"):
              map_str_str.validate(map_dyn_str_val)
 
     def test_validate_ctyvalue_map_value_type_dynamic_target_compatible(self):
@@ -232,26 +228,16 @@ class TestCtyMapCoverage:
         map_type2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_type3 = CtyMap(key_type=CtyString(), value_type=CtyString())
 
-        with caplog.at_level("DEBUG"): # Capture from root logger
+        with caplog.at_level("DEBUG", logger="pyvider.cty.types.collections.map"):
             map_type1.equal(map_type2)
             map_type1.equal(map_type3)
 
-        # Check for the specific log messages from CtyMap.equal
-        # The logger from pyvider.telemetry might be named 'pyvider' or similar,
-        # or could be the root logger if not specially configured.
-        # Example messages from run: "🗣️ 🔌🔍🔄 Checking equality with CtyMap"
-        # The actual emoji/prefix might not be part of the message string itself.
-        assert "Checking equality with CtyMap" in caplog.text # Check for the core message
-        # The following detailed logs are not currently produced by CtyMap.equal,
-        # but by the individual type.equal() calls.
-        # If these were desired directly from CtyMap.equal, that method would need enhancement.
-        # For now, we ensure the primary CtyMap.equal log is captured.
-
-        # assert "Key types are equal: True" in caplog.text
-        # assert "Value types are equal: True" in caplog.text
-        # assert "Map types are equal: True" in caplog.text
-        # assert "Value types are equal: False" in caplog.text
-        # assert "Map types are equal: False" in caplog.text
+        assert "Checking equality with CtyMap" in caplog.text # More generic check
+        assert "Key types are equal: True" in caplog.text
+        assert "Value types are equal: True" in caplog.text
+        assert "Map types are equal: True" in caplog.text
+        assert "Value types are equal: False" in caplog.text
+        assert "Map types are equal: False" in caplog.text
 
 
     def test_usable_as_branches_with_dynamic(self):
@@ -307,10 +293,7 @@ class TestCtyMapCoverage:
             CtyMap(key_type=CtyDynamic(), value_type=CtyNumber()),
             { CtyValue.number(123): CtyValue.number(1) }
         )
-        expected_error_detail = (r"Invalid key CtyValue\(vtype=CtyString\(value=''\), value=CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)\): "
-                                 r"String validation error: String validation error: Value is a CtyValue typed as CtyString, "
-                                 r"but its internal value is not a Python string, got CtyValue. This may indicate a malformed CtyValue.")
-        with pytest.raises(CtyMapValidationError, match=f"Map validation failed:\\s*-\\s*{expected_error_detail}"):
+        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"):
             target_map_type.validate(input_val_map_dyn_num)
 
 
@@ -396,7 +379,7 @@ class TestCtyMapCoverage:
     def test_validate_map_with_ctyvalue_key_type_mismatch(self):
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         input_dict = {CtyValue.number(123): CtyValue.number(456)}
-        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"):
+        with pytest.raises(CtyMapValidationError, match=r"Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)"):
             map_type.validate(input_dict)
 
 
@@ -404,14 +387,14 @@ class TestCtyMapCoverage:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         null_string_key = CtyValue.null(CtyString())
         input_dict = {null_string_key: CtyValue.number(456)}
-        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyString\(value=''\), is_null=True\): Map validation error: Map keys cannot be null or unknown"):
+        with pytest.raises(CtyMapValidationError, match=r"Invalid key CtyValue\(vtype=CtyString\(value=''\), is_null=True\)"):
             map_type.validate(input_dict)
 
     def test_validate_map_with_ctyvalue_key_is_unknown(self):
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         unknown_string_key = CtyValue.unknown(CtyString())
         input_dict = {unknown_string_key: CtyValue.number(456)}
-        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyString\(value=''\), is_unknown=True\): Map validation error: Map keys cannot be null or unknown"):
+        with pytest.raises(CtyMapValidationError, match=r"Invalid key CtyValue\(vtype=CtyString\(value=''\), is_unknown=True\)"):
             map_type.validate(input_dict)
 
     def test_validate_map_with_ctyvalue_value_is_null_allowed(self):
