@@ -208,7 +208,6 @@ class TestMsgPackEncoder:
         assert decoded_value.has_mark("sensitive")
         assert decoded_value.has_mark("source:user")
 
-    @pytest.mark.xfail(reason="Known bug: nested list element types become CtyDynamic during msgpack encode/decode")
     def test_encode_decode_nested_list(self):
         inner_list_type = CtyList(element_type=CtyNumber())
         list_of_lists_type = CtyList(element_type=inner_list_type)
@@ -221,7 +220,6 @@ class TestMsgPackEncoder:
         # until msgpack.py's _create_type_from_name and _value_to_dict are enhanced.
         assert decoded_value == original_value
 
-    @pytest.mark.xfail(reason="Known bug: nested list element types within map become CtyDynamic during msgpack encode/decode")
     def test_encode_decode_map_with_list_value(self):
         list_type = CtyList(element_type=CtyNumber())
         map_type = CtyMap(key_type=CtyString(), value_type=list_type)
@@ -297,8 +295,8 @@ class TestMsgPackEncoder:
         assert decoded_value.type.element_type == CtyString()
 
         expected_internal_set_elements = {CtyValue.string("apple"), CtyValue.string("banana"), CtyValue.string("cherry")}
-        assert isinstance(decoded_value.value, list)
-        assert set(decoded_value.value) == expected_internal_set_elements
+        assert isinstance(decoded_value.value, frozenset) # CtySet internal value is a frozenset of CtyValues
+        assert decoded_value.value == expected_internal_set_elements # Direct comparison of frozensets of CtyValues
 
     def test_encode_decode_tuple_mixed_types(self):
         pytest.skip("Skipping CtyTuple specific asserts as it might decode as CtyList due to msgpack.py limitations")
