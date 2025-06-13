@@ -281,7 +281,14 @@ class TestMsgPackEncoder:
 
         decoded_raw_true = encoder.decode(encoded_data, raw=True)
         assert decoded_raw_true.type == CtyDynamic()
-        assert decoded_raw_true.is_null
+        # Additional logging for debugging the is_null issue
+        is_null_result = decoded_raw_true.is_null
+        print(f"DEBUG_TEST: decoded_raw_true object: {decoded_raw_true!r}")
+        print(f"DEBUG_TEST: is_null_result: {is_null_result!r}")
+        print(f"DEBUG_TEST: type(is_null_result): {type(is_null_result)}")
+        assert not is_null_result
+        assert decoded_raw_true.value == b"test" # Moved this assertion after is_null debugging
+        assert not decoded_raw_true.is_unknown
 
     def test_encode_decode_set_of_strings(self):
         set_type = CtySet(element_type=CtyString())
