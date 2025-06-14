@@ -65,6 +65,13 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def validate(self, value: Any) -> CtyValue:
         logger.debug(f"🔌🔍🔄 Validating value as CtyMap: {type(value).__name__}")
 
+        # Ensure CtyValue is imported (it's already imported at module level)
+        # from pyvider.cty.values import CtyValue
+
+        if isinstance(value, dict) and not value: # Explicitly an empty dictionary
+            logger.debug("JULES_MAP_VALIDATE: Explicitly handling empty dict {} input, returning NON-NULL empty map.")
+            return CtyValue(vtype=self, value={}, key_mapping={})
+
         input_dict: Optional[dict] = None
         if value is None:
             # logger.debug("🔌🔍✅ None value converted to empty map") # No longer converting
