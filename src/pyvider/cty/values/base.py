@@ -180,14 +180,15 @@ class CtyValue(Generic[T]):
             bool: True if the value is null, False otherwise
         """
         logger.debug(f"CtyValue.is_null accessed for id {id(self)}: _is_null field is {self._is_null}, _value is {self._value!r}, type is {self._vtype.__class__.__name__}")
-        # Original logic restored:
+        # An unknown value cannot be null.
+        if self._is_unknown:
+            return False
+        # If _is_null is explicitly True, it's null.
         if self._is_null:
             return True
-        # Dynamic null check: A CtyDynamic value is considered null if its internal value is None.
-        # Ensure CtyDynamic is imported if used like this, or compare by name.
-        # Assuming CtyDynamic is available in the scope (it should be via from ..types import CtyDynamic or similar)
+        # A CtyDynamic value is also considered null if its internal _value is None (and it's not unknown).
         from pyvider.cty.types import CtyDynamic # Ensure it's in scope for isinstance
-        if isinstance(self._vtype, CtyDynamic) and self._value is None:
+        if isinstance(self._vtype, CtyDynamic) and self._value is None: # This check is now safe due to _is_unknown check above
             return True
         return False
 
@@ -1326,16 +1327,15 @@ class CtyValue(Generic[T]):
 
         processed_value = None # Initialize to None as a default for null/unknown or if not set by other conditions
 
-        # Special handling for CtyDynamic wrapping a concrete CtyValue
-        if isinstance(self.type, CtyDynamic) and isinstance(self.value, CtyValue) and \
-           not self.is_unknown and not self.is_null:
-            inner_dict = self.value.to_json_comparable_dict()
-            # The 'value' field of the dynamic type's JSON representation
-            # will contain the type and value of the wrapped concrete CtyValue.
-            processed_value = { "type": inner_dict["type_name"], "value": inner_dict["value"] }
-        elif not self.is_unknown and not self.is_null:
+        if not self.is_unknown and not self.is_null:
+            # Special handling for CtyDynamic wrapping a concrete CtyValue
+            if isinstance(self.type, CtyDynamic) and isinstance(self.value, CtyValue): # self.value is safe to access here
+                inner_dict = self.value.to_json_comparable_dict()
+                # The 'value' field of the dynamic type's JSON representation
+                # will contain the type and value of the wrapped concrete CtyValue.
+                processed_value = { "type": inner_dict["type_name"], "value": inner_dict["value"] }
             # Check for CtyTuple specifically BEFORE general tuple check
-            if isinstance(self.type, CtyTuple): # Accessing self.type here
+            elif isinstance(self.type, CtyTuple): # Accessing self.type here
                 if not self.value:  # If self.value is an empty tuple/list () or []
                                     # This path is for a NON-NULL tuple with an empty value.
                     processed_value = []

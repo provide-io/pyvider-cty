@@ -81,10 +81,12 @@ class CtyDynamic(CtyType[Any]):
 
         # New logic for CtyValue inputs
         if isinstance(value, CtyValue):
-            logger.debug("🧩🔍🔄 Input is already a CtyValue instance. CtyDynamic accepts any valid CtyValue.")
-            # If the input is already a CtyValue, its type is determined.
-            # CtyDynamic's role is to accept it as is.
-            return value
+            logger.debug("🧩🔍🔄 Input is CtyValue. Wrapping in CtyDynamic.")
+            # For CtyDynamic, if the input is already a CtyValue,
+            # it means the dynamic type is explicitly holding this typed value.
+            # The CtyValue returned should have CtyDynamic as its .type,
+            # and the original CtyValue as its internal ._value.
+            return CtyValue(self, value) # `self` is the CtyDynamic type instance
 
         # Handle raw Python types by inferring their cty type
         if isinstance(value, str):
