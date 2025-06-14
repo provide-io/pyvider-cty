@@ -1326,7 +1326,14 @@ class CtyValue(Generic[T]):
 
         processed_value = None # Initialize to None as a default for null/unknown or if not set by other conditions
 
-        if not self.is_unknown and not self.is_null:
+        # Special handling for CtyDynamic wrapping a concrete CtyValue
+        if isinstance(self.type, CtyDynamic) and isinstance(self.value, CtyValue) and \
+           not self.is_unknown and not self.is_null:
+            inner_dict = self.value.to_json_comparable_dict()
+            # The 'value' field of the dynamic type's JSON representation
+            # will contain the type and value of the wrapped concrete CtyValue.
+            processed_value = { "type": inner_dict["type_name"], "value": inner_dict["value"] }
+        elif not self.is_unknown and not self.is_null:
             # Check for CtyTuple specifically BEFORE general tuple check
             if isinstance(self.type, CtyTuple): # Accessing self.type here
                 if not self.value:  # If self.value is an empty tuple/list () or []
@@ -1409,14 +1416,14 @@ class CtyValue(Generic[T]):
 
         # Ensure CtyMap, CtyObject are available for isinstance check
         # They are already imported at the top of the to_json_comparable_dict method
-        if isinstance(self.type, (CtyMap, CtyObject)) and \
-           not self.is_unknown and \
-           not self.is_null and \
-           isinstance(self.value, dict) and \
-           not self.value: # It's a non-null, known, empty map/object
-            logger.debug(f"JULES_TO_JSON_COMPARABLE: Aligning empty map/object {self.type!r} to go-cty's null-like output.")
-            output_value = None
-            output_is_null = True
+        # if isinstance(self.type, (CtyMap, CtyObject)) and \
+        #    not self.is_unknown and \
+        #    not self.is_null and \
+        #    isinstance(self.value, dict) and \
+        #    not self.value: # It's a non-null, known, empty map/object
+        #     logger.debug(f"JULES_TO_JSON_COMPARABLE: Aligning empty map/object {self.type!r} to go-cty's null-like output.")
+        #     output_value = None
+        #     output_is_null = True
 
         return {
             "type_name": type_name,

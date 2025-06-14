@@ -64,7 +64,7 @@ def _serializable_to_value(data: dict[str, object], target_type: 'CtyType') -> '
     """
     from .types.base import CtyType
     from .values.base import CtyValue
-    from pyvider.cty.types import CtyNumber, CtyString, CtyBool
+    from pyvider.cty.types import CtyNumber, CtyString, CtyBool, CtyDynamic
     from pyvider.cty.types import CtyList, CtyMap, CtySet
     from pyvider.cty.types import CtyObject, CtyTuple, CtyDynamic
     from .marks import CtyMark
@@ -94,8 +94,47 @@ def _serializable_to_value(data: dict[str, object], target_type: 'CtyType') -> '
             f"but target type is '{normalized_target_type_str}' (normalized from {str(target_type)})."
         )
 
-    # Handle unknown and null states first
-    if is_unknown:
+    # Handle specific case for CtyDynamic with embedded type information
+    if isinstance(target_type, CtyDynamic) and \
+       isinstance(value_from_data, dict) and \
+       "type" in value_from_data and \
+       "value" in value_from_data and \
+       not is_unknown and not is_null:
+
+        embedded_type_name_str = cast(str, value_from_data["type"])
+        embedded_value_payload = value_from_data["value"]
+
+        actual_embedded_cty_type = None
+        # TODO: Implement a robust parse_type_string_to_ctytype function
+        # For now, handle simple primitive types.
+        if embedded_type_name_str == "string":
+            actual_embedded_cty_type = CtyString()
+        elif embedded_type_name_str == "number":
+            actual_embedded_cty_type = CtyNumber()
+        elif embedded_type_name_str == "bool":
+            actual_embedded_cty_type = CtyBool()
+        # Add more types or a proper parser here in the future
+
+        if actual_embedded_cty_type:
+            recursive_data = {
+                "type_name": embedded_type_name_str,
+                "value": embedded_value_payload,
+                "is_unknown": False, # Embedded values are assumed known & not null
+                "is_null": False,    # unless their own structure says otherwise (not handled here)
+                "marks": [] # Marks are on the outer dynamic value, not specified for inner here
+            }
+            # Deserialize the embedded value using its specific type
+            inner_value_instance = _serializable_to_value(recursive_data, actual_embedded_cty_type)
+            # The final CtyValue has CtyDynamic as its type, and the typed inner value as its _value
+            reconstructed_value = CtyValue(target_type, inner_value_instance)
+        else:
+            # Fallback: If embedded type string is not recognized, treat value_from_data as a direct payload for CtyDynamic
+            # This relies on CtyDynamicType.validate to handle raw Python values.
+            reconstructed_value = target_type.validate(value_from_data)
+
+    # Handle unknown and null states first (if not already handled by dynamic logic above)
+    # This 'else' branch covers non-dynamic types OR dynamic types that didn't fit the embedded structure criteria
+    elif is_unknown:
         reconstructed_value = CtyValue.unknown(target_type)
     elif is_null:
         reconstructed_value = CtyValue.null(target_type)
