@@ -304,19 +304,3 @@ class TestMsgPackEncoder:
         expected_internal_set_elements = {CtyValue.string("apple"), CtyValue.string("banana"), CtyValue.string("cherry")}
         assert isinstance(decoded_value.value, frozenset) # CtySet internal value is a frozenset of CtyValues
         assert decoded_value.value == expected_internal_set_elements # Direct comparison of frozensets of CtyValues
-
-    def test_encode_decode_tuple_mixed_types(self):
-        pytest.skip("Skipping CtyTuple specific asserts as it might decode as CtyList due to msgpack.py limitations")
-        # tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
-        # original_value = tuple_type.validate(["hello", 123])
-        # # ...
-
-    def test_encode_decode_object_simple_active(self):
-        pytest.skip("Skipping CtyObject specific asserts as it might decode as CtyMap due to msgpack.py limitations")
-        # object_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
-        # original_value = object_type.validate({"name": "developer", "age": 30})
-        # # ...
-
-    def test_encode_decode_deeply_nested_structure(self):
-        pytest.skip("Skipping CtyObject/CtyMap nested asserts as it might decode differently due to msgpack.py limitations")
-        # ... (original test body using .validate() for construction)
