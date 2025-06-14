@@ -330,8 +330,11 @@ def normalize_type_object(type_obj: object) -> TypeString:
                 elements_desc = []
                 if isinstance(type_obj.element_types, tuple):
                     elements_desc = [normalize_type_object(el_type) for el_type in type_obj.element_types]
-                # Using () for tuple type strings as per common convention, vs [...] in CtyValue's helper
-                return f"tuple({', '.join(elements_desc)})"
+
+                if not elements_desc: # Handle empty tuple
+                    return "tuple([])"
+                else:
+                    return f"tuple([{', '.join(elements_desc)}])" # Standardized format
 
 
         case _:
