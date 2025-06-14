@@ -29,6 +29,9 @@ dependencies = [
     "pyvider-telemetry==0.0.13",
 ]
 
+[project.scripts]
+pymath-optimize = "pymath.cli.pymath_cli:main"
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
