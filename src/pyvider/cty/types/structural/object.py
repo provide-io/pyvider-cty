@@ -93,6 +93,21 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         from pyvider.cty.values import CtyValue # Make sure this import is available at the top of the file or method
 
+        if isinstance(value, dict) and not value: # Explicitly an empty dictionary
+            is_truly_empty_compatible = True
+            for attr_name in self.attribute_types: # No need for .items() if only checking names
+                if attr_name not in self.optional_attributes:
+                    is_truly_empty_compatible = False
+                    break
+
+            if is_truly_empty_compatible:
+                logger.debug("JULES_OBJECT_VALIDATE: Explicitly handling empty dict {} input for compatible object type, returning NON-NULL empty object.")
+                return CtyValue(vtype=self, value={})
+            else:
+                logger.debug("JULES_OBJECT_VALIDATE: Empty dict {} input for object type with required attrs, proceeding to normal validation which should fail.")
+                # Let normal validation proceed by not returning early.
+                # The existing logic below will handle raising CtyValidationError for missing required attributes.
+
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyObject) and value.type.equal(self):
                 logger.debug(f"🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is.")

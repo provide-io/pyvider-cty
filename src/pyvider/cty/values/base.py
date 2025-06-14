@@ -1315,8 +1315,10 @@ class CtyValue(Generic[T]):
                     attrs_desc.append(f"{name}={get_friendly_type_name(attr_type)}")
                 return f"object({{{', '.join(attrs_desc)}}})"
             if isinstance(cty_type_instance, CtyTuple):
+                if not cty_type_instance.element_types:
+                    return "tuple([])" # Handle empty tuple case
                 elements_desc = [get_friendly_type_name(el_type) for el_type in cty_type_instance.element_types]
-                return f"tuple({', '.join(elements_desc)})" # Corrected line
+                return f"tuple([{', '.join(elements_desc)}])" # Add brackets for non-empty
             # Fallback for other types not explicitly handled above
             return cty_type_instance.__class__.__name__[3:].lower() if cty_type_instance.__class__.__name__.startswith("Cty") else "unknown_type"
 
@@ -1327,13 +1329,14 @@ class CtyValue(Generic[T]):
         if not self.is_unknown and not self.is_null:
             # Check for CtyTuple specifically BEFORE general tuple check
             if isinstance(self.type, CtyTuple): # Accessing self.type here
-                if not self.value:  # If self.value is an empty tuple ()
-                    processed_value = None # Align with Go's 'null' for empty tuple value
-                else: # Non-empty tuple
-                    processed_value = tuple(
+                if not self.value:  # If self.value is an empty tuple/list () or []
+                                    # This path is for a NON-NULL tuple with an empty value.
+                    processed_value = []
+                else: # Non-empty tuple value
+                    processed_value = [ # JSON representation of a tuple's value is a list
                         v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                         for v in self.value
-                    )
+                    ]
             elif isinstance(self.value, list): # For CtyList values
                 processed_value = [
                     v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
@@ -1399,11 +1402,27 @@ class CtyValue(Generic[T]):
             key=lambda m: (m["name"], str(m["details"])) # str(details) for sortability
         )
 
+        # After processed_value is determined based on self.value
+
+        output_value = processed_value
+        output_is_null = self.is_null
+
+        # Ensure CtyMap, CtyObject are available for isinstance check
+        # They are already imported at the top of the to_json_comparable_dict method
+        if isinstance(self.type, (CtyMap, CtyObject)) and \
+           not self.is_unknown and \
+           not self.is_null and \
+           isinstance(self.value, dict) and \
+           not self.value: # It's a non-null, known, empty map/object
+            logger.debug(f"JULES_TO_JSON_COMPARABLE: Aligning empty map/object {self.type!r} to go-cty's null-like output.")
+            output_value = None
+            output_is_null = True
+
         return {
             "type_name": type_name,
-            "value": processed_value,
+            "value": output_value,
             "is_unknown": self.is_unknown,
-            "is_null": self.is_null,
+            "is_null": output_is_null, # Use potentially modified is_null
             "marks": serialized_marks,
         }
 

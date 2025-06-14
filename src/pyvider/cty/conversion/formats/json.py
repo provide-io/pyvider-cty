@@ -22,7 +22,7 @@ from attrs import define, field
 
 from pyvider.telemetry import logger
 from pyvider.cty.conversion.wire import WireFormatType
-from pyvider.cty.exceptions import EncodingError
+from pyvider.cty.exceptions import EncodingError, CtyValidationError # Added CtyValidationError
 from pyvider.cty.values import CtyValue
 # Import Cty types for type checking
 from pyvider.cty.types import CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic, CtySet, CtyObject, CtyTuple # Added all types for _create_type_from_name
@@ -44,7 +44,7 @@ class JsonEncoder(FormatEncoder):
     """
 
     # Type marker constants for encoding
-    TYPE_MARKER: ClassVar[str] = "type"
+    TYPE_MARKER: ClassVar[str] = "type_name" # Changed from "type"
     UNKNOWN_MARKER: ClassVar[str] = "is_unknown"
     NULL_MARKER: ClassVar[str] = "is_null"
     MARKS_MARKER: ClassVar[str] = "marks"
@@ -98,8 +98,20 @@ class JsonEncoder(FormatEncoder):
         logger.debug(f"🧩🔍🔄 Decoding from JSON: {len(data)} bytes")
         preserve_type = options.get('preserve_type', True)
         try:
+            # ADD DEBUG LOGS HERE
+            logger.debug(f"JULES_JSON_LOADS_INPUT_BYTES (first 150): {data[:150]!r}")
+            decoded_string_preview = "ERROR_DECODING_BYTE_INPUT_FOR_PREVIEW"
             try:
-                json_dict = json.loads(data)
+                decoded_string_preview = data.decode('utf-8') # Attempt to decode for logging
+                logger.debug(f"JULES_JSON_LOADS_INPUT_STR (first 150): {decoded_string_preview[:150]}")
+            except Exception as e_decode_preview:
+                logger.debug(f"JULES_JSON_LOADS_INPUT_STR: Preview decode error: {e_decode_preview!r}")
+
+            try:
+                json_dict = json.loads(data) # THE ACTUAL CALL
+
+                # ADD DEBUG LOG HERE
+                logger.debug(f"JULES_JSON_LOADS_OUTPUT_DICT: {json_dict!r}")
             except json.JSONDecodeError as e:
                 error_msg = f"Invalid JSON: {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
@@ -210,69 +222,121 @@ class JsonEncoder(FormatEncoder):
 
     @classmethod
     def _dict_to_value(cls, data: dict[str, object], preserve_type: bool = True) -> CtyValue:
-        # ... (rest of the file is unchanged from previous correct state) ...
         logger.debug(f"🧩🔍🔄 Converting dictionary to CtyValue")
 
+        # Jules's debug logging
+        logger.debug(f"JULES_DEBUG_JSON_DECODE: _dict_to_value received data: {data!r}")
+        logger.debug(f"JULES_DEBUG_JSON_DECODE: data has is_null? {cls.NULL_MARKER in data}. Value: {data.get(cls.NULL_MARKER)}")
+        logger.debug(f"JULES_DEBUG_JSON_DECODE: data has is_unknown? {cls.UNKNOWN_MARKER in data}. Value: {data.get(cls.UNKNOWN_MARKER)}")
+        logger.debug(f"JULES_DEBUG_JSON_DECODE: data has wire_type_marker ('{cls.TYPE_MARKER}')? {cls.TYPE_MARKER in data}. Value: {data.get(cls.TYPE_MARKER)}")
+        logger.debug(f"JULES_DEBUG_JSON_DECODE: data has comparable_type_marker ('type_name')? {'type_name' in data}. Value: {data.get('type_name')}")
+        logger.debug(f"JULES_DEBUG_JSON_DECODE: data has value? {'value' in data}. Value: {data.get('value')!r}")
+
         try:
-            if data.get(cls.UNKNOWN_MARKER, False):
-                return cls._create_unknown_value(data)
-            if data.get(cls.NULL_MARKER, False):
-                return cls._create_null_value(data)
-            if preserve_type and cls.TYPE_MARKER in data:
-                return cls._create_typed_value(data)
+            # Order of checks: UNKNOWN, then NULL, then typed, then untyped.
+            if data.get(cls.UNKNOWN_MARKER, False): # checks for "is_unknown": true
+                return cls._create_unknown_value(data, preserve_type=preserve_type)
+            if data.get(cls.NULL_MARKER, False): # checks for "is_null": true
+                return cls._create_null_value(data, preserve_type=preserve_type)
+
+            type_key_to_use = None
+            if preserve_type:
+                if 'type_name' in data:
+                    type_key_to_use = 'type_name'
+                elif cls.TYPE_MARKER in data:
+                    type_key_to_use = cls.TYPE_MARKER
+
+            if type_key_to_use:
+                return cls._create_typed_value(data, type_key_to_use)
             else:
                 return cls._create_untyped_value(data)
         except Exception as e:
             error_msg = f"Failed to convert dictionary to CtyValue: {e}"
-            logger.error(f"🧩🔍❌ {error_msg}")
+            logger.error(f"🧩🔍❌ {error_msg}", exc_info=True) # Added exc_info
             raise EncodingError(error_msg, encoding="json") from e
 
     @classmethod
-    def _create_unknown_value(cls, data: dict[str, object]) -> CtyValue:
+    def _create_unknown_value(cls, data: dict[str, object], preserve_type: bool = True) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating unknown CtyValue")
-        type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
-        cty_type = cls._create_type_from_name(type_name, data)
+        type_name_str = "CtyDynamic"
+        if preserve_type:
+            type_name_str = data.get('type_name', data.get(cls.TYPE_MARKER, "CtyDynamic"))
+
+        cty_type = cls._create_type_from_name(str(type_name_str), data) # Ensure type_name_str is str
         return CtyValue.unknown(cty_type)
 
     @classmethod
-    def _create_null_value(cls, data: dict[str, object]) -> CtyValue:
+    def _create_null_value(cls, data: dict[str, object], preserve_type: bool = True) -> CtyValue:
         logger.debug("🧩🔍🔄 Creating null CtyValue")
-        type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
-        cty_type = cls._create_type_from_name(type_name, data)
+        type_name_str = "CtyDynamic"
+        if preserve_type:
+            type_name_str = data.get('type_name', data.get(cls.TYPE_MARKER, "CtyDynamic"))
+
+        cty_type = cls._create_type_from_name(str(type_name_str), data) # Ensure type_name_str is str
         return CtyValue.null(cty_type)
 
     @classmethod
-    def _create_typed_value(cls, data: dict[str, object]) -> CtyValue:
-        logger.debug("🧩🔍🔄 Creating typed CtyValue")
-        type_name = data.get(cls.TYPE_MARKER, "CtyDynamic")
+    def _create_typed_value(cls, data: dict[str, object], type_key: str) -> CtyValue:
+        logger.debug(f"JULES_CREATE_TYPED_VALUE: Input data: {data!r}")
+        type_name_str = str(data.get(type_key, "CtyDynamic"))
         value_data = data.get("value")
-        cty_type = cls._create_type_from_name(type_name, data)
-        match type_name:
-            case "CtyString": return CtyValue.string(value_data)
-            case "CtyNumber":
-                if isinstance(value_data, str): return CtyValue.number(Decimal(value_data))
-                return CtyValue.number(value_data)
-            case "CtyBool": return CtyValue.bool(value_data)
-            case "CtyList":
-                element_type = cls._create_type_from_name(data.get("element_type", "CtyDynamic"), {})
-                elements = []
-                if isinstance(value_data, list):
-                    for item in value_data:
-                        if isinstance(item, dict) and (cls.TYPE_MARKER in item or cls.UNKNOWN_MARKER in item or cls.NULL_MARKER in item):
-                            elements.append(cls._dict_to_value(item))
-                        else: elements.append(item)
-                return CtyValue.list(element_type, elements)
-            case "CtyMap":
-                key_type = cls._create_type_from_name(data.get("key_type", "CtyString"), {})
-                value_type = cls._create_type_from_name(data.get("value_type", "CtyDynamic"), {})
-                items = {}
-                if isinstance(value_data, dict):
-                    for k, v in value_data.items():
-                        if isinstance(v, dict) and (cls.TYPE_MARKER in v or cls.UNKNOWN_MARKER in v or cls.NULL_MARKER in v):
-                            items[k] = cls._dict_to_value(v)
-                        else: items[k] = v
-                return CtyValue.map(key_type, value_type, items)
-            case _: return cty_type.validate(value_data)
+
+        cty_type = cls._create_type_from_name(type_name_str, data)
+        logger.debug(f"JULES_CREATE_TYPED_VALUE: Determined cty_type: {cty_type!r}, value_data: {value_data!r}")
+
+        if value_data is None and not isinstance(cty_type, CtyDynamic) and not data.get(cls.NULL_MARKER, False):
+             logger.warning(f"JULES_CREATE_TYPED_VALUE: Non-null typed value has None in 'value' field. Type: {type_name_str}. Data: {data!r}")
+             # Proceeding, validate will likely handle this (e.g. create default empty for collections if appropriate, or error)
+             pass
+
+        # Recursive decoding for complex types needs to consider the type_key for elements/attributes if they are full CTY dicts
+        # However, the JSON comparable format usually has primitive values or fully specified CTY dicts for elements/attributes.
+        # The _dict_to_value called recursively will use its own logic to determine type_key.
+
+        if isinstance(cty_type, CtyList) and isinstance(value_data, list):
+            processed_elements = []
+            for elem in value_data:
+                if isinstance(elem, dict) and ('type_name' in elem or cls.TYPE_MARKER in elem or cls.UNKNOWN_MARKER in elem or cls.NULL_MARKER in elem):
+                    processed_elements.append(cls._dict_to_value(elem, preserve_type=True))
+                else:
+                    processed_elements.append(elem)
+            return cty_type.validate(processed_elements)
+
+        elif isinstance(cty_type, (CtyMap, CtyObject)) and isinstance(value_data, dict):
+            processed_items = {}
+            for k, v_item in value_data.items():
+                if isinstance(v_item, dict) and ('type_name' in v_item or cls.TYPE_MARKER in v_item or cls.UNKNOWN_MARKER in v_item or cls.NULL_MARKER in v_item):
+                     processed_items[k] = cls._dict_to_value(v_item, preserve_type=True)
+                else:
+                     processed_items[k] = v_item
+            return cty_type.validate(processed_items)
+
+        elif isinstance(cty_type, CtyTuple) and isinstance(value_data, list): # Handle CtyTuple elements
+            processed_elements = []
+            if len(value_data) == len(cty_type.element_types):
+                for i, elem_data in enumerate(value_data):
+                    # Determine the actual type of the element based on the tuple's schema
+                    # This assumes elem_data is the CTY JSON comparable dict for the element
+                    if isinstance(elem_data, dict) and ('type_name' in elem_data or cls.TYPE_MARKER in elem_data or cls.UNKNOWN_MARKER in elem_data or cls.NULL_MARKER in elem_data):
+                         processed_elements.append(cls._dict_to_value(elem_data, preserve_type=True))
+                    else: # Primitive value, assume it matches the element type
+                         processed_elements.append(elem_data)
+            else:
+                # Length mismatch, let validate handle the error
+                logger.warning(f"Tuple length mismatch during typed value creation. Expected {len(cty_type.element_types)}, got {len(value_data)} for {type_name_str}")
+                # Fall through to direct validation which should raise an error
+                pass # Let validate below handle it
+
+            # If elements were processed, use them for validation
+            if len(processed_elements) == len(cty_type.element_types):
+                 return cty_type.validate(tuple(processed_elements)) # CtyTuple.validate expects a tuple
+
+        try:
+            return cty_type.validate(value_data)
+        except CtyValidationError: # Make sure CtyValidationError is imported
+            if isinstance(value_data, dict) and ('type_name' in value_data or cls.TYPE_MARKER in value_data):
+                 return cls._dict_to_value(value_data, preserve_type=True)
+            raise
 
     @classmethod
     def _create_untyped_value(cls, data: dict[str, object]) -> CtyValue:
@@ -282,8 +346,8 @@ class JsonEncoder(FormatEncoder):
             case bool(): return CtyValue.bool(value)
             case int() | float(): return CtyValue.number(value)
             case str(): return CtyValue.string(value)
-            case list(): return CtyValue.list(CtyDynamic(), value)
-            case dict(): return CtyValue.map(CtyString(), CtyDynamic(), value)
+            case list(): return CtyValue.list(CtyDynamic(), value) # Elements will be validated by CtyList
+            case dict(): return CtyValue.map(CtyString(), CtyDynamic(), value) # Values will be validated by CtyMap
             case None: return CtyValue.null(CtyDynamic())
             case _:
                 error_msg = f"Cannot infer type for value: {value}"
@@ -291,38 +355,102 @@ class JsonEncoder(FormatEncoder):
                 raise EncodingError(f"Cannot infer type for value: {value}", encoding="json")
 
     @classmethod
-    def _create_type_from_name(cls, type_name: str, data: dict[str, object]) -> 'CtyType':
-        logger.debug(f"🧩🔍🔄 Creating type from name: {type_name}")
-        try:
-            from pyvider.cty.types import CtySet, CtyObject, CtyTuple # Already imported: CtyBool, CtyNumber, CtyString, CtyList, CtyMap, CtyDynamic
-            match type_name:
-                case "CtyBool": return CtyBool()
-                case "CtyNumber": return CtyNumber()
-                case "CtyString": return CtyString()
-                case "CtyList":
-                    element_type_name = data.get("element_type", "CtyDynamic")
-                    element_type = cls._create_type_from_name(element_type_name, {})
-                    return CtyList(element_type=element_type)
-                case "CtyMap":
-                    key_type_name = data.get("key_type", "CtyString")
-                    value_type_name = data.get("value_type", "CtyDynamic")
-                    key_type = cls._create_type_from_name(key_type_name, {})
-                    value_type = cls._create_type_from_name(value_type_name, {})
-                    return CtyMap(key_type=key_type, value_type=value_type)
-                case "CtySet":
-                    element_type_name = data.get("element_type", "CtyDynamic")
-                    element_type = cls._create_type_from_name(element_type_name, {})
-                    return CtySet(element_type=element_type)
-                case "CtyDynamic" | _: return CtyDynamic()
-        except Exception as e:
-            error_msg = f"Failed to create type from name {type_name}: {e}"
-            logger.error(f"🧩🔍❌ {error_msg}")
-            raise EncodingError(error_msg, encoding="json") from e
+    def _create_type_from_name(cls, type_name_str: str, data_dict_for_extra_type_info: dict[str, object]) -> 'CtyType':
+        logger.debug(f"🧩🔍🔄 Creating type from name string: '{type_name_str}' with extra info from: {data_dict_for_extra_type_info!r}")
+
+        # Handle direct CtyType class names (e.g., from cls.TYPE_MARKER or recursive calls)
+        if type_name_str == "CtyBool": return CtyBool()
+        if type_name_str == "CtyNumber": return CtyNumber()
+        if type_name_str == "CtyString": return CtyString()
+        if type_name_str == "CtyDynamic": return CtyDynamic()
+        if type_name_str == "CtyList":
+            element_type_name = cast(str, data_dict_for_extra_type_info.get("element_type", "CtyDynamic"))
+            return CtyList(cls._create_type_from_name(element_type_name, {}))
+        if type_name_str == "CtyMap":
+            key_type_name = cast(str, data_dict_for_extra_type_info.get("key_type", "CtyString"))
+            value_type_name = cast(str, data_dict_for_extra_type_info.get("value_type", "CtyDynamic"))
+            return CtyMap(key_type=cls._create_type_from_name(key_type_name, {}),
+                          value_type=cls._create_type_from_name(value_type_name, {}))
+        if type_name_str == "CtySet":
+            element_type_name = cast(str, data_dict_for_extra_type_info.get("element_type", "CtyDynamic"))
+            return CtySet(cls._create_type_from_name(element_type_name, {}))
+        if type_name_str == "CtyObject": # Added for completeness if "type":"CtyObject" is used
+            # This path expects attributes to be in data_dict_for_extra_type_info if it's our own encoding
+            # However, JSON comparable format embeds attributes in the type_name_str.
+            # The string parsing below handles the JSON comparable format.
+            # If data_dict_for_extra_type_info has 'attributes', use it.
+            if 'attributes' in data_dict_for_extra_type_info and isinstance(data_dict_for_extra_type_info['attributes'], dict):
+                attr_types = {k: cls._create_type_from_name(v, {}) for k,v in data_dict_for_extra_type_info['attributes'].items()}
+                return CtyObject(attr_types)
+            # Fall through to string parsing if not our "type":"CtyObject" format.
+        if type_name_str == "CtyTuple": # Added for completeness
+            if 'element_types' in data_dict_for_extra_type_info and isinstance(data_dict_for_extra_type_info['element_types'], list):
+                el_types = tuple(cls._create_type_from_name(et_name, {}) for et_name in data_dict_for_extra_type_info['element_types'])
+                return CtyTuple(el_types)
+            # Fall through
+
+        # Handle stringified types (e.g., from 'type_name' in JSON comparable format)
+        if type_name_str == "string": return CtyString()
+        if type_name_str == "number": return CtyNumber()
+        if type_name_str == "bool": return CtyBool()
+        if type_name_str == "dynamic": return CtyDynamic()
+
+        if type_name_str.startswith("list(") and type_name_str.endswith(")"):
+            return CtyList(element_type=cls._create_type_from_name(type_name_str[5:-1], {}))
+        if type_name_str.startswith("map(") and type_name_str.endswith(")"):
+            return CtyMap(key_type=CtyString(), value_type=cls._create_type_from_name(type_name_str[4:-1], {}))
+        if type_name_str.startswith("set(") and type_name_str.endswith(")"):
+            return CtySet(element_type=cls._create_type_from_name(type_name_str[4:-1], {}))
+
+        if type_name_str.startswith("object({") and type_name_str.endswith("})"):
+            attrs_str = type_name_str[len("object({"):-2]
+            if not attrs_str: return CtyObject({})
+            attr_map = {}
+            try:
+                attr_pairs_strs = _split_by_delimiter_respecting_nesting_for_json_decode(attrs_str, ',')
+                for pair_str in attr_pairs_strs:
+                    name, t_str = pair_str.split('=', 1)
+                    attr_map[name.strip()] = cls._create_type_from_name(t_str.strip(), {})
+            except Exception as e_parse:
+                 logger.warning(f"Could not parse object attributes from '{attrs_str}': {e_parse}. Falling back to CtyDynamic.")
+                 return CtyDynamic()
+            return CtyObject(attr_map)
+
+        if type_name_str.startswith("tuple([") and type_name_str.endswith("])"):
+            elems_str = type_name_str[len("tuple(["):-2]
+            if not elems_str: return CtyTuple(tuple())
+            try:
+                elem_types_strs = _split_by_delimiter_respecting_nesting_for_json_decode(elems_str, ',')
+                return CtyTuple(tuple(cls._create_type_from_name(s.strip(), {}) for s in elem_types_strs))
+            except Exception as e_parse:
+                logger.warning(f"Could not parse tuple elements from '{elems_str}': {e_parse}. Falling back to CtyDynamic.")
+                return CtyDynamic()
+
+        logger.warning(f"Failed to fully parse type string '{type_name_str}', falling back to CtyDynamic.")
+        return CtyDynamic()
 
     @classmethod
     def _json_default(cls, obj):
         if isinstance(obj, Decimal):
             return str(obj)
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+# Helper for _create_type_from_name, simplified for this context
+def _split_by_delimiter_respecting_nesting_for_json_decode(text: str, delimiter: str) -> list[str]:
+    if not text: return []
+    parts = []
+    balance = 0
+    current_part_start = 0
+    nesting_chars = {'(': ')', '[': ']', '{': '}'}
+    opening_chars = nesting_chars.keys()
+    closing_chars = nesting_chars.values()
+    for i, char in enumerate(text):
+        if char in opening_chars: balance += 1
+        elif char in closing_chars: balance -= 1
+        elif char == delimiter and balance == 0:
+            parts.append(text[current_part_start:i].strip())
+            current_part_start = i + len(delimiter)
+    parts.append(text[current_part_start:].strip())
+    return [p for p in parts if p]
 
 # 🐍🏗️🐣
