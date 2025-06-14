@@ -67,11 +67,7 @@ filterwarnings = [
 ]
 norecursedirs = [".git", "build", "dist", "*.egg-info", ".venv", "htmlcov"]
 addopts = "-ra -q --color=yes"
-log_levels = [
-    "asyncio=WARNING",
-    "hpack=WARNING",
-    "grpc=WARNING",
-]
+log_level = "DEBUG"
 
 ################################################################################
 # Ruff Linter and Formatter Configuration
