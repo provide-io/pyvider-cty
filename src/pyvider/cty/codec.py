@@ -3,6 +3,7 @@
 
 import json
 import msgpack
+from msgpack import ExtType
 from decimal import Decimal
 from typing import TYPE_CHECKING, cast
 from attrs import evolve # Added for with_marks
@@ -12,7 +13,7 @@ from pyvider.cty.conversion.format import normalize_type_object
 from pyvider.cty.conversion.format import normalize_type_object
 
 if TYPE_CHECKING:
-    from .values.base import CtyValue
+    from .values.base import CtyValue # CtyValue needed for ext_hook and unknown construction
     from .types.base import CtyType
     # Import CtyType for type hinting only
 
@@ -304,18 +305,42 @@ def cty_value_from_json_string(json_str: str, target_type: 'CtyType') -> 'CtyVal
 
 def cty_value_to_msgpack_bytes(value: 'CtyValue') -> bytes:
     """Serializes a CtyValue to Msgpack bytes."""
+    if value.is_unknown:
+        return msgpack.packb(ExtType(0, b''), use_bin_type=True)
+
     serializable_data = _value_to_serializable(value)
     # msgpack handles basic Python types (dict, list, str, int, float, bool, None)
     # Decimals converted to strings by _value_to_serializable are fine.
     return msgpack.packb(serializable_data, use_bin_type=True)
 
+__PYVIDER_CTY_UNKNOWN_SENTINEL__ = "__PYVIDER_CTY_UNKNOWN_SENTINEL__"
+
+def cty_msgpack_ext_hook(code, data):
+    """Custom ext_hook for msgpack to handle Cty-specific extension types."""
+    if code == 0:
+        return __PYVIDER_CTY_UNKNOWN_SENTINEL__
+    # Potentially handle other Cty-specific extension types here in the future
+    # For now, if it's not code 0, we don't know what it is.
+    # Returning the ExtType instance lets msgpack.unpackb raise an error
+    # if it doesn't know how to handle it, or pass it through if some other
+    # part of the application has registered a handler for it (unlikely for cty).
+    # Alternatively, raise an error immediately:
+    raise NotImplementedError(f"Unknown msgpack extension type code: {code}")
+
 def cty_value_from_msgpack_bytes(msgpack_bytes: bytes, target_type: 'CtyType') -> 'CtyValue':
     """Deserializes a CtyValue from Msgpack bytes, targeting a specific CtyType."""
-    # By default, msgpack decodes strings to str, which is what we expect.
-    # It also decodes map keys as str if they were str when packed.
-    data = msgpack.unpackb(msgpack_bytes, raw=False)
+    from .values.base import CtyValue # Ensure CtyValue is available for .unknown()
+
+    data = msgpack.unpackb(msgpack_bytes, ext_hook=cty_msgpack_ext_hook, raw=False)
+
+    if data == __PYVIDER_CTY_UNKNOWN_SENTINEL__:
+        return CtyValue.unknown(target_type)
+
     if not isinstance(data, dict):
-        raise ValueError("Invalid Msgpack data: root must be a map (dict).")
+        # This can happen if the top-level msgpack payload was not an ExtType(0,...)
+        # and also not a map (e.g. if someone packed a raw string or number directly).
+        # _serializable_to_value expects a dict.
+        raise ValueError("Invalid Msgpack data: root must be a map (dict) or known Cty extension type.")
     return _serializable_to_value(data, target_type)
 
 # 🐍📦🔒

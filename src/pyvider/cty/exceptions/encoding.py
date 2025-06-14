@@ -21,10 +21,12 @@ class TransformationError(CtyError):
     Attributes:
         message: A human-readable error description
         schema: The schema that failed transformation
+        target_type: The intended target type of a transformation, if applicable
     """
-    def __init__(self, message: str, schema: object = None):
+    def __init__(self, message: str, schema: object = None, target_type: object = None, **kwargs): # Added target_type and **kwargs
         self.schema = schema
-        super().__init__(message)
+        self.target_type = target_type # Store it
+        super().__init__(message) # Pass only message to CtyError
 
 
 class InvalidTypeError(CtyError):
@@ -215,7 +217,22 @@ class WireFormatError(TransformationError):
                 format_info = f" during {operation}{format_info}"
             message = f"{message}{format_info}"
 
-        super().__init__(message, **kwargs)
+        # Pass all other kwargs to the superclass of TransformationError (CtyError)
+        # This requires CtyError to also accept **kwargs or be more specific.
+        # For now, TransformationError itself doesn't pass schema or target_type to CtyError's super().
+        # CtyError.__init__(self, message: str) only takes message.
+        # So, we must ensure TransformationError's super().__init__ only gets message.
+        # The **kwargs in WireFormatError are passed to TransformationError.
+        # If TransformationError doesn't use them or pass them up, they are effectively ignored,
+        # which is fine if they are not meant for CtyError.
+        # The key is that TransformationError's __init__ must accept them if WireFormatError passes them.
+        #
+        # Let's make TransformationError accept **kwargs and pass them to CtyError's super,
+        # assuming CtyError might be enhanced or this provides flexibility.
+        # However, CtyError currently only takes `message`.
+        # So, let's only pass what CtyError expects.
+        # The fix for the TypeError is primarily that TransformationError's signature must accept target_type.
+        super().__init__(message) # CtyError only takes message. kwargs are handled by WireFormatError.
 
 
 # 🐍🏗️🐣

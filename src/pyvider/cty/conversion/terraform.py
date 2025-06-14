@@ -107,28 +107,47 @@ def serialize_state_convertible(value: StateConvertible, operation: OperationCon
         return [TerraformWireFormatConstants.OBJECT, {str(k): serialize_value(v, operation) for k, v in raw_dict.items()}]
 
 def extract_value(value: object) -> object:
-    if not isinstance(value, list) or len(value) != 2:
-        if isinstance(value, list): return [extract_value(item) for item in value]
-        if isinstance(value, dict): return {str(k): extract_value(v) for k, v in value.items()}
-        return value
+    TFC = TerraformWireFormatConstants  # Alias for brevity
+
+    if isinstance(value, list) and len(value) == 2 and isinstance(value[0], str) \
+       and hasattr(TFC, str(value[0]).upper()): # Check if first element is a valid type string from TFC
+
+        type_name, payload = value
+
+        match str(type_name).lower():
+            case TFC.STRING:
+                return str(payload) if payload is not None else ""
+            case TFC.NUMBER:
+                if payload is None: return None
+                try:
+                    d = Decimal(str(payload))
+                    # Return int if it's an integer, otherwise float
+                    return int(d) if d == d.to_integral_value() else float(d)
+                except:
+                    return payload # Or raise error, depending on strictness
+            case TFC.BOOL:
+                return bool(payload) if payload is not None else False
+            case TFC.NULL:
+                return None
+            case TFC.TUPLE | TFC.LIST | TFC.SET:
+                # Payload for these should be a list of items to be processed
+                return [extract_value(item) for item in payload] if isinstance(payload, list) else payload
+            case TFC.OBJECT | TFC.MAP:
+                # Payload for these should be a dict
+                return {str(k): extract_value(v) for k, v in payload.items()} if isinstance(payload, dict) else payload
+            case TFC.DYNAMIC:
+                # For a dynamic type, recursively call extract_value on its payload
+                return extract_value(payload)
+            case _: # Should not be reached if TFC check above is comprehensive
+                logger.warning(f"Unexpected type_name '{type_name}' in extract_value match. Returning payload as is.")
+                return payload
     
-    type_name, payload = value
-    match str(type_name).lower():
-        case TerraformWireFormatConstants.STRING: return str(payload) if payload is not None else ""
-        case TerraformWireFormatConstants.NUMBER:
-            if payload is None: return None
-            try:
-                d = Decimal(str(payload))
-                return int(d) if d == d.to_integral_value() else float(d)
-            except: return payload
-        case TerraformWireFormatConstants.BOOL: return bool(payload) if payload is not None else False
-        case TerraformWireFormatConstants.NULL: return None
-        case TerraformWireFormatConstants.TUPLE | TerraformWireFormatConstants.LIST | TerraformWireFormatConstants.SET:
-            return [extract_value(item) for item in payload] if isinstance(payload, list) else payload
-        case TerraformWireFormatConstants.OBJECT | TerraformWireFormatConstants.MAP:
-            return {str(k): extract_value(v) for k, v in payload.items()} if isinstance(payload, dict) else payload
-        case TerraformWireFormatConstants.DYNAMIC: return extract_value(payload)
-        case _: return payload
+    elif isinstance(value, list): # It's a list of other things (e.g. list of serialized values)
+        return [extract_value(item) for item in value]
+    elif isinstance(value, dict): # It's a map/object of other things
+        return {str(k): extract_value(v) for k, v in value.items()}
+    else: # It's a primitive or already extracted value
+        return value
 
 logger.debug("🧰🔄✅ Terraform wire format converter registered.")
 

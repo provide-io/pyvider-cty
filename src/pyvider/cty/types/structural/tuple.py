@@ -68,10 +68,10 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
         logger.debug(f"🧩🔍🔄 Validating value against CtyTuple: {value}")
 
-        # Handle empty tuple type with empty value: should be null
+        # Handle empty tuple type with empty value: should be a known, non-null empty tuple.
         if isinstance(value, (tuple, list)) and not value and not self.element_types:
-            logger.debug("🧩🔍✅ Empty tuple type with empty value, returning null CtyValue")
-            return CtyValue.null(self)
+            logger.debug("🧩🔍✅ Empty tuple type with empty value, returning known empty CtyValue with value ()")
+            return CtyValue(self, ()) # Correctly return an empty tuple value
 
         # Validate basic type
         if not isinstance(value, (tuple, list)):
