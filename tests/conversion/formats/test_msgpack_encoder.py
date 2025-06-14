@@ -304,3 +304,59 @@ class TestMsgPackEncoder:
         expected_internal_set_elements = {CtyValue.string("apple"), CtyValue.string("banana"), CtyValue.string("cherry")}
         assert isinstance(decoded_value.value, frozenset) # CtySet internal value is a frozenset of CtyValues
         assert decoded_value.value == expected_internal_set_elements # Direct comparison of frozensets of CtyValues
+
+    # --- Tests for CtyUnknown with ExtType(0) ---
+
+    def test_unknown_value_serialization_exttype(self):
+        """Test that CtyUnknown values serialize to msgpack.ExtType(0, b'')."""
+        unknown_string_val = CtyValue.unknown(CtyString())
+        unknown_number_val = CtyValue.unknown(CtyNumber())
+
+        expected_msgpack_bytes = msgpack.packb(msgpack.ExtType(0, b''))
+
+        assert unknown_string_val.to_msgpack_bytes() == expected_msgpack_bytes
+        assert unknown_number_val.to_msgpack_bytes() == expected_msgpack_bytes
+
+    def test_unknown_value_deserialization_exttype(self):
+        """Test that msgpack.ExtType(0, b'') deserializes to CtyUnknown of the target type."""
+        unknown_ext_bytes = msgpack.packb(msgpack.ExtType(0, b''))
+
+        # Deserialize as CtyString
+        deserialized_val_str = CtyValue.from_msgpack_bytes(unknown_ext_bytes, CtyString())
+        assert deserialized_val_str.is_unknown is True
+        assert isinstance(deserialized_val_str.type, CtyString)
+        with pytest.raises(ValueError): # Cannot access value of unknown
+            _ = deserialized_val_str.value
+
+        # Deserialize as CtyNumber
+        deserialized_val_num = CtyValue.from_msgpack_bytes(unknown_ext_bytes, CtyNumber())
+        assert deserialized_val_num.is_unknown is True
+        assert isinstance(deserialized_val_num.type, CtyNumber)
+        with pytest.raises(ValueError):
+            _ = deserialized_val_num.value
+
+        # Deserialize as CtyDynamic
+        deserialized_val_dyn = CtyValue.from_msgpack_bytes(unknown_ext_bytes, CtyDynamic())
+        assert deserialized_val_dyn.is_unknown is True
+        assert isinstance(deserialized_val_dyn.type, CtyDynamic)
+        with pytest.raises(ValueError):
+            _ = deserialized_val_dyn.value
+
+    def test_known_value_msgpack_does_not_use_exttype0(self):
+        """Sanity check: known values should not serialize to ExtType(0, b'')."""
+        known_val = CtyValue.string("hello")
+        msgpack_bytes = known_val.to_msgpack_bytes()
+
+        # Check it's not the unknown sentinel
+        assert msgpack_bytes != msgpack.packb(msgpack.ExtType(0, b''))
+
+        # Check it's a valid msgpack dict (map)
+        unpacked_data = msgpack.unpackb(msgpack_bytes, raw=False)
+        assert isinstance(unpacked_data, dict)
+        assert unpacked_data.get("type_name") == "string" # As per _value_to_serializable via to_json_comparable_dict
+        assert unpacked_data.get("value") == "hello"
+
+        # Full deserialization check
+        deserialized_known = CtyValue.from_msgpack_bytes(msgpack_bytes, CtyString())
+        assert deserialized_known.is_unknown is False
+        assert deserialized_known.value == "hello"

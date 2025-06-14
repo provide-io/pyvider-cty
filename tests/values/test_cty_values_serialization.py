@@ -227,16 +227,21 @@ def test_marked_value_serialization():
 def test_dynamic_value_resolved_serialization():
     # When a dynamic value resolves to a concrete type
     concrete_string = CtyString().validate("dynamic turned string")
-    dynamic_val_holding_string = CtyDynamic().validate(concrete_string) # This should resolve type
+    dynamic_val_holding_string = CtyDynamic().validate(concrete_string)
 
-    # The type of dynamic_val_holding_string should now be CtyString
-    assert dynamic_val_holding_string.type.equal(CtyString())
-    check_serialization_deserialization(dynamic_val_holding_string, CtyString())
+    # The type of dynamic_val_holding_string should be CtyDynamic, wrapping the CtyString
+    assert isinstance(dynamic_val_holding_string.type, CtyDynamic)
+    assert isinstance(dynamic_val_holding_string.value, CtyValue)
+    assert dynamic_val_holding_string.value.type.equal(CtyString())
+    # Now check serialization for the dynamic_val_holding_string itself, expecting it as CtyDynamic
+    check_serialization_deserialization(dynamic_val_holding_string, CtyDynamic())
 
     concrete_number_val = CtyNumber().validate(Decimal("123"))
     dynamic_val_holding_number = CtyDynamic().validate(concrete_number_val)
-    assert dynamic_val_holding_number.type.equal(CtyNumber())
-    check_serialization_deserialization(dynamic_val_holding_number, CtyNumber())
+    assert isinstance(dynamic_val_holding_number.type, CtyDynamic)
+    assert isinstance(dynamic_val_holding_number.value, CtyValue)
+    assert dynamic_val_holding_number.value.type.equal(CtyNumber())
+    check_serialization_deserialization(dynamic_val_holding_number, CtyDynamic())
 
 # Potentially add tests for CtySet if it's a distinct type with specific serialization needs.
 # For now, assuming CtySet is handled by generic collection logic if its values are standard.
@@ -295,5 +300,136 @@ def test_problem_description_string_serialization():
     deserialized_msgpack = CtyValue.from_msgpack_bytes(msgpack_bytes, CtyString())
     assert original_value == deserialized_msgpack
     assert deserialized_msgpack.type.equal(CtyString()) # Also ensure .type.equal here
+
+
+# --- Tests for CtyDynamic with embedded types ---
+
+def test_dynamic_wrapping_string_serialization():
+    """Test CtyDynamic wrapping CtyString serialization and deserialization."""
+    inner_val = CtyValue.string("hello")
+    # When a CtyValue is assigned to a CtyDynamic, CtyDynamic's validate() should
+    # store the CtyValue itself if it's already a CtyValue.
+    dynamic_val = CtyDynamic().validate(inner_val)
+
+    # Check that the type of dynamic_val is indeed CtyDynamic, but its internal value is the CtyString CtyValue
+    assert isinstance(dynamic_val.type, CtyDynamic), "Outer type should be CtyDynamic"
+    assert isinstance(dynamic_val.value, CtyValue), "Inner value should be a CtyValue instance"
+    assert isinstance(dynamic_val.value.type, CtyString), "Inner CtyValue's type should be CtyString"
+    assert dynamic_val.value.value == "hello", "Inner CtyValue's raw value is incorrect"
+
+    # Serialization (via to_json_comparable_dict, which to_json_string uses)
+    # Expected structure:
+    # {
+    #   "type_name": "dynamic",
+    #   "value": {"type": "string", "value": "hello"},  <-- This is the embedded part
+    #   "is_unknown": False,
+    #   "is_null": False,
+    #   "marks": []
+    # }
+    # Note: JsonEncoder might wrap this further, but CtyValue.to_json_string uses CtyValue.to_json_comparable_dict
+    # which is then passed to json.dumps by the codec.
+
+    json_str = dynamic_val.to_json_string()
+    parsed_json = json.loads(json_str)
+
+    assert parsed_json["type_name"] == "dynamic"
+    assert parsed_json["value"] == {"type": "string", "value": "hello"}
+    assert not parsed_json["is_unknown"]
+    assert not parsed_json["is_null"]
+    assert parsed_json["marks"] == []
+
+    # Deserialization
+    deserialized_dynamic = CtyValue.from_json_string(json_str, CtyDynamic())
+
+    assert isinstance(deserialized_dynamic, CtyValue)
+    assert isinstance(deserialized_dynamic.type, CtyDynamic)
+    assert not deserialized_dynamic.is_unknown
+    assert not deserialized_dynamic.is_null
+
+    # Check the wrapped value
+    inner_deserialized = deserialized_dynamic.value
+    assert isinstance(inner_deserialized, CtyValue)
+    assert isinstance(inner_deserialized.type, CtyString)
+    assert inner_deserialized.value == "hello"
+
+def test_dynamic_wrapping_number_serialization():
+    """Test CtyDynamic wrapping CtyNumber."""
+    inner_val = CtyValue.number(Decimal("123.45"))
+    dynamic_val = CtyDynamic().validate(inner_val)
+
+    json_str = dynamic_val.to_json_string()
+    parsed_json = json.loads(json_str)
+
+    assert parsed_json["type_name"] == "dynamic"
+    assert parsed_json["value"] == {"type": "number", "value": "123.45"}
+    assert not parsed_json["is_unknown"]
+    assert not parsed_json["is_null"]
+
+    deserialized_dynamic = CtyValue.from_json_string(json_str, CtyDynamic())
+    assert isinstance(deserialized_dynamic.type, CtyDynamic)
+    inner_deserialized = deserialized_dynamic.value
+    assert isinstance(inner_deserialized, CtyValue)
+    assert isinstance(inner_deserialized.type, CtyNumber)
+    assert inner_deserialized.value == Decimal("123.45")
+
+def test_dynamic_wrapping_bool_serialization():
+    """Test CtyDynamic wrapping CtyBool."""
+    inner_val = CtyValue.bool(True)
+    dynamic_val = CtyDynamic().validate(inner_val)
+
+    json_str = dynamic_val.to_json_string()
+    parsed_json = json.loads(json_str)
+
+    assert parsed_json["type_name"] == "dynamic"
+    assert parsed_json["value"] == {"type": "bool", "value": True}
+    assert not parsed_json["is_unknown"]
+    assert not parsed_json["is_null"]
+
+    deserialized_dynamic = CtyValue.from_json_string(json_str, CtyDynamic())
+    assert isinstance(deserialized_dynamic.type, CtyDynamic)
+    inner_deserialized = deserialized_dynamic.value
+    assert isinstance(inner_deserialized, CtyValue)
+    assert isinstance(inner_deserialized.type, CtyBool)
+    assert inner_deserialized.value is True
+
+def test_dynamic_wrapping_null_serialization():
+    """Test CtyDynamic that is null (not wrapping a typed null CtyValue)."""
+    # This CtyDynamic value itself is null.
+    dynamic_null_val = CtyValue.null(CtyDynamic())
+
+    json_str = dynamic_null_val.to_json_string()
+    parsed_json = json.loads(json_str)
+
+    assert parsed_json["type_name"] == "dynamic"
+    assert parsed_json["value"] is None # For null values, "value" is None
+    assert not parsed_json["is_unknown"]
+    assert parsed_json["is_null"] is True # The dynamic value itself is null
+
+    deserialized_dynamic = CtyValue.from_json_string(json_str, CtyDynamic())
+    assert isinstance(deserialized_dynamic.type, CtyDynamic)
+    assert not deserialized_dynamic.is_unknown
+    assert deserialized_dynamic.is_null # Should be null
+    assert deserialized_dynamic.value is None # Raw value of a null CtyValue is None
+
+def test_dynamic_wrapping_unknown_serialization():
+    """Test CtyDynamic that is unknown."""
+    # This CtyDynamic value itself is unknown.
+    dynamic_unknown_val = CtyValue.unknown(CtyDynamic())
+
+    json_str = dynamic_unknown_val.to_json_string()
+    parsed_json = json.loads(json_str)
+
+    assert parsed_json["type_name"] == "dynamic"
+    assert parsed_json["value"] is None # For unknown values, "value" is None
+    assert parsed_json["is_unknown"] is True # The dynamic value itself is unknown
+    assert not parsed_json["is_null"]
+
+    deserialized_dynamic = CtyValue.from_json_string(json_str, CtyDynamic())
+    assert isinstance(deserialized_dynamic.type, CtyDynamic)
+    assert deserialized_dynamic.is_unknown # Should be unknown
+    assert not deserialized_dynamic.is_null
+    with pytest.raises(ValueError, match="Cannot get raw value of unknown value"):
+        _ = deserialized_dynamic.value # Accessing .value of unknown raises error
+
 
 # 🐍🧪🔒
