@@ -215,7 +215,14 @@ class WireFormatError(TransformationError):
                 format_info = f" during {operation}{format_info}"
             message = f"{message}{format_info}"
 
-        super().__init__(message, **kwargs)
+        # TransformationError (parent) expects __init__(self, message: str, schema: object = None)
+        # Extract 'schema' from kwargs if present for the super call.
+        schema = kwargs.pop('schema', None)
+        super().__init__(message, schema=schema) # Pass message and schema to TransformationError
+
+        # Store any other WireFormatError-specific kwargs on self if they were intended for WireFormatError.
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 # 🐍🏗️🐣
