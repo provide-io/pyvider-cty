@@ -21,10 +21,18 @@ def _parse_comma_separated_elements(elements_str: str, is_object_attrs: bool) ->
             element_start = current_pos + 1
         current_pos += 1
     last_part = elements_str[element_start:].strip()
-    if last_part: elements.append(last_part)
+    # Add the last part. This also correctly handles if there were no commas at all.
+    # If elements_str ended with a comma, elements_str[element_start:] would be empty.
+    elements.append(elements_str[element_start:].strip())
+
     if is_object_attrs:
         parsed_attrs = []
         for attr_pair_str in elements:
+            # Skip empty strings that might result from multiple commas, e.g., "a=string,,b=number" -> ["a=string", "", "b=number"]
+            # The empty string "" would not contain "=" and correctly logs an error.
+            if not attr_pair_str and len(elements) > 1: # Allow a single empty attr_pair_str if elements_str itself was "" (e.g. object(=))
+                logger.debug(f"Skipping empty attribute pair string from parsing: \"{elements_str}\"")
+                continue
             if "=" not in attr_pair_str:
                 logger.error(f"Invalid object attribute format: \"{attr_pair_str}\" in \"{elements_str}\"")
                 continue
@@ -32,6 +40,11 @@ def _parse_comma_separated_elements(elements_str: str, is_object_attrs: bool) ->
             parsed_attrs.append((name.strip(), type_val_str.strip()))
         return parsed_attrs
     else:
+        # If the original elements_str was empty (e.g. from "tuple()")
+        # the logic `elements.append(elements_str[element_start:].strip())` would add one empty string.
+        # For tuple() or list() (if it could be empty), we want an empty list of elements, not [''].
+        if len(elements) == 1 and elements[0] == "" and not elements_str.strip() and elements_str == "": # Check if original was truly empty vs " "
+            return []
         return elements
 
 def _encode_wire_element(element_type_str: str) -> object:

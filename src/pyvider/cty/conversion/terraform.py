@@ -107,28 +107,48 @@ def serialize_state_convertible(value: StateConvertible, operation: OperationCon
         return [TerraformWireFormatConstants.OBJECT, {str(k): serialize_value(v, operation) for k, v in raw_dict.items()}]
 
 def extract_value(value: object) -> object:
-    if not isinstance(value, list) or len(value) != 2:
-        if isinstance(value, list): return [extract_value(item) for item in value]
-        if isinstance(value, dict): return {str(k): extract_value(v) for k, v in value.items()}
-        return value
-    
-    type_name, payload = value
-    match str(type_name).lower():
-        case TerraformWireFormatConstants.STRING: return str(payload) if payload is not None else ""
-        case TerraformWireFormatConstants.NUMBER:
-            if payload is None: return None
-            try:
-                d = Decimal(str(payload))
-                return int(d) if d == d.to_integral_value() else float(d)
-            except: return payload
-        case TerraformWireFormatConstants.BOOL: return bool(payload) if payload is not None else False
-        case TerraformWireFormatConstants.NULL: return None
-        case TerraformWireFormatConstants.TUPLE | TerraformWireFormatConstants.LIST | TerraformWireFormatConstants.SET:
-            return [extract_value(item) for item in payload] if isinstance(payload, list) else payload
-        case TerraformWireFormatConstants.OBJECT | TerraformWireFormatConstants.MAP:
-            return {str(k): extract_value(v) for k, v in payload.items()} if isinstance(payload, dict) else payload
-        case TerraformWireFormatConstants.DYNAMIC: return extract_value(payload)
-        case _: return payload
+    if isinstance(value, list) and len(value) == 2:
+        type_name_candidate = value[0]
+        # Check if type_name_candidate is a valid type string recognized by TFC
+        is_type_payload_pair = isinstance(type_name_candidate, str) and \
+                              any(type_name_candidate.lower() == const_val
+                                  for const_key, const_val in vars(TerraformWireFormatConstants).items()
+                                  if not const_key.startswith('_') and isinstance(const_val, str))
+
+        if is_type_payload_pair:
+            type_name, payload = value
+            match str(type_name).lower():
+                case TerraformWireFormatConstants.STRING: return str(payload) if payload is not None else ""
+                case TerraformWireFormatConstants.NUMBER:
+                    if payload is None: return None
+                    try:
+                        d = Decimal(str(payload))
+                        # Return as int if it's an integer, otherwise float.
+                        if d == d.to_integral_value():
+                            return int(d)
+                        return float(d)
+                    except: return payload # Return as is if not a valid Decimal
+                case TerraformWireFormatConstants.BOOL: return bool(payload) if payload is not None else False
+                case TerraformWireFormatConstants.NULL: return None
+                case TerraformWireFormatConstants.TUPLE | TerraformWireFormatConstants.LIST | TerraformWireFormatConstants.SET:
+                    return [extract_value(item) for item in payload] if isinstance(payload, list) else payload
+                case TerraformWireFormatConstants.OBJECT | TerraformWireFormatConstants.MAP:
+                    return {str(k): extract_value(v) for k, v in payload.items()} if isinstance(payload, dict) else payload
+                case TerraformWireFormatConstants.DYNAMIC: return extract_value(payload)
+                case _: # Should not happen if is_type_payload_pair is correct, but as a fallback
+                    return payload
+        else: # It's a list of two items, but not a [type, payload] structure that we recognize for Terraform. Extract each item.
+            return [extract_value(item) for item in value]
+    elif isinstance(value, list): # General list of items (not len 2 or not matched above)
+        return [extract_value(item) for item in value]
+    elif isinstance(value, dict): # General dictionary of items
+        return {str(k): extract_value(v) for k, v in value.items()}
+    # Primitive or already extracted, or some other type not handled by lists/dicts above
+    return value
+
+# Ensure @functools.singledispatch is correctly placed before serialize_value
+# The orphaned match block below this comment will be implicitly removed by this overwrite
+# if it's not part of the REPLACE section.
 
 logger.debug("🧰🔄✅ Terraform wire format converter registered.")
 
