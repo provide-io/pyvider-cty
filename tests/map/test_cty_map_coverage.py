@@ -177,7 +177,11 @@ class TestCtyMapCoverage:
         dyn_keys_val = {CtyValue.number(1): CtyValue.string("v1")}
         map_dyn_str_val = CtyValue(CtyMap(key_type=CtyDynamic(), value_type=CtyString()), dyn_keys_val)
         # map(D,S) is usable_as map(S,S). Validation fails inside due to key 1 not being string.
-        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('1'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"):
+        # The error message changed due to stricter key validation logic in CtyMap.validate for CtyValue keys.
+        # It should now be something like: "Invalid key CtyValue(Number(1)): Key type mismatch for map key CtyValue(Number(1)). Expected CtyString, but got CtyNumber."
+        # The actual error from CtyString().validate(CtyValue(CtyNumber(1))) will be "String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"
+        expected_regex = r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('1'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"
+        with pytest.raises(CtyMapValidationError, match=expected_regex):
              map_str_str.validate(map_dyn_str_val)
 
     def test_validate_ctyvalue_map_value_type_dynamic_target_compatible(self):
@@ -194,7 +198,8 @@ class TestCtyMapCoverage:
         dyn_values_val = {"k1": CtyValue.number(1)}
         map_str_dyn_val = CtyValue(CtyMap(key_type=CtyString(), value_type=CtyDynamic()), dyn_values_val)
         # map(S,D) is usable_as map(S,S). Validation fails inside due to value CtyValue(number,1) not being string.
-        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid value for key 'k1': String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"):
+        expected_regex = r"Map validation failed:\s*-\s*Invalid value for key 'k1': String validation error: Value is a CtyValue of type CtyNumber, which cannot be automatically converted to CtyString\. Expected CtyString or CtyDynamic\."
+        with pytest.raises(CtyMapValidationError, match=expected_regex):
             map_str_str.validate(map_str_dyn_val)
 
 
@@ -223,20 +228,25 @@ class TestCtyMapCoverage:
         assert "key1" in validated_map.value
         assert validated_map.value["key1"].value == "value1"
 
-    def test_equal_logs_comparison_details(self, caplog):
+    def test_equal_logs_comparison_details(self, capsys): # Changed caplog to capsys
         map_type1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_type2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_type3 = CtyMap(key_type=CtyString(), value_type=CtyString())
 
-        # NOTE: Logging assertions have been removed due to intractable issues with
-        # caplog capturing logs from the pyvider.telemetry logger in this environment.
-        # Logs are visually confirmed in stderr during test runs.
-        # The CtyMap.equal method is exercised here, contributing to coverage.
-        map_type1.equal(map_type2)
-        map_type1.equal(map_type3)
-        # Add a placeholder assertion to ensure the test still runs and is counted
-        assert True, "Test logic for CtyMap.equal executed, log assertion skipped."
+        with caplog.at_level("DEBUG", logger="pyvider.telemetry"):
+            map_type1.equal(map_type2)
+            map_type1.equal(map_type3)
 
+            # Assertions moved inside the 'with' block
+            assert "Checking equality with CtyMap" in caplog.text
+            assert "Key types are equal: True" in caplog.text
+            assert "Value types are equal: True" in caplog.text
+            assert "Map types are equal: True" in caplog.text
+            # For the second call map_type1.equal(map_type3)
+            # "Checking equality with CtyMap" will appear again
+            # "Key types are equal: True" will appear again
+            assert "Value types are equal: False" in caplog.text
+            assert "Map types are equal: False" in caplog.text
 
     def test_usable_as_branches_with_dynamic(self):
         map_s_s = CtyMap(key_type=CtyString(), value_type=CtyString())
@@ -291,7 +301,10 @@ class TestCtyMapCoverage:
             CtyMap(key_type=CtyDynamic(), value_type=CtyNumber()),
             { CtyValue.number(123): CtyValue.number(1) }
         )
-        with pytest.raises(CtyMapValidationError, match=r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"):
+        # Similar to test_validate_ctyvalue_map_key_type_dynamic_target_incompatible,
+        # the error should come from CtyString().validate(CtyValue(CtyNumber(123)))
+        expected_regex = r"Map validation failed:\s*-\s*Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\): String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"
+        with pytest.raises(CtyMapValidationError, match=expected_regex):
             target_map_type.validate(input_val_map_dyn_num)
 
 
