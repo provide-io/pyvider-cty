@@ -217,9 +217,6 @@ class CtySet(CtyType[PySet[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtySet.equal: {result}")
         return result
 
-    def __iter__(self):
-        return iter(self.value)
-
     def __str__(self) -> str:
         return f"set({self.element_type})"
 
