@@ -160,8 +160,12 @@ class TestCtyMapCoverage:
         map_str_dyn = CtyMap(key_type=CtyString(), value_type=CtyDynamic())
         map_str_str_val = CtyValue(CtyMap(key_type=CtyString(), value_type=CtyString()), {"hello": CtyValue.string("world")})
         validated_map = map_str_dyn.validate(map_str_str_val)
-        assert validated_map.value["hello"].value == "world"
-        assert isinstance(validated_map.value["hello"].type, CtyString)
+        # validated_map.value["hello"] is CtyValue(CtyDynamic, CtyValue(CtyString, "world"))
+        # So validated_map.value["hello"].value is CtyValue(CtyString, "world")
+        # And validated_map.value["hello"].value.value is "world"
+        assert validated_map.value["hello"].value.value == "world"
+        assert isinstance(validated_map.value["hello"].value.type, CtyString)
+        assert isinstance(validated_map.value["hello"].type, CtyDynamic) # The outer validated value
 
     def test_validate_ctyvalue_map_key_type_dynamic_target_compatible(self):
         map_str_str = CtyMap(key_type=CtyString(), value_type=CtyString())
