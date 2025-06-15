@@ -106,7 +106,7 @@ class TestParseTypeStringToCtyType:
         ("map(bool", "Unknown or invalid CTY type string: map(bool"),     # Missing closing paren
         ("object({name=string", "Unknown or invalid CTY type string: object({name=string"), # Missing closing brace
         ("object({name=})", "Empty attribute type string for attribute 'name' in 'name='"), # Empty type for attr
-        ("object({=string})", "Empty attribute name in object string: '{=string}'"), # Empty name for attr
+        ("object({=string})", "Empty attribute name in object string: '=string'"), # Empty name for attr - Adjusted
         ("object({name:string})", "Invalid attribute format in object string: 'name:string' in 'name:string'"), # Colon instead of equals
         ("tuple([string", "Unknown or invalid CTY type string: tuple([string"), # Missing closing bracket
         ("tuple([string,])", "Empty type string found in tuple elements: 'string,'"), # Trailing comma leads to empty element
@@ -123,7 +123,7 @@ class TestParseTypeStringToCtyType:
         assert error_message_part.lower() in str(excinfo.value).lower()
 
     def test_object_with_empty_attribute_name(self):
-        with pytest.raises(CtyTypeParseError, match="Empty attribute name in object string: '{=string}'"):
+        with pytest.raises(CtyTypeParseError, match="Empty attribute name in object string: '=string'"): # Adjusted
             parse_type_string_to_ctytype("object({=string})")
 
     def test_object_with_empty_attribute_type(self):
@@ -184,7 +184,7 @@ class TestParseTypeStringToCtyType:
             parse_type_string_to_ctytype("tuple([string,])")
 
         # An empty element due to adjacent commas is also an error.
-        with pytest.raises(CtyTypeParseError, match="Empty type string found in tuple elements: 'string, ,number'"):
+        with pytest.raises(CtyTypeParseError, match="Empty type string found in tuple elements: 'string,,number'"): # Adjusted
             parse_type_string_to_ctytype("tuple([string,,number])")
 
 

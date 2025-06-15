@@ -26,6 +26,7 @@ from pyvider.cty.conversion.wire import WireFormatType
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.values import CtyValue
 from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
+from pyvider.cty.codec import CtyTypeParseError # Corrected import
 
 T = TypeVar('T')
 
@@ -204,35 +205,39 @@ class MsgPackEncoder(FormatEncoder):
             return result
 
         # Add value based on type using match/case
-        match value.value:
-            case dict():
-                # For maps, convert keys and values
-                serialized_dict = {}
-                for k, v in value.value.items():
-                    v_dict = cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
-                    serialized_dict[k] = v_dict
-                result["value"] = serialized_dict
+        # Special handling for CtyDynamic wrapping a CtyValue
+        if value.type.ctype == "dynamic" and isinstance(value.value, CtyValue):
+            result["value"] = cls._value_to_dict(value.value, preserve_type)
+        else:
+            match value.value:
+                case dict():
+                    # For maps, convert keys and values
+                    serialized_dict = {}
+                    for k, v in value.value.items():
+                        v_dict = cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
+                        serialized_dict[k] = v_dict
+                    result["value"] = serialized_dict
 
-            case list():
-                # For lists, convert each element
-                result["value"] = [
-                    cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
-                    for v in value.value
-                ]
+                case list():
+                    # For lists, convert each element
+                    result["value"] = [
+                        cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
+                        for v in value.value
+                    ]
 
-            case Decimal():
-                # Convert Decimal to string for MessagePack compatibility
-                result["value"] = str(value.value)
+                case Decimal():
+                    # Convert Decimal to string for MessagePack compatibility
+                    result["value"] = str(value.value)
 
-            case frozenset(): # Handle CtySet internal value
-                # Ensure elements within the set (now a list) are also processed if they are CtyValues
-                result["value"] = [
-                    cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
-                    for v in list(value.value) # Convert frozenset to list then process
-                ]
-            case _: # Wildcard must be last
-                # Use the raw value for primitives
-                result["value"] = value.value
+                case frozenset(): # Handle CtySet internal value
+                    # Ensure elements within the set (now a list) are also processed if they are CtyValues
+                    result["value"] = [
+                        cls._value_to_dict(v, preserve_type) if isinstance(v, CtyValue) else v
+                        for v in list(value.value) # Convert frozenset to list then process
+                    ]
+                case _: # Wildcard must be last
+                    # Use the raw value for primitives
+                    result["value"] = value.value
 
         # Add marks if present
         marks = getattr(value, "_marks", None)
@@ -523,6 +528,23 @@ class MsgPackEncoder(FormatEncoder):
                         else: # Primitive or already converted
                             attributes[attr_name_str] = attr_val_item_data
                 return CtyValue(cty_type, attributes)
+            case "CtyDynamic":
+                # If the declared type is CtyDynamic, the value_data might be a serialized CtyValue.
+                # Attempt to deserialize it first.
+                processed_value_data = value_data
+                if isinstance(value_data, dict) and (
+                    cls.TYPE_MARKER in value_data or b'$T' in value_data or # Check both str and bytes keys
+                    cls.UNKNOWN_MARKER in value_data or b'$U' in value_data or
+                    cls.NULL_MARKER in value_data or b'$N' in value_data
+                ):
+                    try:
+                        # Try to convert dict back to CtyValue if it looks like one
+                        processed_value_data = cls._dict_to_value(value_data, preserve_type=True)
+                    except Exception:
+                        # If it fails, proceed with value_data as is (it might be a raw dict for dynamic)
+                        logger.debug(f"🧩🔍🔄 CtyDynamic: Failed to deserialize inner value, using raw: {value_data}")
+                        pass
+                return cty_type.validate(processed_value_data) # CtyDynamic.validate will handle it
             case _:
                 # For other types, validate raw value against type
                 return cty_type.validate(value_data)
@@ -670,10 +692,22 @@ class MsgPackEncoder(FormatEncoder):
                         for name, ati in attribute_type_infos.items()
                     } # Recursive calls
                     return CtyObject(attribute_types=cast(dict[str, CtyType], attribute_types))
-                case "CtyDynamic" | _:
+                case "CtyDynamic": # Explicitly CtyDynamic
                     return CtyDynamic()
+                case _: # Unrecognized type string
+                    # If type_name_str was derived from a type marker but isn't a known Cty type string,
+                    # it's an encoding error. Defaulting to CtyDynamic should only happen if no type was specified.
+                    # This makes the type creation stricter.
+                    if isinstance(type_info_dict, (str, bytes)) or \
+                       (isinstance(type_info_dict, dict) and (cls.TYPE_MARKER in type_info_dict or cls.TYPE_MARKER.encode('utf-8') in type_info_dict)):
+                        raise EncodingError(f"Unrecognized CTY type string: {type_name_str}", encoding="msgpack")
+                    return CtyDynamic() # Fallback for truly unspecified types (e.g. if type_info_dict was None or empty dict without $T)
+
 
         except Exception as e:
+            # Ensure that CtyTypeParseError from codec._parse_type_string is re-raised as EncodingError
+            if isinstance(e, CtyTypeParseError):
+                 raise EncodingError(f"Failed to parse type string in msgpack: {e}", encoding="msgpack") from e
             error_msg = f"Failed to create type from info {type_info_dict}: {e}"
             logger.error(f"🧩🔍❌ {error_msg}", exc_info=True)
             raise EncodingError(error_msg, encoding="msgpack") from e
