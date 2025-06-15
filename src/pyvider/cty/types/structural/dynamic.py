@@ -102,12 +102,14 @@ class CtyDynamic(CtyType[Any]):
             from pyvider.cty.types.collections import CtyList # Moved import
             # For a raw list, the most specific type we can infer is list of dynamic.
             concrete_type = CtyList(element_type=CtyDynamic())
-            return CtyValue(vtype=concrete_type, value=value)
+            # Let CtyList's validate method handle the conversion of list elements to CtyValues
+            return concrete_type.validate(value)
         elif isinstance(value, dict):
             from pyvider.cty.types.collections import CtyMap # Moved import
             # Similarly for dict, infer map of dynamic. Keys are implicitly strings.
             concrete_type = CtyMap(key_type=CtyString(), value_type=CtyDynamic())
-            return CtyValue(vtype=concrete_type, value=value)
+            # Let CtyMap's validate method handle the conversion of dict elements to CtyValues
+            return concrete_type.validate(value)
         elif value is None:
             # CtyDynamic validated with None should be null of CtyDynamic
             return CtyValue.null(self)

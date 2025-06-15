@@ -360,3 +360,125 @@ class TestMsgPackEncoder:
         deserialized_known = CtyValue.from_msgpack_bytes(msgpack_bytes, CtyString())
         assert deserialized_known.is_unknown is False
         assert deserialized_known.value == "hello"
+
+    def test_encode_decode_dynamic_wrapping_cty_value(self):
+        """Test encoding/decoding of a CtyDynamic value that wraps another CtyValue."""
+        encoder = MsgPackEncoder()
+
+        # 1. Create an inner CtyValue (e.g., CtyString)
+        inner_value = CtyValue.string("hello_dynamic_world")
+
+        # 2. Create an outer CtyDynamic value that wraps the inner CtyValue
+        # CtyDynamic().validate(inner_value) achieves CtyValue(CtyDynamic, inner_value)
+        original_dynamic_value = CtyDynamic().validate(inner_value)
+
+        assert isinstance(original_dynamic_value.type, CtyDynamic), "Outer type should be CtyDynamic"
+        assert isinstance(original_dynamic_value.value, CtyValue), "Inner value should be a CtyValue instance"
+        assert original_dynamic_value.value.type == CtyString(), "Inner CtyValue's type should be CtyString"
+        assert original_dynamic_value.value.value == "hello_dynamic_world", "Inner CtyValue's raw value is incorrect"
+
+        # 3. Encode the outer dynamic value
+        encoded_data = encoder.encode(original_dynamic_value)
+
+        # 4. Decode the encoded data
+        # When decoding, we expect the outer type to be CtyDynamic.
+        # The fix ensures the inner CtyValue is also properly reconstructed.
+        decoded_dynamic_value = encoder.decode(encoded_data)
+
+        # 5. Assertions
+        assert isinstance(decoded_dynamic_value, CtyValue), "Decoded value should be a CtyValue"
+        assert isinstance(decoded_dynamic_value.type, CtyDynamic), "Decoded outer type should be CtyDynamic"
+        assert not decoded_dynamic_value.is_null, "Decoded value should not be null"
+        assert not decoded_dynamic_value.is_unknown, "Decoded value should not be unknown"
+
+        # Check the inner wrapped CtyValue
+        inner_decoded_value = decoded_dynamic_value.value
+        assert isinstance(inner_decoded_value, CtyValue), "Decoded inner value should be a CtyValue instance"
+        assert inner_decoded_value.type == CtyString(), "Decoded inner CtyValue's type should be CtyString"
+        assert inner_decoded_value.value == "hello_dynamic_world", "Decoded inner CtyValue's raw value is incorrect"
+
+        # Overall equality check
+        assert decoded_dynamic_value == original_dynamic_value, "Decoded dynamic value should equal the original"
+
+        # Test with a number as well
+        inner_number_value = CtyValue.number(12345)
+        original_dynamic_number = CtyDynamic().validate(inner_number_value)
+        encoded_number_data = encoder.encode(original_dynamic_number)
+        decoded_dynamic_number = encoder.decode(encoded_number_data)
+
+        assert isinstance(decoded_dynamic_number.type, CtyDynamic)
+        inner_decoded_number = decoded_dynamic_number.value
+        assert isinstance(inner_decoded_number, CtyValue)
+        assert inner_decoded_number.type == CtyNumber()
+        assert inner_decoded_number.value == Decimal(12345)
+        assert decoded_dynamic_number == original_dynamic_number
+
+    def test_encode_decode_dynamic_wrapping_list(self):
+        """Test CtyDynamic wrapping a CtyList."""
+        encoder = MsgPackEncoder()
+        # Correct way to create a CtyList value
+        list_type = CtyList(element_type=CtyString()) # Fixed: use keyword argument
+        inner_list_value = list_type.validate(["a", "b"])
+        original_value = CtyDynamic().validate(inner_list_value)
+
+        encoded_data = encoder.encode(original_value)
+        decoded_value = encoder.decode(encoded_data)
+
+        assert isinstance(decoded_value.type, CtyDynamic)
+        assert isinstance(decoded_value.value, CtyValue)
+        assert decoded_value.value.type == CtyList(element_type=CtyString()) # Fixed: use keyword argument
+        assert decoded_value.value.value[0].value == "a"
+        assert decoded_value.value.value[1].value == "b"
+        assert decoded_value == original_value
+
+    def test_decode_dynamic_wrapping_malformed_inner_ctyvalue(self):
+        """Test decoding CtyDynamic where inner value is a dict that looks like CtyValue but is malformed."""
+        encoder = MsgPackEncoder()
+        # Craft a payload where the inner value is a dictionary representing a CtyValue,
+        # but its *type definition* is malformed. Specifically, a CtyList whose
+        # element type specification ($E) is not a valid type representation (e.g., an int).
+        # This should cause _create_type_from_name() for the inner CtyList's element type
+        # to raise an EncodingError (due to the NameError for CtyTypeParseError, or directly if fixed).
+        # This EncodingError should then cause the inner _dict_to_value() call to fail.
+        # This failure will trigger the 'except Exception' block in the _create_typed_value
+        # method (when handling the outer CtyDynamic type), and CtyDynamic().validate()
+        # will then be called with the raw malformed_inner_payload_dict dictionary.
+        # IMPORTANT: Keys in malformed_inner_payload_dict must be strings if we expect
+        # CtyMap(CtyString(), CtyDynamic()).validate() to succeed on it after the fallback.
+        malformed_inner_payload_dict = {
+            MsgPackEncoder.TYPE_MARKER: "CtyList",
+            "$E": 12345, # String key, but value 12345 is invalid for an element type spec
+            "value": [1,2]
+        }
+
+        outer_dynamic_dict = {
+            MsgPackEncoder.TYPE_MARKER: "CtyDynamic",
+            "value": malformed_inner_payload_dict
+        }
+
+        encoded_data = msgpack.packb(outer_dynamic_dict, default=MsgPackEncoder._msgpack_default, use_bin_type=True)
+
+        # The decode process:
+        # 1. Outer type is CtyDynamic. Inner value is malformed_inner_payload_dict.
+        # 2. _dict_to_value(malformed_inner_payload_dict) is called.
+        # 3. This fails because _create_type_from_name for "$E": 12345 raises EncodingError.
+        # 4. The 'except Exception' in _create_typed_value (for CtyDynamic) catches this.
+        # 5. processed_value_data remains malformed_inner_payload_dict.
+        # 6. CtyDynamic().validate(malformed_inner_payload_dict) is called.
+        # 7. This becomes CtyMap(CtyString(), CtyDynamic()).validate(malformed_inner_payload_dict).
+        # 8. This map validation succeeds because all keys are strings.
+
+        decoded_value = encoder.decode(encoded_data)
+
+        assert isinstance(decoded_value.type, CtyMap), \
+            f"Expected decoded type to be CtyMap after fallback, got {decoded_value.type}"
+        assert decoded_value.type.key_type == CtyString()
+        assert decoded_value.type.value_type == CtyDynamic()
+
+        expected_map_content = {
+            MsgPackEncoder.TYPE_MARKER: CtyValue.string("CtyList"),
+            "$E": CtyValue.number(12345),
+            "value": CtyValue.list(CtyDynamic(), [CtyValue.number(1), CtyValue.number(2)])
+        }
+        assert decoded_value.value == expected_map_content, \
+            f"Map content mismatch. Got: {decoded_value.value}, Expected: {expected_map_content}"

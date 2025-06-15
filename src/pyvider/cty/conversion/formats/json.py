@@ -384,7 +384,7 @@ class JsonEncoder(FormatEncoder):
         if type_name_str == "CtyDynamic": return CtyDynamic()
         if type_name_str == "CtyList":
             element_type_name = cast(str, data_dict_for_extra_type_info.get("element_type", "CtyDynamic"))
-            return CtyList(cls._create_type_from_name(element_type_name, {}))
+            return CtyList(element_type=cls._create_type_from_name(element_type_name, {}))
         if type_name_str == "CtyMap":
             key_type_name = cast(str, data_dict_for_extra_type_info.get("key_type", "CtyString"))
             value_type_name = cast(str, data_dict_for_extra_type_info.get("value_type", "CtyDynamic"))
@@ -392,7 +392,7 @@ class JsonEncoder(FormatEncoder):
                           value_type=cls._create_type_from_name(value_type_name, {}))
         if type_name_str == "CtySet":
             element_type_name = cast(str, data_dict_for_extra_type_info.get("element_type", "CtyDynamic"))
-            return CtySet(cls._create_type_from_name(element_type_name, {}))
+            return CtySet(element_type=cls._create_type_from_name(element_type_name, {}))
         if type_name_str == "CtyObject": # Added for completeness if "type":"CtyObject" is used
             # This path expects attributes to be in data_dict_for_extra_type_info if it's our own encoding
             # However, JSON comparable format embeds attributes in the type_name_str.
@@ -415,11 +415,11 @@ class JsonEncoder(FormatEncoder):
         if type_name_str == "dynamic": return CtyDynamic()
 
         if type_name_str.startswith("list(") and type_name_str.endswith(")"):
-            return CtyList(element_type=cls._create_type_from_name(type_name_str[5:-1], {}))
+            return CtyList(element_type=cls._create_type_from_name(type_name_str[len("list("):-1], {}))
         if type_name_str.startswith("map(") and type_name_str.endswith(")"):
-            return CtyMap(key_type=CtyString(), value_type=cls._create_type_from_name(type_name_str[4:-1], {}))
+            return CtyMap(key_type=CtyString(), value_type=cls._create_type_from_name(type_name_str[len("map("):-1], {}))
         if type_name_str.startswith("set(") and type_name_str.endswith(")"):
-            return CtySet(element_type=cls._create_type_from_name(type_name_str[4:-1], {}))
+            return CtySet(element_type=cls._create_type_from_name(type_name_str[len("set("):-1], {}))
 
         if type_name_str.startswith("object({") and type_name_str.endswith("})"):
             attrs_str = type_name_str[len("object({"):-2]
