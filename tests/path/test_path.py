@@ -16,7 +16,9 @@ from pyvider.cty import CtyValue
 from pyvider.cty.path import (
     CtyPath,
 )
-from pyvider.cty.exceptions import AttributePathError
+from pyvider.cty.path.base import GetAttrStep, KeyStep, IndexStep
+from pyvider.cty.exceptions import AttributePathError, CtyValidationError
+from unittest.mock import patch, MagicMock, PropertyMock
 
 class TestPathSystem:
     """Test the Cty path system."""
@@ -359,3 +361,114 @@ class TestPathSystem:
     # The file now contains only one of each of the test_key_step and test_cty_path_apply_errors methods.
     # The version of test_key_step_apply_type_errors kept is the one with the more precise regex.
     # The version of test_cty_path_apply_errors kept is the one with the more general regex.
+
+    @pytest.mark.asyncio
+    async def test_getattrstep_apply_generic_exception(self):
+        """Test GetAttrStep.apply raises AttributePathError on generic exception."""
+        obj_type = CtyObject(attribute_types={"attr_name": CtyString()})
+        cty_obj_value = obj_type.validate({"attr_name": "test_value"})
+
+        step = GetAttrStep("attr_name")
+
+        # Mock the 'type' attribute of the CtyValue instance to return a mock object
+        # This mock object will have a 'get_attribute' method that we can control
+        mock_type_for_value = MagicMock(spec=CtyObject)
+        mock_type_for_value.get_attribute.side_effect = RuntimeError("mocked runtime error")
+        # Set a descriptive name for the mock_type, in case error messages from the path system itself refer to it.
+        # str(obj_type) gives a string like "object({attr_name: CtyString})"
+        mock_type_for_value.name = str(obj_type)
+
+
+        # Patch the 'type' property of the cty_obj_value instance.
+        # CtyValue.type is a property, so we use PropertyMock.
+        with patch.object(CtyValue, 'type', PropertyMock(return_value=mock_type_for_value), create=True) as mock_type_prop:
+            # We need to ensure our specific instance cty_obj_value uses this mocked type property.
+            # This can be tricky if the property is on the class and not easily overridden per instance by patch.object directly on instance.
+            # A robust way is to ensure GetAttrStep.apply calls `cty_obj_value.type` and that call is what we intercept.
+            # The current patch on CtyValue.type should affect all instances.
+            # Let's ensure the instance cty_obj_value.type actually returns our mock.
+            # This might require a different approach if this doesn't work,
+            # perhaps by creating a CtyValue wrapper that allows easier mocking,
+            # or by ensuring the instance `cty_obj_value` itself is a mock that returns mock_type_for_value for its `type`.
+
+            # For this test, the simplest is to ensure that when step.apply(cty_obj_value) is called,
+            # and it internally access cty_obj_value.type, it gets our mock_type_for_value.
+            # The patch on CtyValue.type should achieve this for the duration of the context.
+
+            # Re-create/re-validate the value *after* the class-level property mock is in place,
+            # if CtyValue caches its .type at instantiation (it doesn't seem to).
+            # Or, ensure the instance `cty_obj_value` is what `step.apply` works with.
+            # The current `step.apply(cty_obj_value)` should pick up the mocked property.
+
+            with pytest.raises(AttributePathError, match="mocked runtime error"):
+                step.apply(cty_obj_value)
+
+    @pytest.mark.asyncio
+    async def test_keystep_apply_type_key_validation_failure(self):
+        """Test KeyStep.apply_type raises AttributePathError on key validation failure."""
+        mock_key_type = MagicMock(spec=CtyString)
+        mock_key_type.validate.side_effect = CtyValidationError("mocked key validation error")
+        # Provide a name attribute for the mock type, as it's used in error messages
+        mock_key_type.name = "MockCtyString"
+        # Provide a __repr__ for the mock_key_type for better error messages
+        mock_key_type.__repr__ = lambda self: "<MockCtyString spec='CtyString'>"
+
+
+        map_type = CtyMap(key_type=mock_key_type, value_type=CtyNumber())
+        step = KeyStep("some_key")
+
+        # Update the regex to match the actual error message format
+        expected_error_regex = (
+            r"Invalid key for map: 'some_key' is not a valid <MockCtyString spec='CtyString'> "
+            r"\(validation error: mocked key validation error\)"
+        )
+        with pytest.raises(AttributePathError, match=expected_error_regex):
+            step.apply_type(map_type)
+
+    @pytest.mark.asyncio
+    async def test_indexstep_apply_generic_exception(self):
+        """Test IndexStep.apply raises AttributePathError on generic exception from element_at."""
+        list_type = CtyList(element_type=CtyString())
+        cty_list_value = list_type.validate(["a", "b"])
+
+        step = IndexStep(0)
+
+        mock_type_for_value = MagicMock(spec=CtyList)
+        mock_type_for_value.element_at.side_effect = RuntimeError("mocked runtime error for list index")
+        # Set a descriptive name for the mock_type
+        mock_type_for_value.name = str(list_type) # e.g., "list(string)"
+
+        # Patch the 'type' property of the CtyValue instance.
+        with patch.object(CtyValue, 'type', PropertyMock(return_value=mock_type_for_value), create=True):
+            with pytest.raises(AttributePathError, match="mocked runtime error for list index"):
+                step.apply(cty_list_value)
+
+    @pytest.mark.asyncio
+    async def test_keystep_apply_generic_exception_key_processing(self):
+        """Test KeyStep.apply raises AttributePathError on generic exception during key processing."""
+        map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+        cty_map_value = map_type.validate({"a": 1, "b": 2})
+
+        # Create a CtyValue whose inner 'value' is a mock.
+        # This mock's __str__ method will first return a safe string (for logging)
+        # and then raise a RuntimeError (for the actual key processing).
+        mock_inner_key_value = MagicMock()
+        mock_inner_key_value.__str__.side_effect = [
+            "safe_key_for_logging",  # First call to str() (likely by logger)
+            RuntimeError("mocked runtime error for key processing")  # Second call (by str(self.key.value))
+        ]
+        # If repr is also called by the logger or error reporting, ensure it's safe too.
+        mock_inner_key_value.__repr__ = lambda self: "<MockInnerKeyValue>"
+
+
+        # Construct a CtyValue directly. vtype is CtyString as map keys are strings.
+        problem_cty_key = CtyValue(vtype=CtyString(), value=mock_inner_key_value)
+
+        step = KeyStep(problem_cty_key)
+
+        # When step.apply is called:
+        # 1. logger.debug(f"... {self.key} ...") might call str(problem_cty_key), which calls mock_inner_key_value.__str__() (returns "safe_key_for_logging").
+        # 2. Inside the try-block, str(self.key.value) calls mock_inner_key_value.__str__() again (raises RuntimeError).
+        # 3. This RuntimeError should be caught and wrapped in AttributePathError.
+        with pytest.raises(AttributePathError, match="mocked runtime error for key processing"):
+            step.apply(cty_map_value)
