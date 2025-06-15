@@ -105,10 +105,42 @@ def standardize_type_string(type_str: TypeString | None) -> TypeString:
         logger.debug("🧰🔄📊 Empty type string, defaulting to 'dynamic'")
         return "dynamic"
 
-    # Strip leading/trailing whitespace first
-    stripped_type_str = type_str.strip()
+    # Handle bytes input directly
+    if isinstance(type_str, bytes):
+        try:
+            type_str = type_str.decode('utf-8')
+        except UnicodeDecodeError:
+            logger.warning(f"🧰🔄📊 Could not decode direct bytes input {type_str!r}, using dynamic.")
+            return "dynamic"
+    # If type_str was originally an enum-like object (e.g., PvsSchemaType), get its string value.
+    # This handles cases where type_str might now be a string (if originally bytes and decoded)
+    # or still an object if it wasn't bytes initially.
+    elif hasattr(type_str, 'name') and isinstance(getattr(type_str, 'name'), str):
+        type_str = getattr(type_str, 'name') # Prefer .name for enums
+    elif hasattr(type_str, 'value') and isinstance(getattr(type_str, 'value'), (str, bytes)): # Fallback for other objects with .value
+        value_attr = getattr(type_str, 'value')
+        if isinstance(value_attr, bytes):
+            try:
+                type_str = value_attr.decode('utf-8')
+            except UnicodeDecodeError:
+                logger.warning(f"🧰🔄📊 Could not decode .value bytes {value_attr!r} from object {type_str!r}, using dynamic.")
+                return "dynamic"
+        elif isinstance(value_attr, str):
+            type_str = value_attr
+        # If .value is not str/bytes, type_str remains the original object to be checked by isinstance(str) below
+
+    # Ensure it's a string before stripping, after potential conversions.
+    if not isinstance(type_str, str):
+        # The original_ref logic might be complex if type_str was an object that got converted.
+        # Keeping it simple: just log the current type if it's not a string.
+        logger.warning(f"🧰🔄📊 Type for standardization is not a string: {type(type_str).__name__}, defaulting to 'dynamic'")
+        return "dynamic"
+
+    # Strip leading/trailing whitespace first and normalize to lowercase
+    stripped_type_str = type_str.strip().lower()
 
     # Remove one pair of surrounding quotes if present
+    # This handles cases like '"string"' becoming 'string'
     if (stripped_type_str.startswith('"') and stripped_type_str.endswith('"')) or \
        (stripped_type_str.startswith("'") and stripped_type_str.endswith("'")):
         normalized = stripped_type_str[1:-1]
