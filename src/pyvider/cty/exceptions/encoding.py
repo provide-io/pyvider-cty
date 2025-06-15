@@ -23,10 +23,21 @@ class TransformationError(CtyError):
         schema: The schema that failed transformation
         target_type: The intended target type of a transformation, if applicable
     """
-    def __init__(self, message: str, schema: object = None, target_type: object = None, **kwargs): # Added target_type and **kwargs
+    def __init__(self, message: str, schema: object = None, target_type: object = None, **kwargs):
         self.schema = schema
-        self.target_type = target_type # Store it
-        super().__init__(message) # Pass only message to CtyError
+        self.target_type = target_type
+
+        context_parts = []
+        if schema is not None:
+            context_parts.append(f"schema_type={type(schema).__name__}")
+        if target_type is not None:
+            target_type_name = getattr(target_type, "__name__", str(target_type))
+            context_parts.append(f"target_type={target_type_name}")
+
+        if context_parts:
+            message = f"{message} ({", ".join(context_parts)})"
+
+        super().__init__(message)
 
 
 class InvalidTypeError(CtyError):
@@ -85,9 +96,12 @@ class EncodingError(CtyError):
     def __init__(self, message: str, data: object = None, encoding: str | None = None):
         self.data = data
         self.encoding = encoding
+        # Store original message if subclasses want to modify it AFTER super call
+        self._original_message = message
 
         # Add format information to the message if available
-        if encoding is not None:
+        if encoding is not None and not message.strip().startswith(encoding.upper()):
+            # Avoid double-prefixing if subclass already added it
             message = f"{encoding.upper()} encoding error: {message}"
 
         super().__init__(message)
@@ -157,12 +171,16 @@ class JsonEncodingError(EncodingError):
     """
     def __init__(self, message: str, data: object = None, operation: str | None = None):
         self.operation = operation
-
-        # Add operation context to the message
-        if operation:
-            message = f"JSON {operation} error: {message}"
-
+        # Pass original message, data, and "json" as encoding to EncodingError
         super().__init__(message, data, "json")
+        # Now, self.args[0] is "JSON encoding error: {message}"
+        # Prepend operation part if it exists
+        if operation:
+            current_message = self.args[0]
+            # Remove the "JSON encoding error: " part, add op, then re-add prefix
+            base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
+            formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
+            self.args = (formatted_message,) + self.args[1:]
 
 
 class MsgPackEncodingError(EncodingError):
@@ -179,12 +197,12 @@ class MsgPackEncodingError(EncodingError):
     """
     def __init__(self, message: str, data: object = None, operation: str | None = None):
         self.operation = operation
-
-        # Add operation context to the message
-        if operation:
-            message = f"MessagePack {operation} error: {message}"
-
         super().__init__(message, data, "msgpack")
+        if operation:
+            current_message = self.args[0]
+            base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
+            formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
+            self.args = (formatted_message,) + self.args[1:]
 
 
 class WireFormatError(TransformationError):
@@ -205,34 +223,27 @@ class WireFormatError(TransformationError):
         *,
         format_type: object = None,
         operation: str | None = None,
-        **kwargs
+        **kwargs # Catches schema, target_type for TransformationError
     ):
         self.format_type = format_type
         self.operation = operation
 
-        # Format a more detailed message including the format type
+        # Initialize TransformationError with the original message and its specific args
+        super().__init__(message, schema=kwargs.get('schema'), target_type=kwargs.get('target_type'))
+
+        # self.args[0] now contains message possibly formatted by TransformationError
+        # Append WireFormatError specific details to it
+        current_message = self.args[0]
+
         if format_type is not None:
             format_info = f" using {format_type}"
             if operation:
                 format_info = f" during {operation}{format_info}"
-            message = f"{message}{format_info}"
+            current_message = f"{current_message}{format_info}"
+        elif operation: # Only operation is present, no format_type
+             current_message = f"{current_message} during {operation}"
 
-        # Pass all other kwargs to the superclass of TransformationError (CtyError)
-        # This requires CtyError to also accept **kwargs or be more specific.
-        # For now, TransformationError itself doesn't pass schema or target_type to CtyError's super().
-        # CtyError.__init__(self, message: str) only takes message.
-        # So, we must ensure TransformationError's super().__init__ only gets message.
-        # The **kwargs in WireFormatError are passed to TransformationError.
-        # If TransformationError doesn't use them or pass them up, they are effectively ignored,
-        # which is fine if they are not meant for CtyError.
-        # The key is that TransformationError's __init__ must accept them if WireFormatError passes them.
-        #
-        # Let's make TransformationError accept **kwargs and pass them to CtyError's super,
-        # assuming CtyError might be enhanced or this provides flexibility.
-        # However, CtyError currently only takes `message`.
-        # So, let's only pass what CtyError expects.
-        # The fix for the TypeError is primarily that TransformationError's signature must accept target_type.
-        super().__init__(message) # CtyError only takes message. kwargs are handled by WireFormatError.
+        self.args = (current_message,) + self.args[1:]
 
 
 # 🐍🏗️🐣
