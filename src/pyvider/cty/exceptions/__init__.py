@@ -35,7 +35,8 @@ from pyvider.cty.exceptions.validation import (
 )
 
 from pyvider.cty.exceptions.conversion import (
-    CtyConversionError
+    CtyConversionError,
+    CtyTypeConversionError # Added CtyTypeConversionError
 )
 
 from pyvider.cty.exceptions.encoding import (
@@ -65,6 +66,7 @@ __all__ = [
     "CtyAttributeValidationError",
 
     "CtyConversionError",
+    "CtyTypeConversionError", # Added CtyTypeConversionError
 
     "TransformationError",
     "InvalidTypeError",
@@ -77,4 +79,3 @@ __all__ = [
     "MsgPackEncodingError",
     "WireFormatError",
 ]
-
