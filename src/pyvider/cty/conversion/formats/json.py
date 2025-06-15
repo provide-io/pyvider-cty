@@ -181,11 +181,30 @@ class JsonEncoder(FormatEncoder):
                     is_actual_value_primitive = isinstance(actual_value, (str, int, float, bool, Decimal))
                     logger.debug(f"RECURSE_ENCODE: isinstance(actual_value, PyPrimitive) = {is_actual_value_primitive}")
 
-                    if is_item_type_dynamic and is_actual_value_primitive:
-                        logger.debug(f"RECURSE_ENCODE: Simplifying CtyDynamic with primitive.")
-                        if isinstance(actual_value, Decimal):
-                            return str(actual_value)
-                        return actual_value
+                    if is_item_type_dynamic:
+                        # If the dynamic value holds a CtyValue (actual_value), process that CtyValue.
+                        if isinstance(actual_value, CtyValue):
+                            # If the inner CtyValue is a primitive, simplify to its Python value.
+                            if isinstance(actual_value.type, (CtyString, CtyNumber, CtyBool)):
+                                logger.debug(f"RECURSE_ENCODE: Simplifying CtyDynamic holding a CtyPrimitive.")
+                                inner_py_value = actual_value.value
+                                if isinstance(inner_py_value, Decimal):
+                                    return str(inner_py_value)
+                                return inner_py_value
+                            # If the inner CtyValue is another collection/object, encode it directly,
+                            # effectively "unwrapping" the CtyDynamic for the JSON structure.
+                            elif isinstance(actual_value.type, (CtyList, CtyMap, CtySet, CtyObject, CtyTuple)):
+                                logger.debug(f"RECURSE_ENCODE: Simplifying CtyDynamic holding a CtyCollection/Object by unwrapping.")
+                                return cls._value_to_dict(actual_value, preserve_type) # Use preserve_type from outer scope
+                        # If the dynamic value directly holds a Python primitive
+                        elif is_actual_value_primitive:
+                            logger.debug(f"RECURSE_ENCODE: Simplifying CtyDynamic with direct primitive.")
+                            if isinstance(actual_value, Decimal):
+                                return str(actual_value)
+                            return actual_value
+                        # Else, if actual_value is not a CtyValue and not a primitive (e.g. a raw list/dict within dynamic),
+                        # let it be processed by the later dict/list handlers or fallback.
+                        # This case might indicate an unusual setup for CtyDynamic.
 
                     is_item_type_primitive = isinstance(item.type, (CtyString, CtyNumber, CtyBool))
                     logger.debug(f"RECURSE_ENCODE: isinstance(item.type, CtyPrimitive) = {is_item_type_primitive}")
