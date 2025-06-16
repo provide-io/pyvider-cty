@@ -16,11 +16,11 @@ consistent behavior across the Cty ecosystem.
 
 from typing import Any, ClassVar, TypeVar
 
-from attrs import define, evolve, field
+from attrs import define, field
 
 from pyvider.cty.exceptions import CtyStringValidationError
-from pyvider.telemetry import logger
 from pyvider.cty.types.base import CtyType
+from pyvider.telemetry import logger
 
 T = TypeVar('T', bound=str)
 
@@ -79,7 +79,6 @@ class CtyString(CtyType[str]):
         logger.debug(f"🔤🔍🔄 Validating value as string: {value!r}")
 
         # Handle CtyValue input
-        from pyvider.cty.values import CtyValue
         from pyvider.cty.types.structural import CtyDynamic
         logger.debug(f"🔤🔍🔄 ENTER CtyString.validate with value type: {type(value)}, value: {value!r}")
 
@@ -162,15 +161,15 @@ class CtyString(CtyType[str]):
         Returns:
             bool: True if this type can be used as the other type, False otherwise.
         """
-        from pyvider.cty.types.structural import CtyDynamic # Import locally
+        from pyvider.cty.types.structural import CtyDynamic  # Import locally
         if isinstance(other, CtyDynamic):
-            logger.debug(f"🔤🔍✅ CtyString.usable_as(CtyDynamic): True")
+            logger.debug("🔤🔍✅ CtyString.usable_as(CtyDynamic): True")
             return True
         result = isinstance(other, CtyString)
         logger.debug(f"🔤🔍✅ CtyString.usable_as({other.__class__.__name__}): {result}") # Use other.__class__.__name__ for safety
         return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "string"
 
     def is_primitive_type(self) -> bool:

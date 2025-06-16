@@ -1,8 +1,7 @@
 # pyvider/cty/conversion/formats/base.py
-from enum import Enum, auto
-from typing import ClassVar, Type, TypeVar, Final
 
-from pyvider.telemetry import logger
+from typing import TypeVar
+
 from pyvider.cty.conversion.wire import WireFormatType
 
 T = TypeVar('T')
@@ -20,17 +19,17 @@ class FormatEncoder:
     def decode(cls, data: bytes, **options) -> object:
         raise NotImplementedError(f"{cls.__name__}.decode() must be implemented")
 
-_ENCODERS: dict[WireFormatType, Type[FormatEncoder]] = {}
+_ENCODERS: dict[WireFormatType, type[FormatEncoder]] = {}
 
 def register_formatter(format_type: WireFormatType):
-    def decorator(encoder_class: Type[FormatEncoder]):
+    def decorator(encoder_class: type[FormatEncoder]):
         if not issubclass(encoder_class, FormatEncoder):
             raise TypeError(f"Format encoder {encoder_class.__name__} must extend FormatEncoder")
         _ENCODERS[format_type] = encoder_class
         return encoder_class
     return decorator
 
-def get_formatter(format_type: WireFormatType) -> Type[FormatEncoder] | None:
+def get_formatter(format_type: WireFormatType) -> type[FormatEncoder] | None:
     return _ENCODERS.get(format_type)
 
 def list_formatters() -> dict[WireFormatType, str]:

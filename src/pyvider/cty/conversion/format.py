@@ -27,16 +27,16 @@ Usage:
     type_bytes = ensure_quoted_bytes(normalized)
 """
 
-import re
 from enum import StrEnum, auto
-from typing import TypeAlias, Pattern, Literal
 from functools import cache
+import re
+from re import Pattern
 
 from pyvider.telemetry import logger
 
 # Type aliases for clarity
-TypeString: TypeAlias = str
-TypeBytes: TypeAlias = bytes
+type TypeString = str
+type TypeBytes = bytes
 
 class TypeCategory(StrEnum):
     """Enumeration of type categories for classification."""
@@ -115,10 +115,10 @@ def standardize_type_string(type_str: TypeString | None) -> TypeString:
     # If type_str was originally an enum-like object (e.g., PvsSchemaType), get its string value.
     # This handles cases where type_str might now be a string (if originally bytes and decoded)
     # or still an object if it wasn't bytes initially.
-    elif hasattr(type_str, 'name') and isinstance(getattr(type_str, 'name'), str):
-        type_str = getattr(type_str, 'name') # Prefer .name for enums
-    elif hasattr(type_str, 'value') and isinstance(getattr(type_str, 'value'), (str, bytes)): # Fallback for other objects with .value
-        value_attr = getattr(type_str, 'value')
+    elif hasattr(type_str, 'name') and isinstance(type_str.name, str):
+        type_str = type_str.name # Prefer .name for enums
+    elif hasattr(type_str, 'value') and isinstance(type_str.value, str | bytes): # Fallback for other objects with .value
+        value_attr = type_str.value
         if isinstance(value_attr, bytes):
             try:
                 type_str = value_attr.decode('utf-8')
@@ -177,7 +177,7 @@ def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
 
     # Standardize then quote
     normalized = standardize_type_string(type_str)
-    result = f'"{normalized}"'.encode('utf-8')
+    result = f'"{normalized}"'.encode()
     logger.debug(f"🧰🔄📊 Converted to quoted bytes: {result!r}")
     return result
 
@@ -316,7 +316,7 @@ def normalize_type_object(type_obj: object) -> TypeString:
 
         case _ if hasattr(type_obj, "type_name"):
             # Handle PvsAttributeType
-            type_name = getattr(type_obj, "type_name")
+            type_name = type_obj.type_name
             element_type = getattr(type_obj, "element_type", None)
 
             base_type = normalize_type_object(type_name)

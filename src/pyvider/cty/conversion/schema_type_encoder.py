@@ -3,8 +3,14 @@ import json
 import re
 from typing import cast
 
+from pyvider.cty.conversion.format import (
+    TypeCategory,
+    classify_type,
+    parse_collection_type,
+    standardize_type_string,
+)
 from pyvider.telemetry import logger
-from pyvider.cty.conversion.format import standardize_type_string, classify_type, parse_collection_type, TypeCategory
+
 
 def _parse_comma_separated_elements(elements_str: str, is_object_attrs: bool) -> list[tuple[str, str]] | list[str]:
     elements = []
@@ -102,6 +108,6 @@ def encode_type_to_wire(type_repr_str: str) -> bytes:
         return result_bytes
     except Exception as e:
         logger.error(f"Error JSON dumping encoded content for \"{type_repr_str}\": {e}. Content: {encoded_content!r}")
-        return f"\"error_encoding_{standardized_type}\"".encode("utf-8")
+        return f"\"error_encoding_{standardized_type}\"".encode()
 
 __all__ = ["encode_type_to_wire"]

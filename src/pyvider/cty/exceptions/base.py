@@ -13,7 +13,7 @@ class CtyError(Exception):
     Attributes:
         message: A human-readable error description
     """
-    def __init__(self, message: str = "An error occurred in the cty type system"):
+    def __init__(self, message: str = "An error occurred in the cty type system") -> None:
         self.message = message
         super().__init__(self.message)
 

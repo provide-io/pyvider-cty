@@ -1,16 +1,22 @@
 # pyvider/conversion/terraform.py
-import json
-import functools
 from decimal import Decimal
-from typing import Mapping, Protocol, Literal, Type, TypeVar, cast, runtime_checkable
-import collections.abc
+import functools
+import json
+from typing import TypeVar, cast
 
-from pyvider.telemetry import logger
-from pyvider.cty.exceptions import CtyConversionError, WireFormatError
-from pyvider.cty.conversion.wire import (
-    WireFormat, WireFormatType, WireFormatRegistry, StateConvertible, is_state_convertible
+from pyvider.cty.context.operation_context import (
+    OperationContext,
+    get_current_operation,
 )
-from pyvider.cty.context.operation_context import OperationContext, get_current_operation
+from pyvider.cty.conversion.wire import (
+    StateConvertible,
+    WireFormat,
+    WireFormatRegistry,
+    WireFormatType,
+    is_state_convertible,
+)
+from pyvider.cty.exceptions import WireFormatError
+from pyvider.telemetry import logger
 
 try:
     import msgpack
@@ -50,8 +56,8 @@ class TerraformFormatConverter(WireFormat):
             raise WireFormatError(f"Marshal failed: {e}", format_type=WireFormatType.TERRAFORM, operation="marshal", source_value=value) from e
 
     @classmethod
-    def unmarshal(cls, data: bytes | object, expected_type: Type[T] | None = None, *, operation: OperationContext | None = None, **options: object) -> object:
-        op_ctx = operation or get_current_operation()
+    def unmarshal(cls, data: bytes | object, expected_type: type[T] | None = None, *, operation: OperationContext | None = None, **options: object) -> object:
+        operation or get_current_operation()
         raw_value: object = None
         try:
             if hasattr(data, '__class__') and 'DynamicValue' in data.__class__.__name__:
@@ -67,7 +73,7 @@ class TerraformFormatConverter(WireFormat):
                     raw_value = msgpack.unpackb(source_bytes, raw=False)
                 except Exception:
                     raw_value = json.loads(source_bytes.decode('utf-8'))
-            
+
             return extract_value(raw_value)
         except Exception as e:
             raise WireFormatError(f"Unmarshal failed: {e}", format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type) from e
@@ -96,7 +102,7 @@ def serialize_state_convertible(value: StateConvertible, operation: OperationCon
     if operation in (OperationContext.STATE, OperationContext.CONFIG, OperationContext.READ, OperationContext.PLAN, OperationContext.APPLY):
         prepared = {}
         for k, v in raw_dict.items():
-            if isinstance(v, (bool, int, float, str)):
+            if isinstance(v, bool | int | float | str):
                 prepared[str(k)] = v
             elif isinstance(v, Decimal):
                 prepared[str(k)] = str(v)
@@ -141,7 +147,7 @@ def extract_value(value: object) -> object:
             case _: # Should not be reached if TFC check above is comprehensive
                 logger.warning(f"Unexpected type_name '{type_name}' in extract_value match. Returning payload as is.")
                 return payload
-    
+
     elif isinstance(value, list): # It's a list of other things (e.g. list of serialized values)
         return [extract_value(item) for item in value]
     elif isinstance(value, dict): # It's a map/object of other things

@@ -1,8 +1,9 @@
 # src/pyvider/cty/marks.py
 # 🐍✨
 
+
 from attrs import define, field
-from typing import Optional
+
 
 @define(frozen=True, slots=True)
 class CtyMark:

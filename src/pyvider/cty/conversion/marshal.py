@@ -1,14 +1,21 @@
 # pyvider/cty/conversion/marshal.py
 
-from typing import cast, Type
-from pyvider.telemetry import logger
 from enum import Enum, auto
 
-from pyvider.cty.types import (
-    CtyType, CtyString, CtyNumber, CtyBool, CtyDynamic,
-    CtyList, CtyMap, CtySet, CtyObject, CtyTuple
-)
 from pyvider.cty.exceptions import CtyConversionError, CtyTypeConversionError
+from pyvider.cty.types import (
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyObject,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyType,
+)
+from pyvider.telemetry import logger
 
 
 class TypeCategory(Enum):
@@ -28,14 +35,13 @@ def _standardize_type_string(type_str: str) -> str:
     """
     logger.debug(f"🧰🔄📊 Standardizing type string: {type_str!r}")
 
-    original_type_str = type_str # For logging original if it gets changed to dynamic
 
     type_str = type_str.strip()
     if type_str.startswith('"') and type_str.endswith('"'):
         type_str = type_str[1:-1].strip()
 
     if not type_str: # Handles empty string or quoted empty string
-        logger.debug(f"🧰🔄📊 Empty type string, defaulting to 'dynamic'")
+        logger.debug("🧰🔄📊 Empty type string, defaulting to 'dynamic'")
         return "dynamic"
 
     # Normalize list(), map(), set() to list(dynamic), map(dynamic), set(dynamic)
@@ -227,7 +233,7 @@ def _parse_collection_type(type_str: str, category: TypeCategory) -> CtyType:
 
     # Recursively unmarshal the element type
     # We need to pass the element type string as bytes and quoted, as unmarshal_type expects.
-    element_type_bytes = f'"{element_type_str}"'.encode("utf-8")
+    element_type_bytes = f'"{element_type_str}"'.encode()
     logger.debug(f"🧰🔍📊 Recursively unmarshaling element type: {element_type_bytes!r}")
     element_cty_type = unmarshal_type(element_type_bytes)
 
@@ -263,7 +269,7 @@ def _normalize_type_object(type_obj: CtyType | str) -> str:
         return f"list({element_str})"
     if isinstance(type_obj, CtyMap):
         # Ensure key is primitive for wire format
-        if not isinstance(type_obj.key_type, (CtyString, CtyNumber, CtyBool, CtyDynamic)):
+        if not isinstance(type_obj.key_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
             raise CtyConversionError(f"Map key type must be a primitive type, got {type_obj.key_type.__class__.__name__}")
         # Wire format for map(T) implies string keys, value type T
         value_str = _normalize_type_object(type_obj.value_type)

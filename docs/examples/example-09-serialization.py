@@ -2,9 +2,10 @@
 # docs/examples/example-09-serialization.py
 
 # Corrected imports and usage for serialization
-from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyValue
+from pyvider.cty import CtyList, CtyNumber, CtyObject, CtyString
+
 # Use the actual conversion API
-from pyvider.cty.conversion import CtyWireFormat, JSON, MSGPACK
+from pyvider.cty.conversion import JSON, MSGPACK, CtyWireFormat
 
 # Define a complex type
 cluster_type = CtyObject(

@@ -2,9 +2,10 @@
 # docs/examples/example-10-value-marking.py
 
 # Corrected imports and usage for serialization and immutable update
-from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyValue
+from pyvider.cty import CtyNumber, CtyObject, CtyString, CtyValue
+
 # Use the actual conversion API
-from pyvider.cty.conversion import CtyWireFormat, JSON
+from pyvider.cty.conversion import JSON, CtyWireFormat
 
 # Define types
 credential_type = CtyObject(

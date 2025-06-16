@@ -7,9 +7,9 @@ from pyvider.cty.types.structural.object import CtyObject
 from pyvider.cty.types.structural.tuple import CtyTuple
 
 __all__ = [
-    'CtyObject',
-    'CtyTuple',
-    'CtyDynamic',
+    "CtyDynamic",
+    "CtyObject",
+    "CtyTuple",
 ]
 
 # 🐍🏗️🐣
