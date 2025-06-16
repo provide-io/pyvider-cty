@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/types/base.py
 #
@@ -25,6 +27,7 @@ from pyvider.cty.exceptions import CtyValidationError
 
 T = TypeVar("T")
 
+
 @define(slots=True)
 class CtyType(ABC, Generic[T]):
     """
@@ -41,10 +44,11 @@ class CtyType(ABC, Generic[T]):
     Attributes:
         ctype: Class variable identifying the type name in the Cty type system
     """
+
     ctype: ClassVar[str | None] = None  # Abstract class - no ctype by default
 
     @classmethod
-    def from_raw(cls, value: Any) -> "CtyType":
+    def from_raw(cls, value: Any) -> CtyType:
         """
         Convert raw Python types to CtyType instances.
 
@@ -69,7 +73,7 @@ class CtyType(ABC, Generic[T]):
         )
 
     @abstractmethod
-    def validate(self, value: Any) -> "CtyValue[T]":
+    def validate(self, value: Any) -> CtyValue[T]:
         """
         Validate and coerce the value to this type.
 
@@ -89,7 +93,7 @@ class CtyType(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def equal(self, other: "CtyType[T]") -> bool:
+    def equal(self, other: CtyType[T]) -> bool:
         """
         Check equality between this type and another.
 
@@ -106,7 +110,7 @@ class CtyType(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def usable_as(self, other: "CtyType[T]") -> bool:
+    def usable_as(self, other: CtyType[T]) -> bool:
         """
         Determine if this type can be used as another.
 
@@ -188,5 +192,6 @@ class CtyType(ABC, Generic[T]):
             A string representation of the type
         """
         return f"{self.__class__.__name__}"
+
 
 # 🐍🏗️🐣
