@@ -8,12 +8,24 @@ from pyvider.cty.conversion.format import standardize_type_string, classify_type
 
 def _parse_comma_separated_elements(elements_str: str, is_object_attrs: bool) -> list[tuple[str, str]] | list[str]:
     elements = []
+    proc_elements_str = elements_str.strip()
 
     # Handles "" (empty string) and "  " (whitespace only string)
-    if not elements_str.strip():
+    if not proc_elements_str:
         if not is_object_attrs and elements_str: # Input was "  " (whitespace only for tuple) -> one dynamic element
             return [""]
         return [] # Empty string for object_attrs, or truly empty string for tuple -> no elements/attributes
+
+    if is_object_attrs:
+        # Strip one layer of surrounding {} if present.
+        # e.g. "{attr1=type1,attr2=type2}" -> "attr1=type1,attr2=type2"
+        # or "{{attr1=type1}}" -> "{attr1=type1}" (standardize_type_string should ideally prevent double braces reaching here)
+        if proc_elements_str.startswith("{") and proc_elements_str.endswith("}"):
+            proc_elements_str = proc_elements_str[1:-1].strip()
+        # If after stripping, it's empty (was "{}"), return empty list of attributes
+        if not proc_elements_str and is_object_attrs:
+             return []
+
 
     current_pos = 0
     element_start = 0
