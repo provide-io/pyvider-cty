@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 #
 # pyvider/cty/conversion/formats/json.py
@@ -18,7 +17,7 @@ custom encoders for CTY-specific types, and robust error handling.
 
 from decimal import Decimal
 import json
-from typing import ClassVar, TypeVar, cast
+from typing import TYPE_CHECKING, ClassVar, TypeVar, cast # Added TYPE_CHECKING
 
 from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 from pyvider.cty.conversion.wire import WireFormatType
@@ -41,6 +40,10 @@ from pyvider.cty.types import (  # Added all types for _create_type_from_name
 )
 from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
+
+if TYPE_CHECKING: # Add conditional import for CtyType
+    from pyvider.cty.types.base import CtyType
+
 
 T = TypeVar("T")
 

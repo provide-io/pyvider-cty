@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 #
 # pyvider/cty/types/primitives/string.py
@@ -16,13 +15,17 @@ This implementation follows the go-cty string semantics, ensuring type safety an
 consistent behavior across the Cty ecosystem.
 """
 
-from typing import Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar  # Added TYPE_CHECKING
 
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtyStringValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
+
+if TYPE_CHECKING:  # Add conditional import for CtyValue
+    from pyvider.cty.values import CtyValue
+
 
 T = TypeVar("T", bound=str)
 

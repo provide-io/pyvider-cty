@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 #
 # pyvider/cty/types/primitives/bool.py
@@ -13,13 +12,17 @@ and implements type compatibility checking with strong validation guarantees.
 """
 
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar  # Added TYPE_CHECKING
 
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
+
+if TYPE_CHECKING:  # Add conditional import for CtyValue
+    from pyvider.cty.values import CtyValue
+
 
 # Define frozensets for true and false string representations
 _TRUE_STRINGS = frozenset(
