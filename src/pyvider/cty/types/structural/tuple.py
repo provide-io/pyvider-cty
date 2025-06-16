@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 #
 # pyvider/cty/types/structural/tuple.py
@@ -54,7 +53,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             f"🧩✅🔄 Tuple element types validated successfully: {len(value)} types"
         )
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: Any) -> 'CtyValue':
         """
         Validate a value against this tuple type.
 
@@ -149,7 +148,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         )
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
-    def element_at(self, container: Any, index: int) -> CtyValue:
+    def element_at(self, container: Any, index: int) -> 'CtyValue':
         """
         Get an element at a specific index in the tuple.
 
@@ -207,7 +206,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug(f"🧩✅🔄 Got element at index {index}")
         return element
 
-    def slice(self, container: Any, start: int, end: int | None = None) -> CtyValue:
+    def slice(self, container: Any, start: int, end: int | None = None) -> 'CtyValue':
         """
         Get a slice of the tuple.
 
@@ -276,7 +275,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         """Check if this type is a tuple type."""
         return True
 
-    def equal(self, other: CtyType) -> bool:
+    def equal(self, other: 'CtyType') -> bool:
         """
         Check if this tuple type is equal to another type.
 
@@ -310,7 +309,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug("🧩✅🔄 Tuple types are equal")
         return True
 
-    def usable_as(self, other: CtyType) -> bool:
+    def usable_as(self, other: 'CtyType') -> bool:
         """
         Check if this tuple type can be used as another type.
 
@@ -357,7 +356,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug("🧩✅🔄 Tuple type is usable as target type")
         return True
 
-    def __getitem__(self, index: int | slice) -> CtyType | CtyTuple:
+    def __getitem__(self, index: int | slice) -> 'CtyType | CtyTuple':
         """
         Support for indexing and slicing operations on tuple types.
 

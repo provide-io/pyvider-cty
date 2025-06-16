@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 #
 # pyvider/cty/types/structural/dynamic.py
@@ -18,7 +17,7 @@ checks and special validation behavior for maximum flexibility.
 """
 
 from decimal import Decimal  # Added import
-from typing import Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar  # Added TYPE_CHECKING
 
 from attrs import define
 
@@ -28,6 +27,10 @@ from pyvider.cty.types.base import CtyType
 # from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Moved into validate method
 # from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
 from pyvider.telemetry import logger
+
+if TYPE_CHECKING:  # Add conditional import for CtyValue
+    from pyvider.cty.values import CtyValue
+
 
 T = TypeVar("T")
 

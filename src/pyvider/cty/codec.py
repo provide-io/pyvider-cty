@@ -1,6 +1,5 @@
 # src/pyvider/cty/codec.py
 # 🐍📦🔒
-from __future__ import annotations
 
 from decimal import Decimal
 import json
@@ -24,10 +23,13 @@ from .types import (
     CtyString,
     CtyTuple,
 )
-from .types.base import CtyType
+# CtyType is imported below under TYPE_CHECKING to resolve forward ref if needed,
+# but it's also directly used, so ensure it's available for runtime.
+from .types.base import CtyType as CtyTypeDefinition
 
 if TYPE_CHECKING:
     from .values.base import CtyValue
+    from .types.base import CtyType # Ensure CtyType is available for type hints
 
 
 # Custom exception for parsing errors

@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 #
 # pyvider/cty/types/collections/list.py
@@ -17,13 +16,17 @@ immutability by returning new instances rather than modifying existing ones.
 """
 
 from collections.abc import Sequence
-from typing import Any, ClassVar, Generic, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, Union, final # Added TYPE_CHECKING
 
 from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
+
+if TYPE_CHECKING:  # Add conditional import for CtyValue
+    from pyvider.cty.values import CtyValue
+
 
 # Type variable representing the type of values in the list
 T = TypeVar("T")
@@ -80,7 +83,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: Any) -> 'CtyValue':
         """
         Validate that the given value conforms to this list type.
 
@@ -226,7 +229,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         )
         return CtyValue(vtype=self, value=validated_elements)
 
-    def element_at(self, container: Any, index: int) -> CtyValue:
+    def element_at(self, container: Any, index: int) -> 'CtyValue':
         """
         Get an element at a specific index in the list.
 
@@ -494,21 +497,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝✅ CtyList.equal: {result}")
         return result
 
-    def equal(self, other: CtyType) -> bool:
-        """
-        Two list types are equal when the other type is also a CtyList
-        and their element types are equal *recursively*.
-        """
-
-        logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s", self, other)
-        if not isinstance(other, CtyList):
-            logger.debug("📋❌🔄  Other type is not CtyList → not equal")
-            return False
-
-        result = self.element_type.equal(other.element_type)
-        logger.debug("📋🔍✅  Element‑type equality result: %s", result)
-        return result
-
     def __len__(self) -> int:
         """
         Get the length of this list.
@@ -534,7 +522,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: int | slice) -> CtyValue | CtyList:
+    def __getitem__(self, index: Union[int, slice]) -> Union['CtyValue', 'CtyList[T]']:
         """
         Support for indexing and slicing operations.
 
