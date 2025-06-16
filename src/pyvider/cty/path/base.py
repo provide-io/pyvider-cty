@@ -24,7 +24,7 @@ import collections.abc
 from attrs import define, field
 
 from pyvider.telemetry import logger
-from pyvider.cty.exceptions import AttributePathError, CtyValidationError
+from pyvider.cty.exceptions import AttributePathError, CtyValidationError, CtyTypeMismatchError
 from pyvider.cty.types import (
     CtyType,
     CtyList,
@@ -135,12 +135,28 @@ class GetAttrStep(PathStep):
 
         # For map values, use get method with string key
         elif isinstance(value.type, CtyMap):
-            result = value.type.get(value, self.name)
-            if result is None:
-                error_msg = f"Key '{self.name}' not found in map"
+            try:
+                # self.name is the attribute name we are looking for, used as a key.
+                result = value.type.get(value, self.name)
+                # CtyMap.get now returns CtyValue.null if key not found and no default.
+                if result is None: # Should not happen if .get behaves as specified (returns typed null)
+                    logger.error(f"🧰❌🔄 CtyMap.get returned Python None unexpectedly for key '{self.name}'")
+                    raise AttributePathError(f"Key '{self.name}' not found in map (unexpected None from get)")
+                if result.is_null: # Key not found, and no default given to .get
+                    error_msg = f"Key '{self.name}' not found in map"
+                    logger.debug(f"🧰🔍 GetAttrStep: {error_msg} (got null value)") # Changed to debug
+                    raise AttributePathError(error_msg)
+                return result
+            except (TypeError, CtyTypeMismatchError, CtyValidationError) as e:
+                # These errors can be raised by CtyMap.get if the key (self.name) is invalid for the map's key_type
+                error_msg = f"Error accessing map with key '{self.name}': {e}"
                 logger.error(f"🧰❌🔄 {error_msg}")
-                raise AttributePathError(error_msg)
-            return result
+                raise AttributePathError(error_msg) from e
+            # Any other unexpected error during map.get should also be wrapped.
+            except Exception as e:
+                error_msg = f"Unexpected error getting key '{self.name}' from map: {e}"
+                logger.error(f"🧰❌🔄 {error_msg}")
+                raise AttributePathError(error_msg) from e
 
         # For other values, attribute access is not supported
         else:

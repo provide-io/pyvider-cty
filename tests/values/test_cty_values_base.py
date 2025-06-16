@@ -526,7 +526,10 @@ class TestCtyValueSetDeleteErrors:
         updated_map_val = map_val.delete(key_to_delete)
         # captured = capsys.readouterr() # Log assertion removed
 
-        assert updated_map_val.get(key_to_delete) is None # Verify delete worked (get returns None if default is None)
+        deleted_val_check = updated_map_val.get(key_to_delete)
+        assert deleted_val_check is not None, "Result for deleted key should be a CtyValue, not Python None"
+        assert deleted_val_check.is_null, "Result for deleted key should be null"
+        assert deleted_val_check.type.equal(map_val.type.value_type), "Null result type should match map's value_type"
         assert updated_map_val.get("name").value == "Alice" # Ensure other keys are intact
 
         # expected_log_msg = f"🔄📝🔄 Deleting key {key_to_delete!r}"

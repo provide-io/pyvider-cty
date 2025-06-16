@@ -198,29 +198,43 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             return CtyValue.null(self.value_type) if map_value.is_null else CtyValue.unknown(self.value_type)
         str_key: Optional[str] = None
         try:
+            validated_lookup_key: CtyValue
             if isinstance(key, CtyValue):
-                # Key is a CtyValue, check if its type is CtyString and it's a usable value
-                if isinstance(key.type, CtyString) and not key.is_null and not key.is_unknown:
-                    str_key = str(key.value)
-                # If key is CtyValue but not CtyString, or is null/unknown, str_key remains None
-            else: # Key is a raw Python value
-                validated_key = CtyString().validate(key) # Attempt to validate/convert to CtyString
-                if not validated_key.is_null and not validated_key.is_unknown:
-                    str_key = str(validated_key.value)
-        except CtyValidationError as e: # Catch only validation errors for key processing
-            logger.debug(f"🔌🔍⚠️ Key validation failed for get: {e}")
-        except Exception as e: # Catch other unexpected errors during key processing
+                # Ensure the provided CtyValue key is usable as the map's defined key_type
+                if not key.type.usable_as(self.key_type):
+                    # Log detailed types for better debugging
+                    logger.debug(f"🔌🔍❌ Provided key's CtyValue type '{key.type!s}' is not usable as map's key type '{self.key_type!s}'")
+                    raise CtyTypeMismatchError(f"Provided key's type {key.type} is not usable as map's key type {self.key_type}")
+                if key.is_null or key.is_unknown:
+                    raise TypeError("Map key cannot be null or unknown")
+                validated_lookup_key = key
+            else: # Raw Python value for key
+                # Validate the raw key against the map's defined key_type
+                validated_lookup_key = self.key_type.validate(key)
+                if validated_lookup_key.is_null or validated_lookup_key.is_unknown:
+                    raise TypeError("Validated map key cannot be null or unknown (was: {key!r})")
+
+            # For dictionary lookup, keys are strings. The 'key_mapping' in CtyValue stores CtyValue keys.
+            # The 'value' dict in CtyValue for a map stores CtyValue values keyed by str(original_CtyValue_key.value).
+            str_key = str(validated_lookup_key.value)
+
+        except (TypeError, CtyTypeMismatchError, CtyValidationError) as e:
+            # If key validation/conversion fails, this is an error, not "key not found"
+            # This makes 'get' stricter: an invalid key type is an error.
+            # For tests that expect 'get' to return default/null for invalid key types,
+            # those tests might need adjustment or this error handling reconsidered.
+            # The original code was more lenient, catching all Exceptions and returning default.
+            # This change makes it so that type errors/validation errors for keys are propagated.
+            logger.debug(f"🔌🔍⚠️ Key validation/type error for get: {e}")
+            raise # Re-raise the caught type/validation error
+        except Exception as e:
             logger.error(f"🔌❌🔥 Unexpected error during key processing for get: {e}")
-            # For unexpected errors, returning unknown might be more appropriate if no default
-            return default if default is not None else CtyValue.unknown(self.value_type)
+            raise TypeError(f"Invalid key for map get operation: {key!r} ({e})") from e
 
-        if str_key is None: # Key is invalid, not found, or failed validation
-            return default if default is not None else CtyValue.null(self.value_type)
-
+        # str_key should be successfully derived if no exception was raised above.
         internal_map = map_value.value
         if not isinstance(internal_map, dict):
             logger.error(f"🔌❌🔥 Internal CtyValue map data is not a dict: {type(internal_map).__name__}")
-            # This indicates a corrupted CtyValue, an unknown value of the expected type might be safest
             return default if default is not None else CtyValue.unknown(self.value_type)
 
         cty_result_value = internal_map.get(str_key)

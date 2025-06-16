@@ -126,7 +126,10 @@ class TestCtyMapValueOperations:
         assert element.value == 1
         
         # Test missing key
-        assert self.map_val.get("z") is None
+        missing_result = self.map_val.get("z")
+        assert missing_result is not None, "Result for missing key should be a CtyValue, not Python None"
+        assert missing_result.is_null, "Result for missing key should be null"
+        assert missing_result.type.equal(self.map_type.value_type), "Null result type should match map's value_type"
         
         # Test with default
         default = CtyValue(vtype=self.num_type, value=999)

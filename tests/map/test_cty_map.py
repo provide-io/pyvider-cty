@@ -256,7 +256,9 @@ class TestCtyMapOperations:
 
         # Get non-existent key without default
         result = self.string_map.get(self.sample_map, "missing")
-        assert result is None
+        assert result is not None, "Result for missing key should be a CtyValue, not Python None"
+        assert result.is_null, "Result for missing key should be null"
+        assert result.type.equal(self.string_map.value_type), "Null result type should match map's value_type"
 
     @pytest.mark.asyncio
     async def test_map_set_operation(self):
@@ -288,7 +290,9 @@ class TestCtyMapOperations:
 
         # Verify key2 is gone
         result = self.string_map.get(updated_map, "key2")
-        assert result is None
+        assert result is not None, "Result for deleted key should be a CtyValue, not Python None"
+        assert result.is_null, "Result for deleted key should be null"
+        assert result.type.equal(self.string_map.value_type), "Null result type should match map's value_type"
 
         # key1 and key3 should still be there
         assert self.string_map.get(updated_map, "key1") is not None
