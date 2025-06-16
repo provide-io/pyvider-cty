@@ -2,7 +2,7 @@
 # docs/examples/example-02-object-schema-validation.py
 #
 
-from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyBool
+from pyvider.cty import CtyBool, CtyNumber, CtyObject, CtyString
 
 # Define a person schema
 person_type = CtyObject(

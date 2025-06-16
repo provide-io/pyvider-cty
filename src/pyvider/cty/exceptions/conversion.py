@@ -2,6 +2,7 @@
 
 from .base import CtyError
 
+
 class CtyConversionError(CtyError):
     """Base for CTY value or type conversion errors."""
     def __init__(self, message: str, *, source_value: object = None, target_type: object = None) -> None:

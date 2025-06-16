@@ -2,8 +2,8 @@
 # docs/examples/example-04-serialization.py
 
 # Corrected imports and usage for serialization
-from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyValue
-from pyvider.cty.conversion import CtyWireFormat, WireFormatType, JSON
+from pyvider.cty import CtyNumber, CtyObject, CtyString
+from pyvider.cty.conversion import JSON, CtyWireFormat
 
 # Create a value to serialize
 config_type = CtyObject(

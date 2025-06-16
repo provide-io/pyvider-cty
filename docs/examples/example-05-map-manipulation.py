@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # docs/examples/example-05-map-manipulation.py
 
-from pyvider.cty import CtyMap, CtyString, CtyNumber, CtyValue
+from pyvider.cty import CtyMap, CtyNumber, CtyString
+
 # Import specific exceptions for better handling
-from pyvider.cty.exceptions import CtyValidationError, CtyMapValidationError, CtyError
+from pyvider.cty.exceptions import CtyError, CtyMapValidationError, CtyValidationError
 
 # Define a map type with string keys and number values
 config_type = CtyMap(
@@ -38,14 +39,14 @@ try:
     new_config = config_val.set("batch_size", 1000)
     print("... set operation finished.")
 
-    print(f"\nConfig after setting 'batch_size':")
+    print("\nConfig after setting 'batch_size':")
     if not new_config.is_null and not new_config.is_unknown:
         # Use CtyValue's get method
         batch_size_val = new_config.get("batch_size")
         if batch_size_val and not batch_size_val.is_null and not batch_size_val.is_unknown:
             print(f"  batch_size: {batch_size_val.value}")
         else:
-             print(f"  batch_size: Not Found or Null/Unknown")
+             print("  batch_size: Not Found or Null/Unknown")
     else:
         print("  Resulting config is null or unknown.")
 
@@ -57,7 +58,7 @@ try:
     modified_config = new_config.delete("timeout")
     print("... delete operation finished.")
 
-    print(f"\nKeys after deletion (modified object):")
+    print("\nKeys after deletion (modified object):")
     if not modified_config.is_null and not modified_config.is_unknown:
         # Keys are strings in the internal dict
         print(f"  {list(modified_config.value.keys())}")
@@ -65,7 +66,7 @@ try:
         print("  Resulting config after delete is null or unknown.")
 
     # --- Verify original is unchanged ---
-    print(f"\nOriginal config keys (should be unchanged):")
+    print("\nOriginal config keys (should be unchanged):")
     if not config_val.is_null and not config_val.is_unknown:
          print(f"  {list(config_val.value.keys())}")
     else:

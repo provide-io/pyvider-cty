@@ -2,7 +2,7 @@
 # docs/examples/example-03-advanced-type-system.py
 #
 
-from pyvider.cty import CtyList, CtyObject, CtyString, CtyNumber
+from pyvider.cty import CtyList, CtyNumber, CtyObject, CtyString
 
 # Define a complex nested type
 server_type = CtyObject(

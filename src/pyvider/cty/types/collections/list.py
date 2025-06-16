@@ -14,8 +14,11 @@ while providing Pythonic operations like slicing and iteration. All operations m
 immutability by returning new instances rather than modifying existing ones.
 """
 
-from typing import Any, ClassVar, Generic, TypeVar, final, Sequence, Optional, Union, cast
+from collections.abc import Sequence
+from typing import Any, ClassVar, Generic, TypeVar, Union, final
+
 from attrs import define, evolve, field
+
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
@@ -95,8 +98,8 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝🔄 Validating value as CtyList: {type(value).__name__}")
 
         # Import locally to avoid circular imports
+        from pyvider.cty.types import CtyDynamic  # For CtyDynamic check
         from pyvider.cty.values import CtyValue
-        from pyvider.cty.types import CtyDynamic # For CtyDynamic check
 
         # Handle None
         if value is None:
@@ -112,7 +115,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error("🔌❗❌ CtyList.validate received None as input.")
             raise CtyListValidationError("Input to CtyList.validate cannot be None. Use CtyValue.null(CtyList(...)) for a null list.")
 
-        raw_list_to_validate: Optional[Sequence[Any]] = None
+        raw_list_to_validate: Sequence[Any] | None = None
         if isinstance(value, CtyValue):
             if value.is_null: # If we get a null CtyValue, it's a null list of this type.
                  logger.debug("🔌📝✅ Input is a null CtyValue, resulting in a null list of this type.")
@@ -136,7 +139,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 raise CtyListValidationError(
                     f"Input CtyValue is not of a list type, got {value.type}"
                 )
-        elif isinstance(value, (list, tuple)):
+        elif isinstance(value, list | tuple):
             raw_list_to_validate = value
         else:
             logger.debug(f"🔌❗❌ Expected list, tuple, or CtyValue list, got {type(value).__name__}")
@@ -220,7 +223,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         elif isinstance(container, CtyList):
             container_value = container.value
         # Handle raw list or tuple container
-        elif isinstance(container, (list, tuple)):
+        elif isinstance(container, list | tuple):
             container_value = container
         # Handle invalid container type
         else:
@@ -282,7 +285,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: Optional[int] = None) -> "CtyList[T]":
+    def slice(self, start: int, end: int | None = None) -> "CtyList[T]":
         """
         Get a slice of this list, returning a new list.
 
@@ -337,7 +340,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         Raises:
             CtyListValidationError: If the other list has an incompatible element type
         """
-        logger.debug(f"🔌📝🔄 Concatenating with another list")
+        logger.debug("🔌📝🔄 Concatenating with another list")
 
         # Ensure other is a CtyList
         if not isinstance(other, CtyList):
@@ -458,7 +461,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug("📋🔍✅  Element‑type equality result: %s", result)
         return result
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Get the length of this list.
 
@@ -483,7 +486,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: Union[int, slice]) -> Union["CtyValue", "CtyList"]:
+    def __getitem__(self, index: int | slice) -> Union["CtyValue", "CtyList"]:
         """
         Support for indexing and slicing operations.
 
@@ -536,7 +539,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         element_class = self.element_type.__class__.__name__
         if element_class == "CtyList":
             # For nested lists, include the inner element type
-            return f"list({str(self.element_type)})"
+            return f"list({self.element_type!s})"
         return f"list({element_class})"
 
     def __repr__(self) -> str:

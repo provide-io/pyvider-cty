@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 # docs/examples/example-11-complex-schema.py
 
-import asyncio
 from decimal import Decimal
-from typing import Dict, List, Any
 
 from pyvider.cty import (
-    CtyObject, CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyDynamic,
-    CtyValue, CtyTuple
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyObject,
+    CtyString,
+    CtyTuple,
 )
+
 # Use the actual conversion API
-from pyvider.cty.conversion import CtyWireFormat, JSON, MSGPACK
+from pyvider.cty.conversion import JSON, CtyWireFormat
+from pyvider.cty.exceptions import AttributePathError, CtyValidationError
 from pyvider.cty.path import CtyPath
-from pyvider.cty.exceptions import CtyValidationError, AttributePathError
 
 # Define a complex infrastructure schema
 network_interface_type = CtyObject(
@@ -111,7 +116,7 @@ try:
 
     # Validate the instance data
     instance_val = instance_type.validate(instance_data)
-    print(f"Successfully validated complex instance schema")
+    print("Successfully validated complex instance schema")
 
     # --- Corrected Serialization ---
     # Serialize using CtyWireFormat

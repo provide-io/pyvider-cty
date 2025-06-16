@@ -15,18 +15,17 @@ the same fidelity as the JSON encoder, with specialized encoding for CTY-specifi
 types and thorough error handling.
 """
 
-import msgpack
 from decimal import Decimal
-from typing import ClassVar, Type, TypeVar, cast
+from typing import ClassVar, TypeVar, cast
 
-from attrs import define, field
+import msgpack
 
-from pyvider.telemetry import logger
+from pyvider.cty.codec import CtyTypeParseError  # Corrected import
+from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
 from pyvider.cty.conversion.wire import WireFormatType
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.values import CtyValue
-from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
-from pyvider.cty.codec import CtyTypeParseError # Corrected import
+from pyvider.telemetry import logger
 
 T = TypeVar('T')
 
@@ -175,7 +174,7 @@ class MsgPackEncoder(FormatEncoder):
         Returns:
             Serializable dictionary representation
         """
-        logger.debug(f"🧩📝🔄 Converting CtyValue to dictionary for MessagePack")
+        logger.debug("🧩📝🔄 Converting CtyValue to dictionary for MessagePack")
 
         result = {}
 
@@ -290,7 +289,7 @@ class MsgPackEncoder(FormatEncoder):
         Raises:
             EncodingError: If conversion fails
         """
-        logger.debug(f"🧩🔍🔄 Converting MessagePack dictionary to CtyValue")
+        logger.debug("🧩🔍🔄 Converting MessagePack dictionary to CtyValue")
 
         try:
             cty_value_intermediate = None # Ensure cty_value_intermediate is defined in all paths
@@ -349,9 +348,7 @@ class MsgPackEncoder(FormatEncoder):
 
         initial_type_info = {"name": type_name_str}
         # Using arbitrary string keys like "$E", "$K", "$V" for collection type details
-        if type_name_str == "CtyList" and "$E" in data:
-            initial_type_info["element_type_details"] = data["$E"]
-        elif type_name_str == "CtySet" and "$E" in data:
+        if (type_name_str == "CtyList" and "$E" in data) or (type_name_str == "CtySet" and "$E" in data):
             initial_type_info["element_type_details"] = data["$E"]
         elif type_name_str == "CtyMap" and "$K" in data and "$V" in data:
             initial_type_info["key_type_details"] = data["$K"]
@@ -379,9 +376,7 @@ class MsgPackEncoder(FormatEncoder):
             type_name_str = "CtyDynamic"
         initial_type_info = {"name": type_name_str}
         # Using arbitrary string keys like "$E", "$K", "$V" for collection type details
-        if type_name_str == "CtyList" and "$E" in data:
-            initial_type_info["element_type_details"] = data["$E"]
-        elif type_name_str == "CtySet" and "$E" in data:
+        if (type_name_str == "CtyList" and "$E" in data) or (type_name_str == "CtySet" and "$E" in data):
             initial_type_info["element_type_details"] = data["$E"]
         elif type_name_str == "CtyMap" and "$K" in data and "$V" in data:
             initial_type_info["key_type_details"] = data["$K"]
@@ -628,9 +623,16 @@ class MsgPackEncoder(FormatEncoder):
         try:
             # Import all types
             from pyvider.cty.types import (
-                CtyBool, CtyNumber, CtyString,
-                CtyList, CtyMap, CtySet,
-                CtyObject, CtyTuple, CtyDynamic, CtyType,
+                CtyBool,
+                CtyDynamic,
+                CtyList,
+                CtyMap,
+                CtyNumber,
+                CtyObject,
+                CtySet,
+                CtyString,
+                CtyTuple,
+                CtyType,
             )
 
             data_source: dict[str | bytes, any] # Define data_source type hint
@@ -698,7 +700,7 @@ class MsgPackEncoder(FormatEncoder):
                     # If type_name_str was derived from a type marker but isn't a known Cty type string,
                     # it's an encoding error. Defaulting to CtyDynamic should only happen if no type was specified.
                     # This makes the type creation stricter.
-                    if isinstance(type_info_dict, (str, bytes)) or \
+                    if isinstance(type_info_dict, str | bytes) or \
                        (isinstance(type_info_dict, dict) and (cls.TYPE_MARKER in type_info_dict or cls.TYPE_MARKER.encode('utf-8') in type_info_dict)):
                         raise EncodingError(f"Unrecognized CTY type string: {type_name_str}", encoding="msgpack")
                     return CtyDynamic() # Fallback for truly unspecified types (e.g. if type_info_dict was None or empty dict without $T)

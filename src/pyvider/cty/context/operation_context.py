@@ -3,7 +3,9 @@
 from contextvars import ContextVar
 from enum import Enum, auto
 from typing import ContextManager
+
 from pyvider.telemetry import logger
+
 
 class OperationContext(Enum):
     DEFAULT = auto()
@@ -24,7 +26,7 @@ def get_current_operation() -> OperationContext:
 
 def operation_context(context: OperationContext) -> ContextManager[None]:
     class OperationContextManager:
-        def __init__(self, new_context: OperationContext):
+        def __init__(self, new_context: OperationContext) -> None:
             self._new_context = new_context
             self._token = None
 
