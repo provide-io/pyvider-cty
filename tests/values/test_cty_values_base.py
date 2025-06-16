@@ -467,13 +467,13 @@ class TestCtyValueSetDeleteErrors:
 
     def test_set_on_list_value_raises_type_error(self, capsys): # Changed caplog to capsys
         list_val = CtyValue.list(CtyString(), ["a", "b"])
-        with pytest.raises(TypeError, match="set\(\) method not supported for type CtyList"):
+        with pytest.raises(TypeError, match=r"set\(\) method not supported for type CtyList"):
             list_val.set("any_key", "any_value")
         # Log assertion removed
 
     def test_set_on_number_value_raises_type_error(self, capsys): # Changed caplog to capsys
         num_val = CtyValue.number(123)
-        with pytest.raises(TypeError, match="set\(\) method not supported for type CtyNumber"):
+        with pytest.raises(TypeError, match=r"set\(\) method not supported for type CtyNumber"):
             num_val.set("any_key", "any_value")
         # Log assertion removed
 
@@ -491,13 +491,13 @@ class TestCtyValueSetDeleteErrors:
 
     def test_delete_on_list_value_raises_type_error(self, capsys): # Changed caplog to capsys
         list_val = CtyValue.list(CtyString(), ["a", "b"])
-        with pytest.raises(TypeError, match="delete\(\) method not supported for type CtyList"):
+        with pytest.raises(TypeError, match=r"delete\(\) method not supported for type CtyList"):
             list_val.delete("any_key")
         # Log assertion removed
 
     def test_delete_on_number_value_raises_type_error(self, capsys): # Changed caplog to capsys
         num_val = CtyValue.number(123)
-        with pytest.raises(TypeError, match="delete\(\) method not supported for type CtyNumber"):
+        with pytest.raises(TypeError, match=r"delete\(\) method not supported for type CtyNumber"):
             num_val.delete("any_key")
         # Log assertion removed
 
