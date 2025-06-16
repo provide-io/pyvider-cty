@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/types/primitives/string.py
 #
@@ -22,7 +24,8 @@ from pyvider.cty.exceptions import CtyStringValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
-T = TypeVar('T', bound=str)
+T = TypeVar("T", bound=str)
+
 
 @define(frozen=True, slots=True)
 class CtyString(CtyType[str]):
@@ -52,10 +55,11 @@ class CtyString(CtyType[str]):
         >>> print(null_value.value)
         ''
     """
+
     ctype: ClassVar[str] = "string"
     value: str = field(default="")
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate that the given value is a string or can be converted to one.
 
@@ -76,40 +80,58 @@ class CtyString(CtyType[str]):
         """
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
+
         logger.debug(f"🔤🔍🔄 Validating value as string: {value!r}")
 
         # Handle CtyValue input
         from pyvider.cty.types.structural import CtyDynamic
-        logger.debug(f"🔤🔍🔄 ENTER CtyString.validate with value type: {type(value)}, value: {value!r}")
+
+        logger.debug(
+            f"🔤🔍🔄 ENTER CtyString.validate with value type: {type(value)}, value: {value!r}"
+        )
 
         if isinstance(value, CtyValue):
-            logger.debug(f"🔤🔍 CtyString.validate received CtyValue. value.type is {value.type!r} (class: {value.type.__class__.__name__})")
+            logger.debug(
+                f"🔤🔍 CtyString.validate received CtyValue. value.type is {value.type!r} (class: {value.type.__class__.__name__})"
+            )
 
             is_type_string = isinstance(value.type, CtyString)
-            logger.debug(f"🔤🔍 Condition: isinstance(value.type, CtyString) is {is_type_string}")
+            logger.debug(
+                f"🔤🔍 Condition: isinstance(value.type, CtyString) is {is_type_string}"
+            )
             if is_type_string:
                 logger.debug("🔤🔍✅ Path 1: Value is CtyValue(CtyString)")
                 return value
 
             is_type_dynamic = isinstance(value.type, CtyDynamic)
-            logger.debug(f"🔤🔍 Condition: isinstance(value.type, CtyDynamic) is {is_type_dynamic}")
+            logger.debug(
+                f"🔤🔍 Condition: isinstance(value.type, CtyDynamic) is {is_type_dynamic}"
+            )
             if is_type_dynamic:
-                logger.debug(f"🔤🔍 Path 2: Handling CtyDynamic. Unknown: {value.is_unknown}, Null: {value.is_null}")
+                logger.debug(
+                    f"🔤🔍 Path 2: Handling CtyDynamic. Unknown: {value.is_unknown}, Null: {value.is_null}"
+                )
                 if value.is_unknown:
-                    logger.debug("🔤🔍✅ CtyDynamic input is unknown, returning unknown CtyString")
+                    logger.debug(
+                        "🔤🔍✅ CtyDynamic input is unknown, returning unknown CtyString"
+                    )
                     return CtyValue.unknown(self)
                 if value.is_null:
-                    logger.debug("🔤🔍✅ CtyDynamic input is null, returning CtyString('')")
+                    logger.debug(
+                        "🔤🔍✅ CtyDynamic input is null, returning CtyString('')"
+                    )
                     return CtyValue(vtype=self, value="")
                 try:
                     str_val = str(value.value)
-                    logger.debug(f"🔤🔍✅ Converted CtyDynamic's inner value ({value.value!r}) to string: {str_val!r}")
+                    logger.debug(
+                        f"🔤🔍✅ Converted CtyDynamic's inner value ({value.value!r}) to string: {str_val!r}"
+                    )
                     return CtyValue(vtype=self, value=str_val)
                 except Exception as e:
                     error_msg = f"Failed to convert CtyDynamic's inner value ({value.value!r}) to string: {e}"
                     logger.error(f"🔤❗❌ {error_msg}")
                     raise CtyStringValidationError(error_msg) from e
-            else: # Path 3: CtyValue of other type (e.g. CtyNumber)
+            else:  # Path 3: CtyValue of other type (e.g. CtyNumber)
                 error_msg = f"Value is a CtyValue of type {value.type.__class__.__name__}, which cannot be automatically converted to CtyString. Expected CtyString or CtyDynamic."
                 logger.error(f"🔤❗❌ Path 3 RAISING ERROR: {error_msg}")
                 raise CtyStringValidationError(error_msg)
@@ -162,11 +184,14 @@ class CtyString(CtyType[str]):
             bool: True if this type can be used as the other type, False otherwise.
         """
         from pyvider.cty.types.structural import CtyDynamic  # Import locally
+
         if isinstance(other, CtyDynamic):
             logger.debug("🔤🔍✅ CtyString.usable_as(CtyDynamic): True")
             return True
         result = isinstance(other, CtyString)
-        logger.debug(f"🔤🔍✅ CtyString.usable_as({other.__class__.__name__}): {result}") # Use other.__class__.__name__ for safety
+        logger.debug(
+            f"🔤🔍✅ CtyString.usable_as({other.__class__.__name__}): {result}"
+        )  # Use other.__class__.__name__ for safety
         return result
 
     def __str__(self) -> str:
@@ -175,5 +200,6 @@ class CtyString(CtyType[str]):
     def is_primitive_type(self) -> bool:
         """Check if this type is a primitive type."""
         return True
+
 
 # 🐍🏗️🐣

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/types/collections/list.py
 #
@@ -15,7 +17,7 @@ immutability by returning new instances rather than modifying existing ones.
 """
 
 from collections.abc import Sequence
-from typing import Any, ClassVar, Generic, TypeVar, Union, final
+from typing import Any, ClassVar, Generic, TypeVar, final
 
 from attrs import define, evolve, field
 
@@ -24,7 +26,8 @@ from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
 # Type variable representing the type of values in the list
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 @final
 @define(frozen=True, slots=True)
@@ -55,9 +58,12 @@ class CtyList(CtyType[list[T]], Generic[T]):
         >>> len(validated)
         3
     """
+
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)  # Mandatory as keyword-only
-    value: list[T] = field(factory=list, kw_only=True)  # Allow passing value via kw_only
+    value: list[T] = field(
+        factory=list, kw_only=True
+    )  # Allow passing value via kw_only
 
     def __attrs_post_init__(self) -> None:
         """
@@ -74,7 +80,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate that the given value conforms to this list type.
 
@@ -113,24 +119,39 @@ class CtyList(CtyType[list[T]], Generic[T]):
             # CtyList().validate(None) should probably align or be clearly defined.
             # For now, keeping original behavior of raising error if None is passed directly to validate.
             logger.error("🔌❗❌ CtyList.validate received None as input.")
-            raise CtyListValidationError("Input to CtyList.validate cannot be None. Use CtyValue.null(CtyList(...)) for a null list.")
+            raise CtyListValidationError(
+                "Input to CtyList.validate cannot be None. Use CtyValue.null(CtyList(...)) for a null list."
+            )
 
         raw_list_to_validate: Sequence[Any] | None = None
         if isinstance(value, CtyValue):
-            if value.is_null: # If we get a null CtyValue, it's a null list of this type.
-                 logger.debug("🔌📝✅ Input is a null CtyValue, resulting in a null list of this type.")
-                 return CtyValue.null(self)
-            if value.is_unknown: # If we get an unknown CtyValue, it's an unknown list of this type.
-                 logger.debug("🔌📝✅ Input is an unknown CtyValue, resulting in an unknown list of this type.")
-                 return CtyValue.unknown(self)
+            if (
+                value.is_null
+            ):  # If we get a null CtyValue, it's a null list of this type.
+                logger.debug(
+                    "🔌📝✅ Input is a null CtyValue, resulting in a null list of this type."
+                )
+                return CtyValue.null(self)
+            if (
+                value.is_unknown
+            ):  # If we get an unknown CtyValue, it's an unknown list of this type.
+                logger.debug(
+                    "🔌📝✅ Input is an unknown CtyValue, resulting in an unknown list of this type."
+                )
+                return CtyValue.unknown(self)
 
             if isinstance(value.type, CtyList):
                 # Check element type compatibility
                 # Allow if target element type is dynamic, or source can be used as target.
-                if isinstance(self.element_type, CtyDynamic) or \
-                   value.type.element_type.usable_as(self.element_type):
-                    logger.debug(f"🔌📝🔄 Input CtyValue has compatible list type {value.type}. Validating its elements.")
-                    raw_list_to_validate = value.value # .value of a CtyValue(CtyList) is list of CtyValues
+                if isinstance(
+                    self.element_type, CtyDynamic
+                ) or value.type.element_type.usable_as(self.element_type):
+                    logger.debug(
+                        f"🔌📝🔄 Input CtyValue has compatible list type {value.type}. Validating its elements."
+                    )
+                    raw_list_to_validate = (
+                        value.value
+                    )  # .value of a CtyValue(CtyList) is list of CtyValues
                 else:
                     raise CtyListValidationError(
                         f"Input CtyValue has incompatible list element type: {value.type.element_type} vs {self.element_type}"
@@ -142,12 +163,22 @@ class CtyList(CtyType[list[T]], Generic[T]):
         elif isinstance(value, list | tuple):
             raw_list_to_validate = value
         else:
-            logger.debug(f"🔌❗❌ Expected list, tuple, or CtyValue list, got {type(value).__name__}")
-            raise CtyListValidationError(f"Expected list, tuple, or CtyValue list, got {type(value).__name__}")
+            logger.debug(
+                f"🔌❗❌ Expected list, tuple, or CtyValue list, got {type(value).__name__}"
+            )
+            raise CtyListValidationError(
+                f"Expected list, tuple, or CtyValue list, got {type(value).__name__}"
+            )
 
-        if raw_list_to_validate is None: # Should be theoretically unreachable due to prior checks
-             logger.error("🔌❗❌ Internal error: list_to_validate is None after initial checks.")
-             raise CtyListValidationError("Internal error: list to validate is None after initial checks.")
+        if (
+            raw_list_to_validate is None
+        ):  # Should be theoretically unreachable due to prior checks
+            logger.error(
+                "🔌❗❌ Internal error: list_to_validate is None after initial checks."
+            )
+            raise CtyListValidationError(
+                "Internal error: list to validate is None after initial checks."
+            )
 
         if not raw_list_to_validate:
             logger.debug("🔌📝✅ Empty list - creating empty CtyList")
@@ -164,28 +195,38 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
                 # Special case: if self.element_type is CtyDynamic and item is already a CtyValue,
                 # we can accept it as is, as CtyDynamic can hold any CtyValue.
-                if isinstance(self.element_type, CtyDynamic) and isinstance(item, CtyValue):
+                if isinstance(self.element_type, CtyDynamic) and isinstance(
+                    item, CtyValue
+                ):
                     validated_item = item  # Pass through if list is dynamic and item is already CtyValue
                 else:
-                    value_to_validate = item.value if isinstance(item, CtyValue) else item
+                    value_to_validate = (
+                        item.value if isinstance(item, CtyValue) else item
+                    )
                     validated_item = self.element_type.validate(value_to_validate)
 
                 logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
                 validated_elements.append(validated_item)
             except Exception as e:
-                error_msg = f"Item {i} ('{item}'): {e!s}" # Make sure item is representable
+                error_msg = (
+                    f"Item {i} ('{item}'): {e!s}"  # Make sure item is representable
+                )
                 logger.debug(f"🔌❗❌ {error_msg}")
                 validation_errors.append(error_msg)
 
         if validation_errors:
-            error_msg = "CtyList validation failed:\n - " + "\n - ".join(validation_errors) # Added hyphen for clarity
-            logger.error(f"🔌❗❌ {error_msg}") # Changed from debug to error
+            error_msg = "CtyList validation failed:\n - " + "\n - ".join(
+                validation_errors
+            )  # Added hyphen for clarity
+            logger.error(f"🔌❗❌ {error_msg}")  # Changed from debug to error
             raise CtyListValidationError(error_msg)
 
-        logger.debug(f"🔌📝✅ Successfully validated list with {len(validated_elements)} items")
+        logger.debug(
+            f"🔌📝✅ Successfully validated list with {len(validated_elements)} items"
+        )
         return CtyValue(vtype=self, value=validated_elements)
 
-    def element_at(self, container: Any, index: int) -> "CtyValue":
+    def element_at(self, container: Any, index: int) -> CtyValue:
         """
         Get an element at a specific index in the list.
 
@@ -240,7 +281,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
             # Check bounds
             if index < 0 or index >= list_len:
-                raise IndexError(f"Index {index} out of bounds (0-{list_len-1})")
+                raise IndexError(f"Index {index} out of bounds (0-{list_len - 1})")
 
             # Return the element at the specified index
             result = container_value[index]
@@ -251,7 +292,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise IndexError(message) from e
 
-    def append(self, item: Any) -> "CtyList[T]":
+    def append(self, item: Any) -> CtyList[T]:
         """
         Append an item to the list, returning a new list.
 
@@ -285,7 +326,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: int | None = None) -> "CtyList[T]":
+    def slice(self, start: int, end: int | None = None) -> CtyList[T]:
         """
         Get a slice of this list, returning a new list.
 
@@ -318,11 +359,13 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         # Create a new list with the sliced values
         sliced_value = self.value[start:end]
-        logger.debug(f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}")
+        logger.debug(
+            f"🔌🔍✅ Sliced list from {start} to {end}, result size: {len(sliced_value)}"
+        )
 
         return evolve(self, value=sliced_value)
 
-    def concat(self, other: "CtyList[T]") -> "CtyList[T]":
+    def concat(self, other: CtyList[T]) -> CtyList[T]:
         """
         Concatenate this list with another list, returning a new list.
 
@@ -386,9 +429,11 @@ class CtyList(CtyType[list[T]], Generic[T]):
             # Check each element in the list
             for list_item in self.value:
                 # Compare values within CtyValue objects
-                if hasattr(list_item, 'value') and hasattr(validated_item, 'value'):
+                if hasattr(list_item, "value") and hasattr(validated_item, "value"):
                     if list_item.value == validated_item.value:
-                        logger.debug(f"🔌🔍✅ List contains item: {validated_item.value}")
+                        logger.debug(
+                            f"🔌🔍✅ List contains item: {validated_item.value}"
+                        )
                         return True
 
                 # Try direct equality
@@ -416,7 +461,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
             bool: True if this type can be used as the other type, False otherwise
         """
         if not isinstance(other, CtyList):
-            logger.debug(f"🔌📝❌ CtyList.usable_as: False (other is {type(other).__name__})")
+            logger.debug(
+                f"🔌📝❌ CtyList.usable_as: False (other is {type(other).__name__})"
+            )
             return False
 
         result = self.element_type.usable_as(other.element_type)
@@ -438,21 +485,22 @@ class CtyList(CtyType[list[T]], Generic[T]):
             bool: True if the types are equal, False otherwise
         """
         if not isinstance(other, CtyList):
-            logger.debug(f"🔌📝❌ CtyList.equal: False (other is {type(other).__name__})")
+            logger.debug(
+                f"🔌📝❌ CtyList.equal: False (other is {type(other).__name__})"
+            )
             return False
 
         result = self.element_type.equal(other.element_type)
         logger.debug(f"🔌📝✅ CtyList.equal: {result}")
         return result
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
         Two list types are equal when the other type is also a CtyList
         and their element types are equal *recursively*.
         """
 
-        logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s",
-                     self, other)
+        logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s", self, other)
         if not isinstance(other, CtyList):
             logger.debug("📋❌🔄  Other type is not CtyList → not equal")
             return False
@@ -486,7 +534,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: int | slice) -> Union["CtyValue", "CtyList"]:
+    def __getitem__(self, index: int | slice) -> CtyValue | CtyList:
         """
         Support for indexing and slicing operations.
 
@@ -562,5 +610,6 @@ class CtyList(CtyType[list[T]], Generic[T]):
     def is_list_type(self) -> bool:
         """Check if this type is a list type."""
         return True
+
 
 # 🐍🏗️🐣

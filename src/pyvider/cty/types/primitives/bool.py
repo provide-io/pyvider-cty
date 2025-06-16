@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/types/primitives/bool.py
 #
@@ -20,8 +22,13 @@ from pyvider.cty.types.base import CtyType
 from pyvider.telemetry import logger
 
 # Define frozensets for true and false string representations
-_TRUE_STRINGS = frozenset({"1", "t", "T", "true", "TRUE", "True", "yes", "YES", "y", "Y"})
-_FALSE_STRINGS = frozenset({"0", "f", "F", "false", "FALSE", "False", "no", "NO", "n", "N"})
+_TRUE_STRINGS = frozenset(
+    {"1", "t", "T", "true", "TRUE", "True", "yes", "YES", "y", "Y"}
+)
+_FALSE_STRINGS = frozenset(
+    {"0", "f", "F", "false", "FALSE", "False", "no", "NO", "n", "N"}
+)
+
 
 @define(frozen=True, slots=True)
 class CtyBool(CtyType[bool]):
@@ -37,10 +44,11 @@ class CtyBool(CtyType[bool]):
         ctype: Class variable identifying this as a boolean type
         value: The default value for this type (False)
     """
+
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """Validate *value* and return a :class:`~pyvider.cty.values.CtyValue`.
 
         Conversion matrix
@@ -98,7 +106,10 @@ class CtyBool(CtyType[bool]):
         if isinstance(value, int | float | Decimal):
             try:
                 dec = Decimal(value)
-            except (InvalidOperation, ValueError) as exc:  # pragma: no cover – very rare
+            except (
+                InvalidOperation,
+                ValueError,
+            ) as exc:  # pragma: no cover – very rare
                 logger.error("🧰❌🔄 invalid numeric value %r: %s", value, exc)
                 raise CtyBoolValidationError(str(exc)) from exc
 
@@ -108,7 +119,9 @@ class CtyBool(CtyType[bool]):
                 return CtyValue(vtype=self, value=bool_val)
 
             logger.error("🧰❌🔄 numeric boolean must be 0 or 1, got %s", dec)
-            raise CtyBoolValidationError("Numeric boolean must be 0 or 1, got " f"{value!r}")
+            raise CtyBoolValidationError(
+                f"Numeric boolean must be 0 or 1, got {value!r}"
+            )
 
         # 6️⃣ Everything else → error
         logger.error("🧰❌🔄 unsupported boolean value type: %s", type(value).__name__)
@@ -116,25 +129,29 @@ class CtyBool(CtyType[bool]):
             f"Value must be a boolean, 0/1, or convertible string; got {type(value).__name__}: {value!r}"
         )
 
-    def equal(self, other: "CtyType[bool]") -> bool:
+    def equal(self, other: CtyType[bool]) -> bool:
         result = isinstance(other, CtyBool)
         logger.debug(f"🔄🔍✅ CtyBool.equal: {result}")
         return result
 
-    def usable_as(self, other: "CtyType[bool]") -> bool:
+    def usable_as(self, other: CtyType[bool]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic  # Import locally
+
         if isinstance(other, CtyDynamic):
             logger.debug("🔄🔍✅ CtyBool.usable_as(CtyDynamic): True")
             return True
         result = isinstance(other, CtyBool)
-        logger.debug(f"🔄🔍✅ CtyBool.usable_as({other.__class__.__name__}): {result}") # Use other.__class__.__name__ for safety
+        logger.debug(
+            f"🔄🔍✅ CtyBool.usable_as({other.__class__.__name__}): {result}"
+        )  # Use other.__class__.__name__ for safety
         return result
 
-    def __str__(self) -> str:    # pragma: no cover – trivial
+    def __str__(self) -> str:  # pragma: no cover – trivial
         return "bool"
 
     def is_primitive_type(self) -> bool:
         """Check if this type is a primitive type."""
         return True
+
 
 # 🐍🏗️🐣

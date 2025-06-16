@@ -4,35 +4,46 @@ from typing import TypeVar
 
 from pyvider.cty.conversion.wire import WireFormatType
 
-T = TypeVar('T')
+T = TypeVar("T")
 JSON = WireFormatType.JSON
 MSGPACK = WireFormatType.MSGPACK
+
 
 class FormatEncoder:
     @classmethod
     def format_type(cls) -> WireFormatType:
         raise NotImplementedError(f"{cls.__name__}.format_type() must be implemented")
+
     @classmethod
     def encode(cls, value: object, **options) -> bytes:
         raise NotImplementedError(f"{cls.__name__}.encode() must be implemented")
+
     @classmethod
     def decode(cls, data: bytes, **options) -> object:
         raise NotImplementedError(f"{cls.__name__}.decode() must be implemented")
 
+
 _ENCODERS: dict[WireFormatType, type[FormatEncoder]] = {}
+
 
 def register_formatter(format_type: WireFormatType):
     def decorator(encoder_class: type[FormatEncoder]):
         if not issubclass(encoder_class, FormatEncoder):
-            raise TypeError(f"Format encoder {encoder_class.__name__} must extend FormatEncoder")
+            raise TypeError(
+                f"Format encoder {encoder_class.__name__} must extend FormatEncoder"
+            )
         _ENCODERS[format_type] = encoder_class
         return encoder_class
+
     return decorator
+
 
 def get_formatter(format_type: WireFormatType) -> type[FormatEncoder] | None:
     return _ENCODERS.get(format_type)
 
+
 def list_formatters() -> dict[WireFormatType, str]:
     return {fmt: encoder.__name__ for fmt, encoder in _ENCODERS.items()}
+
 
 # 🐍🏗️

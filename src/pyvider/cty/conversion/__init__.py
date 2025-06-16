@@ -27,17 +27,33 @@ from pyvider.telemetry import logger
 
 T = type["T"]
 
-def marshal(value: object, format_kind: WireFormatType, operation: OperationContext | None = None, **options: object) -> bytes:
+
+def marshal(
+    value: object,
+    format_kind: WireFormatType,
+    operation: OperationContext | None = None,
+    **options: object,
+) -> bytes:
     op_ctx = operation or get_current_operation()
     formatter = WireFormatRegistry.get_formatter(format_kind)
     with operation_context(op_ctx):
         return formatter.marshal(value, operation=op_ctx, **options)
 
-def unmarshal(data: bytes | object, format_kind: WireFormatType, expected_type: T | None = None, operation: OperationContext | None = None, **options: object) -> T:
+
+def unmarshal(
+    data: bytes | object,
+    format_kind: WireFormatType,
+    expected_type: T | None = None,
+    operation: OperationContext | None = None,
+    **options: object,
+) -> T:
     op_ctx = operation or get_current_operation()
     formatter = WireFormatRegistry.get_formatter(format_kind)
     with operation_context(op_ctx):
-        return formatter.unmarshal(data, expected_type=expected_type, operation=op_ctx, **options)
+        return formatter.unmarshal(
+            data, expected_type=expected_type, operation=op_ctx, **options
+        )
+
 
 __all__ = [
     "OperationContext",

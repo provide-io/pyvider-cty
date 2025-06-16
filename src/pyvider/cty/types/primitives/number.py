@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/types/primitives/number.py
 #
@@ -55,10 +57,11 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         >>> print(value.value)
         3.14159265359
     """
+
     ctype: ClassVar[str] = "number"
     value: int | Decimal = field(default=0)
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate that the given value is a number or can be converted to one.
 
@@ -91,40 +94,44 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                 return value
             # --- Allow conversion from known, non-null CtyValue if numeric/string ---
             if not value._is_unknown and not value._is_null:
-                 inner_val = value.value
-                 if isinstance(inner_val, int | float | Decimal):
-                      logger.debug(f"🔢🔍✅ Inner value is already numeric: {inner_val!r}")
-                      return CtyValue(vtype=self, value=inner_val)
-                 elif isinstance(inner_val, str):
-                     try:
-                         num_val = Decimal(inner_val)
-                         logger.debug(f"🔢🔍✅ Converted inner string to Decimal: {num_val}")
-                         return CtyValue(vtype=self, value=num_val)
-                     except (InvalidOperation, ValueError):
-                         error_msg = f"String value '{inner_val}' inside CtyValue is not a valid number"
-                         logger.error(f"🔢❗❌ {error_msg}")
-                         raise CtyNumberValidationError(error_msg)
-                 # else: fall through to raise error for other inner types
+                inner_val = value.value
+                if isinstance(inner_val, int | float | Decimal):
+                    logger.debug(
+                        f"🔢🔍✅ Inner value is already numeric: {inner_val!r}"
+                    )
+                    return CtyValue(vtype=self, value=inner_val)
+                elif isinstance(inner_val, str):
+                    try:
+                        num_val = Decimal(inner_val)
+                        logger.debug(
+                            f"🔢🔍✅ Converted inner string to Decimal: {num_val}"
+                        )
+                        return CtyValue(vtype=self, value=num_val)
+                    except (InvalidOperation, ValueError):
+                        error_msg = f"String value '{inner_val}' inside CtyValue is not a valid number"
+                        logger.error(f"🔢❗❌ {error_msg}")
+                        raise CtyNumberValidationError(error_msg)
+                # else: fall through to raise error for other inner types
             # --- End CtyValue Handling ---
-
 
         # Handle None as 0 (consistent with go-cty)
         if value is None:
             logger.debug("🔢🔍✅ None value converted to 0")
-            return CtyValue(vtype=self, value=Decimal(0)) # Use Decimal for consistency
+            return CtyValue(vtype=self, value=Decimal(0))  # Use Decimal for consistency
 
         # Accept numeric types: int, float, Decimal
         if isinstance(value, int | float | Decimal):
             # Convert int/float to Decimal for internal consistency
             try:
-                 decimal_val = Decimal(value)
-                 logger.debug(f"🔢🔍✅ Value is valid number type: {type(value).__name__}, stored as Decimal: {decimal_val}")
-                 return CtyValue(vtype=self, value=decimal_val)
-            except Exception as e: # Catch potential issues converting float inf/nan
-                 error_msg = f"Cannot represent {type(value).__name__} value {value!r} as Decimal: {e}"
-                 logger.error(f"🔢❗❌ {error_msg}")
-                 raise CtyNumberValidationError(error_msg)
-
+                decimal_val = Decimal(value)
+                logger.debug(
+                    f"🔢🔍✅ Value is valid number type: {type(value).__name__}, stored as Decimal: {decimal_val}"
+                )
+                return CtyValue(vtype=self, value=decimal_val)
+            except Exception as e:  # Catch potential issues converting float inf/nan
+                error_msg = f"Cannot represent {type(value).__name__} value {value!r} as Decimal: {e}"
+                logger.error(f"🔢❗❌ {error_msg}")
+                raise CtyNumberValidationError(error_msg)
 
         # Try to convert strings that look like numbers
         if isinstance(value, str):
@@ -133,7 +140,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
                 decimal_val = Decimal(value)
                 logger.debug(f"🔢🔍✅ String converted to Decimal: {decimal_val}")
                 return CtyValue(vtype=self, value=decimal_val)
-            except (InvalidOperation, ValueError): # Catch specific Decimal errors
+            except (InvalidOperation, ValueError):  # Catch specific Decimal errors
                 error_msg = f"Cannot convert string '{value}' to number"
                 logger.debug(f"🔢❗❌ {error_msg}")
                 raise CtyNumberValidationError(error_msg)
@@ -143,7 +150,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         logger.error(f"🔢❗❌ {error_msg}")
         raise CtyNumberValidationError(error_msg)
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
         Check if this type is equal to another type.
 
@@ -161,7 +168,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         logger.debug(f"🔢🔍✅ CtyNumber.equal: {result}")
         return result
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: CtyType) -> bool:
         """
         Check if this type can be used where the other type is expected.
 
@@ -174,11 +181,13 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         Returns:
             bool: True if this type can be used as the other type, False otherwise.
         """
-        if isinstance(other, CtyDynamic): # Check against CtyDynamic first
+        if isinstance(other, CtyDynamic):  # Check against CtyDynamic first
             logger.debug("🔢🔍✅ CtyNumber.usable_as(CtyDynamic): True")
             return True
         result = isinstance(other, CtyNumber)
-        logger.debug(f"🔢🔍✅ CtyNumber.usable_as({other.__class__.__name__}): {result}")
+        logger.debug(
+            f"🔢🔍✅ CtyNumber.usable_as({other.__class__.__name__}): {result}"
+        )
         return result
 
     def __str__(self) -> str:
@@ -187,5 +196,6 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     def is_primitive_type(self) -> bool:
         """Check if this type is a primitive type."""
         return True
+
 
 # 🐍🏗️🐣

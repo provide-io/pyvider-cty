@@ -13,6 +13,7 @@ class CtyMark:
     flow through a system, often indicating attributes like sensitivity,
     provenance, or other operational concerns.
     """
+
     name: str = field()
     details: object | None = field(default=None)
 
@@ -20,5 +21,6 @@ class CtyMark:
         if self.details is not None:
             return f"CtyMark({self.name!r}, {self.details!r})"
         return f"CtyMark({self.name!r})"
+
 
 # ✨🔧

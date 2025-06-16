@@ -41,6 +41,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         attribute_types: dictionary mapping attribute names to their types
         optional_attributes: Set of attribute names that are optional
     """
+
     ctype: ClassVar[str] = "object"
     attribute_types: dict[str, CtyType] = field(factory=dict)
     optional_attributes: frozenset[str] = field(factory=frozenset)
@@ -57,7 +58,8 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         # Validate all types are CtyType instances
         invalid_types = [
-            name for name, vtype in self.attribute_types.items()
+            name
+            for name, vtype in self.attribute_types.items()
             if not isinstance(vtype, CtyType)
         ]
         if invalid_types:
@@ -72,7 +74,9 @@ class CtyObject(CtyType[dict[str, Any]]):
             logger.error(f"🧩❌🔄 {error_msg}")
             raise CtyAttributeValidationError(error_msg)
 
-        logger.debug(f"🧩✅🔄 CtyObject configuration validated successfully with {len(self.attribute_types)} attributes")
+        logger.debug(
+            f"🧩✅🔄 CtyObject configuration validated successfully with {len(self.attribute_types)} attributes"
+        )
 
     def validate(self, value: Any) -> CtyValue:
         """
@@ -95,31 +99,45 @@ class CtyObject(CtyType[dict[str, Any]]):
             CtyValue,  # Make sure this import is available at the top of the file or method
         )
 
-        if isinstance(value, dict) and not value: # Explicitly an empty dictionary
+        if isinstance(value, dict) and not value:  # Explicitly an empty dictionary
             is_truly_empty_compatible = True
-            for attr_name in self.attribute_types: # No need for .items() if only checking names
+            for (
+                attr_name
+            ) in self.attribute_types:  # No need for .items() if only checking names
                 if attr_name not in self.optional_attributes:
                     is_truly_empty_compatible = False
                     break
 
             if is_truly_empty_compatible:
-                logger.debug("JULES_OBJECT_VALIDATE: Explicitly handling empty dict {} input for compatible object type, returning NON-NULL empty object.")
+                logger.debug(
+                    "JULES_OBJECT_VALIDATE: Explicitly handling empty dict {} input for compatible object type, returning NON-NULL empty object."
+                )
                 return CtyValue(vtype=self, value={})
             else:
-                logger.debug("JULES_OBJECT_VALIDATE: Empty dict {} input for object type with required attrs, proceeding to normal validation which should fail.")
+                logger.debug(
+                    "JULES_OBJECT_VALIDATE: Empty dict {} input for object type with required attrs, proceeding to normal validation which should fail."
+                )
                 # Let normal validation proceed by not returning early.
                 # The existing logic below will handle raising CtyValidationError for missing required attributes.
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyObject) and value.type.equal(self):
-                logger.debug("🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is.")
+                logger.debug(
+                    "🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is."
+                )
                 return value
             if value.is_unknown and value.type.usable_as(self):
-                logger.debug("🧩🔍✅ Propagating unknown CtyValue of a compatible type through object validation.")
+                logger.debug(
+                    "🧩🔍✅ Propagating unknown CtyValue of a compatible type through object validation."
+                )
                 return CtyValue.unknown(self)
 
-            logger.debug(f"🧩🔍🔄 Input is a CtyValue of type {value.type!r}; unwrapping to validate its inner content: {value.value!r}")
-            value = value.value # Unwrap to proceed with dict validation for the match statement
+            logger.debug(
+                f"🧩🔍🔄 Input is a CtyValue of type {value.type!r}; unwrapping to validate its inner content: {value.value!r}"
+            )
+            value = (
+                value.value
+            )  # Unwrap to proceed with dict validation for the match statement
 
         # Handle different input types
         match value:
@@ -164,7 +182,9 @@ class CtyObject(CtyType[dict[str, Any]]):
                 # Handle missing attributes (optional ones become null)
                 if name not in value:
                     if name in self.optional_attributes:
-                        logger.debug(f"🧩🔍✅ Optional attribute {name} is missing, setting to null")
+                        logger.debug(
+                            f"🧩🔍✅ Optional attribute {name} is missing, setting to null"
+                        )
                         validated_attrs[name] = CtyValue.null(attr_type)
                         continue
                     else:
@@ -181,19 +201,25 @@ class CtyObject(CtyType[dict[str, Any]]):
                     error_msg = f"Attribute '{name}' is required and cannot be None"
                     logger.error(f"🧩🔍❌ {error_msg}")
                     validation_errors.append(error_msg)
-                    continue # Skip further validation for this attribute
+                    continue  # Skip further validation for this attribute
 
                 # Handle special cases
                 match attr_value:
                     case None if name in self.optional_attributes:
                         # None for optional attribute
-                        logger.debug(f"🧩🔍✅ Optional attribute {name} is None, using null CtyValue")
+                        logger.debug(
+                            f"🧩🔍✅ Optional attribute {name} is None, using null CtyValue"
+                        )
                         validated_attrs[name] = CtyValue.null(attr_type)
                         continue
                     case CtyValue() as cty_value:
                         # Already a CtyValue, check type compatibility
-                        logger.debug(f"🧩🔍🔄 Attribute {name} is already a CtyValue, checking type compatibility")
-                        if not attr_type.equal(cty_value.type) and not cty_value.type.usable_as(attr_type):
+                        logger.debug(
+                            f"🧩🔍🔄 Attribute {name} is already a CtyValue, checking type compatibility"
+                        )
+                        if not attr_type.equal(
+                            cty_value.type
+                        ) and not cty_value.type.usable_as(attr_type):
                             error_msg = f"Invalid type for attribute '{name}': expected {attr_type}, got {cty_value.type}"
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
@@ -201,7 +227,9 @@ class CtyObject(CtyType[dict[str, Any]]):
 
                         # Use the CtyValue directly
                         validated_attrs[name] = cty_value
-                        logger.debug(f"🧩🔍✅ Used existing CtyValue for attribute {name}")
+                        logger.debug(
+                            f"🧩🔍✅ Used existing CtyValue for attribute {name}"
+                        )
                         continue
                     case _:
                         # Regular value, validate it
@@ -213,22 +241,38 @@ class CtyObject(CtyType[dict[str, Any]]):
                         except CtyValidationError as e:
                             # Add context about which attribute failed
                             # Ensure detail even if str(e) is empty
-                            err_detail = str(e) if str(e).strip() else f"(CtyValidationError: {e!r})"
-                            error_msg = f"Invalid value for attribute '{name}': {err_detail}"
+                            err_detail = (
+                                str(e)
+                                if str(e).strip()
+                                else f"(CtyValidationError: {e!r})"
+                            )
+                            error_msg = (
+                                f"Invalid value for attribute '{name}': {err_detail}"
+                            )
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
                         except Exception as e:
-                             # Ensure detail even if str(e) is empty
-                            err_detail = str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})"
-                            error_msg = f"Error validating attribute '{name}': {err_detail}"
+                            # Ensure detail even if str(e) is empty
+                            err_detail = (
+                                str(e)
+                                if str(e).strip()
+                                else f"({type(e).__name__}: {e!r})"
+                            )
+                            error_msg = (
+                                f"Error validating attribute '{name}': {err_detail}"
+                            )
                             logger.error(f"🧩🔍❌ {error_msg}")
                             validation_errors.append(error_msg)
 
             # Update the outer except block within the loop as well:
             except Exception as e:
                 # Ensure detail even if str(e) is empty
-                err_detail = str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})"
-                error_msg = f"Unexpected error processing attribute '{name}': {err_detail}"
+                err_detail = (
+                    str(e) if str(e).strip() else f"({type(e).__name__}: {e!r})"
+                )
+                error_msg = (
+                    f"Unexpected error processing attribute '{name}': {err_detail}"
+                )
                 logger.error(f"🧩🔍❌ {error_msg}")
                 validation_errors.append(error_msg)
 
@@ -238,7 +282,9 @@ class CtyObject(CtyType[dict[str, Any]]):
             logger.error(f"🧩🔍❌ {error_msg}")
             raise CtyValidationError(error_msg)
 
-        logger.debug(f"🧩🔍✅ Successfully validated object with {len(validated_attrs)} attributes")
+        logger.debug(
+            f"🧩🔍✅ Successfully validated object with {len(validated_attrs)} attributes"
+        )
 
         # Return the validated attributes wrapped in a CtyValue
         return CtyValue(vtype=self, value=validated_attrs)
@@ -292,7 +338,9 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         # Handle optional attributes
         if name not in value and name in self.optional_attributes:
-            logger.debug(f"🧩🔍✅ Optional attribute {name} not found, returning null value")
+            logger.debug(
+                f"🧩🔍✅ Optional attribute {name} not found, returning null value"
+            )
             return CtyValue.null(self.attribute_types[name])
 
         # Get attribute from dict
@@ -313,7 +361,8 @@ class CtyObject(CtyType[dict[str, Any]]):
             FrozenSet[str]: Names of all required attributes
         """
         required = frozenset(
-            name for name in self.attribute_types
+            name
+            for name in self.attribute_types
             if name not in self.optional_attributes
         )
         logger.debug(f"🧩🔍🔄 Calculated required attributes: {required}")
@@ -355,7 +404,9 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         # Must be a CtyObject
         if not isinstance(other, CtyObject):
-            logger.debug(f"🧩🔍❌ Not equal: {other.__class__.__name__} is not CtyObject")
+            logger.debug(
+                f"🧩🔍❌ Not equal: {other.__class__.__name__} is not CtyObject"
+            )
             return False
 
         # Must have same attribute names
@@ -416,7 +467,9 @@ class CtyObject(CtyType[dict[str, Any]]):
         self_required = self.required_attributes()
         if not other_required.issubset(self_required):
             extra_required = other_required - self_required
-            logger.debug(f"🧩🔍❌ Not usable: other requires attributes we don't: {extra_required}")
+            logger.debug(
+                f"🧩🔍❌ Not usable: other requires attributes we don't: {extra_required}"
+            )
             return False
 
         logger.debug("🧩🔍✅ Object is usable as target type")
@@ -437,9 +490,11 @@ class CtyObject(CtyType[dict[str, Any]]):
 
             parts.append(part)
 
-        return f"object({{{ ', '.join(parts) }}})"
+        return f"object({{{', '.join(parts)}}})"
 
-    def with_attribute(self, name: str, vtype: CtyType, *, optional: bool = False) -> "CtyObject":
+    def with_attribute(
+        self, name: str, vtype: CtyType, *, optional: bool = False
+    ) -> "CtyObject":
         """
         Create a new object type with an additional attribute.
 
@@ -454,7 +509,9 @@ class CtyObject(CtyType[dict[str, Any]]):
         Raises:
             CtyAttributeValidationError: If the name already exists
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with attribute: {name} ({vtype.__class__.__name__})")
+        logger.debug(
+            f"🧩🔧🔄 Creating new object type with attribute: {name} ({vtype.__class__.__name__})"
+        )
 
         # Validate attribute doesn't already exist
         if name in self.attribute_types:
@@ -473,9 +530,7 @@ class CtyObject(CtyType[dict[str, Any]]):
 
         logger.debug(f"🧩🔧✅ Created new object type with attribute: {name}")
         return evolve(
-            self,
-            attribute_types=new_attrs,
-            optional_attributes=frozenset(new_optional)
+            self, attribute_types=new_attrs, optional_attributes=frozenset(new_optional)
         )
 
     def with_optional_attributes(self, *names: str) -> "CtyObject":
@@ -491,7 +546,9 @@ class CtyObject(CtyType[dict[str, Any]]):
         Raises:
             CtyAttributeValidationError: If any name is not a valid attribute
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with optional attributes: {names}")
+        logger.debug(
+            f"🧩🔧🔄 Creating new object type with optional attributes: {names}"
+        )
 
         # Validate all names exist in attribute_types
         unknown = set(names) - set(self.attribute_types)
@@ -506,7 +563,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         return evolve(
             self,
             attribute_types=self.attribute_types,
-            optional_attributes=frozenset(new_optional)
+            optional_attributes=frozenset(new_optional),
         )
 
     def with_required_attributes(self, *names: str) -> "CtyObject":
@@ -522,7 +579,9 @@ class CtyObject(CtyType[dict[str, Any]]):
         Raises:
             CtyAttributeValidationError: If any name is not a valid attribute or already required
         """
-        logger.debug(f"🧩🔧🔄 Creating new object type with required attributes: {names}")
+        logger.debug(
+            f"🧩🔧🔄 Creating new object type with required attributes: {names}"
+        )
 
         # Validate all names exist in attribute_types and are currently optional
         unknown = set(names) - set(self.attribute_types)
@@ -540,11 +599,13 @@ class CtyObject(CtyType[dict[str, Any]]):
         # Create new optional set
         new_optional = frozenset(set(self.optional_attributes) - set(names))
 
-        logger.debug(f"🧩🔧✅ Created new object type with required attributes: {names}")
+        logger.debug(
+            f"🧩🔧✅ Created new object type with required attributes: {names}"
+        )
         return evolve(
             self,
             attribute_types=self.attribute_types,
-            optional_attributes=frozenset(new_optional)
+            optional_attributes=frozenset(new_optional),
         )
 
     def __iter__(self):
@@ -554,5 +615,6 @@ class CtyObject(CtyType[dict[str, Any]]):
     def __len__(self) -> int:
         """Return number of attributes."""
         return len(self.attribute_types)
+
 
 # 🐍🏗️🐣

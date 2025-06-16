@@ -9,6 +9,7 @@ from pyvider.cty.exceptions.base import CtyError
 # Transformation and Path Errors
 ################################################################################
 
+
 class TransformationError(CtyError):
     """
     Raised when a schema transformation fails.
@@ -22,7 +23,10 @@ class TransformationError(CtyError):
         schema: The schema that failed transformation
         target_type: The intended target type of a transformation, if applicable
     """
-    def __init__(self, message: str, schema: object = None, target_type: object = None, **kwargs) -> None:
+
+    def __init__(
+        self, message: str, schema: object = None, target_type: object = None, **kwargs
+    ) -> None:
         self.schema = schema
         self.target_type = target_type
 
@@ -34,7 +38,7 @@ class TransformationError(CtyError):
             context_parts.append(f"target_type={target_type_name}")
 
         if context_parts:
-            message = f"{message} ({", ".join(context_parts)})"
+            message = f"{message} ({', '.join(context_parts)})"
 
         super().__init__(message)
 
@@ -51,6 +55,7 @@ class InvalidTypeError(CtyError):
         message: A human-readable error description
         invalid_type: The invalid type that caused the error
     """
+
     def __init__(self, message: str, invalid_type: object = None) -> None:
         self.invalid_type = invalid_type
         super().__init__(message)
@@ -70,6 +75,7 @@ class AttributePathError(CtyError):
         path: The path that caused the error
         value: The value the path was being applied to
     """
+
     def __init__(self, message: str, path: object = None, value: object = None) -> None:
         self.path = path
         self.value = value
@@ -79,6 +85,7 @@ class AttributePathError(CtyError):
 ################################################################################
 # Encoding Errors
 ################################################################################
+
 
 class EncodingError(CtyError):
     """
@@ -92,7 +99,10 @@ class EncodingError(CtyError):
         data: The data that caused the encoding error
         encoding: The name of the encoding format that was being used
     """
-    def __init__(self, message: str, data: object = None, encoding: str | None = None) -> None:
+
+    def __init__(
+        self, message: str, data: object = None, encoding: str | None = None
+    ) -> None:
         self.data = data
         self.encoding = encoding
         # Store original message if subclasses want to modify it AFTER super call
@@ -119,7 +129,10 @@ class SerializationError(EncodingError):
         value: The value that failed to serialize
         format_name: The name of the format that was being used
     """
-    def __init__(self, message: str, value: object = None, format_name: str | None = None) -> None:
+
+    def __init__(
+        self, message: str, value: object = None, format_name: str | None = None
+    ) -> None:
         self.value = value
         super().__init__(message, value, format_name)
 
@@ -136,7 +149,10 @@ class DeserializationError(EncodingError):
         data: The data that failed to deserialize
         format_name: The name of the format that was being used
     """
-    def __init__(self, message: str, data: object = None, format_name: str | None = None) -> None:
+
+    def __init__(
+        self, message: str, data: object = None, format_name: str | None = None
+    ) -> None:
         super().__init__(message, data, format_name)
 
 
@@ -152,6 +168,7 @@ class DynamicValueError(SerializationError):
         message: A human-readable error description
         value: The dynamic value that caused the error
     """
+
     def __init__(self, message: str, value: object = None) -> None:
         super().__init__(message, value, "DynamicValue")
 
@@ -168,7 +185,10 @@ class JsonEncodingError(EncodingError):
         data: The data that caused the encoding error
         operation: The operation that failed (encode/decode)
     """
-    def __init__(self, message: str, data: object = None, operation: str | None = None) -> None:
+
+    def __init__(
+        self, message: str, data: object = None, operation: str | None = None
+    ) -> None:
         self.operation = operation
         # Pass original message, data, and "json" as encoding to EncodingError
         super().__init__(message, data, "json")
@@ -177,8 +197,12 @@ class JsonEncodingError(EncodingError):
         if operation:
             current_message = self.args[0]
             # Remove the "JSON encoding error: " part, add op, then re-add prefix
-            base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
-            formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
+            base_message = current_message.replace(
+                f"{self.encoding.upper()} encoding error: ", "", 1
+            )
+            formatted_message = (
+                f"{self.encoding.upper()} {operation} error: {base_message}"
+            )
             self.args = (formatted_message,) + self.args[1:]
 
 
@@ -194,13 +218,20 @@ class MsgPackEncodingError(EncodingError):
         data: The data that caused the encoding error
         operation: The operation that failed (encode/decode)
     """
-    def __init__(self, message: str, data: object = None, operation: str | None = None) -> None:
+
+    def __init__(
+        self, message: str, data: object = None, operation: str | None = None
+    ) -> None:
         self.operation = operation
         super().__init__(message, data, "msgpack")
         if operation:
             current_message = self.args[0]
-            base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
-            formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
+            base_message = current_message.replace(
+                f"{self.encoding.upper()} encoding error: ", "", 1
+            )
+            formatted_message = (
+                f"{self.encoding.upper()} {operation} error: {base_message}"
+            )
             self.args = (formatted_message,) + self.args[1:]
 
 
@@ -216,19 +247,22 @@ class WireFormatError(TransformationError):
         format_type: The wire format type that encountered an error
         operation: The operation that failed (marshal/unmarshal)
     """
+
     def __init__(
         self,
         message: str,
         *,
         format_type: object = None,
         operation: str | None = None,
-        **kwargs # Catches schema, target_type for TransformationError
+        **kwargs,  # Catches schema, target_type for TransformationError
     ) -> None:
         self.format_type = format_type
         self.operation = operation
 
         # Initialize TransformationError with the original message and its specific args
-        super().__init__(message, schema=kwargs.get('schema'), target_type=kwargs.get('target_type'))
+        super().__init__(
+            message, schema=kwargs.get("schema"), target_type=kwargs.get("target_type")
+        )
 
         # self.args[0] now contains message possibly formatted by TransformationError
         # Append WireFormatError specific details to it
@@ -239,8 +273,8 @@ class WireFormatError(TransformationError):
             if operation:
                 format_info = f" during {operation}{format_info}"
             current_message = f"{current_message}{format_info}"
-        elif operation: # Only operation is present, no format_type
-             current_message = f"{current_message} during {operation}"
+        elif operation:  # Only operation is present, no format_type
+            current_message = f"{current_message} during {operation}"
 
         self.args = (current_message,) + self.args[1:]
 

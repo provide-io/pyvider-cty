@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/types/structural/dynamic.py
 #
@@ -27,7 +29,8 @@ from pyvider.cty.types.base import CtyType
 # from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
 from pyvider.telemetry import logger
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 @define(frozen=True, slots=True)
 class CtyDynamic(CtyType[Any]):
@@ -49,9 +52,10 @@ class CtyDynamic(CtyType[Any]):
     Attributes:
         ctype: Class variable identifying this as a dynamic type
     """
+
     ctype: ClassVar[str] = "dynamic"
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate a value against the dynamic type.
 
@@ -78,8 +82,9 @@ class CtyDynamic(CtyType[Any]):
         from pyvider.cty.types.primitives import CtyBool, CtyNumber, CtyString
         from pyvider.cty.values import CtyValue
 
-
-        logger.debug(f"🧩🔍🔄 Validating value against CtyDynamic: {type(value).__name__}")
+        logger.debug(
+            f"🧩🔍🔄 Validating value against CtyDynamic: {type(value).__name__}"
+        )
 
         # New logic for CtyValue inputs
         if isinstance(value, CtyValue):
@@ -88,13 +93,13 @@ class CtyDynamic(CtyType[Any]):
             # it means the dynamic type is explicitly holding this typed value.
             # The CtyValue returned should have CtyDynamic as its .type,
             # and the original CtyValue as its internal ._value.
-            return CtyValue(self, value) # `self` is the CtyDynamic type instance
+            return CtyValue(self, value)  # `self` is the CtyDynamic type instance
 
         # Handle raw Python types by inferring their cty type
         if isinstance(value, str):
             concrete_type = CtyString()
             return CtyValue(vtype=concrete_type, value=value)
-        elif isinstance(value, bool): # Check for bool BEFORE int/float
+        elif isinstance(value, bool):  # Check for bool BEFORE int/float
             concrete_type = CtyBool()
             return CtyValue(vtype=concrete_type, value=value)
         elif isinstance(value, int | float):
@@ -102,12 +107,14 @@ class CtyDynamic(CtyType[Any]):
             return CtyValue(vtype=concrete_type, value=Decimal(value))
         elif isinstance(value, list):
             from pyvider.cty.types.collections import CtyList  # Moved import
+
             # For a raw list, the most specific type we can infer is list of dynamic.
             concrete_type = CtyList(element_type=CtyDynamic())
             # Let CtyList's validate method handle the conversion of list elements to CtyValues
             return concrete_type.validate(value)
         elif isinstance(value, dict):
             from pyvider.cty.types.collections import CtyMap  # Moved import
+
             # Similarly for dict, infer map of dynamic. Keys are implicitly strings.
             concrete_type = CtyMap(key_type=CtyString(), value_type=CtyDynamic())
             # Let CtyMap's validate method handle the conversion of dict elements to CtyValues
@@ -169,7 +176,7 @@ class CtyDynamic(CtyType[Any]):
 
         # Return the value itself (or None as safe default when no value)
         # This matches the semantics of a dynamic type - it accepts any value
-        if hasattr(self, 'value'):
+        if hasattr(self, "value"):
             return self.value
         return None
 
@@ -194,5 +201,6 @@ class CtyDynamic(CtyType[Any]):
     def is_primitive_type(self) -> bool:
         """Check if this type is a primitive type (special case for dynamic)."""
         return True
+
 
 # 🐍🏗️🐣

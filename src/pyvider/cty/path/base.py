@@ -17,23 +17,23 @@ This follows go-cty's design for path handling.
 """
 
 from abc import ABC, abstractmethod
-from decimal import Decimal  # Added for KeyStep.apply_type
-from typing import TypeVar
+from decimal import Decimal # Added for KeyStep.apply_type
+from typing import TypeVar, cast
+import collections.abc
 
 from attrs import define, field
 
-from pyvider.cty.exceptions import (
-    AttributePathError,
-    CtyTypeMismatchError,
-    CtyValidationError,
-)
+from pyvider.telemetry import logger
+from pyvider.cty.exceptions import AttributePathError, CtyValidationError, CtyTypeMismatchError
 from pyvider.cty.types import (
     CtyType,
+    CtyList,
+    CtyMap,
+    CtyObject,
+    CtyTuple,
 )
-
 # Moved from local import in KeyStep.apply to module level
 from pyvider.cty.values import CtyValue
-from pyvider.telemetry import logger
 
 # Type variables for better type hints
 T = TypeVar('T')
@@ -96,7 +96,7 @@ class GetAttrStep(PathStep):
     name: str = field()
 
     @name.validator
-    def _validate_name(self, attribute, value) -> None:
+    def _validate_name(self, attribute, value):
         """Validate that the attribute name is not empty."""
         logger.debug(f"🧰🔍🔄 Validating attribute name: {value}")
         if not value:
@@ -121,8 +121,8 @@ class GetAttrStep(PathStep):
         logger.debug(f"🧰🔍🔄 Applying path step {self.name} to value type {value.type.__class__.__name__}")
 
         # Handle different value types appropriately
-        from pyvider.cty.types.collections import CtyMap
         from pyvider.cty.types.structural import CtyObject
+        from pyvider.cty.types.collections import CtyMap
 
         # For object values, use get_attribute
         if isinstance(value.type, CtyObject):
@@ -227,12 +227,12 @@ class IndexStep(PathStep):
 
         # Check for null values
         if value.is_null:
-            logger.error("🧰❌🔄 Cannot index into null value")
+            logger.error(f"🧰❌🔄 Cannot index into null value")
             raise AttributePathError("Cannot index into null value")
 
         # Handle unknown values
         if value.is_unknown:
-            logger.debug("🧰🔍🔄 Handling unknown value - creating unknown element")
+            logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown element")
             # Get the element's type
             elem_type = self.apply_type(value.type)
 
@@ -262,13 +262,13 @@ class IndexStep(PathStep):
 
             if isinstance(value.type, CtyList):
                 # For lists, use element_at method
-                logger.debug("🧰🔍🔄 Using element_at for list type")
+                logger.debug(f"🧰🔍🔄 Using element_at for list type")
                 result = value.type.element_at(collection_value, calculated_index)
                 logger.debug(f"🧰✅🔄 Retrieved element at index {calculated_index}")
                 return result
             elif isinstance(value.type, CtyTuple):
                 # For tuples, use element_at method
-                logger.debug("🧰🔍🔄 Using element_at for tuple type")
+                logger.debug(f"🧰🔍🔄 Using element_at for tuple type")
                 result = value.type.element_at(collection_value, calculated_index)
                 logger.debug(f"🧰✅🔄 Retrieved element at index {calculated_index}")
                 return result
@@ -363,12 +363,12 @@ class KeyStep(PathStep):
 
         # Check for null values
         if value.is_null:
-            logger.error("🧰❌🔄 Cannot get key from null value")
+            logger.error(f"🧰❌🔄 Cannot get key from null value")
             raise AttributePathError("Cannot get key from null value")
 
         # Handle unknown values
         if value.is_unknown:
-            logger.debug("🧰🔍🔄 Handling unknown value - creating unknown map value")
+            logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown map value")
             # Get the value's type
             val_type = self.apply_type(value.type)
 
@@ -407,9 +407,9 @@ class KeyStep(PathStep):
                     # but as a safeguard or for direct apply calls:
                     raise AttributePathError(f"Path key type {self.key.type} is not directly compatible with map key type {value.type.key_type} for lookup.")
 
-            elif isinstance(self.key, str | int | float | Decimal): # Raw Python type for key
+            elif isinstance(self.key, (str, int, float, Decimal)): # Raw Python type for key
                 # If map key_type is CtyString, convert raw numeric key to string for lookup
-                if isinstance(value.type.key_type, CtyString) and isinstance(self.key, int | float | Decimal):
+                if isinstance(value.type.key_type, CtyString) and isinstance(self.key, (int, float, Decimal)):
                     str_lookup_key = str(self.key)
                     logger.debug(f"🧰🔑🔄 Converted raw numeric path key to string '{str_lookup_key}' for map lookup (map key type is CtyString)")
                 elif isinstance(self.key, str) and isinstance(value.type.key_type, CtyString):
@@ -478,10 +478,8 @@ class KeyStep(PathStep):
 
         if isinstance(self.key, CtyValue):
             # Import CtyNumber and CtyString for this specific check
-            from pyvider.cty.types.primitives import (
-                CtyNumber as PrimitivesCtyNumber,  # Use alias to avoid conflict
-                CtyString as PrimitivesCtyString,  # Use alias
-            )
+            from pyvider.cty.types.primitives import CtyNumber as PrimitivesCtyNumber # Use alias to avoid conflict
+            from pyvider.cty.types.primitives import CtyString as PrimitivesCtyString # Use alias
 
             is_number_key_for_string_map = isinstance(self.key.type, PrimitivesCtyNumber) and isinstance(vtype.key_type, PrimitivesCtyString)
 
@@ -502,16 +500,14 @@ class KeyStep(PathStep):
             key_to_validate = self.key
             # For raw Python keys that are numbers and map key_type is string, CtyString.validate would fail.
             # We need to convert them to string here as well.
-            from pyvider.cty.types.primitives import (
-                CtyString,  # Ensure CtyString is available
-            )
+            from pyvider.cty.types.primitives import CtyString # Ensure CtyString is available
             # We also need CtyNumber to check the type of raw key_to_validate
             # However, raw Python ints/floats are not CtyNumber.
             # We rely on CtyString.validate to attempt conversion or fail for raw types.
             # This part might need adjustment if CtyString.validate is too strict for raw numbers.
             # For now, the primary fix is for CtyValue keys.
             # Let's add a specific check for raw numbers if the map key is CtyString
-            if isinstance(key_to_validate, int | float | Decimal) and isinstance(vtype.key_type, CtyString):
+            if isinstance(key_to_validate, (int, float, Decimal)) and isinstance(vtype.key_type, CtyString):
                 key_to_validate = str(key_to_validate)
                 logger.debug(f"🧰🔑🔄 Converted raw numeric key to string for CtyString map key validation: '{key_to_validate}'")
 
@@ -574,17 +570,17 @@ class CtyPath:
     def child(self, name: str) -> 'CtyPath':
         """Append an attribute step to this path."""
         logger.debug(f"🧰🔍🔄 Adding child attribute step: {name}")
-        return CtyPath([*self.steps, GetAttrStep(name)])
+        return CtyPath(self.steps + [GetAttrStep(name)])
 
     def index_step(self, index: int) -> 'CtyPath':
         """Append an index step to this path."""
         logger.debug(f"🧰🔍🔄 Adding index step: {index}")
-        return CtyPath([*self.steps, IndexStep(index)])
+        return CtyPath(self.steps + [IndexStep(index)])
 
     def key_step(self, key: object) -> 'CtyPath':
         """Append a key step to this path."""
         logger.debug(f"🧰🔍🔄 Adding key step: {key}")
-        return CtyPath([*self.steps, KeyStep(key)])
+        return CtyPath(self.steps + [KeyStep(key)])
 
     def apply_path(self, value: object) -> "CtyValue":
         """
@@ -630,7 +626,7 @@ class CtyPath:
                 logger.error(f"🧰❌🔄 {error_msg}")
                 raise AttributePathError(error_msg) from e
 
-        logger.debug("🧰✅🔄 Path application complete")
+        logger.debug(f"🧰✅🔄 Path application complete")
         return current
 
     def apply_path_type(self, vtype: "CtyType") -> "CtyType":
@@ -668,7 +664,7 @@ class CtyPath:
                 logger.error(f"🧰❌🔄 {error_msg}")
                 raise AttributePathError(error_msg) from e
 
-        logger.debug("🧰✅🔄 Path type application complete")
+        logger.debug(f"🧰✅🔄 Path type application complete")
         return current
 
     def string(self) -> str:
