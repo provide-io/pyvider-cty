@@ -225,8 +225,13 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             # those tests might need adjustment or this error handling reconsidered.
             # The original code was more lenient, catching all Exceptions and returning default.
             # This change makes it so that type errors/validation errors for keys are propagated.
+            # MODIFICATION: Catch CtyValidationError specifically to return default,
+            # as per test_get_key_not_ctystring_or_compatible expectation.
             logger.debug(f"🔌🔍⚠️ Key validation/type error for get: {e}")
-            raise # Re-raise the caught type/validation error
+            if isinstance(e, CtyValidationError): # Includes CtyStringValidationError, CtyTypeMismatchError etc.
+                logger.debug(f"🔌🔍⚠️ Key validation failed with CtyValidationError ({e}), returning default.")
+                return default if default is not None else CtyValue.null(self.value_type)
+            raise # Re-raise other TypeErrors or CtyTypeMismatchErrors if not CtyValidationError
         except Exception as e:
             logger.error(f"🔌❌🔥 Unexpected error during key processing for get: {e}")
             raise TypeError(f"Invalid key for map get operation: {key!r} ({e})") from e
@@ -387,10 +392,12 @@ class ElementIterator:
     key_type: "CtyType" = field()
     items: list = field(factory=list) # Initialize with a new list by default if not set in __init__
     index: int = field(default=-1)    # Default value
+    _valid_state: bool = field(default=False, init=False) # Flag to track if iterator is on a valid element
 
     def __init__(self, key_type: "CtyType", map_data: dict[str, CtyValue], key_mapping: dict[str, CtyValue]):
         self.key_type = key_type # Handled by attrs if key_type=field() was used without custom __init__
                                  # With custom __init__, this assigns to the slotted attribute.
+        self._valid_state = False # Initialize the flag
 
         # Initialize items here as the logic is custom
         items_temp = []
@@ -416,17 +423,20 @@ class ElementIterator:
 
         self.items = items_temp
         self.index = -1 # Explicitly set index after items are prepared.
+        # self._valid_state is already initialized to False
 
     def next(self) -> bool:
         """ Advance the iterator. Returns True if an element is available, False otherwise. """
         if self.index < len(self.items) - 1:
             self.index += 1
+            self._valid_state = True
             return True
+        self._valid_state = False
         return False
 
     def key(self) -> CtyValue:
         """ Get the current key. Raises RuntimeError if iterator is not positioned on an element. """
-        if self.index < 0 or self.index >= len(self.items):
+        if not self._valid_state:
             # Changed from IndexError to RuntimeError to match test expectations if this is the case.
             # However, tests might expect IndexError. Let's stick to original error type for now.
             raise RuntimeError("next() must be called first or iterator exhausted")
@@ -434,7 +444,7 @@ class ElementIterator:
 
     def value(self) -> CtyValue:
         """ Get the current value. Raises RuntimeError if iterator is not positioned on an element. """
-        if self.index < 0 or self.index >= len(self.items):
+        if not self._valid_state:
             raise RuntimeError("next() must be called first or iterator exhausted")
         return self.items[self.index][1]
 
