@@ -1,4 +1,16 @@
 
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+
+from attrs import define, field
+
+from pyvider.cty.exceptions import CtyStringValidationError
+from pyvider.cty.types.base import CtyType
+from pyvider.telemetry import logger
+
+if TYPE_CHECKING:
+    from pyvider.cty.values import CtyValue
+
+
 #
 # pyvider/cty/types/primitives/string.py
 #
@@ -14,18 +26,6 @@ many operations, including serving as map keys and containing textual data.
 This implementation follows the go-cty string semantics, ensuring type safety and
 consistent behavior across the Cty ecosystem.
 """
-
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar  # Added TYPE_CHECKING
-
-from attrs import define, field
-
-from pyvider.cty.exceptions import CtyStringValidationError
-from pyvider.cty.types.base import CtyType
-from pyvider.telemetry import logger
-
-if TYPE_CHECKING:  # Add conditional import for CtyValue
-    from pyvider.cty.values import CtyValue
-
 
 T = TypeVar("T", bound=str)
 
@@ -81,8 +81,10 @@ class CtyString(CtyType[str]):
         Raises:
             CtyStringValidationError: If the value cannot be converted to a string.
         """
-        # Import locally to avoid circular imports
-        from pyvider.cty.values import CtyValue
+        # Import moved to TYPE_CHECKING block
+        from pyvider.cty.values import (
+            CtyValue,  # This will be shadowed by the one in TYPE_CHECKING but is fine for runtime
+        )
 
         logger.debug(f"🔤🔍🔄 Validating value as string: {value!r}")
 

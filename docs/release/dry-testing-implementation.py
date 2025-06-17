@@ -6,6 +6,7 @@ Complete implementation example showing how to use the DRY testing infrastructur
 for cross-language CTY compatibility testing.
 """
 
+from dataclasses import dataclass, field
 from decimal import Decimal
 import json
 import pathlib
@@ -139,7 +140,7 @@ class LanguageToolAdapter:
 class PythonToolAdapter(LanguageToolAdapter):
     """Adapter for Python pyvider.cty implementation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.debug("🔧🐍✅ Initialized Python tool adapter")
 
     def serialize(self, value: Any, cty_type: CtyType, format: str) -> bytes:
@@ -197,7 +198,7 @@ class PythonToolAdapter(LanguageToolAdapter):
 class GoToolAdapter(LanguageToolAdapter):
     """Adapter for Go go-cty implementation."""
 
-    def __init__(self, executable_path: str, working_dir: pathlib.Path):
+    def __init__(self, executable_path: str, working_dir: pathlib.Path) -> None:
         self.executable = executable_path
         self.working_dir = working_dir
         logger.debug(f"🔧🐹✅ Initialized Go tool adapter: {executable_path}")
@@ -331,7 +332,7 @@ class GoToolAdapter(LanguageToolAdapter):
 class UnifiedTestExecutor:
     """Executes tests across languages and formats in a DRY manner."""
 
-    def __init__(self, python_adapter: PythonToolAdapter, go_adapter: GoToolAdapter):
+    def __init__(self, python_adapter: PythonToolAdapter, go_adapter: GoToolAdapter) -> None:
         self.adapters = {
             "python": python_adapter,
             "go": go_adapter
@@ -345,7 +346,7 @@ class UnifiedTestExecutor:
         value: Any,
         format: str,
         language: str
-    ) -> TestResult:
+    ) -> "TestResult":
         """Test serialization roundtrip for a single language."""
         try:
             # Parse type string
@@ -389,7 +390,7 @@ class UnifiedTestExecutor:
         format: str,
         source_lang: str,
         target_lang: str
-    ) -> TestResult:
+    ) -> "TestResult":
         """Test cross-language compatibility."""
         try:
             cty_type = self._parse_type_string(type_str)
@@ -428,6 +429,7 @@ class UnifiedTestExecutor:
     def _parse_type_string(self, type_str: str) -> CtyType:
         """Parse type string to CtyType."""
         # Simplified parser - real implementation would be more robust
+        from pyvider.cty import CtySet  # Try local import
         type_str = type_str.strip()
 
         if type_str == "string":
@@ -471,7 +473,7 @@ class UnifiedTestExecutor:
         """Compare two values for equality."""
         # Normalize numeric values
         def normalize(val):
-            if isinstance(val, (int, float)):
+            if isinstance(val, int | float):
                 return Decimal(str(val))
             elif isinstance(val, dict):
                 return {k: normalize(v) for k, v in val.items()}
@@ -503,10 +505,10 @@ class TestResult:
 class TestResultCollector:
     """Collects and reports test results."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.results: list[TestResult] = []
 
-    def add(self, result: TestResult):
+    def add(self, result: TestResult) -> None:
         """Add a test result."""
         self.results.append(result)
 
@@ -557,7 +559,7 @@ class TestResultCollector:
             "failures": [r for r in self.results if not r.success]
         }
 
-    def print_report(self):
+    def print_report(self) -> None:
         """Print a formatted test report."""
         summary = self.get_summary()
 
@@ -632,7 +634,7 @@ class TestCrossLanguageCompatibility:
         type_and_value: tuple[str, Any],
         format: str,
         language: str
-    ):
+    ) -> None:
         """Test serialization roundtrips for each language."""
         type_str, value = type_and_value
 
@@ -655,7 +657,7 @@ class TestCrossLanguageCompatibility:
         test_name: str,
         type_and_value: tuple[str, Any],
         format: str
-    ):
+    ) -> None:
         """Test cross-language compatibility."""
         type_str, value = type_and_value
 
@@ -674,7 +676,7 @@ class TestCrossLanguageCompatibility:
         assert result_py_go.success, f"Python->Go failed: {result_py_go.error}"
         assert result_go_py.success, f"Go->Python failed: {result_go_py.error}"
 
-    def test_print_summary(self, result_collector: TestResultCollector):
+    def test_print_summary(self, result_collector: TestResultCollector) -> None:
         """Print test summary at the end."""
         result_collector.print_report()
 
@@ -696,7 +698,7 @@ class TestPropertyBased:
         test_executor: UnifiedTestExecutor,
         type_str: str,
         format: str
-    ):
+    ) -> None:
         """Test primitive types with generated values."""
         # Generate appropriate value for type
         if type_str == "string":

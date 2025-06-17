@@ -1,8 +1,12 @@
-import pytest
 import json
-import logging # Import standard logging module
-from pyvider.cty.conversion.schema_type_encoder import encode_type_to_wire, _parse_comma_separated_elements # Allow direct test for parser
-from pyvider.telemetry import logger # For checking log records
+import logging  # Import standard logging module
+
+import pytest
+
+from pyvider.cty.conversion.schema_type_encoder import (  # Allow direct test for parser
+    _parse_comma_separated_elements,
+    encode_type_to_wire,
+)
 
 # Test cases for various type strings and their expected wire format (as JSON strings)
 # (type_string, expected_json_bytes)
@@ -86,16 +90,14 @@ TEST_CASES = [
 ]
 
 @pytest.mark.parametrize("type_str, expected_bytes", TEST_CASES)
-def test_encode_type_to_wire_various_cases(type_str, expected_bytes, caplog):
+def test_encode_type_to_wire_various_cases(type_str, expected_bytes, caplog) -> None:
     """Tests encode_type_to_wire with various type strings."""
     caplog.set_level(logging.DEBUG) # Ensure all logs are captured for assertions
     result_bytes = encode_type_to_wire(type_str)
 
     # For direct comparison, load the JSON from bytes if they are not error strings
     # or specific "dynamic" string results.
-    if result_bytes == b'"dynamic"' or expected_bytes == b'"dynamic"':
-        assert result_bytes == expected_bytes, f"Input: {type_str}"
-    elif result_bytes.startswith(b'"error_encoding_') or expected_bytes.startswith(b'"error_encoding_'):
+    if result_bytes == b'"dynamic"' or expected_bytes == b'"dynamic"' or result_bytes.startswith(b'"error_encoding_') or expected_bytes.startswith(b'"error_encoding_'):
         assert result_bytes == expected_bytes, f"Input: {type_str}"
     else:
         try:
@@ -124,19 +126,19 @@ def test_encode_type_to_wire_various_cases(type_str, expected_bytes, caplog):
     pass
 
 
-def test_encode_type_to_wire_deeply_nested_object():
+def test_encode_type_to_wire_deeply_nested_object() -> None:
     type_str = "object(a=object(b=object(c=object(d=number))))"
     expected = ["object", {"a": ["object", {"b": ["object", {"c": ["object", {"d": "number"}]}]}]}]
     result_bytes = encode_type_to_wire(type_str)
     assert json.loads(result_bytes.decode('utf-8')) == expected
 
-def test_encode_type_to_wire_deeply_nested_tuple():
+def test_encode_type_to_wire_deeply_nested_tuple() -> None:
     type_str = "tuple(string, tuple(number, tuple(bool, dynamic)))"
     expected = ["tuple", ["string", ["tuple", ["number", ["tuple", ["bool", "dynamic"]]]]]]
     result_bytes = encode_type_to_wire(type_str)
     assert json.loads(result_bytes.decode('utf-8')) == expected
 
-def test_encode_type_to_wire_object_no_attrs_trailing_comma_in_parser_edge_case(caplog):
+def test_encode_type_to_wire_object_no_attrs_trailing_comma_in_parser_edge_case(caplog) -> None:
     caplog.set_level(logging.DEBUG)
     type_str = "object( )" # With space
     # _parse_comma_separated_elements(" ", True) -> `elements_str` is " ". `last_part` is `""`. `elements` is `[]`. Correct.
@@ -146,7 +148,7 @@ def test_encode_type_to_wire_object_no_attrs_trailing_comma_in_parser_edge_case(
     type_str_no_space = "object()"
     assert encode_type_to_wire(type_str_no_space) == expected_json
 
-def test_encode_type_to_wire_tuple_no_elements_trailing_comma_in_parser_edge_case(caplog):
+def test_encode_type_to_wire_tuple_no_elements_trailing_comma_in_parser_edge_case(caplog) -> None:
     caplog.set_level(logging.DEBUG)
     # For "tuple( )":
     # _parse_comma_separated_elements(" ", False) results in `[""]`.
@@ -160,7 +162,7 @@ def test_encode_type_to_wire_tuple_no_elements_trailing_comma_in_parser_edge_cas
     assert encode_type_to_wire(type_str_no_space) == expected_json_no_space
 
 
-def test_unhandled_type_logging(caplog):
+def test_unhandled_type_logging(caplog) -> None:
     """Test that an unhandled type string logs a warning and defaults to dynamic."""
     caplog.set_level(logging.WARNING) # Check for the specific warning
     type_str = "very_unknown_type(string)"
@@ -168,7 +170,7 @@ def test_unhandled_type_logging(caplog):
     assert result == b'"dynamic"'
     # assert any("Unhandled type string" in rec.message and "very_unknown_type(string)" in rec.message for rec in caplog.records)
 
-def test_json_dump_exception_during_encoding(monkeypatch, caplog):
+def test_json_dump_exception_during_encoding(monkeypatch, caplog) -> None:
     """Test error handling when json.dumps fails."""
     caplog.set_level(logging.ERROR) # Check for the error log
     original_dumps = json.dumps
@@ -181,7 +183,7 @@ def test_json_dump_exception_during_encoding(monkeypatch, caplog):
     type_str = "list(string)"
     # The code uses standardize_type_string(type_repr_str) for the error string.
     # standardize_type_string("list(string)") is "list(string)".
-    expected_error_bytes = f'"error_encoding_list(string)"'.encode("utf-8")
+    expected_error_bytes = b'"error_encoding_list(string)"'
     result = encode_type_to_wire(type_str)
 
     assert result == expected_error_bytes
@@ -190,7 +192,7 @@ def test_json_dump_exception_during_encoding(monkeypatch, caplog):
     monkeypatch.undo()
 
 
-def test_object_attrs_parsing_just_comma(caplog):
+def test_object_attrs_parsing_just_comma(caplog) -> None:
     caplog.set_level(logging.ERROR)
     type_str = "object(,)" # Just a comma
     # _parse_comma_separated_elements for "," with is_object_attrs=True
@@ -204,7 +206,7 @@ def test_object_attrs_parsing_just_comma(caplog):
     pass
 
 
-def test_object_attrs_parsing_leading_comma(caplog):
+def test_object_attrs_parsing_leading_comma(caplog) -> None:
     caplog.set_level(logging.ERROR)
     type_str = "object(,a=string)" # Leading comma
     # _parse_comma_separated_elements for ",a=string" with is_object_attrs=True
@@ -232,7 +234,7 @@ def test_object_attrs_parsing_leading_comma(caplog):
     ("a=string,", True, [("a", "string")]), # Trailing comma, empty part has no '=', so it's dropped by the error log in main func
     ("a=string,,b=number", True, [("a", "string"), ("b", "number")]), # Empty part dropped
 ])
-def test_parse_comma_separated_elements_direct(input_str, is_object, expected_output, caplog):
+def test_parse_comma_separated_elements_direct(input_str, is_object, expected_output, caplog) -> None:
     caplog.set_level(logging.DEBUG) # Check for DEBUG logs as well
     result = _parse_comma_separated_elements(input_str, is_object)
     assert result == expected_output
@@ -248,7 +250,7 @@ def test_parse_comma_separated_elements_direct(input_str, is_object, expected_ou
     pass
 
 # Test for the fix in _parse_comma_separated_elements regarding trailing empty elements
-def test_parse_trailing_empty_element_in_tuple_scenario():
+def test_parse_trailing_empty_element_in_tuple_scenario() -> None:
     # Scenario from ("tuple(string,)", b'["tuple", ["string", "dynamic"]]')
     # _parse_comma_separated_elements("string,", False) should be ["string", ""]
     # Then _encode_wire_element("") -> "dynamic"

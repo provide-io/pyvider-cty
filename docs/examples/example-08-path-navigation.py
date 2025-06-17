@@ -43,7 +43,7 @@ server_data = {
 validated = server_type.validate(server_data)
 server_val = CtyValue(vtype=server_type, value=validated)
 
-async def navigate_paths():
+async def navigate_paths() -> None:
     # Create different paths to navigate the data
     name_path = CtyPath.get_attr("name")
     cpu_path = CtyPath.get_attr("specs").child("cpu")

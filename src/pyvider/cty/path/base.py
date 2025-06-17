@@ -96,7 +96,7 @@ class GetAttrStep(PathStep):
     name: str = field()
 
     @name.validator
-    def _validate_name(self, attribute, value):
+    def _validate_name(self, attribute, value) -> None:
         """Validate that the attribute name is not empty."""
         logger.debug(f"🧰🔍🔄 Validating attribute name: {value}")
         if not value:
@@ -407,9 +407,9 @@ class KeyStep(PathStep):
                     # but as a safeguard or for direct apply calls:
                     raise AttributePathError(f"Path key type {self.key.type} is not directly compatible with map key type {value.type.key_type} for lookup.")
 
-            elif isinstance(self.key, (str, int, float, Decimal)): # Raw Python type for key
+            elif isinstance(self.key, str | int | float | Decimal): # Raw Python type for key
                 # If map key_type is CtyString, convert raw numeric key to string for lookup
-                if isinstance(value.type.key_type, CtyString) and isinstance(self.key, (int, float, Decimal)):
+                if isinstance(value.type.key_type, CtyString) and isinstance(self.key, int | float | Decimal):
                     str_lookup_key = str(self.key)
                     logger.debug(f"🧰🔑🔄 Converted raw numeric path key to string '{str_lookup_key}' for map lookup (map key type is CtyString)")
                 elif isinstance(self.key, str) and isinstance(value.type.key_type, CtyString):
@@ -511,7 +511,7 @@ class KeyStep(PathStep):
             # This part might need adjustment if CtyString.validate is too strict for raw numbers.
             # For now, the primary fix is for CtyValue keys.
             # Let's add a specific check for raw numbers if the map key is CtyString
-            if isinstance(key_to_validate, (int, float, Decimal)) and isinstance(vtype.key_type, CtyString):
+            if isinstance(key_to_validate, int | float | Decimal) and isinstance(vtype.key_type, CtyString):
                 key_to_validate = str(key_to_validate)
                 logger.debug(f"🧰🔑🔄 Converted raw numeric key to string for CtyString map key validation: '{key_to_validate}'")
 
@@ -574,17 +574,17 @@ class CtyPath:
     def child(self, name: str) -> 'CtyPath':
         """Append an attribute step to this path."""
         logger.debug(f"🧰🔍🔄 Adding child attribute step: {name}")
-        return CtyPath(self.steps + [GetAttrStep(name)])
+        return CtyPath([*self.steps, GetAttrStep(name)])
 
     def index_step(self, index: int) -> 'CtyPath':
         """Append an index step to this path."""
         logger.debug(f"🧰🔍🔄 Adding index step: {index}")
-        return CtyPath(self.steps + [IndexStep(index)])
+        return CtyPath([*self.steps, IndexStep(index)])
 
     def key_step(self, key: object) -> 'CtyPath':
         """Append a key step to this path."""
         logger.debug(f"🧰🔍🔄 Adding key step: {key}")
-        return CtyPath(self.steps + [KeyStep(key)])
+        return CtyPath([*self.steps, KeyStep(key)])
 
     def apply_path(self, value: object) -> "CtyValue":
         """

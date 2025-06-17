@@ -4,27 +4,27 @@
 
 import pytest
 
-from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
-    CtyValue,
     CtyBool,
     CtyList,
     CtyNumber,
     CtyString,
-    CtyTuple,
+    CtyValue,
 )
+from pyvider.cty.exceptions import CtyListValidationError
+
 
 class TestCtyListOperations:
     """Tests for CtyList operations with consistent type-based return values."""
 
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self) -> None:
         """Set up objects for testing."""
         self.string_list = CtyList(element_type=CtyString())
         self.number_list = CtyList(element_type=CtyNumber())
         self.bool_list = CtyList(element_type=CtyBool())
 
-    def test_cty_list_access_methods(self):
+    def test_cty_list_access_methods(self) -> None:
         """Test list access methods with direct element access."""
         # Create a CtyList with validated values
         validated = self.string_list.validate([
@@ -55,12 +55,12 @@ class TestCtyListOperations:
         assert len(sliced.value) == 3
         assert [item.value for item in sliced.value] == ["a", "c", "e"]
 
-    def test_cty_list_concat(self):
+    def test_cty_list_concat(self) -> None:
         """Test concatenation of lists returning a new CtyList."""
         # Create two CtyLists with validated values
         list1_values = self.string_list.validate(["a", "b"])
         list2_values = self.string_list.validate(["c", "d"])
-        
+
         # Create list objects with the validated values
         list1 = CtyList(
             element_type=CtyString(),
@@ -74,7 +74,7 @@ class TestCtyListOperations:
         # Test concat method
         result = list1.concat(list2)
         assert isinstance(result, CtyList)
-        
+
         # Check that elements are CtyValue objects
         assert len(result.value) == 4
         assert all(isinstance(item, CtyValue) for item in result.value)
@@ -91,7 +91,7 @@ class TestCtyListOperations:
         with pytest.raises(CtyListValidationError):
             list1.concat(number_list)
 
-    def test_cty_list_append(self):
+    def test_cty_list_append(self) -> None:
         """Test append operation returning a new CtyList."""
         # Create a list with string values
         validated = self.string_list.validate(["a", "b"])
@@ -99,23 +99,23 @@ class TestCtyListOperations:
             element_type=CtyString(),
             value=validated.value
         )
-        
+
         # Append a new item
         new_list = list_obj.append("c")
-        
+
         # Test that we get a new CtyList
         assert isinstance(new_list, CtyList)
         assert new_list is not list_obj
-        
+
         # Test that the new list has the additional item
         assert len(new_list.value) == 3
         assert [item.value for item in new_list.value] == ["a", "b", "c"]
-        
+
         # Test that the original list is unchanged
         assert len(list_obj.value) == 2
         assert [item.value for item in list_obj.value] == ["a", "b"]
 
-    def test_cty_list_contains(self):
+    def test_cty_list_contains(self) -> None:
         """Test the contains method."""
         # Create a CtyList with string values
         validated = self.string_list.validate(["a", "b", "c"])
@@ -123,15 +123,15 @@ class TestCtyListOperations:
             element_type=CtyString(),
             value=validated.value
         )
-        
+
         # Test contains with valid values
         assert list_obj.contains("a") is True
         assert list_obj.contains("d") is False
-        
+
         # Test contains with invalid type (should return False, not raise)
         assert list_obj.contains(123) is False
 
-def test_cty_list_len():
+def test_cty_list_len() -> None:
     """Test the __len__ method."""
     # Create a CtyList with CtyString values
     validated = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
@@ -141,7 +141,7 @@ def test_cty_list_len():
     )
     assert len(list_obj) == 3
 
-def test_cty_list_getitem():
+def test_cty_list_getitem() -> None:
     """Test the __getitem__ method."""
     # Create a CtyList with CtyString values
     validated = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
@@ -158,7 +158,7 @@ def test_cty_list_getitem():
     assert isinstance(list_obj[2], CtyValue)
     assert list_obj[2].value == "c"
 
-def test_cty_list_iter():
+def test_cty_list_iter() -> None:
     """Test the __iter__ method."""
     # Create a CtyList with CtyString values
     validated = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
@@ -175,7 +175,7 @@ def test_cty_list_iter():
 
     assert items == ["a", "b", "c"]
 
-def test_cty_list_slice():
+def test_cty_list_slice() -> None:
     """Test slicing a CtyList."""
     # Create a CtyList with CtyString values
     validated = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
@@ -197,7 +197,7 @@ def test_cty_list_slice():
     assert len(sliced.value) == 3
     assert [item.value for item in sliced.value] == ["b", "c", "d"]
 
-def test_cty_list_element_at():
+def test_cty_list_element_at() -> None:
     """Test the element_at method."""
     # Create a CtyList with CtyString values
     validated = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
@@ -218,7 +218,7 @@ def test_cty_list_element_at():
     assert element.value == "b"
 
 
-def test_alternative_slice_syntax():
+def test_alternative_slice_syntax() -> None:
     """Test slice syntax variations."""
     # Create a list with validated values
     validated = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
@@ -233,7 +233,7 @@ def test_alternative_slice_syntax():
     assert len(sliced.value) == 3
     assert [item.value for item in sliced.value] == ["a", "c", "e"]
 
-def test_cty_list_append():
+def test_cty_list_append() -> None:
     """Test the append method."""
     # Create a CtyList with CtyString values
     list_obj = CtyList(

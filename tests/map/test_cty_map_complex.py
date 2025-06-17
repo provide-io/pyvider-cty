@@ -2,24 +2,25 @@
 # tests/map/test_cty_map_fixed.py
 #
 
-import pytest
-from decimal import Decimal
 
-from pyvider.cty.exceptions import CtyMapValidationError
+import pytest
+
 from pyvider.cty import (
     CtyBool,
+    CtyList,
     CtyMap,
     CtyNumber,
-    CtyString,
     CtyObject,
-    CtyList,
+    CtyString,
     CtyValue,
 )
+from pyvider.cty.exceptions import CtyMapValidationError
+
 
 class TestCtyMapComplex:
     """Tests for CtyMap implementation with proper method calls and value wrapping."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures before each test."""
         self.string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
         self.number_map = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -39,7 +40,7 @@ class TestCtyMapComplex:
 
 
     @pytest.mark.asyncio
-    async def test_cty_map_with_invalid_inputs(self):
+    async def test_cty_map_with_invalid_inputs(self) -> None:
         """Test validation with invalid inputs."""
         # Test with non-dict input
         with pytest.raises(CtyMapValidationError):
@@ -68,7 +69,7 @@ class TestCtyMapComplex:
 
 
     @pytest.mark.asyncio
-    async def test_nested_map(self):
+    async def test_nested_map(self) -> None:
         """Test nested map with proper value wrapping."""
         # Create inner map keys and values
         inner_key1 = CtyValue(vtype=CtyString(), value="name")
@@ -127,7 +128,7 @@ class TestCtyMapComplex:
         assert found
 
     @pytest.mark.asyncio
-    async def test_nested_map_validation(self):
+    async def test_nested_map_validation(self) -> None:
         """Test validation of maps with nested maps as values."""
         # Create nested map data
         data = {
@@ -188,7 +189,7 @@ class TestCtyMapComplex:
             self.nested_map.validate(invalid_data)
 
     @pytest.mark.asyncio
-    async def test_list_map_validation(self):
+    async def test_list_map_validation(self) -> None:
         """Test validation of maps with lists as values."""
         # Create map with list values
         data = {
@@ -241,7 +242,7 @@ class TestCtyMapComplex:
             self.list_map.validate(invalid_data)
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_nested_map(self):
+    async def test_cty_map_validate_nested_map(self) -> None:
         """Test validation with a nested map."""
         nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
         valid = {"config": {"filename": "test.txt"}}
@@ -282,7 +283,7 @@ class TestCtyMapComplex:
         assert filename_value.value == "test.txt" # Check the actual string value
 
     @pytest.mark.asyncio
-    async def test_cty_map_validate_nested_map_invalid(self):
+    async def test_cty_map_validate_nested_map_invalid(self) -> None:
         """Test validation with an invalid nested map."""
         nested_map = CtyMap(key_type=CtyString(), value_type=self.string_map)
         invalid = {"config": {"filename": 123}}
@@ -291,7 +292,7 @@ class TestCtyMapComplex:
 
 
     @pytest.mark.asyncio
-    async def test_cty_map_with_complex_nested_value_types(self):
+    async def test_cty_map_with_complex_nested_value_types(self) -> None:
         """Test map with complex nested value types."""
         # Create an object type for the map value
         person_type = CtyObject(
@@ -325,8 +326,6 @@ class TestCtyMapComplex:
         assert len(result.value) == 2
 
         # Check values - adapted for string key access pattern
-        found_person1 = False
-        found_person2 = False
 
         # Direct string key lookup to access map elements
         assert "person1" in result.value

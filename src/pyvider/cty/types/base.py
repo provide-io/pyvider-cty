@@ -1,4 +1,21 @@
 
+from abc import ABC, abstractmethod
+from typing import (
+    TYPE_CHECKING,  # Added TYPE_CHECKING
+    Any,
+    ClassVar,
+    Generic,
+    TypeVar,
+)
+
+from attrs import define
+
+from pyvider.cty.exceptions import CtyValidationError
+
+if TYPE_CHECKING:
+    from pyvider.cty.values import CtyValue
+
+
 #
 # pyvider/cty/types/base.py
 #
@@ -11,22 +28,6 @@ the interface and common behaviors that specific type implementations must follo
 The type system provides strong typing, validation, and compatibility checking
 for values within the Cty ecosystem.
 """
-
-from abc import ABC, abstractmethod
-from typing import (
-    TYPE_CHECKING,  # Add TYPE_CHECKING
-    Any,
-    ClassVar,
-    Generic,
-    TypeVar,
-)
-
-from attrs import define
-
-if TYPE_CHECKING:  # Add conditional import for CtyValue
-    from pyvider.cty.values import CtyValue
-
-from pyvider.cty.exceptions import CtyValidationError
 
 T = TypeVar("T")
 

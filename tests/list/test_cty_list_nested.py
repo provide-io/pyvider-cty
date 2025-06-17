@@ -4,21 +4,21 @@
 
 import pytest
 
-from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
-    CtyValue,
     CtyBool,
+    CtyList,
     CtyNumber,
     CtyString,
-    CtyList,
+    CtyValue,
 )
+from pyvider.cty.exceptions import CtyListValidationError
 
 
 class TestCtyListWithNestedTypes:
     """Tests for CtyList with complex nested types."""
 
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self) -> None:
         """Set up objects for testing."""
         self.string_list = CtyList(element_type=CtyString())
         self.number_list = CtyList(element_type=CtyNumber())
@@ -26,7 +26,7 @@ class TestCtyListWithNestedTypes:
         self.nested_list = CtyList(element_type=CtyList(element_type=CtyNumber()))
 
 
-    def test_list_of_lists_of_strings(self):
+    def test_list_of_lists_of_strings(self) -> None:
         """Test a list of lists of strings."""
         # Create a nested list type
         list_of_strings = CtyList(element_type=CtyString())
@@ -61,7 +61,7 @@ class TestCtyListWithNestedTypes:
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[2].value)
         assert [item.value for item in result.value[2].value] == ["f"]
 
-    def test_complex_nesting(self):
+    def test_complex_nesting(self) -> None:
         """Test complex nested list structures."""
         # Create a complex nested structure: List of List of List of Number
         inner_list = CtyList(element_type=CtyNumber())
@@ -109,7 +109,7 @@ class TestCtyListWithNestedTypes:
         # Check third element (empty list)
         assert len(result.value[2].value) == 0
 
-    def test_cty_list_validate_nested_lists(self):
+    def test_cty_list_validate_nested_lists(self) -> None:
         """Test validation of nested lists."""
         # Create a list of lists
         self.nested_list = CtyList(element_type=self.string_list)
@@ -137,7 +137,7 @@ class TestCtyListWithNestedTypes:
         assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value[1].value)
         assert [item.value for item in result.value[1].value] == ["c", "d", "e"]
 
-    def test_validate_nested_list_with_errors(self):
+    def test_validate_nested_list_with_errors(self) -> None:
         """Test validation of nested lists with errors."""
         # Create a list of lists with an error in the nested list
         self.nested_list = CtyList(element_type=self.number_list)

@@ -1,18 +1,20 @@
-import pytest
-import json
 from decimal import Decimal
-from typing import Any, Dict, List, cast
+import json
+from typing import Any
+
+import pytest
 
 from pyvider.cty.conversion.terraform import (
-    TerraformFormatConverter,
-    serialize_value,
-    extract_value,
-    TerraformWireFormatConstants as TFC,
     HAS_MSGPACK,
+    OperationContext,  # Assuming OperationContext can be imported for testing
     StateConvertible,
-    OperationContext # Assuming OperationContext can be imported for testing
+    TerraformFormatConverter,
+    TerraformWireFormatConstants as TFC,
+    extract_value,
+    serialize_value,
 )
-from pyvider.cty.conversion.wire import WireFormatError # For testing exceptions
+from pyvider.cty.conversion.wire import WireFormatError  # For testing exceptions
+
 
 # Mock OperationContext if it's complex or just use None if appropriate
 # For serialize_value, an OperationContext is required.
@@ -48,7 +50,7 @@ def get_mock_operation_context():
     (set(), [TFC.SET, []]),
     ({}, [TFC.OBJECT, {}]),
 ])
-def test_serialize_value_various_types(input_val: Any, expected_serialization: List[Any]):
+def test_serialize_value_various_types(input_val: Any, expected_serialization: list[Any]) -> None:
     mock_op = get_mock_operation_context()
     assert serialize_value(input_val, operation=mock_op) == expected_serialization
 
@@ -60,7 +62,7 @@ class SimpleObject:
     def __str__(self) -> str:
         return "simple_object_str"
 
-def test_serialize_value_unhandled_types():
+def test_serialize_value_unhandled_types() -> None:
     mock_op = get_mock_operation_context()
     # Test fallback to str()
     so = SimpleObject()
@@ -100,26 +102,26 @@ def test_serialize_value_unhandled_types():
     ([[TFC.STRING, "a"], [TFC.STRING, "b"]], ["a", "b"]), # list of serialized values
     ({"k1": [TFC.STRING, "v1"], "k2": [TFC.NUMBER, 10]}, {"k1": "v1", "k2": 10}), # dict of serialized values
 ])
-def test_extract_value_various_types(input_payload: Any, expected_value: Any):
+def test_extract_value_various_types(input_payload: Any, expected_value: Any) -> None:
     assert extract_value(input_payload) == expected_value
 
-def test_extract_value_number_conversion_error():
+def test_extract_value_number_conversion_error() -> None:
     # Test case where Decimal conversion might fail
     assert extract_value([TFC.NUMBER, "not_a_number"]) == "not_a_number"
 
 # --- Mocks and Helpers for StateConvertible ---
 class MockStateConvertible(StateConvertible):
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]) -> None:
         self._data = data
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self._data # Corrected from self_data
 
     def __cty_state_convert__(self, operation: OperationContext) -> Any:
         # Not directly used by serialize_state_convertible, but part of protocol
         return self.to_dict()
 
-def test_serialize_state_convertible():
+def test_serialize_state_convertible() -> None:
     mock_op_state = OperationContext.STATE
     mock_op_other = OperationContext.DEFAULT # Changed to a valid member
 
@@ -162,21 +164,21 @@ def test_serialize_state_convertible():
 # --- Tests for TerraformFormatConverter ---
 class TestTerraformFormatConverter:
 
-    def test_marshal_json_simple(self):
+    def test_marshal_json_simple(self) -> None:
         data = {"key": "value", "num": 123, "dec": Decimal("1.23")}
         expected_bytes = b'["object",{"key":["string","value"],"num":["number",123],"dec":["number","1.23"]}]'
         # To avoid issues with dict ordering in JSON, compare loaded JSON
         result_bytes = TerraformFormatConverter.marshal(data)
         assert json.loads(result_bytes.decode()) == json.loads(expected_bytes.decode())
 
-    def test_unmarshal_json_simple(self):
+    def test_unmarshal_json_simple(self) -> None:
         json_bytes = b'["object",{"key":["string","value"],"num":["number",123],"dec":["number","1.23"]}]'
         expected_data = {"key": "value", "num": 123, "dec": 1.23}
         assert TerraformFormatConverter.unmarshal(json_bytes) == expected_data
 
     @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
-    def test_marshal_msgpack_simple(self):
-        import msgpack # Ensure it's imported for this test
+    def test_marshal_msgpack_simple(self) -> None:
+        import msgpack  # Ensure it's imported for this test
         data = {"key": "value", "num": 123, "dec": Decimal("1.23")}
         # Expected structure after serialize_value, before msgpack
         expected_intermediate = ["object",{"key":["string","value"],"num":["number",123],"dec":["number","1.23"]}]
@@ -186,17 +188,17 @@ class TestTerraformFormatConverter:
         assert unpacked_result == expected_intermediate
 
     @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
-    def test_unmarshal_msgpack_simple(self):
-        import msgpack # Ensure it's imported for this test
+    def test_unmarshal_msgpack_simple(self) -> None:
+        import msgpack  # Ensure it's imported for this test
         intermediate_data = ["object",{"key":["string","value"],"num":["number",123],"dec":["number","1.23"]}]
         msgpack_bytes = msgpack.packb(intermediate_data, default=TerraformFormatConverter._msgpack_default, use_bin_type=True)
 
         expected_data = {"key": "value", "num": 123, "dec": 1.23}
         assert TerraformFormatConverter.unmarshal(msgpack_bytes) == expected_data
 
-    def test_marshal_error_handling(self):
+    def test_marshal_error_handling(self) -> None:
         class BadSerializable:
-            def __str__(self): raise ValueError("Cannot serialize me")
+            def __str__(self) -> str: raise ValueError("Cannot serialize me")
 
         # serialize_value catches the ValueError and returns [TFC.NULL, None]
         # This then gets marshalled successfully.
@@ -205,18 +207,18 @@ class TestTerraformFormatConverter:
         # To make it raise WireFormatError, serialize_value's fallback would need to change
         # or the test would need to mock serialize_value to raise an error directly.
 
-    def test_unmarshal_error_handling_bad_json(self):
+    def test_unmarshal_error_handling_bad_json(self) -> None:
         bad_json_bytes = b'{"key": "value"' # Incomplete JSON
         with pytest.raises(WireFormatError, match="Unmarshal failed"):
             TerraformFormatConverter.unmarshal(bad_json_bytes)
 
     @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
-    def test_unmarshal_error_handling_bad_msgpack(self):
+    def test_unmarshal_error_handling_bad_msgpack(self) -> None:
         bad_msgpack_bytes = b'\x81\xa3key\xa5value\xc1' # Corrupted msgpack (invalid byte)
         with pytest.raises(WireFormatError, match="Unmarshal failed"):
             TerraformFormatConverter.unmarshal(bad_msgpack_bytes)
 
-    def test_unmarshal_pre_parsed_data(self):
+    def test_unmarshal_pre_parsed_data(self) -> None:
         # Test when data is already a Python object (not bytes)
         pre_parsed = ["object",{"key":["string","value"]}]
         expected = {"key": "value"}

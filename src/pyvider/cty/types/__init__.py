@@ -30,6 +30,7 @@ __all__ = [
     "CtyString",
     "CtyTuple",
     "CtyType",
+    "CtyCapsule",
 ]
 
 # 🐍🏗️🐣

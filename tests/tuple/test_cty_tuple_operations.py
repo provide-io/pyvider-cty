@@ -4,15 +4,17 @@
 Tests for CtyTuple operations (indexing, slicing) and related CtyValue operations.
 """
 
-import pytest
-import pytest_asyncio
-
 from decimal import Decimal
+
+import pytest
+
 from pyvider.cty import (
-    CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject, CtyTuple,
-    CtyDynamic, CtyType, CtyValue
+    CtyBool,
+    CtyNumber,
+    CtyString,
+    CtyTuple,
+    CtyValue,
 )
-from pyvider.cty.exceptions import CtyValidationError, CtyTupleValidationError
 
 
 class TestCtyTupleOperations:
@@ -32,7 +34,7 @@ class TestCtyTupleOperations:
     # --- Tests for CtyTuple methods (element_at, slice) ---
 
     @pytest.mark.asyncio
-    async def test_element_at_valid_indices(self, tuple_type, tuple_value):
+    async def test_element_at_valid_indices(self, tuple_type, tuple_value) -> None:
         """Test element_at with valid positive and negative indices."""
         # Note: element_at operates on the *internal* tuple of CtyValues
         internal_tuple = tuple_value.value
@@ -52,7 +54,7 @@ class TestCtyTupleOperations:
         assert el_neg3 is el0
 
     @pytest.mark.asyncio
-    async def test_element_at_out_of_bounds(self, tuple_type, tuple_value):
+    async def test_element_at_out_of_bounds(self, tuple_type, tuple_value) -> None:
         """Test element_at raises Exception for out-of-bounds indices."""
         internal_tuple = tuple_value.value
         with pytest.raises(Exception):
@@ -61,7 +63,7 @@ class TestCtyTupleOperations:
             tuple_type.element_at(internal_tuple, -4)
 
     @pytest.mark.asyncio
-    async def test_slice_valid(self, tuple_type, tuple_value):
+    async def test_slice_valid(self, tuple_type, tuple_value) -> None:
         """Test slice method with various valid ranges."""
         internal_tuple = tuple_value.value
 
@@ -99,7 +101,7 @@ class TestCtyTupleOperations:
         assert len(slice_empty.value) == 0
 
     @pytest.mark.asyncio
-    async def test_slice_out_of_bounds(self, tuple_type, tuple_value):
+    async def test_slice_out_of_bounds(self, tuple_type, tuple_value) -> None:
         """Test slice method handles out-of-bounds indices gracefully (clamps)."""
         internal_tuple = tuple_value.value
         # Slice indices are typically clamped in Python slicing
@@ -114,7 +116,7 @@ class TestCtyTupleOperations:
     # --- Tests for CtyValue operations (__getitem__, __len__, __iter__) ---
 
     @pytest.mark.asyncio
-    async def test_value_getitem_index(self, tuple_value):
+    async def test_value_getitem_index(self, tuple_value) -> None:
         """Test CtyValue.__getitem__ for integer indexing."""
         el0 = tuple_value[0]
         el1 = tuple_value[1]
@@ -133,7 +135,7 @@ class TestCtyTupleOperations:
             _ = tuple_value[-4]
 
     @pytest.mark.asyncio
-    async def test_value_getitem_slice(self, tuple_value):
+    async def test_value_getitem_slice(self, tuple_value) -> None:
         """Test CtyValue.__getitem__ for slicing."""
         slice02 = tuple_value[0:2]
         assert isinstance(slice02, CtyValue)
@@ -150,7 +152,7 @@ class TestCtyTupleOperations:
         assert slice_neg.value[0].value == Decimal("123")
 
     @pytest.mark.asyncio
-    async def test_value_length(self, tuple_value):
+    async def test_value_length(self, tuple_value) -> None:
         """Test len() on a CtyValue tuple."""
         assert len(tuple_value) == 3
 
@@ -159,7 +161,7 @@ class TestCtyTupleOperations:
         assert len(empty_value) == 0
 
     @pytest.mark.asyncio
-    async def test_value_iteration(self, tuple_value):
+    async def test_value_iteration(self, tuple_value) -> None:
         """Test iterating over a CtyValue tuple."""
         elements = []
         for element in tuple_value:
@@ -169,7 +171,7 @@ class TestCtyTupleOperations:
         assert elements == ["data", Decimal("123"), False]
 
     @pytest.mark.asyncio
-    async def test_operations_on_null_unknown(self, tuple_type):
+    async def test_operations_on_null_unknown(self, tuple_type) -> None:
         """Test operations on null and unknown tuple values."""
         null_tuple = CtyValue.null(tuple_type)
         unknown_tuple = CtyValue.unknown(tuple_type)

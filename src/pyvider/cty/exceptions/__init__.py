@@ -21,7 +21,7 @@ package:
 from pyvider.cty.exceptions.base import CtyError
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
-    CtyTypeConversionError,  # Added CtyTypeConversionError
+    CtyTypeConversionError,
 )
 from pyvider.cty.exceptions.encoding import (
     AttributePathError,
@@ -38,7 +38,6 @@ from pyvider.cty.exceptions.encoding import (
 from pyvider.cty.exceptions.validation import (
     CtyAttributeValidationError,
     CtyBoolValidationError,
-    # CtyError, # Now imported from .base
     CtyListValidationError,
     CtyMapValidationError,
     CtyNumberValidationError,
@@ -50,19 +49,18 @@ from pyvider.cty.exceptions.validation import (
 )
 
 __all__ = [
-    "CtyError", # Ensure it's here from base
+    "CtyError",
     "AttributePathError",
     "CtyAttributeValidationError",
     "CtyBoolValidationError",
     "CtyConversionError",
-    # "CtyError", # Already added above
     "CtyListValidationError",
     "CtyMapValidationError",
     "CtyNumberValidationError",
     "CtySetValidationError",
     "CtyStringValidationError",
     "CtyTupleValidationError",
-    "CtyTypeConversionError",  # Added CtyTypeConversionError
+    "CtyTypeConversionError",
     "CtyTypeMismatchError",
     "CtyValidationError",
     "DeserializationError",

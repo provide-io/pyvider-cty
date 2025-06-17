@@ -1,7 +1,17 @@
 
+from decimal import Decimal  # Added import
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+
+from attrs import define
+
 #
 # pyvider/cty/types/structural/dynamic.py
 #
+from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.types.base import CtyType
+# from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Moved into validate method
+# from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
+from pyvider.telemetry import logger
 
 """
 Dynamic pseudo-type implementation for the Cty type system.
@@ -16,17 +26,9 @@ The dynamic type follows go-cty's dynamic type semantics, supporting type compat
 checks and special validation behavior for maximum flexibility.
 """
 
-from decimal import Decimal  # Added import
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar  # Added TYPE_CHECKING
+if TYPE_CHECKING:
+    from pyvider.cty.values import CtyValue
 
-from attrs import define
-
-from pyvider.cty.exceptions import CtyValidationError
-from pyvider.cty.types.base import CtyType
-
-# from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Moved into validate method
-# from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
-from pyvider.telemetry import logger
 
 if TYPE_CHECKING:  # Add conditional import for CtyValue
     from pyvider.cty.values import CtyValue
@@ -83,7 +85,9 @@ class CtyDynamic(CtyType[Any]):
 
         # Moved imports to avoid circular dependencies
         from pyvider.cty.types.primitives import CtyBool, CtyNumber, CtyString
-        from pyvider.cty.values import CtyValue
+        from pyvider.cty.values import (
+            CtyValue,  # This will be shadowed by the one in TYPE_CHECKING but is fine for runtime
+        )
 
         logger.debug(
             f"🧩🔍🔄 Validating value against CtyDynamic: {type(value).__name__}"

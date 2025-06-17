@@ -18,10 +18,10 @@ credential_type = CtyObject(
 
 # Create a sensitive mark
 class SensitiveMark:
-    def __init__(self, reason):
+    def __init__(self, reason) -> None:
         self.reason = reason
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"SENSITIVE:{self.reason}"
 
     # Add __eq__ and __hash__ for mark comparison/set usage

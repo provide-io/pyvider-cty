@@ -10,7 +10,7 @@ Provides a complete implementation of tuple types with fixed-position elements
 that may have different types from each other.
 """
 
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Union
 
 from attrs import define, field
 
@@ -125,10 +125,9 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                     if (
                         hasattr(element_type, "ctype")
                         and element_type.ctype == "number"
-                    ):
-                        if isinstance(element, int | float):
-                            # Use string conversion for exact decimal representation
-                            element = str(element)
+                    ) and isinstance(element, int | float):
+                        # Use string conversion for exact decimal representation
+                        element = str(element)
 
                     validated_element = element_type.validate(element)
 
@@ -356,7 +355,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug("🧩✅🔄 Tuple type is usable as target type")
         return True
 
-    def __getitem__(self, index: int | slice) -> 'CtyType | "CtyTuple"':
+    def __getitem__(self, index: Union[int, slice]) -> 'CtyType | "CtyTuple"':
         """
         Support for indexing and slicing operations on tuple types.
 

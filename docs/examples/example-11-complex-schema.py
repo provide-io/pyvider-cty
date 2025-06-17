@@ -136,7 +136,7 @@ try:
 
     # --- Corrected Path Navigation ---
     # Path navigation does not need to be async
-    def path_navigation():
+    def path_navigation() -> None:
         try:
             # Get the CPU utilization metric using path navigation
             # Corrected: Use .key() instead of non-existent key_step

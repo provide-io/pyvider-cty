@@ -1,14 +1,11 @@
 import pytest
 
-from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
-    CtyValue,
     CtyList,
-    CtyNumber,
     CtyString,
 )
+from pyvider.cty.exceptions import CtyListValidationError
 
-from pyvider.cty import CtyString, CtyNumber, CtyList
 
 class TestCtyListCoverage:
     """Tests specifically targeting uncovered lines in CtyList."""
@@ -33,7 +30,7 @@ class TestCtyListCoverage:
         return CtyList(element_type=CtyString(), value=[])
 
     @pytest.mark.asyncio
-    async def test_slice_default_end(self, string_list):
+    async def test_slice_default_end(self, string_list) -> None:
         """Test slice with default end parameter."""
         # This will test line 187: end = len(self.value)
         result = string_list.slice(2)
@@ -44,7 +41,7 @@ class TestCtyListCoverage:
         assert [item.value for item in result.value] == ["c", "d", "e"]
 
     @pytest.mark.asyncio
-    async def test_slice_negative_indices(self, string_list):
+    async def test_slice_negative_indices(self, string_list) -> None:
         """Test slice with negative indices."""
         # This tests lines 191 and 193 (converting negative indices)
         result = string_list.slice(-3, -1)
@@ -55,7 +52,7 @@ class TestCtyListCoverage:
 
 
     @pytest.mark.asyncio
-    async def test_concat_with_invalid_container(self, string_list):
+    async def test_concat_with_invalid_container(self, string_list) -> None:
         """Test concat with invalid container."""
         # This tests lines 228-230
         with pytest.raises(CtyListValidationError) as exc:
@@ -65,7 +62,7 @@ class TestCtyListCoverage:
 
 
     @pytest.mark.asyncio
-    async def test_element_at_out_of_bounds(self):
+    async def test_element_at_out_of_bounds(self) -> None:
         """Test element_at with index out of bounds."""
         # Create a CtyList with CtyString values
         list_obj = CtyList(

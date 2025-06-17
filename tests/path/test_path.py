@@ -7,24 +7,26 @@ These tests verify that paths can navigate through nested Cty values,
 including objects, lists, tuples, and maps.
 """
 
+from unittest.mock import MagicMock, PropertyMock, patch
+
 import pytest
 
-from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
-from pyvider.cty.types.collections import CtyList, CtyMap
-from pyvider.cty.types.structural import CtyObject, CtyTuple
 from pyvider.cty import CtyValue
+from pyvider.cty.exceptions import AttributePathError, CtyValidationError
 from pyvider.cty.path import (
     CtyPath,
 )
-from pyvider.cty.path.base import GetAttrStep, KeyStep, IndexStep
-from pyvider.cty.exceptions import AttributePathError, CtyValidationError
-from unittest.mock import patch, MagicMock, PropertyMock
+from pyvider.cty.path.base import GetAttrStep, IndexStep, KeyStep
+from pyvider.cty.types.collections import CtyList, CtyMap
+from pyvider.cty.types.primitives import CtyBool, CtyNumber, CtyString
+from pyvider.cty.types.structural import CtyObject, CtyTuple
+
 
 class TestPathSystem:
     """Test the Cty path system."""
 
     @pytest.mark.asyncio
-    async def test_attribute_paths(self):
+    async def test_attribute_paths(self) -> None:
         """Test paths with attribute access."""
         # Create an object type
         person_type = CtyObject(attribute_types={
@@ -39,7 +41,7 @@ class TestPathSystem:
 
         # Create a properly wrapped object value
         person = CtyValue(
-            vtype=person_type, 
+            vtype=person_type,
             value={
                 "name": CtyValue(vtype=CtyString(), value="Alice"),
                 "age": CtyValue(vtype=CtyNumber(), value=30),
@@ -93,7 +95,7 @@ class TestPathSystem:
         assert isinstance(unknown_name_result.type, CtyString)
 
     @pytest.mark.asyncio
-    async def test_index_paths(self):
+    async def test_index_paths(self) -> None:
         """Test paths with index access."""
         numbers_type = CtyList(element_type=CtyNumber())
         numbers = numbers_type.validate([10, 20, 30, 40, 50])
@@ -127,7 +129,7 @@ class TestPathSystem:
         assert isinstance(middle_type, CtyNumber)
 
     @pytest.mark.asyncio
-    async def test_key_paths(self):
+    async def test_key_paths(self) -> None:
         """Test paths with key access."""
         scores_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         raw_scores_data = {"Alice": 95, "Bob": 87}
@@ -146,7 +148,7 @@ class TestPathSystem:
         assert isinstance(value_type, CtyNumber)
 
     @pytest.mark.asyncio
-    async def test_complex_paths(self):
+    async def test_complex_paths(self) -> None:
         """Test complex paths with multiple step types."""
         user_type = CtyObject(attribute_types={
             "name": CtyString(),
@@ -173,7 +175,7 @@ class TestPathSystem:
         assert isinstance(name_type, CtyString)
 
     @pytest.mark.asyncio
-    async def test_null_and_unknown_handling(self):
+    async def test_null_and_unknown_handling(self) -> None:
         """Test paths with null and unknown values."""
         person_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
         name_path = CtyPath.get_attr("name")
@@ -205,7 +207,7 @@ class TestPathSystem:
         assert isinstance(street_result.type, CtyString)
 
     @pytest.mark.asyncio
-    async def test_path_string_representation(self):
+    async def test_path_string_representation(self) -> None:
         """Test string representation of paths."""
         empty_path = CtyPath.empty()
         assert str(empty_path) == "(empty path)"
@@ -219,7 +221,7 @@ class TestPathSystem:
         assert str(complex_path) == "[0].scores['math']"
 
     @pytest.mark.asyncio
-    async def test_getattr_on_map_value(self):
+    async def test_getattr_on_map_value(self) -> None:
         """Test GetAttrStep.apply on a CtyMap value."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_value_data = {"existing_key": 123}
@@ -239,7 +241,7 @@ class TestPathSystem:
              path_existing.apply_path_type(map_type)
 
     @pytest.mark.asyncio
-    async def test_getattr_apply_type_errors(self):
+    async def test_getattr_apply_type_errors(self) -> None:
         """Test error conditions for GetAttrStep.apply_type."""
         list_type = CtyList(element_type=CtyString()) # Corrected constructor
         path = CtyPath.get_attr("any_attr")
@@ -252,7 +254,7 @@ class TestPathSystem:
             path_missing_attr.apply_path_type(obj_type)
 
     @pytest.mark.asyncio
-    async def test_index_step_apply_errors_and_unknown(self):
+    async def test_index_step_apply_errors_and_unknown(self) -> None:
         """Test IndexStep.apply error conditions and unknown value handling."""
         null_list_value = CtyValue.null(CtyList(element_type=CtyString()))
         path_index = CtyPath.index(0)
@@ -270,7 +272,7 @@ class TestPathSystem:
             path_index.apply_path(string_value)
 
     @pytest.mark.asyncio
-    async def test_index_step_apply_type_errors(self):
+    async def test_index_step_apply_type_errors(self) -> None:
         """Test error conditions for IndexStep.apply_type."""
         string_type = CtyString()
         path_index = CtyPath.index(0)
@@ -291,7 +293,7 @@ class TestPathSystem:
         assert isinstance(result_type, CtyNumber)
 
     @pytest.mark.asyncio
-    async def test_key_step_apply_errors_and_unknown(self):
+    async def test_key_step_apply_errors_and_unknown(self) -> None:
         """Test KeyStep.apply error conditions and unknown value handling."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         unknown_map_value = CtyValue.unknown(map_type)
@@ -325,7 +327,7 @@ class TestPathSystem:
             list_key_path.apply_path(cty_map_value)
 
     @pytest.mark.asyncio
-    async def test_key_step_apply_type_errors(self):
+    async def test_key_step_apply_type_errors(self) -> None:
         """Test error conditions for KeyStep.apply_type."""
         list_type = CtyList(element_type=CtyString())
         path_key = CtyPath.key("any_key")
@@ -340,7 +342,7 @@ class TestPathSystem:
         assert isinstance(resolved_type, CtyNumber)
 
     @pytest.mark.asyncio
-    async def test_cty_path_apply_errors(self):
+    async def test_cty_path_apply_errors(self) -> None:
         """Test error conditions for CtyPath.apply_path and CtyPath.apply_path_type."""
         path = CtyPath.get_attr("some_attr")
         raw_python_dict = {"some_attr": "some_value"}
@@ -363,7 +365,7 @@ class TestPathSystem:
     # The version of test_cty_path_apply_errors kept is the one with the more general regex.
 
     @pytest.mark.asyncio
-    async def test_getattrstep_apply_generic_exception(self):
+    async def test_getattrstep_apply_generic_exception(self) -> None:
         """Test GetAttrStep.apply raises AttributePathError on generic exception."""
         obj_type = CtyObject(attribute_types={"attr_name": CtyString()})
         cty_obj_value = obj_type.validate({"attr_name": "test_value"})
@@ -381,7 +383,7 @@ class TestPathSystem:
 
         # Patch the 'type' property of the cty_obj_value instance.
         # CtyValue.type is a property, so we use PropertyMock.
-        with patch.object(CtyValue, 'type', PropertyMock(return_value=mock_type_for_value), create=True) as mock_type_prop:
+        with patch.object(CtyValue, 'type', PropertyMock(return_value=mock_type_for_value), create=True):
             # We need to ensure our specific instance cty_obj_value uses this mocked type property.
             # This can be tricky if the property is on the class and not easily overridden per instance by patch.object directly on instance.
             # A robust way is to ensure GetAttrStep.apply calls `cty_obj_value.type` and that call is what we intercept.
@@ -404,7 +406,7 @@ class TestPathSystem:
                 step.apply(cty_obj_value)
 
     @pytest.mark.asyncio
-    async def test_keystep_apply_type_key_validation_failure(self):
+    async def test_keystep_apply_type_key_validation_failure(self) -> None:
         """Test KeyStep.apply_type raises AttributePathError on key validation failure."""
         mock_key_type = MagicMock(spec=CtyString)
         mock_key_type.validate.side_effect = CtyValidationError("mocked key validation error")
@@ -426,7 +428,7 @@ class TestPathSystem:
             step.apply_type(map_type)
 
     @pytest.mark.asyncio
-    async def test_indexstep_apply_generic_exception(self):
+    async def test_indexstep_apply_generic_exception(self) -> None:
         """Test IndexStep.apply raises AttributePathError on generic exception from element_at."""
         list_type = CtyList(element_type=CtyString())
         cty_list_value = list_type.validate(["a", "b"])
@@ -444,7 +446,7 @@ class TestPathSystem:
                 step.apply(cty_list_value)
 
     @pytest.mark.asyncio
-    async def test_keystep_apply_generic_exception_key_processing(self):
+    async def test_keystep_apply_generic_exception_key_processing(self) -> None:
         """Test KeyStep.apply raises AttributePathError on generic exception during key processing."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         cty_map_value = map_type.validate({"a": 1, "b": 2})
