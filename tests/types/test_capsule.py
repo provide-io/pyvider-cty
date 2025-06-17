@@ -2,9 +2,9 @@
 # tests/types/test_capsule.py
 #
 
-import pytest
 
 from pyvider.cty.types.capsule import CtyCapsule
+
 
 class MyCustomClass:
     pass

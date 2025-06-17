@@ -59,12 +59,12 @@ class TestCtyBoolType(unittest.TestCase):
 class TestCtyTypePrimitiveCheck(unittest.TestCase):
     def test_is_primitive_type(self):
         from pyvider.cty.types import (
+            CtyDynamic,
             CtyList,
             CtyMap,
-            CtySet,
             CtyObject,
+            CtySet,
             CtyTuple,
-            CtyDynamic,
         )
         # Primitive types
         self.assertTrue(CtyString().is_primitive_type())

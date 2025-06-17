@@ -3,10 +3,11 @@
 #
 
 from typing import Any
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.values import CtyValue
+
 from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
+from pyvider.cty.values import CtyValue
 
 
 class CtyCapsule(CtyType):

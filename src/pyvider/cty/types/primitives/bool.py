@@ -1,16 +1,13 @@
 
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Any, ClassVar  # Added TYPE_CHECKING
+from typing import Any, ClassVar  # Added TYPE_CHECKING
 
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
-
-if TYPE_CHECKING:
-    from pyvider.cty.values import CtyValue
-
 
 #
 # pyvider/cty/types/primitives/bool.py

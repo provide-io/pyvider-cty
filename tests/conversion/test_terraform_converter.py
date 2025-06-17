@@ -209,13 +209,13 @@ class TestTerraformFormatConverter:
 
     def test_unmarshal_error_handling_bad_json(self) -> None:
         bad_json_bytes = b'{"key": "value"' # Incomplete JSON
-        with pytest.raises(WireFormatError, match="Unmarshal failed"):
+        with pytest.raises(WireFormatError, match=r"Failed to unmarshal raw bytes as msgpack or JSON"):
             TerraformFormatConverter.unmarshal(bad_json_bytes)
 
     @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
     def test_unmarshal_error_handling_bad_msgpack(self) -> None:
         bad_msgpack_bytes = b'\x81\xa3key\xa5value\xc1' # Corrupted msgpack (invalid byte)
-        with pytest.raises(WireFormatError, match="Unmarshal failed"):
+        with pytest.raises(WireFormatError, match=r"Failed to unmarshal raw bytes as msgpack or JSON"):
             TerraformFormatConverter.unmarshal(bad_msgpack_bytes)
 
     def test_unmarshal_pre_parsed_data(self) -> None:
