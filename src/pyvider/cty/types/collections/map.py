@@ -192,9 +192,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         logger.debug(f"🔌🔍✅ Map validated successfully with {len(validated_map)} entries")
         return CtyValue(vtype=self, value=validated_map, key_mapping=key_mapping)
 
-    def get(
-        self, map_value: 'CtyValue', key: Any, default: 'CtyValue | None' = None
-    ) -> 'CtyValue | None':
+    def get(self, map_value: CtyValue, key: Any, default: CtyValue | None = None) -> CtyValue | None:
         logger.debug(f"🔌🔍🔄 Getting value for key {key!r} from map")
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
@@ -301,14 +299,10 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         new_key_mapping.pop(str_key, None)
         return evolve(map_value, value=new_map, key_mapping=new_key_mapping)
 
-    def element_iterator(self, map_value: 'CtyValue') -> 'ElementIterator':
+    def element_iterator(self, map_value: CtyValue) -> "ElementIterator":
         logger.debug("🔌🔍🔄 Creating element iterator for map")
-        if not isinstance(map_value, CtyValue) or not isinstance(
-            map_value.type, CtyMap
-        ):
-            raise TypeError(
-                f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}"
-            )
+        if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
+            raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown:
             raise CtyMapValidationError("Cannot iterate null or unknown map")
         internal_map = map_value.value; key_mapping = getattr(map_value, '_key_mapping', {})
@@ -403,15 +397,10 @@ class ElementIterator:
     index: int = field(default=-1)    # Default value
     _valid_state: bool = field(default=False, init=False) # Flag to track if iterator is on a valid element
 
-    def __init__(
-        self,
-        key_type: 'CtyType',
-        map_data: dict[str, 'CtyValue'],
-        key_mapping: dict[str, 'CtyValue'],
-    ) -> None:
-        self.key_type = key_type  # Handled by attrs if key_type=field() was used without custom __init__
-        # With custom __init__, this assigns to the slotted attribute.
-        self._valid_state = False  # Initialize the flag
+    def __init__(self, key_type: "CtyType", map_data: dict[str, CtyValue], key_mapping: dict[str, CtyValue]) -> None:
+        self.key_type = key_type # Handled by attrs if key_type=field() was used without custom __init__
+                                 # With custom __init__, this assigns to the slotted attribute.
+        self._valid_state = False # Initialize the flag
 
         # Initialize items here as the logic is custom
         items_temp = []

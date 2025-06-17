@@ -24,6 +24,7 @@ from pyvider.cty.codec import CtyTypeParseError  # Corrected import
 from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
 from pyvider.cty.conversion.wire import WireFormatType
 from pyvider.cty.exceptions import EncodingError
+from pyvider.cty.types import CtyType  # Added import
 from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
 
@@ -262,7 +263,7 @@ class MsgPackEncoder(FormatEncoder):
         return result
 
     @classmethod
-    def _type_to_dict(cls, cty_type_obj) -> dict[str, object] | str:
+    def _type_to_dict(cls, cty_type_obj: CtyType) -> dict[str, object] | str:
         """
         Convert a CtyType object to a serializable dictionary or string representation.
         """
@@ -695,29 +696,52 @@ class MsgPackEncoder(FormatEncoder):
     @classmethod
     def _create_type_from_name(
         cls,
-        type_info: dict[str, object] | str,
-        legacy_data_for_collections: dict[str, object] | None = None,
-    ) -> "CtyType":
+        cty_type_instance: CtyType, # Corrected parameter type
+        legacy_data_for_collections: dict[str, object] | None = None, # This parameter seems unused now
+    ) -> dict[str, object] | str: # Corrected return type
         """
-        Serialize a CtyType instance into a dictionary for storage.
+        Serialize a CtyType instance into a dictionary or string representation for storage.
         """
-        type_info = {"name": cty_type_instance.__class__.__name__}
+        # If cty_type_instance is a primitive type that should be represented as a string directly
+        # This logic should align with how _type_to_dict decides to return a string vs a dict.
+        # For simplicity, let's assume _type_to_dict is the main entry point and this is a helper
+        # that always gets a CtyType object and should produce its dict/str representation.
+
+        # This method is essentially what _type_to_dict does.
+        # Calls to this should probably be cls._type_to_dict.
+        # For now, let's make its signature consistent.
+
+        type_name = cty_type_instance.__class__.__name__
         if hasattr(cty_type_instance, "element_type"):  # CtyList, CtySet
-            type_info["element_type_details"] = MsgPackEncoder._serialize_type_info(
-                cty_type_instance.element_type
-            )
+            return {
+                cls.TYPE_MARKER: type_name,
+                # Recursive call should be to the canonical method for this logic
+                b"$E": cls._type_to_dict(cty_type_instance.element_type),
+            }
         elif hasattr(cty_type_instance, "value_type"):  # CtyMap
-            type_info["key_type_details"] = MsgPackEncoder._serialize_type_info(
-                cty_type_instance.key_type
-            )
-            type_info["value_type_details"] = MsgPackEncoder._serialize_type_info(
-                cty_type_instance.value_type
-            )
-        # TODO: Handle CtyTuple (element_types) and CtyObject (attribute_types) if needed for full fidelity
-        return type_info
+            return {
+                cls.TYPE_MARKER: type_name,
+                b"$K": cls._type_to_dict(cty_type_instance.key_type),
+                b"$V": cls._type_to_dict(cty_type_instance.value_type),
+            }
+        elif hasattr(cty_type_instance, "element_types"):  # CtyTuple
+            return {
+                cls.TYPE_MARKER: type_name,
+                b"$ET": [cls._type_to_dict(et) for et in cty_type_instance.element_types],
+            }
+        elif hasattr(cty_type_instance, "attribute_types"):  # CtyObject
+            return {
+                cls.TYPE_MARKER: type_name,
+                b"$AT": {
+                    name: cls._type_to_dict(attr_type)
+                    for name, attr_type in cty_type_instance.attribute_types.items()
+                },
+            }
+        return type_name # For primitive types or CtyDynamic
+
 
     @classmethod
-    def _create_type_from_name(cls, type_info_dict: dict) -> "CtyType":
+    def _create_type_from_name(cls, type_info_dict: dict) -> "CtyType": # Already a string literal
         """
         Create a CTY type from its serialized type information dictionary.
 

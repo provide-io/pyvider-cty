@@ -1,21 +1,23 @@
 # tests/test_cty_type_conversion.py
 
+
 import pytest
-import re
-from typing import Any, Optional, Dict, List, Tuple
 
 from pyvider.cty import (
-    CtyType, CtyString, CtyNumber, CtyBool, CtyDynamic,
-    CtyList, CtyMap, CtySet, CtyTuple
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtySet,
+    CtyString,
 )
 from pyvider.cty.conversion.format import (
-    standardize_type_string,
-    parse_collection_type,
-    ensure_quoted_bytes,
-    classify_type,
     TypeCategory,
-    PRIMITIVE_TYPES,
-    COLLECTION_TYPES,
+    classify_type,
+    ensure_quoted_bytes,
+    parse_collection_type,
+    standardize_type_string,
 )
 from pyvider.cty.conversion.marshal import (
     marshal_type,
@@ -31,12 +33,12 @@ TYPE_CATEGORY_CASES = [
     ("bool", TypeCategory.PRIMITIVE),
     ("dynamic", TypeCategory.PRIMITIVE),
     ("null", TypeCategory.PRIMITIVE),
-    
+
     # Collection types
     ("list(string)", TypeCategory.COLLECTION),
     ("map(number)", TypeCategory.COLLECTION),
     ("set(bool)", TypeCategory.COLLECTION),
-    
+
     # Nested collection types
     ("list(list(string))", TypeCategory.COLLECTION),
     ("map(list(number))", TypeCategory.COLLECTION),
@@ -50,16 +52,16 @@ STANDARDIZE_CASES = [
     ('"string"', "string"),
     ("number", "number"),
     ('"number"', "number"),
-    
+
     # Collection types
     ("list(string)", "list(string)"),
     ('"list(string)"', "list(string)"),
     ("map(number)", "map(number)"),
-    
+
     # Nested types
     ("list(list(string))", "list(list(string))"),
     ('"list(list(string))"', "list(list(string))"),
-    
+
     # Edge cases
     (" string ", "string"),
     ('  "string"  ', "string"),
@@ -72,7 +74,7 @@ PARSE_COLLECTION_CASES = [
     ("list(string)", "list", "string"),
     ("map(number)", "map", "number"),
     ("set(bool)", "set", "bool"),
-    
+
     # Nested collection types
     ("list(list(string))", "list", "list(string)"),
     ("map(map(number))", "map", "map(number)"),
@@ -122,20 +124,20 @@ INVALID_CASES = [
 ]
 
 @pytest.mark.parametrize("type_str, expected_category", TYPE_CATEGORY_CASES)
-def test_classify_type(type_str, expected_category):
+def test_classify_type(type_str, expected_category) -> None:
     """Test the classify_type function with various type strings."""
     result = classify_type(type_str)
     assert result == expected_category, f"Expected {expected_category} for {type_str}, got {result}"
 
 @pytest.mark.parametrize("type_str, expected_standardized", STANDARDIZE_CASES)
-def test_standardize_type_string(type_str, expected_standardized):
+def test_standardize_type_string(type_str, expected_standardized) -> None:
     """Test the standardize_type_string function with various type strings."""
     result = standardize_type_string(type_str)
     assert result == expected_standardized, f"Expected {expected_standardized} for {type_str}, got {result}"
 
-@pytest.mark.parametrize("type_str, expected_collection_type, expected_element_type", 
+@pytest.mark.parametrize("type_str, expected_collection_type, expected_element_type",
                          PARSE_COLLECTION_CASES)
-def test_parse_collection_type(type_str, expected_collection_type, expected_element_type):
+def test_parse_collection_type(type_str, expected_collection_type, expected_element_type) -> None:
     """Test the parse_collection_type function with various collection types."""
     collection_type, element_type = parse_collection_type(type_str)
     assert collection_type == expected_collection_type, \
@@ -144,39 +146,42 @@ def test_parse_collection_type(type_str, expected_collection_type, expected_elem
         f"Expected element type {expected_element_type} for {type_str}, got {element_type}"
 
 @pytest.mark.parametrize("type_str, expected_bytes", BYTES_CASES)
-def test_ensure_quoted_bytes(type_str, expected_bytes):
+def test_ensure_quoted_bytes(type_str, expected_bytes) -> None:
     """Test the ensure_quoted_bytes function with various type strings."""
     result = ensure_quoted_bytes(type_str)
     assert result == expected_bytes, f"Expected {expected_bytes} for {type_str}, got {result}"
 
 @pytest.mark.parametrize("type_obj, expected_bytes", MARSHAL_CASES)
-def test_marshal_type(type_obj, expected_bytes):
+def test_marshal_type(type_obj, expected_bytes) -> None:
     """Test the marshal_type function with various CtyType objects."""
     result = marshal_type(type_obj)
     assert result == expected_bytes, f"Expected {expected_bytes} for {type_obj}, got {result}"
 
 @pytest.mark.parametrize("type_bytes, expected_cty_type", UNMARSHAL_CASES)
-def test_unmarshal_type(type_bytes, expected_cty_type):
+def test_unmarshal_type(type_bytes, expected_cty_type) -> None:
     """Test the unmarshal_type function with various type bytes."""
     result = unmarshal_type(type_bytes)
     assert isinstance(result, expected_cty_type.__class__), \
         f"Expected {expected_cty_type.__class__.__name__}, got {result.__class__.__name__}"
-    
+
     # For collection types, check the element type
-    if isinstance(expected_cty_type, (CtyList, CtySet)):
+    if isinstance(expected_cty_type, CtyList | CtySet):
         assert isinstance(result.element_type, expected_cty_type.element_type.__class__), \
             f"Expected element type {expected_cty_type.element_type.__class__.__name__}, got {result.element_type.__class__.__name__}"
-    
+
     # For nested collection types, check the nested element type
     if isinstance(expected_cty_type, CtyList) and isinstance(expected_cty_type.element_type, CtyList):
         assert isinstance(result.element_type.element_type, expected_cty_type.element_type.element_type.__class__), \
             "Nested element type doesn't match expected"
 
 @pytest.mark.parametrize("invalid_type", INVALID_CASES)
-def test_unmarshal_type_invalid(invalid_type):
+def test_unmarshal_type_invalid(invalid_type) -> None:
     """Test that unmarshal_type correctly handles invalid type bytes."""
     # Either raises an exception or returns a CtyDynamic as fallback
-    from pyvider.cty.types import CtyList, CtyDynamic # Ensure types are available for isinstance checks
+    from pyvider.cty.types import (  # Ensure types are available for isinstance checks
+        CtyDynamic,
+        CtyList,
+    )
     try:
         result = unmarshal_type(invalid_type)
         if invalid_type == b'"list(invalid)"':
@@ -191,17 +196,17 @@ def test_unmarshal_type_invalid(invalid_type):
         # This is also acceptable behavior
         pass
 
-def test_type_conversion_roundtrip():
+def test_type_conversion_roundtrip() -> None:
     """Test full roundtrip of marshal_type and unmarshal_type."""
     # Start with a complex nested type
     original = CtyList(element_type=CtyMap(key_type=CtyString(), value_type=CtyList(element_type=CtyBool())))
-    
+
     # Marshal to bytes
     marshaled = marshal_type(original)
-    
+
     # Unmarshal back to CtyType
     unmarshaled = unmarshal_type(marshaled)
-    
+
     # Check that we get the right type structure
     assert isinstance(unmarshaled, CtyList)
     assert isinstance(unmarshaled.element_type, CtyMap)

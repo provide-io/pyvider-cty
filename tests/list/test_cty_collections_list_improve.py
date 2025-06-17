@@ -3,14 +3,11 @@
 
 import pytest
 
-from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty import (
-    CtyValue,
     CtyBool,
     CtyList,
     CtyNumber,
     CtyString,
-    CtyTuple,
 )
 
 
@@ -18,13 +15,13 @@ class TestCtyListAdvanced:
     """Advanced tests for the CtyList type to improve coverage."""
 
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self) -> None:
         """Set up objects for testing."""
         self.string_list = CtyList(element_type=CtyString())
         self.number_list = CtyList(element_type=CtyNumber())
         self.bool_list = CtyList(element_type=CtyBool())
 
-    def test_element_at_negative_index(self):
+    def test_element_at_negative_index(self) -> None:
         """Test retrieving an element at a negative index."""
         # Create a CtyList with CtyString values
         validated = CtyList(
@@ -40,7 +37,7 @@ class TestCtyListAdvanced:
         assert element.value == "cherry"
 
 
-    def test_repr_representation(self):
+    def test_repr_representation(self) -> None:
         """Test __repr__ representation."""
         # Based on the actual implementation, adjust expectations
         repr_str = repr(self.string_list)

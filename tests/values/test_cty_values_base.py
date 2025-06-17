@@ -2,32 +2,36 @@
 # tests/values/test_cty_values_base.py
 #
 
-import pytest
-import asyncio # Existing import
-import logging
 from decimal import Decimal
+import re  # Added for re.escape in __getitem__ tests
+
+import pytest
 
 from pyvider.cty import (
-    CtyValue,
-    CtyString,
-    CtyNumber,
     CtyBool,
+    CtyList,  # Added CtyList
     CtyMap,
+    CtyNumber,
     CtyObject,
-    CtyList, # Added CtyList
     CtySet,
-    CtyTuple
+    CtyString,
+    CtyTuple,
+    CtyValue,
 )
-from pyvider.cty.types import CtyDynamic # CtyDynamic was already here, CtySet and CtyTuple added above
-from pyvider.cty.exceptions import CtyAttributeValidationError, CtyMapValidationError # Added for __getitem__ tests
-import re # Added for re.escape in __getitem__ tests
+from pyvider.cty.exceptions import (  # Added for __getitem__ tests
+    CtyAttributeValidationError,
+)
+from pyvider.cty.types import (
+    CtyDynamic,  # CtyDynamic was already here, CtySet and CtyTuple added above
+)
+
 # from pyvider.telemetry import logger as app_logger # Comment out if not used elsewhere, or remove
 
 class TestCtyValueBasicOperations:
     """Tests for basic CtyValue operations."""
 
     @pytest.fixture
-    def setup_values(self):
+    def setup_values(self) -> None:
         """Set up test values."""
         self.str_type = CtyString()
         self.str_val = CtyValue(vtype=self.str_type, value="test")
@@ -36,7 +40,7 @@ class TestCtyValueBasicOperations:
         self.marked_val = self.str_val.mark("test_mark")
 
     @pytest.mark.asyncio
-    async def test_value_initialization(self, setup_values):
+    async def test_value_initialization(self, setup_values) -> None:
         """Test the initialization of CtyValue."""
         # Regular value
         assert self.str_val.type == self.str_type
@@ -52,7 +56,7 @@ class TestCtyValueBasicOperations:
         assert repr(self.str_val).startswith("CtyValue(")
 
     @pytest.mark.asyncio
-    async def test_value_unknown(self, setup_values):
+    async def test_value_unknown(self, setup_values) -> None:
         """Test unknown CtyValue behavior."""
         assert self.unknown_val.type == self.str_type
         assert self.unknown_val.is_unknown
@@ -66,7 +70,7 @@ class TestCtyValueBasicOperations:
         assert str(self.unknown_val) == f"<unknown {self.str_type.__class__.__name__}>"
 
     @pytest.mark.asyncio
-    async def test_value_null(self, setup_values):
+    async def test_value_null(self, setup_values) -> None:
         """Test null CtyValue behavior."""
         assert self.null_val.type == self.str_type
         assert self.null_val.is_null
@@ -79,21 +83,21 @@ class TestCtyValueBasicOperations:
         assert str(self.null_val) == f"<null {self.str_type.__class__.__name__}>"
 
     @pytest.mark.asyncio
-    async def test_value_with_marks(self, setup_values):
+    async def test_value_with_marks(self, setup_values) -> None:
         """Test CtyValue with marks."""
         assert self.marked_val.type == self.str_type
         assert self.marked_val.value == "test"
         assert self.marked_val.has_mark("test_mark")
         assert not self.marked_val.has_mark("other_mark")
 
-    def test_value_has_mark(self, setup_values): # Removed async
+    def test_value_has_mark(self, setup_values) -> None: # Removed async
         """Test has_mark method for various scenarios.""" # Updated docstring
         # Mark matches exactly (using self.marked_val from setup_values)
         assert self.marked_val.has_mark("test_mark")
 
         # Mark matches by string representation (using self.marked_val)
         class CustomMark:
-            def __str__(self):
+            def __str__(self) -> str:
                 return "test_mark"
         assert self.marked_val.has_mark(CustomMark())
 
@@ -115,7 +119,7 @@ class TestCtyValueBasicOperations:
         assert not empty_string_marked_val.has_mark("some_other_mark")
 
     @pytest.mark.asyncio
-    async def test_value_add_mark(self, setup_values):
+    async def test_value_add_mark(self, setup_values) -> None:
         """Test adding a mark to a value."""
         new_val = self.str_val.mark("new_mark")
 
@@ -127,7 +131,7 @@ class TestCtyValueBasicOperations:
         assert new_val.value == "test"
 
     @pytest.mark.asyncio
-    async def test_value_add_multiple_marks(self, setup_values):
+    async def test_value_add_multiple_marks(self, setup_values) -> None:
         """Test adding multiple marks to a value."""
         val1 = self.str_val.mark("mark1")
         val2 = val1.mark("mark2")
@@ -139,7 +143,7 @@ class TestCtyValueBasicOperations:
         assert val2.has_mark("mark1")
         assert val2.has_mark("mark2")
 
-    def test_value_unmark(self, setup_values, mocker): # Changed caplog to mocker
+    def test_value_unmark(self, setup_values, mocker) -> None: # Changed caplog to mocker
         """Test removing marks from a value and check logging."""
         # Patch the logger where it's looked up (in the module under test)
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
@@ -174,26 +178,26 @@ class TestCtyValueBasicOperations:
         assert found_call, "Log message 'Removing 2 marks from value' not found in mocked_logger.debug.call_args_list"
 
     @pytest.mark.asyncio
-    async def test_value_type_property(self, setup_values):
+    async def test_value_type_property(self, setup_values) -> None:
         """Test the type property."""
         assert self.str_val.type == self.str_type
         assert self.unknown_val.type == self.str_type
         assert self.null_val.type == self.str_type
 
     @pytest.mark.asyncio
-    async def test_value_is_unknown_property(self, setup_values):
+    async def test_value_is_unknown_property(self, setup_values) -> None:
         assert self.str_val.is_unknown is False
         assert self.unknown_val.is_unknown is True
         assert self.null_val.is_unknown is False # A null value is known (it's null)
 
     @pytest.mark.asyncio
-    async def test_value_is_null_property(self, setup_values):
+    async def test_value_is_null_property(self, setup_values) -> None:
         """Test the is_null property."""
         assert not self.str_val.is_null
         assert not self.unknown_val.is_null
         assert self.null_val.is_null
 
-    def test_to_dict_method(self, setup_values, mocker):
+    def test_to_dict_method(self, setup_values, mocker) -> None:
         """Test the to_dict method for basic cases and logging."""
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
 
@@ -232,7 +236,7 @@ class TestCtyValueBasicOperations:
         mocked_logger.reset_mock()
 
     @pytest.mark.asyncio
-    async def test_value_equality(self, setup_values):
+    async def test_value_equality(self, setup_values) -> None:
         """Test value equality."""
         # Same values are equal
         val1 = CtyValue(vtype=self.str_type, value="test")
@@ -267,7 +271,7 @@ class TestCtyValueBasicOperations:
         assert val1 != "test"
         assert val1 != 123
 
-    def test_access_value_on_unknown_logs_warning(self, mocker):
+    def test_access_value_on_unknown_logs_warning(self, mocker) -> None:
         """Test accessing .value on an unknown CtyValue logs a warning to STDERR and raises ValueError."""
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         unknown_val = CtyValue.unknown(CtyString()) # CtyString() is correct here for CtyValue.unknown
@@ -277,7 +281,7 @@ class TestCtyValueBasicOperations:
 
         mocked_logger.warning.assert_any_call("🔄❗⚠️ Attempted to get raw value of unknown value")
 
-    def test_value_replace_marks_with_with_marks(self, setup_values):
+    def test_value_replace_marks_with_with_marks(self, setup_values) -> None:
         """Test replacing all marks on a CtyValue using the with_marks() method."""
         initial_val = CtyValue.string("hello").mark("mark1").mark("mark2")
 
@@ -324,7 +328,7 @@ class TestCtyValueBasicOperations:
 class TestCtyValueGetMethod:
     """Tests for the CtyValue.get() method."""
 
-    def test_get_on_unknown_value_returns_default(self, mocker): # Changed caplog to mocker
+    def test_get_on_unknown_value_returns_default(self, mocker) -> None: # Changed caplog to mocker
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         unknown_val = CtyValue.unknown(CtyString())
         default_sentinel = "default_val"
@@ -336,7 +340,7 @@ class TestCtyValueGetMethod:
         ]
         mocked_logger.debug.assert_has_calls(calls, any_order=False)
 
-    def test_get_on_null_value_returns_default(self, mocker):
+    def test_get_on_null_value_returns_default(self, mocker) -> None:
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         null_val = CtyValue.null(CtyString())
         default_sentinel = "default_val"
@@ -348,7 +352,7 @@ class TestCtyValueGetMethod:
         ]
         mocked_logger.debug.assert_has_calls(calls, any_order=False)
 
-    def test_get_on_map_with_incompatible_default(self, mocker):
+    def test_get_on_map_with_incompatible_default(self, mocker) -> None:
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
         map_val = map_type.validate({}) # Empty map
@@ -357,7 +361,7 @@ class TestCtyValueGetMethod:
         mocked_logger.warning.assert_any_call("Default value 'not_a_number' is not compatible with map value type number")
 
 
-    def test_get_on_object_with_non_string_key(self, mocker):
+    def test_get_on_object_with_non_string_key(self, mocker) -> None:
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         obj_type = CtyObject(attribute_types={"name": CtyString()})
         obj_val = obj_type.validate({"name": "test"})
@@ -369,7 +373,7 @@ class TestCtyValueGetMethod:
         ]
         mocked_logger.debug.assert_has_calls(calls, any_order=False)
 
-    def test_get_on_number_value_returns_default(self, mocker):
+    def test_get_on_number_value_returns_default(self, mocker) -> None:
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         num_val = CtyValue.number(123)
         default_sentinel = "default_num_val"
@@ -380,7 +384,7 @@ class TestCtyValueGetMethod:
         ]
         mocked_logger.debug.assert_has_calls(calls, any_order=False)
 
-    def test_get_on_string_value_returns_default(self, mocker):
+    def test_get_on_string_value_returns_default(self, mocker) -> None:
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         str_val = CtyValue.string("hello")
         default_sentinel = "default_str_val"
@@ -391,7 +395,7 @@ class TestCtyValueGetMethod:
         ]
         mocked_logger.debug.assert_has_calls(calls, any_order=False)
 
-    def test_get_on_bool_value_returns_default(self, mocker):
+    def test_get_on_bool_value_returns_default(self, mocker) -> None:
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         bool_val = CtyValue.bool(True)
         default_sentinel = "default_bool_val"
@@ -402,7 +406,7 @@ class TestCtyValueGetMethod:
         ]
         mocked_logger.debug.assert_has_calls(calls, any_order=False)
 
-    def test_get_on_object_with_internal_get_attribute_failure(self, mocker):
+    def test_get_on_object_with_internal_get_attribute_failure(self, mocker) -> None:
         mocked_base_logger = mocker.patch('pyvider.cty.values.base.logger')
         # We also need to mock the get_attribute on CtyObject type itself
         mocker.patch.object(CtyObject, 'get_attribute', side_effect=Exception("mocked error"), autospec=True)
@@ -413,7 +417,7 @@ class TestCtyValueGetMethod:
 
         assert obj_val.get("name", default_sentinel) == default_sentinel
         # Check for specific calls in order
-        calls = [
+        [
             mocker.call("🔄🔍🔄 Getting value for key: name"),
             # The following warning is from within the CtyValue.get method after the mocked CtyObject.get_attribute raises an exception
             mocker.call("JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: Exception('mocked error')")
@@ -423,7 +427,7 @@ class TestCtyValueGetMethod:
         mocked_base_logger.warning.assert_any_call("JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: Exception('mocked error')")
 
 
-    def test_get_on_map_with_internal_get_failure(self, mocker):
+    def test_get_on_map_with_internal_get_failure(self, mocker) -> None:
         mocked_base_logger = mocker.patch('pyvider.cty.values.base.logger')
         mocker.patch.object(CtyMap, 'get', side_effect=Exception("mocked map error"), autospec=True)
 
@@ -436,7 +440,7 @@ class TestCtyValueGetMethod:
         mocked_base_logger.debug.assert_any_call("🔄🔍🔄 Getting value for key: a")
         mocked_base_logger.warning.assert_any_call("JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: Exception('mocked map error')")
 
-    def test_get_on_object_missing_attribute_returns_default_and_logs(self, mocker):
+    def test_get_on_object_missing_attribute_returns_default_and_logs(self, mocker) -> None:
         """Test get() on CtyObject for a missing attribute returns default and logs."""
         mocked_logger = mocker.patch('pyvider.cty.values.base.logger')
         obj_type = CtyObject(attribute_types={"name": CtyString()})
@@ -453,55 +457,55 @@ class TestCtyValueGetMethod:
 class TestCtyValueSetDeleteErrors:
     """Tests for error paths in CtyValue.set() and CtyValue.delete() methods."""
 
-    def test_set_on_unknown_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_set_on_unknown_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         unknown_val = CtyValue.unknown(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot set key on unknown/null value"):
             unknown_val.set("any_key", "any_value")
         # Log assertion removed as per strategy
 
-    def test_set_on_null_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_set_on_null_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         null_val = CtyValue.null(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot set key on unknown/null value"):
             null_val.set("any_key", "any_value")
         # Log assertion removed
 
-    def test_set_on_list_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_set_on_list_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         list_val = CtyValue.list(CtyString(), ["a", "b"])
         with pytest.raises(TypeError, match=r"set\(\) method not supported for type CtyList"):
             list_val.set("any_key", "any_value")
         # Log assertion removed
 
-    def test_set_on_number_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_set_on_number_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         num_val = CtyValue.number(123)
         with pytest.raises(TypeError, match=r"set\(\) method not supported for type CtyNumber"):
             num_val.set("any_key", "any_value")
         # Log assertion removed
 
-    def test_delete_on_unknown_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_delete_on_unknown_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         unknown_val = CtyValue.unknown(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot delete key from unknown/null value"):
             unknown_val.delete("any_key")
         # Log assertion removed
 
-    def test_delete_on_null_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_delete_on_null_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         null_val = CtyValue.null(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot delete key from unknown/null value"):
             null_val.delete("any_key")
         # Log assertion removed
 
-    def test_delete_on_list_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_delete_on_list_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         list_val = CtyValue.list(CtyString(), ["a", "b"])
         with pytest.raises(TypeError, match=r"delete\(\) method not supported for type CtyList"):
             list_val.delete("any_key")
         # Log assertion removed
 
-    def test_delete_on_number_value_raises_type_error(self, capsys): # Changed caplog to capsys
+    def test_delete_on_number_value_raises_type_error(self, capsys) -> None: # Changed caplog to capsys
         num_val = CtyValue.number(123)
         with pytest.raises(TypeError, match=r"delete\(\) method not supported for type CtyNumber"):
             num_val.delete("any_key")
         # Log assertion removed
 
-    def test_successful_set_logs_debug(self, capsys): # Changed caplog to capsys
+    def test_successful_set_logs_debug(self, capsys) -> None: # Changed caplog to capsys
         """Test that a successful set operation logs a debug message."""
         map_val = CtyValue.map(CtyString(), CtyString(), {})
 
@@ -516,7 +520,7 @@ class TestCtyValueSetDeleteErrors:
         # expected_log_msg = f"🔄📝🔄 Setting key {key_to_set!r} to value {value_to_set!r}"
         # assert expected_log_msg in captured.err # Log assertion removed
 
-    def test_successful_delete_logs_debug(self, capsys): # Changed caplog to capsys
+    def test_successful_delete_logs_debug(self, capsys) -> None: # Changed caplog to capsys
         """Test that a successful delete operation logs a debug message."""
         initial_items = {"name": "Alice", "city": "Wonderland"}
         map_val = CtyValue.map(CtyString(), CtyString(), initial_items)
@@ -539,31 +543,31 @@ class TestCtyValueSetDeleteErrors:
 class TestCtyValueElementAt:
     """Tests for the CtyValue.element_at() method."""
 
-    def test_element_at_on_unknown_value_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_element_at_on_unknown_value_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         unknown_list = CtyValue.unknown(CtyList(element_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot get element from unknown or null value"):
             unknown_list.element_at(0)
         # Log assertion removed
 
-    def test_element_at_on_null_value_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_element_at_on_null_value_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         null_list = CtyValue.null(CtyList(element_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot get element from unknown or null value"):
             null_list.element_at(0)
         # Log assertion removed
 
-    def test_element_at_on_unsupported_type_string_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_element_at_on_unsupported_type_string_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         str_val = CtyValue.string("text")
         with pytest.raises(TypeError, match="element_at method not supported for type CtyString"):
             str_val.element_at(0)
         # Log assertion removed
 
-    def test_element_at_on_unsupported_type_map_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_element_at_on_unsupported_type_map_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         map_val = CtyValue.map(CtyString(), CtyString(), {"a": "b"})
         with pytest.raises(TypeError, match="element_at method not supported for type CtyMap"):
             map_val.element_at(0) # Using 0 as an example index, though it's irrelevant for map
         # Log assertion removed
 
-    def test_element_at_on_list_index_out_of_bounds_raises_indexerror(self, capsys): # Changed caplog to capsys
+    def test_element_at_on_list_index_out_of_bounds_raises_indexerror(self, capsys) -> None: # Changed caplog to capsys
         list_val = CtyValue.list(CtyString(), ["a", "b"])
 
         with pytest.raises(IndexError, match="List index 2 out of bounds"):
@@ -574,7 +578,7 @@ class TestCtyValueElementAt:
             list_val.element_at(-3)
         # Log assertion removed
 
-    def test_element_at_successful_on_list_logs_debug(self, capsys): # Changed caplog to capsys
+    def test_element_at_successful_on_list_logs_debug(self, capsys) -> None: # Changed caplog to capsys
         elements_raw = ["first", "second"]
         list_val = CtyValue.list(CtyString(), elements_raw)
 
@@ -588,7 +592,7 @@ class TestCtyValueElementAt:
         assert result_neg_index.value == "second"
         # assert "🔄🔍🔄 Getting element at index -1" in captured.err # Log assertion removed
 
-    def test_element_at_successful_on_tuple_logs_debug_and_delegates(self, capsys): # Changed caplog to capsys
+    def test_element_at_successful_on_tuple_logs_debug_and_delegates(self, capsys) -> None: # Changed caplog to capsys
         tuple_val = CtyValue.tuple(
             (CtyString(), CtyNumber()),
             ("hello", 123) # Raw values
@@ -606,7 +610,7 @@ class TestCtyValueElementAt:
         assert result_num.value == Decimal("123") # Numbers are stored as Decimal
         # assert "🔄🔍🔄 Getting element at index 1" in captured.err # Log assertion removed
 
-    def test_element_at_on_list_with_invalid_internal_value_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_element_at_on_list_with_invalid_internal_value_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         invalid_list_val = CtyValue(vtype=CtyList(element_type=CtyString()), value="this is not a list of CtyValues")
 
         with pytest.raises(TypeError, match="Cannot index list value of type str"):
@@ -619,7 +623,7 @@ class TestCtyValueElementAt:
 class TestCtyValueToDictAdvanced:
     """Advanced tests for CtyValue.to_dict() method, focusing on nesting and various types."""
 
-    def test_to_dict_primitives_and_log(self, capsys): # Changed caplog to capsys
+    def test_to_dict_primitives_and_log(self, capsys) -> None: # Changed caplog to capsys
         """Test to_dict for various primitive types and initial log."""
         bool_val = CtyValue.bool(True)
         dict_bool = bool_val.to_dict()
@@ -646,7 +650,7 @@ class TestCtyValueToDictAdvanced:
         assert dict_str == {"type": "CtyString", "value": "hello"}
 
 
-    def test_to_dict_list_with_nested_ctyvalues(self, capsys): # Changed caplog to capsys
+    def test_to_dict_list_with_nested_ctyvalues(self, capsys) -> None: # Changed caplog to capsys
         """Test to_dict for a CtyList containing nested CtyValues."""
         inner_str_val = CtyValue.string("nested_str")
         inner_num_val = CtyValue.number(42)
@@ -665,7 +669,7 @@ class TestCtyValueToDictAdvanced:
         assert dict_list["type"] == "CtyList"
         assert dict_list["value"] == expected_value
 
-    def test_to_dict_map_with_nested_ctyvalues(self, capsys): # Changed caplog to capsys
+    def test_to_dict_map_with_nested_ctyvalues(self, capsys) -> None: # Changed caplog to capsys
         """Test to_dict for a CtyMap with CtyValue instances as map values."""
         inner_bool_val = CtyValue.bool(True)
 
@@ -682,7 +686,7 @@ class TestCtyValueToDictAdvanced:
         assert dict_map["type"] == "CtyMap"
         assert dict_map["value"] == expected_value
 
-    def test_to_dict_set_with_nested_ctyvalues(self, capsys): # Changed caplog to capsys
+    def test_to_dict_set_with_nested_ctyvalues(self, capsys) -> None: # Changed caplog to capsys
         """Test to_dict for a CtySet containing CtyValue instances."""
         inner_str_val1 = CtyValue.string("set_val1")
         inner_str_val2 = CtyValue.string("set_val2")
@@ -708,7 +712,7 @@ class TestCtyValueToDictAdvanced:
         assert expected_item1 in output_values
         assert expected_item2 in output_values
 
-    def test_to_dict_tuple_with_nested_ctyvalues(self, capsys): # Changed caplog to capsys
+    def test_to_dict_tuple_with_nested_ctyvalues(self, capsys) -> None: # Changed caplog to capsys
         """Test to_dict for a CtyTuple containing nested CtyValues."""
         inner_num_val = CtyValue.number(789)
         inner_str_val = CtyValue.string("tuple_element")
@@ -732,7 +736,7 @@ class TestCtyValueToDictAdvanced:
 class TestCtyValueLen:
     """Tests for the CtyValue.__len__() special method."""
 
-    def test_len_on_known_supported_types(self, capsys): # capsys to capsys
+    def test_len_on_known_supported_types(self, capsys) -> None: # capsys to capsys
         """Test len() on known values that support length."""
         # capsys.set_level(logging.DEBUG) # No set_level for capsys
         str_val = CtyValue.string("hello") # len 5
@@ -757,7 +761,7 @@ class TestCtyValueLen:
         _ = capsys.readouterr()
 
 
-    def test_len_on_unknown_value_raises_typeerror(self, capsys): # capsys to capsys
+    def test_len_on_unknown_value_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test len() on an unknown value raises TypeError and logs error."""
         unknown_list = CtyValue.unknown(CtyList(element_type=CtyString()))
 
@@ -765,14 +769,14 @@ class TestCtyValueLen:
             len(unknown_list)
         # Log assertion removed
 
-    def test_len_on_null_value_is_zero_and_logs(self, capsys): # capsys to capsys
+    def test_len_on_null_value_is_zero_and_logs(self, capsys) -> None: # capsys to capsys
         """Test len() on a null value returns 0 and logs debug message."""
         null_string = CtyValue.null(CtyString())
 
         assert len(null_string) == 0
         # Log assertion removed
 
-    def test_len_on_unsupported_type_bool_raises_typeerror(self, capsys): # capsys to capsys
+    def test_len_on_unsupported_type_bool_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test len() on CtyBool (unsupported) raises TypeError and logs error."""
         bool_val = CtyValue.bool(True)
 
@@ -780,14 +784,14 @@ class TestCtyValueLen:
             len(bool_val)
         # Log assertion removed
 
-    def test_len_on_unsupported_type_object_raises_typeerror(self, capsys): # capsys to capsys
+    def test_len_on_unsupported_type_object_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test len() on CtyObject (unsupported) raises TypeError and logs error."""
         obj_val = CtyValue.object({"name": CtyString()}, {"name": "Test"})
         assert len(obj_val) == 1
         # Log assertion removed
 
 
-    def test_len_on_unsupported_type_number_raises_typeerror(self, capsys): # capsys to capsys
+    def test_len_on_unsupported_type_number_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test len() on CtyNumber (unsupported) raises TypeError and logs error."""
         num_val = CtyValue.number(123.45)
 
@@ -799,7 +803,7 @@ class TestCtyValueLen:
 class TestCtyValueIter:
     """Tests for the CtyValue.__iter__() special method."""
 
-    def test_iter_on_known_supported_types(self, capsys): # capsys to capsys
+    def test_iter_on_known_supported_types(self, capsys) -> None: # capsys to capsys
         """Test iter() on known values that support iteration."""
         str_val = CtyValue.string("hi")
         assert list(iter(str_val)) == ["h", "i"]
@@ -828,7 +832,7 @@ class TestCtyValueIter:
         assert isinstance(iter_tuple_result[0], CtyValue)
         _ = capsys.readouterr()
 
-    def test_iter_on_unknown_value_raises_typeerror(self, capsys): # capsys to capsys
+    def test_iter_on_unknown_value_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test iter() on an unknown value raises TypeError and logs error."""
         unknown_val = CtyValue.unknown(CtyList(element_type=CtyString()))
 
@@ -836,14 +840,14 @@ class TestCtyValueIter:
             list(iter(unknown_val))
         # Log assertion removed
 
-    def test_iter_on_null_value_yields_nothing_and_logs(self, capsys): # capsys to capsys
+    def test_iter_on_null_value_yields_nothing_and_logs(self, capsys) -> None: # capsys to capsys
         """Test iter() on a null value yields no items and logs debug message."""
         null_val = CtyValue.null(CtyString())
 
         assert list(iter(null_val)) == []
         # Log assertion removed
 
-    def test_iter_on_unsupported_type_bool_raises_typeerror(self, capsys): # capsys to capsys
+    def test_iter_on_unsupported_type_bool_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test iter() on CtyBool (unsupported) raises TypeError and logs error."""
         bool_val = CtyValue.bool(True)
 
@@ -851,7 +855,7 @@ class TestCtyValueIter:
             list(iter(bool_val))
         # Log assertion removed
 
-    def test_iter_on_unsupported_type_number_raises_typeerror(self, capsys): # capsys to capsys
+    def test_iter_on_unsupported_type_number_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test iter() on CtyNumber (unsupported) raises TypeError and logs error."""
         num_val = CtyValue.number(123.45)
 
@@ -859,7 +863,7 @@ class TestCtyValueIter:
             list(iter(num_val))
         # Log assertion removed
 
-    def test_iter_on_unsupported_type_object_raises_typeerror(self, capsys): # capsys to capsys
+    def test_iter_on_unsupported_type_object_raises_typeerror(self, capsys) -> None: # capsys to capsys
         """Test iter() on CtyObject (unsupported by default by CtyValue iter) raises TypeError and logs error."""
         obj_val = CtyValue.object(
             attribute_types={"name": CtyString(), "active": CtyBool()},
@@ -874,11 +878,11 @@ class TestCtyValueIter:
 # Helper classes for hash testing
 class HashableReprOnly:
     """A class where the instance itself is unhashable, but its repr is a hashable string."""
-    def __init__(self, content):
+    def __init__(self, content) -> None:
         self.content = content
         self.__hash__ = None # Explicitly make it unhashable
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"HashableReprOnly('{self.content}')" # Returns a string
 
     def __eq__(self, other): # Needed for frozenset tests if elements are compared
@@ -892,11 +896,11 @@ class UnhashableRepr:
     unhashable by standard means (e.g., returns a new list each time, or another unhashable object).
     For testing the id() fallback, hash(repr(self)) must also raise TypeError.
     """
-    def __init__(self, content):
+    def __init__(self, content) -> None:
         self.content = content
         self.__hash__ = None # Explicitly make it unhashable
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         # To make hash(repr(self)) fail, repr() must return something that, when hashed, raises TypeError.
         # Returning a list is a simple way, as lists are unhashable.
         return ["UnhashableRepr", self.content] # This list is unhashable
@@ -909,7 +913,7 @@ class UnhashableRepr:
 class TestCtyValueHashFallbacks:
     """Tests for CtyValue.__hash__() fallback mechanisms for unhashable underlying values."""
 
-    def test_hash_fallback_to_repr_for_primitive_like_value(self):
+    def test_hash_fallback_to_repr_for_primitive_like_value(self) -> None:
         """Test hash falls back to repr() if direct hash(_value) fails."""
         custom_obj = HashableReprOnly("data1")
         # Wrap in CtyDynamic, as CtyValue factory for primitives might enforce hashability.
@@ -918,7 +922,7 @@ class TestCtyValueHashFallbacks:
 
         # Expected behavior: hash(custom_obj) fails -> hash(repr(custom_obj)) is used
         # repr(custom_obj) is "HashableReprOnly('data1')"
-        expected_hash_of_repr = hash("HashableReprOnly('data1')")
+        hash("HashableReprOnly('data1')")
 
         # The actual hash will also include type_hash, state_hash, marks_hash.
         # We can't directly assert equality to expected_hash_of_repr,
@@ -932,7 +936,7 @@ class TestCtyValueHashFallbacks:
         # but that makes the test very brittle to internal hash calculation changes.
         # For now, ensuring it doesn't fail is the primary goal for this fallback.
 
-    def test_hash_fallback_to_id_for_unhashable_repr(self):
+    def test_hash_fallback_to_id_for_unhashable_repr(self) -> None:
         """Test hash falls back to id() if direct hash and hash(repr()) fail."""
         custom_obj = UnhashableRepr("data2")
         cty_val = CtyValue(vtype=CtyDynamic(), value=custom_obj)
@@ -946,7 +950,7 @@ class TestCtyValueHashFallbacks:
         except TypeError:
             pytest.fail("CtyValue.__hash__ raised TypeError unexpectedly for UnhashableRepr object.")
 
-    def test_hash_fallback_for_tuple_with_unhashable_element_repr(self):
+    def test_hash_fallback_for_tuple_with_unhashable_element_repr(self) -> None:
         """Test hash fallback for a CtyTuple containing an element like HashableReprOnly."""
         # CtyValue stores CtyValues in its _value for tuples.
         # The tuple elements themselves should be CtyValues.
@@ -972,7 +976,7 @@ class TestCtyValueHashFallbacks:
         except TypeError:
             pytest.fail("CtyValue.__hash__ for tuple with custom unhashable element failed.")
 
-    def test_hash_fallback_for_frozenset_with_unhashable_element_repr(self):
+    def test_hash_fallback_for_frozenset_with_unhashable_element_repr(self) -> None:
         """Test hash fallback for a CtySet containing an element like HashableReprOnly."""
         unhashable_cty_element = CtyValue(CtyDynamic(), HashableReprOnly("set_elem"))
 
@@ -1002,7 +1006,7 @@ class TestCtyValueHashFallbacks:
 
 # Helper class for testing __eq__ fallback exception
 class EqRaisesException:
-    def __init__(self, val):
+    def __init__(self, val) -> None:
         self.val = val
     def __eq__(self, other):
         raise ValueError("Comparison failed intentionally")
@@ -1013,7 +1017,7 @@ class EqRaisesException:
     __hash__ = None
 
 class SimpleComparable:
-    def __init__(self, val):
+    def __init__(self, val) -> None:
         self.val = val
     def __eq__(self, other):
         if not isinstance(other, SimpleComparable):
@@ -1026,7 +1030,7 @@ class SimpleComparable:
 class TestCtyValueEqualityAdvanced:
     """Advanced tests for CtyValue.__eq__() method, focusing on specific value comparisons and fallbacks."""
 
-    def test_decimal_comparisons(self):
+    def test_decimal_comparisons(self) -> None:
         """Test equality comparisons involving CtyNumber with Decimal values."""
         # Comparing CtyNumber to CtyNumber
         assert CtyValue.number(Decimal("1.0")) == CtyValue.number(1)
@@ -1074,7 +1078,7 @@ class TestCtyValueEqualityAdvanced:
         val_string_in_num = CtyValue(vtype=CtyNumber(), value="not-a-number") # Inconsistent state
         assert (val_decimal_one == val_string_in_num) is False # Should hit `except Exception: return False`
 
-    def test_equality_custom_object_fallback(self):
+    def test_equality_custom_object_fallback(self) -> None:
         """Test __eq__ fallback to self._value == other._value for custom objects."""
         obj1_a = SimpleComparable(10)
         obj1_b = SimpleComparable(10)
@@ -1087,7 +1091,7 @@ class TestCtyValueEqualityAdvanced:
         assert cty_obj1_a == cty_obj1_b # Relies on SimpleComparable.__eq__
         assert cty_obj1_a != cty_obj2   # Relies on SimpleComparable.__eq__
 
-    def test_equality_custom_object_fallback_exception(self):
+    def test_equality_custom_object_fallback_exception(self) -> None:
         """Test __eq__ fallback `except Exception: return False`."""
         obj_exc1 = EqRaisesException(1)
         obj_exc2 = EqRaisesException(1) # Different instance, same content
@@ -1099,7 +1103,7 @@ class TestCtyValueEqualityAdvanced:
         # CtyValue.__eq__ should catch this and return False.
         assert (cty_exc1 == cty_exc2) is False
 
-    def test_equality_different_cty_types(self):
+    def test_equality_different_cty_types(self) -> None:
         """Test that CtyValues of fundamentally different Cty types are not equal."""
         # This primarily tests the `self._vtype.equal(other._vtype)` check
         assert CtyValue.string("text") != CtyValue.number(123)
@@ -1109,7 +1113,7 @@ class TestCtyValueEqualityAdvanced:
         assert CtyValue.object({"a": CtyString()}, {"a": "val"}) != CtyValue.tuple((CtyString(),), ("a",))
 
 
-    def test_equality_unknown_null_interactions(self):
+    def test_equality_unknown_null_interactions(self) -> None:
         """Test equality with various unknown and null states and types."""
         # Already partly covered in TestCtyValueBasicOperations, adding some more specifics
         s_type, n_type = CtyString(), CtyNumber()
@@ -1123,7 +1127,7 @@ class TestCtyValueEqualityAdvanced:
         assert CtyValue.string("val") != CtyValue.null(s_type)
         assert CtyValue.unknown(s_type) != CtyValue.null(s_type)
 
-    def test_equality_with_different_marks(self):
+    def test_equality_with_different_marks(self) -> None:
         """Test that values identical otherwise but with different marks are not equal."""
         # Also covered in TestCtyValueBasicOperations, but good to be explicit here too
         val_no_marks = CtyValue.string("test")
@@ -1135,7 +1139,7 @@ class TestCtyValueEqualityAdvanced:
         assert val_mark1 != val_mark2
         assert val_mark1 == val_mark1_again # Hash of frozenset of marks should be same
 
-    def test_equality_list_comparisons(self):
+    def test_equality_list_comparisons(self) -> None:
         """Test __eq__ for CtyList values, including nested CtyValues and edge cases."""
         s, n = CtyString(), CtyNumber()
 
@@ -1179,7 +1183,7 @@ class TestCtyValueEqualityAdvanced:
         assert list_u1 != list_u3
         assert list_u1 != list_n1
 
-    def test_equality_tuple_comparisons(self):
+    def test_equality_tuple_comparisons(self) -> None:
         """Test __eq__ for CtyTuple values."""
         s, n = CtyString(), CtyNumber()
         # For tuples, elements are provided as raw Python values to the factory
@@ -1194,7 +1198,7 @@ class TestCtyValueEqualityAdvanced:
         assert CtyValue.tuple((s,n), ("a",1)) != list_equiv
 
 
-    def test_equality_set_comparisons(self):
+    def test_equality_set_comparisons(self) -> None:
         """Test __eq__ for CtySet values."""
         s = CtyString()
         # For sets, elements are provided as raw Python values to the factory
@@ -1217,7 +1221,7 @@ class TestCtyValueEqualityAdvanced:
         assert set1 != set3
 
 
-    def test_equality_map_comparisons(self):
+    def test_equality_map_comparisons(self) -> None:
         """Test __eq__ for CtyMap values."""
         s, n = CtyString(), CtyNumber()
         # For maps, values are provided as raw Python values to the factory
@@ -1254,13 +1258,13 @@ class TypeValidatesToNull(CtyString): # Helper class for a specific __getitem__ 
 class TestCtyValueGetItem:
     """Tests for the CtyValue.__getitem__() special method."""
 
-    def test_getitem_on_unknown_value_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_unknown_value_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         unknown_map = CtyValue.unknown(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot index into unknown or null value"):
             _ = unknown_map["some_key"]
         # Log assertion removed
 
-    def test_getitem_on_null_value_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_null_value_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         null_map = CtyValue.null(CtyMap(key_type=CtyString(), value_type=CtyString()))
         with pytest.raises(TypeError, match="Cannot index into unknown or null value"):
             _ = null_map["some_key"]
@@ -1271,7 +1275,7 @@ class TestCtyValueGetItem:
         (CtyValue.bool(True), "CtyBool"),
         (CtyValue.make_set(CtyString(), {"a"}), "CtySet"), # Sets don't support __getitem__
     ])
-    def test_getitem_on_unsupported_types_raises_typeerror(self, capsys, unsupported_val, val_type_name): # Changed caplog to capsys
+    def test_getitem_on_unsupported_types_raises_typeerror(self, capsys, unsupported_val, val_type_name) -> None: # Changed caplog to capsys
         # Corrected regex to match the actual error message prefix from CtyValue.__getitem__ TypeError
         expected_msg_pattern = re.escape(f"Error during indexing with ''test_key'': Value of type {val_type_name} doesn't support indexing with ''test_key''")
         with pytest.raises(TypeError, match=expected_msg_pattern):
@@ -1286,7 +1290,7 @@ class TestCtyValueGetItem:
 
 
     # --- Map __getitem__ tests ---
-    def test_getitem_on_map_successful(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_map_successful(self, capsys) -> None: # Changed caplog to capsys
         map_val = CtyValue.map(CtyString(), CtyString(), {"name": "Alice", "city": "Wonderland"})
         assert map_val["name"].value == "Alice"
         # Log assertion removed
@@ -1295,13 +1299,13 @@ class TestCtyValueGetItem:
         # Log assertion removed
 
 
-    def test_getitem_on_map_key_not_found_raises_keyerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_map_key_not_found_raises_keyerror(self, capsys) -> None: # Changed caplog to capsys
         map_val = CtyValue.map(CtyString(), CtyString(), {"name": "Alice"})
         with pytest.raises(KeyError, match="Key not found in map: 'age'"):
             _ = map_val["age"]
         # Log assertions removed
 
-    def test_getitem_on_map_ctyvalue_key_invalid_type_raises_keyerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_map_ctyvalue_key_invalid_type_raises_keyerror(self, capsys) -> None: # Changed caplog to capsys
         # Map expects CtyString keys
         map_val = CtyValue.map(CtyString(), CtyString(), {"name": "Alice"})
         invalid_key = CtyValue.number(123) # Number key for string-keyed map
@@ -1311,7 +1315,7 @@ class TestCtyValueGetItem:
             _ = map_val[invalid_key]
         # Log assertions removed
 
-    def test_getitem_on_map_ctyvalue_key_null_raises_keyerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_map_ctyvalue_key_null_raises_keyerror(self, capsys) -> None: # Changed caplog to capsys
         map_val = CtyValue.map(CtyString(), CtyString(), {"name": "Alice"})
         null_key = CtyValue.null(CtyString())
 
@@ -1321,8 +1325,8 @@ class TestCtyValueGetItem:
         # Log assertions removed
 
 
-    def test_getitem_on_map_validated_raw_key_is_null_or_unknown_raises_keyerror(self, capsys): # Changed caplog to capsys
-        key_type_validates_to_null = TypeValidatesToNull()
+    def test_getitem_on_map_validated_raw_key_is_null_or_unknown_raises_keyerror(self, capsys) -> None: # Changed caplog to capsys
+        TypeValidatesToNull()
         map_val = CtyValue.map(TypeValidatesToNull(), CtyString(), {})
 
         raw_key_triggers_null = "any_string_key"
@@ -1331,7 +1335,7 @@ class TestCtyValueGetItem:
         # Log assertions removed
 
 
-    def test_getitem_on_map_raw_key_validation_fails_raises_keyerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_map_raw_key_validation_fails_raises_keyerror(self, capsys) -> None: # Changed caplog to capsys
         map_val = CtyValue.map(CtyString(), CtyString(), {"1": "one"})
         raw_key_fails_validation = 123
 
@@ -1342,19 +1346,19 @@ class TestCtyValueGetItem:
 
 
     # --- Object __getitem__ tests ---
-    def test_getitem_on_object_successful(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_object_successful(self, capsys) -> None: # Changed caplog to capsys
         obj_val = CtyValue.object({"attr": CtyString()}, {"attr": "value"})
         assert obj_val["attr"].value == "value"
         # Log assertion removed
 
-    def test_getitem_on_object_non_string_key_raises_typeerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_object_non_string_key_raises_typeerror(self, capsys) -> None: # Changed caplog to capsys
         obj_val = CtyValue.object({"attr": CtyString()}, {"attr": "value"})
         with pytest.raises(TypeError, match="Object attribute name must be a string, got int"):
             _ = obj_val[123]
         # Log assertions removed
 
 
-    def test_getitem_on_object_attribute_not_found_raises_ctyattributevalidationerror(self, capsys): # Changed caplog to capsys
+    def test_getitem_on_object_attribute_not_found_raises_ctyattributevalidationerror(self, capsys) -> None: # Changed caplog to capsys
         obj_val = CtyValue.object({"attr": CtyString()}, {"attr": "value"})
         expected_match = r"Object validation error: Unknown attribute: non_existent_attr"
         with pytest.raises(CtyAttributeValidationError, match=expected_match):

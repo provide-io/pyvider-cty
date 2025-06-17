@@ -4,11 +4,17 @@
 Tests for CtyTuple type validation logic.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
+
 from pyvider.cty import (
-    CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject, CtyTuple,
-    CtyDynamic, CtyType, CtyValue
+    CtyBool,
+    CtyList,
+    CtyNumber,
+    CtyString,
+    CtyTuple,
+    CtyValue,
 )
 from pyvider.cty.exceptions import CtyValidationError
 
@@ -31,7 +37,7 @@ class TestCtyTupleValidation:
         ))
 
     @pytest.mark.asyncio
-    async def test_validate_valid_tuple(self, tuple_type_sn):
+    async def test_validate_valid_tuple(self, tuple_type_sn) -> None:
         """Test validating a conforming tuple."""
         data = ("hello", 42)
         result_val = tuple_type_sn.validate(data)
@@ -56,7 +62,7 @@ class TestCtyTupleValidation:
         assert result_val.value[1].value == Decimal("42") # Numbers stored as Decimal
 
     @pytest.mark.asyncio
-    async def test_validate_valid_list(self, tuple_type_sn):
+    async def test_validate_valid_list(self, tuple_type_sn) -> None:
         """Test validating a conforming list (should be accepted)."""
         data = ["world", 123.45]
         result_val = tuple_type_sn.validate(data) # Pass a list
@@ -69,7 +75,7 @@ class TestCtyTupleValidation:
         assert result_val.value[1].value == Decimal("123.45")
 
     @pytest.mark.asyncio
-    async def test_validate_empty_tuple(self):
+    async def test_validate_empty_tuple(self) -> None:
         """Test validating an empty tuple against an empty tuple type."""
         empty_type = CtyTuple(element_types=())
         result_val = empty_type.validate(())
@@ -83,7 +89,7 @@ class TestCtyTupleValidation:
         assert len(result_val_list.value) == 0
 
     @pytest.mark.asyncio
-    async def test_validate_invalid_length_too_short(self, tuple_type_sn):
+    async def test_validate_invalid_length_too_short(self, tuple_type_sn) -> None:
         """Test validation fails if tuple is too short."""
         data = ("hello",)
         with pytest.raises(CtyValidationError) as exc_info:
@@ -91,7 +97,7 @@ class TestCtyTupleValidation:
         assert "Expected 2 elements, got 1" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_validate_invalid_length_too_long(self, tuple_type_sn):
+    async def test_validate_invalid_length_too_long(self, tuple_type_sn) -> None:
         """Test validation fails if tuple is too long."""
         data = ("hello", 42, True)
         with pytest.raises(CtyValidationError) as exc_info:
@@ -99,7 +105,7 @@ class TestCtyTupleValidation:
         assert "Expected 2 elements, got 3" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_validate_invalid_element_type(self, tuple_type_sn):
+    async def test_validate_invalid_element_type(self, tuple_type_sn) -> None:
         """Test validation fails if an element has the wrong type."""
         data = ("hello", "not a number") # Second element is wrong type
         with pytest.raises(CtyValidationError) as exc_info:
@@ -115,7 +121,7 @@ class TestCtyTupleValidation:
         assert "Value must be a string, got int" in str(exc_info_2.value)
 
     @pytest.mark.asyncio
-    async def test_validate_invalid_input_type(self, tuple_type_sn):
+    async def test_validate_invalid_input_type(self, tuple_type_sn) -> None:
         """Test validation fails for non-list/tuple inputs."""
         invalid_inputs = [
             None,
@@ -132,7 +138,7 @@ class TestCtyTupleValidation:
             assert type(invalid_input).__name__ in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_validate_with_ctyvalues_input(self, tuple_type_sn):
+    async def test_validate_with_ctyvalues_input(self, tuple_type_sn) -> None:
         """Test validating a tuple containing CtyValue instances."""
         val1 = CtyValue.string("cty")
         val2 = CtyValue.number(99)
@@ -146,7 +152,7 @@ class TestCtyTupleValidation:
         assert result_val.value[1] is val2
 
     @pytest.mark.asyncio
-    async def test_validate_with_ctyvalues_mismatched_type(self, tuple_type_sn):
+    async def test_validate_with_ctyvalues_mismatched_type(self, tuple_type_sn) -> None:
         """Test validation fails if input CtyValue has wrong type."""
         val1 = CtyValue.string("cty")
         val2_wrong = CtyValue.bool(True) # Should be number
@@ -158,7 +164,7 @@ class TestCtyTupleValidation:
         assert "Value must be a number" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_validate_complex_tuple(self, tuple_type_complex):
+    async def test_validate_complex_tuple(self, tuple_type_complex) -> None:
         """Test validation with nested collections."""
         data = ("config", [True, False, True], 10.5)
         result_val = tuple_type_complex.validate(data)

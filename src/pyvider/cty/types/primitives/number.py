@@ -1,19 +1,6 @@
 
-#
-# pyvider/cty/types/primitives/number.py
-#
-
-"""
-Number type implementation for the Cty type system.
-
-This module provides the CtyNumber type, representing numeric values in the Cty type system.
-It handles validation and conversion of various numeric formats (int, float, Decimal) with
-consistent precision handling. The implementation follows go-cty's number semantics,
-using Decimal internally for precision and supporting conversion from various input types.
-"""
-
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Union  # Added TYPE_CHECKING
 
 from attrs import define, field
 
@@ -22,112 +9,95 @@ from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.telemetry import logger
 
+if TYPE_CHECKING:
+    from pyvider.cty.values import CtyValue
+
+
+#
+# pyvider/cty/types/primitives/number.py
+#
+
+"""Numeric type implementation for the Cty type system."""
 
 @define(frozen=True, slots=True)
 class CtyNumber(CtyType[Union[int, float, Decimal]]):
     """
     Represents a numeric type in the Cty type system.
 
-    CtyNumber handles validation and conversion of various numeric inputs including
-    integers, floats, and Decimal objects. It ensures precise representation by using
-    Decimal internally to avoid floating-point errors. This implementation matches
-    go-cty's number semantics.
+    CtyNumber handles arbitrary-precision numbers using Python's Decimal type
+    internally. It validates and converts various numeric inputs (integers,
+    floats, Decimals, and numeric strings) into a standard Decimal representation.
 
-    The number type supports standard arithmetic operations with proper precision
-    handling and can convert string representations of numbers when appropriate.
+    This type ensures that all numeric operations within the Cty system are
+    performed with consistent precision and behavior, avoiding common pitfalls
+    of floating-point arithmetic.
 
     Attributes:
-        ctype (ClassVar[str]): Type identifier constant, always "number".
-        value (Union[int, Decimal]): Default value for new instances, defaults to 0.
-            This attribute is primarily used when creating numbers directly.
-
-    Examples:
-        Creating a number type:
-        >>> number_type = CtyNumber()
-
-        Validating integer values:
-        >>> value = number_type.validate(42)
-        >>> print(value.value)
-        42
-
-        Validating decimal values:
-        >>> from decimal import Decimal
-        >>> value = number_type.validate(Decimal("3.14159265359"))
-        >>> print(value.value)
-        3.14159265359
+        ctype (ClassVar[str]): Type identifier constant, always "number"
+        value (int | Decimal): The numeric value (default: 0)
     """
 
     ctype: ClassVar[str] = "number"
     value: int | Decimal = field(default=0)
 
-    def validate(self, value: Any) -> 'CtyValue':
+    def validate(self, value: Any) -> CtyValue: # Ensured string literal
         """
         Validate that the given value is a number or can be converted to one.
 
-        This method performs strict validation to ensure the value conforms to
-        the number type requirements. It accepts integers, floats, Decimal objects,
-        and strings that can be parsed as numbers. None values are converted to 0.
-
-        For precision, numeric values are stored as Decimal objects internally.
-        String values are converted to Decimal if they represent valid numbers.
+        Accepts integers, floats, Decimals, and numeric strings. Converts valid
+        inputs to Decimal to maintain precision. Non-numeric types or strings
+        that cannot be parsed as numbers will raise a validation error.
 
         Args:
-            value: The value to validate as a number. Can be an int, float, Decimal,
-                string representation of a number, None, or a CtyValue instance.
+            value: The value to validate
 
         Returns:
-            CtyValue: A CtyValue instance containing the validated number value.
+            CtyValue: A CtyValue instance with the validated Decimal value
 
         Raises:
-            CtyNumberValidationError: If the value cannot be converted to a number.
+            CtyNumberValidationError: If value cannot be validated as a number
         """
-        logger.debug(f"🔢🔍🔄 Validating value as number: {value!r}")
+        logger.debug(f"🔢✅🔄 Validating value as CtyNumber: {type(value).__name__}")
 
         # Import locally to avoid circular imports
         from pyvider.cty.values import CtyValue
 
-        # Handle CtyValue inputs
+        # --- NULL / UNKNOWN ---
+        if value is None:
+            return CtyValue.null(self)
         if isinstance(value, CtyValue):
-            if isinstance(value.type, CtyNumber):
-                logger.debug("🔢🔍✅ Value is already a CtyValue with CtyNumber type")
-                return value
-            # --- Allow conversion from known, non-null CtyValue if numeric/string ---
-            if not value._is_unknown and not value._is_null:
-                inner_val = value.value
-                if isinstance(inner_val, int | float | Decimal):
-                    logger.debug(
-                        f"🔢🔍✅ Inner value is already numeric: {inner_val!r}"
-                    )
-                    return CtyValue(vtype=self, value=inner_val)
-                elif isinstance(inner_val, str):
+            if value.is_null:
+                return CtyValue.null(self)
+            if value.is_unknown:
+                return CtyValue.unknown(self)
+
+            # --- COMPATIBLE CTYVALUE ---
+            # If it's already a number or dynamic type, try to use its value
+            if isinstance(value.type, CtyNumber | CtyDynamic):
+                # Re-validate inner value to ensure it's a valid Decimal representation
+                # This handles cases like CtyValue(CtyDynamic, "123") -> CtyValue(CtyNumber, Decimal("123"))
+                value = value.value # Unbox
+            elif isinstance(value.type, CtyType) and value.type.is_primitive_type():
+                # Allow conversion from other primitive CtyValues if their value is numeric string
+                # e.g. CtyValue(CtyString, "123.45")
+                if isinstance(value.value, str):
                     try:
-                        num_val = Decimal(inner_val)
-                        logger.debug(
-                            f"🔢🔍✅ Converted inner string to Decimal: {num_val}"
-                        )
-                        return CtyValue(vtype=self, value=num_val)
-                    except (InvalidOperation, ValueError):
-                        error_msg = f"String value '{inner_val}' inside CtyValue is not a valid number"
+                        decimal_value = Decimal(value.value)
+                        return CtyValue(vtype=self, value=decimal_value)
+                    except InvalidOperation:
+                        error_msg = f"String value '{value.value}' inside CtyValue is not a valid number"
                         logger.error(f"🔢❗❌ {error_msg}")
                         raise CtyNumberValidationError(error_msg)
                 # else: fall through to raise error for other inner types
             # --- End CtyValue Handling ---
 
-        # Handle None as 0 (consistent with go-cty)
-        if value is None:
-            logger.debug("🔢🔍✅ None value converted to 0")
-            return CtyValue(vtype=self, value=Decimal(0))  # Use Decimal for consistency
-
-        # Accept numeric types: int, float, Decimal
+        # --- PYTHON PRIMITIVES ---
         if isinstance(value, int | float | Decimal):
-            # Convert int/float to Decimal for internal consistency
             try:
-                decimal_val = Decimal(value)
-                logger.debug(
-                    f"🔢🔍✅ Value is valid number type: {type(value).__name__}, stored as Decimal: {decimal_val}"
-                )
-                return CtyValue(vtype=self, value=decimal_val)
-            except Exception as e:  # Catch potential issues converting float inf/nan
+                decimal_value = Decimal(value)
+                logger.debug(f"🔢✅🔄 Converted to Decimal: {decimal_value}")
+                return CtyValue(vtype=self, value=decimal_value)
+            except (InvalidOperation, TypeError, ValueError) as e:
                 error_msg = f"Cannot represent {type(value).__name__} value {value!r} as Decimal: {e}"
                 logger.error(f"🔢❗❌ {error_msg}")
                 raise CtyNumberValidationError(error_msg)
@@ -135,65 +105,36 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         # Try to convert strings that look like numbers
         if isinstance(value, str):
             try:
-                # Try to convert to a Decimal first for precision
-                decimal_val = Decimal(value)
-                logger.debug(f"🔢🔍✅ String converted to Decimal: {decimal_val}")
-                return CtyValue(vtype=self, value=decimal_val)
-            except (InvalidOperation, ValueError):  # Catch specific Decimal errors
+                decimal_value = Decimal(value)
+                logger.debug(f"🔢✅🔄 Converted string '{value}' to Decimal: {decimal_value}")
+                return CtyValue(vtype=self, value=decimal_value)
+            except InvalidOperation:
                 error_msg = f"Cannot convert string '{value}' to number"
                 logger.debug(f"🔢❗❌ {error_msg}")
                 raise CtyNumberValidationError(error_msg)
 
         # --- REJECT ALL OTHER TYPES ---
-        error_msg = f"Value must be a number or a string representation of a number, got {type(value).__name__}"
+        error_msg = f"Cannot convert {type(value).__name__} to number"
         logger.error(f"🔢❗❌ {error_msg}")
         raise CtyNumberValidationError(error_msg)
 
-    def equal(self, other: CtyType) -> bool:
-        """
-        Check if this type is equal to another type.
-
-        Two number types are considered equal if they are both instances of
-        CtyNumber. This implements the type equality semantics for the Cty
-        type system.
-
-        Args:
-            other: The type to compare with this number type.
-
-        Returns:
-            bool: True if the other type is also a CtyNumber, False otherwise.
-        """
+    def equal(self, other: CtyType[int | float | Decimal]) -> bool:
+        """Check if this type is equal to another number type."""
         result = isinstance(other, CtyNumber)
-        logger.debug(f"🔢🔍✅ CtyNumber.equal: {result}")
+        logger.debug("🔢✅🔄 CtyNumber.equal: %s to %s -> %s", self, other, result)
         return result
 
-    def usable_as(self, other: CtyType) -> bool:
-        """
-        Check if this type can be used where the other type is expected.
-
-        A number type is usable as another number type or as CtyDynamic.
-        This method is used for type compatibility checking.
-
-        Args:
-            other: The target type to check compatibility with.
-
-        Returns:
-            bool: True if this type can be used as the other type, False otherwise.
-        """
-        if isinstance(other, CtyDynamic):  # Check against CtyDynamic first
-            logger.debug("🔢🔍✅ CtyNumber.usable_as(CtyDynamic): True")
-            return True
-        result = isinstance(other, CtyNumber)
-        logger.debug(
-            f"🔢🔍✅ CtyNumber.usable_as({other.__class__.__name__}): {result}"
-        )
+    def usable_as(self, other: CtyType[int | float | Decimal]) -> bool:
+        """Check if this number type can be used as another type."""
+        # A number can be used as dynamic or another number.
+        result = isinstance(other, CtyNumber | CtyDynamic)
+        logger.debug("🔢✅🔄 CtyNumber.usable_as: %s to %s -> %s", self, other, result)
         return result
 
     def __str__(self) -> str:
         return "number"
 
     def is_primitive_type(self) -> bool:
-        """Check if this type is a primitive type."""
         return True
 
 

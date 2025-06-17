@@ -21,7 +21,7 @@ from pyvider.cty.conversion.schema_type_encoder import (
 )
 
 # Import concrete implementations to register them
-import pyvider.cty.conversion.terraform
+# import pyvider.cty.conversion.terraform # F401: Unused import
 from pyvider.cty.conversion.wire import WireFormat, WireFormatRegistry, WireFormatType
 from pyvider.telemetry import logger
 

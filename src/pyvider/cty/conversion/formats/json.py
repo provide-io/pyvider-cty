@@ -1,20 +1,4 @@
 
-#
-# pyvider/cty/conversion/formats/json.py
-#
-
-"""
-JSON encoder for CTY wire format.
-
-This module provides a comprehensive implementation of the FormatEncoder
-interface for JSON serialization. It handles conversion between CTY values
-and JSON-encoded bytes with full preservation of type information, state,
-and other metadata.
-
-The implementation supports both compact and pretty-printed output,
-custom encoders for CTY-specific types, and robust error handling.
-"""
-
 from decimal import Decimal
 import json
 from typing import TYPE_CHECKING, ClassVar, TypeVar, cast  # Added TYPE_CHECKING
@@ -37,13 +21,10 @@ from pyvider.cty.types import (  # Added all types for _create_type_from_name
     CtySet,
     CtyString,
     CtyTuple,
+    CtyType,  # Added CtyType
 )
 from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
-
-if TYPE_CHECKING: # Add conditional import for CtyType
-    from pyvider.cty.types.base import CtyType
-
 
 T = TypeVar("T")
 

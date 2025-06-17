@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from typing import Any, ClassVar, Generic, TypeVar, final
+
+from attrs import define, evolve, field
+
+from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
+from pyvider.cty.types.base import CtyType
+from pyvider.telemetry import logger
+
 #
 # pyvider/cty/types/collections/set.py
 #
@@ -17,14 +25,6 @@ Sets support standard operations like adding and removing elements, checking
 for membership, and comparing with other sets, all while preserving type
 information and maintaining immutability of the original values.
 """
-
-from typing import Any, ClassVar, Generic, TypeVar, final
-
-from attrs import define, evolve, field
-
-from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
-from pyvider.cty.types.base import CtyType
-from pyvider.telemetry import logger
 
 T = TypeVar("T")
 
