@@ -16,7 +16,15 @@ immutability by returning new instances rather than modifying existing ones.
 """
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, Union, final # Added TYPE_CHECKING
+from typing import (  # Added TYPE_CHECKING
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Generic,
+    TypeVar,
+    Union,
+    final,
+)
 
 from attrs import define, evolve, field
 
@@ -295,7 +303,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise IndexError(message) from e
 
-    def append(self, item: Any) -> CtyList[T]:
+    def append(self, item: Any) -> 'CtyList[T]':
         """
         Append an item to the list, returning a new list.
 
@@ -329,7 +337,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: int | None = None) -> CtyList[T]:
+    def slice(self, start: int, end: int | None = None) -> 'CtyList[T]':
         """
         Get a slice of this list, returning a new list.
 
@@ -368,7 +376,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         return evolve(self, value=sliced_value)
 
-    def concat(self, other: CtyList[T]) -> CtyList[T]:
+    def concat(self, other: 'CtyList[T]') -> 'CtyList[T]':
         """
         Concatenate this list with another list, returning a new list.
 
@@ -522,7 +530,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         """
         return iter(self.value)
 
-    def __getitem__(self, index: Union[int, slice]) -> Union['CtyValue', 'CtyList[T]']:
+    def __getitem__(self, index: int | slice) -> Union['CtyValue', 'CtyList[T]']:
         """
         Support for indexing and slicing operations.
 

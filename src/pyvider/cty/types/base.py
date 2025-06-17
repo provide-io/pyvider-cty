@@ -131,7 +131,7 @@ class CtyType(ABC, Generic[T]):
 
     # Type checking methods
     def is_primitive_type(self) -> bool:
-        """Check if this type is a primitive type (string, number, bool, dynamic)."""
+        """Check if this type is a primitive type (string, number, bool)."""
         return False
 
     def is_collection_type(self) -> bool:

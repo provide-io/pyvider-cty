@@ -66,7 +66,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any) -> 'CtyValue':
+    def validate(self, value: Any) -> CtyValue:
         """Validate *value* as a **set** matching :pyattr:`element_type`.
 
         Acceptable *inputs*:
@@ -205,14 +205,14 @@ class CtySet(CtyType[set[T]], Generic[T]):
             logger.debug(f"🔌❗❌ Failed to remove item: {e}")
             raise CtySetValidationError(f"Failed to remove item: {e}")
 
-    def usable_as(self, other: 'CtyType') -> bool:
+    def usable_as(self, other: CtyType) -> bool:
         result = isinstance(other, CtySet) and self.element_type.usable_as(
             other.element_type
         )
         logger.debug(f"🔌📝✅ CtySet.usable_as: {result}")
         return result
 
-    def equal(self, other: 'CtyType') -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
         Check if this type is equal to the other type.
 

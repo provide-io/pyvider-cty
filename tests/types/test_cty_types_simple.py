@@ -54,6 +54,29 @@ class TestCtyBoolType(unittest.TestCase):
         with self.assertRaises(CtyValidationError):
             self.bool_type.validate("not_a_bool")
 
+class TestCtyTypePrimitiveCheck(unittest.TestCase):
+    def test_is_primitive_type(self):
+        from pyvider.cty.types import (
+            CtyList,
+            CtyMap,
+            CtySet,
+            CtyObject,
+            CtyTuple,
+            CtyDynamic,
+        )
+        # Primitive types
+        self.assertTrue(CtyString().is_primitive_type())
+        self.assertTrue(CtyNumber().is_primitive_type())
+        self.assertTrue(CtyBool().is_primitive_type())
+
+        # Non-primitive types
+        self.assertFalse(CtyList(element_type=CtyString()).is_primitive_type())
+        self.assertFalse(CtyMap(key_type=CtyString(), value_type=CtyString()).is_primitive_type()) # Assuming value_type as CtyString for the test
+        self.assertFalse(CtySet(element_type=CtyString()).is_primitive_type())
+        self.assertFalse(CtyObject({"attr": CtyString()}).is_primitive_type())
+        self.assertFalse(CtyTuple((CtyString(), CtyNumber())).is_primitive_type()) # Changed list to tuple
+        self.assertFalse(CtyDynamic().is_primitive_type())
+
 if __name__ == "__main__":
     unittest.main()
 

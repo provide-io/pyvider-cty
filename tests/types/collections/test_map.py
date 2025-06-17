@@ -20,7 +20,7 @@ class TestCtyMapInstantiation:
         # The CtyMapValidationError prepends "Map validation error: " to the specific message.
         expected_regex = (
             r"Map validation error: (key_type must be a CtyType instance, got (str|type)|"
-            r"Map key_type must be a primitive type, got CtyList)"
+            r"Map key_type must be a primitive type or CtyDynamic, got CtyList)"
         )
         with pytest.raises(CtyMapValidationError, match=expected_regex):
             CtyMap(key_type=invalid_key_type, value_type=CtyNumber())

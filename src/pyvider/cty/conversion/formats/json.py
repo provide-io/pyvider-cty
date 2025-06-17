@@ -17,7 +17,7 @@ custom encoders for CTY-specific types, and robust error handling.
 
 from decimal import Decimal
 import json
-from typing import TYPE_CHECKING, ClassVar, TypeVar, cast # Added TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, TypeVar, cast  # Added TYPE_CHECKING
 
 from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 from pyvider.cty.conversion.wire import WireFormatType
@@ -539,7 +539,7 @@ class JsonEncoder(FormatEncoder):
     @classmethod
     def _create_type_from_name(
         cls, type_name_str: str, data_dict_for_extra_type_info: dict[str, object]
-    ) -> CtyType:
+    ) -> 'CtyType':
         logger.debug(
             f"🧩🔍🔄 Creating type from name string: '{type_name_str}' with extra info from: {data_dict_for_extra_type_info!r}"
         )
