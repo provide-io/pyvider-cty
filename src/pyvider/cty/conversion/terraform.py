@@ -73,7 +73,14 @@ class TerraformFormatConverter(WireFormat):
         op_ctx = operation or get_current_operation()
         try:
             intermediate = serialize_value(value, operation=op_ctx)
-            if use_msgpack and HAS_MSGPACK:
+            if use_msgpack:
+                if not HAS_MSGPACK:
+                    raise WireFormatError(
+                        "Failed to marshal with msgpack: msgpack module not available",
+                        format_type=WireFormatType.TERRAFORM,
+                        operation="marshal",
+                        source_value=value,
+                    )
                 return msgpack.packb(
                     intermediate, default=cls._msgpack_default, use_bin_type=True
                 )
@@ -106,6 +113,12 @@ class TerraformFormatConverter(WireFormat):
                 if data.msgpack:  # If msgpack field is populated
                     logger.debug("Attempting to unmarshal from DynamicValue.msgpack")
                     try:
+                        if not HAS_MSGPACK:
+                            logger.error("Cannot unmarshal msgpack from DynamicValue: msgpack module not available")
+                            raise WireFormatError(
+                                "Cannot unmarshal msgpack: msgpack module not available",
+                                format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type
+                            )
                         raw_value = msgpack.unpackb(data.msgpack, raw=False)
                     except Exception as e_msgpack:
                         logger.error(f"Failed to unmarshal from DynamicValue.msgpack: {e_msgpack}", exc_info=True)
@@ -130,13 +143,23 @@ class TerraformFormatConverter(WireFormat):
                     raw_value = None # Explicitly set to None, extract_value will handle it.
             elif isinstance(data, bytes):  # data is raw bytes
                 source_bytes = data
-                logger.debug("Attempting to unmarshal from raw bytes (defaulting to msgpack, with JSON fallback)")
-                try:
-                    raw_value = msgpack.unpackb(source_bytes, raw=False)
-                except Exception as e_msgpack_raw:  # msgpack failed for raw bytes
-                    logger.warn(f"Raw bytes decoding as msgpack failed: {e_msgpack_raw}. Falling back to JSON decoding for raw bytes.")
+                logger.debug("Attempting to unmarshal from raw bytes (msgpack first, then JSON fallback)")
+                raw_value = None # Initialize before attempting decodes
+
+                if HAS_MSGPACK:
+                    try:
+                        raw_value = msgpack.unpackb(source_bytes, raw=False)
+                        logger.debug("Successfully unmarshalled raw bytes using msgpack")
+                    except Exception as e_msgpack_raw:
+                        logger.warn(f"Raw bytes decoding as msgpack failed: {e_msgpack_raw}. Will attempt JSON fallback.")
+                        raw_value = None # Ensure JSON fallback is attempted
+                else:
+                    logger.debug("msgpack module not available. Skipping msgpack decoding for raw bytes, will attempt JSON fallback.")
+
+                if raw_value is None: # Try JSON if msgpack was not available or failed
                     try:
                         raw_value = json.loads(source_bytes.decode("utf-8"))
+                        logger.debug("Successfully unmarshalled raw bytes using JSON")
                     except Exception as e_json_raw:
                         logger.error(f"Raw bytes decoding as JSON also failed: {e_json_raw}", exc_info=True)
                         raise WireFormatError(
