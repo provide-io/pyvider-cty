@@ -32,7 +32,7 @@ from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyValue
 user_type = CtyObject({
     "name": CtyString(),
     "age": CtyNumber(),
-    "hobbies": CtyList(CtyString())
+    "hobbies": CtyList(element_type=CtyString())
 })
 
 # Create a value matching the schema, using native Python types
