@@ -25,7 +25,7 @@ pip install pyvider-cty==0.1.0-preview1
 
 ## Quick Start
 
-```python
+\`\`\`python
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyValue
 
 # Define a type schema
@@ -35,25 +35,31 @@ user_type = CtyObject({
     "hobbies": CtyList(CtyString())
 })
 
-# Create a value matching the schema
+# Create a value matching the schema, using native Python types
 user = CtyValue.object(user_type, {
-    "name": CtyValue.string("Alice"),
-    "age": CtyValue.number(30),
-    "hobbies": CtyValue.list([
-        CtyValue.string("reading"),
-        CtyValue.string("hiking")
-    ])
+    "name": "Alice",  # Native Python string
+    "age": 30,        # Native Python integer
+    "hobbies": [      # Native Python list of native Python strings
+        "reading",
+        "hiking"
+    ]
 })
 
 # Access values with type safety
 print(user["name"].as_string())  # "Alice"
 print(user["age"].as_number())   # 30
-```
+
+# Example of accessing list elements
+print("Hobbies:")
+for hobby_val in user["hobbies"].value: # .value gives the Python list of CtyValues
+    print(f"- {hobby_val.as_string()}")
+\`\`\`
 
 ## Documentation
 
 - [Type System Overview](src/pyvider/cty/README.md)
 - [API Reference](docs/api/)
+<!-- TODO: Verify API reference link and content. The directory docs/api/ was not found. -->
 - [Examples](examples/)
 - [Contributing Guidelines](CONTRIBUTING.md)
 
