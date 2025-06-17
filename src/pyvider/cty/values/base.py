@@ -1311,7 +1311,7 @@ class CtyValue(Generic[T]):
 
         if isinstance(self._value, str | list | tuple | dict | set | frozenset):
             return not self._value  # Relies on Python's built-in truthiness for empty collections/strings
-        
+
         # For other types (like numbers, booleans), they are generally not considered "empty"
         # in the same way collections or strings are.
         return False

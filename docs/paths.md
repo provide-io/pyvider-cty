@@ -56,7 +56,7 @@ complex_path = CtyPath([
 ])
 print(f"Complex path (user.addresses[0].details[\"zip_code\"]): {complex_path}")
 
-# pyvider.cty: Plotting paths like a cartographer of code! ✍️🗺️
+# Depy: Plotting paths like a cartographer of code! ✍️🗺️
 ```
 **A Note on Path Creation**: While programmatic construction using steps is fundamental, some systems provide helper functions or even string parsing (e.g., `CtyPath.fromString("user.addresses[0].details['zip_code']")`) for more convenient path creation. Check the `pyvider.cty` specifics if such helpers are available, as they can be more user-friendly for common cases. For now, we're focusing on the explicit step-by-step construction.
 
@@ -88,11 +88,11 @@ from decimal import Decimal
 # --- Setup a nested structure ---
 server_spec_type = CtyObject({
     "name": CtyString(),
-    "ip_list": CtyList(element_type=CtyString()), # List of IP addresses
-    "config": CtyMap(key_type=CtyString(), value_type=CtyString())  # Map for various config settings
+    "ip_list": CtyList(CtyString()), # List of IP addresses
+    "config": CtyMap(CtyString())  # Map for various config settings
 })
 
-server_value = CtyValue.object(server_spec_type, {
+server_value = CtyValue(server_spec_type, {
     "name": "PrimaryServer-01",
     "ip_list": ["192.168.1.10", "10.0.0.5"],
     "config": {"region": "us-east-1", "status_check_url": "/healthz"}
@@ -118,8 +118,8 @@ except Exception as e: # Replace with specific CtyPathError, KeyError etc.
     print(f"Error applying path to missing key: {e} (Expected!)")
 
 # --- Path encountering an Unknown value ---
-list_of_strings_type = CtyList(element_type=CtyString())
-unknown_ip_list_server_value = CtyValue.object(server_spec_type, {
+list_of_strings_type = CtyList(CtyString())
+unknown_ip_list_server_value = CtyValue(server_spec_type, {
     "name": "ServerWithUnknownIPs",
     "ip_list": CtyValue.unknown(list_of_strings_type), # The ip_list itself is unknown
     "config": {"region": "eu-west-1"}
@@ -131,7 +131,7 @@ print(f"  IsUnknown: {result_from_unknown_path.is_unknown}, Type (of the unknown
 # The type should be CtyString, as that's the element type of ip_list.
 
 # --- Path encountering a Null value to traverse through ---
-null_ip_list_server_value = CtyValue.object(server_spec_type, {
+null_ip_list_server_value = CtyValue(server_spec_type, {
     "name": "ServerWithNullIPs",
     "ip_list": CtyValue.null(list_of_strings_type), # ip_list is null
     "config": {"region": "ap-south-1"}
@@ -143,18 +143,18 @@ except Exception as e: # Replace with specific error like "cannot traverse null 
     print(f"Error applying path through null list: {e} (Expected!)")
 
 # --- Path where the destination IS null (but path itself is valid) ---
-server_with_null_config_val = CtyValue.object(server_spec_type, {
+server_with_null_config_val = CtyValue(server_spec_type, {
     "name": "ServerWithNullConfig",
     "ip_list": [],
-    "config": CtyValue.null(CtyMap(key_type=CtyString(), value_type=CtyString())) # The config map itself is null
+    "config": CtyValue.null(CtyMap(CtyString())) # The config map itself is null
 })
 path_to_config = CtyPath([GetAttrStep("config")])
 null_config_result = path_to_config.apply_path(server_with_null_config_val)
 print(f"\nPath to a null config map: {null_config_result}")
-print(f"  Is it null? {null_config_result.is_null}, Type: {null_config_result.type}")
+print(f"  Is it null? {null_config_result.is_null()}, Type: {null_config_result.type}")
 
 
-# pyvider.cty: "Are we there yet?" - CtyPath, probably, as it navigates your data. 📍➡️📦
+# Depy: "Are we there yet?" - CtyPath, probably, as it navigates your data. 📍➡️📦
 ```
 
 ## Applying Paths to `CtyType`s: What *Kind* of Treasure? 📜
@@ -182,7 +182,7 @@ from pyvider.cty.path import GetAttrStep, IndexStep, KeyStep
 # Define a type structure
 complex_data_type = CtyObject({
     "id": CtyString(),
-    "user_settings": CtyMap(key_type=CtyString(), value_type=CtyBool()),
+    "user_settings": CtyMap(CtyBool()),
     "history": CtyList(
         CtyObject({
             "timestamp": CtyNumber(),
@@ -222,7 +222,7 @@ try:
 except Exception as e: # Replace with specific error
     print(f"Error applying non-existent attribute path to type: {e} (Expected!)")
 
-# pyvider.cty: Predicting the type of data you'll find, even before the data exists! Psychic powers, activate! 🔮✨
+# Depy: Predicting the type of data you'll find, even before the data exists! Psychic powers, activate! 🔮✨
 ```
 
 ---
