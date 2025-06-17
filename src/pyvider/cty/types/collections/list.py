@@ -302,7 +302,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
     def __iter__(self): # Missing return type annotation
         return iter(self.value)
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[CtyValue, 'CtyList']: # String literal for CtyValue
+    def __getitem__(self, index: int | slice) -> Union[CtyValue, 'CtyList']: # String literal for CtyValue
         if isinstance(index, slice):
             start = index.start if index.start is not None else 0
             stop = index.stop if index.stop is not None else len(self.value)
