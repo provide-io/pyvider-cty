@@ -206,5 +206,9 @@ class CtyDynamic(CtyType[Any]):
         """
         return "CtyDynamic()"
 
+    def is_empty_type(self) -> bool:
+        """CtyDynamic is considered an empty type."""
+        return True
+
 
 # 🐍🏗️🐣
