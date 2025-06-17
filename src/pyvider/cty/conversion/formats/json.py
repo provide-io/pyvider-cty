@@ -1,7 +1,7 @@
 
 from decimal import Decimal
 import json
-from typing import TYPE_CHECKING, ClassVar, TypeVar, cast  # Added TYPE_CHECKING
+from typing import ClassVar, TypeVar, cast  # Added TYPE_CHECKING
 
 from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 from pyvider.cty.conversion.wire import WireFormatType

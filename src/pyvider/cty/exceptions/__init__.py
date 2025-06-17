@@ -49,11 +49,11 @@ from pyvider.cty.exceptions.validation import (
 )
 
 __all__ = [
-    "CtyError",
     "AttributePathError",
     "CtyAttributeValidationError",
     "CtyBoolValidationError",
     "CtyConversionError",
+    "CtyError",
     "CtyListValidationError",
     "CtyMapValidationError",
     "CtyNumberValidationError",

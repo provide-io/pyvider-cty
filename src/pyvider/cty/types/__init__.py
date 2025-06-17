@@ -21,6 +21,7 @@ from pyvider.cty.types.structural import (
 
 __all__ = [
     "CtyBool",
+    "CtyCapsule",
     "CtyDynamic",
     "CtyList",
     "CtyMap",
@@ -30,7 +31,6 @@ __all__ = [
     "CtyString",
     "CtyTuple",
     "CtyType",
-    "CtyCapsule",
 ]
 
 # 🐍🏗️🐣

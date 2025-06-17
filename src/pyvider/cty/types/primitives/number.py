@@ -1,17 +1,14 @@
 
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Any, ClassVar, Union  # Added TYPE_CHECKING
+from typing import Any, ClassVar, Union  # Added TYPE_CHECKING
 
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
+from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
-
-if TYPE_CHECKING:
-    from pyvider.cty.values import CtyValue
-
 
 #
 # pyvider/cty/types/primitives/number.py

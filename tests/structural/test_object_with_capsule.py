@@ -4,11 +4,12 @@
 
 import pytest
 
-from pyvider.cty.types.structural import CtyObject
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.capsule import CtyCapsule
 from pyvider.cty.types.primitives import CtyString
+from pyvider.cty.types.structural import CtyObject
 from pyvider.cty.values import CtyValue
-from pyvider.cty.exceptions import CtyValidationError
+
 
 # A simple custom class for testing encapsulation
 class MyService:

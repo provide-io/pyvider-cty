@@ -98,31 +98,65 @@ class TerraformFormatConverter(WireFormat):
         operation: OperationContext | None = None,
         **options: object,
     ) -> object:
-        operation or get_current_operation()
+        op_ctx = operation or get_current_operation()
         raw_value: object = None
         try:
+            # Check if data is a DynamicValue protobuf object
             if hasattr(data, "__class__") and "DynamicValue" in data.__class__.__name__:
-                source_bytes = data.msgpack or data.json
-                if not source_bytes:
-                    return None
-            elif isinstance(data, bytes):
+                if data.msgpack:  # If msgpack field is populated
+                    logger.debug("Attempting to unmarshal from DynamicValue.msgpack")
+                    try:
+                        raw_value = msgpack.unpackb(data.msgpack, raw=False)
+                    except Exception as e_msgpack:
+                        logger.error(f"Failed to unmarshal from DynamicValue.msgpack: {e_msgpack}", exc_info=True)
+                        raise WireFormatError(
+                            f"Failed to unmarshal from DynamicValue.msgpack: {e_msgpack}",
+                            format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type
+                        ) from e_msgpack
+                elif data.json:  # If msgpack is not populated, but json is
+                    logger.debug("Attempting to unmarshal from DynamicValue.json")
+                    try:
+                        raw_value = json.loads(data.json.decode("utf-8"))
+                    except Exception as e_json:
+                        logger.error(f"Failed to unmarshal from DynamicValue.json: {e_json}", exc_info=True)
+                        raise WireFormatError(
+                            f"Failed to unmarshal from DynamicValue.json: {e_json}",
+                            format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type
+                        ) from e_json
+                else:  # DynamicValue has neither msgpack nor json data
+                    logger.debug("DynamicValue has neither msgpack nor json data. Returning None.")
+                    # Ensure extract_value can handle None if this path is taken, or return appropriate null value.
+                    # For now, assigning None to raw_value which extract_value should process.
+                    raw_value = None # Explicitly set to None, extract_value will handle it.
+            elif isinstance(data, bytes):  # data is raw bytes
                 source_bytes = data
-            else:
-                raw_value = data
-
-            if raw_value is None:
+                logger.debug("Attempting to unmarshal from raw bytes (defaulting to msgpack, with JSON fallback)")
                 try:
                     raw_value = msgpack.unpackb(source_bytes, raw=False)
-                except Exception:
-                    raw_value = json.loads(source_bytes.decode("utf-8"))
+                except Exception as e_msgpack_raw:  # msgpack failed for raw bytes
+                    logger.warn(f"Raw bytes decoding as msgpack failed: {e_msgpack_raw}. Falling back to JSON decoding for raw bytes.")
+                    try:
+                        raw_value = json.loads(source_bytes.decode("utf-8"))
+                    except Exception as e_json_raw:
+                        logger.error(f"Raw bytes decoding as JSON also failed: {e_json_raw}", exc_info=True)
+                        raise WireFormatError(
+                            f"Failed to unmarshal raw bytes as msgpack or JSON: {e_json_raw}",
+                            format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type
+                        ) from e_json_raw
+            else:  # data is already some other Python object
+                logger.debug("Data is already a Python object, no direct unmarshalling needed here.")
+                raw_value = data
 
+            # The call to extract_value should remain as it processes the raw_value
             return extract_value(raw_value)
         except Exception as e:
+            # Avoid re-wrapping WireFormatError
+            if isinstance(e, WireFormatError):
+                raise
+            # Wrap other exceptions in WireFormatError
             raise WireFormatError(
                 f"Unmarshal failed: {e}",
-                format_type=WireFormatType.TERRAFORM,
-                operation="unmarshal",
-                target_type=expected_type,
+                format_type=WireFormatType.TERRAFORM, operation="unmarshal", target_type=expected_type
             ) from e
 
 

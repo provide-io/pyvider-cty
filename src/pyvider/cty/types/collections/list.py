@@ -1,11 +1,11 @@
 
 from collections.abc import Sequence
 from typing import (  # Added TYPE_CHECKING
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Generic,
     TypeVar,
+    Union,
     final,
 )
 
@@ -13,10 +13,8 @@ from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.telemetry import logger
-
 from pyvider.cty.values import CtyValue
-
+from pyvider.telemetry import logger
 
 #
 # pyvider/cty/types/collections/list.py
@@ -185,13 +183,13 @@ class CtyList(CtyType[list[T]], Generic[T]):
         from pyvider.cty.values import CtyValue  # Local import kept
 
         if isinstance(container, CtyValue):
-            if not isinstance(container.type, 'CtyList'):
+            if not isinstance(container.type, CtyList):
                 message = f"Expected CtyValue with CtyList type, got CtyValue with {type(container.type).__name__}"
                 logger.error(f"🔌❗❌ {message}")
                 raise CtyListValidationError(message)
             return container.element_at(index)
 
-        elif isinstance(container, 'CtyList'):
+        elif isinstance(container, CtyList):
             container_value = container.value
         elif isinstance(container, list | tuple):
             container_value = container
@@ -248,7 +246,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
     def concat(self, other: 'CtyList[T]') -> 'CtyList[T]':
         logger.debug("🔌📝🔄 Concatenating with another list")
-        if not isinstance(other, 'CtyList'):
+        if not isinstance(other, CtyList):
             message = f"Expected CtyList, got {type(other).__name__}"
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
@@ -280,7 +278,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             return False
 
     def usable_as(self, other: CtyType) -> bool:
-        if not isinstance(other, 'CtyList'):
+        if not isinstance(other, CtyList):
             logger.debug(
                 f"🔌📝❌ CtyList.usable_as: False (other is {type(other).__name__})"
             )
@@ -291,7 +289,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
     def equal(self, other: CtyType) -> bool:
         logger.debug("📋🔍🔄 CtyList.equal: comparing %s to %s", self, other)
-        if not isinstance(other, 'CtyList'):
+        if not isinstance(other, CtyList):
             logger.debug("📋❌🔄  Other type is not CtyList → not equal")
             return False
         result = self.element_type.equal(other.element_type)
@@ -304,7 +302,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
     def __iter__(self): # Missing return type annotation
         return iter(self.value)
 
-    def __getitem__(self, index: int | slice) -> CtyValue | CtyList: # String literal for CtyValue
+    def __getitem__(self, index: int | slice) -> Union[CtyValue, 'CtyList']: # String literal for CtyValue
         if isinstance(index, slice):
             start = index.start if index.start is not None else 0
             stop = index.stop if index.stop is not None else len(self.value)

@@ -9,6 +9,7 @@ from attrs import define
 #
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
+
 # from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool # Moved into validate method
 # from pyvider.cty.types.collections import CtyList, CtyMap # Moved into validate method
 from pyvider.telemetry import logger
