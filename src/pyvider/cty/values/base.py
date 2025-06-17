@@ -1270,6 +1270,52 @@ class CtyValue(Generic[T]):
         # For known, non-null values, use Python's truthiness rules
         return bool(self._value)
 
+    def is_true(self) -> bool:
+        """
+        Check if this value is explicitly True.
+        Unknown and null values are not True.
+        """
+        if self._is_unknown or self._is_null:
+            return False
+        if isinstance(self._value, CtyValue):
+            return self._value.is_true()
+        return self._value is True
+
+    def is_false(self) -> bool:
+        """
+        Check if this value is explicitly False.
+        Unknown and null values are not False.
+        """
+        if self._is_unknown or self._is_null:
+            return False
+        if isinstance(self._value, CtyValue):
+            return self._value.is_false()
+        return self._value is False
+
+    def is_empty(self) -> bool:
+        """
+        Check if this value is empty.
+
+        - Unknown and null values are considered empty.
+        - Strings are empty if they are "".
+        - Collections (lists, maps, sets) are empty if they have no elements.
+        - Other types are generally not considered empty unless their specific logic defines it.
+        """
+        if self._is_unknown or self._is_null:
+            return True
+
+        # If the value is a CtyValue itself (e.g. for CtyDynamic holding another CtyValue),
+        # delegate the emptiness check to the inner CtyValue.
+        if isinstance(self._value, CtyValue):
+            return self._value.is_empty()
+
+        if isinstance(self._value, str | list | tuple | dict | set | frozenset):
+            return not self._value  # Relies on Python's built-in truthiness for empty collections/strings
+        
+        # For other types (like numbers, booleans), they are generally not considered "empty"
+        # in the same way collections or strings are.
+        return False
+
     def __str__(self) -> str:
         """
         String representation for display.

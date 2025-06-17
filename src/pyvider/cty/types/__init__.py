@@ -3,6 +3,7 @@
 #
 
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.capsule import CtyCapsule
 from pyvider.cty.types.collections import (
     CtyList,
     CtyMap,

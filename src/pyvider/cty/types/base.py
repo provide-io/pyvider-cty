@@ -163,6 +163,10 @@ class CtyType(ABC, Generic[T]):
         """Check if this type is a tuple type."""
         return False
 
+    def is_empty_type(self) -> bool:
+        """Check if this type is inherently empty (e.g., DynamicPseudoType)."""
+        return False
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CtyType):
             return self.equal(other)
