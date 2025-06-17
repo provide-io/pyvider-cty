@@ -19,17 +19,20 @@ Maps serve a similar role to Python dictionaries but with added type safety
 and immutability guarantees.
 """
 
-from typing import Any, ClassVar, Generic, Optional, TypeVar, cast, TypeGuard
+from typing import Any, ClassVar, Generic, TypeVar
 
-from attrs import define, field, evolve
+from attrs import define, evolve, field
 
-from pyvider.cty.exceptions import CtyMapValidationError, CtyTypeMismatchError, CtyValidationError
-from pyvider.telemetry import logger
+from pyvider.cty.exceptions import (
+    CtyMapValidationError,
+    CtyTypeMismatchError,
+    CtyValidationError,
+)
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.values import CtyValue
 from pyvider.cty.types.primitives import CtyString
-from pyvider.cty.types.structural.dynamic import CtyDynamic # Reverted to direct import
-
+from pyvider.cty.types.structural.dynamic import CtyDynamic  # Reverted to direct import
+from pyvider.cty.values import CtyValue
+from pyvider.telemetry import logger
 
 V = TypeVar('V')  # Value type is variable
 
@@ -51,8 +54,9 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
         # CtyDynamic is a primitive type and is allowed as a key type.
         # All other key types must also be primitive.
-        if not self.key_type.is_primitive_type():
-            error_msg = f"Map key_type must be a primitive type, got {self.key_type.__class__.__name__}"
+        # Adjusted to allow CtyDynamic explicitly, as its is_primitive_type() will be False.
+        if not (self.key_type.is_primitive_type() or isinstance(self.key_type, CtyDynamic)):
+            error_msg = f"Map key_type must be a primitive type or CtyDynamic, got {self.key_type.__class__.__name__}"
             logger.error(f"🔌❌🔄 {error_msg}")
             raise CtyMapValidationError(error_msg)
 
@@ -72,7 +76,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             logger.debug("JULES_MAP_VALIDATE: Explicitly handling empty dict {} input, returning NON-NULL empty map.")
             return CtyValue(vtype=self, value={}, key_mapping={})
 
-        input_dict: Optional[dict] = None
+        input_dict: dict | None = None
         if value is None:
             # logger.debug("🔌🔍✅ None value converted to empty map") # No longer converting
             # return CtyValue(vtype=self, value={}, key_mapping={})
@@ -116,8 +120,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         validation_errors = []
 
         for k, v in input_dict.items():
-            map_key_str: Optional[str] = None
-            validated_key_cty: Optional[CtyValue] = None
+            map_key_str: str | None = None
+            validated_key_cty: CtyValue | None = None
             item_errors = []
 
             try:
@@ -169,7 +173,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             if item_errors: validation_errors.extend(item_errors); continue
             assert map_key_str is not None, f"Internal error: map_key_str is None for key {k!r} after key validation"
 
-            validated_value_cty: Optional[CtyValue] = None # ensure it's defined before try
+            validated_value_cty: CtyValue | None = None # ensure it's defined before try
             try:
                 validated_value_cty = self.value_type.validate(v)
             except Exception as val_err: item_errors.append(f"Invalid value for key '{map_key_str}': {val_err}")
@@ -195,10 +199,10 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown:
-            logger.debug(f"🔌🔍⚠️ Cannot get from null/unknown map, returning default or special value")
+            logger.debug("🔌🔍⚠️ Cannot get from null/unknown map, returning default or special value")
             if default is not None: return default
             return CtyValue.null(self.value_type) if map_value.is_null else CtyValue.unknown(self.value_type)
-        str_key: Optional[str] = None
+        str_key: str | None = None
         try:
             validated_lookup_key: CtyValue
             if isinstance(key, CtyValue):
@@ -256,8 +260,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown:
             raise CtyMapValidationError("Cannot set on null or unknown map")
-        validated_key_cty: Optional[CtyValue] = None
-        str_key: Optional[str] = None
+        validated_key_cty: CtyValue | None = None
+        str_key: str | None = None
         try:
             if isinstance(key, CtyValue):
                 if not isinstance(key.type, CtyString): raise CtyMapValidationError(f"Key type mismatch: expected CtyString, got {key.type.__class__.__name__}")
@@ -281,7 +285,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise TypeError(f"Expected CtyValue with CtyMap type, got {type(map_value).__name__}")
         if map_value.is_null or map_value.is_unknown: raise CtyMapValidationError("Cannot delete from null or unknown map")
-        str_key: Optional[str] = None
+        str_key: str | None = None
         try:
             if isinstance(key, CtyValue):
                 if isinstance(key.type, CtyString) and not key.is_null and not key.is_unknown: str_key = str(key.value)
@@ -294,7 +298,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if str_key not in current_map: return map_value
         new_map = dict(current_map); new_key_mapping = dict(current_key_mapping)
         del new_map[str_key]
-        if str_key in new_key_mapping: del new_key_mapping[str_key]
+        new_key_mapping.pop(str_key, None)
         return evolve(map_value, value=new_map, key_mapping=new_key_mapping)
 
     def element_iterator(self, map_value: 'CtyValue') -> 'ElementIterator':
@@ -335,7 +339,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             f"🔌🔍🔄 Checking map usability: self({self!s}) as other({other!s})"
         )
         if isinstance(other, CtyDynamic):
-            logger.debug(f"🔌🔍✅ Map type is usable as CtyDynamic")
+            logger.debug("🔌🔍✅ Map type is usable as CtyDynamic")
             return True
         if not isinstance(other, CtyMap):
             logger.debug(f"🔌🔍❌ Target type is not CtyMap or CtyDynamic, got {other.__class__.__name__}")
@@ -351,12 +355,9 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         # 1. If this map's key type is Dynamic, the other's key type must be primitive (or also Dynamic).
         # 2. If the other map's key type is Dynamic, any key from this map is fine.
         # 3. Otherwise, key types must be directly usable.
-        key_ok = False
-        if self_key_is_dyn: # map(dynamic, V1) usable as map(K2, V2)
-            key_ok = other.key_type.is_primitive_type() # K2 must be primitive
-        elif other_key_is_dyn: # map(K1, V1) usable as map(dynamic, V2)
-            key_ok = self.key_type.is_primitive_type() # K1 must be primitive (already enforced by __init__)
-        else: # map(K1, V1) usable as map(K2, V2)
+        if isinstance(other.key_type, CtyDynamic):
+            key_ok = True # self.key_type is already validated as primitive or dynamic
+        else:
             key_ok = self.key_type.usable_as(other.key_type)
 
         logger.debug(f"🔌🔍🔄 Key usability detail: self.key({self.key_type!s}), other.key({other.key_type!s}) -> {key_ok}")

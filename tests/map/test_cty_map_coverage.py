@@ -26,7 +26,7 @@ class TestCtyMapCoverage:
 
     def test_constructor_non_primitive_key_type(self):
         list_type = CtyList(element_type=CtyString())
-        with pytest.raises(CtyMapValidationError, match=r"Map key_type must be a primitive type, got CtyList"):
+        with pytest.raises(CtyMapValidationError, match=r"Map key_type must be a primitive type or CtyDynamic, got CtyList"):
             CtyMap(key_type=list_type, value_type=CtyString())
 
     def test_constructor_dynamic_key_type_is_allowed(self):
@@ -171,21 +171,18 @@ class TestCtyMapCoverage:
         map_str_str = CtyMap(key_type=CtyString(), value_type=CtyString())
         dyn_keys_val = {CtyValue.string("k1"): CtyValue.string("v1"), CtyValue.string("k2"): CtyValue.string("v2")}
         map_dyn_str_val = CtyValue(CtyMap(key_type=CtyDynamic(), value_type=CtyString()), dyn_keys_val)
-        validated_map = map_str_str.validate(map_dyn_str_val) # map(D,S) is usable_as map(S,S)
-        assert validated_map.value["k1"].value == "v1"
-        assert validated_map.value["k2"].value == "v2"
+        # Expecting failure because map(dynamic, string) is not usable_as map(string, string)
+        expected_msg = r"Input CtyValue map type map\(CtyDynamic, CtyString\) is not compatible with target type map\(CtyString, CtyString\)"
+        with pytest.raises(CtyMapValidationError, match=expected_msg):
+            map_str_str.validate(map_dyn_str_val)
 
 
     def test_validate_ctyvalue_map_key_type_dynamic_target_incompatible(self):
         map_str_str = CtyMap(key_type=CtyString(), value_type=CtyString())
         dyn_keys_val = {CtyValue.number(1): CtyValue.string("v1")}
         map_dyn_str_val = CtyValue(CtyMap(key_type=CtyDynamic(), value_type=CtyString()), dyn_keys_val)
-        # map(D,S) is usable_as map(S,S). Validation fails inside due to key 1 not being string.
-        # The error message changed due to stricter key validation logic in CtyMap.validate for CtyValue keys.
-        # It should now be something like: "Invalid key CtyValue(Number(1)): Key type mismatch for map key CtyValue(Number(1)). Expected CtyString, but got CtyNumber."
-        # The actual error from CtyString().validate(CtyValue(CtyNumber(1))) will be "String validation error: Value is a CtyValue of type CtyNumber, not CtyString or CtyDynamic"
-        expected_regex = r"Map validation error: Map validation failed:\n - Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('1'\)\): String validation error: Value is a CtyValue of type CtyNumber, which cannot be automatically converted to CtyString\. Expected CtyString or CtyDynamic\."
-        with pytest.raises(CtyMapValidationError, match=expected_regex):
+        expected_msg = r"Input CtyValue map type map\(CtyDynamic, CtyString\) is not compatible with target type map\(CtyString, CtyString\)"
+        with pytest.raises(CtyMapValidationError, match=expected_msg):
              map_str_str.validate(map_dyn_str_val)
 
     def test_validate_ctyvalue_map_value_type_dynamic_target_compatible(self):
@@ -227,10 +224,10 @@ class TestCtyMapCoverage:
         target_map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
         dynamic_map_type = CtyMap(key_type=CtyDynamic(), value_type=CtyString())
         map_value_raw_keys = dynamic_map_type.validate({"key1": "value1", "key2": "value2"})
-        # map(D,S) is usable_as map(S,S)
-        validated_map = target_map_type.validate(map_value_raw_keys)
-        assert "key1" in validated_map.value
-        assert validated_map.value["key1"].value == "value1"
+        # map(D,S) is not usable_as map(S,S)
+        expected_msg = r"Input CtyValue map type map\(CtyDynamic, CtyString\) is not compatible with target type map\(CtyString, CtyString\)"
+        with pytest.raises(CtyMapValidationError, match=expected_msg):
+            target_map_type.validate(map_value_raw_keys)
 
     def test_equal_logs_comparison_details(self, capsys):
         map_type1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -270,8 +267,8 @@ class TestCtyMapCoverage:
         assert map_s_s.usable_as(map_d_d)
 
         assert map_s_d.usable_as(map_s_s) # map(S,D) as map(S,S) -> D.usable_as(S) for value -> True
-        assert map_d_s.usable_as(map_s_s) # map(D,S) as map(S,S) -> D.usable_as(S) for key -> True
-        assert map_d_d.usable_as(map_s_s) # map(D,D) as map(S,S) -> D.usable_as(S) for key & value -> True
+        assert not map_d_s.usable_as(map_s_s) # map(D,S) as map(S,S) -> key: D.usable_as(S) is False
+        assert not map_d_d.usable_as(map_s_s) # map(D,D) as map(S,S) -> key: D.usable_as(S) is False
 
     def test_validate_input_cty_value_map_both_dynamic_key_value_types(self):
         target_map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -279,10 +276,9 @@ class TestCtyMapCoverage:
             CtyMap(key_type=CtyDynamic(), value_type=CtyDynamic()),
             { CtyValue.string("a"): CtyValue.number(1), CtyValue.string("b"): CtyValue.number(2) }
         )
-        result = target_map_type.validate(input_val_map_dyn_dyn)
-        assert isinstance(result.type, CtyMap)
-        assert result.value["a"].value == 1
-        assert result.value["b"].value == 2
+        expected_msg = r"Input CtyValue map type map\(CtyDynamic, CtyDynamic\) is not compatible with target type map\(CtyString, CtyNumber\)"
+        with pytest.raises(CtyMapValidationError, match=expected_msg):
+            target_map_type.validate(input_val_map_dyn_dyn)
 
     def test_validate_input_cty_value_map_dynamic_key_concrete_value(self):
         target_map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -290,10 +286,9 @@ class TestCtyMapCoverage:
             CtyMap(key_type=CtyDynamic(), value_type=CtyNumber()),
             { CtyValue.string("a"): CtyValue.number(1), CtyValue.string("b"): CtyValue.number(2) }
         )
-        result = target_map_type.validate(input_val_map_dyn_num)
-        assert isinstance(result.type, CtyMap)
-        assert result.value["a"].value == 1
-        assert result.value["b"].value == 2
+        expected_msg = r"Input CtyValue map type map\(CtyDynamic, CtyNumber\) is not compatible with target type map\(CtyString, CtyNumber\)"
+        with pytest.raises(CtyMapValidationError, match=expected_msg):
+            target_map_type.validate(input_val_map_dyn_num)
 
     def test_validate_input_cty_value_map_concrete_key_dynamic_value(self):
         target_map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -312,10 +307,8 @@ class TestCtyMapCoverage:
             CtyMap(key_type=CtyDynamic(), value_type=CtyNumber()),
             { CtyValue.number(123): CtyValue.number(1) }
         )
-        # Similar to test_validate_ctyvalue_map_key_type_dynamic_target_incompatible,
-        # the error should come from CtyString().validate(CtyValue(CtyNumber(123)))
-        expected_regex = r"Map validation error: Map validation failed:\n - Invalid key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\): String validation error: Value is a CtyValue of type CtyNumber, which cannot be automatically converted to CtyString\. Expected CtyString or CtyDynamic\."
-        with pytest.raises(CtyMapValidationError, match=expected_regex):
+        expected_msg = r"Input CtyValue map type map\(CtyDynamic, CtyNumber\) is not compatible with target type map\(CtyString, CtyNumber\)"
+        with pytest.raises(CtyMapValidationError, match=expected_msg):
             target_map_type.validate(input_val_map_dyn_num)
 
 
@@ -365,7 +358,7 @@ class TestCtyMapCoverage:
     def test_usable_as_mismatched_key_value_both_dynamic_self(self):
         map_d_d = CtyMap(key_type=CtyDynamic(), value_type=CtyDynamic())
         map_s_n = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        assert map_d_d.usable_as(map_s_n)
+        assert not map_d_d.usable_as(map_s_n) # Key: D.usable_as(S) is False
 
     def test_usable_as_mismatched_key_value_both_dynamic_other(self):
         map_s_n = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -375,7 +368,7 @@ class TestCtyMapCoverage:
     def test_usable_as_self_key_dyn_other_val_dyn(self):
         map_d_s = CtyMap(key_type=CtyDynamic(), value_type=CtyString())
         map_s_d = CtyMap(key_type=CtyString(), value_type=CtyDynamic())
-        assert map_d_s.usable_as(map_s_d)
+        assert not map_d_s.usable_as(map_s_d) # Key: D.usable_as(S) is False
 
     def test_usable_as_self_val_dyn_other_key_dyn(self):
         map_s_d = CtyMap(key_type=CtyString(), value_type=CtyDynamic())

@@ -17,23 +17,23 @@ This follows go-cty's design for path handling.
 """
 
 from abc import ABC, abstractmethod
-from decimal import Decimal # Added for KeyStep.apply_type
-from typing import TypeVar, cast
-import collections.abc
+from decimal import Decimal  # Added for KeyStep.apply_type
+from typing import TypeVar
 
 from attrs import define, field
 
-from pyvider.telemetry import logger
-from pyvider.cty.exceptions import AttributePathError, CtyValidationError, CtyTypeMismatchError
+from pyvider.cty.exceptions import (
+    AttributePathError,
+    CtyTypeMismatchError,
+    CtyValidationError,
+)
 from pyvider.cty.types import (
     CtyType,
-    CtyList,
-    CtyMap,
-    CtyObject,
-    CtyTuple,
 )
+
 # Moved from local import in KeyStep.apply to module level
 from pyvider.cty.values import CtyValue
+from pyvider.telemetry import logger
 
 # Type variables for better type hints
 T = TypeVar('T')
@@ -121,8 +121,8 @@ class GetAttrStep(PathStep):
         logger.debug(f"🧰🔍🔄 Applying path step {self.name} to value type {value.type.__class__.__name__}")
 
         # Handle different value types appropriately
-        from pyvider.cty.types.structural import CtyObject
         from pyvider.cty.types.collections import CtyMap
+        from pyvider.cty.types.structural import CtyObject
 
         # For object values, use get_attribute
         if isinstance(value.type, CtyObject):
@@ -227,12 +227,12 @@ class IndexStep(PathStep):
 
         # Check for null values
         if value.is_null:
-            logger.error(f"🧰❌🔄 Cannot index into null value")
+            logger.error("🧰❌🔄 Cannot index into null value")
             raise AttributePathError("Cannot index into null value")
 
         # Handle unknown values
         if value.is_unknown:
-            logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown element")
+            logger.debug("🧰🔍🔄 Handling unknown value - creating unknown element")
             # Get the element's type
             elem_type = self.apply_type(value.type)
 
@@ -262,13 +262,13 @@ class IndexStep(PathStep):
 
             if isinstance(value.type, CtyList):
                 # For lists, use element_at method
-                logger.debug(f"🧰🔍🔄 Using element_at for list type")
+                logger.debug("🧰🔍🔄 Using element_at for list type")
                 result = value.type.element_at(collection_value, calculated_index)
                 logger.debug(f"🧰✅🔄 Retrieved element at index {calculated_index}")
                 return result
             elif isinstance(value.type, CtyTuple):
                 # For tuples, use element_at method
-                logger.debug(f"🧰🔍🔄 Using element_at for tuple type")
+                logger.debug("🧰🔍🔄 Using element_at for tuple type")
                 result = value.type.element_at(collection_value, calculated_index)
                 logger.debug(f"🧰✅🔄 Retrieved element at index {calculated_index}")
                 return result
@@ -363,12 +363,12 @@ class KeyStep(PathStep):
 
         # Check for null values
         if value.is_null:
-            logger.error(f"🧰❌🔄 Cannot get key from null value")
+            logger.error("🧰❌🔄 Cannot get key from null value")
             raise AttributePathError("Cannot get key from null value")
 
         # Handle unknown values
         if value.is_unknown:
-            logger.debug(f"🧰🔍🔄 Handling unknown value - creating unknown map value")
+            logger.debug("🧰🔍🔄 Handling unknown value - creating unknown map value")
             # Get the value's type
             val_type = self.apply_type(value.type)
 
@@ -478,8 +478,10 @@ class KeyStep(PathStep):
 
         if isinstance(self.key, CtyValue):
             # Import CtyNumber and CtyString for this specific check
-            from pyvider.cty.types.primitives import CtyNumber as PrimitivesCtyNumber # Use alias to avoid conflict
-            from pyvider.cty.types.primitives import CtyString as PrimitivesCtyString # Use alias
+            from pyvider.cty.types.primitives import (
+                CtyNumber as PrimitivesCtyNumber,  # Use alias to avoid conflict
+                CtyString as PrimitivesCtyString,  # Use alias
+            )
 
             is_number_key_for_string_map = isinstance(self.key.type, PrimitivesCtyNumber) and isinstance(vtype.key_type, PrimitivesCtyString)
 
@@ -500,7 +502,9 @@ class KeyStep(PathStep):
             key_to_validate = self.key
             # For raw Python keys that are numbers and map key_type is string, CtyString.validate would fail.
             # We need to convert them to string here as well.
-            from pyvider.cty.types.primitives import CtyString # Ensure CtyString is available
+            from pyvider.cty.types.primitives import (
+                CtyString,  # Ensure CtyString is available
+            )
             # We also need CtyNumber to check the type of raw key_to_validate
             # However, raw Python ints/floats are not CtyNumber.
             # We rely on CtyString.validate to attempt conversion or fail for raw types.
@@ -626,7 +630,7 @@ class CtyPath:
                 logger.error(f"🧰❌🔄 {error_msg}")
                 raise AttributePathError(error_msg) from e
 
-        logger.debug(f"🧰✅🔄 Path application complete")
+        logger.debug("🧰✅🔄 Path application complete")
         return current
 
     def apply_path_type(self, vtype: "CtyType") -> "CtyType":
@@ -664,7 +668,7 @@ class CtyPath:
                 logger.error(f"🧰❌🔄 {error_msg}")
                 raise AttributePathError(error_msg) from e
 
-        logger.debug(f"🧰✅🔄 Path type application complete")
+        logger.debug("🧰✅🔄 Path type application complete")
         return current
 
     def string(self) -> str:

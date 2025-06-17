@@ -51,7 +51,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: Any) -> 'CtyValue':
         """Validate *value* and return a :class:`~pyvider.cty.values.CtyValue`.
 
         Conversion matrix

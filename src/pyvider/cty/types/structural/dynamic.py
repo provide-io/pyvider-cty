@@ -58,7 +58,7 @@ class CtyDynamic(CtyType[Any]):
 
     ctype: ClassVar[str] = "dynamic"
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: Any) -> 'CtyValue':
         """
         Validate a value against the dynamic type.
 
@@ -200,10 +200,6 @@ class CtyDynamic(CtyType[Any]):
             str: A string showing the class name in a format suitable for debugging
         """
         return "CtyDynamic()"
-
-    def is_primitive_type(self) -> bool:
-        """Check if this type is a primitive type (special case for dynamic)."""
-        return True
 
 
 # 🐍🏗️🐣

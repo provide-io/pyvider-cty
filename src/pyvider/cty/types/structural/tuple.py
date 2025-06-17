@@ -356,7 +356,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug("🧩✅🔄 Tuple type is usable as target type")
         return True
 
-    def __getitem__(self, index: int | slice) -> 'CtyType | CtyTuple':
+    def __getitem__(self, index: int | slice) -> 'CtyType | "CtyTuple"':
         """
         Support for indexing and slicing operations on tuple types.
 

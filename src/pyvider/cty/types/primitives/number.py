@@ -60,7 +60,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     ctype: ClassVar[str] = "number"
     value: int | Decimal = field(default=0)
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: Any) -> 'CtyValue':
         """
         Validate that the given value is a number or can be converted to one.
 

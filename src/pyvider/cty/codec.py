@@ -23,13 +23,13 @@ from .types import (
     CtyString,
     CtyTuple,
 )
+
 # CtyType is imported below under TYPE_CHECKING to resolve forward ref if needed,
 # but it's also directly used, so ensure it's available for runtime.
-from .types.base import CtyType as CtyTypeDefinition
 
 if TYPE_CHECKING:
+    from .types.base import CtyType  # Ensure CtyType is available for type hints
     from .values.base import CtyValue
-    from .types.base import CtyType # Ensure CtyType is available for type hints
 
 
 # Custom exception for parsing errors
@@ -44,7 +44,7 @@ class CtyTypeParseError(ValueError):
 # or pass CtyValue type dynamically if needed.
 
 
-def _value_to_serializable(cty_value: CtyValue) -> dict[str, object]:
+def _value_to_serializable(cty_value: 'CtyValue') -> dict[str, object]:
     """
     Converts a CtyValue instance into a dictionary suitable for serialization.
     This leverages and extends the existing to_json_comparable_dict structure.
@@ -57,8 +57,8 @@ def _value_to_serializable(cty_value: CtyValue) -> dict[str, object]:
 
 
 def _serializable_to_value(
-    data: dict[str, object], target_type: CtyType
-) -> CtyValue:
+    data: dict[str, object], target_type: 'CtyType'
+) -> 'CtyValue':
     """
     Recursively reconstructs a CtyValue from basic Python data and a target CtyType.
     'data' is expected to be a dictionary from _value_to_serializable.
@@ -258,19 +258,19 @@ def _serializable_to_value(
     return reconstructed_value
 
 
-def cty_value_to_json_string(value: CtyValue) -> str:
+def cty_value_to_json_string(value: 'CtyValue') -> str:
     serializable_data = _value_to_serializable(value)
     return json.dumps(serializable_data)
 
 
-def cty_value_from_json_string(json_str: str, target_type: CtyType) -> CtyValue:
+def cty_value_from_json_string(json_str: str, target_type: 'CtyType') -> 'CtyValue':
     data = json.loads(json_str)
     if not isinstance(data, dict):
         raise ValueError("Invalid JSON data: root must be an object.")
     return _serializable_to_value(data, target_type)
 
 
-def cty_value_to_msgpack_bytes(value: CtyValue) -> bytes:
+def cty_value_to_msgpack_bytes(value: 'CtyValue') -> bytes:
     if value.is_unknown:
         return msgpack.packb(ExtType(0, b""), use_bin_type=True)
     serializable_data = _value_to_serializable(value)
@@ -287,8 +287,8 @@ def cty_msgpack_ext_hook(code, data):
 
 
 def cty_value_from_msgpack_bytes(
-    msgpack_bytes: bytes, target_type: CtyType
-) -> CtyValue:
+    msgpack_bytes: bytes, target_type: 'CtyType'
+) -> 'CtyValue':
     from .values.base import CtyValue
 
     data = msgpack.unpackb(msgpack_bytes, ext_hook=cty_msgpack_ext_hook, raw=False)
@@ -334,7 +334,7 @@ def _split_by_delimiter_respecting_nesting(text: str, delimiter: str) -> list[st
     return parts  # Do not filter empty strings here; let caller decide
 
 
-def parse_type_string_to_ctytype(type_str: str) -> CtyType:
+def parse_type_string_to_ctytype(type_str: str) -> 'CtyType':
     type_str = type_str.strip()
 
     if type_str.lower() == "string":

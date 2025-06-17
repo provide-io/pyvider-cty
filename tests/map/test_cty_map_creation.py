@@ -119,7 +119,7 @@ class TestCtyMapCreation:
             CtyMap(key_type=None, value_type=123) # This will hit key_type check first
 
         # Invalid key_type (not primitive)
-        with pytest.raises(CtyMapValidationError, match=r"Map key_type must be a primitive type, got CtyList"):
+        with pytest.raises(CtyMapValidationError, match=r"Map key_type must be a primitive type or CtyDynamic, got CtyList"):
             CtyMap(key_type=CtyList(element_type=CtyString()), value_type=CtyString())
 
 
