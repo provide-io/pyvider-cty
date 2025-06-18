@@ -156,7 +156,7 @@ class CtyString(CtyType[str]):
         logger.error(f"🔤❗❌ RAISING ERROR (raw type path): {error_msg}")
         raise CtyStringValidationError(error_msg)
 
-    def equal(self, other: CtyType[object]) -> bool:
+    def equal(self, other: "CtyType[object]") -> bool:
         """
         Check if this string type is equal to another type.
 
@@ -174,7 +174,7 @@ class CtyString(CtyType[str]):
         logger.debug(f"🔤🔍✅ CtyString.equal: {result}")
         return result
 
-    def usable_as(self, other: CtyType[object]) -> bool:
+    def usable_as(self, other: "CtyType[object]") -> bool:
         """
         Check if this string type can be used where the other type is expected.
 
