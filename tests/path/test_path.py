@@ -367,7 +367,7 @@ class TestPathSystem:
         # str(KeyStep(key=[])) is "['[]']". The error message is f"Error at step 1 ({step}): {e}"
         with pytest.raises(
             AttributePathError,
-            match=r"Error at step 1 \(\[\[\]\]\): Unsupported key type in path step: .*",
+            match=r"Error at step 1 \(\['\[\]'\]\): Unsupported key type in path step: .*",
         ):
             list_key_path.apply_path(cty_map_value)
 
