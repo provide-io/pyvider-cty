@@ -2,7 +2,7 @@
 from decimal import Decimal
 import functools
 import json
-from typing import TypeVar  # REVIEW_TYPING, cast
+from typing import TypeVar, cast
 
 from pyvider.cty.context.operation_context import (
     OperationContext,
