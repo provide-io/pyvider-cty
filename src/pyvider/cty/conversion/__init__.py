@@ -6,6 +6,15 @@ This package provides the main entry points for marshalling and unmarshalling
 CTY values to/from various wire formats (like JSON, MessagePack), and includes
 utilities for type classification, standardization, and validation.
 """
+# Ensure WireFormatRegistry is defined before formatters try to register.
+from pyvider.cty.conversion.wire import WireFormat, WireFormatRegistry, WireFormatType
+
+# Import concrete formatter modules to ensure their @register_formatter decorators run.
+# These imports are primarily for their side effects (registration).
+import pyvider.cty.conversion.formats.json
+import pyvider.cty.conversion.formats.msgpack
+import pyvider.cty.conversion.terraform  # F401 in original, but import for registration side-effect
+
 from pyvider.cty.context import (
     OperationContext,
     get_current_operation,
@@ -19,19 +28,12 @@ from pyvider.cty.conversion.format import (
     standardize_type_string,
     validate_type_format,
 )
-from pyvider.cty.conversion.formats.base import (
-    register_formatter,
-)
-
-# Import concrete formatter modules to ensure their @register_formatter decorators run.
-# These imports are primarily for their side effects (registration).
-import pyvider.cty.conversion.formats.json
-import pyvider.cty.conversion.formats.msgpack
+# from pyvider.cty.conversion.formats.base import ( # register_formatter might be used by custom formatters
+#     register_formatter, # Removed as part of registry consolidation
+# )
 from pyvider.cty.conversion.schema_type_encoder import (
     encode_type_to_wire,  # Import the moved function
 )
-import pyvider.cty.conversion.terraform  # F401: Unused import (registration if any, happens inside)
-from pyvider.cty.conversion.wire import WireFormat, WireFormatRegistry, WireFormatType
 from pyvider.telemetry import logger
 from typing import TypeVar
 
@@ -112,7 +114,7 @@ __all__ = [
     "marshal",
     "operation_context",
     "parse_collection_type",
-    "register_formatter",
+    # "register_formatter", # Removed
     "standardize_type_string",
     "unmarshal",
     "validate_type_format",
