@@ -450,9 +450,7 @@ class TestCtyValueGetMethod:
         ]
         # Check debug calls first, then warning
         mocked_base_logger.debug.assert_any_call("🔄🔍🔄 Getting value for key: name")
-        mocked_base_logger.warning.assert_any_call(
-            "JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: Exception('mocked error')"
-        )
+        # Removed assertion for the JULES_DEBUG log
 
     def test_get_on_map_with_internal_get_failure(self, mocker) -> None:
         mocked_base_logger = mocker.patch("pyvider.cty.values.base.logger")
@@ -467,9 +465,7 @@ class TestCtyValueGetMethod:
         assert map_val.get("a", default_sentinel) == default_sentinel
         # Check for specific calls in order (or use assert_any_call if order within a level is not strict)
         mocked_base_logger.debug.assert_any_call("🔄🔍🔄 Getting value for key: a")
-        mocked_base_logger.warning.assert_any_call(
-            "JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: Exception('mocked map error')"
-        )
+        # Removed assertion for the JULES_DEBUG log
 
     def test_get_on_object_missing_attribute_returns_default_and_logs(
         self, mocker
@@ -484,9 +480,8 @@ class TestCtyValueGetMethod:
 
         mocked_logger.debug.assert_any_call("🔄🔍🔄 Getting value for key: age")
         # This assertion relies on CtyObject.get_attribute raising an exception that is caught by CtyValue.get
-        mocked_logger.warning.assert_any_call(
-            "JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: CtyAttributeValidationError('Object validation error: Unknown attribute: age')"
-        )
+        # The JULES_DEBUG log was removed, so the assertion for it is also removed.
+        # If there are other relevant warnings that should be checked, they would be asserted here.
 
 
 # New Test Class

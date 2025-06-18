@@ -342,7 +342,6 @@ class CtyValue(Generic[T]):
                 # Call the map's get method
                 return self._vtype.get(self, key, default_cty)  # Pass CtyValue default
             except Exception as e:  # This broad exception now catches issues from self._vtype.get as well
-                # logger.warning(f"JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: {e!r}") # Removed JULES_DEBUG log and associated TODO.
                 return default  # Return original python default
 
         # For objects, use the object's get_attribute method
@@ -359,9 +358,6 @@ class CtyValue(Generic[T]):
                 # This method should ideally handle 'has_attribute' check internally or raise appropriate Cty errors
                 return self._vtype.get_attribute(self, key)
             except Exception as e:  # This broad exception now catches issues from self._vtype.get_attribute
-                # logger.warning(
-                #     f"JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: {e!r}"
-                # ) # Removed JULES_DEBUG log and associated TODO.
                 return default  # Return original python default
 
         # Value doesn't support key lookup
@@ -1611,6 +1607,91 @@ class CtyValue(Generic[T]):
         from ..codec import cty_value_from_msgpack_bytes  # Local import
 
         return cty_value_from_msgpack_bytes(msgpack_bytes, target_type)
+
+    # -------------------------------------------------------------------------
+    # Set operations
+    # -------------------------------------------------------------------------
+    def union(self, other: "CtyValue") -> "CtyValue":
+        """
+        Compute the union of this set with another set.
+
+        This operation is only valid for CtyValues that are sets.
+
+        Args:
+            other: Another CtyValue (must be a set of the same element type).
+
+        Returns:
+            A new CtyValue representing the union of the two sets.
+
+        Raises:
+            TypeError: If this value or the other value is not a set,
+                       or if their element types are incompatible.
+            CtySetValidationError: If underlying set operation fails.
+        """
+        from pyvider.cty.types.collections import CtySet # Local import
+
+        if not isinstance(self._vtype, CtySet):
+            raise TypeError("Union operation is only valid for CtySet values.")
+        if not isinstance(other._vtype, CtySet):
+            raise TypeError("Other operand for union must also be a CtySet value.")
+
+        # Delegate to the CtySet type's union method
+        return self._vtype.union(self, other)
+
+    def intersection(self, other: "CtyValue") -> "CtyValue":
+        """
+        Compute the intersection of this set with another set.
+
+        This operation is only valid for CtyValues that are sets.
+
+        Args:
+            other: Another CtyValue (must be a set of the same element type).
+
+        Returns:
+            A new CtyValue representing the intersection of the two sets.
+
+        Raises:
+            TypeError: If this value or the other value is not a set,
+                       or if their element types are incompatible.
+            CtySetValidationError: If underlying set operation fails.
+        """
+        from pyvider.cty.types.collections import CtySet # Local import
+
+        if not isinstance(self._vtype, CtySet):
+            raise TypeError("Intersection operation is only valid for CtySet values.")
+        if not isinstance(other._vtype, CtySet):
+            raise TypeError("Other operand for intersection must also be a CtySet value.")
+
+        # Delegate to the CtySet type's intersection method
+        return self._vtype.intersection(self, other)
+
+    def difference(self, other: "CtyValue") -> "CtyValue":
+        """
+        Compute the difference between this set and another set.
+        (Elements in this set that are not in the other set).
+
+        This operation is only valid for CtyValues that are sets.
+
+        Args:
+            other: Another CtyValue (must be a set of the same element type).
+
+        Returns:
+            A new CtyValue representing the difference.
+
+        Raises:
+            TypeError: If this value or the other value is not a set,
+                       or if their element types are incompatible.
+            CtySetValidationError: If underlying set operation fails.
+        """
+        from pyvider.cty.types.collections import CtySet # Local import
+
+        if not isinstance(self._vtype, CtySet):
+            raise TypeError("Difference operation is only valid for CtySet values.")
+        if not isinstance(other._vtype, CtySet):
+            raise TypeError("Other operand for difference must also be a CtySet value.")
+
+        # Delegate to the CtySet type's difference method
+        return self._vtype.difference(self, other)
 
 
 # 🐍🏗️🐣
