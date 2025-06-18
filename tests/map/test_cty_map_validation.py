@@ -19,7 +19,9 @@ class TestCtyMapValidation:
     async def test_cty_map_validate_valid_string_map(self) -> None:
         """Test validation of a valid string map with pre‐validated keys/values."""
         valid = {
-            CtyValue(vtype=CtyString(), value="name"): CtyValue(vtype=CtyString(), value="pyvider")
+            CtyValue(vtype=CtyString(), value="name"): CtyValue(
+                vtype=CtyString(), value="pyvider"
+            )
         }
         validated = self.string_map.validate(valid)
         assert isinstance(validated, CtyValue)
@@ -92,7 +94,7 @@ class TestCtyMapValidation:
         data = {
             "one": 1,
             2: 2,  # Invalid key type (int instead of string)
-            "three": 3
+            "three": 3,
         }
 
         with pytest.raises(CtyMapValidationError):
@@ -107,7 +109,7 @@ class TestCtyMapValidation:
         data = {
             "one": 1,
             "two": "not_a_number",  # Invalid value type (string instead of number)
-            "three": 3
+            "three": 3,
         }
 
         with pytest.raises(CtyMapValidationError):
@@ -128,7 +130,7 @@ class TestCtyMapValidation:
         data = {
             key1: val1,
             key2: val2,
-            "three": 3  # Mixed with raw value
+            "three": 3,  # Mixed with raw value
         }
 
         result = map_type.validate(data)
@@ -214,18 +216,17 @@ class TestCtyMapValidation:
         # Create object type with proper CtyType attributes
         from pyvider.cty import CtyObject, CtyPath
 
-        person_type = CtyObject(attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber()
-        })
+        person_type = CtyObject(
+            attribute_types={"name": CtyString(), "age": CtyNumber()}
+        )
 
         # Create a value using proper CtyValue wrapping
         person = CtyValue(
             vtype=person_type,
             value={
                 "name": CtyValue(vtype=CtyString(), value="Alice"),
-                "age": CtyValue(vtype=CtyNumber(), value=30)
-            }
+                "age": CtyValue(vtype=CtyNumber(), value=30),
+            },
         )
 
         # Test attribute access
@@ -236,5 +237,6 @@ class TestCtyMapValidation:
         assert isinstance(name_result, CtyValue)
         assert isinstance(name_result.type, CtyString)
         assert name_result.value == "Alice"
+
 
 # 🐍🏗️🧪

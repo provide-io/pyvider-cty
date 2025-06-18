@@ -12,7 +12,7 @@ cluster_type = CtyObject(
     attribute_types={
         "name": CtyString(),
         "instance_count": CtyNumber(),
-        "regions": CtyList(element_type=CtyString())
+        "regions": CtyList(element_type=CtyString()),
     }
 )
 
@@ -20,7 +20,7 @@ cluster_type = CtyObject(
 cluster_data = {
     "name": "production-cluster",
     "instance_count": 5,
-    "regions": ["us-west-1", "eu-west-1", "ap-southeast-1"]
+    "regions": ["us-west-1", "eu-west-1", "ap-southeast-1"],
 }
 
 # Validate returns a CtyValue
@@ -43,18 +43,18 @@ try:
     # Deserialize with type information by providing expected_type
     recovered = unmarshal(
         typed_data,
-        format_kind=WireFormatType.JSON, # Specify format if not auto-detectable
-        expected_type=cluster_type
+        format_kind=WireFormatType.JSON,  # Specify format if not auto-detectable
+        expected_type=cluster_type,
     )
 
     print(f"\nRecovered type: {recovered.type.__class__.__name__}")
     if not recovered.is_null and not recovered.is_unknown:
         print(f"Recovered name: {recovered['name'].value}")
-        regions_list = recovered['regions']
+        regions_list = recovered["regions"]
         if not regions_list.is_null and not regions_list.is_unknown:
-             print(f"Recovered regions: {[r.value for r in regions_list.value]}")
+            print(f"Recovered regions: {[r.value for r in regions_list.value]}")
         else:
-             print("Recovered regions: <null or unknown>")
+            print("Recovered regions: <null or unknown>")
     else:
         print("Recovered value is null or unknown.")
 

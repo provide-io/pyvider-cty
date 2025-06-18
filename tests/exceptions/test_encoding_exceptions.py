@@ -40,21 +40,27 @@ class TestTransformationError:
         assert str(error) == expected_msg
         assert error.target_type == target_str
 
-        class SimpleClass: pass
+        class SimpleClass:
+            pass
+
         target_instance = SimpleClass()
-        error_instance = TransformationError("Target type error", target_type=target_instance)
+        error_instance = TransformationError(
+            "Target type error", target_type=target_instance
+        )
         expected_msg_instance = f"Target type error (target_type={target_instance!s})"
         assert str(error_instance) == expected_msg_instance
-
 
     def test_instantiation_with_all_params(self) -> None:
         schema_obj = {"type": "number"}
         target = CtyString
-        error = TransformationError("Full transform error", schema=schema_obj, target_type=target)
+        error = TransformationError(
+            "Full transform error", schema=schema_obj, target_type=target
+        )
         expected_msg = "Full transform error (schema_type=dict, target_type=CtyString)"
         assert str(error) == expected_msg
         assert error.schema == schema_obj
         assert error.target_type == target
+
 
 class TestSerializationError:
     def test_instantiation_message_only(self) -> None:
@@ -64,11 +70,14 @@ class TestSerializationError:
         assert error.encoding is None
 
     def test_instantiation_all_params(self) -> None:
-        error = SerializationError("Cannot serialize", value="testval", format_name="testformat")
+        error = SerializationError(
+            "Cannot serialize", value="testval", format_name="testformat"
+        )
         expected_msg = "TESTFORMAT encoding error: Cannot serialize"
         assert str(error) == expected_msg
         assert error.value == "testval"
         assert error.encoding == "testformat"
+
 
 class TestDeserializationError:
     def test_instantiation_message_only(self) -> None:
@@ -78,11 +87,14 @@ class TestDeserializationError:
         assert error.encoding is None
 
     def test_instantiation_all_params(self) -> None:
-        error = DeserializationError("Cannot deserialize", data="testdata", format_name="testformat")
+        error = DeserializationError(
+            "Cannot deserialize", data="testdata", format_name="testformat"
+        )
         expected_msg = "TESTFORMAT encoding error: Cannot deserialize"
         assert str(error) == expected_msg
         assert error.data == "testdata"
         assert error.encoding == "testformat"
+
 
 class TestDynamicValueError:
     def test_instantiation_basic(self) -> None:
@@ -92,9 +104,10 @@ class TestDynamicValueError:
         assert error.value == "dyn_val"
         assert error.encoding == "DynamicValue"
 
+
 class TestJsonEncodingError:
     def test_instantiation_message_only(self) -> None:
-        error = JsonEncodingError("Some JSON problem") # Changed message
+        error = JsonEncodingError("Some JSON problem")  # Changed message
         expected_msg = "JSON encoding error: Some JSON problem"
         assert str(error) == expected_msg
         assert error.data is None
@@ -102,15 +115,18 @@ class TestJsonEncodingError:
         assert error.encoding == "json"
 
     def test_instantiation_all_params(self) -> None:
-        error = JsonEncodingError("Specific JSON problem", data="testdata", operation="testop")
+        error = JsonEncodingError(
+            "Specific JSON problem", data="testdata", operation="testop"
+        )
         expected_msg = "JSON testop error: Specific JSON problem"
         assert str(error) == expected_msg
         assert error.data == "testdata"
         assert error.operation == "testop"
 
+
 class TestMsgPackEncodingError:
     def test_instantiation_message_only(self) -> None:
-        error = MsgPackEncodingError("Some MsgPack problem") # Changed message
+        error = MsgPackEncodingError("Some MsgPack problem")  # Changed message
         expected_msg = "MSGPACK encoding error: Some MsgPack problem"
         assert str(error) == expected_msg
         assert error.data is None
@@ -118,11 +134,14 @@ class TestMsgPackEncodingError:
         assert error.encoding == "msgpack"
 
     def test_instantiation_all_params(self) -> None:
-        error = MsgPackEncodingError("Specific MsgPack problem", data="testdata", operation="testop")
+        error = MsgPackEncodingError(
+            "Specific MsgPack problem", data="testdata", operation="testop"
+        )
         expected_msg = "MSGPACK testop error: Specific MsgPack problem"
         assert str(error) == expected_msg
         assert error.data == "testdata"
         assert error.operation == "testop"
+
 
 class TestWireFormatError:
     def test_instantiation_message_only(self) -> None:
@@ -144,7 +163,9 @@ class TestWireFormatError:
         assert error.operation == "test_op"
 
     def test_instantiation_with_all_params(self) -> None:
-        error = WireFormatError("Full wire issue", format_type="test_ft", operation="test_op")
+        error = WireFormatError(
+            "Full wire issue", format_type="test_ft", operation="test_op"
+        )
         expected_msg = "Full wire issue during test_op using test_ft"
         assert str(error) == expected_msg
         assert error.format_type == "test_ft"
@@ -159,7 +180,7 @@ class TestWireFormatError:
             schema=schema_obj,
             target_type=target,
             format_type="fancy_format",
-            operation="transforming"
+            operation="transforming",
         )
         expected_msg = "Wire transform issue (schema_type=dict, target_type=CtyString) during transforming using fancy_format"
         assert str(error) == expected_msg
@@ -167,6 +188,7 @@ class TestWireFormatError:
         assert error.target_type == target
         assert error.format_type == "fancy_format"
         assert error.operation == "transforming"
+
 
 class TestAttributePathError:
     def test_instantiation_basic(self) -> None:
@@ -176,6 +198,7 @@ class TestAttributePathError:
         assert str(error) == "Path error"
         assert error.path == path_obj
         assert error.value == value_obj
+
 
 class TestInvalidTypeError:
     def test_instantiation_basic(self) -> None:

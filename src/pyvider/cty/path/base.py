@@ -99,7 +99,7 @@ class GetAttrStep(PathStep):
     name: str = field()
 
     @name.validator
-    def _validate_name(self, attribute, value) -> None:
+    def _validate_name(self, attribute: str, value: str) -> None:
         """Validate that the attribute name is not empty."""
         logger.debug(f"🧰🔍🔄 Validating attribute name: {value}")
         if not value:

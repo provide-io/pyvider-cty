@@ -9,8 +9,10 @@ from pyvider.cty.types.capsule import CtyCapsule
 class MyCustomClass:
     pass
 
+
 class AnotherCustomClass:
     pass
+
 
 def test_capsule_creation():
     """Test basic creation of CtyCapsule."""
@@ -18,19 +20,24 @@ def test_capsule_creation():
     assert capsule_type.name == "MyCustom"
     assert capsule_type.py_type == MyCustomClass
 
+
 def test_capsule_representation():
     """Test the string representation of CtyCapsule."""
     capsule_type = CtyCapsule("MyCustom", MyCustomClass)
     assert repr(capsule_type) == "CtyCapsule(MyCustom, MyCustomClass)"
+
 
 def test_capsule_equality():
     """Test equality comparisons for CtyCapsule."""
     capsule_type1 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type2 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type3 = CtyCapsule("AnotherCustom", AnotherCustomClass)
-    capsule_type4 = CtyCapsule("MyCustom", AnotherCustomClass) # Same name, different type
-    capsule_type5 = CtyCapsule("AnotherCustom", MyCustomClass) # Different name, same type
-
+    capsule_type4 = CtyCapsule(
+        "MyCustom", AnotherCustomClass
+    )  # Same name, different type
+    capsule_type5 = CtyCapsule(
+        "AnotherCustom", MyCustomClass
+    )  # Different name, same type
 
     assert capsule_type1 == capsule_type2
     assert capsule_type1 != capsule_type3
@@ -51,5 +58,6 @@ def test_capsule_hash():
     # Test that it can be used as a dictionary key
     my_dict = {capsule_type1: "value1"}
     assert my_dict[capsule_type2] == "value1"
+
 
 # 🐍🏗️🐣

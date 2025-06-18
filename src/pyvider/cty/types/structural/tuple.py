@@ -1,6 +1,7 @@
 #
 # pyvider/cty/types/structural/tuple.py
 #
+from __future__ import annotations
 
 """
 CtyTuple implementation for Cty tuple types.
@@ -9,7 +10,7 @@ Provides a complete implementation of tuple types with fixed-position elements
 that may have different types from each other.
 """
 
-from typing import Any, ClassVar, Union
+from typing import Any, ClassVar  # Union is already here, ensure it's used.
 
 from attrs import define, field
 
@@ -32,7 +33,9 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
     element_types: tuple[CtyType, ...] = field()
 
     @element_types.validator
-    def _validate_element_types(self, attribute, value) -> None:
+    def _validate_element_types(
+        self, attribute: str, value: tuple[CtyType, ...]
+    ) -> None:
         """Validate that element_types contains only CtyType instances."""
         logger.debug(f"🧩🔍🔄 Validating tuple element types: {value}")
 
@@ -52,7 +55,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             f"🧩✅🔄 Tuple element types validated successfully: {len(value)} types"
         )
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: Any) -> CtyValue:
         """
         Validate a value against this tuple type.
 
@@ -146,7 +149,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         )
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
-    def element_at(self, container: Any, index: int) -> "CtyValue":
+    def element_at(self, container: Any, index: int) -> CtyValue:
         """
         Get an element at a specific index in the tuple.
 
@@ -204,7 +207,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug(f"🧩✅🔄 Got element at index {index}")
         return element
 
-    def slice(self, container: Any, start: int, end: int | None = None) -> "CtyValue":
+    def slice(self, container: Any, start: int, end: int | None = None) -> CtyValue:
         """
         Get a slice of the tuple.
 
@@ -273,7 +276,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         """Check if this type is a tuple type."""
         return True
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: CtyType) -> bool:
         """
         Check if this tuple type is equal to another type.
 
@@ -307,7 +310,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug("🧩✅🔄 Tuple types are equal")
         return True
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: CtyType) -> bool:
         """
         Check if this tuple type can be used as another type.
 
@@ -354,7 +357,9 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug("🧩✅🔄 Tuple type is usable as target type")
         return True
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[CtyType, "CtyTuple"]:
+    def __getitem__(
+        self, index: int | slice
+    ) -> CtyType | CtyTuple:  # Use Union explicitly
         """
         Support for indexing and slicing operations on tuple types.
 

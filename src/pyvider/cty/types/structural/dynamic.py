@@ -109,9 +109,11 @@ class CtyDynamic(CtyType[Any]):
         elif isinstance(value, bool):  # Check for bool BEFORE int/float
             concrete_type = CtyBool()
             return CtyValue(vtype=concrete_type, value=value)
-        elif isinstance(value, int | float | Decimal): # Added Decimal
+        elif isinstance(value, int | float | Decimal):  # Added Decimal
             concrete_type = CtyNumber()
-            return CtyValue(vtype=concrete_type, value=Decimal(value)) # Decimal() is idempotent for Decimal
+            return CtyValue(
+                vtype=concrete_type, value=Decimal(value)
+            )  # Decimal() is idempotent for Decimal
         elif isinstance(value, list):
             from pyvider.cty.types.collections import CtyList  # Moved import
 

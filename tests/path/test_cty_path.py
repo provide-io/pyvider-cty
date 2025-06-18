@@ -82,7 +82,7 @@ class TestPath:
         assert new_path.steps[1].name == "address"
         assert new_path.steps[2].name == "city"
 
-    def test_path_index_step(self) -> None: # Remove mock_index_step_class argument
+    def test_path_index_step(self) -> None:  # Remove mock_index_step_class argument
         """Test CtyPath.index_step method."""
         # Call method
         new_path = self.path.index_step(5)
@@ -95,7 +95,7 @@ class TestPath:
         # Verify original path unchanged
         assert len(self.path.steps) == 0
 
-    def test_path_key_step(self) -> None: # Remove mock_key_step_class argument
+    def test_path_key_step(self) -> None:  # Remove mock_key_step_class argument
         """Test CtyPath.key_step method."""
         # Call method
         new_path = self.path.key_step("test_key")
@@ -160,7 +160,7 @@ class TestPath:
             (lambda: CtyPath.get_attr("name"), [GetAttrStep("name")]),
             (lambda: CtyPath.index(1), [IndexStep(1)]),
             (lambda: CtyPath.key("mykey"), [KeyStep("mykey")]),
-        ]
+        ],
     )
     def test_path_class_methods(self, path_factory, expected) -> None:
         """Test Path class methods."""

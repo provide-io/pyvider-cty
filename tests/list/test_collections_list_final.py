@@ -21,8 +21,7 @@ class TestFinalCoverage:
         """Test out-of-bounds indexing."""
         # Create a list type
         list_obj = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
 
         # Access via __getitem__ with invalid index
@@ -48,8 +47,7 @@ class TestFinalCoverage:
         """Test special indexing cases to cover line 319."""
         # Create a list with some elements
         list_obj = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
 
         # Different ways to access elements to hit all code branches
@@ -67,6 +65,7 @@ class TestFinalCoverage:
 
     def test_complex_append_failure(self) -> None:
         """Test append with a more complex validation failure."""
+
         # Create a special validator that will fail in a specific way
         class FailingStringType(CtyString):
             def validate(self, value) -> Never:
@@ -85,8 +84,7 @@ class TestFinalCoverage:
     def test_getitem_invalid_index_types(self) -> None:
         """Test __getitem__ with invalid index types."""
         list_obj = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
 
         # Try different index types that might trigger different code paths
@@ -100,8 +98,7 @@ class TestFinalCoverage:
         """Test to directly hit line 319 in __getitem__."""
         # Create a list
         list_obj = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
 
         # Test normal indexing to confirm functionality
@@ -125,8 +122,8 @@ class TestFinalCoverage:
                 CtyString(value="b"),
                 CtyString(value="c"),
                 CtyString(value="d"),
-                CtyString(value="e")
-            ]
+                CtyString(value="e"),
+            ],
         )
 
         # Try slicing with step and no end parameter
@@ -139,10 +136,7 @@ class TestFinalCoverage:
     def test_getitem_unusual_indices(self) -> None:
         """Test more unusual indexing scenarios."""
         # Create a list with single element
-        list_obj = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a")]
-        )
+        list_obj = CtyList(element_type=CtyString(), value=[CtyString(value="a")])
 
         # Test boundary conditions
         assert list_obj[0].value == "a"  # First element
@@ -154,5 +148,6 @@ class TestFinalCoverage:
         empty_slice = list_obj[1:]  # Should be empty slice
         assert isinstance(empty_slice, CtyList)
         assert len(empty_slice.value) == 0
+
 
 # 🐍🏗️🧪

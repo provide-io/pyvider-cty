@@ -458,8 +458,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             return False
 
         # Both self and other are CtyMap instances at this point.
-        self_key_is_dyn = isinstance(self.key_type, CtyDynamic)
-        other_key_is_dyn = isinstance(other.key_type, CtyDynamic)
+        # self_key_is_dyn = isinstance(self.key_type, CtyDynamic) # F841: local variable 'self_key_is_dyn' is assigned to but never used
+        # other_key_is_dyn = isinstance(other.key_type, CtyDynamic) # F841: local variable 'other_key_is_dyn' is assigned to but never used
         self_val_is_dyn = isinstance(self.value_type, CtyDynamic)
         other_val_is_dyn = isinstance(other.value_type, CtyDynamic)
 

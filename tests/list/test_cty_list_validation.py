@@ -30,7 +30,11 @@ class TestCtyListValidation:
         # Create a list with strings
         list_obj = CtyList(
             element_type=CtyString(),
-            value=[CtyString(value="apple"), CtyString(value="banana"), CtyString(value="cherry")]
+            value=[
+                CtyString(value="apple"),
+                CtyString(value="banana"),
+                CtyString(value="cherry"),
+            ],
         )
 
         # Get element at index
@@ -42,7 +46,9 @@ class TestCtyListValidation:
     def test_post_init_validates_element_type(self) -> None:
         """Test that __post_init__ validates element_type is a CtyType."""
         # Try to create a CtyList with an invalid element_type
-        with pytest.raises(CtyListValidationError, match="Expected CtyType for element_type"):
+        with pytest.raises(
+            CtyListValidationError, match="Expected CtyType for element_type"
+        ):
             CtyList(element_type="not_a_cty_type")
 
     def test_validate_tuple_as_list(self) -> None:
@@ -57,22 +63,33 @@ class TestCtyListValidation:
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 3
-        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyString) for item in result.value)
+        assert all(
+            isinstance(item, CtyValue) and isinstance(item.type, CtyString)
+            for item in result.value
+        )
         assert [item.value for item in result.value] == ["apple", "banana", "cherry"]
 
     def test_validate_none_raises_error(self) -> None:
         """Test that None is rejected with error (not converted to empty list)."""
-        with pytest.raises(CtyListValidationError, match="Input to CtyList.validate cannot be None."):
+        with pytest.raises(
+            CtyListValidationError, match="Input to CtyList.validate cannot be None."
+        ):
             self.string_list.validate(None)
 
     def test_validate_invalid_container_type(self) -> None:
         """Test validation fails for non-list/tuple containers."""
         # Try to validate a dictionary
-        with pytest.raises(CtyListValidationError, match="Expected list, tuple, or CtyValue list, got dict"):
+        with pytest.raises(
+            CtyListValidationError,
+            match="Expected list, tuple, or CtyValue list, got dict",
+        ):
             self.string_list.validate({"a": 1, "b": 2})
 
         # Try to validate a string (iterable but not list/tuple)
-        with pytest.raises(CtyListValidationError, match="Expected list, tuple, or CtyValue list, got str"):
+        with pytest.raises(
+            CtyListValidationError,
+            match="Expected list, tuple, or CtyValue list, got str",
+        ):
             self.string_list.validate("not_a_list")
 
     def test_validate_homogeneous_list(self) -> None:
@@ -87,7 +104,10 @@ class TestCtyListValidation:
         assert isinstance(result, CtyValue)
         assert isinstance(result.type, CtyList)
         assert len(result.value) == 5
-        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyNumber) for item in result.value)
+        assert all(
+            isinstance(item, CtyValue) and isinstance(item.type, CtyNumber)
+            for item in result.value
+        )
         assert [item.value for item in result.value] == [1, 2, 3, 4, 5]
 
     def test_validate_heterogeneous_list_fails(self) -> None:
@@ -139,27 +159,36 @@ class TestCtyListValidation:
         self.string_list = CtyList(element_type=CtyString())
 
         # Second element is a number, not a string
-        with pytest.raises(CtyListValidationError, match="List validation error: CtyList validation failed:\n - Item 1 \\('123'\\): String validation error: Value must be a string, got int"):
+        with pytest.raises(
+            CtyListValidationError,
+            match="List validation error: CtyList validation failed:\n - Item 1 \\('123'\\): String validation error: Value must be a string, got int",
+        ):
             self.string_list.validate(["apple", 123, "cherry"])
-
 
     def test_cty_list_validate_none(self) -> None:
         """Test validation of None, which should raise an error."""
         self.string_list = CtyList(element_type=CtyString())
 
         # None should raise an error, not return an empty list
-        with pytest.raises(CtyListValidationError, match="Input to CtyList.validate cannot be None."):
+        with pytest.raises(
+            CtyListValidationError, match="Input to CtyList.validate cannot be None."
+        ):
             self.string_list.validate(None)
 
     def test_cty_list_invalid_element_type(self) -> None:
         """Test constructor with invalid element_type."""
-        with pytest.raises(CtyListValidationError, match="Expected CtyType for element_type"):
+        with pytest.raises(
+            CtyListValidationError, match="Expected CtyType for element_type"
+        ):
             CtyList(element_type="invalid")  # Non-CtyType passed
 
     def test_cty_list_invalid_structure(self) -> None:
         """Test validation with non-list structure."""
         list_of_numbers = CtyList(element_type=CtyNumber())
-        with pytest.raises(CtyListValidationError, match="Expected list, tuple, or CtyValue list, got str"):
+        with pytest.raises(
+            CtyListValidationError,
+            match="Expected list, tuple, or CtyValue list, got str",
+        ):
             list_of_numbers.validate("not_a_list")  # String is not a valid list
 
     def test_cty_list_validate_none_in_list(self) -> None:
@@ -167,7 +196,10 @@ class TestCtyListValidation:
         self.string_list = CtyList(element_type=CtyString())
 
         # None element should cause validation failure
-        with pytest.raises(CtyListValidationError, match="List validation error: CtyList validation failed:\n - Item 0 \\('None'\\): String validation error: String value cannot be None."):
+        with pytest.raises(
+            CtyListValidationError,
+            match="List validation error: CtyList validation failed:\n - Item 0 \\('None'\\): String validation error: String value cannot be None.",
+        ):
             self.string_list.validate([None, "value"])
 
     def test_element_at_invalid_container(self) -> None:
@@ -183,5 +215,6 @@ class TestCtyListValidation:
 
         # Test non-usability
         assert not self.string_list.usable_as(string_type)
+
 
 # 🐍🏗️🧪

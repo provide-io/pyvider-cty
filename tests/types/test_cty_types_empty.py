@@ -1,16 +1,15 @@
-import pytest
 
 from pyvider.cty.types import (
-    CtyString,
-    CtyNumber,
     CtyBool,
+    CtyCapsule,  # Assuming CtyCapsule exists and should be tested
+    CtyDynamic,
     CtyList,
     CtyMap,
-    CtySet,
-    CtyTuple,
+    CtyNumber,
     CtyObject,
-    CtyDynamic,
-    CtyCapsule, # Assuming CtyCapsule exists and should be tested
+    CtySet,
+    CtyString,
+    CtyTuple,
 )
 
 
@@ -40,4 +39,5 @@ def test_empty_type_for_capsule():
     # If CtyCapsule needs specific logic for is_empty_type, it should be implemented there.
     class MyData:
         pass
+
     assert CtyCapsule("MyDataCapsule", MyData).is_empty_type() is False

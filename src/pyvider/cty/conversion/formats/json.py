@@ -58,7 +58,7 @@ class JsonEncoder(FormatEncoder):
         return WireFormatType.JSON
 
     @classmethod
-    def encode(cls, value: object, **options) -> bytes:
+    def encode(cls, value: object, **options: object) -> bytes:
         """
         Encode a CTY value to JSON bytes.
         """
@@ -90,7 +90,7 @@ class JsonEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="json", data=value) from e
 
     @classmethod
-    def decode(cls, data: bytes, **options) -> object:
+    def decode(cls, data: bytes, **options: object) -> object:
         """
         Decode JSON bytes to a CTY value.
         """
@@ -666,7 +666,7 @@ class JsonEncoder(FormatEncoder):
         return CtyDynamic()
 
     @classmethod
-    def _json_default(cls, obj):
+    def _json_default(cls, obj: object) -> str:
         if isinstance(obj, Decimal):
             return str(obj)
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")

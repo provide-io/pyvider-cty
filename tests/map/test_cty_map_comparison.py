@@ -27,12 +27,11 @@ class TestCtyMapComparison:
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
-            value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
+            value_type=CtyMap(key_type=CtyString(), value_type=CtyString()),
         )
 
         self.list_map = CtyMap(
-            key_type=CtyString(),
-            value_type=CtyList(element_type=CtyString())
+            key_type=CtyString(), value_type=CtyList(element_type=CtyString())
         )
 
         self.object_map = CtyMap(
@@ -42,7 +41,7 @@ class TestCtyMapComparison:
                     "name": CtyString(),
                     "age": CtyNumber(),
                 }
-            )
+            ),
         )
 
     @pytest.mark.asyncio
@@ -110,8 +109,12 @@ class TestCtyMapComparison:
         """Test equality of map types."""
         # Create similar map types
         map1 = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        map2 = CtyMap(key_type=CtyString(), value_type=CtyNumber())  # Same types as map1
-        map3 = CtyMap(key_type=CtyString(), value_type=CtyString())  # Different value type
+        map2 = CtyMap(
+            key_type=CtyString(), value_type=CtyNumber()
+        )  # Same types as map1
+        map3 = CtyMap(
+            key_type=CtyString(), value_type=CtyString()
+        )  # Different value type
 
         # Test equality
         assert map1.equal(map2)
@@ -128,5 +131,6 @@ class TestCtyMapComparison:
         # Test with non-map type
         assert not map1.equal(CtyString())
         assert map1 != CtyString()
+
 
 # 🐍🏗️🧪

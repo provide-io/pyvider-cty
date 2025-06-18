@@ -23,8 +23,12 @@ class TestCtyStringType(unittest.TestCase):
         from pyvider.cty.exceptions import (
             CtyStringValidationError,  # Ensure specific exception
         )
-        with self.assertRaisesRegex(CtyStringValidationError, "String value cannot be None."):
+
+        with self.assertRaisesRegex(
+            CtyStringValidationError, "String value cannot be None."
+        ):
             self.string_type.validate(None)
+
 
 class TestCtyNumberType(unittest.TestCase):
     def setUp(self) -> None:
@@ -41,6 +45,7 @@ class TestCtyNumberType(unittest.TestCase):
         with self.assertRaises(CtyValidationError):
             self.number_type.validate("string")
 
+
 class TestCtyBoolType(unittest.TestCase):
     def setUp(self) -> None:
         self.bool_type = CtyBool()
@@ -56,6 +61,7 @@ class TestCtyBoolType(unittest.TestCase):
         with self.assertRaises(CtyValidationError):
             self.bool_type.validate("not_a_bool")
 
+
 class TestCtyTypePrimitiveCheck(unittest.TestCase):
     def test_is_primitive_type(self):
         from pyvider.cty.types import (
@@ -66,6 +72,7 @@ class TestCtyTypePrimitiveCheck(unittest.TestCase):
             CtySet,
             CtyTuple,
         )
+
         # Primitive types
         self.assertTrue(CtyString().is_primitive_type())
         self.assertTrue(CtyNumber().is_primitive_type())
@@ -73,12 +80,16 @@ class TestCtyTypePrimitiveCheck(unittest.TestCase):
 
         # Non-primitive types
         self.assertFalse(CtyList(element_type=CtyString()).is_primitive_type())
-        self.assertFalse(CtyMap(key_type=CtyString(), value_type=CtyString()).is_primitive_type()) # Assuming value_type as CtyString for the test
+        self.assertFalse(
+            CtyMap(key_type=CtyString(), value_type=CtyString()).is_primitive_type()
+        )  # Assuming value_type as CtyString for the test
         self.assertFalse(CtySet(element_type=CtyString()).is_primitive_type())
         self.assertFalse(CtyObject({"attr": CtyString()}).is_primitive_type())
-        self.assertFalse(CtyTuple((CtyString(), CtyNumber())).is_primitive_type()) # Changed list to tuple
+        self.assertFalse(
+            CtyTuple((CtyString(), CtyNumber())).is_primitive_type()
+        )  # Changed list to tuple
         self.assertFalse(CtyDynamic().is_primitive_type())
+
 
 if __name__ == "__main__":
     unittest.main()
-

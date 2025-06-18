@@ -39,7 +39,7 @@ async def test_complex_nested_object() -> None:
                     "vpc_id": CtyString(),
                     "security_groups": CtyList(element_type=CtyString()),
                 },
-                optional_attributes=frozenset(["security_groups"])
+                optional_attributes=frozenset(["security_groups"]),
             ),
             "disks": CtyList(
                 element_type=CtyObject(
@@ -48,13 +48,10 @@ async def test_complex_nested_object() -> None:
                         "type": CtyString(),
                         "iops": CtyNumber(),
                     },
-                    optional_attributes=frozenset(["iops"])
+                    optional_attributes=frozenset(["iops"]),
                 )
             ),
-            "tags": CtyMap(
-                key_type=CtyString(),
-                value_type=CtyString()
-            )
+            "tags": CtyMap(key_type=CtyString(), value_type=CtyString()),
         },
         optional_attributes=frozenset(["tags"]),
     )
@@ -66,23 +63,13 @@ async def test_complex_nested_object() -> None:
         "network": {
             "subnet": "subnet-123456",
             "vpc_id": "vpc-123456",
-            "security_groups": ["sg-1", "sg-2"]
+            "security_groups": ["sg-1", "sg-2"],
         },
         "disks": [
-            {
-                "size_gb": 100,
-                "type": "gp3",
-                "iops": 3000
-            },
-            {
-                "size_gb": 500,
-                "type": "io2"
-            }
+            {"size_gb": 100, "type": "gp3", "iops": 3000},
+            {"size_gb": 500, "type": "io2"},
         ],
-        "tags": {
-            "Environment": "production",
-            "Owner": "devops"
-        }
+        "tags": {"Environment": "production", "Owner": "devops"},
     }
 
     # Validate
@@ -171,20 +158,21 @@ async def test_complex_nested_object() -> None:
     owner_found = False
 
     for k, v in tags.value.items():
-        assert isinstance(k, str) # Map keys are native Python types (str, int, etc.)
+        assert isinstance(k, str)  # Map keys are native Python types (str, int, etc.)
         assert isinstance(v, CtyValue)
         # k.type is not applicable directly as k is now a Python str
         assert isinstance(v.type, CtyString)
 
-        if k == "Environment": # k is now a str
+        if k == "Environment":  # k is now a str
             environment_found = True
             assert v.value == "production"
-        elif k == "Owner": # k is already a str
+        elif k == "Owner":  # k is already a str
             owner_found = True
             assert v.value == "devops"
 
     assert environment_found, "Missing 'Environment' key in tags"
     assert owner_found, "Missing 'Owner' key in tags"
+
 
 @pytest.mark.asyncio
 async def test_validation_performance_large_object() -> None:
@@ -225,27 +213,19 @@ async def test_validation_performance_large_object() -> None:
     duration = end_time - start_time
     assert duration < 1.0  # Should complete in under a second
 
+
 @pytest.mark.asyncio
 async def test_map_key_handling() -> None:
     """Test specific handling of map keys in CtyObject validation."""
     # Create object with a map attribute
     obj_type = CtyObject(
         attribute_types={
-            "simple_map": CtyMap(
-                key_type=CtyString(),
-                value_type=CtyNumber()
-            )
+            "simple_map": CtyMap(key_type=CtyString(), value_type=CtyNumber())
         }
     )
 
     # Create value
-    value = {
-        "simple_map": {
-            "one": 1,
-            "two": 2,
-            "three": 3
-        }
-    }
+    value = {"simple_map": {"one": 1, "two": 2, "three": 3}}
 
     # Validate
     validated = obj_type.validate(value)
@@ -263,12 +243,12 @@ async def test_map_key_handling() -> None:
     values_found = set()
 
     for k, v in simple_map.value.items():
-        assert isinstance(k, str) # Map keys are native Python types
+        assert isinstance(k, str)  # Map keys are native Python types
         assert isinstance(v, CtyValue)
         # k.type is not applicable directly as k is now a Python str
         assert isinstance(v.type, CtyNumber)
 
-        keys_found.add(k) # k is now a str
+        keys_found.add(k)  # k is now a str
         values_found.add(v.value)
 
     # Check that all keys and values are present
@@ -278,7 +258,7 @@ async def test_map_key_handling() -> None:
     # Test lookup by finding a key with specific value
     one_value = None
     for k, v in simple_map.value.items():
-        if k == "one": # k is now a str
+        if k == "one":  # k is now a str
             one_value = v
             break
 
@@ -286,6 +266,7 @@ async def test_map_key_handling() -> None:
     assert isinstance(one_value, CtyValue)
     assert isinstance(one_value.type, CtyNumber)
     assert one_value.value == 1
+
 
 @pytest.mark.asyncio
 async def test_null_handling() -> None:
@@ -299,17 +280,17 @@ async def test_null_handling() -> None:
                     "email": CtyString(),
                     "phone": CtyString(),
                 },
-                optional_attributes=frozenset(["phone"])
+                optional_attributes=frozenset(["phone"]),
             ),
             "preferences": CtyObject(
                 attribute_types={
                     "theme": CtyString(),
                     "notifications": CtyBool(),
                 },
-                optional_attributes=frozenset(["theme", "notifications"])
-            )
+                optional_attributes=frozenset(["theme", "notifications"]),
+            ),
         },
-        optional_attributes=frozenset(["preferences"])
+        optional_attributes=frozenset(["preferences"]),
     )
 
     # Create value with missing optional attributes at different levels
@@ -348,6 +329,7 @@ async def test_null_handling() -> None:
     preferences = validated.value["preferences"]
     assert preferences.is_null
 
+
 @pytest.mark.asyncio
 async def test_nested_validation_error_propagation() -> None:
     """Test that validation errors from nested types are properly propagated."""
@@ -374,7 +356,7 @@ async def test_nested_validation_error_propagation() -> None:
             "street": "123 Main St",
             "city": "Anytown",
             "zip": "not-a-number",  # This will fail validation
-        }
+        },
     }
 
     # Validate should fail
@@ -385,6 +367,7 @@ async def test_nested_validation_error_propagation() -> None:
     error_msg = str(excinfo.value)
     assert "Invalid value for attribute 'address'" in error_msg
     assert "zip" in error_msg
+
 
 @pytest.mark.asyncio
 async def test_attribute_access_error_handling() -> None:
@@ -416,5 +399,6 @@ async def test_attribute_access_error_handling() -> None:
     null_obj = CtyValue.null(person_type)
     with pytest.raises(CtyAttributeValidationError):
         person_type.get_attribute(null_obj, "name")
+
 
 # 🐍🏗️🧪

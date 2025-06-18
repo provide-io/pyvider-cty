@@ -47,9 +47,9 @@ class TestCtyTupleCreation:
         obj_type = CtyObject(attribute_types={"attr": CtyBool()})
         nested_tuple = CtyTuple(element_types=(CtyString(), list_type))
 
-        complex_tuple = CtyTuple(element_types=(
-            list_type, map_type, obj_type, nested_tuple, CtyDynamic()
-        ))
+        complex_tuple = CtyTuple(
+            element_types=(list_type, map_type, obj_type, nested_tuple, CtyDynamic())
+        )
 
         assert isinstance(complex_tuple, CtyTuple)
         assert len(complex_tuple.element_types) == 5
@@ -63,18 +63,26 @@ class TestCtyTupleCreation:
     async def test_tuple_type_init_invalid_element_types_type(self) -> None:
         """Test initialization fails if element_types is not a tuple."""
         with pytest.raises(CtyTupleValidationError) as exc_info:
-            CtyTuple(element_types=[CtyString(), CtyNumber()]) # Pass list instead of tuple
+            CtyTuple(
+                element_types=[CtyString(), CtyNumber()]
+            )  # Pass list instead of tuple
         assert "element_types must be a tuple" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_tuple_type_init_invalid_element_type_item(self) -> None:
         """Test initialization fails if an element type is not a CtyType."""
-        with pytest.raises(CtyTupleValidationError, match=r"Element type at index 1 must be a CtyType, got type"):
-            CtyTuple(element_types=(CtyString(), int, CtyBool())) # Pass 'int' type
+        with pytest.raises(
+            CtyTupleValidationError,
+            match=r"Element type at index 1 must be a CtyType, got type",
+        ):
+            CtyTuple(element_types=(CtyString(), int, CtyBool()))  # Pass 'int' type
         # No need to assert exc_info.value outside the block if match is used.
 
-        with pytest.raises(CtyTupleValidationError, match=r"Element type at index 1 must be a CtyType, got str"):
-            CtyTuple(element_types=(CtyString(), "not a type")) # Pass string
+        with pytest.raises(
+            CtyTupleValidationError,
+            match=r"Element type at index 1 must be a CtyType, got str",
+        ):
+            CtyTuple(element_types=(CtyString(), "not a type"))  # Pass string
         # If we need to assert specific parts beyond regex, keep it inside or use the caught exception:
         # assert "Element type at index 1 must be a CtyType, got str" in str(exc_info_str.value)
         # For now, the match argument should suffice.
@@ -86,10 +94,15 @@ class TestCtyTupleCreation:
         empty_tuple = CtyTuple(element_types=())
 
         # __str__
-        assert str(simple_tuple) == "tuple(string, number)" # Expecting simplified primitive type names
+        assert (
+            str(simple_tuple) == "tuple(string, number)"
+        )  # Expecting simplified primitive type names
         assert str(empty_tuple) == "tuple()"
 
         # __repr__
         # Default value for CtyString is '', for CtyNumber is 0.
-        assert repr(simple_tuple) == "CtyTuple(element_types=(CtyString(value=''), CtyNumber(value=0)))"
+        assert (
+            repr(simple_tuple)
+            == "CtyTuple(element_types=(CtyString(value=''), CtyNumber(value=0)))"
+        )
         assert repr(empty_tuple) == "CtyTuple(element_types=())"

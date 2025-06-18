@@ -1,17 +1,18 @@
-import pytest
 from decimal import Decimal
 
+import pytest
+
 from pyvider.cty import (
-    CtyValue,
-    CtyString,
-    CtyNumber,
     CtyBool,
+    CtyDynamic,
     CtyList,
     CtyMap,
-    CtySet,
-    CtyTuple,
+    CtyNumber,
     CtyObject,
-    CtyDynamic,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyValue,
 )
 
 
@@ -110,37 +111,53 @@ def test_non_empty_number(number_type: CtyNumber):
     num_value = CtyValue(number_type, Decimal(10))
     zero_num_value = CtyValue(number_type, Decimal(0))
     assert num_value.is_empty() is False
-    assert zero_num_value.is_empty() is False # Numbers are not empty by value
+    assert zero_num_value.is_empty() is False  # Numbers are not empty by value
 
 
 def test_non_empty_bool(bool_type: CtyBool):
     true_value = CtyValue(bool_type, True)
     false_value = CtyValue(bool_type, False)
     assert true_value.is_empty() is False
-    assert false_value.is_empty() is False # Bools are not empty by value
+    assert false_value.is_empty() is False  # Bools are not empty by value
 
 
-def test_non_empty_tuple(tuple_type: CtyTuple, string_type: CtyString, number_type: CtyNumber):
+def test_non_empty_tuple(
+    tuple_type: CtyTuple, string_type: CtyString, number_type: CtyNumber
+):
     # Tuples are considered empty if their underlying list/tuple structure is empty.
     # However, CtyTuple validation might prevent creation of truly "empty" typed tuples
     # depending on its design. For this test, we assume a tuple value itself can be empty.
-    empty_tuple_val = CtyValue(tuple_type, []) # Assuming tuple_type can wrap an empty list for its value
-    non_empty_tuple_val = CtyValue(tuple_type, [CtyValue(string_type, "a"), CtyValue(number_type, Decimal(1))])
+    empty_tuple_val = CtyValue(
+        tuple_type, []
+    )  # Assuming tuple_type can wrap an empty list for its value
+    non_empty_tuple_val = CtyValue(
+        tuple_type, [CtyValue(string_type, "a"), CtyValue(number_type, Decimal(1))]
+    )
     assert empty_tuple_val.is_empty() is True
     assert non_empty_tuple_val.is_empty() is False
 
 
-def test_non_empty_object(object_type: CtyObject, string_type: CtyString, number_type: CtyNumber):
+def test_non_empty_object(
+    object_type: CtyObject, string_type: CtyString, number_type: CtyNumber
+):
     # Objects (structs) are considered empty if their underlying map/dict structure is empty.
-    empty_object_val = CtyValue(object_type, {}) # Assuming object_type can wrap an empty dict
+    empty_object_val = CtyValue(
+        object_type, {}
+    )  # Assuming object_type can wrap an empty dict
     non_empty_object_val = CtyValue(
         object_type,
-        {"name": CtyValue(string_type, "test"), "age": CtyValue(number_type, Decimal(5))},
+        {
+            "name": CtyValue(string_type, "test"),
+            "age": CtyValue(number_type, Decimal(5)),
+        },
     )
     assert empty_object_val.is_empty() is True
     assert non_empty_object_val.is_empty() is False
 
-def test_empty_dynamic_value_holding_empty_string(dynamic_type: CtyDynamic, string_type: CtyString):
+
+def test_empty_dynamic_value_holding_empty_string(
+    dynamic_type: CtyDynamic, string_type: CtyString
+):
     # CtyValue(CtyDynamic, CtyValue(CtyString, ""))
     # The outer CtyValue is dynamic, its _value is another CtyValue (string, "")
     # The is_empty() on the outer dynamic value should reflect the emptiness of its contained concrete value.
@@ -152,7 +169,7 @@ def test_empty_dynamic_value_holding_empty_string(dynamic_type: CtyDynamic, stri
     # Let's refine the is_empty logic for CtyDynamic values.
     # If a CtyValue has CtyDynamic type and its _value is another CtyValue,
     # its emptiness should depend on the emptiness of the inner CtyValue.
-    
+
     # Create an empty string CtyValue
     inner_empty_string_value = CtyValue(string_type, "")
     # Wrap it in a CtyDynamic CtyValue
@@ -162,7 +179,9 @@ def test_empty_dynamic_value_holding_empty_string(dynamic_type: CtyDynamic, stri
     # Create a non-empty string CtyValue
     inner_non_empty_string_value = CtyValue(string_type, "hello")
     # Wrap it in a CtyDynamic CtyValue
-    dynamic_holding_non_empty_string = CtyValue(dynamic_type, inner_non_empty_string_value)
+    dynamic_holding_non_empty_string = CtyValue(
+        dynamic_type, inner_non_empty_string_value
+    )
     assert dynamic_holding_non_empty_string.is_empty() is False
 
     # Test dynamic null
@@ -177,4 +196,3 @@ def test_empty_dynamic_value_holding_empty_string(dynamic_type: CtyDynamic, stri
     inner_number_value = CtyValue(CtyNumber(), Decimal(0))
     dynamic_holding_number = CtyValue(dynamic_type, inner_number_value)
     assert dynamic_holding_number.is_empty() is False
-

@@ -12,9 +12,10 @@ credential_type = CtyObject(
     attribute_types={
         "username": CtyString(),
         "password": CtyString(),
-        "expiry_days": CtyNumber()
+        "expiry_days": CtyNumber(),
     }
 )
+
 
 # Create a sensitive mark
 class SensitiveMark:
@@ -31,11 +32,12 @@ class SensitiveMark:
     def __hash__(self):
         return hash(("SensitiveMark", self.reason))
 
+
 # Create a regular value
 cred_data = {
     "username": "admin",
     "password": "super-secret-password",
-    "expiry_days": 30
+    "expiry_days": 30,
 }
 
 # Validate returns CtyValue
@@ -58,39 +60,43 @@ try:
 
         # Create a new CtyValue for the credential object with the updated internal value
         # We need to reuse the same type (credential_type)
-        cred_val_updated = CtyValue(vtype=credential_type, value=new_cred_internal_value)
+        cred_val_updated = CtyValue(
+            vtype=credential_type, value=new_cred_internal_value
+        )
 
         # Check for marks on the password within the *new* updated object value
         password_from_updated = cred_val_updated.value.get("password")
         if password_from_updated:
-             has_mark = password_from_updated.has_mark(SensitiveMark("credential"))
-             print(f"Has sensitive mark (updated obj): {has_mark}")
+            has_mark = password_from_updated.has_mark(SensitiveMark("credential"))
+            print(f"Has sensitive mark (updated obj): {has_mark}")
 
-             # Unmask when needed
-             unmasked, marks = password_from_updated.unmark()
-             print(f"Unmasked value: {unmasked.value}")
-             print(f"Retrieved marks: {[str(m) for m in marks]}")
+            # Unmask when needed
+            unmasked, marks = password_from_updated.unmark()
+            print(f"Unmasked value: {unmasked.value}")
+            print(f"Retrieved marks: {[str(m) for m in marks]}")
 
-             # Marshal the updated value
-             marshaled = marshal(cred_val_updated, format_kind=WireFormatType.JSON)
-             print(f"Marshaled size: {len(marshaled)} bytes")
+            # Marshal the updated value
+            marshaled = marshal(cred_val_updated, format_kind=WireFormatType.JSON)
+            print(f"Marshaled size: {len(marshaled)} bytes")
 
-             # Unmarshal preserves marks
-             unmarshaled = unmarshal(
-                 marshaled,
-                 format_kind=WireFormatType.JSON,
-                 expected_type=credential_type
-             )
-             if not unmarshaled.is_null and not unmarshaled.is_unknown:
-                  password_again = unmarshaled.value.get("password")
-                  if password_again:
-                      print(f"Password is marked after unmarshal: {password_again.has_mark(SensitiveMark('credential'))}")
-                  else:
-                      print("Password attribute not found after unmarshal.")
-             else:
-                  print("Unmarshaled value is null or unknown.")
+            # Unmarshal preserves marks
+            unmarshaled = unmarshal(
+                marshaled,
+                format_kind=WireFormatType.JSON,
+                expected_type=credential_type,
+            )
+            if not unmarshaled.is_null and not unmarshaled.is_unknown:
+                password_again = unmarshaled.value.get("password")
+                if password_again:
+                    print(
+                        f"Password is marked after unmarshal: {password_again.has_mark(SensitiveMark('credential'))}"
+                    )
+                else:
+                    print("Password attribute not found after unmarshal.")
+            else:
+                print("Unmarshaled value is null or unknown.")
         else:
-             print("Password attribute not found in updated object.")
+            print("Password attribute not found in updated object.")
     else:
         print("Initial credential value is null or unknown.")
 

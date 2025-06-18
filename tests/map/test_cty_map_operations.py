@@ -27,7 +27,7 @@ class TestCtyMapOperations:
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
-            value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
+            value_type=CtyMap(key_type=CtyString(), value_type=CtyString()),
         )
 
     @pytest.mark.asyncio
@@ -40,10 +40,7 @@ class TestCtyMapOperations:
         val2 = CtyValue(vtype=CtyString(), value="value2")
 
         # Create proper map with pre-validated keys and values
-        valid_map = {
-            key1: val1,
-            key2: val2
-        }
+        valid_map = {key1: val1, key2: val2}
 
         # Validate the map
         validated = self.string_map.validate(valid_map)
@@ -133,7 +130,6 @@ class TestCtyMapOperations:
 
         # Original map should be unchanged (immutability)
         assert updated_map.value["key1"].value == "value1"  # Still has original value
-
 
     @pytest.mark.asyncio
     async def test_cty_map_get_method(self) -> None:
@@ -228,5 +224,6 @@ class TestCtyMapOperations:
 
         assert found
         assert "key1" not in final_map.value
+
 
 # 🐍🏗️🧪

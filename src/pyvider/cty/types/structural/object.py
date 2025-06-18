@@ -14,6 +14,7 @@ consistency throughout the validation process and maintaining proper type inform
 in nested structures.
 """
 
+from collections.abc import Iterator  # Added Iterator
 from typing import Any, ClassVar
 
 from attrs import define, evolve, field
@@ -608,7 +609,7 @@ class CtyObject(CtyType[dict[str, Any]]):
             optional_attributes=frozenset(new_optional),
         )
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """Enable iteration over attribute names."""
         return iter(self.attribute_types.keys())
 

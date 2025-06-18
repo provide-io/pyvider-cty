@@ -9,9 +9,9 @@ profile_type = CtyObject(
         "username": CtyString(),
         "age": CtyNumber(),
         "verified": CtyBool(),
-        "bio": CtyString()
+        "bio": CtyString(),
     },
-    optional_attributes=frozenset(["bio"])
+    optional_attributes=frozenset(["bio"]),
 )
 
 # Create values with different states
@@ -20,8 +20,8 @@ known_value = CtyValue(
     value={
         "username": CtyString(value="alice"),
         "age": CtyNumber(value=30),
-        "verified": CtyBool(value=True)
-    }
+        "verified": CtyBool(value=True),
+    },
 )
 
 unknown_value = CtyValue.unknown(profile_type)

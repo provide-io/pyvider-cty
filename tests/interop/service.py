@@ -25,12 +25,13 @@ class TypeSpec:
         # Placeholder
         pass
 
+
 @dataclass
 class ValueSpec:
     # Define fields based on usage in PerformOperation
     # This is a simplified placeholder.
     value_json: str = ""
-    type_spec_proto: Any = None # Simplified
+    type_spec_proto: Any = None  # Simplified
 
     @classmethod
     def from_proto(cls, proto_obj):
@@ -50,6 +51,7 @@ class ValueSpec:
         # Placeholder
         pass
 
+
 class CtyTestService(ctytest_pb2_grpc.CtyTestServicer):
     """Implementation of the CtyTest service using pyvider.cty."""
 
@@ -60,23 +62,20 @@ class CtyTestService(ctytest_pb2_grpc.CtyTestServicer):
             # Convert from protobuf request to TypeSpec
             type_spec = TypeSpec(
                 type_kind=request.type_kind,
-                params_json=request.params_json # Corrected from params=json.loads(...)
+                params_json=request.params_json,  # Corrected from params=json.loads(...)
             )
 
             # Create the actual type
-            type_spec.to_cty_type() # This is a placeholder
+            type_spec.to_cty_type()  # This is a placeholder
 
             # Convert result back to protobuf
             return ctytest_pb2.TypeResponse(
                 success=True,
-                type_spec=type_spec.to_proto() # This is a placeholder
+                type_spec=type_spec.to_proto(),  # This is a placeholder
             )
         except Exception as e:
             logger.error(f"🧰❌❌ Error creating type: {e}")
-            return ctytest_pb2.TypeResponse(
-                success=False,
-                error_message=str(e)
-            )
+            return ctytest_pb2.TypeResponse(success=False, error_message=str(e))
 
     async def PerformOperation(self, request, context):
         """Perform an operation on Cty values."""
@@ -89,7 +88,9 @@ class CtyTestService(ctytest_pb2_grpc.CtyTestServicer):
             result = None
             match request.operation:
                 case "add":
-                    right_value = ValueSpec.from_proto(request.right_value).to_cty_value()
+                    right_value = ValueSpec.from_proto(
+                        request.right_value
+                    ).to_cty_value()
                     result = left_value + right_value
                 case "negate":
                     result = -left_value
@@ -97,17 +98,14 @@ class CtyTestService(ctytest_pb2_grpc.CtyTestServicer):
 
             # Convert result back to protobuf
             return ctytest_pb2.ValueResponse(
-                success=True,
-                value=ValueSpec.from_cty_value(result).to_proto()
+                success=True, value=ValueSpec.from_cty_value(result).to_proto()
             )
         except Exception as e:
             logger.error(f"🧰❌❌ Operation failed: {e}")
-            return ctytest_pb2.ValueResponse(
-                success=False,
-                error_message=str(e)
-            )
+            return ctytest_pb2.ValueResponse(success=False, error_message=str(e))
 
     # ... implement other methods ...
+
 
 class CtyTestProtocol(RPCPluginProtocol):
     """Protocol definition for the Cty test service."""

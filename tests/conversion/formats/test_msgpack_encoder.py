@@ -96,7 +96,11 @@ class TestMsgPackEncoder:
 
         assert isinstance(decoded_value.type, CtyList)
         assert decoded_value.type.element_type == CtyString()
-        assert decoded_value.value == [CtyValue.string("a"), CtyValue.string("b"), CtyValue.string("c")]
+        assert decoded_value.value == [
+            CtyValue.string("a"),
+            CtyValue.string("b"),
+            CtyValue.string("c"),
+        ]
         assert decoded_value == original_value
 
     def test_encode_decode_simple_map_of_strings(self) -> None:
@@ -104,7 +108,8 @@ class TestMsgPackEncoder:
         original_value = map_type.validate({"key1": "val1", "key2": "val2"})
 
         expected_decoded_value_map = {
-            "key1": CtyValue.string("val1"), "key2": CtyValue.string("val2")
+            "key1": CtyValue.string("val1"),
+            "key2": CtyValue.string("val2"),
         }
 
         encoder = MsgPackEncoder()
@@ -117,10 +122,12 @@ class TestMsgPackEncoder:
         assert decoded_value.value == expected_decoded_value_map
         assert decoded_value == original_value
 
-
     def test_encode_non_cty_value_raises_type_error(self) -> None:
         encoder = MsgPackEncoder()
-        with pytest.raises(EncodingError, match="Failed to encode to MessagePack: Expected CtyValue, got str"):
+        with pytest.raises(
+            EncodingError,
+            match="Failed to encode to MessagePack: Expected CtyValue, got str",
+        ):
             encoder.encode("not a cty value")
 
     def test_decode_invalid_msgpack_raises_encoding_error(self) -> None:
@@ -144,7 +151,6 @@ class TestMsgPackEncoder:
         assert decoded_value.value[1] == CtyValue.number(100)
         assert decoded_value == original_value
 
-
     def test_encode_decode_decimal_precision(self) -> None:
         original_value = CtyValue.number(Decimal("0.12345678901234567890"))
         encoder = MsgPackEncoder()
@@ -164,7 +170,9 @@ class TestMsgPackEncoder:
         assert decoded_value == original_value
 
     def test_encode_decode_empty_map(self) -> None:
-        original_value = CtyMap(key_type=CtyString(), value_type=CtyNumber()).validate({})
+        original_value = CtyMap(key_type=CtyString(), value_type=CtyNumber()).validate(
+            {}
+        )
         encoder = MsgPackEncoder()
         encoded_data = encoder.encode(original_value)
         decoded_value = encoder.decode(encoded_data)
@@ -197,8 +205,13 @@ class TestMsgPackEncoder:
         decoded_list = encoder.decode(packed_list, preserve_type=False)
         assert isinstance(decoded_list.type, CtyList)
         assert decoded_list.type.element_type == CtyDynamic()
-        assert decoded_list.value[0].type == CtyString() and decoded_list.value[0].value == "a"
-        assert decoded_list.value[1].type == CtyNumber() and decoded_list.value[1].value == Decimal(1)
+        assert (
+            decoded_list.value[0].type == CtyString()
+            and decoded_list.value[0].value == "a"
+        )
+        assert decoded_list.value[1].type == CtyNumber() and decoded_list.value[
+            1
+        ].value == Decimal(1)
 
         raw_dict_map = {"value": {"k1": "v1", "k2": 2}}
         packed_map = msgpack.packb(raw_dict_map)
@@ -206,11 +219,18 @@ class TestMsgPackEncoder:
         assert isinstance(decoded_map.type, CtyMap)
         assert decoded_map.type.key_type == CtyString()
         assert decoded_map.type.value_type == CtyDynamic()
-        assert decoded_map.value["k1"].type == CtyString() and decoded_map.value["k1"].value == "v1"
-        assert decoded_map.value["k2"].type == CtyNumber() and decoded_map.value["k2"].value == Decimal(2)
+        assert (
+            decoded_map.value["k1"].type == CtyString()
+            and decoded_map.value["k1"].value == "v1"
+        )
+        assert decoded_map.value["k2"].type == CtyNumber() and decoded_map.value[
+            "k2"
+        ].value == Decimal(2)
 
     def test_encode_decode_with_marks(self) -> None:
-        original_value = CtyValue.string("marked value").with_marks(("sensitive", "source:user"))
+        original_value = CtyValue.string("marked value").with_marks(
+            ("sensitive", "source:user")
+        )
         encoder = MsgPackEncoder()
         encoded_data = encoder.encode(original_value)
         decoded_value = encoder.decode(encoded_data)
@@ -242,7 +262,6 @@ class TestMsgPackEncoder:
         # until msgpack.py's _create_type_from_name and _value_to_dict are enhanced.
         assert decoded_value == original_value
 
-
     def test_decode_unknown_marker_no_type_preservation(self) -> None:
         raw_dict_unknown_no_type = {MsgPackEncoder.UNKNOWN_MARKER: True}
         packed_unknown_no_type = msgpack.packb(raw_dict_unknown_no_type)
@@ -268,8 +287,13 @@ class TestMsgPackEncoder:
         assert decoded_value.value == "dynamic string"
 
     def test_msgpack_default_raises_typeerror_for_unsupported(self) -> None:
-        class Unsupported: pass
-        with pytest.raises(TypeError, match="Object of type Unsupported is not MessagePack serializable"):
+        class Unsupported:
+            pass
+
+        with pytest.raises(
+            TypeError,
+            match="Object of type Unsupported is not MessagePack serializable",
+        ):
             MsgPackEncoder._msgpack_default(Unsupported())
 
     def test_encode_options_use_bin_type(self) -> None:
@@ -297,7 +321,9 @@ class TestMsgPackEncoder:
         print(f"DEBUG_TEST: is_null_result: {is_null_result!r}")
         print(f"DEBUG_TEST: type(is_null_result): {type(is_null_result)}")
         assert not is_null_result
-        assert decoded_raw_true.value == b"test" # Moved this assertion after is_null debugging
+        assert (
+            decoded_raw_true.value == b"test"
+        )  # Moved this assertion after is_null debugging
         assert not decoded_raw_true.is_unknown
 
     def test_encode_decode_set_of_strings(self) -> None:
@@ -311,9 +337,17 @@ class TestMsgPackEncoder:
         assert isinstance(decoded_value.type, CtySet)
         assert decoded_value.type.element_type == CtyString()
 
-        expected_internal_set_elements = {CtyValue.string("apple"), CtyValue.string("banana"), CtyValue.string("cherry")}
-        assert isinstance(decoded_value.value, frozenset) # CtySet internal value is a frozenset of CtyValues
-        assert decoded_value.value == expected_internal_set_elements # Direct comparison of frozensets of CtyValues
+        expected_internal_set_elements = {
+            CtyValue.string("apple"),
+            CtyValue.string("banana"),
+            CtyValue.string("cherry"),
+        }
+        assert isinstance(
+            decoded_value.value, frozenset
+        )  # CtySet internal value is a frozenset of CtyValues
+        assert (
+            decoded_value.value == expected_internal_set_elements
+        )  # Direct comparison of frozensets of CtyValues
 
     # --- Tests for CtyUnknown with ExtType(0) ---
 
@@ -322,31 +356,37 @@ class TestMsgPackEncoder:
         unknown_string_val = CtyValue.unknown(CtyString())
         unknown_number_val = CtyValue.unknown(CtyNumber())
 
-        expected_msgpack_bytes = msgpack.packb(msgpack.ExtType(0, b''))
+        expected_msgpack_bytes = msgpack.packb(msgpack.ExtType(0, b""))
 
         assert unknown_string_val.to_msgpack_bytes() == expected_msgpack_bytes
         assert unknown_number_val.to_msgpack_bytes() == expected_msgpack_bytes
 
     def test_unknown_value_deserialization_exttype(self) -> None:
         """Test that msgpack.ExtType(0, b'') deserializes to CtyUnknown of the target type."""
-        unknown_ext_bytes = msgpack.packb(msgpack.ExtType(0, b''))
+        unknown_ext_bytes = msgpack.packb(msgpack.ExtType(0, b""))
 
         # Deserialize as CtyString
-        deserialized_val_str = CtyValue.from_msgpack_bytes(unknown_ext_bytes, CtyString())
+        deserialized_val_str = CtyValue.from_msgpack_bytes(
+            unknown_ext_bytes, CtyString()
+        )
         assert deserialized_val_str.is_unknown is True
         assert isinstance(deserialized_val_str.type, CtyString)
-        with pytest.raises(ValueError): # Cannot access value of unknown
+        with pytest.raises(ValueError):  # Cannot access value of unknown
             _ = deserialized_val_str.value
 
         # Deserialize as CtyNumber
-        deserialized_val_num = CtyValue.from_msgpack_bytes(unknown_ext_bytes, CtyNumber())
+        deserialized_val_num = CtyValue.from_msgpack_bytes(
+            unknown_ext_bytes, CtyNumber()
+        )
         assert deserialized_val_num.is_unknown is True
         assert isinstance(deserialized_val_num.type, CtyNumber)
         with pytest.raises(ValueError):
             _ = deserialized_val_num.value
 
         # Deserialize as CtyDynamic
-        deserialized_val_dyn = CtyValue.from_msgpack_bytes(unknown_ext_bytes, CtyDynamic())
+        deserialized_val_dyn = CtyValue.from_msgpack_bytes(
+            unknown_ext_bytes, CtyDynamic()
+        )
         assert deserialized_val_dyn.is_unknown is True
         assert isinstance(deserialized_val_dyn.type, CtyDynamic)
         with pytest.raises(ValueError):
@@ -358,12 +398,14 @@ class TestMsgPackEncoder:
         msgpack_bytes = known_val.to_msgpack_bytes()
 
         # Check it's not the unknown sentinel
-        assert msgpack_bytes != msgpack.packb(msgpack.ExtType(0, b''))
+        assert msgpack_bytes != msgpack.packb(msgpack.ExtType(0, b""))
 
         # Check it's a valid msgpack dict (map)
         unpacked_data = msgpack.unpackb(msgpack_bytes, raw=False)
         assert isinstance(unpacked_data, dict)
-        assert unpacked_data.get("type_name") == "string" # As per _value_to_serializable via to_json_comparable_dict
+        assert (
+            unpacked_data.get("type_name") == "string"
+        )  # As per _value_to_serializable via to_json_comparable_dict
         assert unpacked_data.get("value") == "hello"
 
         # Full deserialization check
@@ -382,10 +424,18 @@ class TestMsgPackEncoder:
         # CtyDynamic().validate(inner_value) achieves CtyValue(CtyDynamic, inner_value)
         original_dynamic_value = CtyDynamic().validate(inner_value)
 
-        assert isinstance(original_dynamic_value.type, CtyDynamic), "Outer type should be CtyDynamic"
-        assert isinstance(original_dynamic_value.value, CtyValue), "Inner value should be a CtyValue instance"
-        assert original_dynamic_value.value.type == CtyString(), "Inner CtyValue's type should be CtyString"
-        assert original_dynamic_value.value.value == "hello_dynamic_world", "Inner CtyValue's raw value is incorrect"
+        assert isinstance(original_dynamic_value.type, CtyDynamic), (
+            "Outer type should be CtyDynamic"
+        )
+        assert isinstance(original_dynamic_value.value, CtyValue), (
+            "Inner value should be a CtyValue instance"
+        )
+        assert original_dynamic_value.value.type == CtyString(), (
+            "Inner CtyValue's type should be CtyString"
+        )
+        assert original_dynamic_value.value.value == "hello_dynamic_world", (
+            "Inner CtyValue's raw value is incorrect"
+        )
 
         # 3. Encode the outer dynamic value
         encoded_data = encoder.encode(original_dynamic_value)
@@ -396,19 +446,33 @@ class TestMsgPackEncoder:
         decoded_dynamic_value = encoder.decode(encoded_data)
 
         # 5. Assertions
-        assert isinstance(decoded_dynamic_value, CtyValue), "Decoded value should be a CtyValue"
-        assert isinstance(decoded_dynamic_value.type, CtyDynamic), "Decoded outer type should be CtyDynamic"
+        assert isinstance(decoded_dynamic_value, CtyValue), (
+            "Decoded value should be a CtyValue"
+        )
+        assert isinstance(decoded_dynamic_value.type, CtyDynamic), (
+            "Decoded outer type should be CtyDynamic"
+        )
         assert not decoded_dynamic_value.is_null, "Decoded value should not be null"
-        assert not decoded_dynamic_value.is_unknown, "Decoded value should not be unknown"
+        assert not decoded_dynamic_value.is_unknown, (
+            "Decoded value should not be unknown"
+        )
 
         # Check the inner wrapped CtyValue
         inner_decoded_value = decoded_dynamic_value.value
-        assert isinstance(inner_decoded_value, CtyValue), "Decoded inner value should be a CtyValue instance"
-        assert inner_decoded_value.type == CtyString(), "Decoded inner CtyValue's type should be CtyString"
-        assert inner_decoded_value.value == "hello_dynamic_world", "Decoded inner CtyValue's raw value is incorrect"
+        assert isinstance(inner_decoded_value, CtyValue), (
+            "Decoded inner value should be a CtyValue instance"
+        )
+        assert inner_decoded_value.type == CtyString(), (
+            "Decoded inner CtyValue's type should be CtyString"
+        )
+        assert inner_decoded_value.value == "hello_dynamic_world", (
+            "Decoded inner CtyValue's raw value is incorrect"
+        )
 
         # Overall equality check
-        assert decoded_dynamic_value == original_dynamic_value, "Decoded dynamic value should equal the original"
+        assert decoded_dynamic_value == original_dynamic_value, (
+            "Decoded dynamic value should equal the original"
+        )
 
         # Test with a number as well
         inner_number_value = CtyValue.number(12345)
@@ -427,7 +491,7 @@ class TestMsgPackEncoder:
         """Test CtyDynamic wrapping a CtyList."""
         encoder = MsgPackEncoder()
         # Correct way to create a CtyList value
-        list_type = CtyList(element_type=CtyString()) # Fixed: use keyword argument
+        list_type = CtyList(element_type=CtyString())  # Fixed: use keyword argument
         inner_list_value = list_type.validate(["a", "b"])
         original_value = CtyDynamic().validate(inner_list_value)
 
@@ -436,7 +500,9 @@ class TestMsgPackEncoder:
 
         assert isinstance(decoded_value.type, CtyDynamic)
         assert isinstance(decoded_value.value, CtyValue)
-        assert decoded_value.value.type == CtyList(element_type=CtyString()) # Fixed: use keyword argument
+        assert decoded_value.value.type == CtyList(
+            element_type=CtyString()
+        )  # Fixed: use keyword argument
         assert decoded_value.value.value[0].value == "a"
         assert decoded_value.value.value[1].value == "b"
         assert decoded_value == original_value
@@ -457,16 +523,20 @@ class TestMsgPackEncoder:
         # CtyMap(CtyString(), CtyDynamic()).validate() to succeed on it after the fallback.
         malformed_inner_payload_dict = {
             MsgPackEncoder.TYPE_MARKER: "CtyList",
-            "$E": 12345, # String key, but value 12345 is invalid for an element type spec
-            "value": [1,2]
+            "$E": 12345,  # String key, but value 12345 is invalid for an element type spec
+            "value": [1, 2],
         }
 
         outer_dynamic_dict = {
             MsgPackEncoder.TYPE_MARKER: "CtyDynamic",
-            "value": malformed_inner_payload_dict
+            "value": malformed_inner_payload_dict,
         }
 
-        encoded_data = msgpack.packb(outer_dynamic_dict, default=MsgPackEncoder._msgpack_default, use_bin_type=True)
+        encoded_data = msgpack.packb(
+            outer_dynamic_dict,
+            default=MsgPackEncoder._msgpack_default,
+            use_bin_type=True,
+        )
 
         # The decode process:
         # 1. Outer type is CtyDynamic. Inner value is malformed_inner_payload_dict.
@@ -480,15 +550,19 @@ class TestMsgPackEncoder:
 
         decoded_value = encoder.decode(encoded_data)
 
-        assert isinstance(decoded_value.type, CtyMap), \
+        assert isinstance(decoded_value.type, CtyMap), (
             f"Expected decoded type to be CtyMap after fallback, got {decoded_value.type}"
+        )
         assert decoded_value.type.key_type == CtyString()
         assert decoded_value.type.value_type == CtyDynamic()
 
         expected_map_content = {
             MsgPackEncoder.TYPE_MARKER: CtyValue.string("CtyList"),
             "$E": CtyValue.number(12345),
-            "value": CtyValue.list(CtyDynamic(), [CtyValue.number(1), CtyValue.number(2)])
+            "value": CtyValue.list(
+                CtyDynamic(), [CtyValue.number(1), CtyValue.number(2)]
+            ),
         }
-        assert decoded_value.value == expected_map_content, \
+        assert decoded_value.value == expected_map_content, (
             f"Map content mismatch. Got: {decoded_value.value}, Expected: {expected_map_content}"
+        )

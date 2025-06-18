@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar, Union # Added TYPE_CHECKING
+from typing import Any, ClassVar, Union  # Added TYPE_CHECKING
 
 from attrs import define, field
 

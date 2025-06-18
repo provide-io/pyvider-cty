@@ -22,7 +22,9 @@ class TestCtyMapInstantiation:
         assert isinstance(m.key_type, CtyString)
         assert isinstance(m.value_type, CtyNumber)
 
-    @pytest.mark.parametrize("invalid_key_type", ["foo", int, CtyList(element_type=CtyString())])
+    @pytest.mark.parametrize(
+        "invalid_key_type", ["foo", int, CtyList(element_type=CtyString())]
+    )
     def test_instantiation_invalid_key_type(self, invalid_key_type) -> None:
         """Test instantiation with invalid key_type."""
         # Regex updated to match the actual error messages, which vary based on the validation step that fails.
@@ -37,14 +39,19 @@ class TestCtyMapInstantiation:
     @pytest.mark.parametrize("invalid_value_type", ["foo", int])
     def test_instantiation_invalid_value_type(self, invalid_value_type) -> None:
         """Test instantiation with invalid value_type."""
-        with pytest.raises(CtyMapValidationError, match="value_type must be a CtyType instance"):
+        with pytest.raises(
+            CtyMapValidationError, match="value_type must be a CtyType instance"
+        ):
             CtyMap(key_type=CtyString(), value_type=invalid_value_type)
+
 
 class TestCtyMapValidate:
     def test_validate_none_input_raises_error(self) -> None:
         """Test validate(None) raises CtyMapValidationError."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        with pytest.raises(CtyMapValidationError, match="Input to CtyMap.validate cannot be None"):
+        with pytest.raises(
+            CtyMapValidationError, match="Input to CtyMap.validate cannot be None"
+        ):
             map_type.validate(None)
 
     def test_validate_ctyvalue_map_value_not_dict(self) -> None:
@@ -86,11 +93,12 @@ class TestCtyMapValidate:
         with pytest.raises(CtyMapValidationError, match=expected_msg_regex):
             map_type_str_val.validate(val)
 
-
     def test_validate_non_dict_non_ctyvalue_input(self) -> None:
         """Test validate with input that is not None, dict, or CtyValue."""
         map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
-        expected_regex = r"Map validation error: Expected dict or CtyValue map, got (str|list)"
+        expected_regex = (
+            r"Map validation error: Expected dict or CtyValue map, got (str|list)"
+        )
         with pytest.raises(CtyMapValidationError, match=expected_regex):
             map_type.validate("not a dict or ctyvalue")
         with pytest.raises(CtyMapValidationError, match=expected_regex):
@@ -130,7 +138,7 @@ class TestCtyMapValidate:
         # Updated regex to account for nested "Map validation error:"
         expected_regex = r"Map validation error: Map validation failed:\n - Invalid key None: Map validation error: Map keys cannot be null or unknown after validation"
         with pytest.raises(CtyMapValidationError, match=expected_regex):
-             map_type_dyn_key.validate({None: "value"})
+            map_type_dyn_key.validate({None: "value"})
 
 
 class TestCtyMapGetSetDelete:
@@ -138,7 +146,7 @@ class TestCtyMapGetSetDelete:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
         expected_regex = r"Expected CtyValue with CtyMap type, got (str|CtyValue)"
         with pytest.raises(TypeError, match=expected_regex):
-            map_type.get("not a cty value", "a") # type: ignore
+            map_type.get("not a cty value", "a")  # type: ignore
         with pytest.raises(TypeError, match=expected_regex):
             map_type.get(CtyValue.string("iamastring"), "a")
 
@@ -146,7 +154,7 @@ class TestCtyMapGetSetDelete:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
         expected_regex = r"Expected CtyValue with CtyMap type, got (str|CtyValue)"
         with pytest.raises(TypeError, match=expected_regex):
-            map_type.set("not a cty value", "a", "b") # type: ignore
+            map_type.set("not a cty value", "a", "b")  # type: ignore
         with pytest.raises(TypeError, match=expected_regex):
             map_type.set(CtyValue.string("iamastring"), "a", "b")
 
@@ -154,7 +162,7 @@ class TestCtyMapGetSetDelete:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
         expected_regex = r"Expected CtyValue with CtyMap type, got (str|CtyValue)"
         with pytest.raises(TypeError, match=expected_regex):
-            map_type.delete("not a cty value", "a") # type: ignore
+            map_type.delete("not a cty value", "a")  # type: ignore
         with pytest.raises(TypeError, match=expected_regex):
             map_type.delete(CtyValue.string("iamastring"), "a")
 
@@ -174,15 +182,21 @@ class TestCtyMapGetSetDelete:
         result1 = map_type_str_key.get(map_val, 123)
         assert result1 is not None, "Result should not be Python None"
         assert result1.is_null, "Result should be a null CtyValue"
-        assert result1.type.equal(map_type_str_key.value_type), "Result type should match map's value_type"
+        assert result1.type.equal(map_type_str_key.value_type), (
+            "Result type should match map's value_type"
+        )
 
         # Case 2: CtyValue(CtyNumber) key - should also result in returning default (null)
         # as the key type is not CtyString.
-        key_number_val = CtyValue(vtype=CtyNumber(), value=123) # Using direct constructor for clarity
+        key_number_val = CtyValue(
+            vtype=CtyNumber(), value=123
+        )  # Using direct constructor for clarity
         result2 = map_type_str_key.get(map_val, key_number_val)
         assert result2 is not None, "Result should not be Python None"
         assert result2.is_null, "Result should be a null CtyValue"
-        assert result2.type.equal(map_type_str_key.value_type), "Result type should match map's value_type"
+        assert result2.type.equal(map_type_str_key.value_type), (
+            "Result type should match map's value_type"
+        )
 
 
 class TestCtyMapEqualityAndTypeChecks:
@@ -211,12 +225,16 @@ class TestCtyMapEqualityAndTypeChecks:
         # CtyString() defaults to CtyString(value='')
         # CtyNumber() defaults to CtyNumber(value=0) or CtyNumber(value=Decimal('0'))
         # The failure output indicates CtyNumber(value=0)
-        expected_repr_str_num = "CtyMap(key_type=CtyString(value=''), value_type=CtyNumber(value=0))"
+        expected_repr_str_num = (
+            "CtyMap(key_type=CtyString(value=''), value_type=CtyNumber(value=0))"
+        )
         assert repr(map_type) == expected_repr_str_num
 
         map_type_dyn = CtyMap(key_type=CtyDynamic(), value_type=CtyDynamic())
-        assert repr(map_type_dyn) == "CtyMap(key_type=CtyDynamic(), value_type=CtyDynamic())"
-
+        assert (
+            repr(map_type_dyn)
+            == "CtyMap(key_type=CtyDynamic(), value_type=CtyDynamic())"
+        )
 
     def test_is_collection_type(self) -> None:
         assert CtyMap(key_type=CtyString(), value_type=CtyString()).is_collection_type()
@@ -225,17 +243,24 @@ class TestCtyMapEqualityAndTypeChecks:
         assert CtyMap(key_type=CtyString(), value_type=CtyString()).is_map_type()
 
     def test_is_primitive_type(self) -> None:
-        assert not CtyMap(key_type=CtyString(), value_type=CtyString()).is_primitive_type()
+        assert not CtyMap(
+            key_type=CtyString(), value_type=CtyString()
+        ).is_primitive_type()
+
 
 class TestCtyMapElementIterator:
     def test_element_iterator_on_non_ctyvalue_or_non_map(self) -> None:
         map_type = CtyMap(key_type=CtyString(), value_type=CtyString())
         # First case: input is not a CtyValue
-        with pytest.raises(TypeError, match=r"Expected CtyValue with CtyMap type, got str"):
-            list(map_type.element_iterator("not a cty value")) # type: ignore
+        with pytest.raises(
+            TypeError, match=r"Expected CtyValue with CtyMap type, got str"
+        ):
+            list(map_type.element_iterator("not a cty value"))  # type: ignore
 
         # Second case: input is a CtyValue, but not of a CtyMap type
-        with pytest.raises(TypeError, match=r"Expected CtyValue with CtyMap type, got CtyValue"):
+        with pytest.raises(
+            TypeError, match=r"Expected CtyValue with CtyMap type, got CtyValue"
+        ):
             list(map_type.element_iterator(CtyValue.string("a string")))
 
     def test_element_iterator_on_null_or_unknown(self) -> None:

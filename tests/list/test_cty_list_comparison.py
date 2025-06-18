@@ -21,12 +21,11 @@ class TestCtyListComparison:
         """Test equality with lists of different lengths."""
         # This tests line 327
         list1 = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
         list2 = CtyList(
             element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b"), CtyString(value="c")]
+            value=[CtyString(value="a"), CtyString(value="b"), CtyString(value="c")],
         )
 
         # Lists with different lengths should not be equal
@@ -36,12 +35,14 @@ class TestCtyListComparison:
         """Test equality with lists of same length but different elements."""
         # This tests lines 331-332
         list1 = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
         list2 = CtyList(
             element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="c")]  # Different second element
+            value=[
+                CtyString(value="a"),
+                CtyString(value="c"),
+            ],  # Different second element
         )
 
         # Lists with same length but different elements should not be equal
@@ -81,5 +82,6 @@ class TestCtyListComparison:
         """Test inequality with different element types."""
         # Test inequality
         assert self.string_list != self.number_list
+
 
 # 🐍🏗️🧪
