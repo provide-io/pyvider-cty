@@ -2,7 +2,6 @@
 # pyvider/cty/types/capsule.py
 #
 
-from typing import Any
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
@@ -21,7 +20,7 @@ class CtyCapsule(CtyType):
         # The 'name' for a type is usually its ctype class variable or derived.
         # For Capsule, the instance specific 'name' is the capsule_name.
         super().__init__()
-        self.name = capsule_name # Storing capsule_name as an instance attribute
+        self.name = capsule_name  # Storing capsule_name as an instance attribute
         self._py_type = py_type
 
     @property
@@ -33,14 +32,18 @@ class CtyCapsule(CtyType):
         # Override ctype to return the specific capsule name for this instance
         return self.name
 
-    def validate(self, value: Any) -> 'CtyValue':
+    def validate(self, value: object) -> "CtyValue":
         if isinstance(value, CtyValue):
             if value.is_null():
                 return CtyValue.null(self)
             if value.is_unknown():
                 return CtyValue.unknown(self)
             # If it's already a CtyValue, check if its type is a compatible CtyCapsule
-            if isinstance(value.type, CtyCapsule) and value.type.name == self.name and value.type.py_type == self.py_type:
+            if (
+                isinstance(value.type, CtyCapsule)
+                and value.type.name == self.name
+                and value.type.py_type == self.py_type
+            ):
                 return value
             # Otherwise, validate its underlying value
             val_to_check = value.value
@@ -53,13 +56,13 @@ class CtyCapsule(CtyType):
             )
         return CtyValue(self, val_to_check)
 
-    def equal(self, other: 'CtyType') -> bool:
+    def equal(self, other: "CtyType") -> bool:
         if not isinstance(other, CtyCapsule):
             return False
         # Compare based on the instance-specific name and py_type
         return self.name == other.name and self._py_type == other._py_type
 
-    def usable_as(self, other: 'CtyType') -> bool:
+    def usable_as(self, other: "CtyType") -> bool:
         if isinstance(other, CtyDynamic):
             return True
         return self.equal(other)
@@ -76,6 +79,7 @@ class CtyCapsule(CtyType):
     def __hash__(self) -> int:
         # Hash based on the instance-specific name and py_type
         return hash((self.name, self._py_type))
+
 
 __all__ = ["CtyCapsule"]
 

@@ -681,18 +681,31 @@ class CtyValue(Generic[T]):
             CtyValidationError: If validation fails for any attribute
         """
         from pyvider.cty.exceptions import CtyValidationError
+        from pyvider.cty.exceptions import CtyValidationError
         from pyvider.cty.types import CtyObject
 
         logger.debug(f"🔄🔧✅ Creating object value with {len(attributes)} attributes")
+
+        actual_attribute_types_dict: dict
+        if isinstance(attribute_types, CtyObject):
+            actual_attribute_types_dict = attribute_types.attribute_types
+        elif isinstance(attribute_types, dict):
+            actual_attribute_types_dict = attribute_types
+        else:
+            raise CtyValidationError(
+                f"Expected CtyObject or dict for attribute_types, got {type(attribute_types).__name__}"
+            )
+
         # Validate attribute_types contains CtyType instances
-        for attr_name, attr_type in attribute_types.items():
+        for attr_name, attr_type in actual_attribute_types_dict.items():
             if not isinstance(attr_type, CtyType):
                 raise CtyValidationError(
                     f"Expected CtyType for attribute '{attr_name}', got {type(attr_type).__name__}"
                 )
 
         # Create object type and validate
-        object_type = CtyObject(attribute_types=attribute_types)
+        # Pass the validated dictionary of types to CtyObject constructor
+        object_type = CtyObject(attribute_types=actual_attribute_types_dict)
         # Validate returns a CtyValue, so return it directly
         return object_type.validate(attributes)
 
@@ -1310,7 +1323,9 @@ class CtyValue(Generic[T]):
             return self._value.is_empty()
 
         if isinstance(self._value, str | list | tuple | dict | set | frozenset):
-            return not self._value  # Relies on Python's built-in truthiness for empty collections/strings
+            return (
+                not self._value
+            )  # Relies on Python's built-in truthiness for empty collections/strings
 
         # For other types (like numbers, booleans), they are generally not considered "empty"
         # in the same way collections or strings are.

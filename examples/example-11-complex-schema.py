@@ -15,7 +15,7 @@ from pyvider.cty import (
 )
 
 # Use the actual conversion API
-from pyvider.cty.conversion import JSON, CtyWireFormat
+from pyvider.cty.conversion import WireFormatType, marshal, unmarshal
 from pyvider.cty.exceptions import AttributePathError, CtyValidationError
 from pyvider.cty.path import CtyPath
 
@@ -119,15 +119,15 @@ try:
     print("Successfully validated complex instance schema")
 
     # --- Corrected Serialization ---
-    # Serialize using CtyWireFormat
-    serialized = CtyWireFormat.marshal(instance_val, options={'format_type': JSON})
+    # Serialize using marshal function
+    serialized = marshal(instance_val, format_kind=WireFormatType.JSON)
     print(f"\nSerialized size: {len(serialized)} bytes")
 
-    # Deserialize using CtyWireFormat
-    deserialized = CtyWireFormat.unmarshal(
+    # Deserialize using unmarshal function
+    deserialized = unmarshal(
         serialized,
-        expected_type=instance_type,
-        options={'format_type': JSON}
+        format_kind=WireFormatType.JSON,
+        expected_type=instance_type
     )
     if not deserialized.is_null and not deserialized.is_unknown:
          print(f"Deserialized instance ID: {deserialized['id'].value}")

@@ -1,4 +1,3 @@
-
 from decimal import Decimal  # Added import
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
@@ -61,7 +60,7 @@ class CtyDynamic(CtyType[Any]):
 
     ctype: ClassVar[str] = "dynamic"
 
-    def validate(self, value: Any) -> 'CtyValue':
+    def validate(self, value: Any) -> "CtyValue":
         """
         Validate a value against the dynamic type.
 
@@ -110,9 +109,9 @@ class CtyDynamic(CtyType[Any]):
         elif isinstance(value, bool):  # Check for bool BEFORE int/float
             concrete_type = CtyBool()
             return CtyValue(vtype=concrete_type, value=value)
-        elif isinstance(value, int | float):
+        elif isinstance(value, int | float | Decimal): # Added Decimal
             concrete_type = CtyNumber()
-            return CtyValue(vtype=concrete_type, value=Decimal(value))
+            return CtyValue(vtype=concrete_type, value=Decimal(value)) # Decimal() is idempotent for Decimal
         elif isinstance(value, list):
             from pyvider.cty.types.collections import CtyList  # Moved import
 

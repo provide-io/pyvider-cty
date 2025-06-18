@@ -1,6 +1,5 @@
-
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar, Union  # Added TYPE_CHECKING
+from typing import Any, ClassVar, Union # Added TYPE_CHECKING
 
 from attrs import define, field
 
@@ -15,6 +14,7 @@ from pyvider.telemetry import logger
 #
 
 """Numeric type implementation for the Cty type system."""
+
 
 @define(frozen=True, slots=True)
 class CtyNumber(CtyType[Union[int, float, Decimal]]):
@@ -37,7 +37,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     ctype: ClassVar[str] = "number"
     value: int | Decimal = field(default=0)
 
-    def validate(self, value: Any) -> CtyValue: # Ensured string literal
+    def validate(self, value: Any) -> CtyValue:  # Ensured string literal
         """
         Validate that the given value is a number or can be converted to one.
 
@@ -73,7 +73,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             if isinstance(value.type, CtyNumber | CtyDynamic):
                 # Re-validate inner value to ensure it's a valid Decimal representation
                 # This handles cases like CtyValue(CtyDynamic, "123") -> CtyValue(CtyNumber, Decimal("123"))
-                value = value.value # Unbox
+                value = value.value  # Unbox
             elif isinstance(value.type, CtyType) and value.type.is_primitive_type():
                 # Allow conversion from other primitive CtyValues if their value is numeric string
                 # e.g. CtyValue(CtyString, "123.45")
@@ -103,7 +103,9 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
         if isinstance(value, str):
             try:
                 decimal_value = Decimal(value)
-                logger.debug(f"🔢✅🔄 Converted string '{value}' to Decimal: {decimal_value}")
+                logger.debug(
+                    f"🔢✅🔄 Converted string '{value}' to Decimal: {decimal_value}"
+                )
                 return CtyValue(vtype=self, value=decimal_value)
             except InvalidOperation:
                 error_msg = f"Cannot convert string '{value}' to number"

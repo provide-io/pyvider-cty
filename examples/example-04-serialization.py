@@ -3,7 +3,7 @@
 
 # Corrected imports and usage for serialization
 from pyvider.cty import CtyNumber, CtyObject, CtyString
-from pyvider.cty.conversion import JSON, CtyWireFormat
+from pyvider.cty.conversion import WireFormatType, marshal, unmarshal
 
 # Create a value to serialize
 config_type = CtyObject(
@@ -25,16 +25,15 @@ config_val = config_type.validate(config_data)
 # Use CtyWireFormat which delegates to registered formatters (like JsonEncoder)
 try:
     # Marshal using the default format (JSON)
-    # Pass options={'format_type': JSON} if explicit format needed
-    json_bytes = CtyWireFormat.marshal(config_val, options={'format_type': JSON})
+    json_bytes = marshal(config_val, format_kind=WireFormatType.JSON)
     print(f"Serialized: {json_bytes.decode('utf-8')}")
 
     # Unmarshal, assuming JSON format (can add format detection if needed)
     # Pass expected_type=config_type for validation upon unmarshalling
-    deserialized = CtyWireFormat.unmarshal(
+    deserialized = unmarshal(
         json_bytes,
-        expected_type=config_type,
-        options={'format_type': JSON}
+        format_kind=WireFormatType.JSON,
+        expected_type=config_type
     )
     print(f"Deserialized: {deserialized}")
     # Access deserialized data safely
