@@ -239,5 +239,133 @@ class CtySet(CtyType[set[T]], Generic[T]):
         """Check if this type is a set type."""
         return True
 
+    def union(self, current_set_value: "CtyValue", other_set_value: "CtyValue") -> "CtyValue":
+        """
+        Compute the union of the current set with another set.
+
+        Args:
+            current_set_value: A CtyValue representing the current set.
+            other_set_value: A CtyValue representing the other set to union with.
+
+        Returns:
+            A new CtyValue representing the union of the two sets.
+
+        Raises:
+            CtySetValidationError: If types are incompatible or validation fails.
+        """
+        from pyvider.cty.values import CtyValue  # Local import
+
+        if not isinstance(other_set_value.type, CtySet) or not self.element_type.equal(other_set_value.type.element_type):
+            raise CtySetValidationError(
+                f"Cannot perform union with incompatible set type: {other_set_value.type}"
+            )
+
+        if current_set_value.is_unknown or other_set_value.is_unknown:
+            return CtyValue.unknown(self)
+        if current_set_value.is_null and other_set_value.is_null:
+            return CtyValue.null(self)
+
+        # If one is null and the other is not, the union is the non-null set
+        if current_set_value.is_null:
+            return other_set_value
+        if other_set_value.is_null:
+            return current_set_value
+
+        # Ensure internal values are frozensets of CtyValues
+        current_items = current_set_value.value
+        other_items = other_set_value.value
+
+        if not isinstance(current_items, frozenset) or not isinstance(other_items, frozenset):
+            # This should ideally not happen if CtyValues are correctly formed
+            raise CtySetValidationError("Internal set values are not frozensets of CtyValues.")
+
+        unioned_items = current_items.union(other_items)
+
+        # Create a new CtyValue for the result.
+        # The value here should be a frozenset of CtyValue objects.
+        return CtyValue(vtype=self, value=unioned_items)
+
+    def intersection(self, current_set_value: "CtyValue", other_set_value: "CtyValue") -> "CtyValue":
+        """
+        Compute the intersection of the current set with another set.
+
+        Args:
+            current_set_value: A CtyValue representing the current set.
+            other_set_value: A CtyValue representing the other set to intersect with.
+
+        Returns:
+            A new CtyValue representing the intersection of the two sets.
+
+        Raises:
+            CtySetValidationError: If types are incompatible or validation fails.
+        """
+        from pyvider.cty.values import CtyValue  # Local import
+
+        if not isinstance(other_set_value.type, CtySet) or not self.element_type.equal(other_set_value.type.element_type):
+            raise CtySetValidationError(
+                f"Cannot perform intersection with incompatible set type: {other_set_value.type}"
+            )
+
+        if current_set_value.is_unknown or other_set_value.is_unknown:
+            return CtyValue.unknown(self)
+
+        # If either is null, the intersection is an empty set of the current type, unless both are null.
+        if current_set_value.is_null and other_set_value.is_null:
+            return CtyValue.null(self)
+        if current_set_value.is_null or other_set_value.is_null:
+            return CtyValue(vtype=self, value=frozenset())
+
+
+        current_items = current_set_value.value
+        other_items = other_set_value.value
+
+        if not isinstance(current_items, frozenset) or not isinstance(other_items, frozenset):
+            raise CtySetValidationError("Internal set values are not frozensets of CtyValues.")
+
+        intersected_items = current_items.intersection(other_items)
+
+        return CtyValue(vtype=self, value=intersected_items)
+
+    def difference(self, current_set_value: "CtyValue", other_set_value: "CtyValue") -> "CtyValue":
+        """
+        Compute the difference of the current set with another set.
+        (Elements in the current set that are not in the other set).
+
+        Args:
+            current_set_value: A CtyValue representing the current set (minuend).
+            other_set_value: A CtyValue representing the other set to subtract (subtrahend).
+
+        Returns:
+            A new CtyValue representing the difference of the two sets.
+
+        Raises:
+            CtySetValidationError: If types are incompatible or validation fails.
+        """
+        from pyvider.cty.values import CtyValue  # Local import
+
+        if not isinstance(other_set_value.type, CtySet) or not self.element_type.equal(other_set_value.type.element_type):
+            raise CtySetValidationError(
+                f"Cannot perform difference with incompatible set type: {other_set_value.type}"
+            )
+
+        if current_set_value.is_unknown or other_set_value.is_unknown:
+            return CtyValue.unknown(self)
+
+        if current_set_value.is_null: # Difference of (null - any_set) is null
+            return CtyValue.null(self)
+
+        if other_set_value.is_null: # Difference of (any_set - null) is any_set
+            return current_set_value
+
+        current_items = current_set_value.value
+        other_items = other_set_value.value
+
+        if not isinstance(current_items, frozenset) or not isinstance(other_items, frozenset):
+            raise CtySetValidationError("Internal set values are not frozensets of CtyValues.")
+
+        differenced_items = current_items.difference(other_items)
+
+        return CtyValue(vtype=self, value=differenced_items)
+
 
 # 🐍🏗️🐣
