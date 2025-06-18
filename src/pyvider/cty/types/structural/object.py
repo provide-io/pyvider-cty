@@ -129,6 +129,7 @@ class CtyObject(CtyType[dict[str, object]]):
                 # ) # Removed JULES_OBJECT_VALIDATE log and associated TODO.
                 # Let normal validation proceed by not returning early.
                 # The existing logic below will handle raising CtyValidationError for missing required attributes.
+                pass
 
         # Handle if the input value is already a CtyValue
         if isinstance(value, CtyValue):

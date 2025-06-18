@@ -1,6 +1,7 @@
 #
 # pyvider/cty/types/collections/list.py
 #
+from __future__ import annotations
 
 """
 List type implementation for the Cty type system.

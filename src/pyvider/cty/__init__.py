@@ -11,7 +11,7 @@ from pyvider.cty.conversion import (
     classify_type,
     ensure_quoted_bytes,
     parse_collection_type,
-    register_formatter,
+    # register_formatter, # Removed, registry is now internal to wire.py and formats register themselves
     standardize_type_string,
     validate_type_format,
 )
@@ -54,7 +54,7 @@ __all__ = [
     "marshal_json",
     "marshal_type",
     "parse_collection_type",
-    "register_formatter",
+    # "register_formatter", # Removed
     "standardize_type_string",
     "unmarshal_json",
     "unmarshal_type",

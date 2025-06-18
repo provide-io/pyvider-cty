@@ -21,8 +21,8 @@ from typing import ClassVar, TypeVar, cast
 import msgpack
 
 from pyvider.cty.codec import CtyTypeParseError  # Corrected import
-from pyvider.cty.conversion.formats import FormatEncoder, register_formatter
-from pyvider.cty.conversion.wire import WireFormatType
+from pyvider.cty.conversion.formats import FormatEncoder # Remove register_formatter
+from pyvider.cty.conversion.wire import WireFormatType, WireFormatRegistry # Import WireFormatRegistry
 from pyvider.cty.exceptions import EncodingError
 from pyvider.cty.types import CtyType  # Added import
 from pyvider.cty.values import CtyValue
@@ -31,7 +31,7 @@ from pyvider.telemetry import logger
 T = TypeVar("T")
 
 
-@register_formatter(WireFormatType.MSGPACK)
+@WireFormatRegistry.register(WireFormatType.MSGPACK) # Use WireFormatRegistry
 class MsgPackEncoder(FormatEncoder):
     """
     MessagePack encoder implementation for CTY wire format.
@@ -915,6 +915,33 @@ class MsgPackEncoder(FormatEncoder):
         raise TypeError(
             f"Object of type {type(obj).__name__} is not MessagePack serializable"
         )
+
+    @classmethod
+    def marshal(
+        cls,
+        value: object,
+        *,
+        operation: object | None = None, # CTY OperationContext
+        **options: object,
+    ) -> bytes:
+        """
+        Marshals a Python/CTY value into MessagePack bytes using CTY conventions.
+        """
+        return cls.encode(value, **options)
+
+    @classmethod
+    def unmarshal(
+        cls,
+        data: bytes,
+        expected_type: type | None = None, # CTY CtyType
+        *,
+        operation: object | None = None, # CTY OperationContext
+        **options: object,
+    ) -> object:
+        """
+        Unmarshals MessagePack bytes into a Python object/CtyValue using CTY conventions.
+        """
+        return cls.decode(data, **options)
 
 
 # 🐍🏗️🐣

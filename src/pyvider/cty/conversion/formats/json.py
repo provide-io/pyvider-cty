@@ -11,8 +11,8 @@ from decimal import Decimal
 import json
 from typing import ClassVar, TypeVar, cast
 
-from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
-from pyvider.cty.conversion.wire import WireFormatType
+from pyvider.cty.conversion.formats.base import FormatEncoder # Remove register_formatter
+from pyvider.cty.conversion.wire import WireFormatType, WireFormatRegistry # Import WireFormatRegistry
 from pyvider.cty.exceptions import (  # Added CtyValidationError
     CtyValidationError,
     EncodingError,
@@ -37,7 +37,7 @@ from pyvider.telemetry import logger
 T = TypeVar("T")
 
 
-@register_formatter(WireFormatType.JSON)
+@WireFormatRegistry.register(WireFormatType.JSON) # Use WireFormatRegistry
 class JsonEncoder(FormatEncoder):
     """
     JSON encoder implementation for CTY wire format.
@@ -51,7 +51,7 @@ class JsonEncoder(FormatEncoder):
     """
 
     # Type marker constants for encoding
-    TYPE_MARKER: ClassVar[str] = "type_name"  # Changed from "type"
+    TYPE_MARKER: ClassVar[str] = "type_name"
     UNKNOWN_MARKER: ClassVar[str] = "is_unknown"
     NULL_MARKER: ClassVar[str] = "is_null"
     MARKS_MARKER: ClassVar[str] = "marks"
@@ -69,7 +69,8 @@ class JsonEncoder(FormatEncoder):
     @classmethod
     def encode(cls, value: object, **options: object) -> bytes:
         """
-        Encode a CTY value to JSON bytes.
+        Internal method to encode a CTY value to JSON bytes.
+        Prefer using `marshal`.
         """
         logger.debug(f"🧩📝🔄 Encoding to JSON: {type(value).__name__}")
         indent = options.get("indent")
@@ -101,10 +102,13 @@ class JsonEncoder(FormatEncoder):
     @classmethod
     def decode(cls, data: bytes, **options: object) -> object:
         """
-        Decode JSON bytes to a CTY value.
+        Internal method to decode JSON bytes to a CTY value.
+        Prefer using `unmarshal`.
         """
         logger.debug(f"🧩🔍🔄 Decoding from JSON: {len(data)} bytes")
         preserve_type = options.get("preserve_type", True)
+        expected_type = cast(CtyType | None, options.get("expected_type")) # Get expected_type
+
         try:
             # ADD DEBUG LOGS HERE
             logger.debug(f"JULES_JSON_LOADS_INPUT_BYTES (first 150): {data[:150]!r}")
@@ -130,7 +134,7 @@ class JsonEncoder(FormatEncoder):
                 error_msg = f"Invalid JSON: {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
                 raise EncodingError(error_msg, encoding="json", data=data) from e
-            result = cls._dict_to_value(json_dict, preserve_type=preserve_type)
+            result = cls._dict_to_value(json_dict, preserve_type=preserve_type, expected_type=expected_type) # Pass expected_type
             logger.debug(f"🧩🔍✅ Decoded JSON to {type(result).__name__}")
             return result
         except Exception as e:
@@ -322,9 +326,9 @@ class JsonEncoder(FormatEncoder):
 
     @classmethod
     def _dict_to_value(
-        cls, data: dict[str, object], preserve_type: bool = True
+        cls, data: dict[str, object], preserve_type: bool = True, expected_type: CtyType | None = None
     ) -> CtyValue:
-        logger.debug("🧩🔍🔄 Converting dictionary to CtyValue")
+        logger.debug(f"🧩🔍🔄 Converting dictionary to CtyValue, expected_type: {expected_type!r}")
 
         # TODO: Review and remove or integrate "JULES_DEBUG_JSON_DECODE" logs.
         # These seem to be temporary debugging logs.
@@ -348,9 +352,9 @@ class JsonEncoder(FormatEncoder):
         try:
             # Order of checks: UNKNOWN, then NULL, then typed, then untyped.
             if data.get(cls.UNKNOWN_MARKER, False):  # checks for "is_unknown": true
-                return cls._create_unknown_value(data, preserve_type=preserve_type)
+                return cls._create_unknown_value(data, preserve_type=preserve_type, expected_type=expected_type)
             if data.get(cls.NULL_MARKER, False):  # checks for "is_null": true
-                return cls._create_null_value(data, preserve_type=preserve_type)
+                return cls._create_null_value(data, preserve_type=preserve_type, expected_type=expected_type)
 
             type_key_to_use = None
             if preserve_type:
@@ -360,9 +364,28 @@ class JsonEncoder(FormatEncoder):
                     type_key_to_use = cls.TYPE_MARKER
 
             if type_key_to_use:
-                return cls._create_typed_value(data, type_key_to_use)
+                return cls._create_typed_value(data, type_key_to_use, expected_type=expected_type)
             else:
-                return cls._create_untyped_value(data)
+                # If no type info in data and preserve_type is false,
+                # try to use expected_type if available, otherwise infer.
+                if expected_type and not preserve_type: # Check preserve_type here
+                    logger.debug(f"🧩🔍🔄 No type in data, using provided expected_type: {expected_type!r} for untyped value creation path.")
+                    # This path assumes _create_untyped_value can leverage expected_type or its _create_type_from_name can.
+                    # For now, _create_untyped_value does not use expected_type, it infers.
+                    # We might need a new path or modify _create_typed_value to handle this.
+                    # Let's assume for now that if type_key_to_use is None, we always infer.
+                    # The change will be more in _create_type_from_name to use expected_type.
+                    # This specific call to _create_untyped_value might still be okay if data['value'] is a primitive.
+                    # If data['value'] is complex, _create_untyped_value will create dynamic collections.
+                    # This is where expected_type would be most useful.
+                    #
+                    # Re-evaluating: if preserve_type is False, and we have an expected_type,
+                    # we should probably try to validate against expected_type directly.
+                    # The current structure of _create_typed_value relies on a type_key from data.
+                    # Let's pass expected_type to _create_untyped_value and see if it can use it.
+                    # For now, no change to this specific call, rely on _create_type_from_name enhancement.
+                    pass # Fall through to _create_untyped_value which infers.
+                return cls._create_untyped_value(data) # `expected_type` not used by this path currently
         except Exception as e:
             error_msg = f"Failed to convert dictionary to CtyValue: {e}"
             logger.error(f"🧩🔍❌ {error_msg}", exc_info=True)  # Added exc_info
@@ -370,45 +393,46 @@ class JsonEncoder(FormatEncoder):
 
     @classmethod
     def _create_unknown_value(
-        cls, data: dict[str, object], preserve_type: bool = True
+        cls, data: dict[str, object], preserve_type: bool = True, expected_type: CtyType | None = None
     ) -> CtyValue:
-        logger.debug("🧩🔍🔄 Creating unknown CtyValue")
-        type_name_str = "CtyDynamic"
+        logger.debug(f"🧩🔍🔄 Creating unknown CtyValue, expected_type: {expected_type!r}")
+        type_name_str = "CtyDynamic" # Default if no type info
         if preserve_type:
             type_name_str = data.get(
                 "type_name", data.get(cls.TYPE_MARKER, "CtyDynamic")
             )
 
         cty_type = cls._create_type_from_name(
-            str(type_name_str), data
-        )  # Ensure type_name_str is str
+            str(type_name_str), data, expected_cty_type=expected_type # Pass expected_type
+        )
         return CtyValue.unknown(cty_type)
 
     @classmethod
     def _create_null_value(
-        cls, data: dict[str, object], preserve_type: bool = True
+        cls, data: dict[str, object], preserve_type: bool = True, expected_type: CtyType | None = None
     ) -> CtyValue:
-        logger.debug("🧩🔍🔄 Creating null CtyValue")
-        type_name_str = "CtyDynamic"
+        logger.debug(f"🧩🔍🔄 Creating null CtyValue, expected_type: {expected_type!r}")
+        type_name_str = "CtyDynamic" # Default if no type info
         if preserve_type:
             type_name_str = data.get(
                 "type_name", data.get(cls.TYPE_MARKER, "CtyDynamic")
             )
 
         cty_type = cls._create_type_from_name(
-            str(type_name_str), data
-        )  # Ensure type_name_str is str
+            str(type_name_str), data, expected_cty_type=expected_type # Pass expected_type
+        )
         return CtyValue.null(cty_type)
 
     @classmethod
-    def _create_typed_value(cls, data: dict[str, object], type_key: str) -> CtyValue:
-        logger.debug(f"JULES_CREATE_TYPED_VALUE: Input data: {data!r}")
+    def _create_typed_value(cls, data: dict[str, object], type_key: str, expected_type: CtyType | None = None) -> CtyValue:
+        logger.debug(f"JULES_CREATE_TYPED_VALUE: Input data: {data!r}, expected_type: {expected_type!r}")
         type_name_str = str(data.get(type_key, "CtyDynamic"))
         value_data = data.get("value")
 
-        cty_type = cls._create_type_from_name(type_name_str, data)
+        # Pass expected_type to _create_type_from_name
+        cty_type = cls._create_type_from_name(type_name_str, data, expected_cty_type=expected_type)
         logger.debug(
-            f"JULES_CREATE_TYPED_VALUE: Determined cty_type: {cty_type!r}, value_data: {value_data!r}"
+            f"JULES_CREATE_TYPED_VALUE: Determined cty_type: {cty_type!r}, value_data: {value_data!r}, using expected_type: {expected_type!r}"
         )
 
         if (
@@ -528,16 +552,40 @@ class JsonEncoder(FormatEncoder):
 
     @classmethod
     def _create_type_from_name(
-        cls, type_name_str: str, data_dict_for_extra_type_info: dict[str, object]
+        cls, type_name_str: str, data_dict_for_extra_type_info: dict[str, object], expected_cty_type: CtyType | None = None
     ) -> "CtyType":
         """
         Internal helper to create a CtyType instance from a type name string
         and potentially a dictionary containing details for complex types (like collection
         element types or object attribute types).
+        If an `expected_cty_type` is provided, it can be used to more accurately
+        reconstruct the type, especially for generic class names like "CtyObject".
         """
         logger.debug(
-            f"🧩🔍🔄 Creating type from name string: '{type_name_str}' with extra info from: {data_dict_for_extra_type_info!r}"
+            f"🧩🔍🔄 Creating type from name string: '{type_name_str}' with extra info from: {data_dict_for_extra_type_info!r}, expected_cty_type: {expected_cty_type!r}"
         )
+
+        # If expected_cty_type is provided and matches the type_name_str,
+        # use its detailed structure.
+        if expected_cty_type:
+            if type_name_str == "CtyObject" and isinstance(expected_cty_type, CtyObject):
+                logger.debug(f"🧩🔍🔄 Using expected_cty_type for CtyObject: {expected_cty_type!r}")
+                return CtyObject(attribute_types=expected_cty_type.attribute_types, optional_attributes=expected_cty_type.optional_attributes)
+            if type_name_str == "CtyMap" and isinstance(expected_cty_type, CtyMap):
+                logger.debug(f"🧩🔍🔄 Using expected_cty_type for CtyMap: {expected_cty_type!r}")
+                return CtyMap(key_type=expected_cty_type.key_type, value_type=expected_cty_type.value_type)
+            if type_name_str == "CtyList" and isinstance(expected_cty_type, CtyList):
+                logger.debug(f"🧩🔍🔄 Using expected_cty_type for CtyList: {expected_cty_type!r}")
+                return CtyList(element_type=expected_cty_type.element_type)
+            if type_name_str == "CtySet" and isinstance(expected_cty_type, CtySet):
+                logger.debug(f"🧩🔍🔄 Using expected_cty_type for CtySet: {expected_cty_type!r}")
+                return CtySet(element_type=expected_cty_type.element_type)
+            if type_name_str == "CtyTuple" and isinstance(expected_cty_type, CtyTuple):
+                logger.debug(f"🧩🔍🔄 Using expected_cty_type for CtyTuple: {expected_cty_type!r}")
+                return CtyTuple(element_types=expected_cty_type.element_types)
+            # For other types, or if type_name_str doesn't match expected_cty_type's class,
+            # continue with normal parsing logic. This might happen if expected_type
+            # is a broader type (like CtyDynamic) but the data has more specific info.
 
         # Handle direct CtyType class names (e.g., from cls.TYPE_MARKER or recursive calls from _value_to_dict)
         if type_name_str == "CtyBool":
@@ -552,8 +600,10 @@ class JsonEncoder(FormatEncoder):
             element_type_name = cast(
                 str, data_dict_for_extra_type_info.get("element_type", "CtyDynamic")
             )
+            # Pass expected_type's element_type if available and current expected_type is a list
+            nested_expected_type = expected_cty_type.element_type if isinstance(expected_cty_type, CtyList) else None
             return CtyList(
-                element_type=cls._create_type_from_name(element_type_name, {})
+                element_type=cls._create_type_from_name(element_type_name, {}, expected_cty_type=nested_expected_type)
             )
         if type_name_str == "CtyMap":
             key_type_name = cast(
@@ -562,42 +612,45 @@ class JsonEncoder(FormatEncoder):
             value_type_name = cast(
                 str, data_dict_for_extra_type_info.get("value_type", "CtyDynamic")
             )
+            nested_expected_key_type = expected_cty_type.key_type if isinstance(expected_cty_type, CtyMap) else None
+            nested_expected_value_type = expected_cty_type.value_type if isinstance(expected_cty_type, CtyMap) else None
             return CtyMap(
-                key_type=cls._create_type_from_name(key_type_name, {}),
-                value_type=cls._create_type_from_name(value_type_name, {}),
+                key_type=cls._create_type_from_name(key_type_name, {}, expected_cty_type=nested_expected_key_type),
+                value_type=cls._create_type_from_name(value_type_name, {}, expected_cty_type=nested_expected_value_type),
             )
         if type_name_str == "CtySet":
             element_type_name = cast(
                 str, data_dict_for_extra_type_info.get("element_type", "CtyDynamic")
             )
+            nested_expected_type = expected_cty_type.element_type if isinstance(expected_cty_type, CtySet) else None
             return CtySet(
-                element_type=cls._create_type_from_name(element_type_name, {})
+                element_type=cls._create_type_from_name(element_type_name, {}, expected_cty_type=nested_expected_type)
             )
         if (
-            type_name_str == "CtyObject"
-        ):  # Added for completeness if "type":"CtyObject" is used
-            # This path expects attributes to be in data_dict_for_extra_type_info if it's our own encoding
-            # However, JSON comparable format embeds attributes in the type_name_str.
-            # The string parsing below handles the JSON comparable format.
-            # If data_dict_for_extra_type_info has 'attributes', use it.
+            type_name_str == "CtyObject" # This branch might be less used if expected_cty_type hits first
+        ):
             if "attributes" in data_dict_for_extra_type_info and isinstance(
                 data_dict_for_extra_type_info["attributes"], dict
             ):
-                attr_types = {
-                    k: cls._create_type_from_name(v, {})
-                    for k, v in data_dict_for_extra_type_info["attributes"].items()
-                }
+                attr_types = {}
+                for k, v_type_name_or_def in data_dict_for_extra_type_info["attributes"].items():
+                    # If expected_cty_type is an object, try to get the specific expected attribute type
+                    nested_expected_attr_type = None
+                    if isinstance(expected_cty_type, CtyObject) and k in expected_cty_type.attribute_types:
+                        nested_expected_attr_type = expected_cty_type.attribute_types[k]
+                    attr_types[k] = cls._create_type_from_name(v_type_name_or_def, {}, expected_cty_type=nested_expected_attr_type)
                 return CtyObject(attr_types)
-            # Fall through to string parsing if not our "type":"CtyObject" format.
-        if type_name_str == "CtyTuple":  # Added for completeness
+        if type_name_str == "CtyTuple": # This branch might be less used
             if "element_types" in data_dict_for_extra_type_info and isinstance(
                 data_dict_for_extra_type_info["element_types"], list
             ):
-                el_types = tuple(
-                    cls._create_type_from_name(et_name, {})
-                    for et_name in data_dict_for_extra_type_info["element_types"]
-                )
-                return CtyTuple(el_types)
+                el_types = []
+                for i, et_name_or_def in enumerate(data_dict_for_extra_type_info["element_types"]):
+                    nested_expected_el_type = None
+                    if isinstance(expected_cty_type, CtyTuple) and i < len(expected_cty_type.element_types):
+                        nested_expected_el_type = expected_cty_type.element_types[i]
+                    el_types.append(cls._create_type_from_name(et_name_or_def, {}, expected_cty_type=nested_expected_el_type))
+                return CtyTuple(tuple(el_types))
             # Fall through
 
         # Handle stringified types (e.g., from 'type_name' in JSON comparable format)
@@ -611,44 +664,41 @@ class JsonEncoder(FormatEncoder):
             return CtyDynamic()
 
         if type_name_str.startswith("list(") and type_name_str.endswith(")"):
+            # If expected_cty_type was a CtyList, its element type would have been passed recursively.
             return CtyList(
-                element_type=cls._create_type_from_name(
-                    type_name_str[len("list(") : -1], {}
-                )
+                element_type=cls._create_type_from_name(type_name_str[len("list("):-1], {}, expected_cty_type=None) # No specific expected type for element if top one wasn't List
             )
         if type_name_str.startswith("map(") and type_name_str.endswith(")"):
+            nested_expected_value_type = expected_cty_type.value_type if isinstance(expected_cty_type, CtyMap) else None
+            # Assuming string keys for maps parsed from "map(...)" string format
             return CtyMap(
-                key_type=CtyString(),
-                value_type=cls._create_type_from_name(
-                    type_name_str[len("map(") : -1], {}
-                ),
+                key_type=CtyString(), # Default key type for this format
+                value_type=cls._create_type_from_name(type_name_str[len("map("):-1], {}, expected_cty_type=nested_expected_value_type),
             )
         if type_name_str.startswith("set(") and type_name_str.endswith(")"):
+            nested_expected_element_type = expected_cty_type.element_type if isinstance(expected_cty_type, CtySet) else None
             return CtySet(
-                element_type=cls._create_type_from_name(
-                    type_name_str[len("set(") : -1], {}
-                )
+                element_type=cls._create_type_from_name(type_name_str[len("set("):-1], {}, expected_cty_type=nested_expected_element_type)
             )
 
         if type_name_str.startswith("object({") and type_name_str.endswith("})"):
             attrs_str = type_name_str[len("object({") : -2]
-            if not attrs_str:
+            if not attrs_str: # Empty object definition like "object({})"
                 return CtyObject({})
             attr_map = {}
             try:
-                attr_pairs_strs = (
-                    _split_by_delimiter_respecting_nesting_for_json_decode(
-                        attrs_str, ","
-                    )
-                )
+                attr_pairs_strs = _split_by_delimiter_respecting_nesting_for_json_decode(attrs_str, ",")
                 for pair_str in attr_pairs_strs:
                     name, t_str = pair_str.split("=", 1)
-                    attr_map[name.strip()] = cls._create_type_from_name(
-                        t_str.strip(), {}
-                    )
-            except Exception as e_parse:
+                    name = name.strip()
+                    # If we have an expected_cty_type that is an object, pass the specific expected type for this attribute
+                    nested_expected_attr_type = None
+                    if isinstance(expected_cty_type, CtyObject) and name in expected_cty_type.attribute_types:
+                        nested_expected_attr_type = expected_cty_type.attribute_types[name]
+                    attr_map[name] = cls._create_type_from_name(t_str.strip(), {}, expected_cty_type=nested_expected_attr_type)
+            except Exception as e_parse: # pylint: disable=broad-except
                 logger.warning(
-                    f"Could not parse object attributes from '{attrs_str}': {e_parse}. Falling back to CtyDynamic."
+                    f"Could not parse object attributes from '{attrs_str}': {e_parse}. Falling back to CtyDynamic for the entire object."
                 )
                 return CtyDynamic()
             return CtyObject(attr_map)
@@ -665,13 +715,17 @@ class JsonEncoder(FormatEncoder):
                 )
                 return CtyTuple(
                     tuple(
-                        cls._create_type_from_name(s.strip(), {})
-                        for s in elem_types_strs
+                        cls._create_type_from_name(
+                            s.strip(),
+                            {},
+                            expected_cty_type=(expected_cty_type.element_types[i] if isinstance(expected_cty_type, CtyTuple) and i < len(expected_cty_type.element_types) else None)
+                        )
+                        for i, s in enumerate(elem_types_strs)
                     )
                 )
-            except Exception as e_parse:
+            except Exception as e_parse: # pylint: disable=broad-except
                 logger.warning(
-                    f"Could not parse tuple elements from '{elems_str}': {e_parse}. Falling back to CtyDynamic."
+                    f"Could not parse tuple elements from '{elems_str}': {e_parse}. Falling back to CtyDynamic for the entire tuple."
                 )
                 return CtyDynamic()
 
@@ -685,6 +739,37 @@ class JsonEncoder(FormatEncoder):
         if isinstance(obj, Decimal):
             return str(obj)
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+    @classmethod
+    def marshal(
+        cls,
+        value: object,
+        *,
+        operation: object | None = None, # CTY OperationContext
+        **options: object,
+    ) -> bytes:
+        """
+        Marshals a Python/CTY value into JSON bytes using CTY conventions.
+        """
+        # `operation` from WireFormat is Cty.OperationContext, not used directly by JsonEncoder's core logic
+        # but could be passed via options if JsonEncoder's _encode were to use it.
+        return cls.encode(value, **options)
+
+    @classmethod
+    def unmarshal(
+        cls,
+        data: bytes,
+        expected_type: type | None = None, # CTY CtyType
+        *,
+        operation: object | None = None, # CTY OperationContext
+        **options: object,
+    ) -> object:
+        """
+        Unmarshals JSON bytes into a Python object/CtyValue using CTY conventions.
+        """
+        # `expected_type` and `operation` are not directly used by the core
+        # _dict_to_value logic but could be if further integration is needed.
+        return cls.decode(data, **options)
 
 
 # Helper for _create_type_from_name, simplified for this context
