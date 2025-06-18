@@ -110,26 +110,9 @@ class JsonEncoder(FormatEncoder):
         expected_type = cast(CtyType | None, options.get("expected_type")) # Get expected_type
 
         try:
-            # ADD DEBUG LOGS HERE
-            logger.debug(f"JULES_JSON_LOADS_INPUT_BYTES (first 150): {data[:150]!r}")
-            decoded_string_preview = "ERROR_DECODING_BYTE_INPUT_FOR_PREVIEW"
-            try:
-                decoded_string_preview = data.decode(
-                    "utf-8"
-                )  # Attempt to decode for logging
-                logger.debug(
-                    f"JULES_JSON_LOADS_INPUT_STR (first 150): {decoded_string_preview[:150]}"
-                )
-            except Exception as e_decode_preview:
-                logger.debug(
-                    f"JULES_JSON_LOADS_INPUT_STR: Preview decode error: {e_decode_preview!r}"
-                )
-
             try:
                 json_dict = json.loads(data)  # THE ACTUAL CALL
 
-                # ADD DEBUG LOG HERE
-                logger.debug(f"JULES_JSON_LOADS_OUTPUT_DICT: {json_dict!r}")
             except json.JSONDecodeError as e:
                 error_msg = f"Invalid JSON: {e}"
                 logger.error(f"🧩🔍❌ {error_msg}")
@@ -330,25 +313,6 @@ class JsonEncoder(FormatEncoder):
     ) -> CtyValue:
         logger.debug(f"🧩🔍🔄 Converting dictionary to CtyValue, expected_type: {expected_type!r}")
 
-        # TODO: Review and remove or integrate "JULES_DEBUG_JSON_DECODE" logs.
-        # These seem to be temporary debugging logs.
-        logger.debug(f"JULES_DEBUG_JSON_DECODE: _dict_to_value received data: {data!r}")
-        logger.debug(
-            f"JULES_DEBUG_JSON_DECODE: data has is_null? {cls.NULL_MARKER in data}. Value: {data.get(cls.NULL_MARKER)}"
-        )
-        logger.debug(
-            f"JULES_DEBUG_JSON_DECODE: data has is_unknown? {cls.UNKNOWN_MARKER in data}. Value: {data.get(cls.UNKNOWN_MARKER)}"
-        )
-        logger.debug(
-            f"JULES_DEBUG_JSON_DECODE: data has wire_type_marker ('{cls.TYPE_MARKER}')? {cls.TYPE_MARKER in data}. Value: {data.get(cls.TYPE_MARKER)}"
-        )
-        logger.debug(
-            f"JULES_DEBUG_JSON_DECODE: data has comparable_type_marker ('type_name')? {'type_name' in data}. Value: {data.get('type_name')}"
-        )
-        logger.debug(
-            f"JULES_DEBUG_JSON_DECODE: data has value? {'value' in data}. Value: {data.get('value')!r}"
-        )
-
         try:
             # Order of checks: UNKNOWN, then NULL, then typed, then untyped.
             if data.get(cls.UNKNOWN_MARKER, False):  # checks for "is_unknown": true
@@ -425,24 +389,17 @@ class JsonEncoder(FormatEncoder):
 
     @classmethod
     def _create_typed_value(cls, data: dict[str, object], type_key: str, expected_type: CtyType | None = None) -> CtyValue:
-        logger.debug(f"JULES_CREATE_TYPED_VALUE: Input data: {data!r}, expected_type: {expected_type!r}")
         type_name_str = str(data.get(type_key, "CtyDynamic"))
         value_data = data.get("value")
 
         # Pass expected_type to _create_type_from_name
         cty_type = cls._create_type_from_name(type_name_str, data, expected_cty_type=expected_type)
-        logger.debug(
-            f"JULES_CREATE_TYPED_VALUE: Determined cty_type: {cty_type!r}, value_data: {value_data!r}, using expected_type: {expected_type!r}"
-        )
 
         if (
             value_data is None
             and not isinstance(cty_type, CtyDynamic)
             and not data.get(cls.NULL_MARKER, False)
         ):
-            logger.warning(
-                f"JULES_CREATE_TYPED_VALUE: Non-null typed value has None in 'value' field. Type: {type_name_str}. Data: {data!r}"
-            )
             # Proceeding, validate will likely handle this (e.g. create default empty for collections if appropriate, or error)
             pass
 
