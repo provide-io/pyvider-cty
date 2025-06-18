@@ -15,7 +15,7 @@ class CtyCapsule(CtyType):
     Capsule types are opaque types that can be used to wrap arbitrary Python objects.
     """
 
-    def __init__(self, capsule_name: str, py_type: type):
+    def __init__(self, capsule_name: str, py_type: type) -> None:
         # Note: CtyType's __init__ doesn't take arguments.
         # The 'name' for a type is usually its ctype class variable or derived.
         # For Capsule, the instance specific 'name' is the capsule_name.

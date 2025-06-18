@@ -1,3 +1,19 @@
+#
+# pyvider/cty/types/collections/list.py
+#
+
+"""
+List type implementation for the Cty type system.
+
+This module provides CtyList, representing ordered collections of elements with the
+same type in the Cty type system. Lists maintain insertion order, allow duplicates,
+and support indexed access, slicing, and other sequence operations.
+
+CtyList follows the go-cty list semantics, ensuring type safety for all elements
+while providing Pythonic operations like slicing and iteration. All operations maintain
+immutability by returning new instances rather than modifying existing ones.
+"""
+
 from collections.abc import Sequence
 from typing import (  # Added TYPE_CHECKING
     Any,
@@ -14,22 +30,6 @@ from pyvider.cty.exceptions import CtyListValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
-
-#
-# pyvider/cty/types/collections/list.py
-#
-
-"""
-List type implementation for the Cty type system.
-
-This module provides CtyList, representing ordered collections of elements with the
-same type in the Cty type system. Lists maintain insertion order, allow duplicates,
-and support indexed access, slicing, and other sequence operations.
-
-CtyList follows the go-cty list semantics, ensuring type safety for all elements
-while providing Pythonic operations like slicing and iteration. All operations maintain
-immutability by returning new instances rather than modifying existing ones.
-"""
 
 # Type variable representing the type of values in the list
 T = TypeVar("T")

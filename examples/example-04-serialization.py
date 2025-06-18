@@ -7,16 +7,10 @@ from pyvider.cty.conversion import WireFormatType, marshal, unmarshal
 
 # Create a value to serialize
 config_type = CtyObject(
-    attribute_types={
-        "api_url": CtyString(),
-        "timeout": CtyNumber()
-    }
+    attribute_types={"api_url": CtyString(), "timeout": CtyNumber()}
 )
 
-config_data = {
-    "api_url": "https://api.example.com",
-    "timeout": 30
-}
+config_data = {"api_url": "https://api.example.com", "timeout": 30}
 
 # Validation returns a CtyValue now, no need to wrap again
 config_val = config_type.validate(config_data)
@@ -31,9 +25,7 @@ try:
     # Unmarshal, assuming JSON format (can add format detection if needed)
     # Pass expected_type=config_type for validation upon unmarshalling
     deserialized = unmarshal(
-        json_bytes,
-        format_kind=WireFormatType.JSON,
-        expected_type=config_type
+        json_bytes, format_kind=WireFormatType.JSON, expected_type=config_type
     )
     print(f"Deserialized: {deserialized}")
     # Access deserialized data safely

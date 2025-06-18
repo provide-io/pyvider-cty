@@ -1,4 +1,3 @@
-
 from typing import Never
 
 import pytest
@@ -15,6 +14,7 @@ def test_initial_operation_context() -> None:
     """Test that the initial operation context is DEFAULT."""
     assert get_current_operation() == OperationContext.DEFAULT
 
+
 def test_operation_context_manager_sets_and_restores_context() -> None:
     """Test that the OperationContextManager correctly sets and restores context."""
     initial_context = get_current_operation()
@@ -29,9 +29,8 @@ def test_operation_context_manager_sets_and_restores_context() -> None:
         # Exiting STATE context
         assert get_current_operation() == OperationContext.CONFIG
 
-
     # Exiting CONFIG context
-    assert get_current_operation() == initial_context # Should be DEFAULT
+    assert get_current_operation() == initial_context  # Should be DEFAULT
 
 
 def test_operation_context_restores_on_exception() -> Never:
@@ -44,7 +43,7 @@ def test_operation_context_restores_on_exception() -> Never:
             assert get_current_operation() == OperationContext.PLAN
             raise ValueError("Test exception")
 
-    assert get_current_operation() == initial_context # Should be restored to DEFAULT
+    assert get_current_operation() == initial_context  # Should be restored to DEFAULT
 
 
 def test_get_current_operation_default() -> None:
@@ -54,7 +53,9 @@ def test_get_current_operation_default() -> None:
     # but pytest usually isolates test function calls.
     # For safety, explicitly reset (if possible without direct _current_operation_context.reset which is not public)
     # This test is somewhat redundant with test_initial_operation_context but confirms default access.
-    token = _current_operation_context.set(OperationContext.DEFAULT) # Set to known default
+    token = _current_operation_context.set(
+        OperationContext.DEFAULT
+    )  # Set to known default
     try:
         assert get_current_operation() == OperationContext.DEFAULT
     finally:
@@ -67,6 +68,7 @@ def test_enum_values_auto_generated() -> None:
     assert len(values) == len(set(values)), "Enum values should be unique"
     for item in OperationContext:
         assert isinstance(item.value, int), "Enum values should be integers from auto()"
+
 
 # Clean up context var after tests if necessary, though pytest should handle test isolation.
 # If tests were to run in a way that context could leak (e.g. within the same async task without proper reset),

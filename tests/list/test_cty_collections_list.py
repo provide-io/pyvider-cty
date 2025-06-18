@@ -29,6 +29,7 @@ def test_cty_list_large_list() -> None:
         assert isinstance(item.type, CtyString)
         assert item.value == "item"
 
+
 def test_cty_list_dynamic_schema() -> None:
     """Test validation with dynamically nested structure."""
     dynamic_list = CtyList(element_type=CtyList(element_type=CtyString()))
@@ -56,5 +57,6 @@ def test_cty_list_dynamic_schema() -> None:
     assert isinstance(validated.value[1].value[0], CtyValue)
     assert isinstance(validated.value[1].value[0].type, CtyString)
     assert validated.value[1].value[0].value == "three"
+
 
 # 🐍🏗️🧪

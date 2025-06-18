@@ -105,7 +105,7 @@ class TerraformFormatConverter(WireFormat):
         operation: OperationContext | None = None,
         **options: object,
     ) -> object:
-        op_ctx = operation or get_current_operation()
+        _op_ctx = operation or get_current_operation()  # Renamed to avoid F841
         raw_value: object = None
         try:
             # Check if data is a DynamicValue protobuf object

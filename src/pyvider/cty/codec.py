@@ -280,7 +280,7 @@ def cty_value_to_msgpack_bytes(value: "CtyValue") -> bytes:
 __PYVIDER_CTY_UNKNOWN_SENTINEL__ = "__PYVIDER_CTY_UNKNOWN_SENTINEL__"
 
 
-def cty_msgpack_ext_hook(code, data):
+def cty_msgpack_ext_hook(code: int, data: bytes) -> object:
     if code == 0:
         return __PYVIDER_CTY_UNKNOWN_SENTINEL__
     raise ValueError(f"Unknown msgpack extension type code: {code}")

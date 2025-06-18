@@ -46,7 +46,6 @@ class TestCtySetType:
                     break
             assert found, f"Value '{val}' not found in validated set"
 
-
     @pytest.mark.asyncio
     async def test_validate_valid_number_set(self) -> None:
         """Test validation of a valid number set."""

@@ -188,8 +188,7 @@ class TestCtyValueFactoryMethods:
         """Test object factory method."""
         # Create an object value
         value = CtyValue.object(
-            {"name": self.str_type, "age": self.num_type},
-            {"name": "Alice", "age": 30}
+            {"name": self.str_type, "age": self.num_type}, {"name": "Alice", "age": 30}
         )
 
         # Verify result
@@ -242,24 +241,30 @@ class TestCtyValueFactoryMethods:
         assert isinstance(null_bool.type, CtyBool)
 
 
-class TestCtyValueFactoryLoggingAndValidation: # Renamed class for clarity
+class TestCtyValueFactoryLoggingAndValidation:  # Renamed class for clarity
     """Tests for logging in dynamic factories and validation in object factory."""
 
-    def test_list_of_dynamic_factory_logs(self, capsys) -> None: # Changed caplog to capsys
+    def test_list_of_dynamic_factory_logs(
+        self, capsys
+    ) -> None:  # Changed caplog to capsys
         # caplog.set_level(logging.DEBUG) # Removed
         # The elements will be wrapped in CtyValue(CtyDynamic, element_value) by the factory/validation logic
         CtyValue.list_of_dynamic(["a", 1])
         # captured = capsys.readouterr() # Log assertion removed
         # assert "Creating dynamic list value" in captured.err # Log assertion removed
 
-    def test_map_of_dynamic_factory_logs(self, capsys) -> None: # Changed caplog to capsys
+    def test_map_of_dynamic_factory_logs(
+        self, capsys
+    ) -> None:  # Changed caplog to capsys
         # caplog.set_level(logging.DEBUG) # Removed
         # Key type is CtyString, values will be dynamic
         CtyValue.map_of_dynamic(CtyString(), {"key1": "b", "key2": 1})
         # captured = capsys.readouterr() # Log assertion removed
         # assert "Creating dynamic map value" in captured.err # Log assertion removed
 
-    def test_object_factory_invalid_attribute_type_spec_raises_validation_error(self, capsys) -> None: # Changed caplog to capsys
+    def test_object_factory_invalid_attribute_type_spec_raises_validation_error(
+        self, capsys
+    ) -> None:  # Changed caplog to capsys
         # This test is primarily for the CtyValidationError, but good to set log level for any potential logs.
         # caplog.set_level(logging.DEBUG)  # Removed
 
@@ -267,8 +272,10 @@ class TestCtyValueFactoryLoggingAndValidation: # Renamed class for clarity
         invalid_attribute_types = {"name": str, "age": int}
         attributes_values = {"name": "test_name", "age": 30}
 
-        with pytest.raises(CtyValidationError) as excinfo: # Capture exception info
-            CtyValue.object(attribute_types=invalid_attribute_types, attributes=attributes_values)
+        with pytest.raises(CtyValidationError) as excinfo:  # Capture exception info
+            CtyValue.object(
+                attribute_types=invalid_attribute_types, attributes=attributes_values
+            )
 
         # Check for key parts of the message in the exception's string representation
         error_message = str(excinfo.value)

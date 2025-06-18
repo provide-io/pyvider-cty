@@ -29,15 +29,13 @@ class TestCtyMapComplex:
         # Create more complex map types
         self.nested_map = CtyMap(
             key_type=CtyString(),
-            value_type=CtyMap(key_type=CtyString(), value_type=CtyString())
+            value_type=CtyMap(key_type=CtyString(), value_type=CtyString()),
         )
 
         # Add the missing list_map attribute
         self.list_map = CtyMap(
-            key_type=CtyString(),
-            value_type=CtyList(element_type=CtyString())
+            key_type=CtyString(), value_type=CtyList(element_type=CtyString())
         )
-
 
     @pytest.mark.asyncio
     async def test_cty_map_with_invalid_inputs(self) -> None:
@@ -67,7 +65,6 @@ class TestCtyMapComplex:
         with pytest.raises(CtyMapValidationError):
             self.string_map.validate({unknown_key: valid_val})
 
-
     @pytest.mark.asyncio
     async def test_nested_map(self) -> None:
         """Test nested map with proper value wrapping."""
@@ -95,7 +92,11 @@ class TestCtyMapComplex:
         # Find the nested value - adjusted for string keys
         found = False
         # Get internal key_mapping to access original CtyValue keys
-        outer_keys = outer_map._key_mapping.values() if hasattr(outer_map, '_key_mapping') else []
+        outer_keys = (
+            outer_map._key_mapping.values()
+            if hasattr(outer_map, "_key_mapping")
+            else []
+        )
 
         # Check if we have our outer_key in the mapping
         for k in outer_keys:
@@ -132,14 +133,8 @@ class TestCtyMapComplex:
         """Test validation of maps with nested maps as values."""
         # Create nested map data
         data = {
-            "user1": {
-                "name": "Alice",
-                "email": "alice@example.com"
-            },
-            "user2": {
-                "name": "Bob",
-                "email": "bob@example.com"
-            }
+            "user1": {"name": "Alice", "email": "alice@example.com"},
+            "user2": {"name": "Bob", "email": "bob@example.com"},
         }
 
         # Validate
@@ -181,7 +176,7 @@ class TestCtyMapComplex:
         invalid_data = {
             "user1": {
                 "name": "Alice",
-                "email": 123  # Should be string
+                "email": 123,  # Should be string
             }
         }
 
@@ -195,7 +190,7 @@ class TestCtyMapComplex:
         data = {
             "fruits": ["apple", "banana", "cherry"],
             "vegetables": ["carrot", "broccoli"],
-            "empty": []
+            "empty": [],
         }
 
         # Validate
@@ -219,7 +214,11 @@ class TestCtyMapComplex:
         assert len(fruits_list.value) == 3
         assert all(isinstance(item, CtyValue) for item in fruits_list.value)
         assert all(isinstance(item.type, CtyString) for item in fruits_list.value)
-        assert [item.value for item in fruits_list.value] == ["apple", "banana", "cherry"]
+        assert [item.value for item in fruits_list.value] == [
+            "apple",
+            "banana",
+            "cherry",
+        ]
 
         # Check empty list
         empty_list = None
@@ -256,31 +255,37 @@ class TestCtyMapComplex:
             if k == "config":
                 # Access the value using the string key k
                 config_value = validated.value[k]
-                break # Found it, exit loop
+                break  # Found it, exit loop
 
         # Now, config_value should be the CtyValue representing the nested map
         assert isinstance(validated, CtyValue)
         # --- Check the TYPE of the retrieved CtyValue ---
         assert isinstance(config_value, CtyValue), "Config value should be a CtyValue"
-        assert isinstance(config_value.type, CtyMap), "Config value's type should be CtyMap" # Check the type *within* the CtyValue
+        assert isinstance(config_value.type, CtyMap), (
+            "Config value's type should be CtyMap"
+        )  # Check the type *within* the CtyValue
 
         # You can add further checks on the nested map's content if needed:
         assert config_value is not None, "Key 'config' not found in map"
 
         # Find "filename" in the nested map's internal dictionary
-        nested_map_data = config_value.value # Get the inner dict {'filename': CtyValue(...)}
+        nested_map_data = (
+            config_value.value
+        )  # Get the inner dict {'filename': CtyValue(...)}
         assert isinstance(nested_map_data, dict)
         filename_value = None
         for nested_k in nested_map_data:
             # nested_k is the string 'filename'
             if nested_k == "filename":
-                filename_value = nested_map_data[nested_k] # This is the CtyValue for the filename
+                filename_value = nested_map_data[
+                    nested_k
+                ]  # This is the CtyValue for the filename
                 break
 
         assert filename_value is not None, "Key 'filename' not found in nested map"
         assert isinstance(filename_value, CtyValue)
-        assert isinstance(filename_value.type, CtyString) # Check the type
-        assert filename_value.value == "test.txt" # Check the actual string value
+        assert isinstance(filename_value.type, CtyString)  # Check the type
+        assert filename_value.value == "test.txt"  # Check the actual string value
 
     @pytest.mark.asyncio
     async def test_cty_map_validate_nested_map_invalid(self) -> None:
@@ -290,16 +295,12 @@ class TestCtyMapComplex:
         with pytest.raises(CtyMapValidationError):
             nested_map.validate(invalid)
 
-
     @pytest.mark.asyncio
     async def test_cty_map_with_complex_nested_value_types(self) -> None:
         """Test map with complex nested value types."""
         # Create an object type for the map value
         person_type = CtyObject(
-            attribute_types={
-                "name": CtyString(),
-                "age": CtyNumber()
-            }
+            attribute_types={"name": CtyString(), "age": CtyNumber()}
         )
 
         # Create a map type with the object as its value type
@@ -307,14 +308,8 @@ class TestCtyMapComplex:
 
         # Create data
         data = {
-            "person1": {
-                "name": "Alice",
-                "age": 30
-            },
-            "person2": {
-                "name": "Bob",
-                "age": 25
-            }
+            "person1": {"name": "Alice", "age": 30},
+            "person2": {"name": "Bob", "age": 25},
         }
 
         # Validate
@@ -366,5 +361,6 @@ class TestCtyMapComplex:
         assert isinstance(name_result, CtyValue)
         assert isinstance(name_result.type, CtyString)
         assert name_result.value == "Alice"
+
 
 # 🐍🏗️🧪

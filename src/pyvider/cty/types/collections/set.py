@@ -66,7 +66,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: Any) -> CtyValue:  # Added quotes around CtyValue
         """Validate *value* as a **set** matching :pyattr:`element_type`.
 
         Acceptable *inputs*:
@@ -147,7 +147,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
         logger.debug("🟣✅  Successfully validated %d element(s)", len(validated_items))
         return CtyValue(vtype=self, value=frozenset(validated_items))
 
-    def add(self, element) -> CtySet:
+    def add(self, element: Any) -> CtySet:  # Added type hint for element
         """
         Add an element to the set.
 

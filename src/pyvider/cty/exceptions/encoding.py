@@ -25,7 +25,11 @@ class TransformationError(CtyError):
     """
 
     def __init__(
-        self, message: str, schema: object = None, target_type: object = None, **kwargs
+        self,
+        message: str,
+        schema: object = None,
+        target_type: object = None,
+        **kwargs: object,
     ) -> None:
         self.schema = schema
         self.target_type = target_type
@@ -254,7 +258,7 @@ class WireFormatError(TransformationError):
         *,
         format_type: object = None,
         operation: str | None = None,
-        **kwargs,  # Catches schema, target_type for TransformationError
+        **kwargs: object,  # Catches schema, target_type for TransformationError
     ) -> None:
         self.format_type = format_type
         self.operation = operation

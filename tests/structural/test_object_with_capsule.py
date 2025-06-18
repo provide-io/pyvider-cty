@@ -26,32 +26,37 @@ class MyService:
             return self.name == other.name
         return False
 
+
 @pytest.fixture
 def my_service_capsule_type() -> CtyCapsule:
     """Fixture for a CtyCapsule type wrapping MyService."""
     return CtyCapsule("MyServiceType", MyService)
 
+
 @pytest.fixture
 def object_with_capsule_type(my_service_capsule_type: CtyCapsule) -> CtyObject:
     """Fixture for a CtyObject type that includes a CtyCapsule attribute."""
-    return CtyObject({
-        "id": CtyString(),
-        "service": my_service_capsule_type
-    })
+    return CtyObject({"id": CtyString(), "service": my_service_capsule_type})
+
 
 @pytest.fixture
 def object_with_optional_capsule_type(my_service_capsule_type: CtyCapsule) -> CtyObject:
     """Fixture for a CtyObject type with an optional CtyCapsule attribute."""
     return CtyObject(
         {"name": CtyString(), "service_instance": my_service_capsule_type},
-        optional_attributes={"service_instance"}
+        optional_attributes={"service_instance"},
     )
 
 
-def test_create_object_with_capsule_type(object_with_capsule_type: CtyObject, my_service_capsule_type: CtyCapsule):
+def test_create_object_with_capsule_type(
+    object_with_capsule_type: CtyObject, my_service_capsule_type: CtyCapsule
+):
     """Test that CtyObject can be defined with a CtyCapsule attribute."""
     assert "service" in object_with_capsule_type.attribute_types
-    assert object_with_capsule_type.attribute_types["service"] == my_service_capsule_type
+    assert (
+        object_with_capsule_type.attribute_types["service"] == my_service_capsule_type
+    )
+
 
 def test_validate_object_with_capsule_attribute(object_with_capsule_type: CtyObject):
     """Test validating a dictionary with a correct capsule instance."""
@@ -66,7 +71,10 @@ def test_validate_object_with_capsule_attribute(object_with_capsule_type: CtyObj
     assert cty_val.value["service"].value == service_instance
     assert isinstance(cty_val.value["service"].value, MyService)
 
-def test_validate_object_with_incorrect_capsule_type(object_with_capsule_type: CtyObject):
+
+def test_validate_object_with_incorrect_capsule_type(
+    object_with_capsule_type: CtyObject,
+):
     """Test validation failure when capsule attribute has an incorrect type."""
     data = {"id": "obj2", "service": "not_a_service_instance"}
 
@@ -77,11 +85,14 @@ def test_validate_object_with_incorrect_capsule_type(object_with_capsule_type: C
     assert "attribute 'service'" in str(excinfo.value)
 
 
-def test_validate_object_with_missing_required_capsule(object_with_capsule_type: CtyObject):
+def test_validate_object_with_missing_required_capsule(
+    object_with_capsule_type: CtyObject,
+):
     """Test validation failure when a required capsule attribute is missing."""
     data = {"id": "obj3"}
     with pytest.raises(CtyValidationError, match="Missing required attribute: service"):
         object_with_capsule_type.validate(data)
+
 
 def test_get_capsule_attribute(object_with_capsule_type: CtyObject):
     """Test retrieving a capsule attribute from a validated CtyObject value."""
@@ -102,7 +113,10 @@ def test_get_capsule_attribute(object_with_capsule_type: CtyObject):
     assert raw_service_val.value == service_instance
     assert isinstance(raw_service_val.value, MyService)
 
-def test_object_with_optional_capsule_present(object_with_optional_capsule_type: CtyObject):
+
+def test_object_with_optional_capsule_present(
+    object_with_optional_capsule_type: CtyObject,
+):
     """Test validation when an optional capsule attribute is present."""
     service_instance = MyService("optional_svc")
     data = {"name": "optional_test_present", "service_instance": service_instance}
@@ -110,16 +124,22 @@ def test_object_with_optional_capsule_present(object_with_optional_capsule_type:
     cty_val = object_with_optional_capsule_type.validate(data)
     assert cty_val.value["service_instance"].value == service_instance
 
-def test_object_with_optional_capsule_missing(object_with_optional_capsule_type: CtyObject):
+
+def test_object_with_optional_capsule_missing(
+    object_with_optional_capsule_type: CtyObject,
+):
     """Test validation when an optional capsule attribute is missing (should be null)."""
     data = {"name": "optional_test_missing"}
 
     cty_val = object_with_optional_capsule_type.validate(data)
     service_val = cty_val.value["service_instance"]
     assert service_val.is_null  # Changed from is_null() to is_null
-    assert service_val.value is None # The underlying value of a null CtyValue is None
+    assert service_val.value is None  # The underlying value of a null CtyValue is None
 
-def test_object_with_optional_capsule_explicitly_null(object_with_optional_capsule_type: CtyObject):
+
+def test_object_with_optional_capsule_explicitly_null(
+    object_with_optional_capsule_type: CtyObject,
+):
     """Test validation when an optional capsule attribute is explicitly set to None."""
     data = {"name": "optional_test_explicit_null", "service_instance": None}
 
@@ -127,5 +147,6 @@ def test_object_with_optional_capsule_explicitly_null(object_with_optional_capsu
     service_val = cty_val.value["service_instance"]
     assert service_val.is_null  # Changed from is_null() to is_null
     assert service_val.value is None
+
 
 # 🐍🏗️🐣

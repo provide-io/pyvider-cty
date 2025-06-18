@@ -681,7 +681,6 @@ class CtyValue(Generic[T]):
             CtyValidationError: If validation fails for any attribute
         """
         from pyvider.cty.exceptions import CtyValidationError
-        from pyvider.cty.exceptions import CtyValidationError
         from pyvider.cty.types import CtyObject
 
         logger.debug(f"🔄🔧✅ Creating object value with {len(attributes)} attributes")
@@ -954,7 +953,7 @@ class CtyValue(Generic[T]):
         # Combine component hashes
         return hash((type_hash, state_hash, value_hash, marks_hash))
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         Check if two CtyValue instances are equal.
 
@@ -1037,7 +1036,7 @@ class CtyValue(Generic[T]):
         except Exception:
             return False  # If comparison fails
 
-    def __getitem__(self, key) -> "CtyValue":
+    def __getitem__(self, key: object) -> "CtyValue":
         """
         Support for container indexing operations.
 
@@ -1169,7 +1168,7 @@ class CtyValue(Generic[T]):
             logger.error(f"🔄❗❌ {error_msg}")
             raise TypeError(error_msg) from e
 
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item: object) -> bool:
         """
         Support for 'in' operator with proper value comparison.
 

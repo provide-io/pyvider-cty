@@ -29,15 +29,19 @@ class TestPathSystem:
     async def test_attribute_paths(self) -> None:
         """Test paths with attribute access."""
         # Create an object type
-        person_type = CtyObject(attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber(),
-            "address": CtyObject(attribute_types={
-                "street": CtyString(),
-                "city": CtyString(),
-                "zip": CtyString()
-            })
-        })
+        person_type = CtyObject(
+            attribute_types={
+                "name": CtyString(),
+                "age": CtyNumber(),
+                "address": CtyObject(
+                    attribute_types={
+                        "street": CtyString(),
+                        "city": CtyString(),
+                        "zip": CtyString(),
+                    }
+                ),
+            }
+        )
 
         # Create a properly wrapped object value
         person = CtyValue(
@@ -46,18 +50,20 @@ class TestPathSystem:
                 "name": CtyValue(vtype=CtyString(), value="Alice"),
                 "age": CtyValue(vtype=CtyNumber(), value=30),
                 "address": CtyValue(
-                    vtype=CtyObject(attribute_types={
-                        "street": CtyString(),
-                        "city": CtyString(),
-                        "zip": CtyString()
-                    }),
+                    vtype=CtyObject(
+                        attribute_types={
+                            "street": CtyString(),
+                            "city": CtyString(),
+                            "zip": CtyString(),
+                        }
+                    ),
                     value={
                         "street": CtyValue(vtype=CtyString(), value="123 Main St"),
                         "city": CtyValue(vtype=CtyString(), value="Anytown"),
-                        "zip": CtyValue(vtype=CtyString(), value="12345")
-                    }
-                )
-            }
+                        "zip": CtyValue(vtype=CtyString(), value="12345"),
+                    },
+                ),
+            },
         )
 
         # Test direct attribute access
@@ -76,7 +82,9 @@ class TestPathSystem:
 
         # Test invalid attribute
         invalid_path = CtyPath.get_attr("invalid")
-        with pytest.raises(AttributePathError): # Message can vary depending on where it's caught
+        with pytest.raises(
+            AttributePathError
+        ):  # Message can vary depending on where it's caught
             invalid_path.apply_path(person)
 
         # Test type checking
@@ -150,10 +158,12 @@ class TestPathSystem:
     @pytest.mark.asyncio
     async def test_complex_paths(self) -> None:
         """Test complex paths with multiple step types."""
-        user_type = CtyObject(attribute_types={
-            "name": CtyString(),
-            "scores": CtyMap(key_type=CtyString(), value_type=CtyNumber())
-        })
+        user_type = CtyObject(
+            attribute_types={
+                "name": CtyString(),
+                "scores": CtyMap(key_type=CtyString(), value_type=CtyNumber()),
+            }
+        )
         users_type = CtyList(element_type=user_type)
         raw_users_data = [
             {"name": "Alice", "scores": {"math": 95}},
@@ -177,11 +187,15 @@ class TestPathSystem:
     @pytest.mark.asyncio
     async def test_null_and_unknown_handling(self) -> None:
         """Test paths with null and unknown values."""
-        person_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
+        person_type = CtyObject(
+            attribute_types={"name": CtyString(), "age": CtyNumber()}
+        )
         name_path = CtyPath.get_attr("name")
 
         null_person = CtyValue.null(person_type)
-        with pytest.raises(AttributePathError, match="Cannot get attribute from null value"):
+        with pytest.raises(
+            AttributePathError, match="Cannot get attribute from null value"
+        ):
             name_path.apply_path(null_person)
 
         unknown_person = CtyValue.unknown(person_type)
@@ -196,7 +210,10 @@ class TestPathSystem:
             {"address": CtyValue.null(address_type)}
         )
         street_path = CtyPath.get_attr("address").child("street")
-        with pytest.raises(AttributePathError, match=r"Error at step 2 \(\.street\): Cannot get attribute 'street' from object: Object validation error: Cannot get attribute from null value"):
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at step 2 \(\.street\): Cannot get attribute 'street' from object: Object validation error: Cannot get attribute from null value",
+        ):
             street_path.apply_path(person_with_null_address)
 
         person_with_unknown_address = person_with_address_type.validate(
@@ -234,23 +251,32 @@ class TestPathSystem:
         assert result.value == 123
 
         path_non_existent = CtyPath.get_attr("non_existent_key")
-        with pytest.raises(AttributePathError, match="Key 'non_existent_key' not found in map"):
+        with pytest.raises(
+            AttributePathError, match="Key 'non_existent_key' not found in map"
+        ):
             path_non_existent.apply_path(cty_map_value)
 
-        with pytest.raises(AttributePathError, match="Cannot get attribute from non-object type CtyMap"):
-             path_existing.apply_path_type(map_type)
+        with pytest.raises(
+            AttributePathError, match="Cannot get attribute from non-object type CtyMap"
+        ):
+            path_existing.apply_path_type(map_type)
 
     @pytest.mark.asyncio
     async def test_getattr_apply_type_errors(self) -> None:
         """Test error conditions for GetAttrStep.apply_type."""
-        list_type = CtyList(element_type=CtyString()) # Corrected constructor
+        list_type = CtyList(element_type=CtyString())  # Corrected constructor
         path = CtyPath.get_attr("any_attr")
-        with pytest.raises(AttributePathError, match="Cannot get attribute from non-object type CtyList"):
+        with pytest.raises(
+            AttributePathError,
+            match="Cannot get attribute from non-object type CtyList",
+        ):
             path.apply_path_type(list_type)
 
         obj_type = CtyObject(attribute_types={"name": CtyString()})
         path_missing_attr = CtyPath.get_attr("age")
-        with pytest.raises(AttributePathError, match="Object type has no attribute age"):
+        with pytest.raises(
+            AttributePathError, match="Object type has no attribute age"
+        ):
             path_missing_attr.apply_path_type(obj_type)
 
     @pytest.mark.asyncio
@@ -268,7 +294,9 @@ class TestPathSystem:
         assert isinstance(result_unknown.type, CtyString)
 
         string_value = CtyString().validate("not a list")
-        with pytest.raises(AttributePathError, match="Cannot index into value of type CtyString"):
+        with pytest.raises(
+            AttributePathError, match="Cannot index into value of type CtyString"
+        ):
             path_index.apply_path(string_value)
 
     @pytest.mark.asyncio
@@ -276,7 +304,9 @@ class TestPathSystem:
         """Test error conditions for IndexStep.apply_type."""
         string_type = CtyString()
         path_index = CtyPath.index(0)
-        with pytest.raises(AttributePathError, match="Cannot index into non-collection type CtyString"):
+        with pytest.raises(
+            AttributePathError, match="Cannot index into non-collection type CtyString"
+        ):
             path_index.apply_path_type(string_type)
 
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
@@ -304,26 +334,41 @@ class TestPathSystem:
         assert isinstance(result_unknown.type, CtyNumber)
 
         string_value = CtyString().validate("not a map")
-        with pytest.raises(AttributePathError, match="Cannot get key from non-map value of type CtyString"):
+        with pytest.raises(
+            AttributePathError,
+            match="Cannot get key from non-map value of type CtyString",
+        ):
             path_key.apply_path(string_value)
 
         cty_map_value = map_type.validate({"a": 1})
         null_key_path = CtyPath.key(CtyValue.null(CtyString()))
         # Updated regex to match the actual error output which includes path step context
-        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[CtyValue\(vtype=CtyString\(value=''\), is_null=True\)\]\): Invalid CtyValue key in path step: CtyValue\(vtype=CtyString\(value=''\), is_null=True\)"):
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at step 1 \(\[CtyValue\(vtype=CtyString\(value=''\), is_null=True\)\]\): Invalid CtyValue key in path step: CtyValue\(vtype=CtyString\(value=''\), is_null=True\)",
+        ):
             null_key_path.apply_path(cty_map_value)
 
         unknown_key_path = CtyPath.key(CtyValue.unknown(CtyString()))
-        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[CtyValue\(vtype=CtyString\(value=''\), is_unknown=True\)\]\): Invalid CtyValue key in path step: CtyValue\(vtype=CtyString\(value=''\), is_unknown=True\)"):
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at step 1 \(\[CtyValue\(vtype=CtyString\(value=''\), is_unknown=True\)\]\): Invalid CtyValue key in path step: CtyValue\(vtype=CtyString\(value=''\), is_unknown=True\)",
+        ):
             unknown_key_path.apply_path(cty_map_value)
 
         number_key_path = CtyPath.key(CtyNumber().validate(123))
-        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)\]\): Map has no key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)"):
-             number_key_path.apply_path(cty_map_value)
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at step 1 \(\[CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)\]\): Map has no key CtyValue\(vtype=CtyNumber\(value=0\), value=Decimal\('123'\)\)",
+        ):
+            number_key_path.apply_path(cty_map_value)
 
         list_key_path = CtyPath.key([])
         # str(KeyStep(key=[])) is "['[]']". The error message is f"Error at step 1 ({step}): {e}"
-        with pytest.raises(AttributePathError, match=r"Error at step 1 \(\[\[\]\]\): Unsupported key type in path step: .*"):
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at step 1 \(\[\[\]\]\): Unsupported key type in path step: .*",
+        ):
             list_key_path.apply_path(cty_map_value)
 
     @pytest.mark.asyncio
@@ -331,7 +376,9 @@ class TestPathSystem:
         """Test error conditions for KeyStep.apply_type."""
         list_type = CtyList(element_type=CtyString())
         path_key = CtyPath.key("any_key")
-        with pytest.raises(AttributePathError, match="Cannot get key from non-map type CtyList"):
+        with pytest.raises(
+            AttributePathError, match="Cannot get key from non-map type CtyList"
+        ):
             path_key.apply_path_type(list_type)
 
         map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
@@ -346,17 +393,27 @@ class TestPathSystem:
         """Test error conditions for CtyPath.apply_path and CtyPath.apply_path_type."""
         path = CtyPath.get_attr("some_attr")
         raw_python_dict = {"some_attr": "some_value"}
-        with pytest.raises(AttributePathError, match="Cannot apply path to non-CtyValue: dict"):
+        with pytest.raises(
+            AttributePathError, match="Cannot apply path to non-CtyValue: dict"
+        ):
             path.apply_path(raw_python_dict)
 
         obj_type = CtyObject(attribute_types={"name": CtyString()})
         failing_path = CtyPath.get_attr("non_existent_attr").child("another_attr")
-        with pytest.raises(AttributePathError, match=r"Error at type step 1 \(.non_existent_attr\): Object type has no attribute non_existent_attr"):
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at type step 1 \(.non_existent_attr\): Object type has no attribute non_existent_attr",
+        ):
             failing_path.apply_path_type(obj_type)
 
-        cty_obj_value = CtyObject(attribute_types={"name": CtyString()}).validate({"name": "test"})
+        cty_obj_value = CtyObject(attribute_types={"name": CtyString()}).validate(
+            {"name": "test"}
+        )
         # Regex made more general for the wrapped error message
-        with pytest.raises(AttributePathError, match=r"Error at step 1 \(.non_existent_attr\): Cannot get attribute 'non_existent_attr' from object.*"):
+        with pytest.raises(
+            AttributePathError,
+            match=r"Error at step 1 \(.non_existent_attr\): Cannot get attribute 'non_existent_attr' from object.*",
+        ):
             failing_path.apply_path(cty_obj_value)
 
     # Note: The duplicated tests previously present here were removed by S14T3.
@@ -375,15 +432,21 @@ class TestPathSystem:
         # Mock the 'type' attribute of the CtyValue instance to return a mock object
         # This mock object will have a 'get_attribute' method that we can control
         mock_type_for_value = MagicMock(spec=CtyObject)
-        mock_type_for_value.get_attribute.side_effect = RuntimeError("mocked runtime error")
+        mock_type_for_value.get_attribute.side_effect = RuntimeError(
+            "mocked runtime error"
+        )
         # Set a descriptive name for the mock_type, in case error messages from the path system itself refer to it.
         # str(obj_type) gives a string like "object({attr_name: CtyString})"
         mock_type_for_value.name = str(obj_type)
 
-
         # Patch the 'type' property of the cty_obj_value instance.
         # CtyValue.type is a property, so we use PropertyMock.
-        with patch.object(CtyValue, 'type', PropertyMock(return_value=mock_type_for_value), create=True):
+        with patch.object(
+            CtyValue,
+            "type",
+            PropertyMock(return_value=mock_type_for_value),
+            create=True,
+        ):
             # We need to ensure our specific instance cty_obj_value uses this mocked type property.
             # This can be tricky if the property is on the class and not easily overridden per instance by patch.object directly on instance.
             # A robust way is to ensure GetAttrStep.apply calls `cty_obj_value.type` and that call is what we intercept.
@@ -409,12 +472,13 @@ class TestPathSystem:
     async def test_keystep_apply_type_key_validation_failure(self) -> None:
         """Test KeyStep.apply_type raises AttributePathError on key validation failure."""
         mock_key_type = MagicMock(spec=CtyString)
-        mock_key_type.validate.side_effect = CtyValidationError("mocked key validation error")
+        mock_key_type.validate.side_effect = CtyValidationError(
+            "mocked key validation error"
+        )
         # Provide a name attribute for the mock type, as it's used in error messages
         mock_key_type.name = "MockCtyString"
         # Provide a __repr__ for the mock_key_type for better error messages
         mock_key_type.__repr__ = lambda self: "<MockCtyString spec='CtyString'>"
-
 
         map_type = CtyMap(key_type=mock_key_type, value_type=CtyNumber())
         step = KeyStep("some_key")
@@ -436,13 +500,22 @@ class TestPathSystem:
         step = IndexStep(0)
 
         mock_type_for_value = MagicMock(spec=CtyList)
-        mock_type_for_value.element_at.side_effect = RuntimeError("mocked runtime error for list index")
+        mock_type_for_value.element_at.side_effect = RuntimeError(
+            "mocked runtime error for list index"
+        )
         # Set a descriptive name for the mock_type
-        mock_type_for_value.name = str(list_type) # e.g., "list(string)"
+        mock_type_for_value.name = str(list_type)  # e.g., "list(string)"
 
         # Patch the 'type' property of the CtyValue instance.
-        with patch.object(CtyValue, 'type', PropertyMock(return_value=mock_type_for_value), create=True):
-            with pytest.raises(AttributePathError, match="mocked runtime error for list index"):
+        with patch.object(
+            CtyValue,
+            "type",
+            PropertyMock(return_value=mock_type_for_value),
+            create=True,
+        ):
+            with pytest.raises(
+                AttributePathError, match="mocked runtime error for list index"
+            ):
                 step.apply(cty_list_value)
 
     @pytest.mark.asyncio
@@ -457,11 +530,12 @@ class TestPathSystem:
         mock_inner_key_value = MagicMock()
         mock_inner_key_value.__str__.side_effect = [
             "safe_key_for_logging",  # First call to str() (likely by logger)
-            RuntimeError("mocked runtime error for key processing")  # Second call (by str(self.key.value))
+            RuntimeError(
+                "mocked runtime error for key processing"
+            ),  # Second call (by str(self.key.value))
         ]
         # If repr is also called by the logger or error reporting, ensure it's safe too.
         mock_inner_key_value.__repr__ = lambda self: "<MockInnerKeyValue>"
-
 
         # Construct a CtyValue directly. vtype is CtyString as map keys are strings.
         problem_cty_key = CtyValue(vtype=CtyString(), value=mock_inner_key_value)
@@ -472,5 +546,7 @@ class TestPathSystem:
         # 1. logger.debug(f"... {self.key} ...") might call str(problem_cty_key), which calls mock_inner_key_value.__str__() (returns "safe_key_for_logging").
         # 2. Inside the try-block, str(self.key.value) calls mock_inner_key_value.__str__() again (raises RuntimeError).
         # 3. This RuntimeError should be caught and wrapped in AttributePathError.
-        with pytest.raises(AttributePathError, match="mocked runtime error for key processing"):
+        with pytest.raises(
+            AttributePathError, match="mocked runtime error for key processing"
+        ):
             step.apply(cty_map_value)

@@ -18,10 +18,15 @@ class TestCtySetInstantiation:
         assert isinstance(s.element_type, CtyString)
 
     @pytest.mark.parametrize("invalid_type", ["foo", int, 123])
-    def test_instantiation_invalid_element_type_raises_error(self, invalid_type) -> None:
+    def test_instantiation_invalid_element_type_raises_error(
+        self, invalid_type
+    ) -> None:
         """Test CtySet raises CtySetValidationError for invalid element_type."""
-        with pytest.raises(CtySetValidationError, match="Expected CtyType for element_type"):
+        with pytest.raises(
+            CtySetValidationError, match="Expected CtyType for element_type"
+        ):
             CtySet(element_type=invalid_type)
+
 
 class TestCtySetValidate:
     def test_validate_exact_same_set_type_value(self) -> None:
@@ -45,37 +50,53 @@ class TestCtySetValidate:
         """Test validating a list with unhashable items for CtySet(CtyDynamic)."""
         set_type = CtySet(element_type=CtyDynamic())
         unhashable_input = [1, "two", {"three": 3}]
-        with pytest.raises(CtySetValidationError, match="Input list/tuple could not be converted to set"):
+        with pytest.raises(
+            CtySetValidationError,
+            match="Input list/tuple could not be converted to set",
+        ):
             set_type.validate(unhashable_input)
 
     def test_validate_set_with_mixed_validity_elements(self) -> None:
         """Test validating a set with some elements valid and some invalid."""
         set_type = CtySet(element_type=CtyNumber())
-        mixed_validity_input = {10, "twenty"} # Valid number, invalid string for CtyNumber
+        mixed_validity_input = {
+            10,
+            "twenty",
+        }  # Valid number, invalid string for CtyNumber
         with pytest.raises(CtySetValidationError) as excinfo:
             set_type.validate(mixed_validity_input)
 
         assert "Set validation failed:" in str(excinfo.value)
         # Check if the specific error for "twenty" is present (order in set is not guaranteed for idx)
-        assert "Number validation error: Cannot convert string 'twenty' to number" in str(excinfo.value)
+        assert (
+            "Number validation error: Cannot convert string 'twenty' to number"
+            in str(excinfo.value)
+        )
 
 
 class TestCtySetOperations:
     def test_add_invalid_element_raises_error(self) -> None:
         """Test add() raises CtySetValidationError if element_type.validate fails."""
         set_type = CtySet(element_type=CtyNumber())
-        with pytest.raises(CtySetValidationError, match="Failed to add element: Number validation error: Cannot convert string 'not a number' to number"):
+        with pytest.raises(
+            CtySetValidationError,
+            match="Failed to add element: Number validation error: Cannot convert string 'not a number' to number",
+        ):
             set_type.add("not a number")
 
     def test_remove_invalid_item_raises_error(self) -> None:
         """Test remove() raises CtySetValidationError if item validation fails."""
         set_type = CtySet(element_type=CtyNumber())
-        with pytest.raises(CtySetValidationError, match="Failed to remove item: Number validation error: Cannot convert string 'not a number' to number"):
+        with pytest.raises(
+            CtySetValidationError,
+            match="Failed to remove item: Number validation error: Cannot convert string 'not a number' to number",
+        ):
             set_type.remove("not a number")
 
     # Removed tests for remove_item_not_in_set and remove_item_in_set
     # as CtySet.remove operates on the type's default value, not instance data held by CtyValue.
     # These tests would require CtyValue to have set manipulation methods.
+
 
 class TestCtySetEqualityAndTypeChecks:
     def test_equal_with_non_set_type(self) -> None:

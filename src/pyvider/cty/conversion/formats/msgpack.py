@@ -62,7 +62,7 @@ class MsgPackEncoder(FormatEncoder):
         return WireFormatType.MSGPACK
 
     @classmethod
-    def encode(cls, value: object, **options) -> bytes:
+    def encode(cls, value: object, **options: object) -> bytes:
         """
         Encode a CTY value to MessagePack bytes.
 
@@ -114,7 +114,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack", data=value) from e
 
     @classmethod
-    def decode(cls, data: bytes, **options) -> object:
+    def decode(cls, data: bytes, **options: object) -> object:
         """
         Decode MessagePack bytes to a CTY value.
 
@@ -890,7 +890,7 @@ class MsgPackEncoder(FormatEncoder):
             raise EncodingError(error_msg, encoding="msgpack") from e
 
     @staticmethod
-    def _msgpack_default(obj):
+    def _msgpack_default(obj: object) -> object:
         """
         Custom MessagePack encoder for special types. Note: Made static as it doesn't use 'cls'.
 

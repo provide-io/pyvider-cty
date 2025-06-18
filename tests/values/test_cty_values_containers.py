@@ -106,6 +106,7 @@ class TestCtyListValueOperations:
         """Test length operation."""
         assert len(self.list_val) == 3
 
+
 class TestCtyMapValueOperations:
     """Tests focused on map container operations."""
 
@@ -133,9 +134,13 @@ class TestCtyMapValueOperations:
 
         # Test missing key
         missing_result = self.map_val.get("z")
-        assert missing_result is not None, "Result for missing key should be a CtyValue, not Python None"
+        assert missing_result is not None, (
+            "Result for missing key should be a CtyValue, not Python None"
+        )
         assert missing_result.is_null, "Result for missing key should be null"
-        assert missing_result.type.equal(self.map_type.value_type), "Null result type should match map's value_type"
+        assert missing_result.type.equal(self.map_type.value_type), (
+            "Null result type should match map's value_type"
+        )
 
         # Test with default
         default = CtyValue(vtype=self.num_type, value=999)
@@ -167,17 +172,19 @@ class TestCtyMapValueOperations:
 
         # Create items for the new map, ensuring values are raw Python types for the factory
         new_items_data_for_d = {k: v.value for k, v in original_py_dict.items()}
-        new_items_data_for_d["d"] = 4 # Add/update "d" with raw Python value
+        new_items_data_for_d["d"] = 4  # Add/update "d" with raw Python value
 
-        new_map = CtyValue.map(self.map_type.key_type, self.map_type.value_type, new_items_data_for_d)
+        new_map = CtyValue.map(
+            self.map_type.key_type, self.map_type.value_type, new_items_data_for_d
+        )
 
         # Verify result
         assert isinstance(new_map, CtyValue)
         assert isinstance(new_map.type, CtyMap)
-        assert "d" in new_map.value # Check in the inner dict
+        assert "d" in new_map.value  # Check in the inner dict
 
         # Value is correctly set
-        element = new_map.value["d"] # Access inner dict
+        element = new_map.value["d"]  # Access inner dict
         assert element.value == 4
 
         # Original map is unchanged (check its inner dict)
@@ -187,7 +194,9 @@ class TestCtyMapValueOperations:
         updated_items_data_for_a = {k: v.value for k, v in original_py_dict.items()}
         updated_items_data_for_a["a"] = 10
 
-        updated_map = CtyValue.map(self.map_type.key_type, self.map_type.value_type, updated_items_data_for_a)
+        updated_map = CtyValue.map(
+            self.map_type.key_type, self.map_type.value_type, updated_items_data_for_a
+        )
         assert updated_map.value["a"].value == 10
         assert original_py_dict["a"].value == 1  # Original unchanged
 
@@ -218,6 +227,7 @@ class TestCtyMapValueOperations:
         assert "a" in self.map_val
         assert "z" not in self.map_val
 
+
 class TestCtyObjectValueOperations:
     """Tests focused on object container operations."""
 
@@ -227,18 +237,22 @@ class TestCtyObjectValueOperations:
         # Create object type
         self.str_type = CtyString()
         self.num_type = CtyNumber()
-        self.obj_type = CtyObject(attribute_types={
-            "name": self.str_type,
-            "height": self.str_type,
-            "age": self.num_type,
-        })
+        self.obj_type = CtyObject(
+            attribute_types={
+                "name": self.str_type,
+                "height": self.str_type,
+                "age": self.num_type,
+            }
+        )
 
         # Create sample object value
-        self.obj_val = self.obj_type.validate({
-            "name": "Alice",
-            "height": "5ft 9in",
-            "age": 30,
-        })
+        self.obj_val = self.obj_type.validate(
+            {
+                "name": "Alice",
+                "height": "5ft 9in",
+                "age": 30,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test_object_getitem(self, setup_values) -> None:
@@ -253,6 +267,7 @@ class TestCtyObjectValueOperations:
 
         # Test missing attribute
         from pyvider.cty.exceptions import CtyAttributeValidationError  # Ensure import
+
         with pytest.raises(CtyAttributeValidationError):
             _ = self.obj_val["non_existent_attr"]
 
@@ -268,10 +283,14 @@ class TestCtyObjectValueOperations:
         assert element.value == 30
 
         # Test missing attribute
-        assert self.obj_val.get("height").value == "5ft 9in" # "height" is a present attribute
+        assert (
+            self.obj_val.get("height").value == "5ft 9in"
+        )  # "height" is a present attribute
 
         # Test with default for a missing attribute
-        default = CtyValue(vtype=self.num_type, value=0) # Default CtyValue for a number
+        default = CtyValue(
+            vtype=self.num_type, value=0
+        )  # Default CtyValue for a number
         assert self.obj_val.get("non_existent_attr", default) is default
 
     @pytest.mark.asyncio
@@ -279,7 +298,8 @@ class TestCtyObjectValueOperations:
         """Test membership testing for object."""
         # Test in operator with attribute name
         assert "name" in self.obj_val
-        assert "height" in self.obj_val # "height" is an attribute
+        assert "height" in self.obj_val  # "height" is an attribute
+
 
 class TestCtyTupleValueOperations:
     """Tests focused on tuple container operations."""
@@ -359,6 +379,7 @@ class TestCtyTupleValueOperations:
         assert elements[0].value == "Alice"
         assert elements[1].value == 30
 
+
 class TestCtySetValueOperations:
     """Tests focused on set container operations."""
 
@@ -392,6 +413,7 @@ class TestCtySetValueOperations:
             values.add(element.value)
 
         assert values == {1, 2, 3}
+
 
 class TestSpecialValues:
     """Tests focused on special value behavior."""

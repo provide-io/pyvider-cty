@@ -20,8 +20,8 @@ class TestCtyListCoverage:
                 CtyString(value="b"),
                 CtyString(value="c"),
                 CtyString(value="d"),
-                CtyString(value="e")
-            ]
+                CtyString(value="e"),
+            ],
         )
 
     @pytest.fixture
@@ -50,7 +50,6 @@ class TestCtyListCoverage:
         assert len(result.value) == 2
         assert [item.value for item in result.value] == ["c", "d"]
 
-
     @pytest.mark.asyncio
     async def test_concat_with_invalid_container(self, string_list) -> None:
         """Test concat with invalid container."""
@@ -60,14 +59,12 @@ class TestCtyListCoverage:
 
         assert "Expected CtyList" in str(exc.value)
 
-
     @pytest.mark.asyncio
     async def test_element_at_out_of_bounds(self) -> None:
         """Test element_at with index out of bounds."""
         # Create a CtyList with CtyString values
         list_obj = CtyList(
-            element_type=CtyString(),
-            value=[CtyString(value="a"), CtyString(value="b")]
+            element_type=CtyString(), value=[CtyString(value="a"), CtyString(value="b")]
         )
 
         # This tests the error raised in element_at method

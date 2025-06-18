@@ -9,7 +9,6 @@ This module tests the creation of CtyMap types with different key and value type
 basic validation, and error handling during type creation.
 """
 
-
 import pytest
 
 from pyvider.cty import (
@@ -77,10 +76,9 @@ class TestCtyMapCreation:
         assert isinstance(list_map.value_type.element_type, CtyString)
 
         # Map with object value type
-        object_type = CtyObject(attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber()
-        })
+        object_type = CtyObject(
+            attribute_types={"name": CtyString(), "age": CtyNumber()}
+        )
         object_map = CtyMap(key_type=CtyString(), value_type=object_type)
         assert isinstance(object_map, CtyMap)
         assert isinstance(object_map.value_type, CtyObject)
@@ -106,21 +104,31 @@ class TestCtyMapCreation:
     async def test_cty_map_init_invalid_types(self) -> None:
         """Test initialization with invalid key or value types."""
         # Invalid key_type (not a CtyType)
-        with pytest.raises(CtyMapValidationError, match=r"key_type must be a CtyType instance, got str"):
+        with pytest.raises(
+            CtyMapValidationError, match=r"key_type must be a CtyType instance, got str"
+        ):
             CtyMap(key_type="string", value_type=CtyString())
 
         # Invalid value_type (not a CtyType)
-        with pytest.raises(CtyMapValidationError, match=r"value_type must be a CtyType instance, got str"):
+        with pytest.raises(
+            CtyMapValidationError,
+            match=r"value_type must be a CtyType instance, got str",
+        ):
             CtyMap(key_type=CtyString(), value_type="string")
 
         # Both invalid - key_type=None should be caught first
-        with pytest.raises(CtyMapValidationError, match=r"key_type must be a CtyType instance, got NoneType"):
-            CtyMap(key_type=None, value_type=123) # This will hit key_type check first
+        with pytest.raises(
+            CtyMapValidationError,
+            match=r"key_type must be a CtyType instance, got NoneType",
+        ):
+            CtyMap(key_type=None, value_type=123)  # This will hit key_type check first
 
         # Invalid key_type (not primitive)
-        with pytest.raises(CtyMapValidationError, match=r"Map key_type must be a primitive type or CtyDynamic, got CtyList"):
+        with pytest.raises(
+            CtyMapValidationError,
+            match=r"Map key_type must be a primitive type or CtyDynamic, got CtyList",
+        ):
             CtyMap(key_type=CtyList(element_type=CtyString()), value_type=CtyString())
-
 
     @pytest.mark.asyncio
     async def test_empty_map_validation(self) -> None:
@@ -134,35 +142,26 @@ class TestCtyMapCreation:
         assert empty_result.type.equal(string_map)
         assert len(empty_result.value) == 0
 
-
     @pytest.mark.asyncio
     async def test_cty_map_validate_non_dict(self) -> None:
         """Test validation of non-dictionary values."""
         string_map = CtyMap(key_type=CtyString(), value_type=CtyString())
 
         # Test various non-dict types
-        invalid_values = [
-            "string",
-            123,
-            True,
-            [1, 2, 3],
-            (1, 2, 3),
-            set([1, 2, 3])
-        ]
+        invalid_values = ["string", 123, True, [1, 2, 3], (1, 2, 3), set([1, 2, 3])]
 
         for value in invalid_values:
             with pytest.raises(CtyMapValidationError) as exc_info:
                 string_map.validate(value)
-            assert f"Expected dict or CtyValue map, got {type(value).__name__}" in str(exc_info.value)
+            assert f"Expected dict or CtyValue map, got {type(value).__name__}" in str(
+                exc_info.value
+            )
 
     @pytest.mark.asyncio
     async def test_cty_map_validate_simple_values(self) -> None:
         """Test validation of maps with simple values using direct internal value access."""
         # Create map with pre-validated keys and values
-        data = {
-            self.key1: self.val1_str,
-            self.key2: self.val2_str
-        }
+        data = {self.key1: self.val1_str, self.key2: self.val2_str}
 
         # Validate the map
         result = self.string_map.validate(data)
@@ -178,10 +177,7 @@ class TestCtyMapCreation:
         assert result.value["key2"] == self.val2_str
 
         # Test number map
-        number_data = {
-            self.key1: self.val1_num,
-            self.key2: self.val2_num
-        }
+        number_data = {self.key1: self.val1_num, self.key2: self.val2_num}
 
         number_result = self.number_map.validate(number_data)
         assert isinstance(number_result, CtyValue)
@@ -192,10 +188,7 @@ class TestCtyMapCreation:
         assert number_result.value["key2"] == self.val2_num
 
         # Test boolean map
-        bool_data = {
-            self.key1: self.val1_bool,
-            self.key2: self.val2_bool
-        }
+        bool_data = {self.key1: self.val1_bool, self.key2: self.val2_bool}
 
         bool_result = self.bool_map.validate(bool_data)
         assert isinstance(bool_result, CtyValue)
@@ -209,10 +202,7 @@ class TestCtyMapCreation:
     async def test_cty_map_validate_with_prevalidated_values(self) -> None:
         """Test validation with pre-validated CtyValue inputs."""
         # Create map with pre-validated values
-        data = {
-            self.key1: self.val1_str,
-            self.key2: self.val2_str
-        }
+        data = {self.key1: self.val1_str, self.key2: self.val2_str}
 
         # Validate the map
         result = self.string_map.validate(data)
@@ -230,9 +220,9 @@ class TestCtyMapCreation:
         """Test validation with a mix of raw values and CtyValues."""
         # Create map with mixed inputs
         data = {
-            self.key1: "value1",       # CtyValue key, raw value
-            "key2": self.val2_str,     # Raw key, CtyValue value
-            "key3": "value3"           # Raw key, raw value
+            self.key1: "value1",  # CtyValue key, raw value
+            "key2": self.val2_str,  # Raw key, CtyValue value
+            "key3": "value3",  # Raw key, raw value
         }
 
         # Validate the map
@@ -273,9 +263,7 @@ class TestCtyMapCreation:
 
         # Invalid key using wrong CtyValue type
         invalid_key = CtyValue(vtype=CtyNumber(), value=456)
-        invalid_data = {
-            invalid_key: self.val1_str
-        }
+        invalid_data = {invalid_key: self.val1_str}
 
         try:
             self.string_map.validate(invalid_data)
@@ -323,6 +311,7 @@ class TestCtyMapIteration:
 
         # Verify key strings from internal map
         assert keys == {"one", "two", "three"}
+
 
 # fuck
 # 🐍🏗️🧪

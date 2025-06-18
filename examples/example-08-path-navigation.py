@@ -16,14 +16,11 @@ server_type = CtyObject(
                 "memory": CtyNumber(),
                 "disks": CtyList(
                     element_type=CtyObject(
-                        attribute_types={
-                            "size": CtyNumber(),
-                            "type": CtyString()
-                        }
+                        attribute_types={"size": CtyNumber(), "type": CtyString()}
                     )
-                )
+                ),
             }
-        )
+        ),
     }
 )
 
@@ -33,22 +30,22 @@ server_data = {
     "specs": {
         "cpu": 8,
         "memory": 32,
-        "disks": [
-            {"size": 500, "type": "ssd"},
-            {"size": 2000, "type": "hdd"}
-        ]
-    }
+        "disks": [{"size": 500, "type": "ssd"}, {"size": 2000, "type": "hdd"}],
+    },
 }
 
 validated = server_type.validate(server_data)
 server_val = CtyValue(vtype=server_type, value=validated)
+
 
 async def navigate_paths() -> None:
     # Create different paths to navigate the data
     name_path = CtyPath.get_attr("name")
     cpu_path = CtyPath.get_attr("specs").child("cpu")
     first_disk_path = CtyPath.get_attr("specs").child("disks").index_step(0)
-    disk_type_path = CtyPath.get_attr("specs").child("disks").index_step(0).child("type")
+    disk_type_path = (
+        CtyPath.get_attr("specs").child("disks").index_step(0).child("type")
+    )
 
     # Apply paths to get values
     name = name_path.apply_path(server_val.value)
@@ -60,6 +57,7 @@ async def navigate_paths() -> None:
     print(f"CPU cores: {cpu.value}")
     print(f"First disk size: {first_disk.get('size').value} GB")
     print(f"First disk type: {disk_type.value}")
+
 
 if __name__ == "__main__":
     asyncio.run(navigate_paths())

@@ -25,10 +25,7 @@ from pyvider.cty.exceptions import (
 async def test_object_get_valid_attribute() -> None:
     """Test attribute access for valid attributes."""
     # Setup object type and data
-    obj = CtyObject({
-        "title": CtyString(),
-        "level": CtyNumber()
-    })
+    obj = CtyObject({"title": CtyString(), "level": CtyNumber()})
 
     data = obj.validate({"title": "Game Title", "level": 5})
     assert isinstance(data, CtyValue)
@@ -40,16 +37,14 @@ async def test_object_get_valid_attribute() -> None:
     # Verify attribute value is a CtyValue containing a CtyString type
     assert isinstance(attr_value, CtyValue)
     assert isinstance(attr_value.type, CtyString)
-    assert attr_value.value == 'Game Title'
+    assert attr_value.value == "Game Title"
+
 
 @pytest.mark.asyncio
 async def test_object_get_invalid_attribute() -> None:
     """Test attribute access fails for non-existent attributes."""
     # Setup object type and data
-    obj = CtyObject({
-        "title": CtyString(),
-        "level": CtyNumber()
-    })
+    obj = CtyObject({"title": CtyString(), "level": CtyNumber()})
 
     data = obj.validate({"title": "Game Title", "level": 5})
     assert isinstance(data, CtyValue)
@@ -59,29 +54,26 @@ async def test_object_get_invalid_attribute() -> None:
     with pytest.raises(CtyAttributeValidationError):
         obj.get_attribute(data.value, "unknown")
 
+
 @pytest.mark.asyncio
 async def test_object_get_attribute_invalid_value() -> None:
     """Test attribute access fails for invalid values."""
     # Setup object type
-    obj = CtyObject({
-        "title": CtyString(),
-        "level": CtyNumber()
-    })
+    obj = CtyObject({"title": CtyString(), "level": CtyNumber()})
 
     # Try to access attribute on non-dict value
     with pytest.raises(CtyValidationError):
         obj.get_attribute("not an object", "title")
 
+
 @pytest.mark.asyncio
 async def test_object_has_attribute() -> None:
     """Test checking if an attribute exists."""
-    obj = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber()
-    })
+    obj = CtyObject({"name": CtyString(), "age": CtyNumber()})
     assert obj.has_attribute("name") is True
     assert obj.has_attribute("age") is True
     assert obj.has_attribute("unknown") is False
+
 
 @pytest.mark.asyncio
 async def test_has_attribute() -> None:
@@ -99,29 +91,23 @@ async def test_has_attribute() -> None:
     assert person_type.has_attribute("age") is True
     assert person_type.has_attribute("unknown") is False
 
+
 @pytest.mark.asyncio
 async def test_object_required_attributes() -> None:
     """Test getting required attributes."""
     obj = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber(),
-            "active": CtyBool()
-        },
-        optional_attributes=frozenset(["age", "active"])
+        attribute_types={"name": CtyString(), "age": CtyNumber(), "active": CtyBool()},
+        optional_attributes=frozenset(["age", "active"]),
     )
     required = obj.required_attributes()
     assert required == frozenset(["name"])
+
 
 @pytest.mark.asyncio
 async def test_object_with_optional_attributes_method() -> None:
     """Test with_optional_attributes method."""
     # Setup base object
-    obj = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber(),
-        "active": CtyBool()
-    })
+    obj = CtyObject({"name": CtyString(), "age": CtyNumber(), "active": CtyBool()})
     # Mark attributes as optional
     obj2 = obj.with_optional_attributes("age", "active")
     # Verify attributes were marked as optional
@@ -132,17 +118,14 @@ async def test_object_with_optional_attributes_method() -> None:
     assert "age" not in obj.optional_attributes
     assert "active" not in obj.optional_attributes
 
+
 @pytest.mark.asyncio
 async def test_object_with_required_attributes_method() -> None:
     """Test with_required_attributes method."""
     # Setup base object
     obj = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber(),
-            "active": CtyBool()
-        },
-        optional_attributes=frozenset(["name", "age", "active"])
+        attribute_types={"name": CtyString(), "age": CtyNumber(), "active": CtyBool()},
+        optional_attributes=frozenset(["name", "age", "active"]),
     )
     # Mark attributes as required
     obj2 = obj.with_required_attributes("name", "age")
@@ -154,49 +137,42 @@ async def test_object_with_required_attributes_method() -> None:
     assert "name" in obj.optional_attributes
     assert "age" in obj.optional_attributes
 
+
 @pytest.mark.asyncio
 async def test_object_with_optional_attributes_unknown() -> None:
     """Test with_optional_attributes fails for unknown attributes."""
-    obj = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber()
-    })
+    obj = CtyObject({"name": CtyString(), "age": CtyNumber()})
     with pytest.raises(CtyAttributeValidationError):
         obj.with_optional_attributes("unknown")
+
 
 @pytest.mark.asyncio
 async def test_object_with_required_attributes_unknown() -> None:
     """Test with_required_attributes fails for unknown attributes."""
     obj = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber()
-        },
-        optional_attributes=frozenset(["age"])
+        attribute_types={"name": CtyString(), "age": CtyNumber()},
+        optional_attributes=frozenset(["age"]),
     )
     with pytest.raises(CtyAttributeValidationError):
         obj.with_required_attributes("unknown")
+
 
 @pytest.mark.asyncio
 async def test_object_with_required_attributes_already_required() -> None:
     """Test with_required_attributes fails for already required attributes."""
     obj = CtyObject(
-        attribute_types={
-            "name": CtyString(),
-            "age": CtyNumber()
-        },
-        optional_attributes=frozenset(["age"])
+        attribute_types={"name": CtyString(), "age": CtyNumber()},
+        optional_attributes=frozenset(["age"]),
     )
     with pytest.raises(CtyAttributeValidationError):
         obj.with_required_attributes("name")  # Already required
+
 
 @pytest.mark.asyncio
 async def test_object_with_attribute_method() -> None:
     """Test with_attribute method."""
     # Setup base object
-    obj = CtyObject({
-        "name": CtyString()
-    })
+    obj = CtyObject({"name": CtyString()})
     # Add new attribute
     obj2 = obj.with_attribute("age", CtyNumber())
     # Verify attribute was added
@@ -206,13 +182,12 @@ async def test_object_with_attribute_method() -> None:
     # Original object should be unchanged
     assert "age" not in obj.attribute_types
 
+
 @pytest.mark.asyncio
 async def test_object_with_optional_attribute() -> None:
     """Test with_attribute method with optional flag."""
     # Setup base object
-    obj = CtyObject({
-        "name": CtyString()
-    })
+    obj = CtyObject({"name": CtyString()})
     # Add new optional attribute
     obj2 = obj.with_attribute("email", CtyString(), optional=True)
     # Verify attribute was added as optional
@@ -221,6 +196,7 @@ async def test_object_with_optional_attribute() -> None:
     assert "email" in obj2.optional_attributes
     # Original object should be unchanged
     assert "email" not in obj.attribute_types
+
 
 @pytest.mark.asyncio
 async def test_object_with_optional_attributes() -> None:
@@ -232,7 +208,7 @@ async def test_object_with_optional_attributes() -> None:
             "age": CtyNumber(),
             "active": CtyBool(),
         },
-        optional_attributes=frozenset(["age", "active"])
+        optional_attributes=frozenset(["age", "active"]),
     )
 
     # Verify optional attributes
@@ -244,6 +220,7 @@ async def test_object_with_optional_attributes() -> None:
     required = person_type.required_attributes()
     assert len(required) == 1
     assert "name" in required
+
 
 @pytest.mark.asyncio
 async def test_get_attribute() -> None:
@@ -286,6 +263,7 @@ async def test_get_attribute() -> None:
     assert isinstance(active.type, CtyBool)
     assert active.value is True
 
+
 @pytest.mark.asyncio
 async def test_get_attribute_unknown() -> None:
     """Test getting unknown attribute."""
@@ -313,6 +291,7 @@ async def test_get_attribute_unknown() -> None:
     # Check error message
     error_msg = str(excinfo.value)
     assert "Unknown attribute: unknown" in error_msg
+
 
 @pytest.mark.asyncio
 async def test_with_optional_attributes() -> None:
@@ -346,6 +325,7 @@ async def test_with_optional_attributes() -> None:
     error_msg = str(excinfo.value)
     assert "Unknown attributes: unknown" in error_msg
 
+
 @pytest.mark.asyncio
 async def test_with_required_attributes() -> None:
     """Test making attributes required."""
@@ -357,7 +337,7 @@ async def test_with_required_attributes() -> None:
             "active": CtyBool(),
             "email": CtyString(),
         },
-        optional_attributes=frozenset(["age", "active", "email"])
+        optional_attributes=frozenset(["age", "active", "email"]),
     )
 
     # Make some attributes required
@@ -383,6 +363,7 @@ async def test_with_required_attributes() -> None:
     error_msg = str(excinfo.value)
     assert "Attributes already required: name" in error_msg
 
+
 @pytest.mark.asyncio
 async def test_with_attribute() -> None:
     """Test adding a new attribute."""
@@ -395,10 +376,7 @@ async def test_with_attribute() -> None:
     )
 
     # Add new attribute
-    new_type = person_type.with_attribute(
-        "email", CtyString(),
-        optional=True
-    )
+    new_type = person_type.with_attribute("email", CtyString(), optional=True)
 
     # Verify original type is unchanged
     assert len(person_type.attribute_types) == 2
@@ -420,20 +398,15 @@ async def test_with_attribute() -> None:
     error_msg = str(excinfo.value)
     assert "Attribute already exists: email" in error_msg
 
+
 @pytest.mark.asyncio
 async def test_get_attribute_from_cty_value() -> None:
     """Test getting attribute from CtyValue wrapper."""
     # Create object type
-    obj_type = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber()
-    })
+    obj_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
 
     # Create validated value
-    value = obj_type.validate({
-        "name": "Alice",
-        "age": 30
-    })
+    value = obj_type.validate({"name": "Alice", "age": 30})
 
     # Get attribute using CtyValue's __getitem__
     name_attr = value["name"]
@@ -443,19 +416,18 @@ async def test_get_attribute_from_cty_value() -> None:
     with pytest.raises(CtyAttributeValidationError):
         value["non_existent"]
 
+
 @pytest.mark.asyncio
 async def test_object_null_attribute_access() -> None:
     """Test accessing attributes on null value."""
     # Create object type with optional attribute
-    obj_type = CtyObject({
-        "name": CtyString(),
-        "email": CtyString()
-    }, optional_attributes=frozenset(["email"]))
+    obj_type = CtyObject(
+        {"name": CtyString(), "email": CtyString()},
+        optional_attributes=frozenset(["email"]),
+    )
 
     # Create value without optional attribute
-    value = obj_type.validate({
-        "name": "Alice"
-    })
+    value = obj_type.validate({"name": "Alice"})
 
     # Access the null attribute
     email_attr = value["email"]
@@ -465,13 +437,11 @@ async def test_object_null_attribute_access() -> None:
     assert email_attr.is_null
     assert isinstance(email_attr.type, CtyString)
 
+
 @pytest.mark.asyncio
 async def test_object_unknown_attribute_access() -> None:
     """Test accessing attributes on an unknown CtyObject value."""
-    obj_type = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber()
-    })
+    obj_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
     unknown_object_value = CtyValue.unknown(obj_type)
 
     # Accessing an existing attribute on an unknown object should return an unknown CtyValue of the attribute's type
@@ -481,18 +451,17 @@ async def test_object_unknown_attribute_access() -> None:
     assert isinstance(name_attr_val.type, CtyString)
 
     # Accessing a non-existent attribute should raise CtyAttributeValidationError
-    with pytest.raises(CtyAttributeValidationError, match="Unknown attribute: non_existent_attr"):
+    with pytest.raises(
+        CtyAttributeValidationError, match="Unknown attribute: non_existent_attr"
+    ):
         obj_type.get_attribute(unknown_object_value, "non_existent_attr")
+
 
 @pytest.mark.asyncio
 async def test_object_attribute_iteration() -> None:
     """Test iterating over object attributes."""
     # Create object type
-    obj_type = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber(),
-        "active": CtyBool()
-    })
+    obj_type = CtyObject({"name": CtyString(), "age": CtyNumber(), "active": CtyBool()})
 
     # Test iteration
     attrs = list(obj_type)
@@ -501,15 +470,12 @@ async def test_object_attribute_iteration() -> None:
     assert len(attrs) == 3
     assert set(attrs) == {"name", "age", "active"}
 
+
 @pytest.mark.asyncio
 async def test_object_len() -> None:
     """Test getting length of object type."""
     # Create object type
-    obj_type = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber(),
-        "active": CtyBool()
-    })
+    obj_type = CtyObject({"name": CtyString(), "age": CtyNumber(), "active": CtyBool()})
 
     # Verify length is number of attributes
     assert len(obj_type) == 3
@@ -518,15 +484,13 @@ async def test_object_len() -> None:
     empty_obj = CtyObject({})
     assert len(empty_obj) == 0
 
+
 @pytest.mark.asyncio
 async def test_object_getitem() -> None:
     # Test name: test_object_getitem
     # New body starts here:
-    '''Test accessing an attribute's type from CtyObject.attribute_types.'''
-    obj_type = CtyObject(attribute_types={
-        "name": CtyString(),
-        "age": CtyNumber()
-    })
+    """Test accessing an attribute's type from CtyObject.attribute_types."""
+    obj_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
 
     # Access attribute type information
     name_type_info = obj_type.attribute_types["name"]
@@ -538,5 +502,6 @@ async def test_object_getitem() -> None:
     # Check for non-existent key
     with pytest.raises(KeyError):
         _ = obj_type.attribute_types["unknown"]
+
 
 # 🐍🏗️🧪

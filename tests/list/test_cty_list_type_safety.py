@@ -44,4 +44,5 @@ class TestCtyListTypeSafety:
         # Test non-usability
         assert not self.string_list.usable_as(self.number_list)
 
+
 # 🐍🏗️🧪

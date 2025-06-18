@@ -16,19 +16,15 @@ from pyvider.cty.conversion.format import (
 from pyvider.cty.conversion.formats.base import (
     register_formatter,
 )
-from pyvider.cty.conversion.schema_type_encoder import (
-    encode_type_to_wire,  # Import the moved function
-)
-from pyvider.cty.conversion.formats.base import (
-    register_formatter, # register_formatter is in .formats.base
-)
 
 # Import concrete formatter modules to ensure their @register_formatter decorators run.
 # These imports are primarily for their side effects (registration).
 import pyvider.cty.conversion.formats.json
 import pyvider.cty.conversion.formats.msgpack
+from pyvider.cty.conversion.schema_type_encoder import (
+    encode_type_to_wire,  # Import the moved function
+)
 import pyvider.cty.conversion.terraform  # F401: Unused import (registration if any, happens inside)
-
 from pyvider.cty.conversion.wire import WireFormat, WireFormatRegistry, WireFormatType
 from pyvider.telemetry import logger
 

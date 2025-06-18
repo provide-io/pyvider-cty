@@ -19,8 +19,7 @@ from pyvider.cty.conversion.formats.base import (
 )
 
 # Import concrete formatters to ensure they are registered
-from . import json
-from . import msgpack
+from . import json, msgpack
 
 __all__ = [
     "JSON",

@@ -24,13 +24,14 @@ from pyvider.cty.exceptions import (
 )
 
 
-@pytest.mark.asyncio # Changed from asyncio
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_object_init_invalid_attribute_types_dict() -> None:
     """Test validation fails for non-dictionary attribute_types."""
     with pytest.raises(InvalidTypeError):
         CtyObject(attribute_types="not a dict")
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_object_optional_attribute_fully_missing() -> None:
     """Test behavior when an optional attribute is completely missing from input."""
     obj = CtyObject(
@@ -39,7 +40,7 @@ async def test_object_optional_attribute_fully_missing() -> None:
             "age": CtyNumber(),
             "active": CtyBool(),
         },
-        optional_attributes=frozenset(["active"])
+        optional_attributes=frozenset(["active"]),
     )
 
     # Create value without the optional attribute
@@ -62,7 +63,8 @@ async def test_object_optional_attribute_fully_missing() -> None:
     # Check that missing optional attribute is null
     assert validated["active"].is_null
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_object_optional_attribute_as_none() -> None:
     """Test behavior when an optional attribute is explicitly None."""
     obj = CtyObject(
@@ -71,7 +73,7 @@ async def test_object_optional_attribute_as_none() -> None:
             "age": CtyNumber(),
             "active": CtyBool(),
         },
-        optional_attributes=frozenset(["active"])
+        optional_attributes=frozenset(["active"]),
     )
 
     # Create value with optional attribute set to None
@@ -89,7 +91,8 @@ async def test_object_optional_attribute_as_none() -> None:
     # Check that optional attribute is null
     assert validated["active"].is_null
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_string_representation() -> None:
     """Test string representation of CtyObject."""
     # Simple object type
@@ -106,7 +109,7 @@ async def test_string_representation() -> None:
             "name": CtyString(),
             "age": CtyNumber(),
         },
-        optional_attributes=frozenset(["age"])
+        optional_attributes=frozenset(["age"]),
     )
 
     # Check string representations
@@ -120,7 +123,8 @@ async def test_string_representation() -> None:
     assert "name: CtyString" in str2
     assert "age: CtyNumber (optional)" in str2
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_validation_with_complex_nested_types_2() -> None:
     """Test validation with complex nested types."""
     # Create a complex type with nested objects, lists, and maps
@@ -147,7 +151,7 @@ async def test_validation_with_complex_nested_types_2() -> None:
             "contacts": CtyList(element_type=contact_type),
             "metadata": CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
         },
-        optional_attributes=frozenset(["metadata"])
+        optional_attributes=frozenset(["metadata"]),
     )
 
     # Create valid data
@@ -259,33 +263,35 @@ async def test_validation_with_complex_nested_types_2() -> None:
 
     # Iterate through metadata entries
     for k, v in metadata_val.value.items():
-        assert isinstance(k, str) # Map keys are native Python types
+        assert isinstance(k, str)  # Map keys are native Python types
         assert isinstance(v, CtyValue)
         # assert isinstance(v.type, CtyDynamic) # This line is REMOVED/REPLACED below
 
         if k == "created":
             found_created = True
-            assert isinstance(v.type, CtyString) # MODIFIED
+            assert isinstance(v.type, CtyString)  # MODIFIED
             assert isinstance(v.value, str)
             assert v.value == "2023-01-01"
         elif k == "active":
             found_active = True
-            assert isinstance(v.type, CtyBool) # MODIFIED
+            assert isinstance(v.type, CtyBool)  # MODIFIED
             assert isinstance(v.value, bool)
             assert v.value is True
         elif k == "score":
             found_score = True
-            assert isinstance(v.type, CtyNumber) # MODIFIED
+            assert isinstance(v.type, CtyNumber)  # MODIFIED
             from decimal import Decimal
-            assert isinstance(v.value, Decimal) # MODIFIED
-            assert v.value == Decimal("95") # MODIFIED
+
+            assert isinstance(v.value, Decimal)  # MODIFIED
+            assert v.value == Decimal("95")  # MODIFIED
 
     # Verify we found all expected keys
     assert found_created, "Missing 'created' key in metadata"
     assert found_active, "Missing 'active' key in metadata"
     assert found_score, "Missing 'score' key in metadata"
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_validation_with_complex_nested_types_1() -> None:
     """Test validation with complex nested types."""
     # Create a complex type with nested objects, lists, and maps
@@ -312,7 +318,7 @@ async def test_validation_with_complex_nested_types_1() -> None:
             "contacts": CtyList(element_type=contact_type),
             "metadata": CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
         },
-        optional_attributes=frozenset(["metadata"])
+        optional_attributes=frozenset(["metadata"]),
     )
 
     # Create valid data
@@ -401,7 +407,8 @@ async def test_validation_with_complex_nested_types_1() -> None:
             assert isinstance(v.type, CtyNumber)
             assert v.value == 95
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_usable_as_complex_types() -> None:
     """Test usable_as method with complex type hierarchies."""
     # Create a common address type
@@ -428,25 +435,30 @@ async def test_usable_as_complex_types() -> None:
             "age": CtyNumber(),
             "email": CtyString(),
         },
-        optional_attributes=frozenset(["email"])
+        optional_attributes=frozenset(["email"]),
     )
 
     # Test usability
     assert detailed_person.usable_as(basic_person) is True
     assert basic_person.usable_as(detailed_person) is False
 
-@pytest.mark.asyncio # Changed from asyncio
+
+@pytest.mark.asyncio  # Changed from asyncio
 async def test_validate_error_propagation() -> None:
     """Test that validation errors from nested types are properly propagated."""
-    address_type = CtyObject(attribute_types={
-        "street": CtyString(),
-        "city": CtyString(),
-        "zip": CtyNumber(), # Expecting a number
-    })
-    person_type = CtyObject(attribute_types={
-        "name": CtyString(),
-        "address": address_type,
-    })
+    address_type = CtyObject(
+        attribute_types={
+            "street": CtyString(),
+            "city": CtyString(),
+            "zip": CtyNumber(),  # Expecting a number
+        }
+    )
+    person_type = CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "address": address_type,
+        }
+    )
 
     # Use an invalid value that CtyNumber.validate WILL reject
     value = {
@@ -454,13 +466,13 @@ async def test_validate_error_propagation() -> None:
         "address": {
             "street": "123 Main St",
             "city": "Anytown",
-            "zip": "not-a-valid-number", # This will cause CtyNumber validation to fail
-        }
+            "zip": "not-a-valid-number",  # This will cause CtyNumber validation to fail
+        },
     }
 
     # Validate should fail and raise CtyValidationError
     with pytest.raises(CtyValidationError) as excinfo:
-        person_type.validate(value) # Expecting CtyValidationError from nested failure
+        person_type.validate(value)  # Expecting CtyValidationError from nested failure
 
     # Check the combined error message reflects the nested failure
     error_msg = str(excinfo.value)
