@@ -1,7 +1,9 @@
 #
 # pyvider/cty/exceptions/base.py
 #
-
+"""
+Defines the base exception for the CTY type system.
+"""
 
 class CtyError(Exception):
     """

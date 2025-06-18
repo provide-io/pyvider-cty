@@ -18,7 +18,6 @@ from collections.abc import Iterator
 from decimal import Decimal
 import json  # Added for json.dumps in to_json_comparable_dict
 from typing import (
-    Any,
     Generic,
     Self,
     TypeVar,
@@ -26,7 +25,9 @@ from typing import (
 
 from attrs import define, evolve, field
 
-from pyvider.cty.types import CtyType
+from pyvider.cty.types import CtyType  # Keep this
+
+# Removed CtyList, CtyMap, CtySet, CtyObject, CtyTuple from here, will use local imports or ensure they are properly scoped
 from pyvider.telemetry import logger
 
 T = TypeVar("T", covariant=True)
@@ -74,7 +75,7 @@ class CtyValue(Generic[T]):
 
     # Core attributes
     _vtype: CtyType[T] = field()
-    _value: Any = field(default=None)
+    _value: object | None = field(default=None)
     _is_unknown: bool = field(default=False)
     _is_null: bool = field(default=False)
     _marks: frozenset = field(factory=frozenset)
@@ -139,7 +140,7 @@ class CtyValue(Generic[T]):
         return self._vtype
 
     @property
-    def value(self) -> Any:
+    def value(self) -> object | None:
         """
         Get the raw value of this CtyValue.
 
@@ -203,10 +204,10 @@ class CtyValue(Generic[T]):
         if (
             isinstance(self._vtype, CtyDynamic) and self._value is None
         ):  # This check is now safe due to _is_unknown check above
-            return True
-        return False
+            return True # SIM103: return (isinstance(self._vtype, CtyDynamic) and self._value is None)
+        return False    # This part of SIM103 is more complex due to the initial _is_unknown check
 
-    def has_mark(self, mark: Any) -> bool:
+    def has_mark(self, mark: object) -> bool:
         """
         Check if this value has a specific mark.
 
@@ -226,7 +227,7 @@ class CtyValue(Generic[T]):
     # -------------------------------------------------------------------------
     # Value modification methods
     # -------------------------------------------------------------------------
-    def mark(self, mark: Any) -> Self:
+    def mark(self, mark: object) -> Self:
         """
         Add a mark to this value.
 
@@ -294,7 +295,7 @@ class CtyValue(Generic[T]):
     # -------------------------------------------------------------------------
     # Container operations
     # -------------------------------------------------------------------------
-    def get(self, key: Any, default: Any = None) -> "CtyValue":
+    def get(self, key: object, default: object | None = None) -> "CtyValue":
         """
         Get a value by key, with a default if not found.
 
@@ -341,7 +342,7 @@ class CtyValue(Generic[T]):
                 # Call the map's get method
                 return self._vtype.get(self, key, default_cty)  # Pass CtyValue default
             except Exception as e:  # This broad exception now catches issues from self._vtype.get as well
-                logger.warning(f"JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: {e!r}")
+                # logger.warning(f"JULES_DEBUG: CtyMap get() EXCEPTION CAUGHT: {e!r}") # Removed JULES_DEBUG log and associated TODO.
                 return default  # Return original python default
 
         # For objects, use the object's get_attribute method
@@ -358,18 +359,18 @@ class CtyValue(Generic[T]):
                 # This method should ideally handle 'has_attribute' check internally or raise appropriate Cty errors
                 return self._vtype.get_attribute(self, key)
             except Exception as e:  # This broad exception now catches issues from self._vtype.get_attribute
-                logger.warning(
-                    f"JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: {e!r}"
-                )
+                # logger.warning(
+                #     f"JULES_DEBUG: CtyObject get_attribute() EXCEPTION CAUGHT: {e!r}"
+                # ) # Removed JULES_DEBUG log and associated TODO.
                 return default  # Return original python default
 
         # Value doesn't support key lookup
         logger.debug(
             f"🔄🔍⚠️ get() called on unsupported type: {self._vtype.__class__.__name__}"
         )
-        return default  # Return original python default
+        return default
 
-    def set(self, key: Any, value: Any) -> Self:
+    def set(self, key: object, value: object) -> Self:
         """
         Set a value in a container.
 
@@ -410,7 +411,7 @@ class CtyValue(Generic[T]):
         logger.error(f"🔄❗❌ {error_msg}")
         raise TypeError(error_msg)
 
-    def delete(self, key: Any) -> Self:
+    def delete(self, key: object) -> Self:
         """
         Delete a key from a container.
 
@@ -480,9 +481,9 @@ class CtyValue(Generic[T]):
         from pyvider.cty.types.structural import CtyTuple
 
         # Direct implementation to avoid recursion with __getitem__
-        if isinstance(self._vtype, CtyList):
+        if isinstance(self._vtype, CtyList): # Local import CtyList
             # Ensure the underlying value is a list or tuple
-            if not isinstance(self._value, list | tuple):
+            if not isinstance(self._value, list | tuple): # UP038
                 raise TypeError(
                     f"Cannot index list value of type {type(self._value).__name__}"
                 )
@@ -919,7 +920,7 @@ class CtyValue(Generic[T]):
             value_hash = hash(None)  # Consistent hash for null/unknown
         else:
             # Use the actual value's hash for hashable primitives
-            if isinstance(self._value, str | int | float | bool | Decimal | bytes):
+            if isinstance(self._value, str | int | float | bool | Decimal | bytes): # UP038
                 try:
                     value_hash = hash(self._value)
                 except TypeError:  # Should not happen for these types, but safeguard
@@ -941,7 +942,7 @@ class CtyValue(Generic[T]):
             # Dictionaries and lists are not typically hashable by value
             # Hashing based on type/state/marks only for these might be sufficient
             # or use repr as a less reliable fallback
-            elif isinstance(self._value, dict | list | set):
+            elif isinstance(self._value, dict | list | set): # UP038
                 value_hash = hash(repr(self._value))  # Fallback hash using repr
             else:
                 # Fallback for other potentially unhashable types
@@ -994,19 +995,18 @@ class CtyValue(Generic[T]):
 
         # --- Compare values for known, non-null values ---
         # Use direct comparison for primitives
-        if isinstance(self._value, str | int | float | bool | Decimal | bytes):
+        if isinstance(self._value, str | int | float | bool | Decimal | bytes): # UP038
             # Handle Decimal comparison carefully
-            if isinstance(self._value, Decimal):
-                if isinstance(other._value, int | float | str):
-                    try:
-                        return self._value == Decimal(other._value)
-                    except Exception:
-                        return False
+            if isinstance(self._value, Decimal) and isinstance(other._value, int | float | str): # SIM102, UP038 (inner)
+                try:
+                    return self._value == Decimal(other._value)
+                except Exception:
+                    return False
             return self._value == other._value
 
         # For lists and tuples, compare element-wise
-        if isinstance(self._value, list | tuple) and isinstance(
-            other._value, list | tuple
+        if isinstance(self._value, list | tuple) and isinstance( # UP038
+            other._value, list | tuple # UP038
         ):
             if len(self._value) != len(other._value):
                 return False
@@ -1014,8 +1014,8 @@ class CtyValue(Generic[T]):
             return all(a == b for a, b in zip(self._value, other._value, strict=False))
 
         # For sets (represented as frozenset internally after validation)
-        if isinstance(self._value, set | frozenset) and isinstance(
-            other._value, set | frozenset
+        if isinstance(self._value, set | frozenset) and isinstance( # UP038
+            other._value, set | frozenset # UP038
         ):
             # Elements should be CtyValues, rely on their __eq__ and hash
             if len(self._value) != len(other._value):
@@ -1118,7 +1118,7 @@ class CtyValue(Generic[T]):
                     )
 
             # For lists/tuples, handle both direct indexing and slices
-            elif isinstance(self._vtype, CtyList | CtyTuple):
+            elif isinstance(self._vtype, CtyList | CtyTuple): # UP038
                 if isinstance(key, slice):
                     # Handle slice operations
                     start = key.start if key.start is not None else 0
@@ -1226,7 +1226,7 @@ class CtyValue(Generic[T]):
                 return str_key in self._value  # Check string key presence
 
             # For lists/sets/tuples, check elements using CtyValue equality
-            elif isinstance(self._vtype, CtyList | CtySet) or (
+            elif isinstance(self._vtype, CtyList | CtySet) or ( # UP038
                 hasattr(self._vtype, "element_type")
                 and hasattr(self._value, "__iter__")
             ):  # General collection check
@@ -1321,7 +1321,7 @@ class CtyValue(Generic[T]):
         if isinstance(self._value, CtyValue):
             return self._value.is_empty()
 
-        if isinstance(self._value, str | list | tuple | dict | set | frozenset):
+        if isinstance(self._value, str | list | tuple | dict | set | frozenset): # UP038
             return (
                 not self._value
             )  # Relies on Python's built-in truthiness for empty collections/strings
@@ -1351,7 +1351,7 @@ class CtyValue(Generic[T]):
         if isinstance(self._value, dict):
             # Use string keys fro, value
             return f"{{{', '.join(f'{k!r}: {v}' for k, v in self._value.items())}}}"
-        if isinstance(self._value, set | frozenset):
+        if isinstance(self._value, set | frozenset): # UP038
             # Sort set elements for consistent string representation
             try:
                 sorted_elements = sorted(self._value, key=repr)
@@ -1480,110 +1480,73 @@ class CtyValue(Generic[T]):
 
         processed_value = None  # Initialize to None as a default for null/unknown or if not set by other conditions
 
+        # Process the main value if it's known and not null
         if not self.is_unknown and not self.is_null:
-            # Special handling for CtyDynamic wrapping a concrete CtyValue
+            # Case 1: CtyDynamic wrapping a concrete CtyValue
             if isinstance(self.type, CtyDynamic) and isinstance(
                 self.value, CtyValue
             ):  # self.value is safe to access here
                 inner_dict = self.value.to_json_comparable_dict()
-                # The 'value' field of the dynamic type's JSON representation
-                # will contain the type and value of the wrapped concrete CtyValue.
-                processed_value = {
+                processed_value = { # Embed the inner value's type and value
                     "type": inner_dict["type_name"],
                     "value": inner_dict["value"],
                 }
-            # Check for CtyTuple specifically BEFORE general tuple check
-            elif isinstance(self.type, CtyTuple):  # Accessing self.type here
-                if not self.value:  # If self.value is an empty tuple/list () or []
-                    # This path is for a NON-NULL tuple with an empty value.
+            # Case 2: CtyTuple
+            elif isinstance(self.type, CtyTuple):
+                if not self.value: # Empty tuple
                     processed_value = []
-                else:  # Non-empty tuple value
-                    processed_value = [  # JSON representation of a tuple's value is a list
+                else:  # Non-empty tuple; its value is a list of CtyValues or raw values
+                    processed_value = [
                         v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                         for v in self.value
                     ]
-            elif isinstance(self.value, list):  # For CtyList values
+            # Case 3: CtyList
+            elif isinstance(self.value, list):
                 processed_value = [
                     v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                     for v in self.value
                 ]
-            # Note: The generic 'elif isinstance(self.value, tuple):' might be removed if CtyTuple is the only tuple source
-            # or kept if self.value can be a tuple for non-CtyTuple types (unlikely).
-            # For safety, assuming CtyTuple is the definite source of tuple values.
-            elif isinstance(self.value, dict):  # For CtyMap/CtyObject values
+            # Case 4: CtyMap or CtyObject (internal value is a dict)
+            elif isinstance(self.value, dict):
                 processed_value = {
-                    # Map keys are strings. Object attribute names are strings.
                     k: v.to_json_comparable_dict() if isinstance(v, CtyValue) else v
                     for k, v in self.value.items()
                 }
-            elif isinstance(self.value, frozenset):  # For CtySet values
-                # Sort for consistent output, then process
-                processed_value = sorted(
+            # Case 5: CtySet (internal value is a frozenset)
+            elif isinstance(self.value, frozenset):
+                processed_value = sorted( # Sort for consistent JSON output
                     [
-                        v.to_json_comparable_dict()
-                        if isinstance(v, CtyValue)
-                        else str(v)  # Ensure hashable if not CtyValue
+                        v.to_json_comparable_dict() if isinstance(v, CtyValue) else str(v)
                         for v in self.value
                     ],
-                    key=lambda x: json.dumps(x, sort_keys=True)
-                    if isinstance(x, dict)
-                    else str(x),
+                    key=lambda x: json.dumps(x, sort_keys=True) if isinstance(x, dict) else str(x),
                 )
-
+            # Case 6: Decimal numbers (requires careful string formatting)
             elif isinstance(self.value, Decimal):
-                # Handle 0, -0, 0.0 etc. specifically first
-                if self.value.is_zero():
-                    if (
-                        self.value.as_tuple().sign
-                    ):  # Check sign on the original value before normalization
-                        processed_value = "-0"
-                    else:
-                        processed_value = "0"
-                else:
-                    # Universal plain formatting for non-zero decimals
-                    normalized_d = (
-                        self.value.normalize()
-                    )  # Canonical form for non-zero values
+                if self.value.is_zero(): # Handle +0, -0, 0.0
+                    processed_value = "-0" if self.value.as_tuple().sign else "0"
+                else: # Standard formatting for other decimals
+                    normalized_d = self.value.normalize()
                     sign_tuple, digits_tuple, exponent_int = normalized_d.as_tuple()
-                    val_str = ""
-                    if sign_tuple:
-                        val_str += "-"
-
-                    if (
-                        exponent_int >= 0
-                    ):  # Number is integral or larger than 1, no leading "0."
-                        val_str += "".join(map(str, digits_tuple))
-                        if (
-                            exponent_int > 0
-                        ):  # Append zeros if exponent was positive (e.g., 123E2)
-                            val_str += "0" * exponent_int
-                    else:  # Number has a fractional part (exponent < 0)
+                    val_str = "-" if sign_tuple else ""
+                    if exponent_int >= 0:
+                        val_str += "".join(map(str, digits_tuple)) + "0" * exponent_int
+                    else:
                         num_digits = len(digits_tuple)
                         abs_exponent = abs(exponent_int)
-                        if abs_exponent > num_digits:  # e.g., 0.00123 (123E-5)
-                            val_str += (
-                                "0."
-                                + ("0" * (abs_exponent - num_digits))
-                                + "".join(map(str, digits_tuple))
-                            )
-                        elif abs_exponent == num_digits:  # e.g., 0.123 (123E-3)
+                        if abs_exponent > num_digits:
+                            val_str += "0." + "0" * (abs_exponent - num_digits) + "".join(map(str, digits_tuple))
+                        elif abs_exponent == num_digits:
                             val_str += "0." + "".join(map(str, digits_tuple))
-                        else:  # e.g., 1.23 (123E-2) or 12.345 (12345E-3)
-                            val_str += (
-                                "".join(
-                                    map(str, digits_tuple[: num_digits - abs_exponent])
-                                )
-                                + "."
-                                + "".join(
-                                    map(str, digits_tuple[num_digits - abs_exponent :])
-                                )
-                            )
+                        else:
+                            val_str += "".join(map(str, digits_tuple[:num_digits - abs_exponent])) + "." + \
+                                       "".join(map(str, digits_tuple[num_digits - abs_exponent:]))
                     processed_value = val_str
+            # Case 7: Other primitive types (string, bool, already converted int/float)
             else:
-                # For primitives like string, bool, int (though numbers are Decimal)
                 processed_value = self.value
 
-        # Ensure marks are strings and sorted for consistent output
+        # Serialize marks
         # Serialize marks as a list of dictionaries
         # Sort by mark name for consistent order, then by details if name is the same
         serialized_marks = sorted(

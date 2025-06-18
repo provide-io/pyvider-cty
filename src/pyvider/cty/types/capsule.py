@@ -1,7 +1,10 @@
 #
 # pyvider/cty/types/capsule.py
 #
-
+"""
+Defines the CtyCapsule type for encapsulating opaque Python objects
+within the CTY type system.
+"""
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType

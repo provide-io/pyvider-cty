@@ -1,7 +1,10 @@
 #
 # pyvider/cty/exceptions/encoding.py
 #
-
+"""
+Defines exceptions related to CTY schema transformations, path errors,
+and general encoding/serialization processes.
+"""
 
 from pyvider.cty.exceptions.base import CtyError
 
@@ -31,6 +34,15 @@ class TransformationError(CtyError):
         target_type: object = None,
         **kwargs: object,
     ) -> None:
+        """
+        Initializes the TransformationError.
+
+        Args:
+            message: The base error message.
+            schema: The schema object that was being transformed.
+            target_type: The intended target type of the transformation.
+            **kwargs: Additional keyword arguments.
+        """
         self.schema = schema
         self.target_type = target_type
 
@@ -61,6 +73,13 @@ class InvalidTypeError(CtyError):
     """
 
     def __init__(self, message: str, invalid_type: object = None) -> None:
+        """
+        Initializes the InvalidTypeError.
+
+        Args:
+            message: The base error message.
+            invalid_type: The type object that was found to be invalid.
+        """
         self.invalid_type = invalid_type
         super().__init__(message)
 
@@ -81,6 +100,14 @@ class AttributePathError(CtyError):
     """
 
     def __init__(self, message: str, path: object = None, value: object = None) -> None:
+        """
+        Initializes the AttributePathError.
+
+        Args:
+            message: The base error message.
+            path: The CtyPath or path representation that caused the error.
+            value: The CtyValue to which the path was being applied.
+        """
         self.path = path
         self.value = value
         super().__init__(message)
@@ -107,6 +134,14 @@ class EncodingError(CtyError):
     def __init__(
         self, message: str, data: object = None, encoding: str | None = None
     ) -> None:
+        """
+        Initializes the EncodingError.
+
+        Args:
+            message: The base error message.
+            data: The data that was being encoded/decoded when the error occurred.
+            encoding: The name of the encoding format (e.g., "json", "msgpack").
+        """
         self.data = data
         self.encoding = encoding
         # Store original message if subclasses want to modify it AFTER super call
@@ -137,6 +172,14 @@ class SerializationError(EncodingError):
     def __init__(
         self, message: str, value: object = None, format_name: str | None = None
     ) -> None:
+        """
+        Initializes the SerializationError.
+
+        Args:
+            message: The base error message.
+            value: The value that failed to serialize.
+            format_name: The name of the serialization format.
+        """
         self.value = value
         super().__init__(message, value, format_name)
 
@@ -157,6 +200,14 @@ class DeserializationError(EncodingError):
     def __init__(
         self, message: str, data: object = None, format_name: str | None = None
     ) -> None:
+        """
+        Initializes the DeserializationError.
+
+        Args:
+            message: The base error message.
+            data: The data that failed to deserialize.
+            format_name: The name of the deserialization format.
+        """
         super().__init__(message, data, format_name)
 
 
@@ -174,6 +225,13 @@ class DynamicValueError(SerializationError):
     """
 
     def __init__(self, message: str, value: object = None) -> None:
+        """
+        Initializes the DynamicValueError.
+
+        Args:
+            message: The base error message.
+            value: The dynamic value that caused the error.
+        """
         super().__init__(message, value, "DynamicValue")
 
 
@@ -193,6 +251,14 @@ class JsonEncodingError(EncodingError):
     def __init__(
         self, message: str, data: object = None, operation: str | None = None
     ) -> None:
+        """
+        Initializes the JsonEncodingError.
+
+        Args:
+            message: The base error message.
+            data: The data involved in the JSON operation.
+            operation: The JSON operation that failed (e.g., "encode", "decode").
+        """
         self.operation = operation
         # Pass original message, data, and "json" as encoding to EncodingError
         super().__init__(message, data, "json")
@@ -226,6 +292,14 @@ class MsgPackEncodingError(EncodingError):
     def __init__(
         self, message: str, data: object = None, operation: str | None = None
     ) -> None:
+        """
+        Initializes the MsgPackEncodingError.
+
+        Args:
+            message: The base error message.
+            data: The data involved in the MessagePack operation.
+            operation: The MessagePack operation that failed (e.g., "encode", "decode").
+        """
         self.operation = operation
         super().__init__(message, data, "msgpack")
         if operation:
@@ -260,6 +334,15 @@ class WireFormatError(TransformationError):
         operation: str | None = None,
         **kwargs: object,  # Catches schema, target_type for TransformationError
     ) -> None:
+        """
+        Initializes the WireFormatError.
+
+        Args:
+            message: The base error message.
+            format_type: The wire format type that encountered the error.
+            operation: The wire format operation that failed (e.g., "marshal", "unmarshal").
+            **kwargs: Additional arguments for the parent TransformationError.
+        """
         self.format_type = format_type
         self.operation = operation
 

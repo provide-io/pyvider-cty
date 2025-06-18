@@ -19,7 +19,7 @@ Maps serve a similar role to Python dictionaries but with added type safety
 and immutability guarantees.
 """
 
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import ClassVar, Generic, TypeVar
 
 from attrs import define, evolve, field
 
@@ -48,6 +48,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     value_type: CtyType[V] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
+        """Validates CtyMap's key_type and value_type after initialization."""
         logger.debug("🔌🔍🔄 Validating CtyMap configuration")
         if not isinstance(self.key_type, CtyType):
             error_msg = f"key_type must be a CtyType instance, got {type(self.key_type).__name__}"
@@ -70,16 +71,16 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             raise CtyMapValidationError(error_msg)
         logger.debug("🔌✅🔄 CtyMap configuration validated successfully")
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue":
         logger.debug(f"🔌🔍🔄 Validating value as CtyMap: {type(value).__name__}")
 
         # Ensure CtyValue is imported (it's already imported at module level)
         # from pyvider.cty.values import CtyValue
 
         if isinstance(value, dict) and not value:  # Explicitly an empty dictionary
-            logger.debug(
-                "JULES_MAP_VALIDATE: Explicitly handling empty dict {} input, returning NON-NULL empty map."
-            )
+            # logger.debug(
+            #     "JULES_MAP_VALIDATE: Explicitly handling empty dict {} input, returning NON-NULL empty map."
+            # ) # Removed JULES_MAP_VALIDATE log and associated TODO.
             return CtyValue(vtype=self, value={}, key_mapping={})
 
         input_dict: dict | None = None
@@ -237,7 +238,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         return CtyValue(vtype=self, value=validated_map, key_mapping=key_mapping)
 
     def get(
-        self, map_value: CtyValue, key: Any, default: CtyValue | None = None
+        self, map_value: CtyValue, key: object, default: CtyValue | None = None
     ) -> CtyValue | None:
         logger.debug(f"🔌🔍🔄 Getting value for key {key!r} from map")
         if not isinstance(map_value, CtyValue) or not isinstance(
@@ -323,7 +324,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         else:  # Key not found in the map
             return default if default is not None else CtyValue.null(self.value_type)
 
-    def set(self, map_value: "CtyValue", key: Any, value: Any) -> "CtyValue":
+    def set(self, map_value: "CtyValue", key: object, value: object) -> "CtyValue":
         logger.debug(f"🔌📝🔄 Setting key {key!r} to value {value!r} in map")
         if not isinstance(map_value, CtyValue) or not isinstance(
             map_value.type, CtyMap
@@ -363,7 +364,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         new_key_mapping[str_key] = validated_key_cty
         return evolve(map_value, value=new_map, key_mapping=new_key_mapping)
 
-    def delete(self, map_value: "CtyValue", key: Any) -> "CtyValue":
+    def delete(self, map_value: "CtyValue", key: object) -> "CtyValue":
         logger.debug(f"🔌📝🔄 Deleting key {key!r} from map")
         if not isinstance(map_value, CtyValue) or not isinstance(
             map_value.type, CtyMap

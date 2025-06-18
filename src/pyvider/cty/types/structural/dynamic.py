@@ -1,5 +1,5 @@
 from decimal import Decimal  # Added import
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, ClassVar # TypeVar, Any removed
 
 from attrs import define
 
@@ -34,11 +34,11 @@ if TYPE_CHECKING:  # Add conditional import for CtyValue
     from pyvider.cty.values import CtyValue
 
 
-T = TypeVar("T")
+# T = TypeVar("T") # Unused
 
 
 @define(frozen=True, slots=True)
-class CtyDynamic(CtyType[Any]):
+class CtyDynamic(CtyType[object]):
     """
     Dynamic pseudo-type representation in the Cty type system.
 
@@ -60,7 +60,7 @@ class CtyDynamic(CtyType[Any]):
 
     ctype: ClassVar[str] = "dynamic"
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue":
         """
         Validate a value against the dynamic type.
 
@@ -109,7 +109,7 @@ class CtyDynamic(CtyType[Any]):
         elif isinstance(value, bool):  # Check for bool BEFORE int/float
             concrete_type = CtyBool()
             return CtyValue(vtype=concrete_type, value=value)
-        elif isinstance(value, int | float | Decimal):  # Added Decimal
+        elif isinstance(value, (int, float, Decimal)):  # Added Decimal
             concrete_type = CtyNumber()
             return CtyValue(
                 vtype=concrete_type, value=Decimal(value)
@@ -174,7 +174,7 @@ class CtyDynamic(CtyType[Any]):
         logger.debug(f"🧩🔍🔄 CtyDynamic.usable_as check: {result}")
         return result
 
-    def to_python(self) -> Any:
+    def to_python(self) -> object:
         """
         Convert a dynamic type to its Python representation.
 

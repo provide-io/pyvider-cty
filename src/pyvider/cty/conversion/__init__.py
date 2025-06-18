@@ -1,5 +1,11 @@
 # pyvider-cty/src/pyvider/cty/conversion/__init__.py
+"""
+Core CTY conversion functionalities.
 
+This package provides the main entry points for marshalling and unmarshalling
+CTY values to/from various wire formats (like JSON, MessagePack), and includes
+utilities for type classification, standardization, and validation.
+"""
 from pyvider.cty.context import (
     OperationContext,
     get_current_operation,
@@ -27,8 +33,9 @@ from pyvider.cty.conversion.schema_type_encoder import (
 import pyvider.cty.conversion.terraform  # F401: Unused import (registration if any, happens inside)
 from pyvider.cty.conversion.wire import WireFormat, WireFormatRegistry, WireFormatType
 from pyvider.telemetry import logger
+from typing import TypeVar
 
-T = type["T"]
+T = TypeVar("T")
 
 
 def marshal(
@@ -37,6 +44,22 @@ def marshal(
     operation: OperationContext | None = None,
     **options: object,
 ) -> bytes:
+    """
+    Marshals a given value into bytes using the specified wire format.
+
+    Args:
+        value: The value to marshal.
+        format_kind: The target wire format (e.g., JSON, MSGPACK).
+        operation: The operational context, influencing serialization.
+        **options: Additional options specific to the chosen formatter.
+
+    Returns:
+        The marshalled value as bytes.
+
+    Raises:
+        WireFormatError: If no formatter is registered for the format_kind
+                         or if marshalling fails.
+    """
     op_ctx = operation or get_current_operation()
     formatter = WireFormatRegistry.get_formatter(format_kind)
     with operation_context(op_ctx):
@@ -50,6 +73,24 @@ def unmarshal(
     operation: OperationContext | None = None,
     **options: object,
 ) -> T:
+    """
+    Unmarshals data from bytes into a Python object, potentially a CtyValue,
+    using the specified wire format and expected type.
+
+    Args:
+        data: The bytes or pre-parsed object to unmarshal.
+        format_kind: The wire format of the data (e.g., JSON, MSGPACK).
+        expected_type: The expected Python type or CtyType of the result.
+        operation: The operational context, influencing deserialization.
+        **options: Additional options specific to the chosen formatter.
+
+    Returns:
+        The unmarshalled Python object, cast to type T if expected_type is provided.
+
+    Raises:
+        WireFormatError: If no formatter is registered for the format_kind
+                         or if unmarshalling fails.
+    """
     op_ctx = operation or get_current_operation()
     formatter = WireFormatRegistry.get_formatter(format_kind)
     with operation_context(op_ctx):

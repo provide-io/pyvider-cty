@@ -696,12 +696,18 @@ class MsgPackEncoder(FormatEncoder):
     @classmethod
     def _create_type_from_name(
         cls,
-        cty_type_instance: CtyType,  # Corrected parameter type
+        cty_type_instance: CtyType,
         legacy_data_for_collections: dict[str, object]
-        | None = None,  # This parameter seems unused now
-    ) -> dict[str, object] | str:  # Corrected return type
+        | None = None, # TODO: Parameter legacy_data_for_collections seems unused.
+    ) -> dict[str, object] | str:
         """
-        Serialize a CtyType instance into a dictionary or string representation for storage.
+        Serialize a CtyType instance into a dictionary or string representation,
+        primarily for embedding within other serialized structures.
+
+        NOTE: This method is very similar to _type_to_dict. Review if this is
+        redundant or if its specific use case can be clarified or merged.
+        Consider whether cls._type_to_dict should be used directly by callers
+        if the functionality is identical.
         """
         # If cty_type_instance is a primitive type that should be represented as a string directly
         # This logic should align with how _type_to_dict decides to return a string vs a dict.
@@ -743,9 +749,12 @@ class MsgPackEncoder(FormatEncoder):
         return type_name  # For primitive types or CtyDynamic
 
     @classmethod
-    def _create_type_from_name(
-        cls, type_info_dict: dict
-    ) -> "CtyType":  # Already a string literal
+    # TODO: This method has the same name as the one above.
+    # This is a redefinition and relies on Python's runtime behavior for method overloading,
+    # which can be confusing. Consider renaming for clarity.
+    def _create_type_from_name(  # type: ignore[no-redef]
+        cls, type_info_dict: dict[str | bytes, object] | str | bytes
+    ) -> "CtyType":
         """
         Create a CTY type from its serialized type information dictionary.
 
@@ -776,14 +785,12 @@ class MsgPackEncoder(FormatEncoder):
                 CtyType,
             )
 
-            data_source: dict[str | bytes, any]  # Define data_source type hint
+            data_source: dict[str | bytes, object]  # Define data_source type hint
 
             if isinstance(type_info_dict, bytes):  # Handle bytes from raw unpacking
                 type_name_str = type_info_dict.decode("utf-8")
                 data_source = {}
-            elif isinstance(
-                type_info_dict, str
-            ):  # Primitive type name or legacy collection
+            elif isinstance(type_info_dict, str):  # Primitive type name
                 type_name_str = type_info_dict
                 data_source = {}
             elif isinstance(type_info_dict, dict):  # Nested type structure
@@ -866,7 +873,7 @@ class MsgPackEncoder(FormatEncoder):
                     # If type_name_str was derived from a type marker but isn't a known Cty type string,
                     # it's an encoding error. Defaulting to CtyDynamic should only happen if no type was specified.
                     # This makes the type creation stricter.
-                    if isinstance(type_info_dict, str | bytes) or (
+                    if isinstance(type_info_dict, (str, bytes)) or (
                         isinstance(type_info_dict, dict)
                         and (
                             cls.TYPE_MARKER in type_info_dict

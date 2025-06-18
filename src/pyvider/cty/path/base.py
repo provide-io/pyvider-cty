@@ -18,7 +18,7 @@ This follows go-cty's design for path handling.
 
 from abc import ABC, abstractmethod
 from decimal import Decimal  # Added for KeyStep.apply_type
-from typing import TypeVar  # REVIEW_TYPING
+from typing import TypeVar
 
 from attrs import define, field
 
@@ -135,7 +135,7 @@ class GetAttrStep(PathStep):
             except Exception as e:
                 error_msg = f"Cannot get attribute '{self.name}' from object: {e}"
                 logger.error(f"🧰❌🔄 {error_msg}")
-                raise AttributePathError(error_msg)
+                raise AttributePathError(error_msg) from e
 
         # For map values, use get method with string key
         elif isinstance(value.type, CtyMap):
@@ -304,11 +304,11 @@ class IndexStep(PathStep):
         except IndexError as e:
             error_msg = f"Index out of bounds: {e}"
             logger.error(f"🧰❌🔄 {error_msg}")
-            raise AttributePathError(error_msg)
+            raise AttributePathError(error_msg) from e
         except Exception as e:
             error_msg = f"Failed to get element at index {self.index}: {e}"
             logger.error(f"🧰❌🔄 {error_msg}")
-            raise AttributePathError(error_msg)
+            raise AttributePathError(error_msg) from e
 
     def apply_type(self, vtype: "CtyType") -> "CtyType":
         """
@@ -429,13 +429,13 @@ class KeyStep(PathStep):
             # Import CtyNumber and CtyString for type checking
             from pyvider.cty.types.primitives import CtyNumber, CtyString
 
-            if isinstance(self.key, CtyValue):
+            if isinstance(self.key, CtyValue): # Path step key is a CtyValue
                 if self.key.is_null or self.key.is_unknown:
                     raise AttributePathError(
                         f"Invalid CtyValue key in path step: {self.key!r}"
                     )
 
-                # If the map's key_type is CtyString and the path key is CtyNumber, convert to string for lookup.
+                # Scenario 1: Map expects string keys, path key is CtyNumber. Convert path key to string.
                 if isinstance(value.type.key_type, CtyString) and isinstance(
                     self.key.type, CtyNumber
                 ):
@@ -443,23 +443,21 @@ class KeyStep(PathStep):
                     logger.debug(
                         f"🧰🔑🔄 Converted CtyNumber path key to string '{str_lookup_key}' for map lookup (map key type is CtyString)"
                     )
+                # Scenario 2: Path key's CtyType matches the map's expected CtyKeyType. Use its value.
                 elif isinstance(
                     self.key.type, value.type.key_type.__class__
-                ):  # Key type matches map's key_type
-                    # Assuming the CtyValue's internal value is directly usable or stringifiable if it's a CtyString.
-                    # For CtyString keys, self.key.value should already be a string.
-                    str_lookup_key = str(self.key.value)
+                ):
+                    str_lookup_key = str(self.key.value) # Assumes key's value is stringifiable
+                # Scenario 3: Path key's CtyType is incompatible.
                 else:
-                    # This case should ideally be caught by apply_type's usable_as check first,
-                    # but as a safeguard or for direct apply calls:
                     raise AttributePathError(
                         f"Path key type {self.key.type} is not directly compatible with map key type {value.type.key_type} for lookup."
                     )
 
             elif isinstance(
                 self.key, str | int | float | Decimal
-            ):  # Raw Python type for key
-                # If map key_type is CtyString, convert raw numeric key to string for lookup
+            ):  # Path step key is a raw Python primitive
+                # Scenario 4: Map expects string keys, path key is raw number. Convert path key to string.
                 if isinstance(value.type.key_type, CtyString) and isinstance(
                     self.key, int | float | Decimal
                 ):
@@ -467,17 +465,15 @@ class KeyStep(PathStep):
                     logger.debug(
                         f"🧰🔑🔄 Converted raw numeric path key to string '{str_lookup_key}' for map lookup (map key type is CtyString)"
                     )
+                # Scenario 5: Map expects string keys, path key is raw string. Use directly.
                 elif isinstance(self.key, str) and isinstance(
                     value.type.key_type, CtyString
                 ):
                     str_lookup_key = self.key
+                # Scenario 6: Other raw key types or map expects non-string keys.
+                # Validate the raw key against the map's key_type to get a CtyValue, then use its stringified value.
+                # This path handles cases where map might expect CtyNumber keys and raw key is int/float.
                 else:
-                    # For other raw key types or non-string map key_types,
-                    # we might need more sophisticated handling or rely on direct match.
-                    # For now, assume direct string conversion if not string already.
-                    # This part might need refinement if maps can have non-string raw keys that aren't CtyString typed.
-                    # However, CtyMap typically implies CtyString or other CtyPrimitive keys.
-                    # The most robust way is to validate and convert, similar to apply_type.
                     try:
                         validated_raw_key = value.type.key_type.validate(self.key)
                         if (
@@ -492,8 +488,8 @@ class KeyStep(PathStep):
                     except CtyValidationError as e:
                         raise AttributePathError(
                             f"Invalid raw key type in path step: {self.key!r} ({e})"
-                        )
-            else:
+                        ) from e
+            else: # Path step key is of an unsupported type
                 raise AttributePathError(
                     f"Unsupported key type in path step: {type(self.key).__name__}"
                 )
@@ -513,7 +509,7 @@ class KeyStep(PathStep):
         except Exception as e:
             error_msg = f"Failed to get value for key {self.key!r}: {e}"  # Use self.key for error reporting
             logger.error(f"🧰❌🔄 {error_msg}")
-            raise AttributePathError(error_msg)
+            raise AttributePathError(error_msg) from e
 
     def apply_type(self, vtype: "CtyType") -> "CtyType":
         """
@@ -570,26 +566,19 @@ class KeyStep(PathStep):
             key_to_validate = self.key.value
             original_key_for_error_reporting = self.key.value
 
+            # If the path step's key was a CtyValue and it was a CtyNumber,
+            # and the map expects CtyString keys, convert the CtyNumber's value to a string.
             if is_number_key_for_string_map:
-                key_to_validate = str(key_to_validate)
+                key_to_validate = str(key_to_validate) # key_to_validate here is the raw value from the CtyValue key
                 logger.debug(
                     f"🧰🔑🔄 Converted CtyNumber key's value to string for CtyString map key validation: '{key_to_validate}'"
                 )
-        else:
-            # If the key is a raw Python value, it will be stringified by CtyString.validate if key_type is CtyString.
+        else: # Path step's key is a raw Python type (str, int, float, Decimal)
             key_to_validate = self.key
-            # For raw Python keys that are numbers and map key_type is string, CtyString.validate would fail.
-            # We need to convert them to string here as well.
+            # If the map expects CtyString keys and the raw key is a number, convert it to string.
             from pyvider.cty.types.primitives import (
-                CtyString,  # Ensure CtyString is available
+                CtyString,  # Local import for CtyString type check
             )
-
-            # We also need CtyNumber to check the type of raw key_to_validate
-            # However, raw Python ints/floats are not CtyNumber.
-            # We rely on CtyString.validate to attempt conversion or fail for raw types.
-            # This part might need adjustment if CtyString.validate is too strict for raw numbers.
-            # For now, the primary fix is for CtyValue keys.
-            # Let's add a specific check for raw numbers if the map key is CtyString
             if isinstance(key_to_validate, int | float | Decimal) and isinstance(
                 vtype.key_type, CtyString
             ):
@@ -597,7 +586,7 @@ class KeyStep(PathStep):
                 logger.debug(
                     f"🧰🔑🔄 Converted raw numeric key to string for CtyString map key validation: '{key_to_validate}'"
                 )
-
+        # At this point, key_to_validate is the value that should be validated against the map's key_type.
         try:
             # The map's key_type (e.g., CtyString) validates the key_to_validate.
             vtype.key_type.validate(
@@ -611,7 +600,7 @@ class KeyStep(PathStep):
             # Use original_key_for_error_reporting for consistency in error messages.
             error_msg = f"Invalid key for map: {original_key_for_error_reporting!r} is not a valid {vtype.key_type} (validation error: {e})"
             logger.error(f"🧰❌🔄 {error_msg}")
-            raise AttributePathError(error_msg)
+            raise AttributePathError(error_msg) from e
 
         # Return the value type
         logger.debug(f"🧰✅🔄 Found value type: {vtype.value_type.__class__.__name__}")

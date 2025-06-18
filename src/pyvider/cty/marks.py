@@ -1,6 +1,6 @@
 # src/pyvider/cty/marks.py
 # 🐍✨
-
+"""Provides the CtyMark class for associating metadata with CtyValues."""
 
 from attrs import define, field
 

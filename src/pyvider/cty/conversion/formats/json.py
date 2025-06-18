@@ -1,6 +1,15 @@
+# src/pyvider/cty/conversion/formats/json.py
+"""
+JSON specific CTY <-> Python value encoder/decoder.
+
+This module implements the `FormatEncoder` interface for handling
+CTY value serialization to and from JSON-encoded bytes. It ensures
+that CTY type information, null/unknown states, and marks are
+preserved or appropriately represented in the JSON format.
+"""
 from decimal import Decimal
 import json
-from typing import ClassVar, TypeVar, cast  # Added TYPE_CHECKING
+from typing import ClassVar, TypeVar, cast
 
 from pyvider.cty.conversion.formats.base import FormatEncoder, register_formatter
 from pyvider.cty.conversion.wire import WireFormatType
@@ -266,7 +275,7 @@ class JsonEncoder(FormatEncoder):
                 logger.debug(
                     f"RECURSE_ENCODE: Defaulting to full cls._value_to_dict for CtyValue item: {item!r}"
                 )
-                return cls._value_to_dict(item, preserve_type)  # Fallback
+                return cls._value_to_dict(item, preserve_type)
 
             elif isinstance(item, dict):
                 logger.debug("RECURSE_ENCODE: item is dict, processing items...")
@@ -317,7 +326,8 @@ class JsonEncoder(FormatEncoder):
     ) -> CtyValue:
         logger.debug("🧩🔍🔄 Converting dictionary to CtyValue")
 
-        # Jules's debug logging
+        # TODO: Review and remove or integrate "JULES_DEBUG_JSON_DECODE" logs.
+        # These seem to be temporary debugging logs.
         logger.debug(f"JULES_DEBUG_JSON_DECODE: _dict_to_value received data: {data!r}")
         logger.debug(
             f"JULES_DEBUG_JSON_DECODE: data has is_null? {cls.NULL_MARKER in data}. Value: {data.get(cls.NULL_MARKER)}"
@@ -520,11 +530,16 @@ class JsonEncoder(FormatEncoder):
     def _create_type_from_name(
         cls, type_name_str: str, data_dict_for_extra_type_info: dict[str, object]
     ) -> "CtyType":
+        """
+        Internal helper to create a CtyType instance from a type name string
+        and potentially a dictionary containing details for complex types (like collection
+        element types or object attribute types).
+        """
         logger.debug(
             f"🧩🔍🔄 Creating type from name string: '{type_name_str}' with extra info from: {data_dict_for_extra_type_info!r}"
         )
 
-        # Handle direct CtyType class names (e.g., from cls.TYPE_MARKER or recursive calls)
+        # Handle direct CtyType class names (e.g., from cls.TYPE_MARKER or recursive calls from _value_to_dict)
         if type_name_str == "CtyBool":
             return CtyBool()
         if type_name_str == "CtyNumber":
@@ -676,6 +691,10 @@ class JsonEncoder(FormatEncoder):
 def _split_by_delimiter_respecting_nesting_for_json_decode(
     text: str, delimiter: str
 ) -> list[str]:
+    """
+    Splits a string by a delimiter, respecting nested parentheses, brackets, and braces.
+    Used for parsing object attribute strings and tuple element type strings.
+    """
     if not text:
         return []
     parts = []

@@ -14,13 +14,11 @@ while providing Pythonic operations like slicing and iteration. All operations m
 immutability by returning new instances rather than modifying existing ones.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import (  # Added TYPE_CHECKING
-    Any,
     ClassVar,
     Generic,
     TypeVar,
-    Union,
     final,
 )
 
@@ -70,12 +68,13 @@ class CtyList(CtyType[list[T]], Generic[T]):
     value: list[T] = field(factory=list, kw_only=True)
 
     def __attrs_post_init__(self) -> None:
+        """Validates that element_type is a CtyType instance after initialization."""
         if not isinstance(self.element_type, CtyType):
             message = f"Expected CtyType for element_type, got {type(self.element_type).__name__}"
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def validate(self, value: Any) -> CtyValue:  # String literal
+    def validate(self, value: object) -> CtyValue:  # String literal
         logger.debug(f"🔌📝🔄 Validating value as CtyList: {type(value).__name__}")
 
         from pyvider.cty.types import CtyDynamic
@@ -87,7 +86,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 "Input to CtyList.validate cannot be None. Use CtyValue.null(CtyList(...)) for a null list."
             )
 
-        raw_list_to_validate: Sequence[Any] | None = None
+        raw_list_to_validate: Sequence[object] | None = None
         if isinstance(value, CtyValue):
             if value.is_null:
                 logger.debug(
@@ -100,7 +99,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 )
                 return CtyValue.unknown(self)
 
-            if isinstance(value.type, "CtyList"):
+            if isinstance(value.type, CtyList):
                 if isinstance(
                     self.element_type, CtyDynamic
                 ) or value.type.element_type.usable_as(self.element_type):
@@ -116,7 +115,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 raise CtyListValidationError(
                     f"Input CtyValue is not of a list type, got {value.type}"
                 )
-        elif isinstance(value, list | tuple):
+        elif isinstance(value, (list, tuple)):
             raw_list_to_validate = value
         else:
             logger.debug(
@@ -172,7 +171,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         )
         return CtyValue(vtype=self, value=validated_elements)
 
-    def element_at(self, container: Any, index: int) -> CtyValue:  # String literal
+    def element_at(self, container: object, index: int) -> CtyValue:  # String literal
         logger.debug(f"🔌🔍🔄 Getting element at index {index}")
 
         from pyvider.cty.values import CtyValue  # Local import kept
@@ -186,7 +185,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
         elif isinstance(container, CtyList):
             container_value = container.value
-        elif isinstance(container, list | tuple):
+        elif isinstance(container, (list, tuple)):
             container_value = container
         else:
             message = f"Expected list, tuple, CtyList, or CtyValue with CtyList type, got {type(container).__name__}"
@@ -209,7 +208,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise IndexError(message) from e
 
-    def append(self, item: Any) -> "CtyList[T]":
+    def append(self, item: object) -> "CtyList[T]":
         logger.debug(f"🔌📝🔄 Appending item: {item}")
         try:
             validated_item = self.element_type.validate(item)
@@ -253,7 +252,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         logger.debug(f"🔌📝✅ Concatenated lists, result size: {len(concat_value)}")
         return evolve(self, value=concat_value)
 
-    def contains(self, item: Any) -> bool:
+    def contains(self, item: object) -> bool:
         logger.debug(f"🔌🔍🔄 Checking if list contains item: {item}")
         try:
             validated_item = self.element_type.validate(item)
@@ -294,12 +293,12 @@ class CtyList(CtyType[list[T]], Generic[T]):
     def __len__(self) -> int:
         return len(self.value)
 
-    def __iter__(self):  # Missing return type annotation
+    def __iter__(self) -> Iterator[T]:
         return iter(self.value)
 
     def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[CtyValue, "CtyList"]:  # String literal for CtyValue
+        self, index: int | slice
+    ) -> CtyValue | "CtyList":  # String literal for CtyValue
         if isinstance(index, slice):
             start = index.start if index.start is not None else 0
             stop = index.stop if index.stop is not None else len(self.value)

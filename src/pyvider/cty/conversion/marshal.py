@@ -1,5 +1,13 @@
 # pyvider/cty/conversion/marshal.py
+"""
+Provides CTY type marshalling and unmarshalling capabilities, specifically
+for converting CTY type representations to and from the Terraform protocol
+type bytes format.
 
+This module focuses on the string-based representation of types used in
+some parts of the Terraform protocol, distinct from the more general JSON or
+MessagePack serialization of CtyValues.
+"""
 from enum import Enum, auto
 
 from pyvider.cty.exceptions import CtyConversionError, CtyTypeConversionError
@@ -19,6 +27,10 @@ from pyvider.telemetry import logger
 
 
 class TypeCategory(Enum):
+    """
+    Internal categorization of CTY types used during parsing and
+    marshalling of type strings.
+    """
     PRIMITIVE = auto()
     LIST = auto()
     MAP = auto()
@@ -149,10 +161,10 @@ def unmarshal_type(
                 decoded_str = decoded_str[1:-1]
             type_str = _standardize_type_string(decoded_str)
             logger.debug(f"🧰🔍📊 Standardized type string: {type_str!r}")
-        except UnicodeDecodeError:
+        except UnicodeDecodeError as e_unicode:
             raise CtyTypeConversionError(
                 f"Type bytes are not valid UTF-8: {type_bytes!r}"
-            )  # Fixed exception type
+            ) from e_unicode
         except Exception as e:  # Catch other errors during standardization
             raise CtyTypeConversionError(
                 f"Unexpected error standardizing type string: {e}",

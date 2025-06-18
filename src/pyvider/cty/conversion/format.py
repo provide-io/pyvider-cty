@@ -202,6 +202,8 @@ def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
     return result
 
 
+# TODO: This Xparse_collection_type seems to be an improved or alternative implementation.
+# Evaluate if it should replace the current parse_collection_type or be removed if obsolete.
 # Improved implementation with nested support
 def Xparse_collection_type(type_str: str) -> tuple[str, str]:
     logger.debug("!!!! PARSING COLLECTION.")

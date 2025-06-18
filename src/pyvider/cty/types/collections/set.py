@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, ClassVar, Generic, TypeVar, final
+from typing import ClassVar, Generic, TypeVar, final
 
 from attrs import define, evolve, field
 
@@ -66,7 +66,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: Any) -> CtyValue:  # Added quotes around CtyValue
+    def validate(self, value: object) -> CtyValue:  # Added quotes around CtyValue
         """Validate *value* as a **set** matching :pyattr:`element_type`.
 
         Acceptable *inputs*:
@@ -106,7 +106,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 raise CtySetValidationError(str(exc)) from exc
 
         # NEW: Handle list or tuple input by converting to a set
-        if isinstance(value, list | tuple):
+        if isinstance(value, (list, tuple)):
             try:
                 value = set(value)
                 logger.debug("🟣🔄  Converted input list/tuple to set for validation")
@@ -119,7 +119,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
                 raise CtySetValidationError(err) from e
 
         # -------------------- Set coercion -----------------------------
-        if not isinstance(value, set | frozenset):
+        if not isinstance(value, (set, frozenset)):
             err = (
                 "Expected a Python set/frozenset (or convertible list/tuple) for CtySet validation; "
                 f"got {type(value).__name__}: {value!r}"
@@ -147,7 +147,7 @@ class CtySet(CtyType[set[T]], Generic[T]):
         logger.debug("🟣✅  Successfully validated %d element(s)", len(validated_items))
         return CtyValue(vtype=self, value=frozenset(validated_items))
 
-    def add(self, element: Any) -> CtySet:  # Added type hint for element
+    def add(self, element: object) -> CtySet:  # Added type hint for element
         """
         Add an element to the set.
 

@@ -10,7 +10,7 @@ Provides a complete implementation of tuple types with fixed-position elements
 that may have different types from each other.
 """
 
-from typing import Any, ClassVar  # Union is already here, ensure it's used.
+from typing import ClassVar  # Union is already here, ensure it's used. Any removed
 
 from attrs import define, field
 
@@ -21,7 +21,7 @@ from pyvider.telemetry import logger
 
 
 @define(frozen=True, slots=True)
-class CtyTuple(CtyType[tuple[Any, ...]]):
+class CtyTuple(CtyType[tuple[object, ...]]):
     """
     Represents a Cty tuple type with fixed-position elements of potentially different types.
 
@@ -55,7 +55,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
             f"🧩✅🔄 Tuple element types validated successfully: {len(value)} types"
         )
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: object) -> CtyValue:
         """
         Validate a value against this tuple type.
 
@@ -74,14 +74,14 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug(f"🧩🔍🔄 Validating value against CtyTuple: {value}")
 
         # Handle empty tuple type with empty value: should be a known, non-null empty tuple.
-        if isinstance(value, tuple | list) and not value and not self.element_types:
+        if isinstance(value, (tuple, list)) and not value and not self.element_types:
             logger.debug(
                 "🧩🔍✅ Empty tuple type with empty value, returning known empty CtyValue with value ()"
             )
             return CtyValue(self, ())  # Correctly return an empty tuple value
 
         # Validate basic type
-        if not isinstance(value, tuple | list):
+        if not isinstance(value, (tuple, list)):
             error_msg = f"Expected tuple or list, got {type(value).__name__}"
             logger.error(f"🧩❌🔄 {error_msg}")
             raise CtyValidationError(error_msg)
@@ -107,7 +107,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                 if isinstance(element, CtyValue):
                     # Ensure types are compatible
                     if not element.type.usable_as(element_type):
-                        # FIX: Match expected error message for CtyNumber validation
+                        # Specific error message handling for type mismatches.
                         from pyvider.cty.types.primitives import CtyBool, CtyNumber
 
                         if isinstance(element_type, CtyNumber) and isinstance(
@@ -127,7 +127,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
                     if (
                         hasattr(element_type, "ctype")
                         and element_type.ctype == "number"
-                    ) and isinstance(element, int | float):
+                    ) and isinstance(element, (int, float)):
                         # Use string conversion for exact decimal representation
                         element = str(element)
 
@@ -149,7 +149,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         )
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
-    def element_at(self, container: Any, index: int) -> CtyValue:
+    def element_at(self, container: object, index: int) -> CtyValue:
         """
         Get an element at a specific index in the tuple.
 
@@ -181,7 +181,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         if hasattr(container, "value"):
             # Handle CtyValue containing a tuple
             container_value = container.value
-        elif isinstance(container, tuple | list):
+        elif isinstance(container, (tuple, list)):
             # Handle raw tuple
             container_value = container
         else:
@@ -207,7 +207,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
         logger.debug(f"🧩✅🔄 Got element at index {index}")
         return element
 
-    def slice(self, container: Any, start: int, end: int | None = None) -> CtyValue:
+    def slice(self, container: object, start: int, end: int | None = None) -> CtyValue:
         """
         Get a slice of the tuple.
 
@@ -233,7 +233,7 @@ class CtyTuple(CtyType[tuple[Any, ...]]):
 
             # Extract values from CtyValue container
             container_value = container.value
-        elif isinstance(container, tuple | list):
+        elif isinstance(container, (tuple, list)):
             # Use raw tuple/list directly
             container_value = container
         else:

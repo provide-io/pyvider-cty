@@ -1,7 +1,12 @@
 #
 # pyvider/cty/exceptions/validation.py
 #
+"""
+Defines exceptions specifically related to CTY type validation failures.
 
+These exceptions are raised when a value does not conform to the constraints
+of a particular CTY type during the validation process.
+"""
 from pyvider.cty.exceptions.base import CtyError
 
 ################################################################################

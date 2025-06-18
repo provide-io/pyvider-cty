@@ -1,4 +1,13 @@
 # pyvider/schema/conversion/wire_type_encoder.py
+"""
+Encodes CTY type schema representations into a JSON-based wire format.
+
+This module is responsible for taking a string representation of a CTY type
+(e.g., "list(string)", "object({name=string,age=number})") and converting it
+into a structured JSON format suitable for wire transmission or storage.
+This is different from serializing CtyValue instances; this serializes the
+type *schema* itself.
+"""
 import json
 import re
 from typing import cast
@@ -15,6 +24,25 @@ from pyvider.telemetry import logger
 def _parse_comma_separated_elements(
     elements_str_input: str, is_object_attrs: bool
 ) -> list[tuple[str, str]] | list[str]:
+    """
+    Parses a string of comma-separated elements, respecting nested structures.
+
+    This function is used to break down the content within object attribute
+    definitions (e.g., "name=string,age=number") and tuple element type
+    definitions (e.g., "string,number,list(string)").
+
+    Args:
+        elements_str_input: The raw string content to parse.
+        is_object_attrs: Boolean flag indicating if the string represents
+                         object attributes (which are key-value pairs) or
+                         tuple elements (which are just type strings).
+
+    Returns:
+        If is_object_attrs is True, returns a list of (name, type_str) tuples.
+        If is_object_attrs is False, returns a list of type_str strings.
+        Returns an empty list if the input string is empty or represents
+        an empty structure (e.g., "{}" for objects, "[]" for tuples).
+    """
     elements = []
     # Use a different variable for the string to be parsed by the loop
     # This ensures that modifications for object attributes (like stripping braces)
@@ -103,6 +131,23 @@ def _parse_comma_separated_elements(
 
 
 def _encode_wire_element(element_type_str: str) -> object:
+    """
+    Recursively encodes a standardized CTY type string into a JSON-serializable structure.
+
+    Primitives are returned as strings. Collections and structural types are
+    returned as lists or lists of lists/dictionaries representing their structure
+    and element/attribute types. For example:
+    - "string" -> "string"
+    - "list(number)" -> ["list", "number"]
+    - "object({name=string})" -> ["object", {"name": "string"}]
+    - "tuple([bool,string])" -> ["tuple", ["bool", "string"]]
+
+    Args:
+        element_type_str: A standardized CTY type string.
+
+    Returns:
+        A JSON-serializable representation of the type schema.
+    """
     std_element_type = standardize_type_string(element_type_str)
     category = classify_type(std_element_type)
     if category == TypeCategory.PRIMITIVE:
@@ -159,6 +204,24 @@ def _encode_wire_element(element_type_str: str) -> object:
 
 
 def encode_type_to_wire(type_repr_str: str) -> bytes:
+    """
+    Encodes a CTY type representation string into a JSON-based wire format bytes.
+
+    The input string is first standardized, then recursively encoded into a
+    structured list/dictionary format, which is finally dumped as a JSON
+    string and encoded to UTF-8 bytes.
+
+    Example:
+        "list(object({id=string}))" ->
+        b'["list", ["object", {"id": "string"}]]'
+
+    Args:
+        type_repr_str: The CTY type representation string.
+
+    Returns:
+        Bytes representing the JSON-encoded type schema.
+        Returns a fallback error string encoded to bytes if encoding fails.
+    """
     logger.debug(
         f'🧰🔄📑 Encoding schema type string "{type_repr_str}" to wire format bytes'
     )
