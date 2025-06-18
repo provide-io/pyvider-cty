@@ -138,7 +138,7 @@ class CtyDynamic(CtyType[object]):
         logger.error(f"🧩❗❌ {error_msg}")
         raise CtyValidationError(error_msg)
 
-    def equal(self, other: CtyType) -> bool:
+    def equal(self, other: "CtyType") -> bool:
         """
         Check if this dynamic type equals another type.
 
@@ -156,7 +156,7 @@ class CtyDynamic(CtyType[object]):
         logger.debug(f"🧩🔍🔄 CtyDynamic.equal check: {result}")
         return result
 
-    def usable_as(self, other: CtyType) -> bool:
+    def usable_as(self, other: "CtyType") -> bool:
         """
         Check if this dynamic type can be used as another type.
 
