@@ -1,5 +1,11 @@
 # pyvider/conversion/context/operation_context.py
+"""
+Manages the operational context for CTY type and value processing.
 
+This module defines different operational contexts (e.g., CONFIG, STATE, PLAN)
+that can influence how CTY operations behave. It provides utilities to get
+and set the current context, typically using a context manager pattern.
+"""
 import contextlib
 from contextvars import ContextVar
 from enum import Enum, auto
@@ -8,6 +14,13 @@ from pyvider.telemetry import logger
 
 
 class OperationContext(Enum):
+    """
+    Enumerates different operational contexts within the Pyvider system.
+
+    The context can affect behavior such as type validation stringency,
+    serialization/deserialization strategies, or how unknown/null values
+    are handled during conversions.
+    """
     DEFAULT = auto()
     CONFIG = auto()
     STATE = auto()
@@ -24,13 +37,23 @@ _current_operation_context: ContextVar[OperationContext] = ContextVar(
 
 
 def get_current_operation() -> OperationContext:
+    """Returns the currently active OperationContext."""
     return _current_operation_context.get()
 
 
 def operation_context(
     context: OperationContext,
 ) -> contextlib.AbstractContextManager[None]:
+    """
+    A context manager to temporarily set the CTY operational context.
+
+    Usage:
+        with operation_context(OperationContext.CONFIG):
+            # Operations within this block will use the CONFIG context
+            ...
+    """
     class OperationContextManager:
+        """Manages setting and resetting the operation context."""
         def __init__(self, new_context: OperationContext) -> None:
             self._new_context = new_context
             self._token = None

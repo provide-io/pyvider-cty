@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar, Union  # Added TYPE_CHECKING
+from typing import ClassVar # Added TYPE_CHECKING, Union removed
 
 from attrs import define, field
 
@@ -17,7 +17,7 @@ from pyvider.telemetry import logger
 
 
 @define(frozen=True, slots=True)
-class CtyNumber(CtyType[Union[int, float, Decimal]]):
+class CtyNumber(CtyType[int | float | Decimal]):
     """
     Represents a numeric type in the Cty type system.
 
@@ -37,7 +37,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     ctype: ClassVar[str] = "number"
     value: int | Decimal = field(default=0)
 
-    def validate(self, value: Any) -> CtyValue:  # Ensured string literal
+    def validate(self, value: object) -> CtyValue:  # Ensured string literal
         """
         Validate that the given value is a number or can be converted to one.
 
@@ -70,7 +70,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
 
             # --- COMPATIBLE CTYVALUE ---
             # If it's already a number or dynamic type, try to use its value
-            if isinstance(value.type, CtyNumber | CtyDynamic):
+            if isinstance(value.type, (CtyNumber, CtyDynamic)):
                 # Re-validate inner value to ensure it's a valid Decimal representation
                 # This handles cases like CtyValue(CtyDynamic, "123") -> CtyValue(CtyNumber, Decimal("123"))
                 value = value.value  # Unbox
@@ -89,7 +89,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
             # --- End CtyValue Handling ---
 
         # --- PYTHON PRIMITIVES ---
-        if isinstance(value, int | float | Decimal):
+        if isinstance(value, (int, float, Decimal)):
             try:
                 decimal_value = Decimal(value)
                 logger.debug(f"🔢✅🔄 Converted to Decimal: {decimal_value}")
@@ -126,7 +126,7 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
     def usable_as(self, other: CtyType[int | float | Decimal]) -> bool:
         """Check if this number type can be used as another type."""
         # A number can be used as dynamic or another number.
-        result = isinstance(other, CtyNumber | CtyDynamic)
+        result = isinstance(other, (CtyNumber, CtyDynamic))
         logger.debug("🔢✅🔄 CtyNumber.usable_as: %s to %s -> %s", self, other, result)
         return result
 
@@ -135,6 +135,5 @@ class CtyNumber(CtyType[Union[int, float, Decimal]]):
 
     def is_primitive_type(self) -> bool:
         return True
-
 
 # 🐍🏗️🐣

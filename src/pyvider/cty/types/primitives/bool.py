@@ -1,5 +1,13 @@
+# pyvider/cty/types/primitives/bool.py
+"""
+Boolean type implementation for the Cty type system.
+
+This module defines CtyBool, which represents boolean values (True/False)
+and handles conversions from various Python types to CTY booleans according
+to specific conversion rules.
+"""
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar  # Added TYPE_CHECKING
+from typing import ClassVar
 
 from attrs import define, field
 
@@ -8,9 +16,6 @@ from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
 from pyvider.telemetry import logger
 
-#
-# pyvider/cty/types/primitives/bool.py
-#
 # Define frozensets for true and false string representations
 TRUE_STRINGS: frozenset[str] = frozenset(("true", "t", "yes", "y", "1"))
 FALSE_STRINGS: frozenset[str] = frozenset(("false", "f", "no", "n", "0"))
@@ -34,7 +39,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
-    def validate(self, value: Any) -> CtyValue:  # Ensured string literal
+    def validate(self, value: object) -> CtyValue:  # Ensured string literal
         """Validate *value* and return a :class:`~pyvider.cty.values.CtyValue`.
 
         Conversion matrix
@@ -82,7 +87,7 @@ class CtyBool(CtyType[bool]):
             raise CtyBoolValidationError(f"Cannot convert string {value!r} to boolean")
 
         # 5️⃣ Numeric input (strict – only 0 / 1)
-        if isinstance(value, int | float | Decimal):
+        if isinstance(value, (int, float, Decimal)):
             try:
                 # Ensure it's a whole number before comparing
                 dec_val = Decimal(value)
@@ -117,7 +122,7 @@ class CtyBool(CtyType[bool]):
         # A bool can be used as dynamic, or another bool.
         from pyvider.cty.types.structural import CtyDynamic  # Avoid circular
 
-        result = isinstance(other, CtyBool | CtyDynamic)
+        result = isinstance(other, (CtyBool, CtyDynamic))
         logger.debug("✅🔍🔄 CtyBool.usable_as: %s to %s -> %s", self, other, result)
         return result
 

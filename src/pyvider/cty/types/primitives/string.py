@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, ClassVar, TypeVar
 
 from attrs import define, field
 
@@ -61,7 +61,7 @@ class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
     value: str = field(default="")
 
-    def validate(self, value: Any) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue":
         """
         Validate that the given value is a string or can be converted to one.
 
@@ -156,7 +156,7 @@ class CtyString(CtyType[str]):
         logger.error(f"🔤❗❌ RAISING ERROR (raw type path): {error_msg}")
         raise CtyStringValidationError(error_msg)
 
-    def equal(self, other: CtyType[Any]) -> bool:
+    def equal(self, other: CtyType[object]) -> bool:
         """
         Check if this string type is equal to another type.
 
@@ -174,7 +174,7 @@ class CtyString(CtyType[str]):
         logger.debug(f"🔤🔍✅ CtyString.equal: {result}")
         return result
 
-    def usable_as(self, other: CtyType[Any]) -> bool:
+    def usable_as(self, other: CtyType[object]) -> bool:
         """
         Check if this string type can be used where the other type is expected.
 

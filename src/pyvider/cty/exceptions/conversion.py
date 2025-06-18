@@ -1,5 +1,7 @@
 # pyvider/cty/exceptions/conversion.py
-
+"""
+Defines exceptions related to CTY type and value conversions.
+"""
 from .base import CtyError
 
 
@@ -9,6 +11,14 @@ class CtyConversionError(CtyError):
     def __init__(
         self, message: str, *, source_value: object = None, target_type: object = None
     ) -> None:
+        """
+        Initializes the CtyConversionError.
+
+        Args:
+            message: The base error message.
+            source_value: The value that was being converted.
+            target_type: The intended target type of the conversion.
+        """
         self.source_value = source_value
         self.target_type = target_type
         context_parts = []
@@ -37,6 +47,15 @@ class CtyTypeConversionError(CtyConversionError):
         source_value: object = None,
         target_type: object = None,
     ) -> None:
+        """
+        Initializes the CtyTypeConversionError.
+
+        Args:
+            message: The base error message.
+            type_name: The name of the CTY type involved in the conversion failure.
+            source_value: The value that was being converted.
+            target_type: The intended target type of the conversion.
+        """
         self.type_name = type_name
         if type_name:
             message = (

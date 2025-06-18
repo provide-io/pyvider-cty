@@ -15,7 +15,7 @@ in nested structures.
 """
 
 from collections.abc import Iterator  # Added Iterator
-from typing import Any, ClassVar
+from typing import ClassVar # Any removed
 
 from attrs import define, evolve, field
 
@@ -30,7 +30,7 @@ from pyvider.telemetry import logger
 
 
 @define(frozen=True, slots=True)
-class CtyObject(CtyType[dict[str, Any]]):
+class CtyObject(CtyType[dict[str, object]]):
     """
     Represents a Cty object type with a fixed set of attributes.
 
@@ -48,7 +48,12 @@ class CtyObject(CtyType[dict[str, Any]]):
     optional_attributes: frozenset[str] = field(factory=frozenset)
 
     def __attrs_post_init__(self) -> None:
-        """Validate object type configuration."""
+        """
+        Validates the CtyObject's attribute type definitions after initialization.
+
+        Ensures that `attribute_types` is a dictionary of CtyType instances and
+        that all `optional_attributes` are actually defined in `attribute_types`.
+        """
         logger.debug("🧩🔍🔄 Validating CtyObject configuration on initialization")
 
         # Validate attribute_types is a dictionary
@@ -79,7 +84,7 @@ class CtyObject(CtyType[dict[str, Any]]):
             f"🧩✅🔄 CtyObject configuration validated successfully with {len(self.attribute_types)} attributes"
         )
 
-    def validate(self, value: Any) -> CtyValue:
+    def validate(self, value: object) -> CtyValue:
         """
         Validate a value against this object type.
 
@@ -101,6 +106,8 @@ class CtyObject(CtyType[dict[str, Any]]):
         )
 
         if isinstance(value, dict) and not value:  # Explicitly an empty dictionary
+            # Check if an empty dictionary is a valid representation for this object type
+            # (i.e., all attributes are optional).
             is_truly_empty_compatible = True
             for (
                 attr_name
@@ -110,18 +117,22 @@ class CtyObject(CtyType[dict[str, Any]]):
                     break
 
             if is_truly_empty_compatible:
-                logger.debug(
-                    "JULES_OBJECT_VALIDATE: Explicitly handling empty dict {} input for compatible object type, returning NON-NULL empty object."
-                )
+                # logger.debug(
+                #     "JULES_OBJECT_VALIDATE: Explicitly handling empty dict {} input for compatible object type, returning NON-NULL empty object."
+                # ) # Removed JULES_OBJECT_VALIDATE log and associated TODO.
                 return CtyValue(vtype=self, value={})
             else:
-                logger.debug(
-                    "JULES_OBJECT_VALIDATE: Empty dict {} input for object type with required attrs, proceeding to normal validation which should fail."
-                )
+                # If an empty dict is provided but the object has required attributes,
+                # let the main validation logic below handle the error reporting.
+                # logger.debug(
+                #     "JULES_OBJECT_VALIDATE: Empty dict {} input for object type with required attrs, proceeding to normal validation which should fail."
+                # ) # Removed JULES_OBJECT_VALIDATE log and associated TODO.
                 # Let normal validation proceed by not returning early.
                 # The existing logic below will handle raising CtyValidationError for missing required attributes.
 
+        # Handle if the input value is already a CtyValue
         if isinstance(value, CtyValue):
+            # If it's already the correct CtyObject type, return it.
             if isinstance(value.type, CtyObject) and value.type.equal(self):
                 logger.debug(
                     "🧩🔍✅ Input is already a CtyValue of the correct CtyObject type, returning as is."
@@ -290,7 +301,7 @@ class CtyObject(CtyType[dict[str, Any]]):
         # Return the validated attributes wrapped in a CtyValue
         return CtyValue(vtype=self, value=validated_attrs)
 
-    def get_attribute(self, value: dict[str, Any] | CtyValue, name: str) -> CtyValue:
+    def get_attribute(self, value: dict[str, object] | CtyValue, name: str) -> CtyValue:
         """
         Get an attribute value by name.
 

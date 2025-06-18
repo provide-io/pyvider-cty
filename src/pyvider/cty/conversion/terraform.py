@@ -1,4 +1,14 @@
 # pyvider/conversion/terraform.py
+"""
+Handles the conversion of Python/CTY values to and from the specific
+Terraform wire format.
+
+This format typically involves a list where the first element is a type string
+(e.g., "string", "number", "list", "object") and the second element is the
+payload. This module provides a `FormatEncoder` implementation for this format,
+supporting both JSON and MessagePack as the underlying encoding for the payload.
+It also handles special cases like Terraform's `DynamicValue` protobuf messages.
+"""
 from decimal import Decimal
 import functools
 import json
@@ -29,6 +39,7 @@ T = TypeVar("T")
 
 
 class TerraformWireFormatConstants:
+    """Defines constant strings used to identify types in the Terraform wire format."""
     STRING, NUMBER, BOOL, NULL, TUPLE, LIST, SET, OBJECT, MAP, DYNAMIC = (
         "string",
         "number",
@@ -45,8 +56,16 @@ class TerraformWireFormatConstants:
 
 @WireFormatRegistry.register(WireFormatType.TERRAFORM)
 class TerraformFormatConverter(WireFormat):
+    """
+    Implements the CTY FormatEncoder for the Terraform wire format.
+
+    This converter can marshal values into a JSON or MessagePack byte stream
+    adhering to Terraform's [type, payload] structure, and unmarshal such
+    byte streams back into Python objects.
+    """
     @staticmethod
     def _json_default(obj: object) -> object:
+        """Custom JSON serializer for types not handled by default json.dumps."""
         if isinstance(obj, Decimal):
             return str(obj)
         raise TypeError(
@@ -55,6 +74,7 @@ class TerraformFormatConverter(WireFormat):
 
     @staticmethod
     def _msgpack_default(obj: object) -> object:
+        """Custom MessagePack serializer for types not handled by default msgpack.packb."""
         if isinstance(obj, Decimal):
             return str(obj)
         raise TypeError(
@@ -70,6 +90,18 @@ class TerraformFormatConverter(WireFormat):
         use_msgpack: bool = False,
         **options: object,
     ) -> bytes:
+        """
+        Marshals a Python/CTY value into Terraform wire format bytes.
+
+        Args:
+            value: The value to marshal.
+            operation: The operational context.
+            use_msgpack: If True, uses MessagePack for the payload; otherwise, JSON.
+            **options: Additional options (currently unused).
+
+        Returns:
+            Bytes representing the marshalled value.
+        """
         op_ctx = operation or get_current_operation()
         try:
             intermediate = serialize_value(value, operation=op_ctx)
@@ -105,10 +137,26 @@ class TerraformFormatConverter(WireFormat):
         operation: OperationContext | None = None,
         **options: object,
     ) -> object:
+        """
+        Unmarshals Terraform wire format bytes into a Python object.
+
+        Handles raw bytes (trying MessagePack then JSON) or pre-parsed objects,
+        including Terraform's DynamicValue protobuf messages by inspecting
+        their `msgpack` or `json` fields.
+
+        Args:
+            data: The bytes or object to unmarshal.
+            expected_type: The expected Python type (currently unused in this impl).
+            operation: The operational context.
+            **options: Additional options (currently unused).
+
+        Returns:
+            The unmarshalled Python object.
+        """
         _op_ctx = operation or get_current_operation()  # Renamed to avoid F841
         raw_value: object = None
         try:
-            # Check if data is a DynamicValue protobuf object
+            # Check if data is a DynamicValue protobuf object (heuristic check)
             if hasattr(data, "__class__") and "DynamicValue" in data.__class__.__name__:
                 if data.msgpack:  # If msgpack field is populated
                     logger.debug("Attempting to unmarshal from DynamicValue.msgpack")
@@ -220,23 +268,37 @@ class TerraformFormatConverter(WireFormat):
 
 @functools.singledispatch
 def serialize_value(value: object, operation: OperationContext) -> object:
+    """
+    Serializes a Python value into the Terraform wire format's intermediate
+    representation (typically a list of [type_string, payload]).
+
+    Uses singledispatch to handle different Python types.
+    Objects conforming to StateConvertible protocol are handled specially.
+
+    Args:
+        value: The Python value to serialize.
+        operation: The operational context.
+
+    Returns:
+        An object representing the value in the intermediate Terraform format.
+    """
     if value is None:
         return [TerraformWireFormatConstants.NULL, None]
     match value:
         case bool():
             return [TerraformWireFormatConstants.BOOL, value]
-        case int() | float():
+        case int() | float(): # This is fine for match-case
             return [TerraformWireFormatConstants.NUMBER, value]
         case Decimal():
             return [TerraformWireFormatConstants.NUMBER, str(value)]
         case str():
             return [TerraformWireFormatConstants.STRING, value]
-        case list() | tuple():
+        case list() | tuple(): # This is fine for match-case
             return [
                 TerraformWireFormatConstants.TUPLE,
                 [serialize_value(item, operation) for item in value],
             ]
-        case set():
+        case set(): # This is fine for match-case
             return [
                 TerraformWireFormatConstants.SET,
                 [
@@ -254,13 +316,27 @@ def serialize_value(value: object, operation: OperationContext) -> object:
         case _:
             try:
                 return [TerraformWireFormatConstants.STRING, str(value)]
-            except:
+            except Exception: # E722: Specify exception type
                 return [TerraformWireFormatConstants.NULL, None]
 
 
 def serialize_state_convertible(
     value: StateConvertible, operation: OperationContext
 ) -> object:
+    """
+    Serializes an object that conforms to the StateConvertible protocol.
+
+    Depending on the operational context, it either returns a "prepared"
+    dictionary (for contexts like STATE, CONFIG) or a standard Terraform
+    OBJECT representation.
+
+    Args:
+        value: The StateConvertible object.
+        operation: The operational context.
+
+    Returns:
+        A "prepared" dict or a Terraform OBJECT list representation.
+    """
     raw_dict = value.to_dict()
     if operation in (
         OperationContext.STATE,
@@ -271,7 +347,7 @@ def serialize_state_convertible(
     ):
         prepared = {}
         for k, v in raw_dict.items():
-            if isinstance(v, bool | int | float | str):
+            if isinstance(v, bool | int | float | str): # This is already using |
                 prepared[str(k)] = v
             elif isinstance(v, Decimal):
                 prepared[str(k)] = str(v)
@@ -286,6 +362,20 @@ def serialize_state_convertible(
 
 
 def extract_value(value: object) -> object:
+    """
+    Recursively extracts the Python value from Terraform's wire format
+    intermediate representation (the [type_string, payload] list structure).
+
+    This function navigates the nested structure and converts type-tagged
+    payloads back into more standard Python types (e.g., "number" payload
+    to int/float, "list" payload to a Python list of extracted values).
+
+    Args:
+        value: The intermediate representation to extract from.
+
+    Returns:
+        The extracted Python value.
+    """
     TFC = TerraformWireFormatConstants  # Alias for brevity
 
     if (
@@ -306,24 +396,24 @@ def extract_value(value: object) -> object:
                     d = Decimal(str(payload))
                     # Return int if it's an integer, otherwise float
                     return int(d) if d == d.to_integral_value() else float(d)
-                except:
+                except Exception: # E722: Specify exception type
                     return payload  # Or raise error, depending on strictness
             case TFC.BOOL:
                 return bool(payload) if payload is not None else False
             case TFC.NULL:
                 return None
-            case TFC.TUPLE | TFC.LIST | TFC.SET:
+            case TFC.TUPLE | TFC.LIST | TFC.SET: # This is fine for match-case
                 # Payload for these should be a list of items to be processed
                 return (
                     [extract_value(item) for item in payload]
-                    if isinstance(payload, list)
+                    if isinstance(payload, list) # Single type check
                     else payload
                 )
-            case TFC.OBJECT | TFC.MAP:
+            case TFC.OBJECT | TFC.MAP: # This is fine for match-case
                 # Payload for these should be a dict
                 return (
                     {str(k): extract_value(v) for k, v in payload.items()}
-                    if isinstance(payload, dict)
+                    if isinstance(payload, dict) # Single type check
                     else payload
                 )
             case TFC.DYNAMIC:
@@ -335,11 +425,9 @@ def extract_value(value: object) -> object:
                 )
                 return payload
 
-    elif isinstance(
-        value, list
-    ):  # It's a list of other things (e.g. list of serialized values)
+    elif isinstance(value, list): # Single type check
         return [extract_value(item) for item in value]
-    elif isinstance(value, dict):  # It's a map/object of other things
+    elif isinstance(value, dict): # Single type check
         return {str(k): extract_value(v) for k, v in value.items()}
     else:  # It's a primitive or already extracted value
         return value

@@ -1,5 +1,11 @@
 # pyvider/cty/__init__.py
+"""
+Pyvider CTY (Compatible Type System) Package.
 
+This package provides a type system inspired by HashiCorp's CTY, designed for
+handling complex data structures with type safety, validation, and conversion
+capabilities, particularly for infrastructure-as-code applications.
+"""
 from pyvider.cty.conversion import (
     TypeCategory,
     classify_type,

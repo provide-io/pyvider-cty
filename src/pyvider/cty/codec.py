@@ -1,6 +1,12 @@
 # src/pyvider/cty/codec.py
 # 🐍📦🔒
+"""
+Core serialization and deserialization codec for CtyValues.
 
+This module provides functions to convert CtyValue objects to and from
+JSON and MessagePack byte representations. It also includes the primary
+parser for CTY type strings into CtyType objects.
+"""
 from decimal import Decimal
 import json
 import re  # For more robust parsing
@@ -93,13 +99,14 @@ def _serializable_to_value(
             f"but target type is '{normalized_target_type_str}' (normalized from {target_type!s})."
         )
 
+    # Handle CtyDynamic specifically: if it wraps a concrete type, deserialize that.
     if (
         isinstance(target_type, CtyDynamic)
         and isinstance(value_from_data, dict)
-        and "type" in value_from_data
-        and "value" in value_from_data
-        and not is_unknown
-        and not is_null
+        and "type" in value_from_data  # Check if the embedded value has type info
+        and "value" in value_from_data # And a value
+        and not is_unknown # And the dynamic itself is not unknown
+        and not is_null # Or null
     ):
         embedded_type_name_str = cast(str, value_from_data["type"])
         embedded_value_payload = value_from_data["value"]
@@ -129,11 +136,12 @@ def _serializable_to_value(
             reconstructed_value = target_type.validate(value_from_data)
     elif is_unknown:
         reconstructed_value = CtyValue.unknown(target_type)
-    elif is_null:
+    elif is_null: # Handle explicitly null values
         reconstructed_value = CtyValue.null(target_type)
-    else:
+    else: # Handle known, non-null values
         if target_type.is_primitive_type():
             current_value_for_validation = value_from_data
+            # Special handling for CtyNumber to convert string representations
             if target_type is CtyNumber and isinstance(value_from_data, str):
                 current_value_for_validation = Decimal(value_from_data)
             elif target_type is CtyNumber and not isinstance(value_from_data, Decimal):
@@ -226,13 +234,14 @@ def _serializable_to_value(
                 processed_elements = []
                 for i, elem_type in enumerate(target_type.element_types):  # type: ignore
                     elem_data_item = value_from_data[i]
+                    # If element data is not already a serialized CtyValue dict, wrap it.
                     if not (
                         isinstance(elem_data_item, dict)
-                        and "type_name" in elem_data_item
+                        and "type_name" in elem_data_item # Heuristic for serialized CtyValue
                     ):
                         elem_data_item = {
-                            "type_name": normalize_type_object(elem_type),
-                            "value": elem_data_item,
+                            "type_name": normalize_type_object(elem_type), # Get type name from schema
+                            "value": elem_data_item, # The raw element value
                             "is_unknown": False,
                             "is_null": False,
                             "marks": [],
@@ -346,10 +355,11 @@ def parse_type_string_to_ctytype(type_str: str) -> "CtyType":
     if type_str.lower() == "dynamic":
         return CtyDynamic()
 
+    # Try to parse collection types: list(T), set(T), map(T)
     m = re.match(r"^\s*(list|set|map)\s*\((.*)\)\s*$", type_str, re.IGNORECASE)
     if m:
         keyword = m.group(1).lower()
-        content = m.group(2).strip()
+        content = m.group(2).strip() # This is the inner type string, e.g., "string" from "list(string)"
         if not content:
             raise CtyTypeParseError(f"Missing content for {keyword} type: '{type_str}'")
 
@@ -361,10 +371,11 @@ def parse_type_string_to_ctytype(type_str: str) -> "CtyType":
         if keyword == "map":  # Default key_type is CtyString
             return CtyMap(key_type=CtyString(), value_type=element_type)
 
+    # Try to parse object type: object({name=type, ...})
     m_obj = re.match(r"^\s*object\s*\(\s*\{(.*)\}\s*\)\s*$", type_str, re.IGNORECASE)
     if m_obj:
-        attrs_str = m_obj.group(1).strip()
-        if not attrs_str:
+        attrs_str = m_obj.group(1).strip() # e.g., "name=string,age=number"
+        if not attrs_str: # Handles object({})
             return CtyObject({})
         attributes = {}
         attr_pairs = _split_by_delimiter_respecting_nesting(attrs_str, ",")
@@ -390,10 +401,11 @@ def parse_type_string_to_ctytype(type_str: str) -> "CtyType":
             attributes[name] = parse_type_string_to_ctytype(attr_type_str.strip())
         return CtyObject(attributes)
 
+    # Try to parse tuple type: tuple([type1, type2, ...])
     m_tuple = re.match(r"^\s*tuple\s*\(\s*\[(.*)\]\s*\)\s*$", type_str, re.IGNORECASE)
     if m_tuple:
-        elems_str = m_tuple.group(1).strip()
-        if not elems_str:
+        elems_str = m_tuple.group(1).strip() # e.g., "string,number"
+        if not elems_str: # Handles tuple([])
             return CtyTuple(element_types=tuple())
         element_types_str = _split_by_delimiter_respecting_nesting(elems_str, ",")
 

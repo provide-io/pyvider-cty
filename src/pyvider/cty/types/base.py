@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import (
-    TYPE_CHECKING,  # Added TYPE_CHECKING
-    Any,
+    TYPE_CHECKING,
     ClassVar,
     Generic,
     TypeVar,
@@ -48,10 +47,10 @@ class CtyType(ABC, Generic[T]):
         ctype: Class variable identifying the type name in the Cty type system
     """
 
-    ctype: ClassVar[str | None] = None  # Abstract class - no ctype by default
+    ctype: ClassVar[str | None] = None
 
     @classmethod
-    def from_raw(cls, value: Any) -> "CtyType":
+    def from_raw(cls, value: object) -> "CtyType":
         """
         Convert raw Python types to CtyType instances.
 
@@ -76,7 +75,7 @@ class CtyType(ABC, Generic[T]):
         )
 
     @abstractmethod
-    def validate(self, value: Any) -> "CtyValue[T]":
+    def validate(self, value: object) -> "CtyValue[T]":
         """
         Validate and coerce the value to this type.
 
