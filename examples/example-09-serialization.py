@@ -5,7 +5,7 @@
 from pyvider.cty import CtyList, CtyNumber, CtyObject, CtyString
 
 # Use the actual conversion API
-from pyvider.cty.conversion import JSON, MSGPACK, CtyWireFormat
+from pyvider.cty.conversion import WireFormatType, marshal, unmarshal
 
 # Define a complex type
 cluster_type = CtyObject(
@@ -28,9 +28,9 @@ cluster_val = cluster_type.validate(cluster_data)
 
 # --- Corrected Serialization/Deserialization ---
 try:
-    # Use CtyWireFormat marshal/unmarshal
-    json_data = CtyWireFormat.marshal(cluster_val, options={'format_type': JSON})
-    msgpack_data = CtyWireFormat.marshal(cluster_val, options={'format_type': MSGPACK})
+    # Use marshal/unmarshal functions
+    json_data = marshal(cluster_val, format_kind=WireFormatType.JSON)
+    msgpack_data = marshal(cluster_val, format_kind=WireFormatType.MSGPACK)
 
     # "Serialize with type" implies ensuring type info is included,
     # which marshal should do. We'll use JSON as the example typed data.
@@ -41,10 +41,10 @@ try:
     print(f"Typed data size (JSON): {len(typed_data)} bytes")
 
     # Deserialize with type information by providing expected_type
-    recovered = CtyWireFormat.unmarshal(
+    recovered = unmarshal(
         typed_data,
-        expected_type=cluster_type,
-        options={'format_type': JSON} # Specify format if not auto-detectable
+        format_kind=WireFormatType.JSON, # Specify format if not auto-detectable
+        expected_type=cluster_type
     )
 
     print(f"\nRecovered type: {recovered.type.__class__.__name__}")

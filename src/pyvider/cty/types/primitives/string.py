@@ -1,4 +1,3 @@
-
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 from attrs import define, field
@@ -62,7 +61,7 @@ class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
     value: str = field(default="")
 
-    def validate(self, value: Any) -> 'CtyValue':
+    def validate(self, value: Any) -> "CtyValue":
         """
         Validate that the given value is a string or can be converted to one.
 

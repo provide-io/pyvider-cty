@@ -1,6 +1,5 @@
-
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar  # Added TYPE_CHECKING
+from typing import Any, ClassVar # Added TYPE_CHECKING
 
 from attrs import define, field
 
@@ -35,7 +34,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
-    def validate(self, value: Any) -> CtyValue: # Ensured string literal
+    def validate(self, value: Any) -> CtyValue:  # Ensured string literal
         """Validate *value* and return a :class:`~pyvider.cty.values.CtyValue`.
 
         Conversion matrix
@@ -64,7 +63,7 @@ class CtyBool(CtyType[bool]):
             # Unknown values propagate their unknown-ness
             if value.is_unknown:
                 logger.debug("🧰✅🔄 value is unknown – propagate")
-                return CtyValue.unknown(self) # Return unknown of *this* type (CtyBool)
+                return CtyValue.unknown(self)  # Return unknown of *this* type (CtyBool)
 
             # Otherwise re-validate its *inner* value (may raise)
             value = value.value  # unbox and continue
@@ -91,10 +90,11 @@ class CtyBool(CtyType[bool]):
                     return CtyValue(vtype=self, value=True)
                 if dec_val == Decimal(0):
                     return CtyValue(vtype=self, value=False)
-                raise CtyBoolValidationError(
-                    f"Numeric value {value!r} is not 0 or 1"
-                )
-            except (InvalidOperation, ValueError) as exc:  # pragma: no cover – very rare
+                raise CtyBoolValidationError(f"Numeric value {value!r} is not 0 or 1")
+            except (
+                InvalidOperation,
+                ValueError,
+            ) as exc:  # pragma: no cover – very rare
                 logger.error("🧰❌🔄 invalid numeric value %r: %s", value, exc)
                 raise CtyBoolValidationError(str(exc)) from exc
 

@@ -32,22 +32,32 @@ from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyValue
 user_type = CtyObject({
     "name": CtyString(),
     "age": CtyNumber(),
-    "hobbies": CtyList(CtyString())
+    "hobbies": CtyList(element_type=CtyString())
 })
 
 # Create a value matching the schema
 user = CtyValue.object(user_type, {
-    "name": CtyValue.string("Alice"),
-    "age": CtyValue.number(30),
-    "hobbies": CtyValue.list([
-        CtyValue.string("reading"),
-        CtyValue.string("hiking")
-    ])
+    "name": "Alice",
+    "age": 30,
+    "hobbies": [
+        "reading",
+        "hiking"
+    ]
 })
 
-# Access values with type safety
-print(user["name"].as_string())  # "Alice"
-print(user["age"].as_number())   # 30
+# Access values
+# The .value attribute gives the underlying Python value
+print(user["name"].value)
+print(user["age"].value)
+
+# Example of accessing list elements
+print("Hobbies:")
+# user["hobbies"] is a CtyValue; user["hobbies"].value is the Python list of CtyValues
+for hobby_val in user["hobbies"].value:
+    print(f"- {hobby_val.value}") # hobby_val is a CtyValue; hobby_val.value is the Python string
+```
+```
+```
 ```
 
 ## Documentation

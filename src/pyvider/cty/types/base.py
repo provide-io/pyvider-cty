@@ -1,4 +1,3 @@
-
 from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,  # Added TYPE_CHECKING
@@ -52,7 +51,7 @@ class CtyType(ABC, Generic[T]):
     ctype: ClassVar[str | None] = None  # Abstract class - no ctype by default
 
     @classmethod
-    def from_raw(cls, value: Any) -> 'CtyType':
+    def from_raw(cls, value: Any) -> "CtyType":
         """
         Convert raw Python types to CtyType instances.
 
@@ -77,7 +76,7 @@ class CtyType(ABC, Generic[T]):
         )
 
     @abstractmethod
-    def validate(self, value: Any) -> 'CtyValue[T]':
+    def validate(self, value: Any) -> "CtyValue[T]":
         """
         Validate and coerce the value to this type.
 
@@ -97,7 +96,7 @@ class CtyType(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def equal(self, other: 'CtyType[T]') -> bool:
+    def equal(self, other: "CtyType[T]") -> bool:
         """
         Check equality between this type and another.
 
@@ -114,7 +113,7 @@ class CtyType(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def usable_as(self, other: 'CtyType[T]') -> bool:
+    def usable_as(self, other: "CtyType[T]") -> bool:
         """
         Determine if this type can be used as another.
 

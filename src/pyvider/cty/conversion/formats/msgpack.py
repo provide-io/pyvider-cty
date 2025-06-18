@@ -696,9 +696,10 @@ class MsgPackEncoder(FormatEncoder):
     @classmethod
     def _create_type_from_name(
         cls,
-        cty_type_instance: CtyType, # Corrected parameter type
-        legacy_data_for_collections: dict[str, object] | None = None, # This parameter seems unused now
-    ) -> dict[str, object] | str: # Corrected return type
+        cty_type_instance: CtyType,  # Corrected parameter type
+        legacy_data_for_collections: dict[str, object]
+        | None = None,  # This parameter seems unused now
+    ) -> dict[str, object] | str:  # Corrected return type
         """
         Serialize a CtyType instance into a dictionary or string representation for storage.
         """
@@ -727,7 +728,9 @@ class MsgPackEncoder(FormatEncoder):
         elif hasattr(cty_type_instance, "element_types"):  # CtyTuple
             return {
                 cls.TYPE_MARKER: type_name,
-                b"$ET": [cls._type_to_dict(et) for et in cty_type_instance.element_types],
+                b"$ET": [
+                    cls._type_to_dict(et) for et in cty_type_instance.element_types
+                ],
             }
         elif hasattr(cty_type_instance, "attribute_types"):  # CtyObject
             return {
@@ -737,11 +740,12 @@ class MsgPackEncoder(FormatEncoder):
                     for name, attr_type in cty_type_instance.attribute_types.items()
                 },
             }
-        return type_name # For primitive types or CtyDynamic
-
+        return type_name  # For primitive types or CtyDynamic
 
     @classmethod
-    def _create_type_from_name(cls, type_info_dict: dict) -> "CtyType": # Already a string literal
+    def _create_type_from_name(
+        cls, type_info_dict: dict
+    ) -> "CtyType":  # Already a string literal
         """
         Create a CTY type from its serialized type information dictionary.
 

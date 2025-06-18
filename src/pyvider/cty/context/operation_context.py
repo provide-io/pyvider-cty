@@ -27,7 +27,9 @@ def get_current_operation() -> OperationContext:
     return _current_operation_context.get()
 
 
-def operation_context(context: OperationContext) -> contextlib.AbstractContextManager[None]:
+def operation_context(
+    context: OperationContext,
+) -> contextlib.AbstractContextManager[None]:
     class OperationContextManager:
         def __init__(self, new_context: OperationContext) -> None:
             self._new_context = new_context

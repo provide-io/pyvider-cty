@@ -1,4 +1,3 @@
-
 from collections.abc import Sequence
 from typing import (  # Added TYPE_CHECKING
     Any,
@@ -68,9 +67,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)
-    value: list[T] = field(
-        factory=list, kw_only=True
-    )
+    value: list[T] = field(factory=list, kw_only=True)
 
     def __attrs_post_init__(self) -> None:
         if not isinstance(self.element_type, CtyType):
@@ -78,7 +75,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def validate(self, value: Any) -> CtyValue: # String literal
+    def validate(self, value: Any) -> CtyValue:  # String literal
         logger.debug(f"🔌📝🔄 Validating value as CtyList: {type(value).__name__}")
 
         from pyvider.cty.types import CtyDynamic
@@ -103,7 +100,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 )
                 return CtyValue.unknown(self)
 
-            if isinstance(value.type, 'CtyList'):
+            if isinstance(value.type, "CtyList"):
                 if isinstance(
                     self.element_type, CtyDynamic
                 ) or value.type.element_type.usable_as(self.element_type):
@@ -159,9 +156,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
                 logger.debug(f"🔌📝✅ Validated item {i}: {item} -> {validated_item}")
                 validated_elements.append(validated_item)
             except Exception as e:
-                error_msg = (
-                    f"Item {i} ('{item}'): {e!s}"
-                )
+                error_msg = f"Item {i} ('{item}'): {e!s}"
                 logger.debug(f"🔌❗❌ {error_msg}")
                 validation_errors.append(error_msg)
 
@@ -177,7 +172,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         )
         return CtyValue(vtype=self, value=validated_elements)
 
-    def element_at(self, container: Any, index: int) -> CtyValue: # String literal
+    def element_at(self, container: Any, index: int) -> CtyValue:  # String literal
         logger.debug(f"🔌🔍🔄 Getting element at index {index}")
 
         from pyvider.cty.values import CtyValue  # Local import kept
@@ -214,7 +209,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise IndexError(message) from e
 
-    def append(self, item: Any) -> 'CtyList[T]':
+    def append(self, item: Any) -> "CtyList[T]":
         logger.debug(f"🔌📝🔄 Appending item: {item}")
         try:
             validated_item = self.element_type.validate(item)
@@ -227,7 +222,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: int | None = None) -> 'CtyList[T]':
+    def slice(self, start: int, end: int | None = None) -> "CtyList[T]":
         logger.debug(f"🔌🔍🔄 Slicing list from {start} to {end}")
         list_length = len(self.value)
         if end is None:
@@ -244,7 +239,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         )
         return evolve(self, value=sliced_value)
 
-    def concat(self, other: 'CtyList[T]') -> 'CtyList[T]':
+    def concat(self, other: "CtyList[T]") -> "CtyList[T]":
         logger.debug("🔌📝🔄 Concatenating with another list")
         if not isinstance(other, CtyList):
             message = f"Expected CtyList, got {type(other).__name__}"
@@ -299,10 +294,12 @@ class CtyList(CtyType[list[T]], Generic[T]):
     def __len__(self) -> int:
         return len(self.value)
 
-    def __iter__(self): # Missing return type annotation
+    def __iter__(self):  # Missing return type annotation
         return iter(self.value)
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[CtyValue, 'CtyList']: # String literal for CtyValue
+    def __getitem__(
+        self, index: Union[int, slice]
+    ) -> Union[CtyValue, "CtyList"]:  # String literal for CtyValue
         if isinstance(index, slice):
             start = index.start if index.start is not None else 0
             stop = index.stop if index.stop is not None else len(self.value)

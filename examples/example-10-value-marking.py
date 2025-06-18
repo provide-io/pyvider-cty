@@ -5,7 +5,7 @@
 from pyvider.cty import CtyNumber, CtyObject, CtyString, CtyValue
 
 # Use the actual conversion API
-from pyvider.cty.conversion import JSON, CtyWireFormat
+from pyvider.cty.conversion import WireFormatType, marshal, unmarshal
 
 # Define types
 credential_type = CtyObject(
@@ -72,14 +72,14 @@ try:
              print(f"Retrieved marks: {[str(m) for m in marks]}")
 
              # Marshal the updated value
-             marshaled = CtyWireFormat.marshal(cred_val_updated, options={'format_type': JSON})
+             marshaled = marshal(cred_val_updated, format_kind=WireFormatType.JSON)
              print(f"Marshaled size: {len(marshaled)} bytes")
 
              # Unmarshal preserves marks
-             unmarshaled = CtyWireFormat.unmarshal(
+             unmarshaled = unmarshal(
                  marshaled,
-                 expected_type=credential_type,
-                 options={'format_type': JSON}
+                 format_kind=WireFormatType.JSON,
+                 expected_type=credential_type
              )
              if not unmarshaled.is_null and not unmarshaled.is_unknown:
                   password_again = unmarshaled.value.get("password")
