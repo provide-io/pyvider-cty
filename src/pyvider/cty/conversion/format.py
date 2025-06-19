@@ -202,6 +202,26 @@ def ensure_quoted_bytes(type_str: TypeString | None) -> TypeBytes:
     return result
 
 
+# TODO: This Xparse_collection_type seems to be an improved or alternative implementation.
+# Evaluate if it should replace the current parse_collection_type or be removed if obsolete.
+# Improved implementation with nested support
+def Xparse_collection_type(type_str: str) -> tuple[str, str]:
+    logger.debug("!!!! PARSING COLLECTION.")
+    """Parse collection type with support for nested types."""
+    if not type_str or "(" not in type_str or not type_str.endswith(")"):
+        raise ValueError(f"Invalid collection type format: {type_str}")
+
+    # Extract base type and potentially nested content
+    base_type, rest = type_str.split("(", 1)
+    content = rest[:-1]  # Remove trailing ')'
+
+    # Validate balanced parentheses for nested types
+    if content.count("(") != content.count(")"):
+        raise ValueError(f"Unbalanced parentheses in type: {type_str}")
+
+    return base_type.strip(), content.strip()
+
+
 def parse_collection_type(type_str: TypeString) -> tuple[str, str]:
     """
     Parse a collection type string into collection type and element type.
