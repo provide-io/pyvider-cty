@@ -117,6 +117,7 @@ try:
     # --- Corrected Serialization ---
     # Serialize using marshal function
     serialized = marshal(instance_val, format_kind=WireFormatType.JSON)
+    print(f"Full Serialized JSON:\n{serialized.decode()}")
     print(f"\nSerialized size: {len(serialized)} bytes")
 
     # Deserialize using unmarshal function

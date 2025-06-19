@@ -28,6 +28,9 @@ from pyvider.cty.conversion.format import (
     standardize_type_string,
     validate_type_format,
 )
+# from pyvider.cty.conversion.formats.base import ( # register_formatter might be used by custom formatters
+#     register_formatter, # Removed as part of registry consolidation
+# )
 from pyvider.cty.conversion.schema_type_encoder import (
     encode_type_to_wire,  # Import the moved function
 )
@@ -111,10 +114,11 @@ __all__ = [
     "marshal",
     "operation_context",
     "parse_collection_type",
+    # "register_formatter", # Removed
     "standardize_type_string",
     "unmarshal",
     "validate_type_format",
 ]
-# logger.debug("🗣️ 🧩🔄🔧 CTY conversion module initialized") # Removed by AI Agent
+logger.debug("🗣️ 🧩🔄🔧 CTY conversion module initialized")
 
 # 🐍🏗️

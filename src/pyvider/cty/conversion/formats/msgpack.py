@@ -694,6 +694,61 @@ class MsgPackEncoder(FormatEncoder):
                 )
 
     @classmethod
+    def _create_type_from_name(
+        cls,
+        cty_type_instance: CtyType,
+        legacy_data_for_collections: dict[str, object]
+        | None = None, # TODO: Parameter legacy_data_for_collections seems unused.
+    ) -> dict[str, object] | str:
+        """
+        Serialize a CtyType instance into a dictionary or string representation,
+        primarily for embedding within other serialized structures.
+
+        NOTE: This method is very similar to _type_to_dict. Review if this is
+        redundant or if its specific use case can be clarified or merged.
+        Consider whether cls._type_to_dict should be used directly by callers
+        if the functionality is identical.
+        """
+        # If cty_type_instance is a primitive type that should be represented as a string directly
+        # This logic should align with how _type_to_dict decides to return a string vs a dict.
+        # For simplicity, let's assume _type_to_dict is the main entry point and this is a helper
+        # that always gets a CtyType object and should produce its dict/str representation.
+
+        # This method is essentially what _type_to_dict does.
+        # Calls to this should probably be cls._type_to_dict.
+        # For now, let's make its signature consistent.
+
+        type_name = cty_type_instance.__class__.__name__
+        if hasattr(cty_type_instance, "element_type"):  # CtyList, CtySet
+            return {
+                cls.TYPE_MARKER: type_name,
+                # Recursive call should be to the canonical method for this logic
+                b"$E": cls._type_to_dict(cty_type_instance.element_type),
+            }
+        elif hasattr(cty_type_instance, "value_type"):  # CtyMap
+            return {
+                cls.TYPE_MARKER: type_name,
+                b"$K": cls._type_to_dict(cty_type_instance.key_type),
+                b"$V": cls._type_to_dict(cty_type_instance.value_type),
+            }
+        elif hasattr(cty_type_instance, "element_types"):  # CtyTuple
+            return {
+                cls.TYPE_MARKER: type_name,
+                b"$ET": [
+                    cls._type_to_dict(et) for et in cty_type_instance.element_types
+                ],
+            }
+        elif hasattr(cty_type_instance, "attribute_types"):  # CtyObject
+            return {
+                cls.TYPE_MARKER: type_name,
+                b"$AT": {
+                    name: cls._type_to_dict(attr_type)
+                    for name, attr_type in cty_type_instance.attribute_types.items()
+                },
+            }
+        return type_name  # For primitive types or CtyDynamic
+
+    @classmethod
     # TODO: This method has the same name as the one above.
     # This is a redefinition and relies on Python's runtime behavior for method overloading,
     # which can be confusing. Consider renaming for clarity.

@@ -421,14 +421,28 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def equal(self, other: "CtyType") -> bool:
         other_repr = str(other) if isinstance(other, CtyType) else repr(other)
+        # Using print for testability with capsys
+        print(
+            f"DEBUG_MAP_EQUAL: Checking equality of CtyMap({self!s}) with {type(other).__name__}({other_repr})"
+        )
         if not isinstance(other, CtyMap):
+            print(
+                f"DEBUG_MAP_EQUAL: Other type is not CtyMap (got {type(other).__name__}), types are not equal."
+            )
             return False
 
         key_types_equal = self.key_type.equal(other.key_type)
+        print(
+            f"DEBUG_MAP_EQUAL: Key types are equal: {key_types_equal} (Self: {self.key_type!s}, Other: {other.key_type!s})"
+        )
 
         value_types_equal = self.value_type.equal(other.value_type)
+        print(
+            f"DEBUG_MAP_EQUAL: Value types are equal: {value_types_equal} (Self: {self.value_type!s}, Other: {other.value_type!s})"
+        )
 
         result = key_types_equal and value_types_equal
+        print(f"DEBUG_MAP_EQUAL: Overall map type equality: {result}")
         return result
 
     def usable_as(self, other: "CtyType") -> bool:
