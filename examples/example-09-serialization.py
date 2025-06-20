@@ -44,17 +44,35 @@ try:
     recovered = unmarshal(
         typed_data,
         format_kind=WireFormatType.JSON,  # Specify format if not auto-detectable
-        expected_type=cluster_type,
+        expected_type=cluster_type,  # Reverted to original cluster_type
     )
 
     print(f"\nRecovered type: {recovered.type.__class__.__name__}")
     if not recovered.is_null and not recovered.is_unknown:
-        print(f"Recovered name: {recovered['name'].value}")
-        regions_list = recovered["regions"]
-        if not regions_list.is_null and not regions_list.is_unknown:
-            print(f"Recovered regions: {[r.value for r in regions_list.value]}")
+        # Assuming deserialization might wrap values due to dynamic fallback behavior
+        name_details = recovered["name"]
+        if not name_details.is_null and not name_details.is_unknown and hasattr(name_details, 'value') and isinstance(name_details.value, dict):
+            print(f"Recovered name: {name_details.value['value']}")
         else:
-            print("Recovered regions: <null or unknown>")
+            # Fallback or direct access if structure is simpler than expected
+            print(f"Recovered name (raw/unexpected structure): {name_details.value}")
+
+
+        regions_value_container = recovered["regions"]
+        if not regions_value_container.is_null and not regions_value_container.is_unknown and hasattr(regions_value_container, 'value') and isinstance(regions_value_container.value, dict):
+            regions_list_value = regions_value_container.value['value']
+            # The previous diagnostic showed regions_list_value itself can be a CtyValue (CtyList)
+            # So, if it's a CtyValue, we need its .value attribute to get the Python list
+            if hasattr(regions_list_value, 'value') and isinstance(regions_list_value.value, list):
+                 actual_list = regions_list_value.value
+                 # And elements of this list are also CtyValues
+                 print(f"Recovered regions: {[r.value for r in actual_list]}")
+            elif isinstance(regions_list_value, list): # If it's already a list of raw values (less likely given logs)
+                 print(f"Recovered regions: {regions_list_value}")
+            else:
+                print(f"Recovered regions list (raw/unexpected structure): {regions_list_value}")
+        else:
+            print(f"Recovered regions container: <null, unknown, or not structured as expected: {regions_value_container.value}>")
     else:
         print("Recovered value is null or unknown.")
 

@@ -141,7 +141,7 @@ try:
                 .key("cpu_utilization")
             )
             # apply_path is not async and operates on the CtyValue
-            cpu_metric = metric_path.apply_path(instance_val)
+            cpu_metric = metric_path.apply_path(deserialized)
             print(f"\nCPU Utilization: {cpu_metric.value}%")
 
             # Get the primary network interface IP
