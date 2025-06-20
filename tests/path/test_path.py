@@ -336,7 +336,7 @@ class TestPathSystem:
         string_value = CtyString().validate("not a map")
         with pytest.raises(
             AttributePathError,
-            match="Cannot get key from non-map value of type CtyString",
+            match=r"Cannot get key from non-map/non-dynamic value of type CtyString",
         ):
             path_key.apply_path(string_value)
 
