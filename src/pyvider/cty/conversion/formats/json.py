@@ -133,28 +133,30 @@ class JsonEncoder(FormatEncoder):
     ) -> dict[str, object]:
         result = {}
         if preserve_type:
-            result[cls.TYPE_MARKER] = value.type.__class__.__name__
-            if (
-                hasattr(value.type, "element_type")
-                and value.type.element_type is not None
-            ):
-                result["element_type"] = value.type.element_type.__class__.__name__
-            elif hasattr(value.type, "value_type"):  # CtyMap
-                result["key_type"] = value.type.key_type.__class__.__name__
-                result["value_type"] = value.type.value_type.__class__.__name__
+            result[cls.TYPE_MARKER] = str(value.type) # Store the full string representation of the type
 
         if value.is_unknown:
+            # If type was already added, UNKNOWN_MARKER is just a flag on top of it.
+            # If not preserve_type, it's crucial TYPE_MARKER is not added here if not already.
+            # The original logic for UNKNOWN_MARKER didn't add TYPE_MARKER if preserve_type was false.
+            # This behavior is maintained: TYPE_MARKER is only added if preserve_type is True.
             result[cls.UNKNOWN_MARKER] = True
             return result
         if value.is_null:
             result[cls.NULL_MARKER] = True
+            # Similar to UNKNOWN_MARKER, TYPE_MARKER is only added if preserve_type is True.
             return result
 
         raw_internal_value = value.value
-        is_current_value_collection = isinstance(value.type, CtyList | CtyMap)
+        # Determine if the current value being processed is a direct member of a list or map,
+        # as this affects simplification logic within recursively_encode_value.
+        # This check needs to be based on the *parent* CtyValue's type if we are inside recursion,
+        # but for the top-level call, value.type is appropriate.
+        is_top_level_value_collection = isinstance(value.type, CtyList | CtyMap)
+
 
         def recursively_encode_value(
-            item: object, is_direct_collection_member: bool = False
+            item: object, is_direct_collection_member: bool = False # This flag indicates if `item` is a direct element of a List/Map
         ) -> object:
             # Types are already imported at module level. No need for local import here if module level is sufficient.
             # from pyvider.cty.types import CtyDynamic, CtyString, CtyNumber, CtyBool
@@ -169,13 +171,13 @@ class JsonEncoder(FormatEncoder):
                     logger.debug("RECURSE_ENCODE: item is unknown.")
                     temp_res = {cls.UNKNOWN_MARKER: True}
                     if preserve_type:  # preserve_type is from the outer scope
-                        temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
+                        temp_res[cls.TYPE_MARKER] = str(item.type) # Use full type string
                     return temp_res
                 if item.is_null:
                     logger.debug("RECURSE_ENCODE: item is null.")
                     temp_res = {cls.NULL_MARKER: True}
                     if preserve_type:  # preserve_type is from the outer scope
-                        temp_res[cls.TYPE_MARKER] = item.type.__class__.__name__
+                        temp_res[cls.TYPE_MARKER] = str(item.type) # Use full type string
                     return temp_res
 
                 logger.debug(
@@ -207,17 +209,17 @@ class JsonEncoder(FormatEncoder):
                     if is_item_type_dynamic:
                         # If the dynamic value holds a CtyValue (actual_value), process that CtyValue.
                         if isinstance(actual_value, CtyValue):
-                            # If the inner CtyValue is a primitive, simplify to its Python value.
-                            if isinstance(
-                                actual_value.type, CtyString | CtyNumber | CtyBool
-                            ):
+                            if isinstance(actual_value.type, CtyString) or isinstance(actual_value.type, CtyBool):
+                                # For CtyString and CtyBool, simplify to their Python values
                                 logger.debug(
-                                    "RECURSE_ENCODE: Simplifying CtyDynamic holding a CtyPrimitive."
+                                    "RECURSE_ENCODE: Simplifying CtyDynamic holding a CtyString or CtyBool."
                                 )
-                                inner_py_value = actual_value.value
-                                if isinstance(inner_py_value, Decimal):
-                                    return str(inner_py_value)
-                                return inner_py_value
+                                return actual_value.value
+                            elif isinstance(actual_value.type, CtyNumber):
+                                # For CtyNumber, do not simplify to a string. Serialize the CtyNumber value fully.
+                                # This ensures type information is preserved for CtyDynamic(CtyNumber(...)).
+                                logger.debug(f"RECURSE_ENCODE: CtyDynamic(CtyNumber) detected. Serializing inner CtyNumber fully: {actual_value!r}")
+                                return cls._value_to_dict(actual_value, preserve_type) # preserve_type is from the outer scope's options
                             # If the inner CtyValue is another collection/object, encode it directly,
                             # effectively "unwrapping" the CtyDynamic for the JSON structure.
                             elif isinstance(
@@ -235,7 +237,7 @@ class JsonEncoder(FormatEncoder):
                             logger.debug(
                                 "RECURSE_ENCODE: Simplifying CtyDynamic with direct primitive."
                             )
-                            if isinstance(actual_value, Decimal):
+                            if isinstance(actual_value, Decimal): # This will be a string representation of Decimal
                                 return str(actual_value)
                             return actual_value
                         # Else, if actual_value is not a CtyValue and not a primitive (e.g. a raw list/dict within dynamic),
@@ -251,9 +253,10 @@ class JsonEncoder(FormatEncoder):
 
                     if is_item_type_primitive:
                         logger.debug("RECURSE_ENCODE: Simplifying direct CtyPrimitive.")
-                        if isinstance(actual_value, Decimal):
-                            return str(actual_value)
-                        return actual_value
+                        actual_value_to_return = item.value # Use item.value which is already processed for CtyNumber (Decimal)
+                        if isinstance(actual_value_to_return, Decimal):
+                            return str(actual_value_to_return)
+                        return actual_value_to_return
 
                     logger.debug(
                         "RECURSE_ENCODE: Did not meet simplification criteria for direct collection member."
@@ -269,10 +272,8 @@ class JsonEncoder(FormatEncoder):
                 return {
                     k: recursively_encode_value(
                         v,
-                        is_direct_collection_member=(
-                            is_current_value_collection
-                            and isinstance(value.type, CtyMap)
-                        ),
+                        # For map items, is_direct_collection_member should be True if the parent `value` is a CtyMap
+                        is_direct_collection_member=isinstance(value.type, CtyMap)
                     )
                     for k, v in item.items()
                 }
@@ -283,10 +284,8 @@ class JsonEncoder(FormatEncoder):
                 return [
                     recursively_encode_value(
                         elem,
-                        is_direct_collection_member=(
-                            is_current_value_collection
-                            and isinstance(value.type, CtyList)
-                        ),
+                         # For list/tuple elements, is_direct_collection_member should be True if the parent `value` is a CtyList or CtyTuple
+                        is_direct_collection_member=(isinstance(value.type, CtyList) or isinstance(value.type, CtyTuple))
                     )
                     for elem in item
                 ]
@@ -300,7 +299,7 @@ class JsonEncoder(FormatEncoder):
             return item
 
         result["value"] = recursively_encode_value(
-            raw_internal_value, is_direct_collection_member=is_current_value_collection
+            raw_internal_value, is_direct_collection_member=is_top_level_value_collection
         )
 
         if value._marks:
@@ -417,7 +416,7 @@ class JsonEncoder(FormatEncoder):
                     or cls.NULL_MARKER in elem
                 ):
                     processed_elements.append(
-                        cls._dict_to_value(elem, preserve_type=True)
+                        cls._dict_to_value(elem, preserve_type=True, expected_type=cty_type.element_type)
                     )
                 else:
                     processed_elements.append(elem)
@@ -432,7 +431,12 @@ class JsonEncoder(FormatEncoder):
                     or cls.UNKNOWN_MARKER in v_item
                     or cls.NULL_MARKER in v_item
                 ):
-                    processed_items[k] = cls._dict_to_value(v_item, preserve_type=True)
+                    current_expected_type = None
+                    if isinstance(cty_type, CtyMap):
+                        current_expected_type = cty_type.value_type
+                    elif isinstance(cty_type, CtyObject) and k in cty_type.attribute_types:
+                        current_expected_type = cty_type.attribute_types[k]
+                    processed_items[k] = cls._dict_to_value(v_item, preserve_type=True, expected_type=current_expected_type)
                 else:
                     processed_items[k] = v_item
             return cty_type.validate(processed_items)
@@ -442,7 +446,7 @@ class JsonEncoder(FormatEncoder):
         ):  # Handle CtyTuple elements
             processed_elements = []
             if len(value_data) == len(cty_type.element_types):
-                for _i, elem_data in enumerate(value_data):
+                for i, elem_data in enumerate(value_data): # Changed _i to i
                     # Determine the actual type of the element based on the tuple's schema
                     # This assumes elem_data is the CTY JSON comparable dict for the element
                     if isinstance(elem_data, dict) and (
@@ -452,7 +456,7 @@ class JsonEncoder(FormatEncoder):
                         or cls.NULL_MARKER in elem_data
                     ):
                         processed_elements.append(
-                            cls._dict_to_value(elem_data, preserve_type=True)
+                            cls._dict_to_value(elem_data, preserve_type=True, expected_type=cty_type.element_types[i])
                         )
                     else:  # Primitive value, assume it matches the element type
                         processed_elements.append(elem_data)
