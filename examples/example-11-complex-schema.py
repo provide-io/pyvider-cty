@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-# docs/examples/example-11-complex-schema.py
+# example-11-complex-schema-fixed.py
 
 from decimal import Decimal
 
 from pyvider.cty import (
     CtyBool,
-    CtyDynamic,
     CtyList,
     CtyMap,
     CtyNumber,
     CtyObject,
     CtyString,
     CtyTuple,
+    CtyValue,
 )
-
-# Use the actual conversion API
 from pyvider.cty.conversion import WireFormatType, marshal, unmarshal
 from pyvider.cty.exceptions import AttributePathError, CtyValidationError
 from pyvider.cty.path import CtyPath
@@ -42,17 +40,34 @@ volume_type = CtyObject(
     optional_attributes=frozenset(["iops", "kms_key_id"]),
 )
 
+# FIXED: Replace nested CtyDynamic with specific structured types
+performance_metrics_type = CtyObject(
+    attribute_types={
+        "cpu_utilization": CtyNumber(),
+        "memory_usage": CtyNumber(),
+        "disk_io": CtyList(element_type=CtyNumber()),
+    }
+)
+
+metadata_type = CtyObject(
+    attribute_types={
+        "last_patched": CtyString(),
+        "compliance_status": CtyBool(),
+        "performance_metrics": performance_metrics_type,
+    }
+)
+
 instance_type = CtyObject(
     attribute_types={
         "id": CtyString(),
         "name": CtyString(),
         "instance_type": CtyString(),
         "state": CtyString(),
-        "launched_at": CtyString(),  # Assuming string for simplicity
+        "launched_at": CtyString(),
         "network_interfaces": CtyList(element_type=network_interface_type),
         "volumes": CtyList(element_type=volume_type),
         "tags": CtyMap(key_type=CtyString(), value_type=CtyString()),
-        "metadata": CtyMap(key_type=CtyString(), value_type=CtyDynamic()),
+        "metadata": metadata_type,  # FIXED: Use structured type instead of CtyDynamic
         "coordinates": CtyTuple(element_types=(CtyNumber(), CtyNumber())),
     }
 )
@@ -111,73 +126,74 @@ try:
     }
 
     # Validate the instance data
+    print("Validating complex instance schema...")
     instance_val = instance_type.validate(instance_data)
-    print("Successfully validated complex instance schema")
+    print("✅ Successfully validated complex instance schema")
 
-    # --- Corrected Serialization ---
     # Serialize using marshal function
+    print("\nSerializing to JSON...")
     serialized = marshal(instance_val, format_kind=WireFormatType.JSON)
-    print(f"Full Serialized JSON:\n{serialized.decode()}")
-    print(f"\nSerialized size: {len(serialized)} bytes")
+    print(f"✅ Serialized size: {len(serialized)} bytes")
+    
+    # Pretty print a portion of the JSON
+    import json
+    json_data = json.loads(serialized.decode())
+    print(f"Sample JSON structure: {json.dumps(json_data, indent=2)[:500]}...")
 
     # Deserialize using unmarshal function
+    print("\nDeserializing from JSON...")
     deserialized = unmarshal(
         serialized, format_kind=WireFormatType.JSON, expected_type=instance_type
     )
     if not deserialized.is_null and not deserialized.is_unknown:
-        print(f"Deserialized instance ID: {deserialized['id'].value}")
+        print(f"✅ Deserialized instance ID: {deserialized['id'].value}")
     else:
-        print("Deserialized value is null or unknown.")
+        print("❌ Deserialized value is null or unknown.")
 
-    # --- Corrected Path Navigation ---
-    # Path navigation does not need to be async
-    def path_navigation() -> None:
-        try:
-            # Get the CPU utilization metric using path navigation
-            # Corrected: Use .key() instead of non-existent key_step
-            metric_path = (
-                CtyPath.get_attr("metadata")
-                .key("performance_metrics")
-                .key("cpu_utilization")
-            )
-            # apply_path is not async and operates on the CtyValue
-            cpu_metric = metric_path.apply_path(deserialized)
-            print(f"\nCPU Utilization: {cpu_metric.value}%")
+    # Path Navigation
+    print("\n--- Path Navigation Examples ---")
+    
+    # 1. Simple attribute access
+    name_path = CtyPath.get_attr("name")
+    name_val = name_path.apply_path(instance_val)
+    print(f"Instance name: {name_val.value}")
+    
+    # 2. Nested object access
+    cpu_path = (
+        CtyPath.get_attr("metadata")
+        .child("performance_metrics")
+        .child("cpu_utilization")
+    )
+    cpu_val = cpu_path.apply_path(instance_val)
+    print(f"CPU Utilization: {cpu_val.value}%")
+    
+    # 3. List element access
+    first_nic_path = CtyPath.get_attr("network_interfaces").index_step(0)
+    first_nic = first_nic_path.apply_path(instance_val)
+    print(f"First NIC ID: {first_nic['id'].value}")
+    
+    # 4. Complex path through list to nested attribute
+    primary_ip_path = (
+        CtyPath.get_attr("network_interfaces")
+        .index_step(0)
+        .child("ip_addresses")
+        .index_step(0)
+    )
+    primary_ip = primary_ip_path.apply_path(instance_val)
+    print(f"Primary IP: {primary_ip.value}")
+    
+    # 5. Map access with key_step
+    env_tag_path = CtyPath.get_attr("tags").key_step("Environment")
+    env_tag = env_tag_path.apply_path(instance_val)
+    print(f"Environment tag: {env_tag.value}")
 
-            # Get the primary network interface IP
-            primary_ip_val = None
-            if not instance_val["network_interfaces"].is_null:
-                for i, nic_val in enumerate(instance_val["network_interfaces"].value):
-                    if not nic_val.is_null and nic_val["type"].value == "primary":
-                        # Ensure ip_addresses is not null/unknown before indexing
-                        ip_list_val = nic_val["ip_addresses"]
-                        if (
-                            not ip_list_val.is_null
-                            and not ip_list_val.is_unknown
-                            and len(ip_list_val.value) > 0
-                        ):
-                            ip_path = (
-                                CtyPath.get_attr("network_interfaces")
-                                .index_step(i)
-                                .child("ip_addresses")
-                                .index_step(0)
-                            )
-                            primary_ip_val = ip_path.apply_path(instance_val)
-                            break  # Found primary
-
-            if primary_ip_val:
-                print(f"Primary IP: {primary_ip_val.value}")
-            else:
-                print("Primary IP not found or NIC/IP list was null/empty.")
-
-        except AttributePathError as e:
-            print(f"Path error: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred during path navigation: {e}")
-
-    path_navigation()
+    print("\n✅ All operations completed successfully!")
 
 except CtyValidationError as e:
-    print(f"Validation error: {e}")
+    print(f"❌ Validation error: {e}")
+except AttributePathError as e:
+    print(f"❌ Path navigation error: {e}")
 except Exception as e:
-    print(f"An unexpected error occurred: {e}")
+    print(f"❌ Unexpected error: {type(e).__name__}: {e}")
+    import traceback
+    traceback.print_exc()
