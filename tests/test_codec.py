@@ -188,7 +188,7 @@ class TestParseTypeStringToCtyType:
             parse_type_string_to_ctytype(invalid_type_str)
         assert error_message_part.lower() in str(excinfo.value).lower()
 
-    def test_object_with_empty_attribute_name(self) -> None:
+    def test_object_with_empty_attribute_path(self) -> None:
         with pytest.raises(
             CtyTypeParseError, match="Empty attribute name in object string: '=string'"
         ):  # Adjusted

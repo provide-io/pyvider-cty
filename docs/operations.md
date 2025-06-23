@@ -188,7 +188,7 @@ print(f"Value of 'zeta' using .get() (CtyValue default): {zeta_val_get.value}, T
 ## Attribute Access (`__getitem__` for Objects): Finding by Name (Objects) 🏢
 
 For `CtyObject` values, you access attributes using their string names, similar to map keys.
--   `my_object_value[attribute_name]`: Returns the `CtyValue` for the attribute. If the attribute name is not part of the object's schema, it raises an error (typically `KeyError` or `AttributeError` – consult `pyvider.cty` specifics).
+-   `my_object_value[attribute_path]`: Returns the `CtyValue` for the attribute. If the attribute name is not part of the object's schema, it raises an error (typically `KeyError` or `AttributeError` – consult `pyvider.cty` specifics).
 
 Unlike Python objects with `.` (dot) access, `CtyObject` values use `[]` (square bracket) access for their defined attributes.
 

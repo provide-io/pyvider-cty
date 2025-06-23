@@ -209,7 +209,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise IndexError(message) from e
 
-    def append(self, item: object) -> "CtyList[T]":
+    def append(self, item: object) -> CtyList[T]:
         logger.debug(f"🔌📝🔄 Appending item: {item}")
         try:
             validated_item = self.element_type.validate(item)
@@ -222,7 +222,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             logger.error(f"🔌❗❌ {message}")
             raise CtyListValidationError(message)
 
-    def slice(self, start: int, end: int | None = None) -> "CtyList[T]":
+    def slice(self, start: int, end: int | None = None) -> CtyList[T]:
         logger.debug(f"🔌🔍🔄 Slicing list from {start} to {end}")
         list_length = len(self.value)
         if end is None:
@@ -239,7 +239,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
         )
         return evolve(self, value=sliced_value)
 
-    def concat(self, other: "CtyList[T]") -> "CtyList[T]":
+    def concat(self, other: CtyList[T]) -> CtyList[T]:
         logger.debug("🔌📝🔄 Concatenating with another list")
         if not isinstance(other, CtyList):
             message = f"Expected CtyList, got {type(other).__name__}"
@@ -299,7 +299,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
     def __getitem__(
         self, index: int | slice
-    ) -> CtyValue | "CtyList":  # String literal for CtyValue
+    ) -> CtyValue | CtyList:  # String literal for CtyValue
         if isinstance(index, slice):
             start = index.start if index.start is not None else 0
             stop = index.stop if index.stop is not None else len(self.value)

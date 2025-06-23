@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from typing import ClassVar # Added TYPE_CHECKING, Union removed
+from typing import ClassVar  # Added TYPE_CHECKING, Union removed
 
 from attrs import define, field
 
@@ -135,5 +135,6 @@ class CtyNumber(CtyType[int | float | Decimal]):
 
     def is_primitive_type(self) -> bool:
         return True
+
 
 # 🐍🏗️🐣

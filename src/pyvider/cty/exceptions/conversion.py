@@ -2,6 +2,7 @@
 """
 Defines exceptions related to CTY type and value conversions.
 """
+
 from .base import CtyError
 
 
@@ -9,7 +10,11 @@ class CtyConversionError(CtyError):
     """Base for CTY value or type conversion errors."""
 
     def __init__(
-        self, message: str, *, source_value: object = None, target_type: object = None
+        self,
+        message: str,
+        *,
+        source_value: object | None = None,
+        target_type: object | None = None,
     ) -> None:
         """
         Initializes the CtyConversionError.
@@ -44,8 +49,8 @@ class CtyTypeConversionError(CtyConversionError):
         message: str,
         *,
         type_name: str | None = None,
-        source_value: object = None,
-        target_type: object = None,
+        source_value: object | None = None,
+        target_type: object | None = None,
     ) -> None:
         """
         Initializes the CtyTypeConversionError.
@@ -64,4 +69,13 @@ class CtyTypeConversionError(CtyConversionError):
         super().__init__(message, source_value=source_value, target_type=target_type)
 
 
-__all__ = ["CtyConversionError", "CtyTypeConversionError"]
+class CtyTypeParseError(CtyConversionError):
+    """Raised when a CTY type string cannot be parsed."""
+
+    def __init__(self, message: str, type_string: str) -> None:
+        self.type_string = type_string
+        full_message = f"{message}: '{type_string}'"
+        super().__init__(full_message, source_value=type_string)
+
+
+__all__ = ["CtyConversionError", "CtyTypeConversionError", "CtyTypeParseError"]

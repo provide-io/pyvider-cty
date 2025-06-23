@@ -204,8 +204,8 @@ class CtyValue(Generic[T]):
         if (
             isinstance(self._vtype, CtyDynamic) and self._value is None
         ):  # This check is now safe due to _is_unknown check above
-            return True # SIM103: return (isinstance(self._vtype, CtyDynamic) and self._value is None)
-        return False    # This part of SIM103 is more complex due to the initial _is_unknown check
+            return True  # SIM103: return (isinstance(self._vtype, CtyDynamic) and self._value is None)
+        return False  # This part of SIM103 is more complex due to the initial _is_unknown check
 
     def has_mark(self, mark: object) -> bool:
         """
@@ -341,7 +341,9 @@ class CtyValue(Generic[T]):
                         return None
                 # Call the map's get method
                 return self._vtype.get(self, key, default_cty)  # Pass CtyValue default
-            except Exception as e:  # This broad exception now catches issues from self._vtype.get as well
+            except (
+                Exception
+            ):  # This broad exception now catches issues from self._vtype.get as well
                 return default  # Return original python default
 
         # For objects, use the object's get_attribute method
@@ -357,7 +359,9 @@ class CtyValue(Generic[T]):
                 # Call the object's get_attribute method
                 # This method should ideally handle 'has_attribute' check internally or raise appropriate Cty errors
                 return self._vtype.get_attribute(self, key)
-            except Exception as e:  # This broad exception now catches issues from self._vtype.get_attribute
+            except (
+                Exception
+            ):  # This broad exception now catches issues from self._vtype.get_attribute
                 return default  # Return original python default
 
         # Value doesn't support key lookup
@@ -477,9 +481,9 @@ class CtyValue(Generic[T]):
         from pyvider.cty.types.structural import CtyTuple
 
         # Direct implementation to avoid recursion with __getitem__
-        if isinstance(self._vtype, CtyList): # Local import CtyList
+        if isinstance(self._vtype, CtyList):  # Local import CtyList
             # Ensure the underlying value is a list or tuple
-            if not isinstance(self._value, list | tuple): # UP038
+            if not isinstance(self._value, list | tuple):  # UP038
                 raise TypeError(
                     f"Cannot index list value of type {type(self._value).__name__}"
                 )
@@ -916,7 +920,9 @@ class CtyValue(Generic[T]):
             value_hash = hash(None)  # Consistent hash for null/unknown
         else:
             # Use the actual value's hash for hashable primitives
-            if isinstance(self._value, str | int | float | bool | Decimal | bytes): # UP038
+            if isinstance(
+                self._value, str | int | float | bool | Decimal | bytes
+            ):  # UP038
                 try:
                     value_hash = hash(self._value)
                 except TypeError:  # Should not happen for these types, but safeguard
@@ -938,7 +944,7 @@ class CtyValue(Generic[T]):
             # Dictionaries and lists are not typically hashable by value
             # Hashing based on type/state/marks only for these might be sufficient
             # or use repr as a less reliable fallback
-            elif isinstance(self._value, dict | list | set): # UP038
+            elif isinstance(self._value, dict | list | set):  # UP038
                 value_hash = hash(repr(self._value))  # Fallback hash using repr
             else:
                 # Fallback for other potentially unhashable types
@@ -991,9 +997,11 @@ class CtyValue(Generic[T]):
 
         # --- Compare values for known, non-null values ---
         # Use direct comparison for primitives
-        if isinstance(self._value, str | int | float | bool | Decimal | bytes): # UP038
+        if isinstance(self._value, str | int | float | bool | Decimal | bytes):  # UP038
             # Handle Decimal comparison carefully
-            if isinstance(self._value, Decimal) and isinstance(other._value, int | float | str): # SIM102, UP038 (inner)
+            if isinstance(self._value, Decimal) and isinstance(
+                other._value, int | float | str
+            ):  # SIM102, UP038 (inner)
                 try:
                     return self._value == Decimal(other._value)
                 except Exception:
@@ -1001,8 +1009,9 @@ class CtyValue(Generic[T]):
             return self._value == other._value
 
         # For lists and tuples, compare element-wise
-        if isinstance(self._value, list | tuple) and isinstance( # UP038
-            other._value, list | tuple # UP038
+        if isinstance(self._value, list | tuple) and isinstance(  # UP038
+            other._value,
+            list | tuple,  # UP038
         ):
             if len(self._value) != len(other._value):
                 return False
@@ -1010,8 +1019,9 @@ class CtyValue(Generic[T]):
             return all(a == b for a, b in zip(self._value, other._value, strict=False))
 
         # For sets (represented as frozenset internally after validation)
-        if isinstance(self._value, set | frozenset) and isinstance( # UP038
-            other._value, set | frozenset # UP038
+        if isinstance(self._value, set | frozenset) and isinstance(  # UP038
+            other._value,
+            set | frozenset,  # UP038
         ):
             # Elements should be CtyValues, rely on their __eq__ and hash
             if len(self._value) != len(other._value):
@@ -1114,7 +1124,7 @@ class CtyValue(Generic[T]):
                     )
 
             # For lists/tuples, handle both direct indexing and slices
-            elif isinstance(self._vtype, CtyList | CtyTuple): # UP038
+            elif isinstance(self._vtype, CtyList | CtyTuple):  # UP038
                 if isinstance(key, slice):
                     # Handle slice operations
                     start = key.start if key.start is not None else 0
@@ -1222,7 +1232,7 @@ class CtyValue(Generic[T]):
                 return str_key in self._value  # Check string key presence
 
             # For lists/sets/tuples, check elements using CtyValue equality
-            elif isinstance(self._vtype, CtyList | CtySet) or ( # UP038
+            elif isinstance(self._vtype, CtyList | CtySet) or (  # UP038
                 hasattr(self._vtype, "element_type")
                 and hasattr(self._value, "__iter__")
             ):  # General collection check
@@ -1317,7 +1327,9 @@ class CtyValue(Generic[T]):
         if isinstance(self._value, CtyValue):
             return self._value.is_empty()
 
-        if isinstance(self._value, str | list | tuple | dict | set | frozenset): # UP038
+        if isinstance(
+            self._value, str | list | tuple | dict | set | frozenset
+        ):  # UP038
             return (
                 not self._value
             )  # Relies on Python's built-in truthiness for empty collections/strings
@@ -1347,7 +1359,7 @@ class CtyValue(Generic[T]):
         if isinstance(self._value, dict):
             # Use string keys fro, value
             return f"{{{', '.join(f'{k!r}: {v}' for k, v in self._value.items())}}}"
-        if isinstance(self._value, set | frozenset): # UP038
+        if isinstance(self._value, set | frozenset):  # UP038
             # Sort set elements for consistent string representation
             try:
                 sorted_elements = sorted(self._value, key=repr)
@@ -1483,13 +1495,13 @@ class CtyValue(Generic[T]):
                 self.value, CtyValue
             ):  # self.value is safe to access here
                 inner_dict = self.value.to_json_comparable_dict()
-                processed_value = { # Embed the inner value's type and value
+                processed_value = {  # Embed the inner value's type and value
                     "type": inner_dict["type_name"],
                     "value": inner_dict["value"],
                 }
             # Case 2: CtyTuple
             elif isinstance(self.type, CtyTuple):
-                if not self.value: # Empty tuple
+                if not self.value:  # Empty tuple
                     processed_value = []
                 else:  # Non-empty tuple; its value is a list of CtyValues or raw values
                     processed_value = [
@@ -1510,18 +1522,22 @@ class CtyValue(Generic[T]):
                 }
             # Case 5: CtySet (internal value is a frozenset)
             elif isinstance(self.value, frozenset):
-                processed_value = sorted( # Sort for consistent JSON output
+                processed_value = sorted(  # Sort for consistent JSON output
                     [
-                        v.to_json_comparable_dict() if isinstance(v, CtyValue) else str(v)
+                        v.to_json_comparable_dict()
+                        if isinstance(v, CtyValue)
+                        else str(v)
                         for v in self.value
                     ],
-                    key=lambda x: json.dumps(x, sort_keys=True) if isinstance(x, dict) else str(x),
+                    key=lambda x: json.dumps(x, sort_keys=True)
+                    if isinstance(x, dict)
+                    else str(x),
                 )
             # Case 6: Decimal numbers (requires careful string formatting)
             elif isinstance(self.value, Decimal):
-                if self.value.is_zero(): # Handle +0, -0, 0.0
+                if self.value.is_zero():  # Handle +0, -0, 0.0
                     processed_value = "-0" if self.value.as_tuple().sign else "0"
-                else: # Standard formatting for other decimals
+                else:  # Standard formatting for other decimals
                     normalized_d = self.value.normalize()
                     sign_tuple, digits_tuple, exponent_int = normalized_d.as_tuple()
                     val_str = "-" if sign_tuple else ""
@@ -1531,12 +1547,23 @@ class CtyValue(Generic[T]):
                         num_digits = len(digits_tuple)
                         abs_exponent = abs(exponent_int)
                         if abs_exponent > num_digits:
-                            val_str += "0." + "0" * (abs_exponent - num_digits) + "".join(map(str, digits_tuple))
+                            val_str += (
+                                "0."
+                                + "0" * (abs_exponent - num_digits)
+                                + "".join(map(str, digits_tuple))
+                            )
                         elif abs_exponent == num_digits:
                             val_str += "0." + "".join(map(str, digits_tuple))
                         else:
-                            val_str += "".join(map(str, digits_tuple[:num_digits - abs_exponent])) + "." + \
-                                       "".join(map(str, digits_tuple[num_digits - abs_exponent:]))
+                            val_str += (
+                                "".join(
+                                    map(str, digits_tuple[: num_digits - abs_exponent])
+                                )
+                                + "."
+                                + "".join(
+                                    map(str, digits_tuple[num_digits - abs_exponent :])
+                                )
+                            )
                     processed_value = val_str
             # Case 7: Other primitive types (string, bool, already converted int/float)
             else:
@@ -1628,7 +1655,7 @@ class CtyValue(Generic[T]):
                        or if their element types are incompatible.
             CtySetValidationError: If underlying set operation fails.
         """
-        from pyvider.cty.types.collections import CtySet # Local import
+        from pyvider.cty.types.collections import CtySet  # Local import
 
         if not isinstance(self._vtype, CtySet):
             raise TypeError("Union operation is only valid for CtySet values.")
@@ -1655,12 +1682,14 @@ class CtyValue(Generic[T]):
                        or if their element types are incompatible.
             CtySetValidationError: If underlying set operation fails.
         """
-        from pyvider.cty.types.collections import CtySet # Local import
+        from pyvider.cty.types.collections import CtySet  # Local import
 
         if not isinstance(self._vtype, CtySet):
             raise TypeError("Intersection operation is only valid for CtySet values.")
         if not isinstance(other._vtype, CtySet):
-            raise TypeError("Other operand for intersection must also be a CtySet value.")
+            raise TypeError(
+                "Other operand for intersection must also be a CtySet value."
+            )
 
         # Delegate to the CtySet type's intersection method
         return self._vtype.intersection(self, other)
@@ -1683,7 +1712,7 @@ class CtyValue(Generic[T]):
                        or if their element types are incompatible.
             CtySetValidationError: If underlying set operation fails.
         """
-        from pyvider.cty.types.collections import CtySet # Local import
+        from pyvider.cty.types.collections import CtySet  # Local import
 
         if not isinstance(self._vtype, CtySet):
             raise TypeError("Difference operation is only valid for CtySet values.")
