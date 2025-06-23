@@ -7,6 +7,7 @@ Defines exceptions specifically related to CTY type validation failures.
 These exceptions are raised when a value does not conform to the constraints
 of a particular CTY type during the validation process.
 """
+
 from pyvider.cty.exceptions.base import CtyError
 
 ################################################################################
@@ -210,18 +211,18 @@ class CtyAttributeValidationError(CtyValidationError):
 
     Args:
         message: A human-readable error description
-        attribute_name: The name of the attribute that failed validation
+        attribute_path: The name of the attribute that failed validation
         value: The value that failed validation
     """
 
     def __init__(
-        self, message: str, attribute_name: str | None = None, value: object = None
+        self, message: str, attribute_path: str | None = None, value: object = None
     ) -> None:
-        self.attribute_name = attribute_name
+        self.attribute_path = attribute_path
 
         # Add attribute information to the message if available
-        if attribute_name is not None:
-            message = f"Attribute '{attribute_name}': {message}"
+        if attribute_path is not None:
+            message = f"Attribute '{attribute_path}': {message}"
 
         super().__init__(message, value, "Object")
 

@@ -6,6 +6,7 @@ This module defines CtyBool, which represents boolean values (True/False)
 and handles conversions from various Python types to CTY booleans according
 to specific conversion rules.
 """
+
 from decimal import Decimal, InvalidOperation
 from typing import ClassVar
 

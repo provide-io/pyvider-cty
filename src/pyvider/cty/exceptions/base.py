@@ -5,6 +5,7 @@
 Defines the base exception for the CTY type system.
 """
 
+
 class CtyError(Exception):
     """
     Base exception for all pyvider.cty errors.

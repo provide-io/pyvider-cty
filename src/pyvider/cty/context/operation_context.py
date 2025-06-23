@@ -6,6 +6,7 @@ This module defines different operational contexts (e.g., CONFIG, STATE, PLAN)
 that can influence how CTY operations behave. It provides utilities to get
 and set the current context, typically using a context manager pattern.
 """
+
 import contextlib
 from contextvars import ContextVar
 from enum import Enum, auto
@@ -21,6 +22,7 @@ class OperationContext(Enum):
     serialization/deserialization strategies, or how unknown/null values
     are handled during conversions.
     """
+
     DEFAULT = auto()
     CONFIG = auto()
     STATE = auto()
@@ -52,8 +54,10 @@ def operation_context(
             # Operations within this block will use the CONFIG context
             ...
     """
+
     class OperationContextManager:
         """Manages setting and resetting the operation context."""
+
         def __init__(self, new_context: OperationContext) -> None:
             self._new_context = new_context
             self._token = None

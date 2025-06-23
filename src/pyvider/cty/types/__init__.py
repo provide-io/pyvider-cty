@@ -8,6 +8,7 @@ This package includes the base CtyType class and all concrete type
 implementations such as primitives (string, number, bool), collections
 (list, map, set), and structural types (object, tuple, dynamic, capsule).
 """
+
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.capsule import CtyCapsule
 from pyvider.cty.types.collections import (

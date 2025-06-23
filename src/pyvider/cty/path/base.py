@@ -411,8 +411,8 @@ class KeyStep(PathStep):
 
         # Import types here to avoid circular imports at module level
         from pyvider.cty.types.collections import CtyMap
+        from pyvider.cty.types.primitives import CtyNumber, CtyString  # Added CtyString
         from pyvider.cty.types.structural import CtyDynamic
-        from pyvider.cty.types.primitives import CtyNumber, CtyString # Added CtyString
 
         if isinstance(value.type, CtyDynamic):
             logger.debug("🧰🔍🔄 KeyStep.apply operating on CtyDynamic value")
@@ -427,27 +427,35 @@ class KeyStep(PathStep):
                 str_lookup_key: str
                 if isinstance(self.key, CtyValue):
                     # Use the CtyValue's actual value, converting numbers to strings for dict lookup
-                    if isinstance(self.key.type, CtyNumber):
+                    if isinstance(self.key.type, CtyNumber) or isinstance(
+                        self.key.type, CtyString
+                    ):
                         str_lookup_key = str(self.key.value)
-                    elif isinstance(self.key.type, CtyString):
-                        str_lookup_key = str(self.key.value)
-                    else: # Other CtyValue types are not typical for raw dict keys
-                        raise AttributePathError(f"Unsupported CtyValue key type for raw dictionary lookup: {self.key.type}")
+                    else:  # Other CtyValue types are not typical for raw dict keys
+                        raise AttributePathError(
+                            f"Unsupported CtyValue key type for raw dictionary lookup: {self.key.type}"
+                        )
                 elif isinstance(self.key, str):
                     str_lookup_key = self.key
-                elif isinstance(self.key, int | float | Decimal): # Raw numeric key
+                elif isinstance(self.key, int | float | Decimal):  # Raw numeric key
                     str_lookup_key = str(self.key)
                 else:
-                    raise AttributePathError(f"Unsupported key type for raw dictionary lookup: {type(self.key).__name__}")
+                    raise AttributePathError(
+                        f"Unsupported key type for raw dictionary lookup: {type(self.key).__name__}"
+                    )
 
                 if str_lookup_key in target_internal_value:
                     retrieved_raw_value = target_internal_value[str_lookup_key]
                     # Since the container is CtyDynamic, the retrieved value is also considered dynamic.
                     return CtyDynamic().validate(retrieved_raw_value)
                 else:
-                    raise AttributePathError(f"Key '{str_lookup_key}' not found in CtyDynamic's internal dictionary.")
+                    raise AttributePathError(
+                        f"Key '{str_lookup_key}' not found in CtyDynamic's internal dictionary."
+                    )
             else:
-                raise AttributePathError(f"Cannot get key from CtyDynamic whose internal value is not a dictionary (got {type(target_internal_value).__name__}).")
+                raise AttributePathError(
+                    f"Cannot get key from CtyDynamic whose internal value is not a dictionary (got {type(target_internal_value).__name__})."
+                )
 
         elif isinstance(value.type, CtyMap):
             # Get the value
@@ -462,37 +470,50 @@ class KeyStep(PathStep):
                 # Determine the string representation of the key for internal dict lookup
                 str_key_for_check: str
                 if isinstance(self.key, CtyValue):
-                    if self.key.is_null or self.key.is_unknown: # Should be caught by CtyMap.get ideally
-                        raise AttributePathError("Map key in path cannot be null or unknown.")
+                    if (
+                        self.key.is_null or self.key.is_unknown
+                    ):  # Should be caught by CtyMap.get ideally
+                        raise AttributePathError(
+                            "Map key in path cannot be null or unknown."
+                        )
                     # Convert CtyValue key to its string representation based on map's key_type
                     # This logic assumes map keys are ultimately stored/looked up as strings of their values
-                    validated_key_for_check = value.type.key_type.validate(self.key.value) # Validate raw value
+                    validated_key_for_check = value.type.key_type.validate(
+                        self.key.value
+                    )  # Validate raw value
                     str_key_for_check = str(validated_key_for_check.value)
 
                 elif isinstance(self.key, (str, int, float, Decimal)):
-                     # Validate raw key against map's key_type then stringify
+                    # Validate raw key against map's key_type then stringify
                     validated_raw_key_for_check = value.type.key_type.validate(self.key)
-                    if validated_raw_key_for_check.is_null or validated_raw_key_for_check.is_unknown:
-                        raise AttributePathError("Map key in path is null or unknown after validation.")
+                    if (
+                        validated_raw_key_for_check.is_null
+                        or validated_raw_key_for_check.is_unknown
+                    ):
+                        raise AttributePathError(
+                            "Map key in path is null or unknown after validation."
+                        )
                     str_key_for_check = str(validated_raw_key_for_check.value)
                 else:
                     # This case should ideally be caught by CtyMap.get if the key type is wrong
-                    raise AttributePathError(f"Unsupported key type for map lookup: {type(self.key)}")
+                    raise AttributePathError(
+                        f"Unsupported key type for map lookup: {type(self.key)}"
+                    )
 
                 if result.is_null and str_key_for_check not in value.value:
-                    raise AttributePathError(f"Map has no key {self.key!r} (key was '{str_key_for_check}')")
+                    raise AttributePathError(
+                        f"Map has no key {self.key!r} (key was '{str_key_for_check}')"
+                    )
                 return result
 
             except AttributePathError:
-                raise # Re-raise if it's already an AttributePathError (e.g. from key validation in CtyMap.get)
-            except Exception as e: # Catch other errors from CtyMap.get
+                raise  # Re-raise if it's already an AttributePathError (e.g. from key validation in CtyMap.get)
+            except Exception as e:  # Catch other errors from CtyMap.get
                 error_msg = f"Failed to get value for key {self.key!r} from map: {e}"
                 logger.error(f"🧰❌🔄 {error_msg}")
                 raise AttributePathError(error_msg) from e
         else:
-            error_msg = (
-                f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}"
-            )
+            error_msg = f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
 
@@ -509,10 +530,12 @@ class KeyStep(PathStep):
         Raises:
             AttributePathError: If the type is not a map
         """
-        from pyvider.cty.types.structural import CtyDynamic # Moved import
-        from pyvider.cty.types.collections import CtyMap # Moved import
+        from pyvider.cty.types.collections import CtyMap  # Moved import
+        from pyvider.cty.types.structural import CtyDynamic  # Moved import
 
-        logger.debug(f"🧰🔍🔄 Getting type of value for key {self.key} from type {vtype.__class__.__name__}")
+        logger.debug(
+            f"🧰🔍🔄 Getting type of value for key {self.key} from type {vtype.__class__.__name__}"
+        )
 
         if isinstance(vtype, CtyDynamic):
             logger.debug("🧰✅🔄 Key access on CtyDynamic type yields CtyDynamic")
@@ -534,7 +557,9 @@ class KeyStep(PathStep):
         # Example: if self.key is CtyValue(CtyNumber(1)) and map key_type is CtyString,
         # this would still return map's value_type. The apply method handles the actual lookup failure.
 
-        logger.debug(f"🧰✅🔄 Map type found, value type is {vtype.value_type.__class__.__name__}")
+        logger.debug(
+            f"🧰✅🔄 Map type found, value type is {vtype.value_type.__class__.__name__}"
+        )
         return vtype.value_type
 
     def __str__(self) -> str:
