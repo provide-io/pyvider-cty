@@ -1,4 +1,4 @@
-from pyvider.cty.codec import parse_type_string_to_ctytype, CtyTypeParseError
+from pyvider.cty import parse_type_string_to_ctytype, CtyTypeParseError
 
 # Replace with the actual type string extracted in step 3
 type_string_to_test = "object({cpu_utilization=number,memory_usage=number,disk_io=list(number)})"

@@ -37,9 +37,9 @@ class CtyCapsule(CtyType):
 
     def validate(self, value: object) -> "CtyValue":
         if isinstance(value, CtyValue):
-            if value.is_null():
+            if value.is_null:  # Corrected: property
                 return CtyValue.null(self)
-            if value.is_unknown():
+            if value.is_unknown:  # Corrected: property
                 return CtyValue.unknown(self)
             # If it's already a CtyValue, check if its type is a compatible CtyCapsule
             if (
@@ -52,6 +52,9 @@ class CtyCapsule(CtyType):
             val_to_check = value.value
         else:
             val_to_check = value
+
+        if val_to_check is None:  # Added check for None
+            return CtyValue.null(self)
 
         if not isinstance(val_to_check, self._py_type):
             raise CtyValidationError(

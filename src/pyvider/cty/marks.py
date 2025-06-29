@@ -22,5 +22,8 @@ class CtyMark:
             return f"CtyMark({self.name!r}, {self.details!r})"
         return f"CtyMark({self.name!r})"
 
+    def __str__(self) -> str:
+        return self.name
+
 
 # ✨🔧

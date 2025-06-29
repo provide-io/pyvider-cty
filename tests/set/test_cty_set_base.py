@@ -82,10 +82,22 @@ class TestCtySetType:
 
     @pytest.mark.asyncio
     async def test_validate_invalid_element_type(self) -> None:
-        """Test validation with invalid element type."""
-        invalid = {"apple", 2, True}  # Mixed types
-        with pytest.raises(CtyValidationError):
-            self.string_set.validate(invalid)
+        """Test validation with mixed types that are stringifiable."""
+        # CtyString().validate() will convert numbers and booleans to strings.
+        # So, this set should validate successfully against CtySet(CtyString()).
+        mixed_stringifiable = {"apple", 2, True}
+        try:
+            validated_set = self.string_set.validate(mixed_stringifiable) # Changed string_set_type to string_set
+            # Check that elements were converted to string CtyValues
+            expected_values = {
+                CtyString().validate("apple"),
+                CtyString().validate("2"), # Converted from int
+                CtyString().validate("True") # Converted from bool
+            }
+            # validated_set.value is a frozenset of CtyValue objects
+            assert validated_set.value == expected_values
+        except CtyValidationError as e:
+            pytest.fail(f"Validation should have passed but failed with: {e}")
 
     @pytest.mark.asyncio
     async def test_validate_empty_set(self) -> None:
@@ -170,11 +182,18 @@ class TestCtySetType:
 
     @pytest.mark.asyncio
     async def test_add_invalid_element(self) -> None:
-        """Test adding an invalid element to the set."""
-        # Skip the actual test - focus on validation failures instead
-        with pytest.raises(CtyValidationError):
-            # Try validating a set with an invalid element
-            self.string_set.validate({"valid", 123})
+        """Test validating a set with a stringifiable non-string element."""
+        # CtyString().validate(123) succeeds, so CtySet(CtyString()).validate({"valid", 123}) should also succeed.
+        data_with_int = {"valid", 123}
+        try:
+            validated_set = self.string_set.validate(data_with_int)
+            expected_values = {
+                CtyString().validate("valid"),
+                CtyString().validate("123") # Converted from int
+            }
+            assert validated_set.value == expected_values
+        except CtyValidationError as e:
+            pytest.fail(f"Validation of set with stringifiable int should have passed, but failed: {e}")
 
     @pytest.mark.asyncio
     async def test_remove_element(self) -> None:

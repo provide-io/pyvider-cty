@@ -90,7 +90,7 @@ def test_validate_object_with_missing_required_capsule(
 ):
     """Test validation failure when a required capsule attribute is missing."""
     data = {"id": "obj3"}
-    with pytest.raises(CtyValidationError, match="Missing required attribute: service"):
+    with pytest.raises(CtyValidationError, match=r"Object validation failed:\n - Missing required attribute: 'service'"):
         object_with_capsule_type.validate(data)
 
 

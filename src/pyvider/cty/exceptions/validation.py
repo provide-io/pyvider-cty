@@ -227,4 +227,24 @@ class CtyAttributeValidationError(CtyValidationError):
         super().__init__(message, value, "Object")
 
 
+class CtyCollectionValidationError(CtyValidationError):
+    """
+    Base exception for errors specific to collection validation
+    (list, map, set, tuple) that are not covered by element/item validation.
+    e.g., wrong input kind for the collection type itself.
+    """
+    def __init__(self, message: str, value: object = None, collection_type_name: str | None = None) -> None:
+        super().__init__(message, value, collection_type_name or "Collection")
+
+
+class CtyTypeValidationError(CtyValidationError):
+    """
+    Raised when a CtyType definition itself is invalid.
+    e.g., CtySet with an element_type whose values would be unhashable.
+    """
+    def __init__(self, message: str, type_name: str | None = None) -> None:
+        # No 'value' here as it's about the type definition
+        super().__init__(message, type_name=type_name or "TypeDefinition")
+
+
 # 🐍🏗️🐣
