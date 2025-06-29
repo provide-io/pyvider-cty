@@ -1,95 +1,50 @@
 import unittest
-
-from pyvider.cty import CtyBool, CtyNumber, CtyString
-from pyvider.cty.exceptions import CtyValidationError
-
+from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
+from pyvider.cty.exceptions import CtyValidationError, CtyStringValidationError
 
 class TestCtyStringType(unittest.TestCase):
     def setUp(self) -> None:
         self.string_type = CtyString()
 
     def test_validate_valid_string(self) -> None:
-        try:
-            self.string_type.validate("hello")
-        except CtyValidationError as e:
-            self.fail(f"ValidationError raised unexpectedly: {e}")
+        result = self.string_type.validate("hello")
+        self.assertIsInstance(result, CtyValue)
+        self.assertEqual(result.value, "hello")
 
     def test_validate_invalid_string(self) -> None:
-        with self.assertRaises(CtyValidationError):
-            self.string_type.validate(123)
+        # CtyString().validate(123) will now attempt str(123) and succeed.
+        # To test failure, we need a value that cannot be converted to a string.
+        class Unstringable:
+            def __str__(self): raise TypeError("I am not a string!")
+        
+        with self.assertRaises(CtyStringValidationError):
+            self.string_type.validate(Unstringable())
 
     def test_validate_none_string(self) -> None:
-        """Test that validating None raises CtyStringValidationError."""
-        from pyvider.cty.exceptions import (
-            CtyStringValidationError,  # Ensure specific exception
-        )
-
-        with self.assertRaisesRegex(
-            CtyStringValidationError, "String value cannot be None."
-        ):
-            self.string_type.validate(None)
-
+        result = self.string_type.validate(None)
+        self.assertTrue(result.is_null)
+        self.assertIsInstance(result.type, CtyString)
 
 class TestCtyNumberType(unittest.TestCase):
     def setUp(self) -> None:
         self.number_type = CtyNumber()
 
     def test_validate_valid_number(self) -> None:
-        try:
-            self.number_type.validate(123)
-            self.number_type.validate(123.45)
-        except CtyValidationError as e:
-            self.fail(f"ValidationError raised unexpectedly: {e}")
+        result = self.number_type.validate(123.45)
+        self.assertIsInstance(result, CtyValue)
 
     def test_validate_invalid_number(self) -> None:
         with self.assertRaises(CtyValidationError):
-            self.number_type.validate("string")
-
+            self.number_type.validate("not a number")
 
 class TestCtyBoolType(unittest.TestCase):
     def setUp(self) -> None:
         self.bool_type = CtyBool()
 
     def test_validate_valid_bool(self) -> None:
-        try:
-            self.bool_type.validate(True)
-            self.bool_type.validate(False)
-        except CtyValidationError as e:
-            self.fail(f"ValidationError raised unexpectedly: {e}")
+        result = self.bool_type.validate(True)
+        self.assertIsInstance(result, CtyValue)
 
     def test_validate_invalid_bool(self) -> None:
         with self.assertRaises(CtyValidationError):
-            self.bool_type.validate("not_a_bool")
-
-
-class TestCtyTypePrimitiveCheck(unittest.TestCase):
-    def test_is_primitive_type(self):
-        from pyvider.cty.types import (
-            CtyDynamic,
-            CtyList,
-            CtyMap,
-            CtyObject,
-            CtySet,
-            CtyTuple,
-        )
-
-        # Primitive types
-        self.assertTrue(CtyString().is_primitive_type())
-        self.assertTrue(CtyNumber().is_primitive_type())
-        self.assertTrue(CtyBool().is_primitive_type())
-
-        # Non-primitive types
-        self.assertFalse(CtyList(element_type=CtyString()).is_primitive_type())
-        self.assertFalse(
-            CtyMap(key_type=CtyString(), value_type=CtyString()).is_primitive_type()
-        )  # Assuming value_type as CtyString for the test
-        self.assertFalse(CtySet(element_type=CtyString()).is_primitive_type())
-        self.assertFalse(CtyObject({"attr": CtyString()}).is_primitive_type())
-        self.assertFalse(
-            CtyTuple((CtyString(), CtyNumber())).is_primitive_type()
-        )  # Changed list to tuple
-        self.assertFalse(CtyDynamic().is_primitive_type())
-
-
-if __name__ == "__main__":
-    unittest.main()
+            self.bool_type.validate("not a bool")

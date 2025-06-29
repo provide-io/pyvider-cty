@@ -1,7 +1,6 @@
-
 from pyvider.cty.types import (
     CtyBool,
-    CtyCapsule,  # Assuming CtyCapsule exists and should be tested
+    CtyCapsule,
     CtyDynamic,
     CtyList,
     CtyMap,
@@ -12,32 +11,34 @@ from pyvider.cty.types import (
     CtyTuple,
 )
 
+# FIX: The `is_empty_type` method was removed during refactoring.
+# The correct way to test for emptiness is on a CtyValue instance
+# using the `is_empty()` method.
 
-def test_empty_type_for_primitives():
-    assert CtyString().is_empty_type() is False
-    assert CtyNumber().is_empty_type() is False
-    assert CtyBool().is_empty_type() is False
+def test_empty_value_for_primitives():
+    assert CtyString().validate("").is_empty() is True
+    assert CtyString().validate("a").is_empty() is False
+    # Numbers and Bools are never considered "empty"
+    assert CtyNumber().validate(0).is_empty() is False
+    assert CtyBool().validate(False).is_empty() is False
 
+def test_empty_value_for_collections():
+    assert CtyList(element_type=CtyString()).validate([]).is_empty() is True
+    assert CtyMap(key_type=CtyString(), value_type=CtyNumber()).validate({}).is_empty() is True
+    assert CtySet(element_type=CtyBool()).validate(set()).is_empty() is True
 
-def test_empty_type_for_collections():
-    assert CtyList(element_type=CtyString()).is_empty_type() is False
-    assert CtyMap(key_type=CtyString(), value_type=CtyNumber()).is_empty_type() is False
-    assert CtySet(element_type=CtyBool()).is_empty_type() is False
+def test_empty_value_for_structural():
+    assert CtyTuple(element_types=()).validate(()).is_empty() is True
+    assert CtyObject(attribute_types={}).validate({}).is_empty() is True
 
+def test_empty_value_for_dynamic():
+    # A dynamic value is empty if the value it contains is empty.
+    assert CtyDynamic().validate("").is_empty() is True
+    assert CtyDynamic().validate([]).is_empty() is True
+    assert CtyDynamic().validate({}).is_empty() is True
+    assert CtyDynamic().validate("not empty").is_empty() is False
 
-def test_empty_type_for_structural():
-    assert CtyTuple((CtyString(), CtyNumber())).is_empty_type() is False
-    assert CtyObject(attribute_types={"attr": CtyString()}).is_empty_type() is False
-
-
-def test_empty_type_for_dynamic():
-    assert CtyDynamic().is_empty_type() is True
-
-
-def test_empty_type_for_capsule():
-    # Assuming CtyCapsule is not an "empty" type by default
-    # If CtyCapsule needs specific logic for is_empty_type, it should be implemented there.
-    class MyData:
-        pass
-
-    assert CtyCapsule("MyDataCapsule", MyData).is_empty_type() is False
+def test_empty_value_for_capsule():
+    class MyData: pass
+    # Capsule types are never considered empty unless they are null.
+    assert CtyCapsule("MyDataCapsule", MyData).validate(MyData()).is_empty() is False

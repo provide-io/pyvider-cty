@@ -7,7 +7,12 @@ from pyvider.cty.exceptions.base import CtyError
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
     CtyTypeConversionError,
-    CtyTypeParseError,  # Add this import
+    CtyTypeParseError,
+)
+from pyvider.cty.exceptions.base import CtyFunctionError
+from pyvider.cty.exceptions.validation import ( # Ensure these are imported from validation
+    CtyCollectionValidationError,
+    CtyTypeValidationError,
 )
 from pyvider.cty.exceptions.encoding import (
     AttributePathError,
@@ -40,6 +45,9 @@ __all__ = [
     "CtyBoolValidationError",
     "CtyConversionError",
     "CtyError",
+    "CtyFunctionError",
+    "CtyCollectionValidationError", # Add to __all__
+    "CtyTypeValidationError",     # Add to __all__
     "CtyListValidationError",
     "CtyMapValidationError",
     "CtyNumberValidationError",

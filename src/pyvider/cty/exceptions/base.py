@@ -25,4 +25,16 @@ class CtyError(Exception):
         super().__init__(self.message)
 
 
+class CtyFunctionError(CtyError):
+    """
+    Exception raised for errors during the execution of a CTY standard library function.
+
+    Attributes:
+        message: A human-readable error description
+    """
+
+    def __init__(self, message: str = "An error occurred during CTY function execution") -> None:
+        super().__init__(message)
+
+
 # 🐍🏗️🐣

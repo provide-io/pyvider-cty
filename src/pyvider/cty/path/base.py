@@ -108,6 +108,18 @@ class GetAttrStep(PathStep):
         logger.debug(f"🧰✅🔄 Attribute name {value} is valid")
 
     def apply(self, value: "CtyValue") -> "CtyValue":
+        logger.debug(
+            f"🧰🔍🔄 Applying path step {self.name} to value type {value.type.__class__.__name__}"
+        )
+
+        if value.is_null: # Add this check upfront
+            error_msg = f"Cannot get attribute '{self.name}' from null value"
+            logger.error(f"🧰❌🔄 {error_msg}")
+            raise AttributePathError(error_msg)
+        # We don't need to explicitly handle value.is_unknown here for GetAttrStep,
+        # as CtyObject.get_attribute is expected to propagate unknown-ness correctly.
+        # If it returned a known value for an unknown object, that would be an issue in CtyObject.
+
         """
         Get the attribute with the given name from an object value.
 
@@ -228,6 +240,7 @@ class IndexStep(PathStep):
     index: int = field()
 
     def apply(self, value: "CtyValue") -> "CtyValue":
+        from pyvider.cty.values import CtyValue # Moved import to top of method
         """
         Get the element at the given index from a list or tuple value.
 
@@ -261,7 +274,44 @@ class IndexStep(PathStep):
 
         # Check if the type is a list or tuple
         from pyvider.cty.types.collections import CtyList
-        from pyvider.cty.types.structural import CtyTuple
+        from pyvider.cty.types.structural import CtyTuple, CtyDynamic
+
+        if isinstance(value.type, CtyDynamic):
+            logger.debug("🧰🔍🔄 IndexStep.apply operating on CtyDynamic value")
+            # Unwrap the CtyDynamic value to get the concrete inner CtyValue
+            inner_value = value.value
+            if not isinstance(inner_value, CtyValue):
+                # This case should ideally not happen if CtyDynamic.validate is correct
+                # and always wraps a CtyValue.
+                raise AttributePathError(
+                    f"CtyDynamic value's inner content is not a CtyValue, got {type(inner_value).__name__}"
+                )
+
+            # Recursively apply the IndexStep to the inner concrete value
+            # The result of this will be the element from the inner collection
+            # result_from_inner = self.apply(inner_value) # OLD Flawed recursive call
+
+            # NEW LOGIC:
+            if inner_value.is_null:
+                # Indexing a null dynamic value results in a null dynamic value.
+                # The "type" of this null dynamic doesn't really matter as much as its nullness.
+                return CtyValue.null(CtyDynamic())
+            if inner_value.is_unknown:
+                # Indexing an unknown dynamic value results in an unknown dynamic value.
+                # Its inner type would be the element type derived from the path step.
+                # This requires apply_type on the dynamic type's *potential* inner type.
+                # This is complex. For now, let's assume unknown dynamic yields unknown dynamic.
+                 return CtyValue.unknown(CtyDynamic()) # Simplified: result is unknown dynamic
+
+            if isinstance(inner_value.type, (CtyList, CtyTuple)):
+                # Delegate to the concrete type's element_at method
+                element_val = inner_value.type.element_at(inner_value, self.index)
+                # Re-wrap the result with CtyDynamic
+                return CtyDynamic().validate(element_val)
+            else:
+                raise AttributePathError(
+                    f"Cannot index CtyDynamic whose inner value is of type {inner_value.type.__class__.__name__}, not list or tuple."
+                )
 
         try:
             collection_value = value.value
@@ -285,13 +335,15 @@ class IndexStep(PathStep):
             if isinstance(value.type, CtyList):
                 # For lists, use element_at method
                 logger.debug("🧰🔍🔄 Using element_at for list type")
-                result = value.type.element_at(collection_value, calculated_index)
+                # Pass the CtyValue 'value' itself, not its unwrapped 'collection_value'
+                result = value.type.element_at(value, calculated_index)
                 logger.debug(f"🧰✅🔄 Retrieved element at index {calculated_index}")
                 return result
             elif isinstance(value.type, CtyTuple):
                 # For tuples, use element_at method
                 logger.debug("🧰🔍🔄 Using element_at for tuple type")
-                result = value.type.element_at(collection_value, calculated_index)
+                # Pass the CtyValue 'value' itself, not its unwrapped 'collection_value'
+                result = value.type.element_at(value, calculated_index)
                 logger.debug(f"🧰✅🔄 Retrieved element at index {calculated_index}")
                 return result
             else:
@@ -358,6 +410,12 @@ class IndexStep(PathStep):
             error_msg = f"Tuple index {self.index} out of bounds (0-{len(vtype.element_types) - 1})"
             logger.error(f"🧰❌🔄 {error_msg}")
             raise AttributePathError(error_msg)
+
+        # If the type is dynamic, the element type is also dynamic
+        from pyvider.cty.types.structural import CtyDynamic # Moved import for clarity, already module level
+        if isinstance(vtype, CtyDynamic):
+            logger.debug("🧰✅🔄 Indexing into CtyDynamic type yields CtyDynamic element type")
+            return CtyDynamic()
 
         # Not a collection
         error_msg = f"Cannot index into non-collection type {vtype.__class__.__name__}"
@@ -554,8 +612,17 @@ class KeyStep(PathStep):
         # For simplicity and consistency with go-cty (which allows any key for type navigation),
         # we assume the key is valid for type navigation and directly return value_type.
         # More complex validation could be added if strict key type checking at type-level is needed.
-        # Example: if self.key is CtyValue(CtyNumber(1)) and map key_type is CtyString,
-        # this would still return map's value_type. The apply method handles the actual lookup failure.
+
+        # Per test_keystep_apply_type_key_validation_failure, we *do* need to validate the key.
+        try:
+            key_for_validation = self.key.value if isinstance(self.key, CtyValue) else self.key
+            # The act of validating the key against the map's key_type.
+            # If self.key is incompatible, vtype.key_type.validate should raise CtyValidationError.
+            vtype.key_type.validate(key_for_validation)
+        except CtyValidationError as e:
+            raise AttributePathError(f"Invalid key for map: {self.key!r} is not a valid {vtype.key_type!r} (validation error: {e})") from e
+        except Exception as e: # Catch other unexpected errors during key validation for type application
+            raise AttributePathError(f"Unexpected error validating key {self.key!r} for map type {vtype!r} during type path application: {e}") from e
 
         logger.debug(
             f"🧰✅🔄 Map type found, value type is {vtype.value_type.__class__.__name__}"

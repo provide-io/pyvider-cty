@@ -132,7 +132,37 @@ class CtySet(CtyType[set[T]], Generic[T]):
 
         for idx, raw_item in enumerate(value):
             try:
-                validated_item = self.element_type.validate(raw_item)
+                # Handle CtyDynamic for element_type
+                from pyvider.cty.types.structural.dynamic import CtyDynamic
+                if isinstance(self.element_type, CtyDynamic) and not isinstance(raw_item, CtyValue):
+                    from pyvider.cty.types.primitives import CtyString, CtyNumber, CtyBool
+                    from pyvider.cty.types.collections import CtyList, CtyMap # CtySet is current file
+
+                    if raw_item is None:
+                        promoted_item_value = CtyValue.null(CtyDynamic())
+                    elif isinstance(raw_item, str):
+                        promoted_item_value = CtyString().validate(raw_item)
+                    elif isinstance(raw_item, bool):
+                        promoted_item_value = CtyBool().validate(raw_item)
+                    elif isinstance(raw_item, (int, float)): # Add Decimal if needed
+                        promoted_item_value = CtyNumber().validate(raw_item)
+                    elif isinstance(raw_item, list):
+                        promoted_item_value = CtyList(CtyDynamic()).validate(raw_item)
+                    elif isinstance(raw_item, dict):
+                        promoted_item_value = CtyMap(key_type=CtyString(), value_type=CtyDynamic()).validate(raw_item)
+                    # Add set, tuple promotion if required for CtySet elements
+                    else:
+                        # Fallback for non-promotable raw types with CtyDynamic element_type
+                        validated_item = self.element_type.validate(raw_item)
+                        validated_items.add(validated_item)
+                        continue # Skip other logic for this item
+                    validated_item = CtyDynamic().validate(promoted_item_value)
+                elif isinstance(self.element_type, CtyDynamic) and isinstance(raw_item, CtyValue):
+                    validated_item = self.element_type.validate(raw_item)
+                else: # Concrete element_type
+                    value_to_validate = raw_item.value if isinstance(raw_item, CtyValue) and not isinstance(raw_item.type, CtyDynamic) else raw_item
+                    validated_item = self.element_type.validate(value_to_validate)
+
                 validated_items.add(validated_item)
             except CtyValidationError as e:  # re‑wrap with position info
                 err_msg = f"element {idx}: {e}"

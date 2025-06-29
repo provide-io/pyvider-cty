@@ -15,7 +15,7 @@ from pyvider.cty import (
     CtyString,
 )
 from pyvider.cty.exceptions import (
-    CtyAttributeValidationError,
+    CtyAttributeValidationError, CtyValidationError
 )
 
 
@@ -59,7 +59,7 @@ async def test_object_init_invalid_attribute_type() -> None:
 @pytest.mark.asyncio
 async def test_object_init_invalid_optional_attribute() -> None:
     """Test validation fails for invalid optional attributes."""
-    with pytest.raises(CtyAttributeValidationError):
+    with pytest.raises(CtyValidationError, match="Unknown optional attributes: unknown"): # Changed CtyAttributeValidationError to CtyValidationError
         CtyObject(
             attribute_types={"name": CtyString(), "age": CtyNumber()},
             optional_attributes=frozenset(["unknown"]),

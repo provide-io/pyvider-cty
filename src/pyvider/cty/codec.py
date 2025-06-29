@@ -1,106 +1,140 @@
-# pyvider/cty/codec.py
+# pyvider-cty/src/pyvider/cty/codec.py
 """
-Core serialization/deserialization codec for CtyValues, now self-contained.
+Provides functionality for encoding and decoding CTY types and values.
+This includes the critical function for parsing CTY type strings.
 """
-import json
 import re
-from decimal import Decimal
-from typing import TYPE_CHECKING, cast
+from typing import Any
 
-import attrs
-import msgpack
-from msgpack import ExtType
+from .exceptions import CtyTypeParseError
+from .types import (
+    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber,
+    CtyObject, CtySet, CtyString, CtyTuple, CtyType
+)
 
-from pyvider.cty.exceptions import CtyTypeParseError
-from .types import (CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject,
-                    CtySet, CtyString, CtyTuple)
+# Regex to capture the outer type and its inner content.
+# e.g., for "list(string)", it captures "list" and "string".
+# For "object({name=string})", it captures "object" and "{name=string}".
+_type_pattern = re.compile(r"\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*)\)\s*$", re.DOTALL)
 
-if TYPE_CHECKING:
-    from .types.base import CtyType
-    from .values.base import CtyValue
+def _split_arguments(arg_string: str) -> list[str]:
+    """
+    Splits a string of arguments by top-level commas, correctly handling nested structures.
+    Example: "arg1, list(string), object({a=b,c=d})" -> ["arg1", "list(string)", "object({a=b,c=d})"]
+    """
+    if not arg_string:
+        return []
 
-def _normalize_type_str(target_type: "CtyType") -> str:
-    """A self-contained helper to get a normalized string for a type."""
-    # This replaces the need for the external `normalize_type_object`
-    # A full implementation would be more robust, but str() is a good start.
-    return str(target_type)
+    parts = []
+    balance = 0
+    current_part_start = 0
+    for i, char in enumerate(arg_string):
+        if char in '({[':
+            balance += 1
+        elif char in ')}]':
+            balance -= 1
+        elif char == ',' and balance == 0:
+            parts.append(arg_string[current_part_start:i].strip())
+            current_part_start = i + 1
 
-def _value_to_serializable(cty_value: "CtyValue") -> dict[str, object]:
-    """Converts a CtyValue instance into a dictionary suitable for serialization."""
-    data = cty_value.to_json_comparable_dict()
-    if "type_name" not in data:
-        data["type_name"] = _normalize_type_str(cty_value.type)
-    return data
-
-def _serializable_to_value(data: dict[str, object], target_type: "CtyType") -> "CtyValue":
-    """Recursively reconstructs a CtyValue from basic Python data."""
-    from .marks import CtyMark
-    from .values.base import CtyValue
-
-    if not isinstance(data, dict): raise ValueError("Invalid serialized format: not a dict.")
-    
-    type_name = data.get("type_name")
-    value_payload = data.get("value")
-    is_unknown = data.get("is_unknown", False)
-    is_null = data.get("is_null", False)
-    marks_data = data.get("marks", [])
-
-    if is_unknown: return CtyValue.unknown(target_type)
-    if is_null: return CtyValue.null(target_type)
-    
-    # Simplified reconstruction logic. A full implementation is in the bfiles.
-    # This stub focuses on breaking the circular dependency.
-    return target_type.validate(value_payload)
-
-def cty_value_to_json_string(value: "CtyValue") -> str:
-    serializable_data = _value_to_serializable(value)
-    return json.dumps(serializable_data)
-
-def cty_value_from_json_string(json_str: str, target_type: "CtyType") -> "CtyValue":
-    data = json.loads(json_str)
-    if not isinstance(data, dict): raise ValueError("Invalid JSON data: root must be an object.")
-    return _serializable_to_value(data, target_type)
-
-def cty_value_to_msgpack_bytes(value: "CtyValue") -> bytes:
-    if value.is_unknown: return msgpack.packb(ExtType(0, b""), use_bin_type=True)
-    serializable_data = _value_to_serializable(value)
-    return msgpack.packb(serializable_data, use_bin_type=True)
-
-__PYVIDER_CTY_UNKNOWN_SENTINEL__ = "__PYVIDER_CTY_UNKNOWN_SENTINEL__"
-def cty_msgpack_ext_hook(code: int, data: bytes) -> object:
-    if code == 0: return __PYVIDER_CTY_UNKNOWN_SENTINEL__
-    raise ValueError(f"Unknown msgpack extension type code: {code}")
-
-def cty_value_from_msgpack_bytes(msgpack_bytes: bytes, target_type: "CtyType") -> "CtyValue":
-    from .values.base import CtyValue
-    data = msgpack.unpackb(msgpack_bytes, ext_hook=cty_msgpack_ext_hook, raw=False)
-    if data == __PYVIDER_CTY_UNKNOWN_SENTINEL__: return CtyValue.unknown(target_type)
-    if not isinstance(data, dict): raise ValueError("Invalid Msgpack data: root must be a map.")
-    return _serializable_to_value(data, target_type)
-
-def _split_by_delimiter_respecting_nesting(text: str, delimiter: str) -> list[str]:
-    # ... (full implementation here)
-    if not text: return []
-    parts, balance_paren, balance_bracket, balance_brace, start = [], 0, 0, 0, 0
-    for i, char in enumerate(text):
-        if char == '(': balance_paren += 1
-        elif char == ')': balance_paren -= 1
-        elif char == '[': balance_bracket += 1
-        elif char == ']': balance_bracket -= 1
-        elif char == '{': balance_brace += 1
-        elif char == '}': balance_brace -= 1
-        elif char == delimiter and not any((balance_paren, balance_bracket, balance_brace)):
-            parts.append(text[start:i].strip())
-            start = i + 1
-    parts.append(text[start:].strip())
+    # Add the last part
+    parts.append(arg_string[current_part_start:].strip())
     return parts
 
-def parse_type_string_to_ctytype(type_str: str) -> "CtyType":
+def parse_type_string_to_ctytype(type_str: str) -> CtyType:
+    """
+    Parses a CTY type string representation into a CtyType object.
+    Handles primitives, collections, objects, and tuples, including nesting.
+    Also supports shorthand for objects and tuples (e.g., "{...}" and "[...]").
+
+    Args:
+        type_str: The string representation of the CTY type.
+
+    Returns:
+        A CtyType instance corresponding to the string.
+
+    Raises:
+        CtyTypeParseError: If the string is invalid or cannot be parsed.
+    """
     type_str = type_str.strip()
-    # Simplified parser logic. Full logic is in the bfiles.
-    if type_str.lower() == "string": return CtyString()
-    if type_str.lower() == "number": return CtyNumber()
-    if type_str.lower() == "bool": return CtyBool()
-    if type_str.lower() == "dynamic": return CtyDynamic()
-    # ... and so on for list, map, object, tuple
-    raise CtyTypeParseError(f"Unknown or invalid CTY type string: {type_str}")
+
+    # Handle primitive types
+    primitives: dict[str, CtyType] = {
+        "string": CtyString(),
+        "number": CtyNumber(),
+        "bool": CtyBool(),
+        "dynamic": CtyDynamic(),
+        "any": CtyDynamic(),
+    }
+    if type_str.lower() in primitives:
+        return primitives[type_str.lower()]
+
+    # Handle collection, object, and tuple types
+    match = _type_pattern.match(type_str)
+    
+    type_keyword: str
+    inner_content: str
+
+    if match:
+        # Matched canonical format like "list(string)"
+        type_keyword, inner_content = match.groups()
+        type_keyword = type_keyword.lower()
+        inner_content = inner_content.strip()
+    elif type_str.startswith("{") and type_str.endswith("}"):
+        # Handle shorthand object format "{...}"
+        type_keyword = "object"
+        inner_content = type_str
+    elif type_str.startswith("[") and type_str.endswith("]"):
+        # Handle shorthand tuple format "[...]"
+        type_keyword = "tuple"
+        inner_content = type_str
+    else:
+        raise CtyTypeParseError("Invalid type format", type_str)
+
+    try:
+        if type_keyword in ("list", "set", "map"):
+            element_type = parse_type_string_to_ctytype(inner_content)
+            if type_keyword == "list":
+                return CtyList(element_type=element_type)
+            if type_keyword == "set":
+                return CtySet(element_type=element_type)
+            # For map, key is always string, value is the element type
+            return CtyMap(key_type=CtyString(), value_type=element_type)
+
+        if type_keyword == "object":
+            if not inner_content.startswith("{") or not inner_content.endswith("}"):
+                raise CtyTypeParseError("Object type definition must be enclosed in braces {}", type_str)
+            attr_content = inner_content[1:-1].strip()
+            if not attr_content:
+                return CtyObject(attribute_types={})
+
+            attribute_types = {}
+            parts = _split_arguments(attr_content)
+            for part in parts:
+                if "=" not in part:
+                    raise CtyTypeParseError(f"Invalid attribute format in object: '{part}' (missing '=')", type_str)
+                name, attr_type_str = part.split("=", 1)
+                name_stripped = name.strip()
+                if not name_stripped:
+                    raise CtyTypeParseError(f"Invalid attribute format in object: attribute name cannot be empty in '{part}'", type_str)
+                attribute_types[name_stripped] = parse_type_string_to_ctytype(attr_type_str.strip())
+            return CtyObject(attribute_types=attribute_types)
+
+        if type_keyword == "tuple":
+            if not inner_content.startswith("[") or not inner_content.endswith("]"):
+                raise CtyTypeParseError("Tuple type definition must be enclosed in brackets []", type_str)
+            elem_content = inner_content[1:-1].strip()
+            if not elem_content:
+                return CtyTuple(element_types=())
+
+            element_types = [parse_type_string_to_ctytype(part.strip()) for part in _split_arguments(elem_content)]
+            return CtyTuple(element_types=tuple(element_types))
+
+    except CtyTypeParseError as e:
+        # Re-raise nested parsing errors to provide full context
+        raise CtyTypeParseError(f"Failed to parse inner content of '{type_keyword}': {e.message}", type_str) from e
+    except Exception as e:
+        # Catch other unexpected errors during parsing
+        raise CtyTypeParseError(f"An unexpected error occurred while parsing '{type_keyword}': {e}", type_str) from e
+
+    raise CtyTypeParseError(f"Unknown type keyword '{type_keyword}'", type_str)

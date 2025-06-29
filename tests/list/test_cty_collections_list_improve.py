@@ -22,22 +22,18 @@ class TestCtyListAdvanced:
 
     def test_element_at_negative_index(self) -> None:
         """Test retrieving an element at a negative index."""
-        # Create a CtyList with CtyString values
-        validated = CtyList(
-            element_type=CtyString(),
-            value=[
-                CtyString(value="apple"),
-                CtyString(value="banana"),
-                CtyString(value="cherry"),
-            ],
-        )
+        list_type = self.string_list # This is CtyList(element_type=CtyString())
+        # Create a CtyValue instance by validating a Python list
+        list_cty_value = list_type.validate(["apple", "banana", "cherry"])
 
-        # Get element at negative index
-        element = self.string_list.element_at(validated, -1)
+        # Get element at negative index using CtyValue's __getitem__
+        element_cty_value = list_cty_value[-1]
 
         # Assertions
-        assert isinstance(element, CtyString)
-        assert element.value == "cherry"
+        from pyvider.cty import CtyValue # Import CtyValue if not already at module level
+        assert isinstance(element_cty_value, CtyValue)
+        assert isinstance(element_cty_value.type, CtyString)
+        assert element_cty_value.value == "cherry"
 
     def test_repr_representation(self) -> None:
         """Test __repr__ representation."""
