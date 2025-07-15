@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,
+    Any,
     ClassVar,
     Generic,
     TypeVar,
@@ -13,7 +14,6 @@ from .types_base import CtyTypeProtocol # Import the protocol
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
-    from pyvider.wire.types import TfType # For the internal helper
 
 T = TypeVar("T")
 
@@ -37,18 +37,17 @@ class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
     def usable_as(self, other: "CtyType[T]") -> bool:
         pass
 
+    @abstractmethod
+    def _to_wire_json(self) -> Any:
+        """Abstract method for JSON wire format encoding."""
+        pass
+
     def is_primitive_type(self) -> bool:
         return False
 
     def is_dynamic_type(self) -> bool:
         """Returns True if this type is CtyDynamic."""
         return False
-    
-    def _to_tf_type(self) -> "TfType":
-        """Internal helper for interop tests. Not for public use."""
-        from pyvider.conversion.type_encoder import encode_cty_type_to_wire_json
-        from pyvider.wire.types import parse_tf_type
-        return parse_tf_type(encode_cty_type_to_wire_json(self))
     
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CtyType):

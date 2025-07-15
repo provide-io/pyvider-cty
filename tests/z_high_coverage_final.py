@@ -66,7 +66,7 @@ def test_collection_edge_cases():
     val = list_type.validate([1, "s", True])
     assert len(val.value) == 3
     # Map
-    map_type = CtyMap(key_type=CtyString(), value_type=CtyNumber())
+    map_type = CtyMap(value_type=CtyNumber())
     with pytest.raises(CtyMapValidationError):
         map_type.validate({None: 1}) # Null key
     # Set

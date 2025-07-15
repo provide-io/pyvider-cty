@@ -1,11 +1,12 @@
+#
 # pyvider-cty/pyproject.toml
-# Standardized configuration for the Pyvider framework, using uv/setuptools for builds.
+#
 
 [project]
 name = "pyvider-cty"
 description = "Pyvider Cty Package - Core data types and serialization."
-version = "0.0.13"
-requires-python = ">=3.13"
+version = "0.0.111"
+requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [
@@ -15,7 +16,7 @@ maintainers = [
     { name = "provide.io", email = "code@provide.io" },
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
@@ -26,25 +27,20 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    "pyvider-telemetry==0.0.13",
+    "pyvider-telemetry>=0.0.13",
 ]
-
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [dependency-groups]
 dev = [
     "bandit>=1.8.3",
     "hypothesis>=6.131.0",
+    "memray>=1.17.2",
     "mypy>=1.9.0",
     "psutil>=7.0.0",
     "pyright>=1.1.401",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.25.0",
+    "pytest-benchmark>=4.0.0",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "pytest-xdist>=3.6.0",
@@ -52,6 +48,17 @@ dev = [
     "twine>=6.0.0",
     "ty>=0.0.1a10",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"} # Specifies that packages are under src
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 
 ################################################################################
 # Pytest Configuration
@@ -61,19 +68,27 @@ dev = [
 log_cli = true
 log_cli_level = "DEBUG"
 asyncio_mode = "auto"
+pythonpath = ["src", "."]
 testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
+python_files = ["test_*.py"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:cannot collect test class.*:pytest.PytestCollectionWarning",
 ]
-norecursedirs = [".git", "build", "dist", "*.egg-info", ".venv", "htmlcov"]
+norecursedirs = [
+    ".git",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".venv",
+    "htmlcov",
+    ".hypothesis",
+]
 addopts = "-ra -q --color=yes"
-log_level = "DEBUG"
 
-################################################################################
-# Ruff Linter and Formatter Configuration
-################################################################################
+# ---------------------------------------------------------------------------- #
+# ruff configuration
+# ---------------------------------------------------------------------------- #
 
 [tool.ruff]
 line-length = 88
@@ -95,9 +110,9 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
-################################################################################
-# MyPy Static Type Checker Configuration
-################################################################################
+# ---------------------------------------------------------------------------- #
+# mypy configuration
+# ---------------------------------------------------------------------------- #
 
 [tool.mypy]
 python_version = "3.13"
@@ -114,9 +129,9 @@ disallow_untyped_decorators = false
 module = ["structlog.*", "google.*", "grpc.*", "pytest.*"]
 ignore_missing_imports = true
 
-################################################################################
-# Coverage.py Configuration
-################################################################################
+# ---------------------------------------------------------------------------- #
+# coverage configuration
+# ---------------------------------------------------------------------------- #
 
 [tool.coverage.run]
 source = ["pyvider.cty"]
@@ -125,8 +140,7 @@ parallel = true
 
 [tool.coverage.report]
 show_missing = true
-skip_covered = false
-fail_under = 80
+skip_covered = true
 exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",

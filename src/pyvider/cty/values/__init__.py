@@ -9,7 +9,8 @@ within the CTY type system. CtyValue instances pair a Python value
 with its corresponding CtyType and associated metadata.
 """
 
-from .base import CtyValue, UnknownValue, RefinedUnknownValue, UNREFINED_UNKNOWN
+from .markers import UnknownValue, RefinedUnknownValue, UNREFINED_UNKNOWN
+from .base import CtyValue
 
 __all__ = [
     "CtyValue",

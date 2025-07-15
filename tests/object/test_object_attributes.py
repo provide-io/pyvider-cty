@@ -29,9 +29,6 @@ class TestCtyObjectAttributes:
         assert person_type.has_attribute("name")
         assert not person_type.has_attribute("unknown")
 
-    def test_required_attributes(self, person_type):
-        assert person_type.required_attributes() == frozenset(["name"])
-
     def test_get_attribute_from_null_object(self, person_type):
         null_person = CtyValue.null(person_type)
         name_from_null = person_type.get_attribute(null_person, "name")

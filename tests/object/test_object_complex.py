@@ -1,6 +1,6 @@
 import pytest
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyValue
-from pyvider.cty.exceptions import CtyAttributeValidationError, CtyTypeMismatchError, AttributePathError
+from pyvider.cty.exceptions import CtyAttributeValidationError, CtyTypeMismatchError
 
 @pytest.mark.asyncio
 async def test_attribute_access_error_handling() -> None:
@@ -9,4 +9,4 @@ async def test_attribute_access_error_handling() -> None:
     with pytest.raises(CtyAttributeValidationError):
         person_type.get_attribute(validated, "unknown")
     with pytest.raises(CtyTypeMismatchError):
-        person_type.get_attribute("not an object", "name")
+        person_type.get_attribute("not a cty value", "name")
