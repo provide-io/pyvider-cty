@@ -1,140 +1,101 @@
-# pyvider-cty/src/pyvider/cty/codec.py
-"""
-Provides functionality for encoding and decoding CTY types and values.
-This includes the critical function for parsing CTY type strings.
-"""
-import re
+import json
+from decimal import Decimal
 from typing import Any
 
-from .exceptions import CtyTypeParseError
+import msgpack
+
+from .conversion import encode_cty_type_to_wire_json, infer_cty_type_from_raw
+from .exceptions import CtyValidationError, DeserializationError, SerializationError
+from .parser import parse_tf_type_to_ctytype
 from .types import (
-    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber,
-    CtyObject, CtySet, CtyString, CtyTuple, CtyType
+    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtySet,
+    CtyString, CtyTuple, CtyType
 )
+from .values import CtyValue
+from .values.markers import RefinedUnknownValue, UNREFINED_UNKNOWN, UnknownValue
+from pyvider.telemetry import logger
 
-# Regex to capture the outer type and its inner content.
-# e.g., for "list(string)", it captures "list" and "string".
-# For "object({name=string})", it captures "object" and "{name=string}".
-_type_pattern = re.compile(r"\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*)\)\s*$", re.DOTALL)
+def _ext_hook(code: int, data: bytes) -> Any:
+    if code == 0:
+        return UNREFINED_UNKNOWN
+    if code == 12:
+        try:
+            payload = msgpack.unpackb(data, raw=False, strict_map_key=False)
+            refinements = {}
+            if 1 in payload: refinements["is_known_null"] = payload[1]
+            if 2 in payload: refinements["string_prefix"] = payload[2]
+            if 3 in payload: refinements["number_lower_bound"] = (Decimal(payload[3][0].decode('utf-8')), payload[3][1])
+            if 4 in payload: refinements["number_upper_bound"] = (Decimal(payload[4][0].decode('utf-8')), payload[4][1])
+            if 5 in payload: refinements["collection_length_lower_bound"] = payload[5]
+            if 6 in payload: refinements["collection_length_upper_bound"] = payload[6]
+            return RefinedUnknownValue(**refinements)
+        except Exception as e:
+            raise DeserializationError(f"Failed to decode refined unknown payload: {e}") from e
+    return msgpack.ExtType(code, data)
 
-def _split_arguments(arg_string: str) -> list[str]:
-    """
-    Splits a string of arguments by top-level commas, correctly handling nested structures.
-    Example: "arg1, list(string), object({a=b,c=d})" -> ["arg1", "list(string)", "object({a=b,c=d})"]
-    """
-    if not arg_string:
-        return []
+def _convert_value_to_serializable(value: CtyValue, schema: CtyType) -> Any:
+    if not isinstance(value, CtyValue):
+        value = schema.validate(value)
 
-    parts = []
-    balance = 0
-    current_part_start = 0
-    for i, char in enumerate(arg_string):
-        if char in '({[':
-            balance += 1
-        elif char in ')}]':
-            balance -= 1
-        elif char == ',' and balance == 0:
-            parts.append(arg_string[current_part_start:i].strip())
-            current_part_start = i + 1
+    if value.is_unknown:
+        if isinstance(value.value, RefinedUnknownValue):
+            payload = {}
+            if value.value.is_known_null is not None: payload[1] = value.value.is_known_null
+            if value.value.string_prefix is not None: payload[2] = value.value.string_prefix
+            if value.value.number_lower_bound is not None:
+                num, inclusive = value.value.number_lower_bound
+                payload[3] = [str(num).encode('utf-8'), inclusive]
+            if value.value.number_upper_bound is not None:
+                num, inclusive = value.value.number_upper_bound
+                payload[4] = [str(num).encode('utf-8'), inclusive]
+            if value.value.collection_length_lower_bound is not None: payload[5] = value.value.collection_length_lower_bound
+            if value.value.collection_length_upper_bound is not None: payload[6] = value.value.collection_length_upper_bound
+            
+            if not payload: return msgpack.ExtType(0, b"")
+            
+            packed_payload = msgpack.packb(payload)
+            return msgpack.ExtType(12, packed_payload)
+        return msgpack.ExtType(0, b"")
 
-    # Add the last part
-    parts.append(arg_string[current_part_start:].strip())
-    return parts
-
-def parse_type_string_to_ctytype(type_str: str) -> CtyType:
-    """
-    Parses a CTY type string representation into a CtyType object.
-    Handles primitives, collections, objects, and tuples, including nesting.
-    Also supports shorthand for objects and tuples (e.g., "{...}" and "[...]").
-
-    Args:
-        type_str: The string representation of the CTY type.
-
-    Returns:
-        A CtyType instance corresponding to the string.
-
-    Raises:
-        CtyTypeParseError: If the string is invalid or cannot be parsed.
-    """
-    type_str = type_str.strip()
-
-    # Handle primitive types
-    primitives: dict[str, CtyType] = {
-        "string": CtyString(),
-        "number": CtyNumber(),
-        "bool": CtyBool(),
-        "dynamic": CtyDynamic(),
-        "any": CtyDynamic(),
-    }
-    if type_str.lower() in primitives:
-        return primitives[type_str.lower()]
-
-    # Handle collection, object, and tuple types
-    match = _type_pattern.match(type_str)
+    if value.is_null: return None
     
-    type_keyword: str
-    inner_content: str
+    if isinstance(schema, CtyDynamic):
+        inner_value = value.value if isinstance(value.type, CtyDynamic) else value
+        actual_type = inner_value.type
+        type_spec_json = encode_cty_type_to_wire_json(actual_type)
+        type_spec_bytes = json.dumps(type_spec_json).encode('utf-8')
+        serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
+        return [type_spec_bytes, serializable_inner]
 
-    if match:
-        # Matched canonical format like "list(string)"
-        type_keyword, inner_content = match.groups()
-        type_keyword = type_keyword.lower()
-        inner_content = inner_content.strip()
-    elif type_str.startswith("{") and type_str.endswith("}"):
-        # Handle shorthand object format "{...}"
-        type_keyword = "object"
-        inner_content = type_str
-    elif type_str.startswith("[") and type_str.endswith("]"):
-        # Handle shorthand tuple format "[...]"
-        type_keyword = "tuple"
-        inner_content = type_str
-    else:
-        raise CtyTypeParseError("Invalid type format", type_str)
+    inner_val = value.value
+    if isinstance(schema, CtyObject):
+        return { k: _convert_value_to_serializable(v, schema.attribute_types[k]) for k, v in inner_val.items() }
+    if isinstance(schema, CtyMap):
+        return { k: _convert_value_to_serializable(v, schema.element_type) for k, v in inner_val.items() }
+    if isinstance(schema, (CtyList, CtySet)):
+        items = sorted(list(inner_val), key=repr) if isinstance(schema, CtySet) else inner_val
+        return [_convert_value_to_serializable(item, schema.element_type) for item in items]
+    if isinstance(schema, CtyTuple):
+        return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
+    if isinstance(inner_val, Decimal): return str(inner_val)
+    return inner_val
 
-    try:
-        if type_keyword in ("list", "set", "map"):
-            element_type = parse_type_string_to_ctytype(inner_content)
-            if type_keyword == "list":
-                return CtyList(element_type=element_type)
-            if type_keyword == "set":
-                return CtySet(element_type=element_type)
-            # For map, key is always string, value is the element type
-            return CtyMap(key_type=CtyString(), value_type=element_type)
+def cty_to_msgpack(value: CtyValue, schema: CtyType) -> bytes:
+    serializable_data = _convert_value_to_serializable(value, schema)
+    return msgpack.packb(serializable_data, use_bin_type=True)
 
-        if type_keyword == "object":
-            if not inner_content.startswith("{") or not inner_content.endswith("}"):
-                raise CtyTypeParseError("Object type definition must be enclosed in braces {}", type_str)
-            attr_content = inner_content[1:-1].strip()
-            if not attr_content:
-                return CtyObject(attribute_types={})
+def _unpacked_to_cty(data: Any, schema: CtyType) -> CtyValue:
+    if isinstance(data, UnknownValue):
+        return CtyValue.unknown(schema, value=data)
+    if data is None:
+        return CtyValue.null(schema)
 
-            attribute_types = {}
-            parts = _split_arguments(attr_content)
-            for part in parts:
-                if "=" not in part:
-                    raise CtyTypeParseError(f"Invalid attribute format in object: '{part}' (missing '=')", type_str)
-                name, attr_type_str = part.split("=", 1)
-                name_stripped = name.strip()
-                if not name_stripped:
-                    raise CtyTypeParseError(f"Invalid attribute format in object: attribute name cannot be empty in '{part}'", type_str)
-                attribute_types[name_stripped] = parse_type_string_to_ctytype(attr_type_str.strip())
-            return CtyObject(attribute_types=attribute_types)
+    # This is the original, correct logic. It delegates to the type's own
+    # validate method, which for CtyDynamic, correctly handles the wire format.
+    return schema.validate(data)
 
-        if type_keyword == "tuple":
-            if not inner_content.startswith("[") or not inner_content.endswith("]"):
-                raise CtyTypeParseError("Tuple type definition must be enclosed in brackets []", type_str)
-            elem_content = inner_content[1:-1].strip()
-            if not elem_content:
-                return CtyTuple(element_types=())
-
-            element_types = [parse_type_string_to_ctytype(part.strip()) for part in _split_arguments(elem_content)]
-            return CtyTuple(element_types=tuple(element_types))
-
-    except CtyTypeParseError as e:
-        # Re-raise nested parsing errors to provide full context
-        raise CtyTypeParseError(f"Failed to parse inner content of '{type_keyword}': {e.message}", type_str) from e
-    except Exception as e:
-        # Catch other unexpected errors during parsing
-        raise CtyTypeParseError(f"An unexpected error occurred while parsing '{type_keyword}': {e}", type_str) from e
-
-    raise CtyTypeParseError(f"Unknown type keyword '{type_keyword}'", type_str)
+def cty_from_msgpack(data: bytes, cty_type: CtyType) -> CtyValue:
+    if not data:
+        return CtyValue.null(cty_type)
+    raw_unpacked = msgpack.unpackb(data, ext_hook=_ext_hook, raw=False, strict_map_key=False)
+    return _unpacked_to_cty(raw_unpacked, cty_type)

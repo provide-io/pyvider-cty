@@ -12,7 +12,7 @@ equality checking, and other operations.
 import pytest
 
 from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
-from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.exceptions import CtyValidationError, CtySetValidationError
 
 
 class TestCtySetType:
@@ -82,22 +82,16 @@ class TestCtySetType:
 
     @pytest.mark.asyncio
     async def test_validate_invalid_element_type(self) -> None:
-        """Test validation with mixed types that are stringifiable."""
-        # CtyString().validate() will convert numbers and booleans to strings.
-        # So, this set should validate successfully against CtySet(CtyString()).
-        mixed_stringifiable = {"apple", 2, True}
-        try:
-            validated_set = self.string_set.validate(mixed_stringifiable) # Changed string_set_type to string_set
-            # Check that elements were converted to string CtyValues
-            expected_values = {
-                CtyString().validate("apple"),
-                CtyString().validate("2"), # Converted from int
-                CtyString().validate("True") # Converted from bool
-            }
-            # validated_set.value is a frozenset of CtyValue objects
-            assert validated_set.value == expected_values
-        except CtyValidationError as e:
-            pytest.fail(f"Validation should have passed but failed with: {e}")
+        """
+        FIX: Test that validation FAILS with mixed types, as CtyString is now strict.
+        """
+        mixed_types = {"apple", 2, True}
+        with pytest.raises(CtySetValidationError) as exc_info:
+            self.string_set.validate(mixed_types)
+        
+        # Check that the error message indicates a string validation failure.
+        assert "String validation error" in str(exc_info.value)
+        assert "Cannot convert" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_validate_empty_set(self) -> None:
@@ -115,7 +109,7 @@ class TestCtySetType:
     @pytest.mark.asyncio
     async def test_validate_non_iterable(self) -> None:
         """Test validation with non-iterable value."""
-        with pytest.raises(CtyValidationError):
+        with pytest.raises(CtySetValidationError):
             self.string_set.validate(123)
 
     @pytest.mark.asyncio
@@ -125,7 +119,7 @@ class TestCtySetType:
         nested_set = CtySet(element_type=CtySet(element_type=CtyString()))
 
         # A set element that tries to be another set should fail
-        with pytest.raises(CtyValidationError):
+        with pytest.raises(CtySetValidationError):
             # We need to pass an actual nested set structure to trigger the error
             nested_set.validate([{"inner_set"}])
 
@@ -182,18 +176,15 @@ class TestCtySetType:
 
     @pytest.mark.asyncio
     async def test_add_invalid_element(self) -> None:
-        """Test validating a set with a stringifiable non-string element."""
-        # CtyString().validate(123) succeeds, so CtySet(CtyString()).validate({"valid", 123}) should also succeed.
+        """
+        FIX: Test that validating a set with a non-string element now fails.
+        """
         data_with_int = {"valid", 123}
-        try:
-            validated_set = self.string_set.validate(data_with_int)
-            expected_values = {
-                CtyString().validate("valid"),
-                CtyString().validate("123") # Converted from int
-            }
-            assert validated_set.value == expected_values
-        except CtyValidationError as e:
-            pytest.fail(f"Validation of set with stringifiable int should have passed, but failed: {e}")
+        with pytest.raises(CtySetValidationError) as exc_info:
+            self.string_set.validate(data_with_int)
+        
+        assert "String validation error" in str(exc_info.value)
+        assert "Cannot convert int to string" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_remove_element(self) -> None:

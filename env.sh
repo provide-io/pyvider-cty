@@ -44,7 +44,6 @@ if ! command -v uv &> /dev/null; then
     # The official installer from astral.sh
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-    # --- THIS BLOCK IS THE FIX ---
     # The uv installer places the binary in either ~/.local/bin or ~/.cargo/bin.
     # We must source the corresponding environment file to update the shell's PATH.
     # This logic robustly checks for the correct file before sourcing.
@@ -61,7 +60,6 @@ if ! command -v uv &> /dev/null; then
         echo -e "${COLOR_YELLOW}⚠️  Warning: Could not find 'uv' environment file to source.${COLOR_NC}"
         echo "Please ensure '$HOME/.local/bin' or '$HOME/.cargo/bin' is in your PATH."
     fi
-    # --- END FIX ---
 
     echo -e "${COLOR_GREEN}✅ 'uv' installed successfully.${COLOR_NC}"
     uv --version
@@ -113,7 +111,10 @@ else
             # already resolved and installed the complete dependency graph.
             # This command's only job is to create a "link" (.pth file) to the
             # sibling's source code, effectively overriding the PyPI version.
-            uv pip install --no-deps -e "${dir}"
+            if ! uv pip install --no-deps -e "${dir}"; then
+                echo -e "${COLOR_YELLOW}⚠️  Warning: Failed to install sibling package '${SIBLING_PACKAGE_NAME}' from '${dir}' in editable mode.${COLOR_NC}"
+                echo "Attempting to continue with other packages..."
+            fi
         fi
     done
 fi
@@ -124,11 +125,12 @@ fi
 print_header "🔧 Configuring PYTHONPATH"
 # Prepending the current directory's src and root to PYTHONPATH ensures
 # that local modules are resolved correctly, supporting both 'src' and flat layouts.
-export PYTHONPATH="${PWD}/src:${PWD}:${PYTHONPATH}"
+# The ${PYTHONPATH:+:${PYTHONPATH}} syntax safely appends the existing PYTHONPATH
+# only if it's already set, avoiding an "unbound variable" error.
+export PYTHONPATH="${PWD}/src:${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 echo "PYTHONPATH set to: ${PYTHONPATH}"
 
 print_header "✅ Environment setup complete!"
 echo -e "The '${COLOR_GREEN}${PROJECT_NAME}${COLOR_NC}' development environment is ready."
 echo "The virtual environment is active in this shell."
 echo "To exit, simply run 'deactivate'."
-

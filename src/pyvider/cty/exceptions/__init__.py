@@ -1,18 +1,12 @@
-# pyvider/cty/exceptions/__init__.py
 """
 Exception hierarchy for the pyvider.cty type system.
 """
 
-from pyvider.cty.exceptions.base import CtyError
+from pyvider.cty.exceptions.base import CtyError, CtyFunctionError
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
     CtyTypeConversionError,
     CtyTypeParseError,
-)
-from pyvider.cty.exceptions.base import CtyFunctionError
-from pyvider.cty.exceptions.validation import ( # Ensure these are imported from validation
-    CtyCollectionValidationError,
-    CtyTypeValidationError,
 )
 from pyvider.cty.exceptions.encoding import (
     AttributePathError,
@@ -29,6 +23,7 @@ from pyvider.cty.exceptions.encoding import (
 from pyvider.cty.exceptions.validation import (
     CtyAttributeValidationError,
     CtyBoolValidationError,
+    CtyCollectionValidationError,
     CtyListValidationError,
     CtyMapValidationError,
     CtyNumberValidationError,
@@ -36,6 +31,7 @@ from pyvider.cty.exceptions.validation import (
     CtyStringValidationError,
     CtyTupleValidationError,
     CtyTypeMismatchError,
+    CtyTypeValidationError,
     CtyValidationError,
 )
 
@@ -43,11 +39,10 @@ __all__ = [
     "AttributePathError",
     "CtyAttributeValidationError",
     "CtyBoolValidationError",
+    "CtyCollectionValidationError",
     "CtyConversionError",
     "CtyError",
     "CtyFunctionError",
-    "CtyCollectionValidationError", # Add to __all__
-    "CtyTypeValidationError",     # Add to __all__
     "CtyListValidationError",
     "CtyMapValidationError",
     "CtyNumberValidationError",
@@ -56,8 +51,9 @@ __all__ = [
     "CtyTupleValidationError",
     "CtyTypeConversionError",
     "CtyTypeMismatchError",
-    "CtyTypeParseError",  # Export the new exception
-    "CtyValidationError",
+    "CtyTypeParseError",
+    "CtyTypeValidationError",
+    "CtyValidationError", # FIX: Restore this export
     "DeserializationError",
     "DynamicValueError",
     "EncodingError",

@@ -1,20 +1,25 @@
-# pyvider/cty/__init__.py
 """
-Pyvider CTY (Compatible Type System) Package.
-This package provides a type system inspired by HashiCorp's CTY.
+The pyvider.cty package is a pure-Python implementation of the concepts
+from HashiCorp's `cty` library, providing a rich type system for the framework.
 """
-from .codec import parse_type_string_to_ctytype
-from .exceptions import CtyTypeParseError
-from .marks import CtyMark
-from .path import CtyPath
 from .types import (
-    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber,
-    CtyObject, CtySet, CtyString, CtyTuple, CtyType,
+    CtyType, CtyString, CtyNumber, CtyBool, CtyDynamic,
+    CtyList, CtySet, CtyMap, CtyObject, CtyTuple
 )
 from .values import CtyValue
+from .marks import CtyMark
+from .parser import parse_type_string_to_ctytype, parse_tf_type_to_ctytype
+from .exceptions import (
+    CtyValidationError, CtyAttributeValidationError, CtyTypeMismatchError,
+    CtyTypeParseError, CtyListValidationError, CtyMapValidationError,
+    CtySetValidationError, CtyTupleValidationError
+)
 
 __all__ = [
-    "CtyBool", "CtyDynamic", "CtyList", "CtyMap", "CtyMark", "CtyNumber",
-    "CtyObject", "CtyPath", "CtySet", "CtyString", "CtyTuple", "CtyType",
-    "CtyValue", "CtyTypeParseError", "parse_type_string_to_ctytype",
+    "CtyType", "CtyString", "CtyNumber", "CtyBool", "CtyDynamic", "CtyList",
+    "CtySet", "CtyMap", "CtyObject", "CtyTuple", "CtyValue", "CtyMark",
+    "parse_type_string_to_ctytype", "parse_tf_type_to_ctytype",
+    "CtyValidationError", "CtyAttributeValidationError", "CtyTypeMismatchError",
+    "CtyTypeParseError", "CtyListValidationError", "CtyMapValidationError",
+    "CtySetValidationError", "CtyTupleValidationError",
 ]
