@@ -74,7 +74,7 @@ def cty_to_native(value: Any) -> Any:
             if isinstance(current_item.type, CtyDynamic):
                 work_stack.append(current_item.value) # Push inner value
             else: # It's a standard container
-                child_values = list(current_item.value.values()) if isinstance(current_item.value, dict) else list(current_item.value)
+                child_values = list(current_item.value.values()) if isinstance(current_item.value, dict) else list(current_item.value) if hasattr(current_item.value, '__iter__') else []
                 work_stack.extend(reversed(child_values)) # Push children in reverse
         else: # Primitive types
             inner_val = current_item.value

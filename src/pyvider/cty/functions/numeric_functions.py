@@ -6,7 +6,7 @@ from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
 
-def abs_fn(input_val: CtyValue) -> CtyValue:
+def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the absolute value of a number.
     """
@@ -18,7 +18,7 @@ def abs_fn(input_val: CtyValue) -> CtyValue:
     val = input_val.value
     return CtyNumber().validate(abs(val))
 
-def ceil_fn(input_val: CtyValue) -> CtyValue:
+def ceil_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the smallest integer greater than or equal to a number.
     """
@@ -30,7 +30,7 @@ def ceil_fn(input_val: CtyValue) -> CtyValue:
     val = input_val.value
     return CtyNumber().validate(Decimal(math.ceil(val)))
 
-def floor_fn(input_val: CtyValue) -> CtyValue:
+def floor_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the largest integer less than or equal to a number.
     """
@@ -42,7 +42,7 @@ def floor_fn(input_val: CtyValue) -> CtyValue:
     val = input_val.value
     return CtyNumber().validate(Decimal(math.floor(val)))
 
-def log_fn(num_val: CtyValue, base_val: CtyValue) -> CtyValue:
+def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the logarithm of a number in a given base.
     """
@@ -72,7 +72,7 @@ def log_fn(num_val: CtyValue, base_val: CtyValue) -> CtyValue:
         raise CtyFunctionError(f"log: math domain error: {e}")
 
 
-def pow_fn(num_val: CtyValue, power_val: CtyValue) -> CtyValue:
+def pow_fn(num_val: "CtyValue[Any]", power_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns a number raised to the power of another number.
     """
@@ -95,7 +95,7 @@ def pow_fn(num_val: CtyValue, power_val: CtyValue) -> CtyValue:
         raise CtyFunctionError(f"pow: invalid operation: {e}")
 
 
-def signum_fn(input_val: CtyValue) -> CtyValue:
+def signum_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the sign of a number (-1 if < 0, 0 if == 0, 1 if > 0).
     """
@@ -114,7 +114,7 @@ def signum_fn(input_val: CtyValue) -> CtyValue:
     else:
         return CtyNumber().validate(Decimal("0"))
 
-def parseint_fn(str_val: CtyValue, base_val: CtyValue) -> CtyValue:
+def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Parses a string to an integer in a given base.
     Base must be 0 or between 2 and 62.

@@ -20,7 +20,7 @@ from .types import (
 )
 
 
-def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType:
+def parse_tf_type_to_ctytype(tf_type: Any) -> "CtyType[Any]":
     """
     Parses a Terraform type constraint, represented as a raw Python object
     (typically from JSON), into a CtyType instance.

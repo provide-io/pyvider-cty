@@ -25,7 +25,7 @@ class CtyList[T](CtyType[list[T]]):
         if not isinstance(self.element_type, CtyType):
             raise CtyListValidationError(f"Expected CtyType for element_type, got {type(self.element_type).__name__}")
 
-    def validate(self, value: object) -> CtyValue:
+    def validate(self, value: object) -> "CtyValue[tuple[T, ...]]":
         from pyvider.cty.values import CtyValue
 
         if value is None: return CtyValue.null(self)
@@ -45,7 +45,7 @@ class CtyList[T](CtyType[list[T]]):
         if not isinstance(raw_list_to_validate, list | tuple):
              raise CtyListValidationError(f"Value to validate is not a list or tuple, but {type(raw_list_to_validate).__name__}")
 
-        validated_elements: list[CtyValue] = []
+        validated_elements: list["CtyValue[T]"] = []
         for i, item in enumerate(raw_list_to_validate):
             try:
                 validated_item = self.element_type.validate(item)
@@ -56,7 +56,7 @@ class CtyList[T](CtyType[list[T]]):
 
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
-    def element_at(self, container: object, index: int) -> CtyValue:
+    def element_at(self, container: object, index: int) -> "CtyValue[T]":
         from pyvider.cty.values import CtyValue
         if isinstance(container, CtyValue):
             if not isinstance(container.type, CtyList): raise CtyListValidationError(f"Expected CtyValue with CtyList type, got CtyValue with {type(container.type).__name__}")
@@ -66,11 +66,11 @@ class CtyList[T](CtyType[list[T]]):
             return container.value[index]
         raise CtyListValidationError(f"Expected CtyValue[CtyList], got {type(container).__name__}")
 
-    def equal(self, other: CtyType) -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyList): return False
         return self.element_type.equal(other.element_type)
 
-    def usable_as(self, other: CtyType) -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
         if isinstance(other, CtyDynamic): return True
         if not isinstance(other, CtyList): return False

@@ -3,7 +3,7 @@ from typing import Any
 from .types import CtyType
 
 
-def validate_config(schema: CtyType, config: Any) -> None:
+def validate_config(schema: "CtyType[Any]", config: Any) -> None:
     """
     Validates a configuration against a CtyType schema.
 

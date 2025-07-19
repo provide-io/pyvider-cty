@@ -7,7 +7,6 @@ from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.values import CtyValue
-from pyvider.cty.values.base import UnknownValue
 
 TRUE_STRINGS: frozenset[str] = frozenset(("true", "t", "yes", "y", "1"))
 FALSE_STRINGS: frozenset[str] = frozenset(("false", "f", "no", "n", "0"))
@@ -17,7 +16,8 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     value: bool = field(default=False)
 
-    def validate(self, value: object) -> CtyValue:
+    def validate(self, value: object) -> "CtyValue[bool]":
+        from pyvider.cty.values.base import UnknownValue
         if value is None: return CtyValue.null(self)
         if isinstance(value, UnknownValue): return CtyValue.unknown(self)
         if isinstance(value, CtyValue):
@@ -41,8 +41,8 @@ class CtyBool(CtyType[bool]):
                 raise CtyBoolValidationError(str(e)) from e
         raise CtyBoolValidationError(f"Cannot convert {type(value).__name__} to boolean")
 
-    def equal(self, other: "CtyType") -> bool: return isinstance(other, CtyBool)
-    def usable_as(self, other: "CtyType") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool: return isinstance(other, CtyBool)
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyBool | CtyDynamic)
 
     def _to_wire_json(self) -> Any:
