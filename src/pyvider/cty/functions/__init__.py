@@ -5,6 +5,7 @@
 # directly from pyvider.cty.functions, e.g.:
 from .collection_functions import distinct, flatten, sort
 from .numeric_functions import (
+    add,
     abs_fn,
     ceil_fn,
     floor_fn,
@@ -33,6 +34,7 @@ from .string_functions import (
 
 __all__ = [
     # Numeric functions
+    "add",
     "abs_fn",
     "ceil_fn",
     # String functions

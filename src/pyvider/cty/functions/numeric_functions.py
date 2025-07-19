@@ -1,10 +1,16 @@
-# pyvider-cty/src/pyvider/cty/functions/numeric_functions.py
 from decimal import Decimal, InvalidOperation
 import math
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
+
+def add(a: CtyValue, b: CtyValue) -> CtyValue:
+    if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
+        raise CtyFunctionError("add: arguments must be numbers")
+    if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    return CtyNumber().validate(a.value + b.value)
 
 def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
