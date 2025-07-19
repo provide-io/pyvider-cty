@@ -1,50 +1,43 @@
-import unittest
-from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
-from pyvider.cty.exceptions import CtyValidationError, CtyStringValidationError
+import pytest
+from pyvider.cty import CtyString, CtyNumber, CtyBool
+from pyvider.cty.exceptions import CtyStringValidationError, CtyNumberValidationError, CtyBoolValidationError
 
-class TestCtyStringType(unittest.TestCase):
-    def setUp(self) -> None:
+class TestCtyStringType:
+    def setup_method(self):
         self.string_type = CtyString()
+
+    def test_validate_invalid_string(self):
+        with pytest.raises(CtyStringValidationError):
+            self.string_type.validate(123)
+
+    def test_validate_none_string(self) -> None:
+        with pytest.raises(CtyStringValidationError, match="Cannot convert null to string"):
+            self.string_type.validate(None)
 
     def test_validate_valid_string(self) -> None:
         result = self.string_type.validate("hello")
-        self.assertIsInstance(result, CtyValue)
-        self.assertEqual(result.value, "hello")
+        assert result.value == "hello"
 
-    def test_validate_invalid_string(self) -> None:
-        # CtyString().validate(123) will now attempt str(123) and succeed.
-        # To test failure, we need a value that cannot be converted to a string.
-        class Unstringable:
-            def __str__(self): raise TypeError("I am not a string!")
-        
-        with self.assertRaises(CtyStringValidationError):
-            self.string_type.validate(Unstringable())
-
-    def test_validate_none_string(self) -> None:
-        result = self.string_type.validate(None)
-        self.assertTrue(result.is_null)
-        self.assertIsInstance(result.type, CtyString)
-
-class TestCtyNumberType(unittest.TestCase):
-    def setUp(self) -> None:
+class TestCtyNumberType:
+    def setup_method(self):
         self.number_type = CtyNumber()
 
-    def test_validate_valid_number(self) -> None:
-        result = self.number_type.validate(123.45)
-        self.assertIsInstance(result, CtyValue)
+    def test_validate_invalid_number(self):
+        with pytest.raises(CtyNumberValidationError):
+            self.number_type.validate("hello")
 
-    def test_validate_invalid_number(self) -> None:
-        with self.assertRaises(CtyValidationError):
-            self.number_type.validate("not a number")
+    def test_validate_valid_number(self):
+        result = self.number_type.validate(123)
+        assert result.value == 123
 
-class TestCtyBoolType(unittest.TestCase):
-    def setUp(self) -> None:
+class TestCtyBoolType:
+    def setup_method(self):
         self.bool_type = CtyBool()
 
-    def test_validate_valid_bool(self) -> None:
-        result = self.bool_type.validate(True)
-        self.assertIsInstance(result, CtyValue)
+    def test_validate_invalid_bool(self):
+        with pytest.raises(CtyBoolValidationError):
+            self.bool_type.validate(123)
 
-    def test_validate_invalid_bool(self) -> None:
-        with self.assertRaises(CtyValidationError):
-            self.bool_type.validate("not a bool")
+    def test_validate_valid_bool(self):
+        result = self.bool_type.validate(True)
+        assert result.value is True

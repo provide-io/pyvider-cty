@@ -21,7 +21,6 @@ class CtyDynamic(CtyType[object]):
         the value matches the special wire format for dynamic values before
         falling back to inferring a concrete type.
         """
-        print(f"DEBUG: CtyDynamic.validate called with value: {value!r}")
         from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
         from pyvider.cty.parser import parse_tf_type_to_ctytype
         from pyvider.cty.values import CtyValue
@@ -46,6 +45,8 @@ class CtyDynamic(CtyType[object]):
 
         # If it's not the wire format, infer the type from the raw Python value.
         inferred_type = infer_cty_type_from_raw(value)
+        if isinstance(inferred_type, CtyDynamic):
+            return CtyValue(self, value)
         return inferred_type.validate(value)
 
     def equal(self, other: "CtyType[Any]") -> bool:
