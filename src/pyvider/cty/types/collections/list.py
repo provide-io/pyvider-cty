@@ -9,6 +9,7 @@ from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
+from pyvider.cty.types.structural import CtyDynamic
 
 if TYPE_CHECKING:
     pass
@@ -47,6 +48,8 @@ class CtyList[T](CtyType[list[T]]):
 
         validated_elements: list["CtyValue[T]"] = []
         for i, item in enumerate(raw_list_to_validate):
+            if item is None and not isinstance(self.element_type, CtyDynamic):
+                raise CtyListValidationError(f"List elements cannot be null for element type {self.element_type.ctype}", path=CtyPath(steps=[IndexStep(i)]))
             try:
                 validated_item = self.element_type.validate(item)
                 validated_elements.append(validated_item)
