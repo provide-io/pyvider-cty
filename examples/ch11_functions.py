@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 from pyvider.cty import CtyNumber
-from pyvider.cty.functions import cty_add
+from pyvider.cty.functions import abs_fn
 from examples.example_utils import configure_for_example
 
 configure_for_example()
 
-num1 = CtyNumber(10)
-num2 = CtyNumber(20)
+# NOTE: As of this version, pyvider.cty does not support arithmetic
+# operations like addition directly on CtyNumber values. The following
+# is a demonstration of a function that is supported.
 
-result = cty_add(num1, num2)
+number_type = CtyNumber()
+num1 = number_type.validate(-10)
 
-assert result.raw_value == 30
+# For available functions, you import them from the functions module
+abs_result = abs_fn(num1)
+assert abs_result.raw_value == 10
 
 print("Functions examples ran successfully.")

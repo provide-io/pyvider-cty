@@ -12,7 +12,7 @@ assert isinstance(cty_string.type, CtyString)
 cty_number = dynamic_type.validate(123)
 assert isinstance(cty_number.type, CtyNumber)
 
-dynamic_list_type = CtyList(CtyDynamic())
+dynamic_list_type = CtyList(element_type=CtyDynamic())
 cty_list = dynamic_list_type.validate(["hello", 123, True])
 
 print("Dynamic type examples ran successfully.")
