@@ -1,48 +1,51 @@
 from decimal import Decimal, InvalidOperation
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from attrs import define, field
+from attrs import define
 
 from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.structural import CtyDynamic
-from pyvider.cty.values import CtyValue
+
+if TYPE_CHECKING:
+    from pyvider.cty.values import CtyValue
 
 
 @define(frozen=True, slots=True)
-class CtyNumber(CtyType[int | float | Decimal]):
+class CtyNumber(CtyType[Decimal]):
     ctype: ClassVar[str] = "number"
-    value: int | Decimal = field(default=0)
 
     def validate(self, value: object) -> "CtyValue[Decimal]":
+        from pyvider.cty.values import CtyValue
         from pyvider.cty.values.base import UnknownValue
-        if value is None:
-            return CtyValue.null(self)
+
         if isinstance(value, UnknownValue):
             return CtyValue.unknown(self)
+
         if isinstance(value, CtyValue):
-            if value.is_unknown:
-                return CtyValue.unknown(self)
             if value.is_null:
                 return CtyValue.null(self)
-            if isinstance(value.type, CtyNumber):
-                return value
-            value = value.value
-        value_to_convert = str(value) if isinstance(value, float) else value
-        if isinstance(value_to_convert, int | Decimal | str):
-            try:
-                return CtyValue(vtype=self, value=Decimal(value_to_convert))
-            except (InvalidOperation, TypeError, ValueError):
-                # This now produces a cleaner error message.
-                raise CtyNumberValidationError(f"Cannot represent {type(value).__name__} value {value!r} as Decimal")
-        if isinstance(value, bool):
-            return CtyValue(vtype=self, value=Decimal(int(value)))
-        raise CtyNumberValidationError(f"Cannot convert {type(value).__name__} to number")
+            if value.is_unknown:
+                return CtyValue.unknown(self)
+            raw_value = value.value
+        else:
+            raw_value = value
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+        if raw_value is None:
+            raise CtyNumberValidationError("Cannot convert null to number.")
+
+        if isinstance(raw_value, bool):
+            raw_value = 1 if raw_value else 0
+
+        try:
+            return CtyValue(vtype=self, value=Decimal(raw_value))
+        except (TypeError, ValueError, InvalidOperation) as e:
+            raise CtyNumberValidationError(f"Cannot represent {type(raw_value).__name__} value '{raw_value}' as Decimal") from e
+
+    def equal(self, other: "CtyType[object]") -> bool:
         return isinstance(other, CtyNumber)
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: "CtyType[object]") -> bool:
+        from pyvider.cty.types.structural import CtyDynamic
         return isinstance(other, CtyNumber | CtyDynamic)
 
     def _to_wire_json(self) -> Any:

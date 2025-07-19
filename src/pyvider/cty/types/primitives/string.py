@@ -18,8 +18,6 @@ class CtyString(CtyType[str]):
         from pyvider.cty.values import CtyValue
         from pyvider.cty.values.base import UnknownValue
 
-        if value is None:
-            return CtyValue.null(self)
         if isinstance(value, UnknownValue):
             return CtyValue.unknown(self)
 
@@ -31,6 +29,9 @@ class CtyString(CtyType[str]):
             raw_value = value.value
         else:
             raw_value = value
+
+        if raw_value is None:
+            raise CtyStringValidationError("Cannot convert null to string.")
 
         # FIX: Make validation stricter. Only accept strings or bytes.
         if not isinstance(raw_value, str | bytes):

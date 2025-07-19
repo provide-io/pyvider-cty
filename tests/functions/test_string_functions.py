@@ -1,7 +1,7 @@
 import pytest
 from pyvider.cty import CtyString, CtyNumber, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import chomp, strrev, trimspace
+from pyvider.cty.functions import chomp, strrev, trimspace, upper, lower
 
 class TestStringFunctions:
     @pytest.mark.parametrize("input_str, expected_str", [
@@ -69,3 +69,9 @@ class TestStringFunctions:
     def test_trimspace_invalid_type(self):
         with pytest.raises(CtyFunctionError):
             trimspace(CtyNumber().validate(123))
+
+    def test_upper(self):
+        assert upper(CtyString().validate("hello")).value == "HELLO"
+
+    def test_lower(self):
+        assert lower(CtyString().validate("HELLO")).value == "hello"

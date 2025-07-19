@@ -3,9 +3,14 @@
 
 # Optionally, you can import functions here to make them available
 # directly from pyvider.cty.functions, e.g.:
-from .collection_functions import distinct, flatten, sort
+from .collection_functions import distinct, flatten, sort, length, slice, concat, contains, keys, values
 from .numeric_functions import (
     add,
+    subtract,
+    multiply,
+    divide,
+    modulo,
+    negate,
     abs_fn,
     ceil_fn,
     floor_fn,
@@ -26,7 +31,10 @@ from .string_functions import (
     trimprefix,
     trimspace,
     trimsuffix,
+    upper,
+    lower,
 )
+from .conversion_functions import to_string, to_number, to_bool
 
 # It's common to alias functions to their typical names (e.g., abs_fn to abs)
 # but this can cause conflicts with Python built-ins if not handled carefully.
@@ -35,6 +43,11 @@ from .string_functions import (
 __all__ = [
     # Numeric functions
     "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "modulo",
+    "negate",
     "abs_fn",
     "ceil_fn",
     # String functions
@@ -54,7 +67,18 @@ __all__ = [
     "trimprefix",
     "trimspace",
     "trimsuffix",
+    "upper",
+    "lower",
     "distinct",
     "flatten",
     "sort",
+    "length",
+    "slice",
+    "concat",
+    "contains",
+    "keys",
+    "values",
+    "to_string",
+    "to_number",
+    "to_bool",
 ]

@@ -116,3 +116,17 @@ def regexall(input_val: CtyValue, pattern_val: CtyValue) -> CtyValue:
         return CtyList(element_type=CtyString()).validate(matches)
     except re.error as e:
         raise CtyFunctionError(f"regexall: invalid regular expression: {e}")
+
+def upper(input_val: CtyValue) -> CtyValue:
+    if not isinstance(input_val.type, CtyString):
+        raise CtyFunctionError(f"upper: input must be a string, got {input_val.type.ctype}")
+    if input_val.is_null or input_val.is_unknown:
+        return input_val
+    return CtyString().validate(input_val.value.upper())
+
+def lower(input_val: CtyValue) -> CtyValue:
+    if not isinstance(input_val.type, CtyString):
+        raise CtyFunctionError(f"lower: input must be a string, got {input_val.type.ctype}")
+    if input_val.is_null or input_val.is_unknown:
+        return input_val
+    return CtyString().validate(input_val.value.lower())

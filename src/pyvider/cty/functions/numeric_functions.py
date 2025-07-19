@@ -12,6 +12,45 @@ def add(a: CtyValue, b: CtyValue) -> CtyValue:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(a.value + b.value)
 
+def subtract(a: CtyValue, b: CtyValue) -> CtyValue:
+    if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
+        raise CtyFunctionError("subtract: arguments must be numbers")
+    if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    return CtyNumber().validate(a.value - b.value)
+
+def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
+    if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
+        raise CtyFunctionError("multiply: arguments must be numbers")
+    if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    return CtyNumber().validate(a.value * b.value)
+
+def divide(a: CtyValue, b: CtyValue) -> CtyValue:
+    if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
+        raise CtyFunctionError("divide: arguments must be numbers")
+    if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    if b.value == 0:
+        raise CtyFunctionError("divide by zero")
+    return CtyNumber().validate(a.value / b.value)
+
+def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
+    if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
+        raise CtyFunctionError("modulo: arguments must be numbers")
+    if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    if b.value == 0:
+        raise CtyFunctionError("modulo by zero")
+    return CtyNumber().validate(math.fmod(a.value, b.value))
+
+def negate(a: CtyValue) -> CtyValue:
+    if not isinstance(a.type, CtyNumber):
+        raise CtyFunctionError("negate: argument must be a number")
+    if a.is_null or a.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    return CtyNumber().validate(-a.value)
+
 def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the absolute value of a number.
