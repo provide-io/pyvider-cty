@@ -15,7 +15,7 @@ from pyvider.cty.exceptions import (
 )
 
 
-def distinct(input_val: CtyValue) -> CtyValue:
+def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"distinct: input must be a list, set, or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
@@ -34,7 +34,7 @@ def distinct(input_val: CtyValue) -> CtyValue:
     final_element_type = CtyDynamic() if len(element_types) > 1 else (element_types.pop() if element_types else CtyDynamic())
     return CtyList(element_type=final_element_type).validate(result_elements)
 
-def flatten(input_val: CtyValue) -> CtyValue:
+def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(f"flatten: input must be a list or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
@@ -55,7 +55,7 @@ def flatten(input_val: CtyValue) -> CtyValue:
                 final_element_type = CtyDynamic()
     return CtyList(element_type=(final_element_type or CtyDynamic())).validate(result_elements)
 
-def sort(input_val: CtyValue) -> CtyValue:
+def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:

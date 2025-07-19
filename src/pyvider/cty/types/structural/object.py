@@ -85,11 +85,17 @@ class CtyObject(CtyType[dict[str, object]]):
         return CtyValue(vtype=self, value=validated_attrs)
 
     def get_attribute(self, obj_value: "CtyValue[Any]", name: str) -> "CtyValue[Any]":
-        if not isinstance(obj_value, CtyValue): raise CtyTypeMismatchError("get_attribute requires a CtyValue object")
-        if not self.has_attribute(name): raise CtyAttributeValidationError(f"Object has no attribute '{name}'", path=CtyPath.get_attr(name))
-        if obj_value.is_unknown: return CtyValue.unknown(self.attribute_types[name])
-        if obj_value.is_null: return CtyValue.null(self.attribute_types[name])
-        return obj_value.value.get(name, CtyValue.null(self.attribute_types[name]))
+        if not isinstance(obj_value, CtyValue):
+            raise CtyTypeMismatchError("get_attribute requires a CtyValue object")
+        if not self.has_attribute(name):
+            raise CtyAttributeValidationError(f"Object has no attribute '{name}'", path=CtyPath.get_attr(name))
+        if obj_value.is_unknown:
+            return CtyValue.unknown(self.attribute_types[name])
+        if obj_value.is_null:
+            return CtyValue.null(self.attribute_types[name])
+        if isinstance(obj_value.value, dict):
+            return obj_value.value.get(name, CtyValue.null(self.attribute_types[name]))
+        raise CtyTypeMismatchError("CtyObject value is not a dict")
 
     def has_attribute(self, name: str) -> bool: return name in self.attribute_types
 

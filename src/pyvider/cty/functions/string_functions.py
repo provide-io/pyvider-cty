@@ -3,7 +3,7 @@ from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
 
-def chomp(input_val: CtyValue) -> CtyValue:
+def chomp(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"chomp: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
@@ -14,21 +14,21 @@ def chomp(input_val: CtyValue) -> CtyValue:
     if s.endswith("\n"): return CtyString().validate(s[:-1])
     return input_val
 
-def strrev(input_val: CtyValue) -> CtyValue:
+def strrev(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"strrev: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
     return CtyString().validate(input_val.value[::-1])
 
-def trimspace(input_val: CtyValue) -> CtyValue:
+def trimspace(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"trimspace: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
     return CtyString().validate(input_val.value.strip())
 
-def indent(prefix_val: CtyValue, input_val: CtyValue) -> CtyValue:
+def indent(prefix_val: "CtyValue[Any]", input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(prefix_val.type, CtyString):
         raise CtyFunctionError(f"indent: prefix must be a string, got {prefix_val.type.ctype}")
     if not isinstance(input_val.type, CtyString):
@@ -47,7 +47,7 @@ def indent(prefix_val: CtyValue, input_val: CtyValue) -> CtyValue:
         return CtyString().validate('\n'.join(prefix + line for line in lines[:-1]) + '\n')
     return CtyString().validate('\n'.join(prefix + line for line in lines))
 
-def substr(input_val: CtyValue, offset_val: CtyValue, length_val: CtyValue) -> CtyValue:
+def substr(input_val: "CtyValue[Any]", offset_val: "CtyValue[Any]", length_val: "CtyValue[Any]") -> "CtyValue[Any]":
     from pyvider.cty.types import CtyNumber
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"substr: input must be a string, got {input_val.type.ctype}")
@@ -70,7 +70,7 @@ def substr(input_val: CtyValue, offset_val: CtyValue, length_val: CtyValue) -> C
     end = offset + length
     return CtyString().validate(s[offset:min(end, s_len)])
 
-def trim(input_val: CtyValue, cutset_val: CtyValue) -> CtyValue:
+def trim(input_val: "CtyValue[Any]", cutset_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString) or not isinstance(cutset_val.type, CtyString):
         raise CtyFunctionError("trim: both arguments must be strings")
 
@@ -81,14 +81,14 @@ def trim(input_val: CtyValue, cutset_val: CtyValue) -> CtyValue:
 
     return CtyString().validate(input_val.value.strip(cutset_val.value))
 
-def title(input_val: CtyValue) -> CtyValue:
+def title(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"title: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
     return CtyString().validate(input_val.value.title())
 
-def trimprefix(input_val: CtyValue, prefix_val: CtyValue) -> CtyValue:
+def trimprefix(input_val: "CtyValue[Any]", prefix_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString) or not isinstance(prefix_val.type, CtyString):
         raise CtyFunctionError("trimprefix: both arguments must be strings")
 
@@ -99,7 +99,7 @@ def trimprefix(input_val: CtyValue, prefix_val: CtyValue) -> CtyValue:
 
     return CtyString().validate(input_val.value.removeprefix(prefix_val.value))
 
-def trimsuffix(input_val: CtyValue, suffix_val: CtyValue) -> CtyValue:
+def trimsuffix(input_val: "CtyValue[Any]", suffix_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString) or not isinstance(suffix_val.type, CtyString):
         raise CtyFunctionError("trimsuffix: both arguments must be strings")
 
@@ -110,7 +110,7 @@ def trimsuffix(input_val: CtyValue, suffix_val: CtyValue) -> CtyValue:
 
     return CtyString().validate(input_val.value.removesuffix(suffix_val.value))
 
-def regex(pattern_val: CtyValue, input_val: CtyValue) -> CtyValue:
+def regex(pattern_val: "CtyValue[Any]", input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     import re
 
     from pyvider.cty.types import CtyBool
@@ -127,7 +127,7 @@ def regex(pattern_val: CtyValue, input_val: CtyValue) -> CtyValue:
     except re.error as e:
         raise CtyFunctionError(f"regex: invalid regular expression: {e}")
 
-def regexall(pattern_val: CtyValue, input_val: CtyValue) -> CtyValue:
+def regexall(pattern_val: "CtyValue[Any]", input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     import re
 
     from pyvider.cty.types import CtyList

@@ -23,7 +23,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
         if not isinstance(self.element_type, CtyType):
             raise InvalidTypeError(f"element_type must be a CtyType instance, got {type(self.element_type).__name__}")
 
-    def validate(self, value: object) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue[dict[str, V]]":
         if value is None: return CtyValue.null(self)
         if isinstance(value, CtyValue):
             if value.is_null: return CtyValue.null(self)
@@ -31,7 +31,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
             if isinstance(value.type, CtyMap) and self.equal(value.type): return value
             value = value.value
         if not isinstance(value, dict): raise CtyMapValidationError(f"Input must be a dictionary, got {type(value).__name__}.")
-        validated_map: dict[str, CtyValue] = {}
+        validated_map: dict[str, "CtyValue[V]"] = {}
         for k, v in value.items():
             if not isinstance(k, str):
                 raise CtyMapValidationError(f"Map keys must be strings, but got key of type {type(k).__name__}")
@@ -42,7 +42,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
         return CtyValue(vtype=self, value=validated_map)
 
-    def get(self, map_value: CtyValue, key: object, default: CtyValue | None = None) -> CtyValue:
+    def get(self, map_value: "CtyValue[dict[str, V]]", key: object, default: "CtyValue[V] | None" = None) -> "CtyValue[V]":
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise CtyTypeMismatchError("get operation called on non-map CtyValue")
         if map_value.is_null or map_value.is_unknown:
@@ -50,11 +50,11 @@ class CtyMap[V](CtyType[dict[str, V]]):
         internal_dict = map_value.value
         return internal_dict.get(str(key), default if default is not None else CtyValue.null(self.element_type))
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         if not isinstance(other, CtyMap): return False
         return self.element_type.equal(other.element_type)
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
         if isinstance(other, CtyDynamic): return True
         if not isinstance(other, CtyMap): return False

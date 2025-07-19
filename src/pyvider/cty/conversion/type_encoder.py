@@ -4,7 +4,7 @@ from typing import Any
 from pyvider.cty.types import CtyType
 
 
-def encode_cty_type_to_wire_json(cty_type: CtyType) -> Any:
+def encode_cty_type_to_wire_json(cty_type: "CtyType[Any]") -> Any:
     """
     Encodes a CtyType into a JSON-serializable structure for the wire format
     by delegating to the type's own `_to_wire_json` method.

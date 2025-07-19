@@ -37,7 +37,7 @@ def _ext_hook(code: int, data: bytes) -> Any:
             raise DeserializationError(f"Failed to decode refined unknown payload: {e}") from e
     return msgpack.ExtType(code, data)
 
-def _convert_value_to_serializable(value: CtyValue, schema: CtyType) -> Any:
+def _convert_value_to_serializable(value: "CtyValue[Any]", schema: "CtyType[Any]") -> Any:
     if not isinstance(value, CtyValue):
         value = schema.validate(value)
 
@@ -97,7 +97,7 @@ def _msgpack_default_handler(obj: Any) -> Any:
         return str(obj)
     raise TypeError(f"Object of type {type(obj).__name__} is not MessagePack serializable")
 
-def cty_to_msgpack(value: CtyValue, schema: CtyType) -> bytes:
+def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
     serializable_data = _convert_value_to_serializable(value, schema)
     # THE FIX: Use the `default` parameter to handle large integers.
     return msgpack.packb(
@@ -106,14 +106,14 @@ def cty_to_msgpack(value: CtyValue, schema: CtyType) -> bytes:
         use_bin_type=True
     )
 
-def _unpacked_to_cty(data: Any, schema: CtyType) -> CtyValue:
+def _unpacked_to_cty(data: Any, schema: "CtyType[Any]") -> "CtyValue[Any]":
     if isinstance(data, UnknownValue):
         return CtyValue.unknown(schema, value=data)
     if data is None:
         return CtyValue.null(schema)
     return schema.validate(data)
 
-def cty_from_msgpack(data: bytes, cty_type: CtyType) -> CtyValue:
+def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
     if not data:
         return CtyValue.null(cty_type)
     raw_unpacked = msgpack.unpackb(data, ext_hook=_ext_hook, raw=False, strict_map_key=False)

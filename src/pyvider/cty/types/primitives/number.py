@@ -7,7 +7,6 @@ from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.values import CtyValue
-from pyvider.cty.values.base import UnknownValue
 
 
 @define(frozen=True, slots=True)
@@ -15,7 +14,8 @@ class CtyNumber(CtyType[int | float | Decimal]):
     ctype: ClassVar[str] = "number"
     value: int | Decimal = field(default=0)
 
-    def validate(self, value: object) -> CtyValue:
+    def validate(self, value: object) -> "CtyValue[Decimal]":
+        from pyvider.cty.values.base import UnknownValue
         if value is None:
             return CtyValue.null(self)
         if isinstance(value, UnknownValue):
@@ -39,10 +39,10 @@ class CtyNumber(CtyType[int | float | Decimal]):
             return CtyValue(vtype=self, value=Decimal(int(value)))
         raise CtyNumberValidationError(f"Cannot convert {type(value).__name__} to number")
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyNumber)
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyNumber | CtyDynamic)
 
     def _to_wire_json(self) -> Any:

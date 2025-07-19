@@ -14,9 +14,9 @@ T = TypeVar("T")
 
 class PathStep(ABC):
     @abstractmethod
-    def apply(self, value: "CtyValue") -> "CtyValue": pass
+    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]": pass
     @abstractmethod
-    def apply_type(self, vtype: "CtyType") -> "CtyType": pass
+    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]": pass
     @abstractmethod
     def __str__(self) -> str: pass
 
@@ -26,13 +26,13 @@ class GetAttrStep(PathStep):
     @name.validator
     def _validate_name(self, attribute: str, value: str) -> None:
         if not value: raise ValueError("Attribute name cannot be empty")
-    def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
         if value.is_null: raise AttributePathError(f"Cannot get attribute '{self.name}' from null value")
         from pyvider.cty.types.structural import CtyObject
         if isinstance(value.type, CtyObject):
             return value.type.get_attribute(value, self.name)
         raise AttributePathError(f"Cannot get attribute from non-object value of type {value.type.__class__.__name__}")
-    def apply_type(self, vtype: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
         from pyvider.cty.types.structural import CtyObject
         if not isinstance(vtype, CtyObject): raise AttributePathError(f"Cannot get attribute from non-object type {vtype.__class__.__name__}")
         if not vtype.has_attribute(self.name): raise AttributePathError(f"Object type has no attribute {self.name}")
@@ -42,7 +42,7 @@ class GetAttrStep(PathStep):
 @define(frozen=True)
 class IndexStep(PathStep):
     index: int = field()
-    def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
         if value.is_null: raise AttributePathError("Cannot index into null value")
         if value.is_unknown: return CtyValue.unknown(self.apply_type(value.type))
         from pyvider.cty.types.collections import CtyList
@@ -52,7 +52,7 @@ class IndexStep(PathStep):
         if isinstance(value.type, CtyDynamic):
             if isinstance(value.value, CtyValue): return self.apply(value.value)
         raise AttributePathError(f"Cannot index into value of type {type(value.type).__name__}")
-    def apply_type(self, vtype: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
         from pyvider.cty.types.collections import CtyList
         from pyvider.cty.types.structural import CtyDynamic, CtyTuple
         if isinstance(vtype, CtyList): return vtype.element_type
@@ -66,7 +66,7 @@ class IndexStep(PathStep):
 @define(frozen=True)
 class KeyStep(PathStep):
     key: object = field()
-    def apply(self, value: "CtyValue") -> "CtyValue":
+    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
         if value.is_null: raise AttributePathError("Cannot get key from null value")
         if value.is_unknown: return CtyValue.unknown(self.apply_type(value.type))
         from pyvider.cty.types.collections import CtyMap
@@ -76,7 +76,7 @@ class KeyStep(PathStep):
         if isinstance(value.type, CtyDynamic):
             if isinstance(value.value, CtyValue): return self.apply(value.value)
         raise AttributePathError(f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}")
-    def apply_type(self, vtype: "CtyType") -> "CtyType":
+    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
         from pyvider.cty.types import CtyString
         from pyvider.cty.types.collections import CtyMap
         from pyvider.cty.types.structural import CtyDynamic
@@ -101,15 +101,18 @@ class CtyPath:
     def child(self, name: str) -> "CtyPath": return CtyPath([*self.steps, GetAttrStep(name)])
     def index_step(self, index: int) -> "CtyPath": return CtyPath([*self.steps, IndexStep(index)])
     def key_step(self, key: object) -> "CtyPath": return CtyPath([*self.steps, KeyStep(key)])
-    def apply_path(self, value: object) -> "CtyValue":
-        if not self.steps: return value
+    def apply_path(self, value: object) -> "CtyValue[Any]":
+        if not self.steps:
+            if isinstance(value, CtyValue):
+                return value
+            raise AttributePathError("Cannot return non-CtyValue from apply_path")
         if not isinstance(value, CtyValue): raise AttributePathError(f"Cannot apply path to non-CtyValue: {type(value).__name__}")
         current = value
         for i, step in enumerate(self.steps):
             try: current = step.apply(current)
             except AttributePathError as e: raise AttributePathError(f"Error at step {i + 1} ({step}): {e}") from e
         return current
-    def apply_path_type(self, vtype: "CtyType") -> "CtyType":
+    def apply_path_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
         if not self.steps: return vtype
         current = vtype
         for i, step in enumerate(self.steps):
