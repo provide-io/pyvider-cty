@@ -1,37 +1,32 @@
 from __future__ import annotations
+
 from collections.abc import Iterator
-from decimal import Decimal
 from types import MappingProxyType
 from typing import (
+    TYPE_CHECKING,
     Any,
-    Generic,
     Self,
     TypeVar,
-    TYPE_CHECKING,
 )
 
 from attrs import define, evolve, field
 
-from pyvider.cty.types.types_base import CtyTypeProtocol
-from pyvider.telemetry import logger
-from .markers import UnknownValue, UNREFINED_UNKNOWN
+from .markers import UNREFINED_UNKNOWN, UnknownValue
 
 T = TypeVar("T", covariant=True)
 
 if TYPE_CHECKING:
-    from pyvider.cty.types import CtyList, CtyMap, CtyObject, CtyType, CtyTuple
-    from pyvider.cty.marks import CtyMark
-    from pyvider.cty.exceptions import CtyValidationError
-    from .markers import RefinedUnknownValue
+    from pyvider.cty.types import CtyType
+
 
 @define(frozen=True, slots=True)
-class CtyValue(Generic[T]):
-    vtype: "CtyType[T]" = field()
+class CtyValue[T]:
+    vtype: CtyType[T] = field()
     value: object | None = field(default=None)
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
-    marks: frozenset = field(factory=frozenset)
-    key_mapping: dict[str, "CtyValue"] = field(factory=dict)
+    marks: frozenset[Any] = field(factory=frozenset)
+    key_mapping: dict[str, "CtyValue[Any]"] = field(factory=dict)
 
     def __attrs_post_init__(self) -> None:
         if self.is_unknown and self.is_null:
@@ -40,8 +35,8 @@ class CtyValue(Generic[T]):
             object.__setattr__(self, "value", None)
 
     @property
-    def type(self) -> "CtyType[T]": return self.vtype
-    
+    def type(self) -> CtyType[T]: return self.vtype
+
     @property
     def raw_value(self) -> object | None:
         if self.is_unknown: raise ValueError("Cannot get raw value of unknown value")
@@ -81,24 +76,24 @@ class CtyValue(Generic[T]):
         if self.is_null: return 0
         if hasattr(self.value, "__len__"): return len(self.value)
         raise TypeError(f"Value of type {self.vtype.__class__.__name__} has no len()")
-        
-    def __iter__(self) -> Iterator:
+
+    def __iter__(self) -> Iterator[Any]:
         if self.is_unknown: raise TypeError("Cannot iterate unknown value")
         if self.is_null: return iter([])
         if hasattr(self.value, "__iter__"):
-            if isinstance(self.value, (dict, MappingProxyType)):
+            if isinstance(self.value, dict | MappingProxyType):
                 return iter(self.value.values())
             return iter(self.value)
         raise TypeError(f"Value of type {self.vtype.__class__.__name__} is not iterable")
 
-    def __getitem__(self, key: Any) -> "CtyValue":
+    def __getitem__(self, key: Any) -> "CtyValue[Any]":
         from pyvider.cty.types import CtyList, CtyMap, CtyObject, CtyTuple
         if self.is_unknown or self.is_null: raise TypeError("Cannot index into unknown or null value")
         if isinstance(self.vtype, CtyObject):
             if not isinstance(key, str): raise TypeError(f"Object attribute name must be a string, got {type(key).__name__}")
             return self.vtype.get_attribute(self, key)
         if isinstance(self.vtype, CtyList):
-            if not isinstance(self.value, (list, tuple)): raise TypeError(f"CtyList value is not a list/tuple, but {type(self.value).__name__}")
+            if not isinstance(self.value, list | tuple): raise TypeError(f"CtyList value is not a list/tuple, but {type(self.value).__name__}")
             if isinstance(key, slice): return CtyValue(vtype=self.vtype, value=self.value[key])
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyTuple): return self.vtype.element_at(self, key)
@@ -106,8 +101,8 @@ class CtyValue(Generic[T]):
         raise TypeError(f"Value of type {self.vtype.__class__.__name__} is not subscriptable")
 
     def __hash__(self) -> int:
-        from pyvider.cty.types import CtyList, CtySet, CtyMap, CtyObject, CtyTuple
-        if isinstance(self.vtype, (CtyList, CtySet, CtyMap, CtyObject, CtyTuple)):
+        from pyvider.cty.types import CtyList, CtyMap, CtyObject, CtySet, CtyTuple
+        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject | CtyTuple):
             raise TypeError(f"unhashable type: 'CtyValue[{self.vtype.ctype}]'")
         if self.is_unknown or self.is_null:
             return hash((self.vtype, self.is_unknown, self.is_null, self.marks))
@@ -115,8 +110,8 @@ class CtyValue(Generic[T]):
 
     def has_mark(self, mark: object) -> bool: return mark in self.marks
     def mark(self, mark: object) -> Self: return evolve(self, marks=self.marks.union({mark}))
-    def with_marks(self, marks_to_add: set) -> Self: return evolve(self, marks=self.marks.union(marks_to_add))
-    def unmark(self) -> tuple[Self, frozenset]:
+    def with_marks(self, marks_to_add: set[Any]) -> Self: return evolve(self, marks=self.marks.union(marks_to_add))
+    def unmark(self) -> tuple[Self, frozenset[Any]]:
         unmarked_value = evolve(self, marks=frozenset())
         return unmarked_value, self.marks
     def is_true(self) -> bool:
@@ -130,10 +125,10 @@ class CtyValue(Generic[T]):
             return self.value.is_false()
         return self.value is False
     def is_empty(self) -> bool: return not self.value if hasattr(self.value, '__len__') else False
-        
+
     @classmethod
-    def unknown(cls, vtype: "CtyType", value: Any = UNREFINED_UNKNOWN) -> "CtyValue":
+    def unknown(cls, vtype: "CtyType[Any]", value: Any = UNREFINED_UNKNOWN) -> "CtyValue[Any]":
         return cls(vtype=vtype, is_unknown=True, value=value)
-    
+
     @classmethod
-    def null(cls, vtype: "CtyType") -> "CtyValue": return cls(vtype=vtype, is_null=True)
+    def null(cls, vtype: "CtyType[Any]") -> "CtyValue[Any]": return cls(vtype=vtype, is_null=True)

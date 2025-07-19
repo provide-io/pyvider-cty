@@ -15,15 +15,15 @@ class CtyDynamic(CtyType[object]):
 
     ctype: ClassVar[str] = "dynamic"
 
-    def validate(self, value: object) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue[Any]":
         """
         Validates a raw Python value for a dynamic type. It first checks if
         the value matches the special wire format for dynamic values before
         falling back to inferring a concrete type.
         """
-        from pyvider.cty.values import CtyValue
-        from pyvider.cty.parser import parse_tf_type_to_ctytype
         from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
+        from pyvider.cty.parser import parse_tf_type_to_ctytype
+        from pyvider.cty.values import CtyValue
 
         if isinstance(value, CtyValue):
             return value
@@ -47,10 +47,10 @@ class CtyDynamic(CtyType[object]):
         inferred_type = infer_cty_type_from_raw(value)
         return inferred_type.validate(value)
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyDynamic)
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyDynamic)
 
     def _to_wire_json(self) -> Any:

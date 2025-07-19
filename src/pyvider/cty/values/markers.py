@@ -2,8 +2,10 @@
 """
 This module contains simple marker classes to break import cycles.
 """
-from attrs import define
 from decimal import Decimal
+
+from attrs import define
+
 
 class UnknownValue:
     """A base marker class for all unknown value types."""

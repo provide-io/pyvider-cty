@@ -1,6 +1,5 @@
 from typing import Any
 
-from .exceptions import CtyValidationError
 from .types import CtyType
 
 

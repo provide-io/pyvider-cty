@@ -4,13 +4,14 @@ Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
 from typing import Any
+
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.values import CtyValue
 
 
-class CtyCapsule(CtyType):
+class CtyCapsule(CtyType[Any]):
     """
     Represents a capsule type in the Cty type system.
     Capsule types are opaque types that can be used to wrap arbitrary Python objects.
@@ -29,7 +30,7 @@ class CtyCapsule(CtyType):
     def ctype(self) -> str:
         return self.name
 
-    def validate(self, value: object) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue[Any]":
         if isinstance(value, CtyValue):
             if value.is_null:
                 return CtyValue.null(self)
@@ -48,12 +49,12 @@ class CtyCapsule(CtyType):
             raise CtyValidationError(f"Value is not an instance of {self._py_type.__name__}. Got {type(val_to_check).__name__}.")
         return CtyValue(self, val_to_check)
 
-    def equal(self, other: "CtyType") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         if not isinstance(other, CtyCapsule):
             return False
         return self.name == other.name and self._py_type == other._py_type
 
-    def usable_as(self, other: "CtyType") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         if isinstance(other, CtyDynamic):
             return True
         return self.equal(other)

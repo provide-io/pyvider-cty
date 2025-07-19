@@ -28,11 +28,8 @@ class CtyNumber(CtyType[int | float | Decimal]):
             if isinstance(value.type, CtyNumber):
                 return value
             value = value.value
-        if isinstance(value, float):
-            value_to_convert = str(value)
-        else:
-            value_to_convert = value
-        if isinstance(value_to_convert, (int, Decimal, str)):
+        value_to_convert = str(value) if isinstance(value, float) else value
+        if isinstance(value_to_convert, int | Decimal | str):
             try:
                 return CtyValue(vtype=self, value=Decimal(value_to_convert))
             except (InvalidOperation, TypeError, ValueError):
@@ -46,8 +43,7 @@ class CtyNumber(CtyType[int | float | Decimal]):
         return isinstance(other, CtyNumber)
 
     def usable_as(self, other: "CtyType") -> bool:
-        from pyvider.cty.types.structural import CtyDynamic
-        return isinstance(other, (CtyNumber, CtyDynamic))
+        return isinstance(other, CtyNumber | CtyDynamic)
 
     def _to_wire_json(self) -> Any:
         return self.ctype

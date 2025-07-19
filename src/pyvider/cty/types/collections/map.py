@@ -1,7 +1,13 @@
-from types import MappingProxyType
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, TypeVar
+
 from attrs import define, field
-from pyvider.cty.exceptions import CtyMapValidationError, CtyTypeMismatchError, CtyValidationError, InvalidTypeError
+
+from pyvider.cty.exceptions import (
+    CtyMapValidationError,
+    CtyTypeMismatchError,
+    CtyValidationError,
+    InvalidTypeError,
+)
 from pyvider.cty.path import CtyPath, KeyStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
@@ -9,7 +15,7 @@ from pyvider.cty.values import CtyValue
 V = TypeVar("V")
 
 @define(frozen=True, slots=True)
-class CtyMap(CtyType[dict[str, V]], Generic[V]):
+class CtyMap[V](CtyType[dict[str, V]]):
     ctype: ClassVar[str] = "map"
     element_type: CtyType[V] = field(kw_only=True)
 
@@ -35,10 +41,10 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 new_path = CtyPath(steps=[KeyStep(k)] + (e.path.steps if e.path else []))
                 raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
         return CtyValue(vtype=self, value=validated_map)
-    
+
     def get(self, map_value: CtyValue, key: object, default: CtyValue | None = None) -> CtyValue:
         if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
-            raise CtyTypeMismatchError(f"get operation called on non-map CtyValue")
+            raise CtyTypeMismatchError("get operation called on non-map CtyValue")
         if map_value.is_null or map_value.is_unknown:
             return default if default is not None else CtyValue.null(self.element_type)
         internal_dict = map_value.value
@@ -47,13 +53,13 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def equal(self, other: "CtyType") -> bool:
         if not isinstance(other, CtyMap): return False
         return self.element_type.equal(other.element_type)
-    
+
     def usable_as(self, other: "CtyType") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
         if isinstance(other, CtyDynamic): return True
         if not isinstance(other, CtyMap): return False
         return self.element_type.usable_as(other.element_type)
-    
+
     def _to_wire_json(self) -> Any:
         return [self.ctype, self.element_type._to_wire_json()]
 

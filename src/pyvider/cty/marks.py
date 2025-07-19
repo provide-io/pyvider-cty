@@ -1,13 +1,15 @@
-from attrs import define, field
 from typing import Any
 
-def _convert_details(value: Any) -> frozenset | None:
+from attrs import define, field
+
+
+def _convert_details(value: Any) -> frozenset[Any] | None:
     """Converter to ensure the 'details' field is always hashable."""
     if value is None:
         return None
     if isinstance(value, dict):
         return frozenset(value.items())
-    if isinstance(value, (list, set, tuple)):
+    if isinstance(value, list | set | tuple):
         return frozenset(value)
     return frozenset([value])
 
@@ -18,7 +20,7 @@ class CtyMark:
     The 'details' attribute is automatically converted to a hashable frozenset.
     """
     name: str = field()
-    details: frozenset | None = field(default=None, converter=_convert_details)
+    details: frozenset[Any] | None = field(default=None, converter=_convert_details)
 
     def __repr__(self) -> str:
         if self.details is not None:

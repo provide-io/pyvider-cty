@@ -1,11 +1,10 @@
-import unicodedata
 from typing import TYPE_CHECKING, Any, ClassVar
+import unicodedata
 
 from attrs import define
 
 from pyvider.cty.exceptions import CtyStringValidationError
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.values.base import UnknownValue
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
@@ -15,8 +14,9 @@ if TYPE_CHECKING:
 class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
 
-    def validate(self, value: object) -> "CtyValue":
+    def validate(self, value: object) -> "CtyValue[str]":
         from pyvider.cty.values import CtyValue
+        from pyvider.cty.values.base import UnknownValue
 
         if value is None:
             return CtyValue.null(self)
@@ -33,7 +33,7 @@ class CtyString(CtyType[str]):
             raw_value = value
 
         # FIX: Make validation stricter. Only accept strings or bytes.
-        if not isinstance(raw_value, (str, bytes)):
+        if not isinstance(raw_value, str | bytes):
             raise CtyStringValidationError(f"Cannot convert {type(raw_value).__name__} to string.")
 
         try:
@@ -48,7 +48,7 @@ class CtyString(CtyType[str]):
 
     def usable_as(self, other: "CtyType[object]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
-        return isinstance(other, (CtyString, CtyDynamic))
+        return isinstance(other, CtyString | CtyDynamic)
 
     def _to_wire_json(self) -> Any:
         return self.ctype

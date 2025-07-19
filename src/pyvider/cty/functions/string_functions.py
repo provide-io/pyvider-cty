@@ -2,6 +2,7 @@
 from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
+
 def chomp(input_val: CtyValue) -> CtyValue:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"chomp: input must be a string, got {input_val.type.ctype}")
@@ -40,7 +41,7 @@ def indent(prefix_val: CtyValue, input_val: CtyValue) -> CtyValue:
 
     prefix, s = prefix_val.value, input_val.value
     if not s: return CtyString().validate("")
-    
+
     lines = s.split('\n')
     if s.endswith('\n'):
         return CtyString().validate('\n'.join(prefix + line for line in lines[:-1]) + '\n')
@@ -65,7 +66,7 @@ def substr(input_val: CtyValue, offset_val: CtyValue, length_val: CtyValue) -> C
     if offset > s_len: return CtyString().validate("")
     if length == -1: return CtyString().validate(s[offset:])
     if length < 0: raise CtyFunctionError("substr: length cannot be negative (unless -1)")
-    
+
     end = offset + length
     return CtyString().validate(s[offset:min(end, s_len)])
 
@@ -111,6 +112,7 @@ def trimsuffix(input_val: CtyValue, suffix_val: CtyValue) -> CtyValue:
 
 def regex(pattern_val: CtyValue, input_val: CtyValue) -> CtyValue:
     import re
+
     from pyvider.cty.types import CtyBool
     if not isinstance(pattern_val.type, CtyString) or not isinstance(input_val.type, CtyString):
         raise CtyFunctionError("regex: both arguments must be strings")
@@ -127,6 +129,7 @@ def regex(pattern_val: CtyValue, input_val: CtyValue) -> CtyValue:
 
 def regexall(pattern_val: CtyValue, input_val: CtyValue) -> CtyValue:
     import re
+
     from pyvider.cty.types import CtyList
     if not isinstance(pattern_val.type, CtyString) or not isinstance(input_val.type, CtyString):
         raise CtyFunctionError("regexall: both arguments must be strings")

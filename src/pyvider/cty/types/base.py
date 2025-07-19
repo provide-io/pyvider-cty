@@ -3,14 +3,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Generic,
     TypeVar,
 )
 
 from attrs import define
 
-from pyvider.cty.exceptions import CtyValidationError
-from .types_base import CtyTypeProtocol # Import the protocol
+from .types_base import CtyTypeProtocol  # Import the protocol
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
@@ -19,7 +17,7 @@ T = TypeVar("T")
 
 # The concrete ABC now implements the protocol
 @define(slots=True)
-class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
+class CtyType[T](CtyTypeProtocol[T], ABC):
     """
     Generic abstract base class for all Cty types.
     """
@@ -48,7 +46,7 @@ class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
     def is_dynamic_type(self) -> bool:
         """Returns True if this type is CtyDynamic."""
         return False
-    
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CtyType):
             return self.equal(other)

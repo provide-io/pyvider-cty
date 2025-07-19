@@ -1,12 +1,13 @@
 from decimal import Decimal, InvalidOperation
 from typing import Any, ClassVar
+
 from attrs import define, field
+
 from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.base import UnknownValue
-from pyvider.telemetry import logger
-from pyvider.cty.types.structural import CtyDynamic
 
 TRUE_STRINGS: frozenset[str] = frozenset(("true", "t", "yes", "y", "1"))
 FALSE_STRINGS: frozenset[str] = frozenset(("false", "f", "no", "n", "0"))
@@ -30,7 +31,7 @@ class CtyBool(CtyType[bool]):
             if val_lower in TRUE_STRINGS: return CtyValue(vtype=self, value=True)
             if val_lower in FALSE_STRINGS: return CtyValue(vtype=self, value=False)
             raise CtyBoolValidationError(f"Cannot convert string {value!r} to boolean")
-        if isinstance(value, (int, float, Decimal)):
+        if isinstance(value, int | float | Decimal):
             try:
                 dec_val = Decimal(value)
                 if dec_val == Decimal(1): return CtyValue(vtype=self, value=True)
@@ -42,9 +43,8 @@ class CtyBool(CtyType[bool]):
 
     def equal(self, other: "CtyType") -> bool: return isinstance(other, CtyBool)
     def usable_as(self, other: "CtyType") -> bool:
-        from pyvider.cty.types.structural import CtyDynamic
-        return isinstance(other, (CtyBool, CtyDynamic))
-    
+        return isinstance(other, CtyBool | CtyDynamic)
+
     def _to_wire_json(self) -> Any:
         return self.ctype
 

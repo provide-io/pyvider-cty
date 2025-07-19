@@ -1,13 +1,15 @@
 # In a new file: pyvider/cty/context/validation_context.py
-import contextvars
 from contextlib import contextmanager
+import contextvars
 
 MAX_VALIDATION_DEPTH = 500  # Configurable
 
 _validation_depth = contextvars.ContextVar("validation_depth", default=0)
 
+from collections.abc import Generator
+
 @contextmanager
-def deeper_validation():
+def deeper_validation() -> Generator[None, None, None]:
     """A context manager to safely increment and decrement validation depth."""
     token = _validation_depth.set(_validation_depth.get() + 1)
     try:
