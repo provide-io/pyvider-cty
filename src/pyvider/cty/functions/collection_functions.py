@@ -1,12 +1,22 @@
 # pyvider-cty/src/pyvider/cty/functions/collection_functions.py
 from pyvider.cty import (
-    CtyList, CtySet, CtyTuple, CtyDynamic, CtyString, CtyNumber, CtyBool,
-    CtyValue, CtyType
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyNumber,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyType,
+    CtyValue,
 )
-from pyvider.cty.exceptions import CtyFunctionError, CtyCollectionValidationError, CtyTypeValidationError
+from pyvider.cty.exceptions import (
+    CtyFunctionError,
+)
+
 
 def distinct(input_val: CtyValue) -> CtyValue:
-    if not isinstance(input_val.type, (CtyList, CtySet, CtyTuple)):
+    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"distinct: input must be a list, set, or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
@@ -25,7 +35,7 @@ def distinct(input_val: CtyValue) -> CtyValue:
     return CtyList(element_type=final_element_type).validate(result_elements)
 
 def flatten(input_val: CtyValue) -> CtyValue:
-    if not isinstance(input_val.type, (CtyList, CtyTuple)):
+    if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(f"flatten: input must be a list or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
@@ -34,7 +44,7 @@ def flatten(input_val: CtyValue) -> CtyValue:
     for outer_element_val in input_val.value:
         if outer_element_val.is_null: continue
         if outer_element_val.is_unknown: return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-        if not isinstance(outer_element_val.type, (CtyList, CtyTuple)):
+        if not isinstance(outer_element_val.type, CtyList | CtyTuple):
             raise CtyFunctionError(f"flatten: all elements must be lists or tuples; found {outer_element_val.type.ctype}")
         for inner_element_val in outer_element_val.value:
             result_elements.append(inner_element_val)
@@ -46,7 +56,7 @@ def flatten(input_val: CtyValue) -> CtyValue:
     return CtyList(element_type=(final_element_type or CtyDynamic())).validate(result_elements)
 
 def sort(input_val: CtyValue) -> CtyValue:
-    if not isinstance(input_val.type, (CtyList, CtySet, CtyTuple)):
+    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
@@ -55,7 +65,7 @@ def sort(input_val: CtyValue) -> CtyValue:
         el_type = input_val.type.element_type if hasattr(input_val.type, "element_type") else CtyDynamic()
         return CtyList(element_type=el_type).validate([])
     first_element_type = elements_to_sort[0].type
-    if not isinstance(first_element_type, (CtyString, CtyNumber, CtyBool)):
+    if not isinstance(first_element_type, CtyString | CtyNumber | CtyBool):
         raise CtyFunctionError(f"sort: elements must be string, number, or bool. Found: {first_element_type.ctype}")
     py_values_to_sort = []
     for i, cty_element in enumerate(elements_to_sort):

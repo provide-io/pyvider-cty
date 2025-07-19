@@ -1,15 +1,14 @@
 from abc import ABC, abstractmethod
-from decimal import Decimal
 from typing import TypeVar
 
 from attrs import define, field
 
 from pyvider.cty.exceptions import (
-    AttributePathError, CtyTypeMismatchError, CtyValidationError
+    AttributePathError,
+    CtyValidationError,
 )
 from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
-from pyvider.telemetry import logger
 
 T = TypeVar("T")
 
@@ -47,15 +46,15 @@ class IndexStep(PathStep):
         if value.is_null: raise AttributePathError("Cannot index into null value")
         if value.is_unknown: return CtyValue.unknown(self.apply_type(value.type))
         from pyvider.cty.types.collections import CtyList
-        from pyvider.cty.types.structural import CtyTuple, CtyDynamic
-        if isinstance(value.type, (CtyList, CtyTuple)):
+        from pyvider.cty.types.structural import CtyDynamic, CtyTuple
+        if isinstance(value.type, CtyList | CtyTuple):
             return value.type.element_at(value, self.index)
         if isinstance(value.type, CtyDynamic):
             if isinstance(value.value, CtyValue): return self.apply(value.value)
         raise AttributePathError(f"Cannot index into value of type {type(value.type).__name__}")
     def apply_type(self, vtype: "CtyType") -> "CtyType":
         from pyvider.cty.types.collections import CtyList
-        from pyvider.cty.types.structural import CtyTuple, CtyDynamic
+        from pyvider.cty.types.structural import CtyDynamic, CtyTuple
         if isinstance(vtype, CtyList): return vtype.element_type
         if isinstance(vtype, CtyTuple):
             try: return vtype.element_types[self.index]
@@ -78,9 +77,9 @@ class KeyStep(PathStep):
             if isinstance(value.value, CtyValue): return self.apply(value.value)
         raise AttributePathError(f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}")
     def apply_type(self, vtype: "CtyType") -> "CtyType":
+        from pyvider.cty.types import CtyString
         from pyvider.cty.types.collections import CtyMap
         from pyvider.cty.types.structural import CtyDynamic
-        from pyvider.cty.types import CtyString
         if isinstance(vtype, CtyDynamic): return CtyDynamic()
         if not isinstance(vtype, CtyMap): raise AttributePathError(f"Cannot get key from non-map type {vtype.__class__.__name__}")
         try: CtyString().validate(self.key)
@@ -117,11 +116,11 @@ class CtyPath:
             try: current = step.apply_type(current)
             except AttributePathError as e: raise AttributePathError(f"Error at type step {i + 1} ({step}): {e}") from e
         return current
-    
+
     def string(self) -> str:
         if not self.steps:
             return "(root)"
-        
+
         path_str = ""
         for i, step in enumerate(self.steps):
             current_step_str = str(step)
@@ -129,7 +128,7 @@ class CtyPath:
                 path_str += current_step_str[1:]  # Strip leading dot
             else:
                 path_str += current_step_str
-        
+
         return path_str
 
     def __str__(self) -> str:

@@ -1,17 +1,23 @@
-import json
 from decimal import Decimal
+import json
 from typing import Any
 
 import msgpack
 
 from .conversion import encode_cty_type_to_wire_json
-from .exceptions import CtyValidationError, DeserializationError
+from .exceptions import DeserializationError
 from .types import (
-    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtySet,
-    CtyString, CtyTuple, CtyType
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyObject,
+    CtySet,
+    CtyTuple,
+    CtyType,
 )
 from .values import CtyValue
-from .values.markers import RefinedUnknownValue, UNREFINED_UNKNOWN, UnknownValue
+from .values.markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
+
 
 def _ext_hook(code: int, data: bytes) -> Any:
     if code == 0:
@@ -54,7 +60,7 @@ def _convert_value_to_serializable(value: CtyValue, schema: CtyType) -> Any:
         return msgpack.ExtType(0, b"")
 
     if value.is_null: return None
-    
+
     if isinstance(schema, CtyDynamic):
         inner_value = value.value if isinstance(value.type, CtyDynamic) else value
         actual_type = inner_value.type
@@ -68,15 +74,15 @@ def _convert_value_to_serializable(value: CtyValue, schema: CtyType) -> Any:
         return { k: _convert_value_to_serializable(v, schema.attribute_types[k]) for k, v in inner_val.items() }
     if isinstance(schema, CtyMap):
         return { k: _convert_value_to_serializable(v, schema.element_type) for k, v in inner_val.items() }
-    if isinstance(schema, (CtyList, CtySet)):
+    if isinstance(schema, CtyList | CtySet):
         items = sorted(list(inner_val), key=repr) if isinstance(schema, CtySet) else inner_val
         return [_convert_value_to_serializable(item, schema.element_type) for item in items]
     if isinstance(schema, CtyTuple):
         return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
-    
+
     if isinstance(inner_val, Decimal):
         return str(inner_val)
-        
+
     return inner_val
 
 def _msgpack_default_handler(obj: Any) -> Any:

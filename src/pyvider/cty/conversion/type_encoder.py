@@ -1,6 +1,8 @@
 # pyvider-cty/src/pyvider/cty/conversion/type_encoder.py
 from typing import Any
+
 from pyvider.cty.types import CtyType
+
 
 def encode_cty_type_to_wire_json(cty_type: CtyType) -> Any:
     """

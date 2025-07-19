@@ -264,7 +264,7 @@ class JsonEncodingError(EncodingError):
         super().__init__(message, data, "json")
         # Now, self.args[0] is "JSON encoding error: {message}"
         # Prepend operation part if it exists
-        if operation:
+        if operation and self.encoding:
             current_message = self.args[0]
             # Remove the "JSON encoding error: " part, add op, then re-add prefix
             base_message = current_message.replace(
@@ -273,7 +273,7 @@ class JsonEncodingError(EncodingError):
             formatted_message = (
                 f"{self.encoding.upper()} {operation} error: {base_message}"
             )
-            self.args = (formatted_message,) + self.args[1:]
+            self.args = (formatted_message, *self.args[1:])
 
 
 class MsgPackEncodingError(EncodingError):
@@ -302,7 +302,7 @@ class MsgPackEncodingError(EncodingError):
         """
         self.operation = operation
         super().__init__(message, data, "msgpack")
-        if operation:
+        if operation and self.encoding:
             current_message = self.args[0]
             base_message = current_message.replace(
                 f"{self.encoding.upper()} encoding error: ", "", 1
@@ -310,7 +310,7 @@ class MsgPackEncodingError(EncodingError):
             formatted_message = (
                 f"{self.encoding.upper()} {operation} error: {base_message}"
             )
-            self.args = (formatted_message,) + self.args[1:]
+            self.args = (formatted_message, *self.args[1:])
 
 
 class WireFormatError(TransformationError):
@@ -363,7 +363,7 @@ class WireFormatError(TransformationError):
         elif operation:  # Only operation is present, no format_type
             current_message = f"{current_message} during {operation}"
 
-        self.args = (current_message,) + self.args[1:]
+        self.args = (current_message, *self.args[1:])
 
 
 # 🐍🏗️🐣

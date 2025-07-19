@@ -9,14 +9,14 @@ within the CTY type system. CtyValue instances pair a Python value
 with its corresponding CtyType and associated metadata.
 """
 
-from .markers import UnknownValue, RefinedUnknownValue, UNREFINED_UNKNOWN
 from .base import CtyValue
+from .markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
 
 __all__ = [
-    "CtyValue",
-    "UnknownValue",
-    "RefinedUnknownValue",
     "UNREFINED_UNKNOWN",
+    "CtyValue",
+    "RefinedUnknownValue",
+    "UnknownValue",
 ]
 
 # 🐍🏗️🐣

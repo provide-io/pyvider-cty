@@ -1,20 +1,23 @@
 from __future__ import annotations
+
 from collections.abc import Sequence
-from typing import Any, ClassVar, Generic, TypeVar, final, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar, final
+
 from attrs import define, field
+
 from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
 
 if TYPE_CHECKING:
-    from pyvider.cty.types.structural.dynamic import CtyDynamic
+    pass
 
 T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtyList(CtyType[list[T]], Generic[T]):
+class CtyList[T](CtyType[list[T]]):
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)
 
@@ -24,10 +27,9 @@ class CtyList(CtyType[list[T]], Generic[T]):
 
     def validate(self, value: object) -> CtyValue:
         from pyvider.cty.values import CtyValue
-        from pyvider.cty.types.structural import CtyDynamic
 
         if value is None: return CtyValue.null(self)
-        
+
         raw_list_to_validate: Sequence[object] | None = None
 
         if isinstance(value, CtyValue):
@@ -35,14 +37,14 @@ class CtyList(CtyType[list[T]], Generic[T]):
             if value.is_unknown: return CtyValue.unknown(self)
             if isinstance(value.type, CtyList) and self.equal(value.type): return value
             raw_list_to_validate = value.value
-        elif isinstance(value, (list, tuple, set, frozenset)):
+        elif isinstance(value, list | tuple | set | frozenset):
             raw_list_to_validate = list(value)
         else:
             raise CtyListValidationError(f"Expected list, tuple, or CtyValue list, got {type(value).__name__}")
 
-        if not isinstance(raw_list_to_validate, (list, tuple)):
+        if not isinstance(raw_list_to_validate, list | tuple):
              raise CtyListValidationError(f"Value to validate is not a list or tuple, but {type(raw_list_to_validate).__name__}")
-        
+
         validated_elements: list[CtyValue] = []
         for i, item in enumerate(raw_list_to_validate):
             try:
@@ -51,7 +53,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             except CtyValidationError as e:
                 new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
                 raise CtyListValidationError(e.message, value=item, path=new_path, original_exception=e) from e
-        
+
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
     def element_at(self, container: object, index: int) -> CtyValue:
@@ -60,7 +62,7 @@ class CtyList(CtyType[list[T]], Generic[T]):
             if not isinstance(container.type, CtyList): raise CtyListValidationError(f"Expected CtyValue with CtyList type, got CtyValue with {type(container.type).__name__}")
             if container.is_null: raise IndexError(f"Cannot access element at index {index} in a null list.")
             if container.is_unknown: return CtyValue.unknown(self.element_type)
-            if not isinstance(container.value, (list, tuple)): raise CtyListValidationError(f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}")
+            if not isinstance(container.value, list | tuple): raise CtyListValidationError(f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}")
             return container.value[index]
         raise CtyListValidationError(f"Expected CtyValue[CtyList], got {type(container).__name__}")
 

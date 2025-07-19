@@ -1,9 +1,10 @@
 # pyvider-cty/src/pyvider/cty/functions/numeric_functions.py
-import math
 from decimal import Decimal, InvalidOperation
+import math
 
-from pyvider.cty import CtyNumber, CtyValue, CtyString
+from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
+
 
 def abs_fn(input_val: CtyValue) -> CtyValue:
     """
@@ -61,7 +62,7 @@ def log_fn(num_val: CtyValue, base_val: CtyValue) -> CtyValue:
     if base <= 0:
         raise CtyFunctionError(f"log: base must be positive, got {base}")
     if base == 1:
-        raise CtyFunctionError(f"log: base cannot be 1")
+        raise CtyFunctionError("log: base cannot be 1")
 
     try:
         # Use float for math.log, then convert back to Decimal for CtyNumber
@@ -155,7 +156,7 @@ def parseint_fn(str_val: CtyValue, base_val: CtyValue) -> CtyValue:
         # Return null as per go-cty's behavior for parseint on failure
         return CtyValue.null(CtyNumber())
     except TypeError: # e.g. if s is not a string-like type after .value
-        raise CtyFunctionError(f"parseint: invalid input string for parsing")
+        raise CtyFunctionError("parseint: invalid input string for parsing")
 
 # TODO: Register these functions.
 # Example registration (hypothetical, as with string_functions):
