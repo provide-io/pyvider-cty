@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+# examples/run_all_examples.py
+"""
+Runs all relevant Python example scripts and checks for unexpected failures.
+"""
+
+import asyncio
+import subprocess  # nosec B404
+import sys
+from pathlib import Path
+from typing import Any
+
+# Ensure sources are importable by example scripts
+project_root = Path(__file__).resolve().parent.parent
+src_path = project_root / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+
+def print_section(title: str) -> None:
+    print("\n" + "=" * 70)
+    print(f"📋 {title}")
+    print("=" * 70)
+
+
+def print_result(
+    script_name: str, success: bool, stdout: str, stderr: str, exit_code: int
+) -> None:
+    status = "✅ PASSED" if success else "❌ FAILED"
+    print(f"\n--- {script_name} --- {status} ---")
+    if stdout:
+        print("--- STDOUT ---")
+        print(stdout.strip())
+    if stderr and not success:
+        print("--- STDERR ---")
+        print(stderr.strip())
+    if not success:
+        print(f"Exit Code: {exit_code}")
+    print("." * 70)
+
+
+async def run_script(
+    script_path: Path,
+    timeout: int = 20,
+    args: list[str] | None = None,
+    cwd: Path | None = None,
+    expected_to_fail: bool = False,
+    expected_stderr_contains: str | None = None,
+) -> tuple[bool, str, str, int]:
+    """Runs a script and returns its success status, stdout, stderr, and exit code."""
+    if args is None:
+        args = []
+    effective_cwd: Path = cwd if cwd is not None else project_root
+
+    command = [sys.executable, str(script_path)] + args
+    process = None
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=str(effective_cwd),
+        )
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            process.communicate(), timeout=timeout
+        )
+        stdout = stdout_bytes.decode().strip()
+        stderr = stderr_bytes.decode().strip()
+        raw_exit_code = process.returncode
+        exit_code: int = raw_exit_code if raw_exit_code is not None else -1
+
+        success = False
+        if expected_to_fail:
+            if exit_code != 0:
+                if expected_stderr_contains and expected_stderr_contains in stderr:
+                    success = True
+                elif not expected_stderr_contains:
+                    success = True
+            else:
+                stderr += "\nERROR: Script was expected to fail but exited with 0."
+        elif exit_code == 0:
+            success = True
+
+        return success, stdout, stderr, exit_code
+    except TimeoutError:
+        if process:
+            process.terminate()
+            await process.wait()
+        return False, "", f"Timeout after {timeout}s", -1
+    except Exception as e:
+        return False, "", f"Execution error: {e}", -1
+
+
+async def main() -> None:
+    examples_dir = Path(__file__).resolve().parent
+    overall_success = True
+    results: list[tuple[str, bool, str, str, int]] = []
+
+    scripts_to_run: list[dict[str, Any]] = [
+        {"file": "ch02_getting_started.py"},
+        {"file": "ch05_primitive_types.py"},
+        {"file": "ch06_collection_types.py"},
+        {"file": "ch07_structural_types.py"},
+        {"file": "ch08_dynamic_types.py"},
+        {"file": "ch09_capsule_types.py"},
+        {"file": "ch10_marks.py"},
+        {"file": "ch11_functions.py"},
+    ]
+
+    print_section("Running All Examples")
+
+    for script_info in scripts_to_run:
+        script_file = script_info["file"]
+        script_args = script_info.get("args", [])
+        exp_fail = script_info.get("exp_fail", False)
+        exp_stderr = script_info.get("exp_stderr")
+
+        script_path = examples_dir / script_file
+        if not script_path.exists():
+            print(f"\nSKIPPING: {script_path.name} (File not found)")
+            continue
+
+        print(f"\n⏳ Running: {script_path.name} {' '.join(script_args)}...")
+
+        success, stdout, stderr, exit_code = await run_script(
+            script_path,
+            args=script_args,
+            cwd=project_root,
+            expected_to_fail=exp_fail,
+            expected_stderr_contains=exp_stderr,
+        )
+        results.append((script_path.name, success, stdout, stderr, exit_code))
+        if not success:
+            overall_success = False
+        print_result(script_path.name, success, stdout, stderr, exit_code)
+
+    print_section("Summary")
+    all_passed_count = 0
+    for name, success, _, _, _ in results:
+        if success:
+            all_passed_count += 1
+        print(f"{'✅ PASSED' if success else '❌ FAILED'}: {name}")
+
+    if overall_success:
+        print(f"\n🎉 All {len(results)} executable examples passed!")
+        sys.exit(0)
+    else:
+        failed_count = len(results) - all_passed_count
+        print(f"\n❌ {failed_count} example(s) failed out of {len(results)}.")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

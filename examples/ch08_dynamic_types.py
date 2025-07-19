@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+from pyvider.cty import CtyDynamic, CtyString, CtyNumber, CtyList
+from examples.example_utils import configure_for_example
+
+configure_for_example()
+
+dynamic_type = CtyDynamic()
+
+cty_string = dynamic_type.validate("hello")
+assert isinstance(cty_string.type, CtyString)
+
+cty_number = dynamic_type.validate(123)
+assert isinstance(cty_number.type, CtyNumber)
+
+dynamic_list_type = CtyList(CtyDynamic())
+cty_list = dynamic_list_type.validate(["hello", 123, True])
+
+print("Dynamic type examples ran successfully.")

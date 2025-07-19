@@ -3,7 +3,7 @@
 
 # Optionally, you can import functions here to make them available
 # directly from pyvider.cty.functions, e.g.:
-# from .collection_functions import distinct, flatten, sort # Placeholder
+from .collection_functions import distinct, flatten, sort
 from .numeric_functions import (
     abs_fn,
     ceil_fn,
@@ -52,5 +52,7 @@ __all__ = [
     "trimprefix",
     "trimspace",
     "trimsuffix",
-    # Placeholder for collection functions
+    "distinct",
+    "flatten",
+    "sort",
 ]
