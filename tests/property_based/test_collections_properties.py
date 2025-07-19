@@ -2,6 +2,7 @@ import pytest
 from hypothesis import given, strategies as st
 from pyvider.cty import CtyList, CtyString, CtyNumber, CtyBool, CtyValidationError
 from decimal import Decimal
+import unicodedata
 
 @given(st.lists(st.text()))
 def test_list_of_strings_validation(value):
@@ -10,7 +11,8 @@ def test_list_of_strings_validation(value):
     """
     list_type = CtyList(element_type=CtyString())
     validated_value = list_type.validate(value)
-    assert validated_value.raw_value == value
+    normalized_value = [unicodedata.normalize("NFC", v) for v in value]
+    assert validated_value.raw_value == normalized_value
 
 @given(st.lists(st.integers() | st.floats(allow_nan=False, allow_infinity=False)))
 def test_list_of_numbers_validation(value):
