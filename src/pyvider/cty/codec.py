@@ -4,16 +4,14 @@ from typing import Any
 
 import msgpack
 
-from .conversion import encode_cty_type_to_wire_json, infer_cty_type_from_raw
-from .exceptions import CtyValidationError, DeserializationError, SerializationError
-from .parser import parse_tf_type_to_ctytype
+from .conversion import encode_cty_type_to_wire_json
+from .exceptions import CtyValidationError, DeserializationError
 from .types import (
     CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtySet,
     CtyString, CtyTuple, CtyType
 )
 from .values import CtyValue
 from .values.markers import RefinedUnknownValue, UNREFINED_UNKNOWN, UnknownValue
-from pyvider.telemetry import logger
 
 def _ext_hook(code: int, data: bytes) -> Any:
     if code == 0:
@@ -50,9 +48,7 @@ def _convert_value_to_serializable(value: CtyValue, schema: CtyType) -> Any:
                 payload[4] = [str(num).encode('utf-8'), inclusive]
             if value.value.collection_length_lower_bound is not None: payload[5] = value.value.collection_length_lower_bound
             if value.value.collection_length_upper_bound is not None: payload[6] = value.value.collection_length_upper_bound
-            
             if not payload: return msgpack.ExtType(0, b"")
-            
             packed_payload = msgpack.packb(payload)
             return msgpack.ExtType(12, packed_payload)
         return msgpack.ExtType(0, b"")
@@ -77,21 +73,38 @@ def _convert_value_to_serializable(value: CtyValue, schema: CtyType) -> Any:
         return [_convert_value_to_serializable(item, schema.element_type) for item in items]
     if isinstance(schema, CtyTuple):
         return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
-    if isinstance(inner_val, Decimal): return str(inner_val)
+    
+    if isinstance(inner_val, Decimal):
+        return str(inner_val)
+        
     return inner_val
+
+def _msgpack_default_handler(obj: Any) -> Any:
+    """
+    A handler for msgpack to serialize types it doesn't know,
+    like arbitrarily large Python integers.
+    """
+    if isinstance(obj, int):
+        # If an integer is too large for msgpack's native types,
+        # it will be passed to this handler. We serialize it as a string
+        # to maintain precision, which aligns with go-cty's behavior.
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not MessagePack serializable")
 
 def cty_to_msgpack(value: CtyValue, schema: CtyType) -> bytes:
     serializable_data = _convert_value_to_serializable(value, schema)
-    return msgpack.packb(serializable_data, use_bin_type=True)
+    # THE FIX: Use the `default` parameter to handle large integers.
+    return msgpack.packb(
+        serializable_data,
+        default=_msgpack_default_handler,
+        use_bin_type=True
+    )
 
 def _unpacked_to_cty(data: Any, schema: CtyType) -> CtyValue:
     if isinstance(data, UnknownValue):
         return CtyValue.unknown(schema, value=data)
     if data is None:
         return CtyValue.null(schema)
-
-    # This is the original, correct logic. It delegates to the type's own
-    # validate method, which for CtyDynamic, correctly handles the wire format.
     return schema.validate(data)
 
 def cty_from_msgpack(data: bytes, cty_type: CtyType) -> CtyValue:

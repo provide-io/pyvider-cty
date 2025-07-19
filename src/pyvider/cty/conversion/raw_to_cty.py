@@ -43,7 +43,7 @@ def infer_cty_type_from_raw(value: Any) -> "CtyType":
     This function uses an iterative approach with a work stack to avoid recursion limits.
     """
     from pyvider.cty.types import (
-        CtyType, CtyBool, CtyNumber, CtyString, CtyList, CtySet, CtyMap, CtyObject, CtyDynamic
+        CtyType, CtyBool, CtyNumber, CtyString, CtyList, CtySet, CtyMap, CtyObject, CtyTuple, CtyDynamic
     )
 
     if hasattr(value, "vtype") or isinstance(value, CtyType):
