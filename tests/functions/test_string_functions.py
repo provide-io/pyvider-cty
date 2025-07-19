@@ -1,12 +1,13 @@
 import pytest
-from pyvider.cty import CtyString, CtyNumber, CtyValue, CtyFunctionError
+from pyvider.cty import CtyString, CtyNumber, CtyValue
+from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions import chomp, strrev, trimspace
 
 class TestStringFunctions:
     @pytest.mark.parametrize("input_str, expected_str", [
         ("hello\n", "hello"),
         ("hello\r\n", "hello"),
-        ("hello\n\r", "hello\n"), # rstrip will remove the \r, but not the \n before it
+        ("hello\n\r", "hello\n"),
         ("hello", "hello"),
         ("\n", ""),
         ("\r\n", ""),
