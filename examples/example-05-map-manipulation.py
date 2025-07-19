@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # docs/examples/example-05-map-manipulation.py
 
-from pyvider.cty import CtyMap, CtyNumber, CtyString
+from pyvider.cty import CtyMap, CtyNumber
 from pyvider.cty.exceptions import CtyValidationError
 
 # --- Immutable Update Pattern for CtyValue using Ergonomic Helpers ---
@@ -20,13 +20,9 @@ try:
 
     # --- Operation: Add and update keys using chained helpers ---
     print("\nAdding 'batch_size' and updating 'timeout'...")
-    
+
     # The helper methods return a new, validated CtyValue instance.
-    new_config_val = (
-        config_val
-        .with_key("batch_size", 1000)
-        .with_key("timeout", 60)
-    )
+    new_config_val = config_val.with_key("batch_size", 1000).with_key("timeout", 60)
 
     print("Config after adding and updating:")
     for key, value_cty in new_config_val.raw_value.items():
@@ -34,7 +30,7 @@ try:
 
     # --- Operation: Delete a key ---
     print("\nDeleting 'max_connections'...")
-    
+
     final_config_val = new_config_val.without_key("max_connections")
 
     print("Final config keys:")

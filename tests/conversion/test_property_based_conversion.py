@@ -1,22 +1,31 @@
-import pytest
-from hypothesis import given, strategies as st, settings
 import unicodedata
+
+from hypothesis import given, settings, strategies as st
+import pytest
 
 from pyvider.cty import CtyDynamic
 from pyvider.cty.conversion import cty_to_native, infer_cty_type_from_raw
 
 # Define a strategy for basic JSON-like data types that our CTY system can handle.
 # This includes None, booleans, numbers (integers/floats), and text.
-primitives = st.none() | st.booleans() | st.floats(allow_nan=False, allow_infinity=False, width=32) | st.integers() | st.text()
+primitives = (
+    st.none()
+    | st.booleans()
+    | st.floats(allow_nan=False, allow_infinity=False, width=32)
+    | st.integers()
+    | st.text()
+)
 
 # Define a recursive strategy for generating arbitrarily nested data structures.
 # A `json_data` value can be a primitive, a list of `json_data`, or a dictionary
 # with string keys and `json_data` values.
 json_data = st.recursive(
     primitives,
-    lambda children: st.lists(children) | st.dictionaries(st.text().filter(lambda x: x != ""), children),
-    max_leaves=10
+    lambda children: st.lists(children)
+    | st.dictionaries(st.text().filter(lambda x: x != ""), children),
+    max_leaves=10,
 )
+
 
 def deep_prepare_for_comparison(data):
     """
@@ -34,9 +43,10 @@ def deep_prepare_for_comparison(data):
         return unicodedata.normalize("NFC", data)
     return data
 
+
 @settings(deadline=500)
 @given(native_data=json_data)
-def test_conversion_roundtrip_is_lossless(native_data):
+def test_conversion_roundtrip_is_lossless(native_data) -> None:
     """
     This property-based test verifies that for any generated native Python
     data structure, the conversion to a CtyValue and back to a native type
@@ -54,7 +64,9 @@ def test_conversion_roundtrip_is_lossless(native_data):
 
         # 3. Assert that the result is identical to the original input,
         #    after preparing both for a semantic comparison.
-        assert deep_prepare_for_comparison(roundtrip_native_data) == deep_prepare_for_comparison(native_data)
+        assert deep_prepare_for_comparison(
+            roundtrip_native_data
+        ) == deep_prepare_for_comparison(native_data)
 
     except Exception as e:
         pytest.fail(
@@ -62,7 +74,8 @@ def test_conversion_roundtrip_is_lossless(native_data):
             f"Error: {type(e).__name__}: {e}"
         )
 
-def test_infer_type_of_list_of_mixed_objects():
+
+def test_infer_type_of_list_of_mixed_objects() -> None:
     """
     A specific regression test to ensure that a list of objects with
     varying keys correctly infers a list of dynamic objects, which
@@ -74,7 +87,7 @@ def test_infer_type_of_list_of_mixed_objects():
     ]
 
     inferred_type = infer_cty_type_from_raw(mixed_list)
-    
+
     cty_value = inferred_type.validate(mixed_list)
     native_result = cty_to_native(cty_value)
 

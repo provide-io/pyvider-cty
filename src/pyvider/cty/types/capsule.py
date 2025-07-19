@@ -3,6 +3,7 @@
 Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
+
 from typing import Any
 
 from pyvider.cty.exceptions import CtyValidationError
@@ -36,7 +37,11 @@ class CtyCapsule(CtyType[Any]):
                 return CtyValue.null(self)
             if value.is_unknown:
                 return CtyValue.unknown(self)
-            if (isinstance(value.type, CtyCapsule) and value.type.name == self.name and value.type.py_type == self.py_type):
+            if (
+                isinstance(value.type, CtyCapsule)
+                and value.type.name == self.name
+                and value.type.py_type == self.py_type
+            ):
                 return value
             val_to_check = value.value
         else:
@@ -46,7 +51,9 @@ class CtyCapsule(CtyType[Any]):
             return CtyValue.null(self)
 
         if not isinstance(val_to_check, self._py_type):
-            raise CtyValidationError(f"Value is not an instance of {self._py_type.__name__}. Got {type(val_to_check).__name__}.")
+            raise CtyValidationError(
+                f"Value is not an instance of {self._py_type.__name__}. Got {type(val_to_check).__name__}."
+            )
         return CtyValue(self, val_to_check)
 
     def equal(self, other: "CtyType[Any]") -> bool:

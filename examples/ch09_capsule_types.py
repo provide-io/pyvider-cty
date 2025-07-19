@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-from pyvider.cty.types import CtyCapsule
 from examples.example_utils import configure_for_example
+from pyvider.cty.types import CtyCapsule
 
 configure_for_example()
 
+
 class FileHandle:
-    def __init__(self, path):
+    def __init__(self, path) -> None:
         self.path = path
+
 
 file_handle_type = CtyCapsule("FileHandle", FileHandle)
 

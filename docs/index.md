@@ -57,7 +57,7 @@ user_type = CtyObject({
 })
 
 # Define a list of users type
-user_list_type = CtyList(user_type)
+user_list_type = CtyList(element_type=user_type)
 
 # Validate a raw Python value
 users_data = [
@@ -67,10 +67,10 @@ users_data = [
 cty_users = user_list_type.validate(users_data)
 
 # Access the raw value
-assert cty_users.raw_value == [
+assert cty_users.raw_value == (
     {"name": "Alice", "age": 30},
     {"name": "Bob", "age": 40},
-]
+)
 ```
 
 ## Next Steps

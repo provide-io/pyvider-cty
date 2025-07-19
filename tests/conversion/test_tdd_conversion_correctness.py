@@ -1,9 +1,13 @@
-import pytest
 from pyvider.cty import (
-    CtyBool, CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString,
-    CtyTuple, CtyValue
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyNumber,
+    CtyObject,
+    CtyString,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
+
 
 class TestCtyToNativeCorrectness:
     """
@@ -12,18 +16,22 @@ class TestCtyToNativeCorrectness:
     CtyValue objects, especially in complex cases with CtyDynamic.
     """
 
-    def test_cty_to_native_with_dynamic_values_in_list(self):
+    def test_cty_to_native_with_dynamic_values_in_list(self) -> None:
         # GIVEN a CtyList containing CtyDynamic values that wrap other CtyValues.
         list_type = CtyList(element_type=CtyDynamic())
-        
+
         # Create a list with a mix of types wrapped in CtyDynamic.
-        validated_list = list_type.validate([
-            CtyString().validate("a"),
-            CtyNumber().validate(123),
-            CtyBool().validate(True),
-            # A nested object, which will also be wrapped dynamically
-            CtyObject(attribute_types={"key": CtyString()}).validate({"key": "value"})
-        ])
+        validated_list = list_type.validate(
+            [
+                CtyString().validate("a"),
+                CtyNumber().validate(123),
+                CtyBool().validate(True),
+                # A nested object, which will also be wrapped dynamically
+                CtyObject(attribute_types={"key": CtyString()}).validate(
+                    {"key": "value"}
+                ),
+            ]
+        )
 
         # WHEN we convert this list to its native representation.
         native_result = cty_to_native(validated_list)
@@ -36,20 +44,19 @@ class TestCtyToNativeCorrectness:
         assert isinstance(native_result[3], dict)
         assert native_result[3]["key"] == "value"
 
-    def test_cty_to_native_with_nested_dynamic_value(self):
+    def test_cty_to_native_with_nested_dynamic_value(self) -> None:
         # GIVEN a complex structure with a CtyDynamic value nested inside.
-        obj_type = CtyObject(attribute_types={
-            "id": CtyNumber(),
-            "data": CtyDynamic()  # The dynamic part
-        })
-        
+        obj_type = CtyObject(
+            attribute_types={
+                "id": CtyNumber(),
+                "data": CtyDynamic(),  # The dynamic part
+            }
+        )
+
         # The value for 'data' is another CtyValue.
         inner_value = CtyList(element_type=CtyString()).validate(["x", "y", "z"])
-        
-        validated_obj = obj_type.validate({
-            "id": 1,
-            "data": inner_value
-        })
+
+        validated_obj = obj_type.validate({"id": 1, "data": inner_value})
 
         # WHEN we convert to native.
         native_result = cty_to_native(validated_obj)

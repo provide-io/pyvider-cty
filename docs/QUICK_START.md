@@ -28,14 +28,14 @@ age_type = CtyNumber()
 active_type = CtyBool()
 
 # Collection type
-tags_type = CtyList(CtyString())
+tags_type = CtyList(element_type=CtyString())
 
 # Complex object type
 person_type = CtyObject({
     "name": CtyString(),
     "age": CtyNumber(),
     "active": CtyBool(),
-    "tags": CtyList(CtyString())
+    "tags": CtyList(element_type=CtyString())
 })
 ```
 
@@ -43,18 +43,18 @@ person_type = CtyObject({
 
 ```python
 # Simple values
-name = CtyValue.string("Alice")
-age = CtyValue.number(30)
-active = CtyValue.bool(True)
+name = CtyString().validate("Alice")
+age = CtyNumber().validate(30)
+active = CtyBool().validate(True)
 
 # List value
-tags = CtyValue.list([
-    CtyValue.string("developer"),
-    CtyValue.string("python")
+tags = CtyList(element_type=CtyString()).validate([
+    "developer",
+    "python"
 ])
 
 # Object value
-person = CtyValue.object(person_type, {
+person = person_type.validate({
     "name": name,
     "age": age,
     "active": active,
@@ -66,12 +66,12 @@ person = CtyValue.object(person_type, {
 
 ```python
 # Direct access
-print(person["name"].as_string())  # "Alice"
-print(person["age"].as_number())   # 30
+print(person["name"].value)  # "Alice"
+print(person["age"].value)   # 30
 
 # Iterate lists
-for tag in person["tags"].as_list():
-    print(tag.as_string())
+for tag in person["tags"].value:
+    print(tag.value)
 
 # Check properties
 print(person.is_null)      # False
@@ -123,11 +123,11 @@ else:
 ```python
 try:
     # This will raise an error - wrong type!
-    bad_person = CtyValue.object(person_type, {
-        "name": CtyValue.number(123),  # Should be string!
-        "age": CtyValue.number(30),
-        "active": CtyValue.bool(True),
-        "tags": CtyValue.list([])
+    bad_person = person_type.validate({
+        "name": CtyNumber().validate(123),  # Should be string!
+        "age": CtyNumber().validate(30),
+        "active": CtyBool().validate(True),
+        "tags": CtyList(element_type=CtyString()).validate([])
     })
 except Exception as e:
     print(f"Validation error: {e}")
@@ -145,14 +145,14 @@ flexible_type = CtyObject({
 })
 
 # Create with different data types
-config1 = CtyValue.object(flexible_type, {
-    "id": CtyValue.string("config-1"),
-    "data": CtyValue.string("text data")
+config1 = flexible_type.validate({
+    "id": "config-1",
+    "data": "text data"
 })
 
-config2 = CtyValue.object(flexible_type, {
-    "id": CtyValue.string("config-2"),
-    "data": CtyValue.number(42)
+config2 = flexible_type.validate({
+    "id": "config-2",
+    "data": 42
 })
 ```
 

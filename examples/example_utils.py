@@ -5,8 +5,9 @@ Provides consistent path resolution and environment setup.
 """
 
 import logging
-import sys
 from pathlib import Path
+import sys
+
 
 def setup_example_environment() -> Path:
     """

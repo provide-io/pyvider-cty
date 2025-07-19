@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+from examples.example_utils import configure_for_example
 from pyvider.cty import CtyNumber
 from pyvider.cty.functions import abs_fn
-from examples.example_utils import configure_for_example
 
 configure_for_example()
 

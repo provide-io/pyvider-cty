@@ -15,12 +15,14 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+
 # The concrete ABC now implements the protocol
 @define(slots=True)
 class CtyType[T](CtyTypeProtocol[T], ABC):
     """
     Generic abstract base class for all Cty types.
     """
+
     ctype: ClassVar[str | None] = None
 
     @abstractmethod

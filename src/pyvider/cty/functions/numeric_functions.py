@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 import math
+from typing import Any
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
@@ -12,6 +13,7 @@ def add(a: CtyValue, b: CtyValue) -> CtyValue:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(a.value + b.value)
 
+
 def subtract(a: CtyValue, b: CtyValue) -> CtyValue:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("subtract: arguments must be numbers")
@@ -19,12 +21,14 @@ def subtract(a: CtyValue, b: CtyValue) -> CtyValue:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(a.value - b.value)
 
+
 def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("multiply: arguments must be numbers")
     if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(a.value * b.value)
+
 
 def divide(a: CtyValue, b: CtyValue) -> CtyValue:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
@@ -35,6 +39,7 @@ def divide(a: CtyValue, b: CtyValue) -> CtyValue:
         raise CtyFunctionError("divide by zero")
     return CtyNumber().validate(a.value / b.value)
 
+
 def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("modulo: arguments must be numbers")
@@ -44,6 +49,7 @@ def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
         raise CtyFunctionError("modulo by zero")
     return CtyNumber().validate(math.fmod(a.value, b.value))
 
+
 def negate(a: CtyValue) -> CtyValue:
     if not isinstance(a.type, CtyNumber):
         raise CtyFunctionError("negate: argument must be a number")
@@ -51,50 +57,64 @@ def negate(a: CtyValue) -> CtyValue:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(-a.value)
 
+
 def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the absolute value of a number.
     """
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(f"abs: input must be a number, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"abs: input must be a number, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
     val = input_val.value
     return CtyNumber().validate(abs(val))
 
+
 def ceil_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the smallest integer greater than or equal to a number.
     """
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(f"ceil: input must be a number, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"ceil: input must be a number, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
     val = input_val.value
     return CtyNumber().validate(Decimal(math.ceil(val)))
 
+
 def floor_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the largest integer less than or equal to a number.
     """
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(f"floor: input must be a number, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"floor: input must be a number, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
     val = input_val.value
     return CtyNumber().validate(Decimal(math.floor(val)))
 
+
 def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Returns the logarithm of a number in a given base.
     """
     if not isinstance(num_val.type, CtyNumber):
-        raise CtyFunctionError(f"log: number input must be a number, got {num_val.type.ctype}")
+        raise CtyFunctionError(
+            f"log: number input must be a number, got {num_val.type.ctype}"
+        )
     if not isinstance(base_val.type, CtyNumber):
-        raise CtyFunctionError(f"log: base input must be a number, got {base_val.type.ctype}")
+        raise CtyFunctionError(
+            f"log: base input must be a number, got {base_val.type.ctype}"
+        )
 
     if num_val.is_null or num_val.is_unknown or base_val.is_null or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
@@ -114,7 +134,7 @@ def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any
         result = Decimal(str(math.log(float(num), float(base))))
         return CtyNumber().validate(result)
     except ValueError as e:
-        raise CtyFunctionError(f"log: math domain error: {e}")
+        raise CtyFunctionError(f"log: math domain error: {e}") from e
 
 
 def pow_fn(num_val: "CtyValue[Any]", power_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -122,11 +142,20 @@ def pow_fn(num_val: "CtyValue[Any]", power_val: "CtyValue[Any]") -> "CtyValue[An
     Returns a number raised to the power of another number.
     """
     if not isinstance(num_val.type, CtyNumber):
-        raise CtyFunctionError(f"pow: number input must be a number, got {num_val.type.ctype}")
+        raise CtyFunctionError(
+            f"pow: number input must be a number, got {num_val.type.ctype}"
+        )
     if not isinstance(power_val.type, CtyNumber):
-        raise CtyFunctionError(f"pow: power input must be a number, got {power_val.type.ctype}")
+        raise CtyFunctionError(
+            f"pow: power input must be a number, got {power_val.type.ctype}"
+        )
 
-    if num_val.is_null or num_val.is_unknown or power_val.is_null or power_val.is_unknown:
+    if (
+        num_val.is_null
+        or num_val.is_unknown
+        or power_val.is_null
+        or power_val.is_unknown
+    ):
         return CtyValue.unknown(CtyNumber())
 
     num = num_val.value
@@ -134,10 +163,10 @@ def pow_fn(num_val: "CtyValue[Any]", power_val: "CtyValue[Any]") -> "CtyValue[An
 
     try:
         # Decimal's __pow__ handles this well, including negative/fractional exponents
-        result = num ** power
+        result = num**power
         return CtyNumber().validate(result)
-    except InvalidOperation as e: # e.g. fractional power of negative number
-        raise CtyFunctionError(f"pow: invalid operation: {e}")
+    except InvalidOperation as e:  # e.g. fractional power of negative number
+        raise CtyFunctionError(f"pow: invalid operation: {e}") from e
 
 
 def signum_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -145,10 +174,12 @@ def signum_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     Returns the sign of a number (-1 if < 0, 0 if == 0, 1 if > 0).
     """
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(f"signum: input must be a number, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"signum: input must be a number, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
-        return input_val # Passthrough, or unknown number if specifically unknown.
-                        # Go-cty returns unknown for unknown input. Let's align.
+        return input_val  # Passthrough, or unknown number if specifically unknown.
+        # Go-cty returns unknown for unknown input. Let's align.
         # return CtyValue.unknown(CtyNumber()) if input_val.is_unknown else input_val
 
     val = input_val.value
@@ -159,21 +190,26 @@ def signum_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     else:
         return CtyNumber().validate(Decimal("0"))
 
+
 def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any]":
     """
     Parses a string to an integer in a given base.
     Base must be 0 or between 2 and 62.
     """
     if not isinstance(str_val.type, CtyString):
-        raise CtyFunctionError(f"parseint: input string must be a string, got {str_val.type.ctype}")
+        raise CtyFunctionError(
+            f"parseint: input string must be a string, got {str_val.type.ctype}"
+        )
     if not isinstance(base_val.type, CtyNumber):
-        raise CtyFunctionError(f"parseint: base must be a number, got {base_val.type.ctype}")
+        raise CtyFunctionError(
+            f"parseint: base must be a number, got {base_val.type.ctype}"
+        )
 
     if str_val.is_null or str_val.is_unknown or base_val.is_null or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
 
     s = str_val.value
-    base = int(base_val.value) # Base must be an integer
+    base = int(base_val.value)  # Base must be an integer
 
     # go-cty's parseint has base 0 for auto-detection (0x, 0), and 2-36 for others.
     # Python's int() with base 0 handles "0x", "0o", "0b" prefixes.
@@ -182,8 +218,10 @@ def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValu
     # This implementation will match Python's int() behavior for simplicity for now.
     # For bases > 36, a custom implementation would be needed.
 
-    if not (base == 0 or 2 <= base <= 36): # Python's int() limitation
-         raise CtyFunctionError(f"parseint: base must be 0 or between 2 and 36, got {base}")
+    if not (base == 0 or 2 <= base <= 36):  # Python's int() limitation
+        raise CtyFunctionError(
+            f"parseint: base must be 0 or between 2 and 36, got {base}"
+        )
 
     try:
         # Python's int() correctly handles prefixes like "0x" if base is 0 or 16.
@@ -200,8 +238,9 @@ def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValu
         # Could not convert string to int with the given base
         # Return null as per go-cty's behavior for parseint on failure
         return CtyValue.null(CtyNumber())
-    except TypeError: # e.g. if s is not a string-like type after .value
-        raise CtyFunctionError("parseint: invalid input string for parsing")
+    except TypeError as e:  # e.g. if s is not a string-like type after .value
+        raise CtyFunctionError("parseint: invalid input string for parsing") from e
+
 
 # TODO: Register these functions.
 # Example registration (hypothetical, as with string_functions):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from pyvider.cty import CtyDynamic, CtyString, CtyNumber, CtyList
 from examples.example_utils import configure_for_example
+from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyString
 
 configure_for_example()
 

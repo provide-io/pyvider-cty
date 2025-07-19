@@ -1,43 +1,53 @@
 import pytest
-from pyvider.cty import CtyString, CtyNumber, CtyBool
-from pyvider.cty.exceptions import CtyStringValidationError, CtyNumberValidationError, CtyBoolValidationError
+
+from pyvider.cty import CtyBool, CtyNumber, CtyString
+from pyvider.cty.exceptions import (
+    CtyBoolValidationError,
+    CtyNumberValidationError,
+    CtyStringValidationError,
+)
+
 
 class TestCtyStringType:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.string_type = CtyString()
 
-    def test_validate_invalid_string(self):
+    def test_validate_invalid_string(self) -> None:
         with pytest.raises(CtyStringValidationError):
             self.string_type.validate(123)
 
     def test_validate_none_string(self) -> None:
-        with pytest.raises(CtyStringValidationError, match="Cannot convert null to string"):
+        with pytest.raises(
+            CtyStringValidationError, match="Cannot convert null to string"
+        ):
             self.string_type.validate(None)
 
     def test_validate_valid_string(self) -> None:
         result = self.string_type.validate("hello")
         assert result.value == "hello"
 
+
 class TestCtyNumberType:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.number_type = CtyNumber()
 
-    def test_validate_invalid_number(self):
+    def test_validate_invalid_number(self) -> None:
         with pytest.raises(CtyNumberValidationError):
             self.number_type.validate("hello")
 
-    def test_validate_valid_number(self):
+    def test_validate_valid_number(self) -> None:
         result = self.number_type.validate(123)
         assert result.value == 123
 
+
 class TestCtyBoolType:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.bool_type = CtyBool()
 
-    def test_validate_invalid_bool(self):
+    def test_validate_invalid_bool(self) -> None:
         with pytest.raises(CtyBoolValidationError):
             self.bool_type.validate(123)
 
-    def test_validate_valid_bool(self):
+    def test_validate_valid_bool(self) -> None:
         result = self.bool_type.validate(True)
         assert result.value is True

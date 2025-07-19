@@ -1,11 +1,11 @@
-import pytest
-from pyvider.cty import CtyTuple, CtyString, CtyNumber, CtyBool, CtyList, CtyValue
-from pyvider.cty.exceptions import CtyTupleValidationError, CtyValidationError
+from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
+from pyvider.cty.exceptions import CtyTupleValidationError
+
 from ._helpers import assert_diagnostic
 
-class TestTupleDiagnostics:
 
-    def test_incorrect_element_count(self):
+class TestTupleDiagnostics:
+    def test_incorrect_element_count(self) -> None:
         """
         Tests that a tuple with the wrong number of elements produces a
         correctly formatted diagnostic.
@@ -20,7 +20,7 @@ class TestTupleDiagnostics:
             expected_error_message="Expected 2 elements, got 1",
         )
 
-    def test_wrong_type_at_tuple_index(self):
+    def test_wrong_type_at_tuple_index(self) -> None:
         """
         Tests that a tuple with the wrong element type at a specific index
         produces a correctly formatted diagnostic.
@@ -35,7 +35,7 @@ class TestTupleDiagnostics:
             expected_error_message="At [2]: Boolean validation error: Cannot convert str to bool.",
         )
 
-    def test_error_in_collection_within_tuple(self):
+    def test_error_in_collection_within_tuple(self) -> None:
         """
         Tests that a diagnostic for a nested collection within a tuple
         has the correct path.

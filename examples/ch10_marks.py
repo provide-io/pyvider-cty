@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from pyvider.cty import CtyString
 from examples.example_utils import configure_for_example
+from pyvider.cty import CtyString
 
 configure_for_example()
 

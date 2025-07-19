@@ -22,7 +22,7 @@ class TestCtyListAdvanced:
 
     def test_element_at_negative_index(self) -> None:
         """Test retrieving an element at a negative index."""
-        list_type = self.string_list # This is CtyList(element_type=CtyString())
+        list_type = self.string_list  # This is CtyList(element_type=CtyString())
         # Create a CtyValue instance by validating a Python list
         list_cty_value = list_type.validate(["apple", "banana", "cherry"])
 
@@ -30,7 +30,10 @@ class TestCtyListAdvanced:
         element_cty_value = list_cty_value[-1]
 
         # Assertions
-        from pyvider.cty import CtyValue # Import CtyValue if not already at module level
+        from pyvider.cty import (
+            CtyValue,
+        )  # Import CtyValue if not already at module level
+
         assert isinstance(element_cty_value, CtyValue)
         assert isinstance(element_cty_value.type, CtyString)
         assert element_cty_value.value == "cherry"

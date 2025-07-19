@@ -24,9 +24,15 @@ unknown_value = CtyValue.unknown(profile_type)
 null_value = CtyValue.null(profile_type)
 
 # 5. Check the state of each value.
-print(f"Known Value:   Is Unknown? {known_value.is_unknown}, Is Null? {known_value.is_null}")
-print(f"Unknown Value: Is Unknown? {unknown_value.is_unknown}, Is Null? {unknown_value.is_null}")
-print(f"Null Value:    Is Unknown? {null_value.is_unknown}, Is Null? {null_value.is_null}")
+print(
+    f"Known Value:   Is Unknown? {known_value.is_unknown}, Is Null? {known_value.is_null}"
+)
+print(
+    f"Unknown Value: Is Unknown? {unknown_value.is_unknown}, Is Null? {unknown_value.is_null}"
+)
+print(
+    f"Null Value:    Is Unknown? {null_value.is_unknown}, Is Null? {null_value.is_null}"
+)
 
 # 6. Safely access properties.
 if not known_value.is_unknown and not known_value.is_null:
