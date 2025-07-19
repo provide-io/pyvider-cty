@@ -39,9 +39,9 @@ class TestCtyTupleOperations:
         # element_at should be called on the CtyValue instance itself
 
         # Positive indices
-        el0 = tuple_type.element_at(tuple_value, 0) # Was internal_tuple
-        el1 = tuple_type.element_at(tuple_value, 1) # Was internal_tuple
-        el2 = tuple_type.element_at(tuple_value, 2) # Was internal_tuple
+        el0 = tuple_type.element_at(tuple_value, 0)  # Was internal_tuple
+        el1 = tuple_type.element_at(tuple_value, 1)  # Was internal_tuple
+        el2 = tuple_type.element_at(tuple_value, 2)  # Was internal_tuple
         assert isinstance(el0, CtyValue) and el0.value == "data"
         assert isinstance(el1, CtyValue) and el1.value == Decimal("123")
         assert isinstance(el2, CtyValue) and el2.value is False
@@ -52,17 +52,25 @@ class TestCtyTupleOperations:
         # The .element_at method returns a new CtyValue instance wrapping the element.
         # It does not return the element from the original internal tuple directly.
         # So `is` check will fail. We need to check value and type.
-        assert isinstance(el_neg1, CtyValue) and el_neg1.type.equal(CtyBool()) and el_neg1.value is False
-        assert isinstance(el_neg3, CtyValue) and el_neg3.type.equal(CtyString()) and el_neg3.value == "data"
+        assert (
+            isinstance(el_neg1, CtyValue)
+            and el_neg1.type.equal(CtyBool())
+            and el_neg1.value is False
+        )
+        assert (
+            isinstance(el_neg3, CtyValue)
+            and el_neg3.type.equal(CtyString())
+            and el_neg3.value == "data"
+        )
 
     @pytest.mark.asyncio
     async def test_element_at_out_of_bounds(self, tuple_type, tuple_value) -> None:
         """Test element_at raises Exception for out-of-bounds indices."""
         # element_at should be called on the CtyValue instance itself
-        with pytest.raises(Exception): # Expect IndexError or similar
-            tuple_type.element_at(tuple_value, 3) # Was internal_tuple
-        with pytest.raises(Exception): # Expect IndexError or similar
-            tuple_type.element_at(tuple_value, -4) # Was internal_tuple
+        with pytest.raises(Exception):  # Expect IndexError or similar
+            tuple_type.element_at(tuple_value, 3)  # Was internal_tuple
+        with pytest.raises(Exception):  # Expect IndexError or similar
+            tuple_type.element_at(tuple_value, -4)  # Was internal_tuple
 
     @pytest.mark.asyncio
     async def test_slice_valid(self, tuple_type, tuple_value) -> None:
@@ -70,7 +78,7 @@ class TestCtyTupleOperations:
         # slice should be called on the CtyValue instance itself
 
         # Slice [0:2] -> (String, Number)
-        slice02_val = tuple_type.slice(tuple_value, 0, 2) # Was internal_tuple
+        slice02_val = tuple_type.slice(tuple_value, 0, 2)  # Was internal_tuple
         assert isinstance(slice02_val, CtyValue)
         assert isinstance(slice02_val.type, CtyTuple)
         assert len(slice02_val.type.element_types) == 2
@@ -82,7 +90,9 @@ class TestCtyTupleOperations:
 
         # Slice [1:] -> (Number, Bool)
         slice1_val = tuple_type.slice(
-            tuple_value, 1, 3 # Was internal_tuple
+            tuple_value,
+            1,
+            3,  # Was internal_tuple
         )  # Explicit end needed for tuple.slice
         assert isinstance(slice1_val.type, CtyTuple)
         assert len(slice1_val.type.element_types) == 2
@@ -93,13 +103,13 @@ class TestCtyTupleOperations:
         assert slice1_val.value[1].value is False
 
         # Slice [:-1] -> (String, Number)
-        slice_neg1_val = tuple_type.slice(tuple_value, 0, -1) # Was internal_tuple
+        slice_neg1_val = tuple_type.slice(tuple_value, 0, -1)  # Was internal_tuple
         assert len(slice_neg1_val.value) == 2
         assert slice_neg1_val.value[0].value == "data"
         assert slice_neg1_val.value[1].value == Decimal("123")
 
         # Empty slice
-        slice_empty = tuple_type.slice(tuple_value, 1, 1) # Was internal_tuple
+        slice_empty = tuple_type.slice(tuple_value, 1, 1)  # Was internal_tuple
         assert isinstance(slice_empty.type, CtyTuple)
         assert len(slice_empty.type.element_types) == 0
         assert len(slice_empty.value) == 0
@@ -109,12 +119,16 @@ class TestCtyTupleOperations:
         """Test slice method handles out-of-bounds indices gracefully (clamps)."""
         # slice should be called on the CtyValue instance itself
         # Slice indices are typically clamped in Python slicing
-        slice_oob_end = tuple_type.slice(tuple_value, 1, 10)  # Was internal_tuple. End clamped to 3
+        slice_oob_end = tuple_type.slice(
+            tuple_value, 1, 10
+        )  # Was internal_tuple. End clamped to 3
         assert len(slice_oob_end.value) == 2
         assert slice_oob_end.value[0].value == Decimal("123")
         assert slice_oob_end.value[1].value is False
 
-        slice_oob_start = tuple_type.slice(tuple_value, 5, 10)  # Was internal_tuple. Start clamped to 3
+        slice_oob_start = tuple_type.slice(
+            tuple_value, 5, 10
+        )  # Was internal_tuple. Start clamped to 3
         assert len(slice_oob_start.value) == 0
 
     # --- Tests for CtyValue operations (__getitem__, __len__, __iter__) ---

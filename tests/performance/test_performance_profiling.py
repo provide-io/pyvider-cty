@@ -1,28 +1,32 @@
-import pytest
+import os
 import random
 import time
-import os
 from typing import Any
 
-from pyvider.cty import (
-    CtyObject, CtyString, CtyNumber, CtyList, CtyBool, CtyValue
-)
-from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+import pytest
+
+from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
+from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
 # --- Conditional Skip Logic ---
 # Skip these tests unless the specific environment variable is set to a "true" value.
 # This prevents time-consuming benchmarks from running on every test execution.
-run_benchmarks = os.environ.get("PYVIDER_CTY_TEST_BENCHMARK", "false").lower() in ("true", "1", "yes")
+run_benchmarks = os.environ.get("PYVIDER_CTY_TEST_BENCHMARK", "false").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 skip_benchmark_if_not_enabled = pytest.mark.skipif(
     not run_benchmarks,
-    reason="Benchmark tests are disabled. Set PYVIDER_CTY_TEST_BENCHMARK=true to run them."
+    reason="Benchmark tests are disabled. Set PYVIDER_CTY_TEST_BENCHMARK=true to run them.",
 )
 
 # --- Configuration ---
 NUM_OBJECTS = 1000  # Number of CtyValues to process per benchmark round
-NESTING_DEPTH = 3   # Depth of nested objects within the test data
+NESTING_DEPTH = 3  # Depth of nested objects within the test data
 
 # --- Test Data Generation ---
+
 
 def generate_complex_object_data(depth: int) -> dict[str, Any]:
     """Generates a nested Python dictionary to simulate complex config data."""
@@ -42,13 +46,14 @@ def generate_complex_object_data(depth: int) -> dict[str, Any]:
         "children": [generate_complex_object_data(depth - 1) for _ in range(2)],
     }
 
+
 def generate_cty_schema_from_data(d: dict) -> CtyObject:
     """Recursively generates a CtyObject type from a sample dictionary."""
     attrs = {}
     for key, value in d.items():
         if isinstance(value, str):
             attrs[key] = CtyString()
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             attrs[key] = CtyNumber()
         elif isinstance(value, bool):
             attrs[key] = CtyBool()
@@ -61,7 +66,9 @@ def generate_cty_schema_from_data(d: dict) -> CtyObject:
             attrs[key] = CtyList(element_type=CtyObject({}))
     return CtyObject(attribute_types=attrs)
 
+
 # --- Pytest Fixture for Test Data ---
+
 
 @pytest.fixture(scope="module")
 def complex_data_and_schema():
@@ -71,12 +78,16 @@ def complex_data_and_schema():
     """
     sample_data = generate_complex_object_data(NESTING_DEPTH)
     cty_schema = generate_cty_schema_from_data(sample_data)
-    test_data = [generate_complex_object_data(NESTING_DEPTH) for _ in range(NUM_OBJECTS)]
+    test_data = [
+        generate_complex_object_data(NESTING_DEPTH) for _ in range(NUM_OBJECTS)
+    ]
     return test_data, cty_schema
+
 
 # --- Benchmark Test ---
 
-def core_roundtrip_operation(data_list: list[dict], schema: CtyObject):
+
+def core_roundtrip_operation(data_list: list[dict], schema: CtyObject) -> None:
     """
     The core operation to be benchmarked: validating, marshalling to msgpack,
     and unmarshalling back for a list of objects.
@@ -89,15 +100,16 @@ def core_roundtrip_operation(data_list: list[dict], schema: CtyObject):
         # 3. Unmarshal back to a CtyValue
         _ = cty_from_msgpack(packed_bytes, schema)
 
+
 @skip_benchmark_if_not_enabled
-def test_benchmark_full_conversion_roundtrip(benchmark, complex_data_and_schema):
+def test_benchmark_full_conversion_roundtrip(benchmark, complex_data_and_schema) -> None:
     """
     Uses pytest-benchmark to measure the performance of the full
     validate -> marshal -> unmarshal data conversion pipeline.
     This test is skipped by default.
     """
     test_data, cty_schema = complex_data_and_schema
-    
+
     # The benchmark fixture runs the provided function multiple times
     # to get statistically stable results.
     benchmark(core_roundtrip_operation, test_data, cty_schema)

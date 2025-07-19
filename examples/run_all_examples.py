@@ -5,9 +5,9 @@ Runs all relevant Python example scripts and checks for unexpected failures.
 """
 
 import asyncio
+from pathlib import Path
 import subprocess  # nosec B404
 import sys
-from pathlib import Path
 from typing import Any
 
 # Ensure sources are importable by example scripts
@@ -54,7 +54,7 @@ async def run_script(
         args = []
     effective_cwd: Path = cwd if cwd is not None else project_root
 
-    command = [sys.executable, str(script_path)] + args
+    command = [sys.executable, str(script_path), *args]
     process = None
     try:
         process = await asyncio.create_subprocess_exec(
@@ -74,9 +74,7 @@ async def run_script(
         success = False
         if expected_to_fail:
             if exit_code != 0:
-                if expected_stderr_contains and expected_stderr_contains in stderr:
-                    success = True
-                elif not expected_stderr_contains:
+                if (expected_stderr_contains and expected_stderr_contains in stderr) or not expected_stderr_contains:
                     success = True
             else:
                 stderr += "\nERROR: Script was expected to fail but exited with 0."

@@ -4,6 +4,6 @@
 - [x] 💅 Run `ruff` to fix linting and formatting issues.
 - [x] 🐛 Fix circular import error caused by `ruff` fixes.
 - [x] ⛑️ Address `mypy` errors to improve type safety.
-- [ ] 📚 Write comprehensive documentation in `docs/`.
-- [ ] 🧪 Final verification of all tests and code quality checks.
+- [x] 📚 Write comprehensive documentation in `docs/`.
+- [x] 🧪 Final verification of all tests and code quality checks.
 - [ ] 🎉 Submit final changes.

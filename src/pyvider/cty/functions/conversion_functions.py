@@ -1,5 +1,6 @@
-from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyValue
+from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
+
 
 def to_string(input_val: CtyValue) -> CtyValue:
     if input_val.is_null or input_val.is_unknown:
@@ -8,13 +9,17 @@ def to_string(input_val: CtyValue) -> CtyValue:
         return CtyString().validate("true" if input_val.value else "false")
     return CtyString().validate(str(input_val.value))
 
+
 def to_number(input_val: CtyValue) -> CtyValue:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
     try:
         return CtyNumber().validate(input_val.value)
     except Exception as e:
-        raise CtyFunctionError(f"tostring: cannot convert {input_val.type.ctype} to number") from e
+        raise CtyFunctionError(
+            f"tostring: cannot convert {input_val.type.ctype} to number"
+        ) from e
+
 
 def to_bool(input_val: CtyValue) -> CtyValue:
     if input_val.is_null or input_val.is_unknown:
@@ -22,4 +27,6 @@ def to_bool(input_val: CtyValue) -> CtyValue:
     try:
         return CtyBool().validate(input_val.value)
     except Exception as e:
-        raise CtyFunctionError(f"tobool: cannot convert {input_val.type.ctype} to bool") from e
+        raise CtyFunctionError(
+            f"tobool: cannot convert {input_val.type.ctype} to bool"
+        ) from e

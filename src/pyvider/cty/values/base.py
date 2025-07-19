@@ -46,7 +46,7 @@ class CtyValue[T]:
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CtyValue):
-            return NotImplemented
+            return False
         return (
             self.type.equal(other.type) and
             self.is_unknown == other.is_unknown and

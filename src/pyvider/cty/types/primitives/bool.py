@@ -54,6 +54,7 @@ class CtyBool(CtyType[bool]):
 
     def usable_as(self, other: "CtyType[object]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
+
         return isinstance(other, CtyBool | CtyDynamic)
 
     def _to_wire_json(self) -> Any:

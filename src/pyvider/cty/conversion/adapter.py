@@ -43,13 +43,19 @@ def cty_to_native(value: Any) -> Any:
                 inner_id = id(val_to_process.value)
                 results[val_id] = results[inner_id]
             elif isinstance(val_to_process.type, CtyObject | CtyMap):
-                results[val_id] = {k: results[id(v)] for k, v in val_to_process.value.items()}
+                results[val_id] = {
+                    k: results[id(v)] for k, v in val_to_process.value.items()
+                }
             elif isinstance(val_to_process.type, CtyList):
                 results[val_id] = [results[id(item)] for item in val_to_process.value]
             elif isinstance(val_to_process.type, CtySet):
-                results[val_id] = sorted([results[id(item)] for item in val_to_process.value], key=repr)
+                results[val_id] = sorted(
+                    [results[id(item)] for item in val_to_process.value], key=repr
+                )
             elif isinstance(val_to_process.type, CtyTuple):
-                results[val_id] = tuple(results[id(item)] for item in val_to_process.value)
+                results[val_id] = tuple(
+                    results[id(item)] for item in val_to_process.value
+                )
             continue
 
         if not isinstance(current_item, CtyValue):
@@ -57,7 +63,9 @@ def cty_to_native(value: Any) -> Any:
             continue
 
         if current_item.is_unknown:
-            raise ValueError("Cannot convert an unknown CtyValue to a native Python type.")
+            raise ValueError(
+                "Cannot convert an unknown CtyValue to a native Python type."
+            )
         if current_item.is_null:
             results[id(current_item)] = None
             continue
@@ -67,16 +75,25 @@ def cty_to_native(value: Any) -> Any:
             continue
 
         # For ANY non-primitive, use the sentinel pattern to process its children/inner value first.
-        if isinstance(current_item.type, CtyObject | CtyMap | CtyList | CtySet | CtyTuple | CtyDynamic):
+        if isinstance(
+            current_item.type,
+            CtyObject | CtyMap | CtyList | CtySet | CtyTuple | CtyDynamic,
+        ):
             processing.add(item_id)
-            work_stack.extend([current_item, POST_PROCESS]) # Push self and sentinel
+            work_stack.extend([current_item, POST_PROCESS])  # Push self and sentinel
 
             if isinstance(current_item.type, CtyDynamic):
-                work_stack.append(current_item.value) # Push inner value
-            else: # It's a standard container
-                child_values = list(current_item.value.values()) if isinstance(current_item.value, dict) else list(current_item.value) if hasattr(current_item.value, '__iter__') else []
-                work_stack.extend(reversed(child_values)) # Push children in reverse
-        else: # Primitive types
+                work_stack.append(current_item.value)  # Push inner value
+            else:  # It's a standard container
+                child_values = (
+                    list(current_item.value.values())
+                    if isinstance(current_item.value, dict)
+                    else list(current_item.value)
+                    if hasattr(current_item.value, "__iter__")
+                    else []
+                )
+                work_stack.extend(reversed(child_values))  # Push children in reverse
+        else:  # Primitive types
             inner_val = current_item.value
             if isinstance(inner_val, Decimal):
                 # FIX: Use a robust method to check for whole numbers that avoids

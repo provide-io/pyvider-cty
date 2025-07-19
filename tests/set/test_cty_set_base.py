@@ -12,7 +12,7 @@ equality checking, and other operations.
 import pytest
 
 from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
-from pyvider.cty.exceptions import CtyValidationError, CtySetValidationError
+from pyvider.cty.exceptions import CtySetValidationError
 
 
 class TestCtySetType:
@@ -88,7 +88,7 @@ class TestCtySetType:
         mixed_types = {"apple", 2, True}
         with pytest.raises(CtySetValidationError) as exc_info:
             self.string_set.validate(mixed_types)
-        
+
         # Check that the error message indicates a string validation failure.
         assert "String validation error" in str(exc_info.value)
         assert "Cannot convert" in str(exc_info.value)
@@ -182,7 +182,7 @@ class TestCtySetType:
         data_with_int = {"valid", 123}
         with pytest.raises(CtySetValidationError) as exc_info:
             self.string_set.validate(data_with_int)
-        
+
         assert "String validation error" in str(exc_info.value)
         assert "Cannot convert int to string" in str(exc_info.value)
 

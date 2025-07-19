@@ -39,13 +39,16 @@ class CtyNumber(CtyType[Decimal]):
         try:
             return CtyValue(vtype=self, value=Decimal(raw_value))
         except (TypeError, ValueError, InvalidOperation) as e:
-            raise CtyNumberValidationError(f"Cannot represent {type(raw_value).__name__} value '{raw_value}' as Decimal") from e
+            raise CtyNumberValidationError(
+                f"Cannot represent {type(raw_value).__name__} value '{raw_value}' as Decimal"
+            ) from e
 
     def equal(self, other: "CtyType[object]") -> bool:
         return isinstance(other, CtyNumber)
 
     def usable_as(self, other: "CtyType[object]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
+
         return isinstance(other, CtyNumber | CtyDynamic)
 
     def _to_wire_json(self) -> Any:

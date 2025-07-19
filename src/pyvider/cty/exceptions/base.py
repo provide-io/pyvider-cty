@@ -33,7 +33,9 @@ class CtyFunctionError(CtyError):
         message: A human-readable error description
     """
 
-    def __init__(self, message: str = "An error occurred during CTY function execution") -> None:
+    def __init__(
+        self, message: str = "An error occurred during CTY function execution"
+    ) -> None:
         super().__init__(message)
 
 

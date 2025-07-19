@@ -1,6 +1,8 @@
 import pytest
-from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyValue
+
+from pyvider.cty import CtyNumber, CtyObject, CtyString
 from pyvider.cty.exceptions import CtyAttributeValidationError, CtyTypeMismatchError
+
 
 @pytest.mark.asyncio
 async def test_attribute_access_error_handling() -> None:

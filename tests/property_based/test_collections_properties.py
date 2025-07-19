@@ -1,11 +1,13 @@
-import pytest
-from hypothesis import given, strategies as st
-from pyvider.cty import CtyList, CtyString, CtyNumber, CtyBool, CtyValidationError
-from decimal import Decimal
 import unicodedata
 
+from hypothesis import given, strategies as st
+import pytest
+
+from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyValidationError
+
+
 @given(st.lists(st.text()))
-def test_list_of_strings_validation(value):
+def test_list_of_strings_validation(value) -> None:
     """
     Tests that a CtyList(CtyString) correctly validates lists of strings.
     """
@@ -14,8 +16,9 @@ def test_list_of_strings_validation(value):
     normalized_value = [unicodedata.normalize("NFC", v) for v in value]
     assert validated_value.raw_value == normalized_value
 
+
 @given(st.lists(st.integers() | st.floats(allow_nan=False, allow_infinity=False)))
-def test_list_of_numbers_validation(value):
+def test_list_of_numbers_validation(value) -> None:
     """
     Tests that a CtyList(CtyNumber) correctly validates lists of numbers.
     """
@@ -24,8 +27,9 @@ def test_list_of_numbers_validation(value):
     # Compare using float to avoid floating point precision issues
     assert [float(v) for v in validated_value.raw_value] == [float(v) for v in value]
 
+
 @given(st.lists(st.booleans()))
-def test_list_of_booleans_validation(value):
+def test_list_of_booleans_validation(value) -> None:
     """
     Tests that a CtyList(CtyBool) correctly validates lists of booleans.
     """
@@ -33,8 +37,9 @@ def test_list_of_booleans_validation(value):
     validated_value = list_type.validate(value)
     assert validated_value.raw_value == value
 
+
 @given(st.lists(st.none() | st.integers()))
-def test_list_of_strings_with_invalid_types(value):
+def test_list_of_strings_with_invalid_types(value) -> None:
     """
     Tests that a CtyList(CtyString) raises a validation error for lists containing non-strings.
     """

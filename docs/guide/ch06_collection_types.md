@@ -17,11 +17,11 @@ To create a `CtyList` type, you must specify the type of the elements in the lis
 ```python
 from pyvider.cty import CtyList, CtyString
 
-string_list_type = CtyList(CtyString())
+string_list_type = CtyList(element_type=CtyString())
 
 # Validate a valid list of strings
 cty_list = string_list_type.validate(["a", "b", "c"])
-assert cty_list.raw_value == ["a", "b", "c"]
+assert cty_list.raw_value == ("a", "b", "c")
 
 # Validate a list with an invalid element (will raise a ValidationError)
 try:
@@ -37,15 +37,15 @@ The `CtySet` type represents a set of unique elements of the same type. Like `Ct
 ```python
 from pyvider.cty import CtySet, CtyNumber
 
-number_set_type = CtySet(CtyNumber())
+number_set_type = CtySet(element_type=CtyNumber())
 
 # Validate a valid set of numbers
 cty_set = number_set_type.validate({1, 2, 3})
-assert cty_set.raw_value == {1, 2, 3}
+assert sorted(list(cty_set.raw_value)) == [1, 2, 3]
 
 # Validate a set with duplicate elements (will be silently deduplicated)
 cty_set_dedup = number_set_type.validate({1, 2, 2, 3})
-assert cty_set_dedup.raw_value == {1, 2, 3}
+assert sorted(list(cty_set_dedup.raw_value)) == [1, 2, 3]
 
 # Validate a set with an invalid element (will raise a ValidationError)
 try:
@@ -63,7 +63,7 @@ To create a `CtyMap` type, you must specify the type of the values in the map:
 ```python
 from pyvider.cty import CtyMap, CtyBool
 
-bool_map_type = CtyMap(CtyBool())
+bool_map_type = CtyMap(element_type=CtyBool())
 
 # Validate a valid map of booleans
 cty_map = bool_map_type.validate({"a": True, "b": False})

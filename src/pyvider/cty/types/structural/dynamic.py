@@ -34,7 +34,7 @@ class CtyDynamic(CtyType[object]):
         # Check for the special wire format: a list of [type_spec_bytes, value].
         if isinstance(value, list) and len(value) == 2 and isinstance(value[0], bytes):
             try:
-                type_spec = json.loads(value[0].decode('utf-8'))
+                type_spec = json.loads(value[0].decode("utf-8"))
                 actual_type = parse_tf_type_to_ctytype(type_spec)
                 # If successful, validate the inner value against the discovered type.
                 return actual_type.validate(value[1])

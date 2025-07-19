@@ -13,12 +13,14 @@ def _convert_details(value: Any) -> frozenset[Any] | None:
         return frozenset(value)
     return frozenset([value])
 
+
 @define(frozen=True, slots=True)
 class CtyMark:
     """
     Represents a mark that can be applied to a cty.Value.
     The 'details' attribute is automatically converted to a hashable frozenset.
     """
+
     name: str = field()
     details: frozenset[Any] | None = field(default=None, converter=_convert_details)
 

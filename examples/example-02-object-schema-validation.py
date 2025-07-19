@@ -23,11 +23,11 @@ try:
     # Accessing attributes returns their respective CtyValue instances.
     name_val = validated_person["name"]
     age_val = validated_person["age"]
-    active_val = validated_person["active"] # Accessing the optional attribute
+    active_val = validated_person["active"]  # Accessing the optional attribute
 
     print(f"Name: {name_val.raw_value} (Type: {name_val.type})")
     print(f"Age: {age_val.raw_value} (Type: {age_val.type})")
-    
+
     # The missing optional attribute 'active' is present but is a null CtyValue.
     print(f"Active: {active_val.raw_value} (Is Null: {active_val.is_null})")
 

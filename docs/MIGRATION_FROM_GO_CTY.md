@@ -20,9 +20,9 @@ pyvider.cty is designed to be compatible with go-cty, making migration straightf
 
 | go-cty | pyvider.cty | Example |
 |--------|-------------|---------|
-| `cty.List(cty.String)` | `CtyList(CtyString())` | List of strings |
-| `cty.Set(cty.Number)` | `CtySet(CtyNumber())` | Set of numbers |
-| `cty.Map(cty.Bool)` | `CtyMap(CtyString(), CtyBool())` | String-keyed map |
+| `cty.List(cty.String)` | `CtyList(element_type=CtyString())` | List of strings |
+| `cty.Set(cty.Number)` | `CtySet(element_type=CtyNumber())` | Set of numbers |
+| `cty.Map(cty.Bool)` | `CtyMap(element_type=CtyBool())` | String-keyed map |
 
 ### Structural Types
 
@@ -50,8 +50,8 @@ val := cty.StringVal("hello")
 num := cty.NumberIntVal(42)
 
 # pyvider.cty
-val = CtyValue.string("hello")
-num = CtyValue.number(42)
+val = CtyString().validate("hello")
+num = CtyNumber().validate(42)
 ```
 
 ### Collection Values
@@ -64,9 +64,9 @@ listVal := cty.ListVal([]cty.Value{
 })
 
 # pyvider.cty
-list_val = CtyValue.list([
-    CtyValue.string("a"),
-    CtyValue.string("b"),
+list_val = CtyList(element_type=CtyString()).validate([
+    "a",
+    "b",
 ])
 ```
 
@@ -80,9 +80,9 @@ objVal := cty.ObjectVal(map[string]cty.Value{
 })
 
 # pyvider.cty
-obj_val = CtyValue.object(obj_type, {
-    "name": CtyValue.string("Alice"),
-    "age": CtyValue.number(30),
+obj_val = obj_type.validate({
+    "name": "Alice",
+    "age": 30,
 })
 ```
 
@@ -110,7 +110,7 @@ if val.Type().Equals(cty.String) {
 
 # pyvider.cty
 if val.type == CtyString():
-    str_val = val.as_string()
+    str_val = val.value
 ```
 
 ## Serialization
@@ -160,17 +160,17 @@ if isinstance(val.type, CtyDynamic):
     pass
 
 # Create dynamic value
-dyn_val = CtyValue.dynamic(actual_value)
+dyn_val = CtyDynamic().validate(actual_value)
 ```
 
 ### Path Operations
 
 ```python
 # Build a path
-path = CtyPath().attr("users").index(0).attr("name")
+path = CtyPath.get_attr("users").index_step(0).child("name")
 
 # Apply path to value
-result = path.apply(root_value)
+result = path.apply_path(root_value)
 ```
 
 ### Error Handling
@@ -179,7 +179,7 @@ result = path.apply(root_value)
 from pyvider.cty.exceptions import CtyError
 
 try:
-    val = CtyValue.object(obj_type, data)
+    val = obj_type.validate(data)
 except CtyError as e:
     print(f"Validation failed: {e}")
 ```

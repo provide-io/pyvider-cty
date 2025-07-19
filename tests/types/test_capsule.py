@@ -14,20 +14,20 @@ class AnotherCustomClass:
     pass
 
 
-def test_capsule_creation():
+def test_capsule_creation() -> None:
     """Test basic creation of CtyCapsule."""
     capsule_type = CtyCapsule("MyCustom", MyCustomClass)
     assert capsule_type.name == "MyCustom"
     assert capsule_type.py_type == MyCustomClass
 
 
-def test_capsule_representation():
+def test_capsule_representation() -> None:
     """Test the string representation of CtyCapsule."""
     capsule_type = CtyCapsule("MyCustom", MyCustomClass)
     assert repr(capsule_type) == "CtyCapsule(MyCustom, MyCustomClass)"
 
 
-def test_capsule_equality():
+def test_capsule_equality() -> None:
     """Test equality comparisons for CtyCapsule."""
     capsule_type1 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type2 = CtyCapsule("MyCustom", MyCustomClass)
@@ -46,7 +46,7 @@ def test_capsule_equality():
     assert capsule_type1 != capsule_type5
 
 
-def test_capsule_hash():
+def test_capsule_hash() -> None:
     """Test hashability of CtyCapsule."""
     capsule_type1 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type2 = CtyCapsule("MyCustom", MyCustomClass)

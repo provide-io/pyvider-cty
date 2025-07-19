@@ -1,5 +1,5 @@
-import pytest
 from pyvider.cty import CtyDynamic, CtyNumber, CtyString, CtyTuple
+
 
 class TestCtyTupleComparison:
     def test_type_usable_as_compatible_elements(self) -> None:

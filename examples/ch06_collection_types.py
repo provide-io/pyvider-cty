@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from pyvider.cty import CtyList, CtySet, CtyMap, CtyString, CtyNumber, CtyBool
 from examples.example_utils import configure_for_example
+from pyvider.cty import CtyBool, CtyList, CtyMap, CtyNumber, CtySet, CtyString
 
 configure_for_example()
 
@@ -17,7 +17,7 @@ except Exception as e:
 number_set_type = CtySet(element_type=CtyNumber())
 cty_set = number_set_type.validate({1, 2, 3})
 assert sorted(cty_set.raw_value) == [1, 2, 3]
-cty_set_dedup = number_set_type.validate({1, 2, 2, 3})
+cty_set_dedup = number_set_type.validate({1, 2, 3})
 assert sorted(cty_set_dedup.raw_value) == [1, 2, 3]
 try:
     number_set_type.validate({1, 2, "c"})

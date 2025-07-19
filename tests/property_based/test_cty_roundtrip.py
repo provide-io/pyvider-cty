@@ -1,19 +1,25 @@
-import pytest
-from hypothesis import given, strategies as st, settings
 from decimal import Decimal
 import unicodedata
 
-from pyvider.cty import CtyDynamic, CtyValue
-from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+from hypothesis import given, settings, strategies as st
+import pytest
+
+from pyvider.cty import CtyDynamic
+from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 from pyvider.cty.conversion import cty_to_native
 
 # A hypothesis strategy for generating JSON-like data structures.
 # This covers primitives, lists, and objects (dicts) recursively.
 json_strategy = st.recursive(
-    st.none() | st.booleans() | st.integers() | st.floats(allow_nan=False, allow_infinity=False) | st.text(),
+    st.none()
+    | st.booleans()
+    | st.integers()
+    | st.floats(allow_nan=False, allow_infinity=False)
+    | st.text(),
     lambda children: st.lists(children) | st.dictionaries(st.text(), children),
-    max_leaves=15
+    max_leaves=15,
 )
+
 
 def deep_prepare_for_comparison(data):
     """
@@ -33,9 +39,10 @@ def deep_prepare_for_comparison(data):
         return unicodedata.normalize("NFC", data)
     return data
 
+
 @settings(deadline=1000, max_examples=200)
 @given(native_data=json_strategy)
-def test_cty_wire_format_roundtrip(native_data):
+def test_cty_wire_format_roundtrip(native_data) -> None:
     """
     Verifies that any JSON-like native Python data structure can be
     converted to a CtyValue, serialized to MessagePack, deserialized,
@@ -61,7 +68,9 @@ def test_cty_wire_format_roundtrip(native_data):
 
         # 5. Assert that the final native object is equivalent to the original,
         #    after preparing both for a semantic comparison.
-        assert deep_prepare_for_comparison(native_data_roundtripped) == deep_prepare_for_comparison(native_data)
+        assert deep_prepare_for_comparison(
+            native_data_roundtripped
+        ) == deep_prepare_for_comparison(native_data)
 
     except Exception as e:
         pytest.fail(
