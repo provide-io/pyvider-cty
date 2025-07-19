@@ -1,4 +1,4 @@
-from pyvider.cty import CtyString, CtyNumber, CtyValue
+from pyvider.cty import CtyString, CtyNumber, CtyValue, CtyList
 from pyvider.cty.exceptions import CtyFunctionError
 import re
 
@@ -7,7 +7,13 @@ def chomp(input_val: CtyValue) -> CtyValue:
         raise CtyFunctionError(f"chomp: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.rstrip("\r\n"))
+
+    s = input_val.value
+    if s.endswith("\r\n"):
+        return CtyString().validate(s[:-2])
+    if s.endswith("\n") or s.endswith("\r"):
+        return CtyString().validate(s[:-1])
+    return input_val
 
 def strrev(input_val: CtyValue) -> CtyValue:
     if not isinstance(input_val.type, CtyString):
