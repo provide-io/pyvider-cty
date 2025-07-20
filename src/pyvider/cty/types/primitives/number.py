@@ -15,8 +15,7 @@ class CtyNumber(CtyType[Decimal]):
     ctype: ClassVar[str] = "number"
 
     def validate(self, value: object) -> "CtyValue[Decimal]":
-        from pyvider.cty.values import CtyValue
-        from pyvider.cty.values.base import UnknownValue
+        from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
             return CtyValue.unknown(self)

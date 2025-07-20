@@ -14,8 +14,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
 
     def validate(self, value: object) -> "CtyValue[bool]":
-        from pyvider.cty.values import CtyValue
-        from pyvider.cty.values.base import UnknownValue
+        from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
             return CtyValue.unknown(self)

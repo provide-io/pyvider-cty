@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pyvider.cty.exceptions.base import CtyError
 
 if TYPE_CHECKING:
-from typing import Any
     from pyvider.cty.path import CtyPath
     from pyvider.cty.types import CtyType
 
