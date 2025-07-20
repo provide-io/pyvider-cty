@@ -40,3 +40,20 @@ class TestCtyMark:
         mark3 = CtyMark("sensitive", details3)
         assert mark1 == mark2
         assert mark1 != mark3
+
+    def test_convert_details(self) -> None:
+        # Test with a list
+        mark_list = CtyMark("test", ["a", "b"])
+        assert mark_list.details == frozenset(["a", "b"])
+
+        # Test with a set
+        mark_set = CtyMark("test", {"a", "b"})
+        assert mark_set.details == frozenset({"a", "b"})
+
+        # Test with a tuple
+        mark_tuple = CtyMark("test", ("a", "b"))
+        assert mark_tuple.details == frozenset(("a", "b"))
+
+        # Test with a single value
+        mark_single = CtyMark("test", "a")
+        assert mark_single.details == frozenset(["a"])

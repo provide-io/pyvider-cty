@@ -6,7 +6,7 @@ configure_for_example()
 
 
 class FileHandle:
-    def __init__(self, path) -> None:
+    def __init__(self, path: str) -> None:
         self.path = path
 
 

@@ -9,7 +9,7 @@ _validation_depth = contextvars.ContextVar("validation_depth", default=0)
 
 
 @contextmanager
-def deeper_validation() -> Generator[None, None, None]:
+def deeper_validation() -> Generator[None]:
     """A context manager to safely increment and decrement validation depth."""
     token = _validation_depth.set(_validation_depth.get() + 1)
     try:
