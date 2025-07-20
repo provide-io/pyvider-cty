@@ -52,7 +52,7 @@ user_profile_type = CtyObject({
     "username": CtyString(),
     "posts": CtyNumber(),
     "is_active": CtyBool(),
-    "tags": CtyList(CtyString()),
+    "tags": CtyList(element_type=CtyString()),
     "preferences": CtyString() # To demonstrate a null value
 })
 
@@ -66,7 +66,7 @@ user_value_data = {
 # For an unknown example, let's say 'tags' could be unknown:
 # user_value_data_with_unknown = {
 #     "username": "NewbieNora", "posts": Decimal("3"), "is_active": True,
-#     "tags": CtyValue.unknown(CtyList(CtyString())), # 'tags' is unknown
+#     "tags": CtyValue.unknown(CtyList(element_type=CtyString())), # 'tags' is unknown
 #     "preferences": "dark_theme"
 # }
 # original_cty_value = CtyValue(user_profile_type, user_value_data_with_unknown)
@@ -132,17 +132,17 @@ from decimal import Decimal
 
 # 1. Define a type and a CtyValue
 # Let's use a map with various data, including an unknown value.
-complex_map_type = CtyMap(CtyObject({
+complex_map_type = CtyMap(element_type=CtyObject({
     "id": CtyString(),
     "value": CtyNumber(),
     "active": CtyBool(),
-    "history": CtyList(CtyNumber()) # To show a nested unknown
+    "history": CtyList(element_type=CtyNumber()) # To show a nested unknown
 }))
 
 map_value_data = {
     "itemA": {
         "id": "alpha-001", "value": Decimal("123.45"), "active": True,
-        "history": CtyValue.unknown(CtyList(CtyNumber())) # History for itemA is unknown
+        "history": CtyValue.unknown(CtyList(element_type=CtyNumber())) # History for itemA is unknown
     },
     "itemB": {
         "id": "beta-002", "value": Decimal("67.89"), "active": False,

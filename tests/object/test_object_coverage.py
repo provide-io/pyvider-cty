@@ -1,0 +1,51 @@
+import pytest
+from pyvider.cty.types.structural.object import CtyObject, _attrs_to_dict_safe
+from pyvider.cty.types import CtyString, CtyNumber, CtyDynamic
+from pyvider.cty.values import CtyValue
+from pyvider.cty.exceptions import CtyAttributeValidationError, InvalidTypeError
+import attrs
+
+def test_attrs_to_dict_safe_no_attrs():
+    class NoAttrs:
+        pass
+    assert _attrs_to_dict_safe(NoAttrs()) == {}
+
+def test_attrs_post_init_invalid_attribute_type():
+    with pytest.raises(InvalidTypeError):
+        CtyObject(attribute_types={"name": "not_a_type"})
+
+def test_validate_unknown_optionals():
+    with pytest.raises(CtyAttributeValidationError, match="Unknown optional attributes"):
+        CtyObject(attribute_types={"name": CtyString()}, optional_attributes={"age"}).validate({"name": "test"})
+
+def test_validate_with_cty_value_different_type():
+    obj_type = CtyObject(attribute_types={"name": CtyString()})
+    other_obj_type = CtyObject(attribute_types={"name": CtyNumber()})
+    value = other_obj_type.validate({"name": 1})
+    with pytest.raises(CtyAttributeValidationError):
+        obj_type.validate(value)
+
+def test_validate_null_attribute_in_required_field():
+    obj_type = CtyObject(attribute_types={"name": CtyString()})
+    with pytest.raises(CtyAttributeValidationError, match="Attribute cannot be null"):
+        obj_type.validate({"name": None})
+
+def test_get_attribute_on_non_cty_value():
+    obj_type = CtyObject(attribute_types={"name": CtyString()})
+    with pytest.raises(CtyAttributeValidationError):
+        obj_type.get_attribute("not a cty value", "name")
+
+def test_equal_different_keys():
+    type1 = CtyObject(attribute_types={"name": CtyString()})
+    type2 = CtyObject(attribute_types={"age": CtyNumber()})
+    assert type1.equal(type2) is False
+
+def test_usable_as_not_subset():
+    type1 = CtyObject(attribute_types={"name": CtyString()})
+    type2 = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
+    assert type1.usable_as(type2) is False
+
+def test_usable_as_not_subset_required():
+    type1 = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()}, optional_attributes={"age"})
+    type2 = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
+    assert type1.usable_as(type2) is False

@@ -40,7 +40,7 @@ You can also use the `CtyDynamic` type within collection and structural types:
 from pyvider.cty import CtyList, CtyDynamic
 
 # A list of any type of value
-dynamic_list_type = CtyList(CtyDynamic())
+dynamic_list_type = CtyList(element_type=CtyDynamic())
 
 # Validate a list with mixed types
 cty_list = dynamic_list_type.validate(["hello", 123, True])

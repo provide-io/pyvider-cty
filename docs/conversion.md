@@ -28,7 +28,7 @@ from pyvider.cty.conversion import infer_cty_type_from_raw
 assert infer_cty_type_from_raw("hello").equal(CtyString())
 assert infer_cty_type_from_raw(123).equal(CtyNumber())
 assert infer_cty_type_from_raw(True).equal(CtyBool())
-assert infer_cty_type_from_raw([1, 2, 3]).equal(CtyList(CtyNumber()))
+assert infer_cty_type_from_raw([1, 2, 3]).equal(CtyList(element_type=CtyNumber()))
 assert infer_cty_type_from_raw({"name": "Alice", "age": 30}).equal(CtyObject({"name": CtyString(), "age": CtyNumber()}))
 ```
 

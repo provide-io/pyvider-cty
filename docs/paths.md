@@ -88,8 +88,8 @@ from decimal import Decimal
 # --- Setup a nested structure ---
 server_spec_type = CtyObject({
     "name": CtyString(),
-    "ip_list": CtyList(CtyString()), # List of IP addresses
-    "config": CtyMap(CtyString())  # Map for various config settings
+    "ip_list": CtyList(element_type=CtyString()), # List of IP addresses
+    "config": CtyMap(element_type=CtyString())  # Map for various config settings
 })
 
 server_value = CtyValue(server_spec_type, {
@@ -118,7 +118,7 @@ except Exception as e: # Replace with specific CtyPathError, KeyError etc.
     print(f"Error applying path to missing key: {e} (Expected!)")
 
 # --- Path encountering an Unknown value ---
-list_of_strings_type = CtyList(CtyString())
+list_of_strings_type = CtyList(element_type=CtyString())
 unknown_ip_list_server_value = CtyValue(server_spec_type, {
     "name": "ServerWithUnknownIPs",
     "ip_list": CtyValue.unknown(list_of_strings_type), # The ip_list itself is unknown
@@ -146,7 +146,7 @@ except Exception as e: # Replace with specific error like "cannot traverse null 
 server_with_null_config_val = CtyValue(server_spec_type, {
     "name": "ServerWithNullConfig",
     "ip_list": [],
-    "config": CtyValue.null(CtyMap(CtyString())) # The config map itself is null
+    "config": CtyValue.null(CtyMap(element_type=CtyString())) # The config map itself is null
 })
 path_to_config = CtyPath([GetAttrStep("config")])
 null_config_result = path_to_config.apply_path(server_with_null_config_val)
@@ -182,7 +182,7 @@ from pyvider.cty.path import GetAttrStep, IndexStep, KeyStep
 # Define a type structure
 complex_data_type = CtyObject({
     "id": CtyString(),
-    "user_settings": CtyMap(CtyBool()),
+    "user_settings": CtyMap(element_type=CtyBool()),
     "history": CtyList(
         CtyObject({
             "timestamp": CtyNumber(),
