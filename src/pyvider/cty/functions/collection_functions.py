@@ -44,7 +44,7 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if input_val.is_null or input_val.is_unknown:
         return input_val
     result_elements = []
-    final_element_type: "CtyType[Any]" | None = None
+    final_element_type: CtyType[Any] | None = None
     for outer_element_val in input_val.value:  # type: ignore
         if outer_element_val.is_null:
             continue
@@ -100,7 +100,9 @@ def length(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyNumber().validate(len(input_val.value))  # type: ignore
 
 
-def slice(input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def slice(
+    input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(
             f"slice: input must be a list or tuple, got {input_val.type.ctype}"
@@ -121,7 +123,9 @@ def slice(input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyV
 
     start = int(start_val.value)  # type: ignore
     end = int(end_val.value)  # type: ignore
-    return CtyList(element_type=input_val.type.element_type).validate(  # type: ignore
+    return CtyList(
+        element_type=input_val.type.element_type
+    ).validate(  # type: ignore
         input_val.value[start:end]  # type: ignore
     )
 
@@ -131,7 +135,7 @@ def concat(*lists: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("concat: all arguments must be lists or tuples")
 
     result_elements = []
-    final_element_type: "CtyType[Any]" | None = None
+    final_element_type: CtyType[Any] | None = None
     for lst in lists:
         if lst.is_null or lst.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyDynamic()))

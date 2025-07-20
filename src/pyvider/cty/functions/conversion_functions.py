@@ -1,6 +1,8 @@
+from typing import Any
+
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
-from typing import Any
+
 
 def to_string(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if input_val.is_null or input_val.is_unknown:
