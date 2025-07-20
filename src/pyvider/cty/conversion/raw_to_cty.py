@@ -73,7 +73,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:
 
     POST_PROCESS = object()
     work_stack: list[Any] = [value]
-    results: dict[int, CtyType] = {}
+    results: dict[int, CtyType[Any]] = {}
     processing: set[int] = set()
 
     while work_stack:

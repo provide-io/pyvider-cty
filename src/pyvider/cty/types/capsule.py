@@ -22,7 +22,6 @@ class CtyCapsule(CtyType[Any]):
         super().__init__()
         self.name = capsule_name
         self._py_type = py_type
-        self.ctype = capsule_name
 
     @property
     def py_type(self) -> type:
