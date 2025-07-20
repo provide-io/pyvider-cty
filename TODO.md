@@ -1,0 +1,29 @@
+# ✅ Code Quality Checklist
+
+- [x] 🏃 Run `pytest` to establish a baseline of passing tests.
+- [x] 📚 Read all documentation.
+- [x] 📝 Create a plan to improve test coverage and code quality.
+- [x] 🧪 Improve test coverage for `types_base.py`.
+- [x] 🧪 Improve test coverage for `values/base.py`.
+- [x] 🧪 Improve test coverage for `types/structural/tuple.py`.
+- [x] 🧪 Improve test coverage for `types/collections/list.py`.
+- [x] 🧪 Improve test coverage for `types/collections/map.py`.
+- [x] 🧪 Improve test coverage for `types/collections/set.py`.
+- [x] 🧪 Improve test coverage for `types/primitives/string.py`.
+- [x] 🧪 Improve test coverage for `types/primitives/number.py`.
+- [x] 🧪 Improve test coverage for `types/primitives/bool.py`.
+- [x] 🧪 Improve test coverage for `types/capsule.py`.
+- [x] 🧪 Improve test coverage for `types/structural/dynamic.py`.
+- [x] 🧪 Improve test coverage for `types/structural/object.py`.
+- [x] 🧪 Improve test coverage for `path/base.py`.
+- [x] 🧪 Improve test coverage for `functions/numeric_functions.py`.
+- [ ] 🧪 Improve test coverage for `functions/string_functions.py`.
+- [ ] 🧪 Improve test coverage for `functions/collection_functions.py`.
+- [ ] 🧪 Improve test coverage for `conversion/adapter.py`.
+- [ ] 🧪 Improve test coverage for `conversion/raw_to_cty.py`.
+- [ ] 🧪 Improve test coverage for `codec.py`.
+- [ ] 🧪 Improve test coverage for `exceptions/conversion.py`.
+- [ ] 📚 Review and fix documentation.
+- [ ] 💅 Run `ruff format` and `ruff check --fix --unsafe-fixes` on the codebase.
+- [ ] ⛑️ Run `mypy src`, `bandit -r src` and `pytest`.
+- [ ] 🎉 Submit final changes.

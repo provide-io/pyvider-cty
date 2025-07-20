@@ -58,12 +58,12 @@ from pyvider.cty import CtyList, CtyString, CtyMap, CtyNumber, CtySet, CtyTuple,
 from decimal import Decimal
 
 # List
-list_type = CtyList(CtyString())
+list_type = CtyList(element_type=CtyString())
 list_val = CtyValue(list_type, ["a", "b", "c", "d"])
 print(f"Length of list_val (CtyList): {len(list_val)}") # Output: 4
 
 # Map
-map_type = CtyMap(CtyNumber())
+map_type = CtyMap(element_type=CtyNumber())
 map_val = CtyValue(map_type, {"x": Decimal(10), "y": Decimal(20), "z": Decimal(30)})
 print(f"Length of map_val (CtyMap): {len(map_val)}")   # Output: 3
 
@@ -105,7 +105,7 @@ from pyvider.cty import CtyList, CtyString, CtyNumber, CtyValue, CtyTuple
 from decimal import Decimal
 
 # List example
-list_type = CtyList(CtyString())
+list_type = CtyList(element_type=CtyString())
 elements = ["zeroth", "first", "second", "third", "fourth"]
 list_val = CtyValue(list_type, elements)
 
@@ -238,7 +238,7 @@ from pyvider.cty import CtyList, CtyString, CtyMap, CtyNumber, CtyObject, CtyVal
 from decimal import Decimal
 
 # --- List ---
-list_type = CtyList(CtyString())
+list_type = CtyList(element_type=CtyString())
 list_val = CtyValue(list_type, ["hello", "world", "cty"])
 print("--- List Membership ---")
 print(f"'world' in list_val: {'world' in list_val} # Test with Python value")
@@ -246,7 +246,7 @@ print(f"CtyValue(CtyString(), 'cty') in list_val: {CtyValue(CtyString(), 'cty') 
 print(f"'python' in list_val: {'python' in list_val}")
 
 # --- Map (checks for keys) ---
-map_type = CtyMap(CtyNumber())
+map_type = CtyMap(element_type=CtyNumber())
 map_val = CtyValue(map_type, {"a": Decimal(1), "b": Decimal(2)})
 print("\n--- Map Key Membership ---")
 print(f"'a' in map_val: {'a' in map_val}")
@@ -278,7 +278,7 @@ from pyvider.cty import CtyList, CtyString, CtyMap, CtyNumber, CtyTuple, CtyValu
 from decimal import Decimal
 
 # --- List ---
-list_type = CtyList(CtyString())
+list_type = CtyList(element_type=CtyString())
 list_val = CtyValue(list_type, ["echo", "foxtrot", "golf"])
 print("--- Iterating List ---")
 for item_val in list_val:
@@ -301,7 +301,7 @@ for item_val in set_val:
 
 
 # --- Map ---
-map_type = CtyMap(CtyNumber())
+map_type = CtyMap(element_type=CtyNumber())
 map_data = {"x-ray": Decimal(100), "yankee": Decimal(200), "zulu": Decimal(300)}
 map_val = CtyValue(map_type, map_data)
 

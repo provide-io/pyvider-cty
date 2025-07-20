@@ -94,7 +94,7 @@ def main() -> None:
     user_profile_type = CtyObject({
         "name": CtyString,
         "age": CtyNumber,
-        "hobbies": CtyList(CtyString),
+        "hobbies": CtyList(element_type=CtyString),
     })
 
     print(f"Defined type: {user_profile_type}")
@@ -106,7 +106,7 @@ def main() -> None:
         {
             "name": CtyValue.string("Alice"),
             "age": CtyValue.number(30),
-            "hobbies": CtyValue.list_of_strings(CtyList(CtyString), ["reading", "hiking"]),
+            "hobbies": CtyValue.list_of_strings(CtyList(element_type=CtyString), ["reading", "hiking"]),
         }
     )
 

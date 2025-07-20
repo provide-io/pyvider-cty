@@ -11,7 +11,7 @@ class TestDynamicListValidation:
         ]
         validated_list_value = list_of_dynamic_type.validate(raw_data)
 
-        # THE FIX: CtyList(CtyDynamic) now produces a list of concretely typed values.
+        # THE FIX: CtyList(element_type=CtyDynamic) now produces a list of concretely typed values.
         element_0 = validated_list_value.value[0]
         assert isinstance(element_0.type, CtyObject)
         assert element_0.type.attribute_types["role"].equal(CtyString())
