@@ -24,7 +24,7 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return input_val
     seen = set()
     result_elements = []
-    for cty_element in input_val.value:
+    for cty_element in input_val.value:  # type: ignore
         try:
             if cty_element not in seen:
                 seen.add(cty_element)
@@ -33,7 +33,7 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
             raise CtyFunctionError(
                 f"distinct: element of type {cty_element.type.ctype} is not hashable. Error: {e}"
             ) from e
-    return CtyList(element_type=input_val.type.element_type).validate(result_elements)
+    return CtyList(element_type=input_val.type.element_type).validate(result_elements)  # type: ignore
 
 
 def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -44,8 +44,8 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if input_val.is_null or input_val.is_unknown:
         return input_val
     result_elements = []
-    final_element_type: CtyType | None = None
-    for outer_element_val in input_val.value:
+    final_element_type: "CtyType[Any]" | None = None
+    for outer_element_val in input_val.value:  # type: ignore
         if outer_element_val.is_null:
             continue
         if outer_element_val.is_unknown:
@@ -73,34 +73,34 @@ def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
-    element_type = input_val.type.element_type
+    element_type = input_val.type.element_type  # type: ignore
     if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
         raise CtyFunctionError(
             f"sort: elements must be string, number, or bool. Found: {element_type.ctype}"
         )
 
-    for i, cty_element in enumerate(input_val.value):
+    for i, cty_element in enumerate(input_val.value):  # type: ignore
         if cty_element.is_null or cty_element.is_unknown:
             raise CtyFunctionError(
                 f"sort: cannot sort list with null or unknown elements at index {i}."
             )
 
     return CtyList(element_type=element_type).validate(
-        sorted(input_val.value, key=lambda x: x.value)
+        sorted(input_val.value, key=lambda x: x.value)  # type: ignore
     )
 
 
-def length(input_val: CtyValue) -> CtyValue:
+def length(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple | CtyMap):
         raise CtyFunctionError(
             f"length: input must be a list, set, tuple, or map, got {input_val.type.ctype}"
         )
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(len(input_val.value))
+    return CtyNumber().validate(len(input_val.value))  # type: ignore
 
 
-def slice(input_val: CtyValue, start_val: CtyValue, end_val: CtyValue) -> CtyValue:
+def slice(input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(
             f"slice: input must be a list or tuple, got {input_val.type.ctype}"
@@ -119,23 +119,23 @@ def slice(input_val: CtyValue, start_val: CtyValue, end_val: CtyValue) -> CtyVal
     ):
         return CtyValue.unknown(input_val.type)
 
-    start = int(start_val.value)
-    end = int(end_val.value)
-    return CtyList(element_type=input_val.type.element_type).validate(
-        input_val.value[start:end]
+    start = int(start_val.value)  # type: ignore
+    end = int(end_val.value)  # type: ignore
+    return CtyList(element_type=input_val.type.element_type).validate(  # type: ignore
+        input_val.value[start:end]  # type: ignore
     )
 
 
-def concat(*lists: "CtyValue[Any]") -> CtyValue:
+def concat(*lists: "CtyValue[Any]") -> "CtyValue[Any]":
     if not all(isinstance(lst.type, CtyList | CtyTuple) for lst in lists):
         raise CtyFunctionError("concat: all arguments must be lists or tuples")
 
     result_elements = []
-    final_element_type: CtyType | None = None
+    final_element_type: "CtyType[Any]" | None = None
     for lst in lists:
         if lst.is_null or lst.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-        for element in lst.value:
+        for element in lst.value:  # type: ignore
             if final_element_type is None:
                 final_element_type = element.type
             elif not final_element_type.equal(element.type):
@@ -147,31 +147,31 @@ def concat(*lists: "CtyValue[Any]") -> CtyValue:
     return CtyList(element_type=final_element_type).validate(result_elements)
 
 
-def contains(collection: CtyValue, value: CtyValue) -> CtyValue:
+def contains(collection: "CtyValue[Any]", value: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(
             f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}"
         )
     if collection.is_null or collection.is_unknown:
         return CtyValue.unknown(CtyBool())
-    return CtyBool().validate(value in collection.value)
+    return CtyBool().validate(value in collection.value)  # type: ignore
 
 
-def keys(input_val: CtyValue) -> CtyValue:
+def keys(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyMap):
         raise CtyFunctionError(f"keys: input must be a map, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyString()))
-    return CtyList(element_type=CtyString()).validate(list(input_val.value.keys()))
+    return CtyList(element_type=CtyString()).validate(list(input_val.value.keys()))  # type: ignore
 
 
-def values(input_val: CtyValue) -> CtyValue:
+def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyMap):
         raise CtyFunctionError(
             f"values: input must be a map, got {input_val.type.ctype}"
         )
     if input_val.is_null or input_val.is_unknown:
-        return CtyValue.unknown(CtyList(element_type=input_val.type.element_type))
-    return CtyList(element_type=input_val.type.element_type).validate(
-        list(input_val.value.values())
+        return CtyValue.unknown(CtyList(element_type=input_val.type.element_type))  # type: ignore
+    return CtyList(element_type=input_val.type.element_type).validate(  # type: ignore
+        list(input_val.value.values())  # type: ignore
     )

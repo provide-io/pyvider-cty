@@ -111,7 +111,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             raise CtyTupleValidationError(
                 "Internal tuple value is inconsistent with type definition."
             )
-        return container_value.value[effective_index]
+        return container_value.value[effective_index]  # type: ignore
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyTuple):
@@ -141,7 +141,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
         elems_json = [elem_type._to_wire_json() for elem_type in self.element_types]
         return [self.ctype, elems_json]
 
-    def __getitem__(self, index: int | slice) -> CtyType[Any] | CtyTuple:
+    def __getitem__(self, index: int | slice) -> CtyType[Any] | "CtyTuple" | tuple[CtyType[Any], ...]:
         return self.element_types[index]
 
     def __str__(self) -> str:

@@ -50,7 +50,7 @@ class CtyValue[T]:
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CtyValue):
-            return False
+            return NotImplemented
         return (
             self.type.equal(other.type)
             and self.is_unknown == other.is_unknown
@@ -63,7 +63,7 @@ class CtyValue[T]:
         if self.is_unknown or self.is_null:
             return False
         if hasattr(self.value, "__contains__"):
-            return item in self.value
+            return item in self.value  # type: ignore
         return self.value == item
 
     def __bool__(self) -> bool:
@@ -123,7 +123,7 @@ class CtyValue[T]:
         if isinstance(self.vtype, CtyTuple):
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyMap):
-            return self.vtype.get(self, key)
+            return self.vtype.get(self, key)  # type: ignore
         raise TypeError(
             f"Value of type {self.vtype.__class__.__name__} is not subscriptable"
         )

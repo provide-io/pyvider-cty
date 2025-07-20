@@ -11,7 +11,6 @@ from pyvider.cty import (
     CtyString,
     CtyTuple,
     CtyValue,
-    cty_to_native,
     parse_type_string_to_ctytype,
 )
 from pyvider.cty.context.validation_context import (

@@ -19,7 +19,7 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtyList[T](CtyType[list[T]]):
+class CtyList[T](CtyType[tuple[T, ...]]):
     ctype: ClassVar[str] = "list"
     element_type: CtyType[T] = field(kw_only=True)
 
@@ -44,7 +44,7 @@ class CtyList[T](CtyType[list[T]]):
                 return CtyValue.unknown(self)
             if isinstance(value.type, CtyList) and self.equal(value.type):
                 return value
-            raw_list_to_validate = value.value
+            raw_list_to_validate = value.value  # type: ignore
         elif isinstance(value, list | tuple | set | frozenset):
             raw_list_to_validate = list(value)
         else:

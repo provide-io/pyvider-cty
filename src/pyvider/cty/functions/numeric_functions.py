@@ -6,56 +6,56 @@ from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
 
-def add(a: CtyValue, b: CtyValue) -> CtyValue:
+def add(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("add: arguments must be numbers")
     if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(a.value + b.value)
+    return CtyNumber().validate(a.value + b.value)  # type: ignore
 
 
-def subtract(a: CtyValue, b: CtyValue) -> CtyValue:
+def subtract(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("subtract: arguments must be numbers")
     if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(a.value - b.value)
+    return CtyNumber().validate(a.value - b.value)  # type: ignore
 
 
-def multiply(a: CtyValue, b: CtyValue) -> CtyValue:
+def multiply(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("multiply: arguments must be numbers")
     if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(a.value * b.value)
+    return CtyNumber().validate(a.value * b.value)  # type: ignore
 
 
-def divide(a: CtyValue, b: CtyValue) -> CtyValue:
+def divide(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("divide: arguments must be numbers")
     if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
         return CtyValue.unknown(CtyNumber())
     if b.value == 0:
         raise CtyFunctionError("divide by zero")
-    return CtyNumber().validate(a.value / b.value)
+    return CtyNumber().validate(a.value / b.value)  # type: ignore
 
 
-def modulo(a: CtyValue, b: CtyValue) -> CtyValue:
+def modulo(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("modulo: arguments must be numbers")
     if a.is_null or a.is_unknown or b.is_null or b.is_unknown:
         return CtyValue.unknown(CtyNumber())
     if b.value == 0:
         raise CtyFunctionError("modulo by zero")
-    return CtyNumber().validate(math.fmod(a.value, b.value))
+    return CtyNumber().validate(math.fmod(a.value, b.value))  # type: ignore
 
 
-def negate(a: CtyValue) -> CtyValue:
+def negate(a: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(a.type, CtyNumber):
         raise CtyFunctionError("negate: argument must be a number")
     if a.is_null or a.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(-a.value)
+    return CtyNumber().validate(-a.value)  # type: ignore
 
 
 def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -70,7 +70,7 @@ def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return input_val
 
     val = input_val.value
-    return CtyNumber().validate(abs(val))
+    return CtyNumber().validate(abs(val))  # type: ignore
 
 
 def ceil_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -85,7 +85,7 @@ def ceil_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return input_val
 
     val = input_val.value
-    return CtyNumber().validate(Decimal(math.ceil(val)))
+    return CtyNumber().validate(Decimal(math.ceil(val)))  # type: ignore
 
 
 def floor_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -100,7 +100,7 @@ def floor_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return input_val
 
     val = input_val.value
-    return CtyNumber().validate(Decimal(math.floor(val)))
+    return CtyNumber().validate(Decimal(math.floor(val)))  # type: ignore
 
 
 def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -122,16 +122,16 @@ def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any
     num = num_val.value
     base = base_val.value
 
-    if num <= 0:
+    if num <= 0:  # type: ignore
         raise CtyFunctionError(f"log: number must be positive, got {num}")
-    if base <= 0:
+    if base <= 0:  # type: ignore
         raise CtyFunctionError(f"log: base must be positive, got {base}")
     if base == 1:
         raise CtyFunctionError("log: base cannot be 1")
 
     try:
         # Use float for math.log, then convert back to Decimal for CtyNumber
-        result = Decimal(str(math.log(float(num), float(base))))
+        result = Decimal(str(math.log(float(num), float(base))))  # type: ignore
         return CtyNumber().validate(result)
     except ValueError as e:
         raise CtyFunctionError(f"log: math domain error: {e}") from e
@@ -163,7 +163,7 @@ def pow_fn(num_val: "CtyValue[Any]", power_val: "CtyValue[Any]") -> "CtyValue[An
 
     try:
         # Decimal's __pow__ handles this well, including negative/fractional exponents
-        result = num**power
+        result = num**power  # type: ignore
         return CtyNumber().validate(result)
     except InvalidOperation as e:  # e.g. fractional power of negative number
         raise CtyFunctionError(f"pow: invalid operation: {e}") from e
@@ -183,9 +183,9 @@ def signum_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         # return CtyValue.unknown(CtyNumber()) if input_val.is_unknown else input_val
 
     val = input_val.value
-    if val < 0:
+    if val < 0:  # type: ignore
         return CtyNumber().validate(Decimal("-1"))
-    elif val > 0:
+    elif val > 0:  # type: ignore
         return CtyNumber().validate(Decimal("1"))
     else:
         return CtyNumber().validate(Decimal("0"))
@@ -209,7 +209,7 @@ def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValu
         return CtyValue.unknown(CtyNumber())
 
     s = str_val.value
-    base = int(base_val.value)  # Base must be an integer
+    base = int(base_val.value)  # type: ignore
 
     # go-cty's parseint has base 0 for auto-detection (0x, 0), and 2-36 for others.
     # Python's int() with base 0 handles "0x", "0o", "0b" prefixes.
@@ -232,7 +232,7 @@ def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValu
         # This behavior is consistent with go-cty's general approach.
 
         # Handle potential CtyNumber representation of base
-        parsed_int = int(s, base)
+        parsed_int = int(s, base)  # type: ignore
         return CtyNumber().validate(Decimal(parsed_int))
     except ValueError:
         # Could not convert string to int with the given base
