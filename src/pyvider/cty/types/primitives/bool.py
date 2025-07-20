@@ -29,8 +29,11 @@ class CtyBool(CtyType[bool]):
         else:
             raw_value = value
 
+        # FIX: Correctly handle null inputs by returning a null CtyValue
+        # instead of raising an error. This is critical for handling
+        # optional and computed attributes from Terraform.
         if raw_value is None:
-            raise CtyBoolValidationError("Cannot convert null to bool.")
+            return CtyValue.null(self)
 
         if isinstance(raw_value, bool):
             return CtyValue(vtype=self, value=raw_value)

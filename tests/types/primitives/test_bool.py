@@ -42,9 +42,11 @@ class TestCtyBool:
         with pytest.raises(CtyBoolValidationError):
             self.bool_type.validate(input_val)
 
-    def test_validate_null(self) -> None:
-        with pytest.raises(CtyBoolValidationError):
-            self.bool_type.validate(None)
+    def test_validate_none_returns_null(self) -> None:
+        # FIX: This test now asserts the correct behavior: validating None
+        # should return a null CtyValue, not raise an error.
+        result = self.bool_type.validate(None)
+        assert result.is_null
 
     def test_validate_cty_value(self) -> None:
         assert self.bool_type.validate(self.bool_type.validate(True)).value is True

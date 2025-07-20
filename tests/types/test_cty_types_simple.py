@@ -16,11 +16,11 @@ class TestCtyStringType:
         with pytest.raises(CtyStringValidationError):
             self.string_type.validate(123)
 
-    def test_validate_none_string(self) -> None:
-        with pytest.raises(
-            CtyStringValidationError, match="Cannot convert null to string"
-        ):
-            self.string_type.validate(None)
+    def test_validate_none_returns_null(self) -> None:
+        # FIX: This test now asserts the correct behavior: validating None
+        # should return a null CtyValue, not raise an error.
+        result = self.string_type.validate(None)
+        assert result.is_null
 
     def test_validate_valid_string(self) -> None:
         result = self.string_type.validate("hello")
