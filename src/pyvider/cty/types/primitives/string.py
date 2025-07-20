@@ -15,8 +15,7 @@ class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
 
     def validate(self, value: object) -> "CtyValue[str]":
-        from pyvider.cty.values import CtyValue
-        from pyvider.cty.values.base import UnknownValue
+        from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
             return CtyValue.unknown(self)
