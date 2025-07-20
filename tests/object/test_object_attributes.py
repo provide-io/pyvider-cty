@@ -1,10 +1,9 @@
+from typing import Any
+
 import pytest
 
 from pyvider.cty import CtyNumber, CtyObject, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyAttributeValidationError
-
-
-from typing import Any
 
 
 class TestCtyObjectAttributes:

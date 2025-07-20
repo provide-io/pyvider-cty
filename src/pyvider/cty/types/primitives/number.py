@@ -37,16 +37,16 @@ class CtyNumber(CtyType[Decimal]):
             raw_value = 1 if raw_value else 0
 
         try:
-            return CtyValue(vtype=self, value=Decimal(raw_value))
+            return CtyValue(vtype=self, value=Decimal(raw_value))  # type: ignore
         except (TypeError, ValueError, InvalidOperation) as e:
             raise CtyNumberValidationError(
                 f"Cannot represent {type(raw_value).__name__} value '{raw_value}' as Decimal"
             ) from e
 
-    def equal(self, other: "CtyType[object]") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyNumber)
 
-    def usable_as(self, other: "CtyType[object]") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         return isinstance(other, CtyNumber | CtyDynamic)

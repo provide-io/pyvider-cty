@@ -47,10 +47,10 @@ class CtyString(CtyType[str]):
                 f"Cannot convert {type(raw_value).__name__} to string: {e}"
             ) from e
 
-    def equal(self, other: "CtyType[object]") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyString)
 
-    def usable_as(self, other: "CtyType[object]") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         return isinstance(other, CtyString | CtyDynamic)

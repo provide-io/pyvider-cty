@@ -51,10 +51,10 @@ class CtyBool(CtyType[bool]):
             f"Cannot convert {type(raw_value).__name__} to bool."
         )
 
-    def equal(self, other: "CtyType[object]") -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyBool)
 
-    def usable_as(self, other: "CtyType[object]") -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         return isinstance(other, CtyBool | CtyDynamic)

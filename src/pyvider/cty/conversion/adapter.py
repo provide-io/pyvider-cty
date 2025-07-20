@@ -100,7 +100,7 @@ def cty_to_native(value: Any) -> Any:
                 #      the modulo operator on potentially very large numbers.
                 # `as_tuple()` is a reliable way to inspect a Decimal's components.
                 # A non-negative exponent means it's an integer.
-                if inner_val.as_tuple().exponent >= 0:
+                if inner_val.as_tuple().exponent >= 0:  # type: ignore
                     results[item_id] = int(inner_val)
                 else:
                     results[item_id] = float(inner_val)

@@ -9,7 +9,9 @@ class TestCtyListValueOperations:
         list_type = CtyList(element_type=CtyString())
         return list_type.validate(["a", "b", "c", "d", "e"])
 
-    def test_cty_list_access_methods(self, string_list_val: CtyValue[list[str]]) -> None:
+    def test_cty_list_access_methods(
+        self, string_list_val: CtyValue[list[str]]
+    ) -> None:
         assert string_list_val[2].value == "c"
         sliced = string_list_val[::2]
         assert isinstance(sliced, CtyValue)

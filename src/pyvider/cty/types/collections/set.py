@@ -13,7 +13,7 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtySet[T](CtyType[set[T]]):
+class CtySet[T](CtyType[frozenset[T]]):
     ctype: ClassVar[str] = "set"
     element_type: CtyType[T] = field(kw_only=True)
 

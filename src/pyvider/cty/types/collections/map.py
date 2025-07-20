@@ -71,7 +71,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
         if map_value.is_null or map_value.is_unknown:
             return default if default is not None else CtyValue.null(self.element_type)
         internal_dict = map_value.value
-        return internal_dict.get(
+        return internal_dict.get(  # type: ignore
             str(key),
             default if default is not None else CtyValue.null(self.element_type),
         )

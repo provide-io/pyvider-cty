@@ -6,9 +6,6 @@ import pytest
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyValidationError
 
 
-from typing import Any
-
-
 @given(st.lists(st.text()))
 def test_list_of_strings_validation(value: list[str]) -> None:
     """
