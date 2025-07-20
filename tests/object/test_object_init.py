@@ -97,6 +97,22 @@ class TestCtyObjectValidation:
         ):
             obj_type.validate({"name": None})
 
+    def test_validate_attrs_object(self) -> None:
+        import attr
+        from pyvider.cty import CtyObject, CtyString, CtyNumber
+
+        @attr.s(auto_attribs=True)
+        class MyAttrsClass:
+            name: str
+            age: int
+
+        attrs_instance = MyAttrsClass("Bob", 42)
+
+        obj_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+        value = obj_type.validate(attrs_instance)
+        assert value.value["name"].value == "Bob"
+        assert value.value["age"].value == 42
+
 
 class TestCtyObjectMethods:
     def setup_method(self) -> None:

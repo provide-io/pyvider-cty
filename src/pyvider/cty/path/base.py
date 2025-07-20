@@ -78,9 +78,8 @@ class IndexStep(PathStep):
 
         if isinstance(value.type, CtyList | CtyTuple):
             return value.type.element_at(value, self.index)
-        if isinstance(value.type, CtyDynamic):
-            if isinstance(value.value, CtyValue):
-                return self.apply(value.value)
+        if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
+            return self.apply(value.value)
         raise AttributePathError(
             f"Cannot index into value of type {type(value.type).__name__}"
         )
@@ -94,8 +93,8 @@ class IndexStep(PathStep):
         if isinstance(vtype, CtyTuple):
             try:
                 return vtype.element_types[self.index]
-            except IndexError:
-                raise AttributePathError(f"Tuple index {self.index} out of bounds")
+            except IndexError as e:
+                raise AttributePathError(f"Tuple index {self.index} out of bounds") from e
         if isinstance(vtype, CtyDynamic):
             return CtyDynamic()
         raise AttributePathError(
@@ -120,9 +119,8 @@ class KeyStep(PathStep):
 
         if isinstance(value.type, CtyMap):
             return value.type.get(value, self.key)
-        if isinstance(value.type, CtyDynamic):
-            if isinstance(value.value, CtyValue):
-                return self.apply(value.value)
+        if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
+            return self.apply(value.value)
         raise AttributePathError(
             f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}"
         )

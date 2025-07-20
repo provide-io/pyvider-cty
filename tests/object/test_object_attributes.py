@@ -44,3 +44,12 @@ class TestCtyObjectAttributes:
         name_from_null = person_type.get_attribute(null_person, "name")
         assert name_from_null.is_null
         assert isinstance(name_from_null.type, CtyString)
+
+    def test_get_attribute_on_non_dict_value(self, person_type: CtyObject) -> None:
+        from pyvider.cty.exceptions import CtyTypeMismatchError
+
+        # Create a CtyValue with a non-dict value but with a CtyObject type
+        # This is a weird state, but we should handle it gracefully
+        value = CtyValue(person_type, "not a dict")
+        with pytest.raises(CtyTypeMismatchError):
+            person_type.get_attribute(value, "name")
