@@ -21,7 +21,9 @@ TEST_CASES = [
 
 
 @pytest.mark.parametrize("input_str, expected_normalized_str", TEST_CASES)
-def test_string_normalization_on_validate(input_str: str, expected_normalized_str: str) -> None:
+def test_string_normalization_on_validate(
+    input_str: str, expected_normalized_str: str
+) -> None:
     """Tests that CtyString().validate() normalizes input strings."""
     cty_string_type = CtyString()
     validated_value: CtyValue = cty_string_type.validate(input_str)

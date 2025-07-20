@@ -29,7 +29,7 @@ from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
         (None, CtyDynamic),
     ],
 )
-def test_infer_primitive_types(raw_value, expected_type_cls) -> None:
+def test_infer_primitive_types(raw_value: Any, expected_type_cls: type) -> None:
     """Tests that the type inference correctly identifies primitive types."""
     inferred_type = infer_cty_type_from_raw(raw_value)
     assert isinstance(inferred_type, expected_type_cls)

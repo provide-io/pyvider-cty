@@ -6,8 +6,11 @@ import pytest
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyValidationError
 
 
+from typing import Any
+
+
 @given(st.lists(st.text()))
-def test_list_of_strings_validation(value) -> None:
+def test_list_of_strings_validation(value: list[str]) -> None:
     """
     Tests that a CtyList(CtyString) correctly validates lists of strings.
     """
@@ -18,7 +21,7 @@ def test_list_of_strings_validation(value) -> None:
 
 
 @given(st.lists(st.integers() | st.floats(allow_nan=False, allow_infinity=False)))
-def test_list_of_numbers_validation(value) -> None:
+def test_list_of_numbers_validation(value: list[int | float]) -> None:
     """
     Tests that a CtyList(CtyNumber) correctly validates lists of numbers.
     """
@@ -29,7 +32,7 @@ def test_list_of_numbers_validation(value) -> None:
 
 
 @given(st.lists(st.booleans()))
-def test_list_of_booleans_validation(value) -> None:
+def test_list_of_booleans_validation(value: list[bool]) -> None:
     """
     Tests that a CtyList(CtyBool) correctly validates lists of booleans.
     """
@@ -39,7 +42,7 @@ def test_list_of_booleans_validation(value) -> None:
 
 
 @given(st.lists(st.none() | st.integers()))
-def test_list_of_strings_with_invalid_types(value) -> None:
+def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
     """
     Tests that a CtyList(CtyString) raises a validation error for lists containing non-strings.
     """

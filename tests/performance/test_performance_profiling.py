@@ -71,7 +71,7 @@ def generate_cty_schema_from_data(d: dict) -> CtyObject:
 
 
 @pytest.fixture(scope="module")
-def complex_data_and_schema():
+def complex_data_and_schema() -> tuple[list[dict[str, Any]], CtyList]:
     """
     Generates a large set of complex data and its corresponding schema.
     This fixture is module-scoped to avoid re-generating data for each test.
@@ -102,7 +102,9 @@ def core_roundtrip_operation(data_list: list[dict], schema: CtyObject) -> None:
 
 
 @skip_benchmark_if_not_enabled
-def test_benchmark_full_conversion_roundtrip(benchmark, complex_data_and_schema) -> None:
+def test_benchmark_full_conversion_roundtrip(
+    benchmark: Any, complex_data_and_schema: tuple[list[dict[str, Any]], CtyObject]
+) -> None:
     """
     Uses pytest-benchmark to measure the performance of the full
     validate -> marshal -> unmarshal data conversion pipeline.

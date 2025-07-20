@@ -1,4 +1,3 @@
-
 import pytest
 
 from pyvider.cty import CtyType, CtyValidationError

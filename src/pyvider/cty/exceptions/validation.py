@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from pyvider.cty.exceptions.base import CtyError
 
 if TYPE_CHECKING:
+from typing import Any
     from pyvider.cty.path import CtyPath
     from pyvider.cty.types import CtyType
 
@@ -169,8 +170,8 @@ class CtyTypeMismatchError(CtyValidationError):
     def __init__(
         self,
         message: str,
-            actual_type: "CtyType[Any] | None" = None,
-            expected_type: "CtyType[Any] | None" = None,
+        actual_type: CtyType[Any] | None = None,
+        expected_type: CtyType[Any] | None = None,
         path: CtyPath | None = None,
     ) -> None:
         self.actual_type = actual_type

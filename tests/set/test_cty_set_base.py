@@ -11,7 +11,14 @@ equality checking, and other operations.
 
 import pytest
 
-from pyvider.cty import CtyBool, CtyNumber, CtySet, CtyString, CtyValue
+from pyvider.cty import (
+    CtyBool,
+    CtyDynamic,
+    CtyNumber,
+    CtySet,
+    CtyString,
+    CtyValue,
+)
 from pyvider.cty.exceptions import CtySetValidationError
 
 
@@ -23,6 +30,11 @@ class TestCtySetType:
         self.string_set = CtySet(element_type=CtyString())
         self.number_set = CtySet(element_type=CtyNumber())
         self.bool_set = CtySet(element_type=CtyBool())
+
+    def test_attrs_post_init_invalid_element_type(self) -> None:
+        """Test that __attrs_post_init__ raises an error for invalid element_type."""
+        with pytest.raises(CtySetValidationError):
+            CtySet(element_type="not a cty type")
 
     # -------------------- VALIDATION TESTS --------------------
     @pytest.mark.asyncio
@@ -79,6 +91,33 @@ class TestCtySetType:
             assert found, f"Value {val} not found in validated set"
 
         assert len(validated.value) == len(valid)
+
+    @pytest.mark.asyncio
+    async def test_validate_with_cty_value(self) -> None:
+        """Test validation with a CtyValue as input."""
+        cty_value = self.string_set.validate({"a", "b"})
+        validated = self.string_set.validate(cty_value)
+        assert validated == cty_value
+
+    @pytest.mark.asyncio
+    async def test_validate_with_list_or_tuple(self) -> None:
+        """Test validation with a list or tuple as input."""
+        validated_list = self.string_set.validate(["a", "b", "a"])
+        assert validated_list.value == {
+            CtyString().validate("a"),
+            CtyString().validate("b"),
+        }
+        validated_tuple = self.string_set.validate(("a", "b", "a"))
+        assert validated_tuple.value == {
+            CtyString().validate("a"),
+            CtyString().validate("b"),
+        }
+
+    @pytest.mark.asyncio
+    async def test_validate_with_unhashable_elements_in_list(self) -> None:
+        """Test validation with a list containing unhashable elements."""
+        with pytest.raises(CtySetValidationError):
+            self.string_set.validate([["a"], ["b"]])
 
     @pytest.mark.asyncio
     async def test_validate_invalid_element_type(self) -> None:
@@ -143,6 +182,11 @@ class TestCtySetType:
         set1 = CtySet(element_type=CtyString())
         set2 = CtySet(element_type=CtyString())
         assert set1.usable_as(set2)
+
+    @pytest.mark.asyncio
+    async def test_usable_as_dynamic(self) -> None:
+        """Test that any set is usable as dynamic."""
+        assert self.string_set.usable_as(CtyDynamic())
 
     @pytest.mark.asyncio
     async def test_usable_as_different_type(self) -> None:

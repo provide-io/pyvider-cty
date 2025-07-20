@@ -34,7 +34,7 @@ class TestStringFunctions:
             ("multi\r\nline\r\n", "multi\r\nline"),
         ],
     )
-    def test_chomp_various_inputs(self, input_str, expected_str) -> None:
+    def test_chomp_various_inputs(self, input_str: str, expected_str: str) -> None:
         cty_input = CtyString().validate(input_str)
         result = chomp(cty_input)
         assert result.value == expected_str
@@ -57,7 +57,7 @@ class TestStringFunctions:
             ("こんにちは", "はちにんこ"),
         ],
     )
-    def test_strrev_various_inputs(self, input_str, expected_str) -> None:
+    def test_strrev_various_inputs(self, input_str: str, expected_str: str) -> None:
         cty_input = CtyString().validate(input_str)
         result = strrev(cty_input)
         assert result.value == expected_str
@@ -82,7 +82,7 @@ class TestStringFunctions:
             ("　こんにちは　", "こんにちは"),
         ],
     )
-    def test_trimspace_various_inputs(self, input_str, expected_str) -> None:
+    def test_trimspace_various_inputs(self, input_str: str, expected_str: str) -> None:
         cty_input = CtyString().validate(input_str)
         result = trimspace(cty_input)
         assert result.value == expected_str
