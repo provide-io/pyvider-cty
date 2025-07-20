@@ -36,6 +36,16 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyList(element_type=input_val.type.element_type).validate(result_elements)  # type: ignore
 
 
+def _get_element_type(t: "CtyType[Any]") -> "CtyType[Any]":
+    if isinstance(t, CtyList):
+        return t.element_type
+    if isinstance(t, CtyTuple):
+        # This is a simplification. A more robust implementation would find a
+        # common type.
+        return t.element_types[0].element_type if t.element_types and isinstance(t.element_types[0], CtyList) else CtyDynamic()
+    return CtyDynamic()
+
+
 def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(

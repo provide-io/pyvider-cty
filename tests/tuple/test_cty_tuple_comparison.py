@@ -1,4 +1,4 @@
-from pyvider.cty import CtyDynamic, CtyNumber, CtyString, CtyTuple
+from pyvider.cty import CtyDynamic, CtyNumber, CtyString, CtyTuple, CtyBool
 
 
 class TestCtyTupleComparison:
@@ -7,3 +7,13 @@ class TestCtyTupleComparison:
         t2_dynamic = CtyTuple(element_types=(CtyDynamic(), CtyDynamic()))
         assert t1.usable_as(t2_dynamic)
         assert not t2_dynamic.usable_as(t1)
+
+    def test_equal(self):
+        t1 = CtyTuple(element_types=(CtyString(), CtyNumber()))
+        t2 = CtyTuple(element_types=(CtyString(), CtyNumber()))
+        t3 = CtyTuple(element_types=(CtyString(), CtyBool()))
+        t4 = CtyTuple(element_types=(CtyString(),))
+        assert t1.equal(t2)
+        assert not t1.equal(t3)
+        assert not t1.equal(t4)
+        assert not t1.equal(CtyString())
