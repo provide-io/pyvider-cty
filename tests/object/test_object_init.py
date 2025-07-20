@@ -42,7 +42,6 @@ async def test_object_init_with_optional_attributes() -> None:
 
 @pytest.mark.asyncio
 async def test_object_init_invalid_attribute_type() -> None:
-    # FIX: With the new __attrs_post_init__ hook, this now raises InvalidTypeError at construction.
     with pytest.raises(InvalidTypeError):
         CtyObject(attribute_types={"name": CtyString(), "age": "not a type"})
 
@@ -53,7 +52,6 @@ async def test_object_init_invalid_optional_attribute() -> None:
         attribute_types={"name": CtyString(), "age": CtyNumber()},
         optional_attributes=frozenset(["unknown"]),
     )
-    # Validation for unknown optionals happens at validation time, not construction.
     with pytest.raises(
         CtyValidationError, match="Unknown optional attributes: unknown"
     ):
@@ -91,8 +89,11 @@ class TestCtyObjectValidation:
 
     def test_validate_null_attribute(self) -> None:
         obj_type = CtyObject({"name": CtyString()})
+        # FIX: The test now expects the correct error message from the CtyObject
+        # validator, which correctly identifies that a required attribute
+        # cannot be null.
         with pytest.raises(
-            CtyAttributeValidationError, match="Cannot convert null to string"
+            CtyAttributeValidationError, match="Attribute cannot be null"
         ):
             obj_type.validate({"name": None})
 

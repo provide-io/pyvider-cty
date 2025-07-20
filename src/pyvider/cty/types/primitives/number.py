@@ -30,8 +30,9 @@ class CtyNumber(CtyType[Decimal]):
         else:
             raw_value = value
 
+        # FIX: Correctly handle null inputs by returning a null CtyValue.
         if raw_value is None:
-            raise CtyNumberValidationError("Cannot convert null to number.")
+            return CtyValue.null(self)
 
         if isinstance(raw_value, bool):
             raw_value = 1 if raw_value else 0

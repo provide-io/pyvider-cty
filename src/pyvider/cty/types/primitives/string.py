@@ -30,10 +30,10 @@ class CtyString(CtyType[str]):
         else:
             raw_value = value
 
+        # FIX: Correctly handle null inputs by returning a null CtyValue.
         if raw_value is None:
-            raise CtyStringValidationError("Cannot convert null to string.")
+            return CtyValue.null(self)
 
-        # FIX: Make validation stricter. Only accept strings or bytes.
         if not isinstance(raw_value, str | bytes):
             raise CtyStringValidationError(
                 f"Cannot convert {type(raw_value).__name__} to string."
