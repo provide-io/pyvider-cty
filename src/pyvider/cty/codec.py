@@ -52,6 +52,48 @@ def _ext_hook(code: int, data: bytes) -> Any:
     return msgpack.ExtType(code, data)
 
 
+def _serialize_unknown(value: "CtyValue[Any]") -> Any:
+    if not isinstance(value.value, RefinedUnknownValue):
+        return msgpack.ExtType(0, b"")
+
+    payload: dict[int, Any] = {}
+    if value.value.is_known_null is not None:
+        payload[1] = value.value.is_known_null
+    if value.value.string_prefix is not None:
+        payload[2] = value.value.string_prefix
+    if value.value.number_lower_bound is not None:
+        num, inclusive = value.value.number_lower_bound
+        payload[3] = [str(num).encode("utf-8"), inclusive]
+    if value.value.number_upper_bound is not None:
+        num, inclusive = value.value.number_upper_bound
+        payload[4] = [str(num).encode("utf-8"), inclusive]
+    if value.value.collection_length_lower_bound is not None:
+        payload[5] = value.value.collection_length_lower_bound
+    if value.value.collection_length_upper_bound is not None:
+        payload[6] = value.value.collection_length_upper_bound
+
+    if not payload:
+        return msgpack.ExtType(0, b"")
+
+    packed_payload = msgpack.packb(payload)
+    return msgpack.ExtType(12, packed_payload)
+
+
+def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
+    inner_value = value.value if isinstance(value.type, CtyDynamic) else value
+    if isinstance(inner_value, CtyValue):
+        actual_type = inner_value.type
+        serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
+    else:
+        from .conversion.raw_to_cty import infer_cty_type_from_raw
+        actual_type = infer_cty_type_from_raw(inner_value)
+        serializable_inner = _convert_value_to_serializable(schema=actual_type, value=actual_type.validate(inner_value))
+
+    type_spec_json = encode_cty_type_to_wire_json(actual_type)
+    type_spec_bytes = json.dumps(type_spec_json).encode("utf-8")
+    return [type_spec_bytes, serializable_inner]
+
+
 def _convert_value_to_serializable(
     value: "CtyValue[Any]", schema: "CtyType[Any]"
 ) -> Any:
@@ -59,38 +101,13 @@ def _convert_value_to_serializable(
         value = schema.validate(value)
 
     if value.is_unknown:
-        if isinstance(value.value, RefinedUnknownValue):
-            payload = {}
-            if value.value.is_known_null is not None:
-                payload[1] = value.value.is_known_null
-            if value.value.string_prefix is not None:
-                payload[2] = value.value.string_prefix
-            if value.value.number_lower_bound is not None:
-                num, inclusive = value.value.number_lower_bound
-                payload[3] = [str(num).encode("utf-8"), inclusive]
-            if value.value.number_upper_bound is not None:
-                num, inclusive = value.value.number_upper_bound
-                payload[4] = [str(num).encode("utf-8"), inclusive]
-            if value.value.collection_length_lower_bound is not None:
-                payload[5] = value.value.collection_length_lower_bound
-            if value.value.collection_length_upper_bound is not None:
-                payload[6] = value.value.collection_length_upper_bound
-            if not payload:
-                return msgpack.ExtType(0, b"")
-            packed_payload = msgpack.packb(payload)
-            return msgpack.ExtType(12, packed_payload)
-        return msgpack.ExtType(0, b"")
+        return _serialize_unknown(value)
 
     if value.is_null:
         return None
 
     if isinstance(schema, CtyDynamic):
-        inner_value = value.value if isinstance(value.type, CtyDynamic) else value
-        actual_type = inner_value.type
-        type_spec_json = encode_cty_type_to_wire_json(actual_type)
-        type_spec_bytes = json.dumps(type_spec_json).encode("utf-8")
-        serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
-        return [type_spec_bytes, serializable_inner]
+        return _serialize_dynamic(value)
 
     inner_val = value.value
     if isinstance(schema, CtyObject):
@@ -103,7 +120,7 @@ def _convert_value_to_serializable(
             k: _convert_value_to_serializable(v, schema.element_type)
             for k, v in inner_val.items()
         }
-    if isinstance(schema, CtyList | CtySet):
+    if isinstance(schema, (CtyList, CtySet)):
         items = (
             sorted(list(inner_val), key=repr)
             if isinstance(schema, CtySet)

@@ -36,16 +36,6 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyList(element_type=input_val.type.element_type).validate(result_elements)  # type: ignore
 
 
-def _get_element_type(t: "CtyType[Any]") -> "CtyType[Any]":
-    if isinstance(t, CtyList):
-        return t.element_type
-    if isinstance(t, CtyTuple):
-        # This is a simplification. A more robust implementation would find a
-        # common type.
-        return t.element_types[0].element_type if t.element_types and isinstance(t.element_types[0], CtyList) else CtyDynamic()
-    return CtyDynamic()
-
-
 def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(
@@ -76,15 +66,15 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 
 def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
-    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
+    if not isinstance(input_val.type, (CtyList, CtySet, CtyTuple)):
         raise CtyFunctionError(
             f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}"
         )
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
-    element_type = input_val.type.element_type  # type: ignore
-    if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
+    element_type = getattr(input_val.type, "element_type", CtyDynamic())
+    if not isinstance(element_type, (CtyString, CtyNumber, CtyBool, CtyDynamic)):
         raise CtyFunctionError(
             f"sort: elements must be string, number, or bool. Found: {element_type.ctype}"
         )

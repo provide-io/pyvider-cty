@@ -46,7 +46,7 @@ class CtyValue[T]:
             return None
         from ..conversion.adapter import cty_to_native
 
-        return cty_to_native(self)
+        return cty_to_native(self)  # type: ignore
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CtyValue):
@@ -63,8 +63,8 @@ class CtyValue[T]:
         if self.is_unknown or self.is_null:
             return False
         if hasattr(self.value, "__contains__"):
-            return item in self.value  # type: ignore
-        return self.value == item
+            return item in self.value
+        return self.value == item  # type: ignore
 
     def __bool__(self) -> bool:
         from pyvider.cty.types import CtyDynamic

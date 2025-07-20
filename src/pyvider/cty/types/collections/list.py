@@ -95,7 +95,7 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 raise CtyListValidationError(
                     f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}"
                 )
-            return container.value[index]
+            return container.value[index]  # type: ignore
         raise CtyListValidationError(
             f"Expected CtyValue[CtyList], got {type(container).__name__}"
         )

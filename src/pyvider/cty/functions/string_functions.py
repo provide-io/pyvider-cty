@@ -62,7 +62,7 @@ def indent(prefix_val: "CtyValue[Any]", input_val: "CtyValue[Any]") -> "CtyValue
         return CtyString().validate(prefix_val.value)
 
     indented_lines = [
-        f"{prefix_val.value}{line}" for line in input_val.value.splitlines()
+        f"{prefix_val.value}{line}" for line in str(input_val.value).splitlines()
     ]
     return CtyString().validate("\n".join(indented_lines))
 
