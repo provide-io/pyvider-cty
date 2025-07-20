@@ -66,7 +66,9 @@ def indent(prefix_val: "CtyValue[Any]", input_val: "CtyValue[Any]") -> "CtyValue
     return CtyString().validate("\n".join(indented_lines))
 
 
-def substr(input_val: "CtyValue[Any]", offset_val: "CtyValue[Any]", length_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def substr(
+    input_val: "CtyValue[Any]", offset_val: "CtyValue[Any]", length_val: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(
             f"substr: input must be a string, got {input_val.type.ctype}"
@@ -124,7 +126,9 @@ def title(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyString().validate(input_val.value.title())  # type: ignore
 
 
-def trimprefix(input_val: "CtyValue[Any]", prefix_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def trimprefix(
+    input_val: "CtyValue[Any]", prefix_val: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString) or not isinstance(
         prefix_val.type, CtyString
     ):
@@ -141,7 +145,9 @@ def trimprefix(input_val: "CtyValue[Any]", prefix_val: "CtyValue[Any]") -> "CtyV
     return input_val
 
 
-def trimsuffix(input_val: "CtyValue[Any]", suffix_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def trimsuffix(
+    input_val: "CtyValue[Any]", suffix_val: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString) or not isinstance(
         suffix_val.type, CtyString
     ):
@@ -179,7 +185,9 @@ def regex(input_val: "CtyValue[Any]", pattern_val: "CtyValue[Any]") -> "CtyValue
         raise CtyFunctionError(f"regex: invalid regular expression: {e}") from e
 
 
-def regexall(input_val: "CtyValue[Any]", pattern_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def regexall(
+    input_val: "CtyValue[Any]", pattern_val: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyString) or not isinstance(
         pattern_val.type, CtyString
     ):

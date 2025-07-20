@@ -11,7 +11,7 @@ import attrs
 from pyvider.cty.types import CtyType
 
 
-def _unify_types(types: set["CtyType[Any]"]) -> "CtyType[Any]":
+def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
     """Unifies a set of CtyTypes into a single representative type."""
     from pyvider.cty.types import CtyDynamic
 
@@ -45,7 +45,7 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     return res
 
 
-def infer_cty_type_from_raw(value: Any) -> "CtyType[Any]":
+def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:
     """
     Infers the most specific CtyType from a raw Python value.
     This function uses an iterative approach with a work stack to avoid recursion limits.

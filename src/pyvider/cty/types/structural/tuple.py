@@ -141,7 +141,9 @@ class CtyTuple(CtyType[tuple[object, ...]]):
         elems_json = [elem_type._to_wire_json() for elem_type in self.element_types]
         return [self.ctype, elems_json]
 
-    def __getitem__(self, index: int | slice) -> CtyType[Any] | "CtyTuple" | tuple[CtyType[Any], ...]:
+    def __getitem__(
+        self, index: int | slice
+    ) -> CtyType[Any] | CtyTuple | tuple[CtyType[Any], ...]:
         return self.element_types[index]
 
     def __str__(self) -> str:
