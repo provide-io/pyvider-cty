@@ -10,13 +10,17 @@ valid_data_strategy = st.fixed_dictionaries(
 )
 
 # A strategy for invalid data.
-# FIX: Generate text containing at least one letter to guarantee it cannot be
-# converted to a Decimal. This is the definitive fix for the test.
+# FIX: The strategy for 'age' now generates text that is guaranteed to be
+# non-numeric by using an alphabet that excludes characters like 'e' which
+# can be interpreted as scientific notation by Decimal().
 invalid_data_strategy = st.fixed_dictionaries(
     {
         "name": st.text(max_size=50),
         "age": st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1
+            alphabet=st.characters(
+                min_codepoint=97, max_codepoint=122
+            ).filter(lambda s: s not in "eE"),
+            min_size=1,
         ),
     }
 )
