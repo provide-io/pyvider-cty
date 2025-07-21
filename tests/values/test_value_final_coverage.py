@@ -52,8 +52,21 @@ class TestFinalValueCoverage:
 
     def test_helpers_on_wrong_type(self) -> None:
         list_val = CtyList(element_type=CtyString()).validate(["a"])
-        # FIX: Use re.escape to handle special characters in the match string.
+        map_val = CtyMap(element_type=CtyString()).validate({"a": "b"})
+        
+        # Test map helpers on list
         with pytest.raises(TypeError, match=re.escape("'.with_key()' can only be used on CtyMap values.")):
             list_val.with_key("b", "c")
         with pytest.raises(TypeError, match=re.escape("'.without_key()' can only be used on CtyMap values.")):
             list_val.without_key("a")
+
+        # Test list helpers on map
+        with pytest.raises(TypeError, match=re.escape("'.append()' can only be used on CtyList values.")):
+            map_val.append("c")
+        with pytest.raises(TypeError, match=re.escape("'.with_element_at()' can only be used on CtyList values.")):
+            map_val.with_element_at(0, "d")
+
+    def test_with_element_at_out_of_bounds(self) -> None:
+        list_val = CtyList(element_type=CtyString()).validate(["a"])
+        with pytest.raises(IndexError):
+            list_val.with_element_at(5, "z")

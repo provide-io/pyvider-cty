@@ -46,12 +46,17 @@ def assert_value_roundtrip(value: CtyValue) -> None:
 
         original_unmarked = deep_unmark(value)
 
-        # The core assertion remains an object-to-object comparison.
-        # The failure message now uses the normalized repr for clarity.
-        assert unpacked == original_unmarked, (
+        # DEFINITIVE FIX: The unpacked value will always be a CtyDynamic wrapper.
+        # We must compare its inner value to the original concrete value.
+        # If the original was already dynamic, we compare wrapper to wrapper.
+        value_to_compare = unpacked
+        if not isinstance(original_unmarked.type, CtyDynamic):
+            value_to_compare = unpacked.value
+
+        assert value_to_compare == original_unmarked, (
             f"Roundtrip failed!\n"
             f"Original (norm): {normalize_repr(original_unmarked)}\n"
-            f"Got (norm):      {normalize_repr(unpacked)}"
+            f"Got (norm):      {normalize_repr(value_to_compare)}"
         )
     except Exception as e:
         pytest.fail(f"Roundtrip assertion failed with an exception: {e}", pytrace=False)

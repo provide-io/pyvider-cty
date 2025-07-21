@@ -1,82 +1,127 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
-	"reflect"
+	"path/filepath"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/spf13/cobra"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/msgpack"
 )
 
-// TestCase holds a value and its corresponding type for marshaling.
+// Emojilogger provides structured, emoji-prefixed logging.
+type Emojilogger struct {
+	logger hclog.Logger
+}
+
+// Log emits a log message with a 3-emoji prefix.
+func (l *Emojilogger) Log(level hclog.Level, domain, action, status, msg string, args ...interface{}) {
+	prefix := fmt.Sprintf("%s %s %s", domain, action, status)
+	l.logger.Log(level, fmt.Sprintf("%s %s", prefix, msg), args...)
+}
+
+var (
+	logger    *Emojilogger
+	logLevel  string
+	logFile   string
+	directory string
+)
+
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "compat-tool",
+	Short: "A tool to generate and verify cty compatibility fixtures.",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		level := hclog.LevelFromString(logLevel)
+		if level == hclog.NoLevel {
+			level = hclog.Debug
+		}
+
+		opts := &hclog.LoggerOptions{Name: "compat-suite", Level: level}
+		if logFile != "" {
+			f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+			if err != nil {
+				fmt.Printf("Failed to open log file %s: %v\n", logFile, err)
+				os.Exit(1)
+			}
+			opts.Output = f
+			opts.JSONFormat = true
+		}
+		hcl := hclog.New(opts)
+		logger = &Emojilogger{logger: hcl}
+	},
+}
+
+var generateCmd = &cobra.Command{
+	Use:   "generate",
+	Short: "Generate Go-based cty fixtures for Python to consume.",
+	Run: func(cmd *cobra.Command, args []string) {
+		if directory == "" {
+			logger.Log(hclog.Error, "📦", "📝", "❌", "--directory flag is required.")
+			os.Exit(1)
+		}
+		generateFixtures(directory)
+	},
+}
+
+var verifyCmd = &cobra.Command{
+	Use:   "verify",
+	Short: "Verify Python-generated cty fixtures using Go's implementation.",
+	Run: func(cmd *cobra.Command, args []string) {
+		if directory == "" {
+			logger.Log(hclog.Error, "🔍", "🔎", "❌", "--directory flag is required.")
+			os.Exit(1)
+		}
+		verifyFixtures(directory)
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "debug", "Set the logging level (e.g., 'debug', 'info', 'warn', 'error')")
+	rootCmd.PersistentFlags().StringVar(&logFile, "log-file", "", "Path to a file to write logs to.")
+	generateCmd.Flags().StringVar(&directory, "directory", "", "The directory for fixture files.")
+	verifyCmd.Flags().StringVar(&directory, "directory", "", "The directory for fixture files.")
+	rootCmd.AddCommand(generateCmd)
+	rootCmd.AddCommand(verifyCmd)
+}
+
 type TestCase struct {
 	Value cty.Value
 	Type  cty.Type
 }
 
-// CustomData is a struct for our advanced capsule type.
-type CustomData struct {
-	ID   int
-	Name string
-}
+// --- GENERATE LOGIC ---
+func getTestCasesForGeneration() map[string]TestCase {
+	refinedUnknownString := func() cty.Value {
+		return cty.UnknownVal(cty.String).Refine().StringPrefix("start-").NewValue()
+	}
+	refinedUnknownNumber := func() cty.Value {
+		return cty.UnknownVal(cty.Number).Refine().
+			NumberRangeLowerBound(cty.NumberIntVal(100), true).
+			NumberRangeUpperBound(cty.NumberIntVal(200), false).
+			NewValue()
+	}
+	refinedUnknownList := func() cty.Value {
+		return cty.UnknownVal(cty.List(cty.String)).Refine().CollectionLength(3).NewValue()
+	}
 
-// --- Helper functions to create complex values ---
-
-func refinedUnknownString() cty.Value {
-	return cty.UnknownVal(cty.String).Refine().StringPrefix("start-").NewValue()
-}
-
-func refinedUnknownNumber() cty.Value {
-	return cty.UnknownVal(cty.Number).Refine().
-		NumberRangeLowerBound(cty.NumberIntVal(100), true).
-		NumberRangeUpperBound(cty.NumberIntVal(200), false).
-		NewValue()
-}
-
-func refinedUnknownList() cty.Value {
-	return cty.UnknownVal(cty.List(cty.String)).Refine().CollectionLength(3).NewValue()
-}
-
-func main() {
-	// Define and parse the command-line flag for the output directory.
-	outputDir := flag.String("directory", "../tests/fixtures/go-cty", "The directory to write fixture files to.")
-	flag.Parse()
-
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:  "fixture-generator",
-		Level: hclog.Info,
-	})
-
-	// --- Advanced Capsule Type Definition ---
-	customDataType := reflect.TypeOf(CustomData{})
-	advancedCapsuleType := cty.CapsuleWithOps("CustomData", customDataType, &cty.CapsuleOps{
-		RawEquals: func(a, b interface{}) bool {
-			return a.(CustomData) == b.(CustomData)
-		},
-		HashKey: func(v interface{}) string {
-			data := v.(CustomData)
-			return fmt.Sprintf("%d-%s", data.ID, data.Name)
-		},
-	})
-
-	// Define all canonical test cases.
-	testCases := map[string]TestCase{
-		"string_simple": {Value: cty.StringVal("hello world"), Type: cty.String},
-		"number_simple": {Value: cty.NumberIntVal(42), Type: cty.Number},
-		"bool_true":     {Value: cty.True, Type: cty.Bool},
-		"large_number":  {Value: cty.NumberVal(new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(2), big.NewInt(100), nil))), Type: cty.Number},
-		"null_string":         {Value: cty.NullVal(cty.String), Type: cty.String},
-		"unknown_unrefined":   {Value: cty.UnknownVal(cty.String), Type: cty.String},
-		"unknown_refined_str": {Value: refinedUnknownString(), Type: cty.String},
-		"unknown_refined_num": {Value: refinedUnknownNumber(), Type: cty.Number},
+	return map[string]TestCase{
+		"string_simple":      {Value: cty.StringVal("hello world"), Type: cty.String},
+		"number_simple":      {Value: cty.NumberIntVal(42), Type: cty.Number},
+		"bool_true":          {Value: cty.True, Type: cty.Bool},
+		"large_number":       {Value: cty.NumberVal(new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(2), big.NewInt(100), nil))), Type: cty.Number},
+		"null_string":        {Value: cty.NullVal(cty.String), Type: cty.String},
+		"unknown_unrefined":  {Value: cty.UnknownVal(cty.String), Type: cty.String},
+		"unknown_refined_str":{Value: refinedUnknownString(), Type: cty.String},
+		"unknown_refined_num":{Value: refinedUnknownNumber(), Type: cty.Number},
 		"unknown_refined_list":{Value: refinedUnknownList(), Type: cty.List(cty.String)},
-		"list_of_strings": {Value: cty.ListVal([]cty.Value{cty.StringVal("a"), cty.StringVal("b")}), Type: cty.List(cty.String)},
-		"set_of_numbers":  {Value: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberIntVal(2)}), Type: cty.Set(cty.Number)},
-		"map_simple":      {Value: cty.MapVal(map[string]cty.Value{"a": cty.True, "b": cty.False}), Type: cty.Map(cty.Bool)},
+		"list_of_strings":    {Value: cty.ListVal([]cty.Value{cty.StringVal("a"), cty.StringVal("b")}), Type: cty.List(cty.String)},
+		"set_of_numbers":     {Value: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberIntVal(2)}), Type: cty.Set(cty.Number)},
+		"map_simple":         {Value: cty.MapVal(map[string]cty.Value{"a": cty.True, "b": cty.False}), Type: cty.Map(cty.Bool)},
 		"set_of_tuples": {
 			Value: cty.SetVal([]cty.Value{
 				cty.TupleVal([]cty.Value{cty.StringVal("a"), cty.NumberIntVal(1)}),
@@ -90,34 +135,217 @@ func main() {
 				"config": cty.ObjectVal(map[string]cty.Value{ "retries": cty.NumberIntVal(3), "params":  cty.MapVal(map[string]cty.Value{"timeout": cty.StringVal("5s")}), }),
 				"metadata": cty.NullVal(cty.Map(cty.String)), "extra":    cty.UnknownVal(cty.String),
 			}),
-			Type: cty.Object(map[string]cty.Type{
-				"id":      cty.String, // DEFINITIVE FIX: Replaced "string" with cty.String
-				"enabled": cty.Bool, "ports": cty.List(cty.Number),
+			Type: cty.ObjectWithOptionalAttrs(map[string]cty.Type{
+				"id": cty.String, "enabled": cty.Bool, "ports": cty.List(cty.Number),
 				"config": cty.Object(map[string]cty.Type{ "retries": cty.Number, "params":  cty.Map(cty.String), }),
 				"metadata": cty.Map(cty.String), "extra": cty.String,
-			}),
+			}, []string{"metadata"}),
 		},
-		"dynamic_wrapped_string": { Value: cty.StringVal("dynamic"), Type:  cty.DynamicPseudoType, },
-		"dynamic_wrapped_object": { Value: cty.ObjectVal(map[string]cty.Value{"key": cty.StringVal("value")}), Type:  cty.DynamicPseudoType, },
-		"advanced_capsule": { Value: cty.NullVal(advancedCapsuleType), Type:  advancedCapsuleType, },
+		"dynamic_wrapped_string": {Value: cty.StringVal("dynamic"), Type: cty.DynamicPseudoType},
+		"dynamic_wrapped_object": {Value: cty.ObjectVal(map[string]cty.Value{"key": cty.StringVal("value")}), Type: cty.DynamicPseudoType},
 	}
+}
 
-	if err := os.MkdirAll(*outputDir, 0755); err != nil {
-		logger.Error("Failed to create fixture directory", "error", err)
+func generateFixtures(outputDir string) {
+	logger.Log(hclog.Info, "📦", "📝", "⏳", "Starting Go fixture generation...")
+	testCases := getTestCasesForGeneration()
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		logger.Log(hclog.Error, "📦", "📝", "❌", "Failed to create fixture directory", "error", err)
 		os.Exit(1)
 	}
 
 	for name, tc := range testCases {
+		logger.Log(hclog.Debug, "📦", "📝", "⚙️", "Processing case", "name", name, "type", tc.Type.FriendlyName(), "value", tc.Value.GoString())
 		bytes, err := msgpack.Marshal(tc.Value, tc.Type)
 		if err != nil {
-			logger.Error("Failed to marshal", "case", name, "error", err)
+			logger.Log(hclog.Error, "📦", "📝", "❌", "Failed to marshal", "case", name, "error", err)
 			os.Exit(1)
 		}
-		filename := *outputDir + "/" + name + ".msgpack"
+
+		filename := filepath.Join(outputDir, name+".msgpack")
 		if err := os.WriteFile(filename, bytes, 0644); err != nil {
-			logger.Error("Failed to write fixture", "file", filename, "error", err)
+			logger.Log(hclog.Error, "📦", "📝", "❌", "Failed to write fixture", "file", filename, "error", err)
 			os.Exit(1)
 		}
-		logger.Info("Wrote fixture", "file", filename)
+		logger.Log(hclog.Debug, "📦", "📝", "✅", "Wrote fixture", "file", filename)
+	}
+	logger.Log(hclog.Info, "📦", "📝", "✅", "Go fixture generation complete.")
+}
+
+// --- VERIFY LOGIC ---
+type ManifestEntry struct {
+	Type      json.RawMessage `json:"type"`
+	Value     json.RawMessage `json:"value"`
+	IsUnknown bool            `json:"isUnknown"`
+	IsNull    bool            `json:"isNull"`
+}
+
+func parseCtyType(data json.RawMessage) (cty.Type, error) {
+	var typeStr string
+	if err := json.Unmarshal(data, &typeStr); err == nil {
+		switch typeStr {
+		case "string": return cty.String, nil
+		case "number": return cty.Number, nil
+		case "bool": return cty.Bool, nil
+		case "dynamic": return cty.DynamicPseudoType, nil
+		default: return cty.NilType, fmt.Errorf("unknown primitive type string: %s", typeStr)
+		}
+	}
+
+	var typeList []json.RawMessage
+	if err := json.Unmarshal(data, &typeList); err == nil {
+		if len(typeList) != 2 { return cty.NilType, fmt.Errorf("type array must have 2 elements") }
+		var typeKind string
+		if err := json.Unmarshal(typeList[0], &typeKind); err != nil { return cty.NilType, err }
+
+		switch typeKind {
+		case "list", "set", "map":
+			elemType, err := parseCtyType(typeList[1])
+			if err != nil { return cty.NilType, err }
+			if typeKind == "list" { return cty.List(elemType), nil }
+			if typeKind == "set" { return cty.Set(elemType), nil }
+			return cty.Map(elemType), nil
+		case "object":
+			var attrTypesRaw map[string]json.RawMessage
+			if err := json.Unmarshal(typeList[1], &attrTypesRaw); err != nil { return cty.NilType, err }
+			attrTypes := make(map[string]cty.Type)
+			for name, rawType := range attrTypesRaw {
+				attrType, err := parseCtyType(rawType)
+				if err != nil { return cty.NilType, err }
+				attrTypes[name] = attrType
+			}
+			return cty.Object(attrTypes), nil
+		case "tuple":
+			var elemTypesRaw []json.RawMessage
+			if err := json.Unmarshal(typeList[1], &elemTypesRaw); err != nil { return cty.NilType, err }
+			elemTypes := make([]cty.Type, len(elemTypesRaw))
+			for i, rawType := range elemTypesRaw {
+				elemType, err := parseCtyType(rawType)
+				if err != nil { return cty.NilType, err }
+				elemTypes[i] = elemType
+			}
+			return cty.Tuple(elemTypes), nil
+		default: return cty.NilType, fmt.Errorf("unknown complex type kind: %s", typeKind)
+		}
+	}
+	return cty.NilType, fmt.Errorf("invalid type specification format")
+}
+
+func buildExpectedValue(ty cty.Type, valData json.RawMessage) (cty.Value, error) {
+	if ty.IsPrimitiveType() {
+		switch ty {
+		case cty.String:
+			var s string; if err := json.Unmarshal(valData, &s); err != nil { return cty.NilVal, err }; return cty.StringVal(s), nil
+		case cty.Number:
+			var s string; if err := json.Unmarshal(valData, &s); err != nil { return cty.NilVal, err }; bf := new(big.Float); _, ok := bf.SetString(s); if !ok { return cty.NilVal, fmt.Errorf("invalid number string") }; return cty.NumberVal(bf), nil
+		case cty.Bool:
+			var b bool; if err := json.Unmarshal(valData, &b); err != nil { return cty.NilVal, err }; return cty.BoolVal(b), nil
+		}
+	}
+	if ty.IsListType() || ty.IsSetType() || ty.IsTupleType() {
+		var rawElems []json.RawMessage; if err := json.Unmarshal(valData, &rawElems); err != nil { return cty.NilVal, err }
+		vals := make([]cty.Value, len(rawElems))
+		for i, rawElem := range rawElems {
+			elemTy := ty.ElementType()
+			if ty.IsTupleType() { elemTy = ty.TupleElementType(i) }
+			val, err := buildExpectedValue(elemTy, rawElem); if err != nil { return cty.NilVal, err }; vals[i] = val
+		}
+		if ty.IsListType() { return cty.ListVal(vals), nil }
+		if ty.IsSetType() { return cty.SetVal(vals), nil }
+		return cty.TupleVal(vals), nil
+	}
+	if ty.IsMapType() || ty.IsObjectType() {
+		var rawMap map[string]json.RawMessage; if err := json.Unmarshal(valData, &rawMap); err != nil { return cty.NilVal, err }
+		vals := make(map[string]cty.Value)
+		for k, rawVal := range rawMap {
+			elemTy := ty.ElementType()
+			if ty.IsObjectType() { elemTy = ty.AttributeType(k) }
+			val, err := buildExpectedValue(elemTy, rawVal); if err != nil { return cty.NilVal, err }; vals[k] = val
+		}
+		if ty.IsMapType() { return cty.MapVal(vals), nil }
+		return cty.ObjectVal(vals), nil
+	}
+	return cty.NilVal, fmt.Errorf("cannot build expected value for type %s", ty.FriendlyName())
+}
+
+func verifyFixtures(fixtureDir string) {
+	logger.Log(hclog.Info, "🔍", "🔎", "⏳", "Starting verification of Python-generated fixtures...")
+	manifestPath := filepath.Join(fixtureDir, "manifest.json")
+	manifestBytes, err := os.ReadFile(manifestPath)
+	if err != nil {
+		logger.Log(hclog.Error, "🔍", "💾", "❌", "Failed to read manifest.json", "error", err)
+		os.Exit(1)
+	}
+
+	var manifest map[string]ManifestEntry
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		logger.Log(hclog.Error, "🔍", "📄", "❌", "Failed to parse manifest.json", "error", err)
+		os.Exit(1)
+	}
+
+	failures := 0
+	for name, entry := range manifest {
+		ty, err := parseCtyType(entry.Type)
+		if err != nil {
+			logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to parse type from manifest", "case", name, "error", err)
+			failures++
+			continue
+		}
+
+		fixturePath := filepath.Join(fixtureDir, name+".msgpack")
+		fixtureBytes, err := os.ReadFile(fixturePath)
+		if err != nil {
+			logger.Log(hclog.Error, "🔍", "💾", "❌", "Failed to read fixture file", "case", name, "error", err)
+			failures++
+			continue
+		}
+
+		deserializedVal, err := msgpack.Unmarshal(fixtureBytes, ty)
+		if err != nil {
+			logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to deserialize fixture", "case", name, "error", err)
+			failures++
+			continue
+		}
+
+		// DEFINITIVE FIX: Use the correct method calls IsUnknown() and IsNull()
+		if entry.IsUnknown {
+			if !deserializedVal.IsUnknown() {
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Unknown, but is not", "case", name)
+				failures++
+			}
+		} else if entry.IsNull {
+			if !deserializedVal.IsNull() {
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Null, but is not", "case", name)
+				failures++
+			}
+		} else {
+			expectedVal, err := buildExpectedValue(ty, entry.Value)
+			if err != nil {
+				logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to build expected value", "case", name, "error", err)
+				failures++
+				continue
+			}
+			logger.Log(hclog.Debug, "🔍", "📊", "⚙️", "Comparing values", "name", name, "expected", expectedVal.GoString(), "got", deserializedVal.GoString())
+			if !deserializedVal.Equals(expectedVal).True() {
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Deserialized value does not equal expected value", "case", name)
+				failures++
+			}
+		}
+		if failures == 0 {
+			logger.Log(hclog.Debug, "🔍", "🔎", "✅", "Verified fixture", "case", name)
+		}
+	}
+
+	if failures > 0 {
+		logger.Log(hclog.Error, "🔍", "🏁", "❌", fmt.Sprintf("%d verification(s) failed.", failures))
+		os.Exit(1)
+	}
+	logger.Log(hclog.Info, "🔍", "🏁", "✅", "All Python-generated fixtures verified successfully.")
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }

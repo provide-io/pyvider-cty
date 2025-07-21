@@ -15,8 +15,8 @@ from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
 def test_dynamic_string_wire_format() -> None:
     schema = CtyDynamic()
-    value = CtyString().validate("hello")
-    actual_packed = cty_to_msgpack(value, schema)
+    concrete_value = CtyString().validate("hello")
+    actual_packed = cty_to_msgpack(concrete_value, schema)
     expected_type_spec = json.dumps("string").encode("utf-8")
     expected_payload = "hello"
     expected_packed = msgpack.packb(
@@ -24,14 +24,15 @@ def test_dynamic_string_wire_format() -> None:
     )
     assert actual_packed == expected_packed
     deserialized = cty_from_msgpack(actual_packed, schema)
-    assert deserialized == value
+    assert isinstance(deserialized.type, CtyDynamic)
+    assert deserialized.value == concrete_value
 
 
 def test_dynamic_object_wire_format() -> None:
     schema = CtyDynamic()
     obj_type = CtyObject(attribute_types={"name": CtyString(), "enabled": CtyBool()})
-    value = obj_type.validate({"name": "test", "enabled": True})
-    actual_packed = cty_to_msgpack(value, schema)
+    concrete_value = obj_type.validate({"name": "test", "enabled": True})
+    actual_packed = cty_to_msgpack(concrete_value, schema)
     expected_type_spec = json.dumps(
         ["object", {"name": "string", "enabled": "bool"}]
     ).encode("utf-8")
@@ -42,14 +43,15 @@ def test_dynamic_object_wire_format() -> None:
     )
     assert actual_packed == expected_packed
     deserialized = cty_from_msgpack(actual_packed, schema)
-    assert deserialized == value
+    assert isinstance(deserialized.type, CtyDynamic)
+    assert deserialized.value == concrete_value
 
 
 def test_dynamic_list_of_primitives_wire_format() -> None:
     schema = CtyDynamic()
     list_type = CtyList(element_type=CtyNumber())
-    value = list_type.validate([10, 20, 30])
-    actual_packed = cty_to_msgpack(value, schema)
+    concrete_value = list_type.validate([10, 20, 30])
+    actual_packed = cty_to_msgpack(concrete_value, schema)
     expected_type_spec = json.dumps(["list", "number"]).encode("utf-8")
     serializable_inner = ["10", "20", "30"]
     expected_payload = serializable_inner
@@ -58,4 +60,5 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     )
     assert actual_packed == expected_packed
     deserialized = cty_from_msgpack(actual_packed, schema)
-    assert deserialized == value
+    assert isinstance(deserialized.type, CtyDynamic)
+    assert deserialized.value == concrete_value
