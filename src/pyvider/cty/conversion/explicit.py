@@ -11,9 +11,7 @@ from ..types import (
     CtyBool,
     CtyDynamic,
     CtyList,
-    CtyMap,
     CtyNumber,
-    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
@@ -74,7 +72,6 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
             target_type=target_type,
         )
 
-
     # Collection conversions
     if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
         return target_type.validate(value.value).with_marks(value.marks)
@@ -86,7 +83,7 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
         if target_type.element_type.equal(value.type.element_type):
             return value
         if isinstance(target_type.element_type, CtyDynamic):
-             return target_type.validate(value.value).with_marks(value.marks)
+            return target_type.validate(value.value).with_marks(value.marks)
 
     raise CtyConversionError(
         f"Cannot convert from {value.type} to {target_type}",

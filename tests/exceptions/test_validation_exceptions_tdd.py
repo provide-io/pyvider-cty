@@ -6,6 +6,7 @@ from pyvider.cty import (
     CtyObject,
     CtyString,
     CtyTuple,
+    CtyTypeMismatchError,
 )
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
@@ -56,3 +57,11 @@ class TestValidationExceptionStructure:
             expected_error_type=CtyTupleValidationError,
             expected_error_message="At [1]: Number validation error: Cannot represent str value 'b' as Decimal",
         )
+
+    def test_validation_exception_context_str(self) -> None:
+        """Integrates and fixes tests for exception string formatting."""
+        type_mismatch = CtyTypeMismatchError(
+            "mismatch", actual_type=CtyString(), expected_type=CtyNumber()
+        )
+        # FIX: The __str__ of a CtyType is its lowercase name, not its class name.
+        assert "Expected number, got string" in str(type_mismatch)

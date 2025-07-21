@@ -97,7 +97,7 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "ANN", "B", "C90", "SIM", "PTH", "RUF"]
-ignore = ["ANN101", "ANN102", "ANN401", "B008", "E501"]
+ignore = ["ANN401", "B008", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["pyvider", "tests"]

@@ -6,6 +6,7 @@ from pyvider.cty.types import (
     CtyDynamic,
     CtyList,
     CtyMap,
+    CtyObject,
     CtyString,
 )
 from pyvider.cty.values import CtyValue
@@ -83,3 +84,16 @@ def test_key_step_with_invalid_key_type() -> None:
     step = KeyStep(123)
     with pytest.raises(AttributePathError):
         step.apply_type(CtyMap(element_type=CtyString()))
+
+def test_path_edge_cases_from_z_file() -> None:
+    """Integrates and fixes tests from the old z_high_coverage_final file."""
+    obj_type = CtyObject(attribute_types={"name": CtyString()})
+    path = CtyPath.get_attr("name")
+    assert path.apply_path_type(obj_type) == CtyString()
+    with pytest.raises(AttributePathError):
+        path.apply_path_type(CtyString())
+    with pytest.raises(AttributePathError):
+        # FIX: Corrected typo from apply_type to apply_path_type
+        CtyPath.key("k").apply_path_type(CtyString())
+    with pytest.raises(AttributePathError):
+        CtyPath.key(1).apply_path_type(CtyMap(element_type=CtyString()))
