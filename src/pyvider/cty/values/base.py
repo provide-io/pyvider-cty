@@ -11,6 +11,7 @@ from typing import (
 
 from attrs import define, evolve, field
 
+from ..exceptions import CtyValidationError
 from .markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -51,6 +52,12 @@ class CtyValue[T]:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CtyValue):
             return NotImplemented
+        from ..types import CtyCapsuleWithOps
+
+        if isinstance(self.type, CtyCapsuleWithOps) and self.type.equal(other.type):
+            if self.type.equal_fn:
+                return self.type.equal_fn(self.value, other.value)
+
         return (
             self.type.equal(other.type)
             and self.is_unknown == other.is_unknown
@@ -135,7 +142,18 @@ class CtyValue[T]:
         )
 
     def __hash__(self) -> int:
-        from pyvider.cty.types import CtyList, CtyMap, CtyObject, CtySet, CtyTuple
+        from pyvider.cty.types import (
+            CtyCapsuleWithOps,
+            CtyList,
+            CtyMap,
+            CtyObject,
+            CtySet,
+            CtyTuple,
+        )
+
+        if isinstance(self.type, CtyCapsuleWithOps):
+            if self.type.hash_fn:
+                return self.type.hash_fn(self.value)
 
         if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject | CtyTuple):
             raise TypeError(f"unhashable type: 'CtyValue[{self.vtype.ctype}]'")
@@ -172,6 +190,56 @@ class CtyValue[T]:
 
     def is_empty(self) -> bool:
         return not self.value if hasattr(self.value, "__len__") else False
+
+    # --- Ergonomic Helpers ---
+
+    def with_key(self, key: str, value: Any) -> Self:
+        from ..types import CtyMap
+
+        if not isinstance(self.vtype, CtyMap):
+            raise TypeError("'.with_key()' can only be used on CtyMap values.")
+        
+        new_dict = dict(self.value)
+        new_dict[key] = value
+        return self.vtype.validate(new_dict)
+
+    def without_key(self, key: str) -> Self:
+        from ..types import CtyMap
+
+        if not isinstance(self.vtype, CtyMap):
+            raise TypeError("'.without_key()' can only be used on CtyMap values.")
+
+        if key not in self.value:
+            return self
+
+        new_dict = dict(self.value)
+        del new_dict[key]
+        return self.vtype.validate(new_dict)
+
+    def append(self, value: Any) -> Self:
+        from ..types import CtyList
+
+        if not isinstance(self.vtype, CtyList):
+            raise TypeError("'.append()' can only be used on CtyList values.")
+
+        new_list = list(self.value)
+        new_list.append(value)
+        return self.vtype.validate(new_list)
+
+    def with_element_at(self, index: int, value: Any) -> Self:
+        from ..types import CtyList
+
+        if not isinstance(self.vtype, CtyList):
+            raise TypeError("'.with_element_at()' can only be used on CtyList values.")
+        
+        new_list = list(self.value)
+        if not (-len(new_list) <= index < len(new_list)):
+            raise IndexError("list index out of range")
+            
+        new_list[index] = value
+        return self.vtype.validate(new_list)
+
+    # --- Class Methods ---
 
     @classmethod
     def unknown(

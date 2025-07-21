@@ -10,7 +10,7 @@ implementations such as primitives (string, number, bool), collections
 """
 
 from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.capsule import CtyCapsule
+from pyvider.cty.types.capsule import CtyCapsule, CtyCapsuleWithOps
 from pyvider.cty.types.collections import (
     CtyList,
     CtyMap,
@@ -30,6 +30,7 @@ from pyvider.cty.types.structural import (
 __all__ = [
     "CtyBool",
     "CtyCapsule",
+    "CtyCapsuleWithOps",
     "CtyDynamic",
     "CtyList",
     "CtyMap",

@@ -1,4 +1,3 @@
-import os
 import random
 import time
 from typing import Any
@@ -7,19 +6,6 @@ import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
-
-# --- Conditional Skip Logic ---
-# Skip these tests unless the specific environment variable is set to a "true" value.
-# This prevents time-consuming benchmarks from running on every test execution.
-run_benchmarks = os.environ.get("PYVIDER_CTY_TEST_BENCHMARK", "false").lower() in (
-    "true",
-    "1",
-    "yes",
-)
-skip_benchmark_if_not_enabled = pytest.mark.skipif(
-    not run_benchmarks,
-    reason="Benchmark tests are disabled. Set PYVIDER_CTY_TEST_BENCHMARK=true to run them.",
-)
 
 # --- Configuration ---
 NUM_OBJECTS = 1000  # Number of CtyValues to process per benchmark round
@@ -71,7 +57,7 @@ def generate_cty_schema_from_data(d: dict) -> CtyObject:
 
 
 @pytest.fixture(scope="module")
-def complex_data_and_schema() -> tuple[list[dict[str, Any]], CtyList]:
+def complex_data_and_schema() -> tuple[list[dict[str, Any]], CtyObject]:
     """
     Generates a large set of complex data and its corresponding schema.
     This fixture is module-scoped to avoid re-generating data for each test.
@@ -101,14 +87,14 @@ def core_roundtrip_operation(data_list: list[dict], schema: CtyObject) -> None:
         _ = cty_from_msgpack(packed_bytes, schema)
 
 
-@skip_benchmark_if_not_enabled
+@pytest.mark.benchmark
 def test_benchmark_full_conversion_roundtrip(
     benchmark: Any, complex_data_and_schema: tuple[list[dict[str, Any]], CtyObject]
 ) -> None:
     """
     Uses pytest-benchmark to measure the performance of the full
     validate -> marshal -> unmarshal data conversion pipeline.
-    This test is skipped by default.
+    This test is skipped by default unless --run-benchmarks is specified.
     """
     test_data, cty_schema = complex_data_and_schema
 
