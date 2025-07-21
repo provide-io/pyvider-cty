@@ -32,53 +32,85 @@ Before diving into examples, let's briefly cover the main components of the `pyv
 
 *   **Functions**: A set of built-in functions for manipulating `cty` values. These functions operate on `cty` values and return new `cty` values.
 
-## Example: Quick Start - Basic Type Validation
+## Quick Start: 5-Minute Example
 
 This example demonstrates the most common use case: defining a `cty` type and using it to validate a raw Python dictionary.
 
-**1. The `cty` Type Definition**
-
-First, let's define a `cty` type for a user object. This type will specify the expected attributes and their corresponding types.
+**1. Import Required Types**
 
 ```python
-from pyvider.cty import CtyObject, CtyString, CtyNumber
+from pyvider.cty import (
+    CtyString, CtyNumber, CtyBool, CtyList, CtyObject, CtyDynamic,
+    CtyValue
+)
+from pyvider.cty.conversion import to_json, from_json
+```
 
-user_type = CtyObject({
+**2. Define a Type Schema**
+
+```python
+# Define a complex object type for a user
+person_type = CtyObject({
     "name": CtyString(),
     "age": CtyNumber(),
+    "active": CtyBool(),
+    "tags": CtyList(element_type=CtyString())
 })
 ```
 
-**2. The Raw Python Data**
+**3. Create and Validate a Value**
 
-Next, let's create a raw Python dictionary that we want to validate against our `user_type`.
+The `validate` method checks if the raw Python data conforms to the type schema and returns a `CtyValue` instance.
 
 ```python
+# Create a raw Python dictionary
 user_data = {
     "name": "Alice",
     "age": 30,
+    "active": True,
+    "tags": ["developer", "python"]
 }
-```
 
-**3. Validation**
-
-Now, let's use the `validate` method of our `user_type` to validate the `user_data`.
-
-```python
+# Validate the data
 try:
-    cty_user = user_type.validate(user_data)
+    person_value = person_type.validate(user_data)
     print("Validation successful!")
-    print(f"cty_user: {cty_user}")
 except Exception as e:
     print(f"Validation failed: {e}")
 ```
 
-If the validation is successful, `cty_user` will be a `pyvider.cty` value that you can work with. If the validation fails, a `ValidationError` will be raised.
+**4. Access Data from the `CtyValue`**
 
-**To Run This Example:**
+You can access attributes and elements of a `CtyValue` using standard Python square-bracket notation `[]`. The returned items are also `CtyValue`s. To get the raw Python value, use the `.value` property.
 
-1.  Ensure you have `pyvider.cty` installed.
-2.  Save the code above into a Python file (e.g., `quick_start.py`).
-3.  Run the file: `python quick_start.py`
+```python
+# Access attributes of the object
+print(f"Name: {person_value['name'].value}")  # Output: Alice
+print(f"Age: {person_value['age'].value}")    # Output: 30
 
-You should see the "Validation successful!" message and the `cty` representation of the user data. This demonstrates the fundamental pattern of defining a type and using it to validate raw Python data.
+# Iterate over the list
+print("Tags:")
+for tag_value in person_value['tags']:
+    print(f"- {tag_value.value}")
+```
+
+**5. Serialize to JSON**
+
+`pyvider.cty` can serialize values to JSON for storage or transmission.
+
+```python
+json_representation = to_json(person_value)
+print(f"\nJSON representation:\n{json_representation}")
+```
+
+**6. Deserialize from JSON**
+
+To reconstruct a `CtyValue` from JSON, you must provide the `target_type` to guide the process.
+
+```python
+reconstructed_value = from_json(json_representation, person_type)
+assert reconstructed_value['name'].value == "Alice"
+print("\nSuccessfully reconstructed value from JSON.")
+```
+
+This fundamental pattern—Define, Validate, Access, Serialize—is the core workflow you will use repeatedly with `pyvider.cty`.

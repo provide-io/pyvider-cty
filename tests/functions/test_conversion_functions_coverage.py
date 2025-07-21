@@ -1,4 +1,3 @@
-
 from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.functions import to_bool, to_number, to_string
 
