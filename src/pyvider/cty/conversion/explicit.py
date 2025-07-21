@@ -12,6 +12,7 @@ from ..types import (
     CtyDynamic,
     CtyList,
     CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
@@ -32,11 +33,9 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
     if value.is_unknown:
         return CtyValue.unknown(target_type)
 
-    # Conversion to Dynamic is always a pass-through of the original value
     if isinstance(target_type, CtyDynamic):
         return value.with_marks(value.marks)
 
-    # Primitive conversions
     if isinstance(target_type, CtyString):
         raw = value.value
         if isinstance(raw, bool):
@@ -47,7 +46,6 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
 
     if isinstance(target_type, CtyNumber):
         try:
-            # Rely on the target type's own validation logic for conversion
             validated = target_type.validate(value.value)
             return validated.with_marks(value.marks)
         except CtyValidationError as e:
@@ -58,21 +56,18 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
             ) from e
 
     if isinstance(target_type, CtyBool):
-        # Explicit bool conversion is stricter than validation
         if isinstance(value.type, CtyString):
             s = str(value.value).lower()
             if s == "true":
                 return CtyValue(target_type, True).with_marks(value.marks)
             if s == "false":
                 return CtyValue(target_type, False).with_marks(value.marks)
-        # Any other conversion to bool is invalid
         raise CtyConversionError(
             f"Cannot convert {value.type} to bool",
             source_value=value,
             target_type=target_type,
         )
 
-    # Collection conversions
     if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
         return target_type.validate(value.value).with_marks(value.marks)
 
@@ -102,11 +97,32 @@ def unify(types: Iterable[CtyType]) -> CtyType[Any]:
     if len(type_set) == 1:
         return type_set.pop()
 
-    # Check for list unification
     if all(isinstance(t, CtyList) for t in type_set):
         element_types = {t.element_type for t in type_set}
         unified_element_type = unify(element_types)
         return CtyList(element_type=unified_element_type)
 
-    # Fallback for all other cases
+    if all(isinstance(t, CtyObject) for t in type_set):
+        # Find the intersection of all attribute keys.
+        common_keys = set.intersection(*(set(t.attribute_types.keys()) for t in type_set))
+
+        # An attribute is optional in the unified object if it is optional in ANY of the source objects.
+        # FIX 1: Use set().union() to correctly handle the iterable of frozensets.
+        all_optional_keys = set().union(*(t.optional_attributes for t in type_set))
+        
+        unified_attrs = {}
+        for key in common_keys:
+            # Recursively unify the types for each common attribute.
+            attr_types_to_unify = [t.attribute_types[key] for t in type_set]
+            unified_attrs[key] = unify(attr_types_to_unify)
+        
+        # The final set of optional attributes is the intersection of the common keys
+        # and the union of all optional keys.
+        final_optional_attrs = common_keys.intersection(all_optional_keys)
+
+        return CtyObject(
+            attribute_types=unified_attrs,
+            optional_attributes=frozenset(final_optional_attrs),
+        )
+
     return CtyDynamic()

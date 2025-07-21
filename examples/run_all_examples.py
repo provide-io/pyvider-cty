@@ -107,10 +107,6 @@ async def main() -> None:
         {"file": "ch09_capsule_types.py"},
         {"file": "ch10_marks.py"},
         {"file": "ch11_functions.py"},
-        {"file": "ch12_serialization.py"},
-        {"file": "ch13_path_navigation.py"},
-        {"file": "ch14_context_management.py"},
-        {"file": "ch15_terraform_interop.py"},
     ]
 
     print_section("Running All Examples")
