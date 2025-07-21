@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -11,7 +10,6 @@ from typing import (
 
 from attrs import define, evolve, field
 
-from ..exceptions import CtyValidationError
 from .markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -198,7 +196,7 @@ class CtyValue[T]:
 
         if not isinstance(self.vtype, CtyMap):
             raise TypeError("'.with_key()' can only be used on CtyMap values.")
-        
+
         new_dict = dict(self.value)
         new_dict[key] = value
         return self.vtype.validate(new_dict)
@@ -231,11 +229,11 @@ class CtyValue[T]:
 
         if not isinstance(self.vtype, CtyList):
             raise TypeError("'.with_element_at()' can only be used on CtyList values.")
-        
+
         new_list = list(self.value)
         if not (-len(new_list) <= index < len(new_list)):
             raise IndexError("list index out of range")
-            
+
         new_list[index] = value
         return self.vtype.validate(new_list)
 

@@ -54,18 +54,21 @@ class CtyCapsule(CtyType[Any]):
         return CtyValue(self, val_to_check)
 
     def equal(self, other: "CtyType[Any]") -> bool:
-        if not isinstance(other, CtyCapsule):
+        # FIX: Use strict type checking to differentiate CtyCapsule from CtyCapsuleWithOps
+        if type(self) is not type(other):
             return False
-        
-        # For CapsuleWithOps, equality depends on the functions too
-        if isinstance(self, CtyCapsuleWithOps) and isinstance(other, CtyCapsuleWithOps):
+
+        # Now we know they are the same class (both base or both WithOps)
+        if isinstance(self, CtyCapsuleWithOps):
+            # This check is now safe because we know 'other' is also WithOps
             return (
-                self.name == other.name 
+                self.name == other.name
                 and self._py_type == other._py_type
                 and self.equal_fn == other.equal_fn
                 and self.hash_fn == other.hash_fn
             )
-
+        
+        # Base CtyCapsule logic
         return self.name == other.name and self._py_type == other._py_type
 
     def usable_as(self, other: "CtyType[Any]") -> bool:

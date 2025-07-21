@@ -24,6 +24,7 @@ from pyvider.cty import (
     CtyType,
     CtyValue,
 )
+
 # This import will fail until the new module and exports are created.
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError
@@ -70,7 +71,7 @@ class TestConvertFunction:
             (CtyValue(CtyNumber(), 42), CtyDynamic(), CtyValue(CtyNumber(), 42)),
             # --- Special Values ---
             (CtyValue.null(CtyString()), CtyNumber(), None),
-            (CtyValue.unknown(CtyString()), CtyNumber(), None), # Result is unknown
+            (CtyValue.unknown(CtyString()), CtyNumber(), None),  # Result is unknown
         ],
         ids=[
             "num_to_str",
@@ -111,16 +112,12 @@ class TestConvertFunction:
         elif isinstance(target_type, CtySet):
             # Special handling for sets where order doesn't matter
             assert converted_val.value == expected_val
-        elif isinstance(target_type, CtyList) and isinstance(
-            source_val.type, CtySet
-        ):
+        elif isinstance(target_type, CtyList) and isinstance(source_val.type, CtySet):
             # Special handling for set->list where order doesn't matter
             assert isinstance(converted_val.value, tuple)
             assert len(converted_val.value) == len(expected_val)
             assert {v.value for v in converted_val.value} == set(expected_val)
-        elif isinstance(target_type, CtyList) and isinstance(
-            source_val.type, CtyTuple
-        ):
+        elif isinstance(target_type, CtyList) and isinstance(source_val.type, CtyTuple):
             # The expected value should be a list of CtyValues
             assert list(converted_val.value) == expected_val
         else:
