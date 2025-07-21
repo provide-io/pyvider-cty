@@ -1,11 +1,9 @@
 import pytest
 
 from pyvider.cty import (
-    CtySet,
     CtyNumber,
+    CtySet,
     CtyString,
-    CtyValue,
-    CtyDynamic,
 )
 from pyvider.cty.exceptions import CtySetValidationError
 
@@ -15,14 +13,14 @@ def string_set_type():
     return CtySet(element_type=CtyString())
 
 
-def test_validate_with_cty_value_different_set_type(string_set_type):
+def test_validate_with_cty_value_different_set_type(string_set_type) -> None:
     number_set_type = CtySet(element_type=CtyNumber())
     number_set_value = number_set_type.validate({1, 2, 3})
     with pytest.raises(CtySetValidationError):
         string_set_type.validate(number_set_value)
 
 
-def test_to_wire_json(string_set_type):
+def test_to_wire_json(string_set_type) -> None:
     wire_json = string_set_type._to_wire_json()
     assert wire_json == ["set", "string"]
 

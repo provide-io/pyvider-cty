@@ -1,7 +1,8 @@
-import pytest
 from decimal import Decimal
 
-from pyvider.cty import CtyNumber, CtyString, CtyDynamic
+import pytest
+
+from pyvider.cty import CtyDynamic, CtyNumber, CtyString
 from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.cty.values import CtyValue
 

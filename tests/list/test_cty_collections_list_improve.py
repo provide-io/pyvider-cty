@@ -44,23 +44,23 @@ class TestCtyListAdvanced:
         repr_str = repr(self.string_list)
         assert "CtyList" in repr_str
 
-    def test_validate_with_null_element(self):
+    def test_validate_with_null_element(self) -> None:
         """Test that validating a list with a null element raises an error."""
         from pyvider.cty.exceptions import CtyListValidationError
 
         with pytest.raises(CtyListValidationError):
             self.string_list.validate(["a", None, "c"])
 
-    def test_element_at_on_non_list_value(self):
+    def test_element_at_on_non_list_value(self) -> None:
         """Test that element_at raises an error for non-list CtyValue."""
+        from pyvider.cty import CtyString, CtyValue
         from pyvider.cty.exceptions import CtyListValidationError
-        from pyvider.cty import CtyValue, CtyString
 
         value = CtyValue(CtyString(), "foo")
         with pytest.raises(CtyListValidationError):
             self.string_list.element_at(value, 0)
 
-    def test_element_at_on_null_list(self):
+    def test_element_at_on_null_list(self) -> None:
         """Test that element_at raises an error for a null list."""
         from pyvider.cty import CtyValue
 
@@ -68,7 +68,7 @@ class TestCtyListAdvanced:
         with pytest.raises(IndexError):
             self.string_list.element_at(value, 0)
 
-    def test_element_at_on_non_list_container(self):
+    def test_element_at_on_non_list_container(self) -> None:
         """Test that element_at raises an error for a non-CtyValue container."""
         from pyvider.cty.exceptions import CtyListValidationError
 
