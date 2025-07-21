@@ -54,21 +54,18 @@ class CtyCapsule(CtyType[Any]):
         return CtyValue(self, val_to_check)
 
     def equal(self, other: "CtyType[Any]") -> bool:
-        # FIX: Use strict type checking to differentiate CtyCapsule from CtyCapsuleWithOps
         if type(self) is not type(other):
             return False
 
-        # Now we know they are the same class (both base or both WithOps)
         if isinstance(self, CtyCapsuleWithOps):
-            # This check is now safe because we know 'other' is also WithOps
             return (
                 self.name == other.name
                 and self._py_type == other._py_type
                 and self.equal_fn == other.equal_fn
                 and self.hash_fn == other.hash_fn
+                and self.convert_fn == other.convert_fn
             )
         
-        # Base CtyCapsule logic
         return self.name == other.name and self._py_type == other._py_type
 
     def usable_as(self, other: "CtyType[Any]") -> bool:
@@ -77,7 +74,6 @@ class CtyCapsule(CtyType[Any]):
         return self.equal(other)
 
     def _to_wire_json(self) -> Any:
-        # Capsule types have no standard wire representation and are encoded as null.
         return None
 
     def __repr__(self) -> str:
@@ -89,7 +85,7 @@ class CtyCapsule(CtyType[Any]):
 
 class CtyCapsuleWithOps(CtyCapsule):
     """
-    A CtyCapsule that supports custom operations like equality and hashing.
+    A CtyCapsule that supports custom operations like equality, hashing, and conversion.
     """
 
     def __init__(
@@ -99,6 +95,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         *,
         equal_fn: Callable[[Any, Any], bool] | None = None,
         hash_fn: Callable[[Any], int] | None = None,
+        convert_fn: Callable[[Any, CtyType], CtyValue | None] | None = None,
     ) -> None:
         """
         Initializes a CtyCapsule with custom operational functions.
@@ -106,9 +103,10 @@ class CtyCapsuleWithOps(CtyCapsule):
         super().__init__(capsule_name, py_type)
         self.equal_fn = equal_fn
         self.hash_fn = hash_fn
+        self.convert_fn = convert_fn
 
     def __repr__(self) -> str:
         return f"CtyCapsuleWithOps({self.name}, {self._py_type.__name__})"
 
     def __hash__(self) -> int:
-        return hash((self.name, self._py_type, self.equal_fn, self.hash_fn))
+        return hash((self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn))

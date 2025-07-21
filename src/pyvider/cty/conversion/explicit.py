@@ -9,6 +9,8 @@ from typing import Any
 from ..exceptions import CtyConversionError, CtyValidationError
 from ..types import (
     CtyBool,
+    CtyCapsule,
+    CtyCapsuleWithOps,
     CtyDynamic,
     CtyList,
     CtyNumber,
@@ -33,16 +35,41 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
     if value.is_unknown:
         return CtyValue.unknown(target_type)
 
+    if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
+        result = value.type.convert_fn(value.value, target_type)
+        if result is None:
+            raise CtyConversionError(
+                f"Capsule type {value.type} cannot be converted to {target_type}",
+                source_value=value,
+                target_type=target_type,
+            )
+        if not isinstance(result, CtyValue):
+            raise CtyConversionError(
+                "Custom capsule converter returned a non-CtyValue object",
+                source_value=value,
+                target_type=target_type,
+            )
+        if not result.type.equal(target_type):
+            raise CtyConversionError(
+                f"Custom capsule converter returned a value of the wrong type "
+                f"(got {result.type}, want {target_type})",
+                source_value=value,
+                target_type=target_type,
+            )
+        return result.with_marks(value.marks)
+
     if isinstance(target_type, CtyDynamic):
         return value.with_marks(value.marks)
 
     if isinstance(target_type, CtyString):
-        raw = value.value
-        if isinstance(raw, bool):
-            new_val = "true" if raw else "false"
-        else:
-            new_val = str(raw)
-        return CtyValue(target_type, new_val).with_marks(value.marks)
+        # FINAL FIX: Explicitly prevent capsules from being converted to strings via str().
+        if not isinstance(value.type, CtyCapsule):
+            raw = value.value
+            if isinstance(raw, bool):
+                new_val = "true" if raw else "false"
+            else:
+                new_val = str(raw)
+            return CtyValue(target_type, new_val).with_marks(value.marks)
 
     if isinstance(target_type, CtyNumber):
         try:
@@ -103,21 +130,21 @@ def unify(types: Iterable[CtyType]) -> CtyType[Any]:
         return CtyList(element_type=unified_element_type)
 
     if all(isinstance(t, CtyObject) for t in type_set):
-        # Find the intersection of all attribute keys.
-        common_keys = set.intersection(*(set(t.attribute_types.keys()) for t in type_set))
+        if any(not t.attribute_types for t in type_set):
+            return CtyObject({})
 
-        # An attribute is optional in the unified object if it is optional in ANY of the source objects.
-        # FIX 1: Use set().union() to correctly handle the iterable of frozensets.
+        all_object_attrs = [set(t.attribute_types.keys()) for t in type_set]
+        common_keys = set.intersection(*all_object_attrs)
+
+        if not common_keys:
+            return CtyDynamic()
+
         all_optional_keys = set().union(*(t.optional_attributes for t in type_set))
-        
         unified_attrs = {}
         for key in common_keys:
-            # Recursively unify the types for each common attribute.
             attr_types_to_unify = [t.attribute_types[key] for t in type_set]
             unified_attrs[key] = unify(attr_types_to_unify)
         
-        # The final set of optional attributes is the intersection of the common keys
-        # and the union of all optional keys.
         final_optional_attrs = common_keys.intersection(all_optional_keys)
 
         return CtyObject(

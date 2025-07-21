@@ -35,20 +35,16 @@ class TestConvertFunction:
     @pytest.mark.parametrize(
         "source_val, target_type, expected_val",
         [
-            # --- To String ---
             (CtyValue(CtyNumber(), 123), CtyString(), "123"),
             (CtyValue(CtyNumber(), 123.45), CtyString(), "123.45"),
             (CtyValue(CtyBool(), True), CtyString(), "true"),
             (CtyValue(CtyBool(), False), CtyString(), "false"),
-            # --- To Number ---
             (CtyValue(CtyString(), "123"), CtyNumber(), 123),
             (CtyValue(CtyString(), "123.45"), CtyNumber(), 123.45),
             (CtyValue(CtyString(), "-1.5e2"), CtyNumber(), -150),
-            # --- To Bool ---
             (CtyValue(CtyString(), "true"), CtyBool(), True),
             (CtyValue(CtyString(), "false"), CtyBool(), False),
             (CtyValue(CtyString(), "TRUE"), CtyBool(), True),
-            # --- Collection to Collection ---
             (
                 CtyValue(CtyList(element_type=CtyString()), ["a", "b"]),
                 CtySet(element_type=CtyString()),
@@ -64,29 +60,9 @@ class TestConvertFunction:
                 CtyList(element_type=CtyDynamic()),
                 [CtyValue(CtyString(), "a"), CtyValue(CtyNumber(), 1)],
             ),
-            # --- To Dynamic ---
             (CtyValue(CtyNumber(), 42), CtyDynamic(), CtyValue(CtyNumber(), 42)),
-            # --- Special Values ---
             (CtyValue.null(CtyString()), CtyNumber(), None),
             (CtyValue.unknown(CtyString()), CtyNumber(), None),
-        ],
-        ids=[
-            "num_to_str",
-            "float_to_str",
-            "true_to_str",
-            "false_to_str",
-            "str_to_num",
-            "str_to_float",
-            "str_exp_to_num",
-            "str_true_to_bool",
-            "str_false_to_bool",
-            "str_TRUE_to_bool",
-            "list_to_set",
-            "set_to_list",
-            "tuple_to_list_dynamic",
-            "num_to_dynamic",
-            "null_str_to_num",
-            "unknown_str_to_num",
         ],
     )
     def test_successful_conversions(
@@ -124,13 +100,6 @@ class TestConvertFunction:
                 CtyList(element_type=CtyNumber()),
             ),
         ],
-        ids=[
-            "str_to_num_fail",
-            "str_to_bool_fail",
-            "num_to_bool_fail",
-            "obj_to_list_fail",
-            "list_str_to_list_num_fail",
-        ],
     )
     def test_failed_conversions(
         self, source_val: CtyValue, target_type: CtyType
@@ -151,7 +120,6 @@ class TestUnifyFunction:
     @pytest.mark.parametrize(
         "type_list, expected_unified_type",
         [
-            # --- Existing Passing Tests ---
             ([], CtyDynamic()),
             ([CtyString()], CtyString()),
             ([CtyString(), CtyString()], CtyString()),
@@ -180,7 +148,6 @@ class TestUnifyFunction:
                 [CtyTuple((CtyString(),)), CtyTuple((CtyString(), CtyNumber()))],
                 CtyDynamic(),
             ),
-            # --- NEW TDD TESTS FOR ADVANCED OBJECT UNIFICATION ---
             (
                 [
                     CtyObject({"a": CtyString(), "b": CtyNumber()}),
@@ -205,52 +172,34 @@ class TestUnifyFunction:
             ),
             (
                 [
-                    CtyObject({"a": CtyString()}), # a is required
+                    CtyObject({"a": CtyString()}),
                     CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
                 ],
-                CtyObject({"a": CtyString()}), # a remains required
+                CtyObject({"a": CtyString()}),
             ),
             (
                 [
-                    CtyObject({"a": CtyString()}), # a is required
-                    CtyObject({"a": CtyString()}, optional_attributes={"a"}), # a is optional
+                    CtyObject({"a": CtyString()}),
+                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
                 ],
-                CtyObject({"a": CtyString()}, optional_attributes={"a"}), # unified 'a' is optional
+                CtyObject({"a": CtyString()}, optional_attributes={"a"}),
             ),
             (
                 [
                     CtyObject({"a": CtyString()}, optional_attributes={"a"}),
                     CtyObject({"a": CtyString()}, optional_attributes={"a"}),
                 ],
-                CtyObject({"a": CtyString()}, optional_attributes={"a"}), # optional + optional -> optional
+                CtyObject({"a": CtyString()}, optional_attributes={"a"}),
             ),
             (
                 [
                     CtyObject({}),
                     CtyObject({"a": CtyString()}),
                 ],
-                CtyObject({}), # Intersection with empty object is empty object
+                # FIX: Corrected expectation. The presence of an empty object
+                # forces the result to be an empty object.
+                CtyObject({}),
             ),
-        ],
-        ids=[
-            "empty_list",
-            "single_type",
-            "identical_types",
-            "different_primitives",
-            "identical_lists",
-            "lists_of_different_elements",
-            "list_and_set",
-            "identical_objects",
-            "objects_with_different_attrs",
-            "tuples_of_different_length",
-            # --- NEW TDD TEST IDS ---
-            "TDD: objects_with_common_attribute",
-            "TDD: objects_with_recursive_unification",
-            "TDD: three_objects_with_common_subset",
-            "TDD: objects_with_optional_attributes_disjoint",
-            "TDD: objects_with_required_and_optional",
-            "TDD: objects_with_both_optional",
-            "TDD: object_unify_with_empty_object",
         ],
     )
     def test_unification_scenarios(
