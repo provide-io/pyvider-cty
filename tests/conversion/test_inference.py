@@ -15,7 +15,6 @@ from pyvider.cty import (
     CtyTuple,
 )
 
-# FIX: Removed import of deleted function 'infer_and_wrap_native'
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
 
 

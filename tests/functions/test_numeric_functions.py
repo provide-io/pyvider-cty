@@ -215,10 +215,10 @@ def test_parseint_fn_null_result() -> None:
 
 
 def test_parseint_fn_null_unknown() -> None:
-    assert parseint_fn(CtyValue.null(CtyString()), CtyNumber().validate(10)).is_unknown
+    assert parseint_fn(CtyValue.null(CtyString()), CtyNumber().validate(10)).is_null
     assert parseint_fn(
         CtyString().validate("10"), CtyValue.null(CtyNumber())
-    ).is_unknown
+    ).is_null
     assert parseint_fn(
         CtyValue.unknown(CtyString()), CtyNumber().validate(10)
     ).is_unknown

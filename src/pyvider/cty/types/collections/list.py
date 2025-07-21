@@ -29,7 +29,7 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 f"Expected CtyType for element_type, got {type(self.element_type).__name__}"
             )
 
-    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
+    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:  # noqa: C901
         from pyvider.cty.values import CtyValue
 
         if value is None:
@@ -95,7 +95,7 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 raise CtyListValidationError(
                     f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}"
                 )
-            return container.value[index]  # type: ignore
+            return self.element_type.validate(container.value[index])
         raise CtyListValidationError(
             f"Expected CtyValue[CtyList], got {type(container).__name__}"
         )

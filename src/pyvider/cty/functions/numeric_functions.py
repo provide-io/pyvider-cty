@@ -205,7 +205,9 @@ def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValu
             f"parseint: base must be a number, got {base_val.type.ctype}"
         )
 
-    if str_val.is_null or str_val.is_unknown or base_val.is_null or base_val.is_unknown:
+    if str_val.is_null or base_val.is_null:
+        return CtyValue.null(CtyNumber())
+    if str_val.is_unknown or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
 
     s = str_val.value

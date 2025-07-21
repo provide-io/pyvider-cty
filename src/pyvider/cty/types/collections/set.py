@@ -23,7 +23,7 @@ class CtySet[T](CtyType[frozenset[T]]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: object) -> CtyValue[frozenset[T]]:
+    def validate(self, value: object) -> CtyValue[frozenset[T]]:  # noqa: C901
         from pyvider.cty.values import CtyValue
 
         if value is None:

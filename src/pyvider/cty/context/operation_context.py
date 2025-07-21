@@ -8,7 +8,7 @@ and set the current context, typically using a context manager pattern.
 """
 
 import contextlib
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from enum import Enum, auto
 
 from pyvider.telemetry import logger
@@ -60,7 +60,7 @@ def operation_context(
 
         def __init__(self, new_context: OperationContext) -> None:
             self._new_context = new_context
-            self._token = None
+            self._token: Token[OperationContext] | None = None
 
         def __enter__(self) -> None:
             logger.debug(f"🧰🔄📊 Pushed operation context: {self._new_context.name}")

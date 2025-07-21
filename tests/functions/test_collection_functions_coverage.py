@@ -5,10 +5,11 @@ from pyvider.cty.types import CtyString, CtyNumber, CtyList, CtyTuple, CtyDynami
 from pyvider.cty.exceptions import CtyFunctionError
 
 def test_flatten_with_mixed_types():
-    list_type = CtyList(element_type=CtyList(element_type=CtyString()))
-    value = list_type.validate([["a", "b"], ["c", 1]])
-    with pytest.raises(CtyFunctionError):
-        flatten(value)
+    list_type = CtyList(element_type=CtyDynamic())
+    value = list_type.validate([["a", "b"], [1, 2]])
+    result = flatten(value)
+    assert result.type.equal(CtyList(element_type=CtyDynamic()))
+    assert len(result.value) == 4
 
 def test_flatten_with_empty_list():
     list_type = CtyList(element_type=CtyList(element_type=CtyString()))

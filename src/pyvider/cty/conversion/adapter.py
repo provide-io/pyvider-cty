@@ -16,7 +16,7 @@ from pyvider.cty.types import (
 from pyvider.cty.values import CtyValue
 
 
-def cty_to_native(value: Any) -> Any:
+def cty_to_native(value: Any) -> Any:  # noqa: C901
     """
     Converts a CtyValue to its raw Python representation using an iterative
     approach to avoid recursion limits. This is safe for deeply nested structures.
@@ -96,10 +96,6 @@ def cty_to_native(value: Any) -> Any:
         else:  # Primitive types
             inner_val = current_item.value
             if isinstance(inner_val, Decimal):
-                # FIX: Use a robust method to check for whole numbers that avoids
-                #      the modulo operator on potentially very large numbers.
-                # `as_tuple()` is a reliable way to inspect a Decimal's components.
-                # A non-negative exponent means it's an integer.
                 if inner_val.as_tuple().exponent >= 0:  # type: ignore
                     results[item_id] = int(inner_val)
                 else:

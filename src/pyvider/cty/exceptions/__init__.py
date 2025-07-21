@@ -53,7 +53,7 @@ __all__ = [
     "CtyTypeMismatchError",
     "CtyTypeParseError",
     "CtyTypeValidationError",
-    "CtyValidationError",  # FIX: Restore this export
+    "CtyValidationError",
     "DeserializationError",
     "DynamicValueError",
     "EncodingError",

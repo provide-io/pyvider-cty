@@ -78,7 +78,6 @@ class TestPathCoverage:
         with pytest.raises(AttributePathError, match="Cannot index into value of type"):
             CtyPath.index(0).apply_path(obj_val)
 
-        # FIX: The regex now correctly matches the wrapped error message.
         with pytest.raises(
             AttributePathError, match=r"Cannot get attribute '.*' from null value"
         ):

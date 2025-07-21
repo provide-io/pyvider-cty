@@ -45,7 +45,7 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     return res
 
 
-def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:
+def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     """
     Infers the most specific CtyType from a raw Python value.
     This function uses an iterative approach with a work stack to avoid recursion limits.
@@ -85,7 +85,6 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:
             processing.remove(container_id)
 
             if isinstance(container, dict):
-                # FIX: Check if all keys are valid identifiers. If not, infer CtyMap.
                 if all(isinstance(k, str) and k.isidentifier() for k in container):
                     attr_types = {
                         k: results.get(id(v), CtyDynamic())
@@ -93,7 +92,6 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:
                     }
                     results[container_id] = CtyObject(attribute_types=attr_types)
                 else:
-                    # If any key is not a valid identifier, treat it as a map.
                     value_types = {
                         results.get(id(v), CtyDynamic()) for v in container.values()
                     }

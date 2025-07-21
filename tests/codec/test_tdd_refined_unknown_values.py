@@ -73,7 +73,6 @@ def test_serialize_refined_unknown_value() -> None:
     packed_bytes = cty_to_msgpack(refined_val, CtyNumber())
 
     # THEN it should be a msgpack ExtType 12 with the correct payload
-    # THE FIX: The test's own unpacker needs strict_map_key=False
     unpacked = msgpack.unpackb(packed_bytes, raw=False, strict_map_key=False)
     assert isinstance(unpacked, msgpack.ExtType)
     assert unpacked.code == 12

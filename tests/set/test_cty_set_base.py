@@ -121,9 +121,6 @@ class TestCtySetType:
 
     @pytest.mark.asyncio
     async def test_validate_invalid_element_type(self) -> None:
-        """
-        FIX: Test that validation FAILS with mixed types, as CtyString is now strict.
-        """
         mixed_types = {"apple", 2, True}
         with pytest.raises(CtySetValidationError) as exc_info:
             self.string_set.validate(mixed_types)
@@ -220,9 +217,6 @@ class TestCtySetType:
 
     @pytest.mark.asyncio
     async def test_add_invalid_element(self) -> None:
-        """
-        FIX: Test that validating a set with a non-string element now fails.
-        """
         data_with_int = {"valid", 123}
         with pytest.raises(CtySetValidationError) as exc_info:
             self.string_set.validate(data_with_int)

@@ -2,7 +2,7 @@ from decimal import Decimal
 import json
 from typing import Any
 
-import msgpack
+import msgpack  # type: ignore
 
 from .conversion import encode_cty_type_to_wire_json
 from .exceptions import DeserializationError
@@ -86,8 +86,11 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
         serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
     else:
         from .conversion.raw_to_cty import infer_cty_type_from_raw
+
         actual_type = infer_cty_type_from_raw(inner_value)
-        serializable_inner = _convert_value_to_serializable(schema=actual_type, value=actual_type.validate(inner_value))
+        serializable_inner = _convert_value_to_serializable(
+            schema=actual_type, value=actual_type.validate(inner_value)
+        )
 
     type_spec_json = encode_cty_type_to_wire_json(actual_type)
     type_spec_bytes = json.dumps(type_spec_json).encode("utf-8")
@@ -111,16 +114,22 @@ def _convert_value_to_serializable(
 
     inner_val = value.value
     if isinstance(schema, CtyObject):
+        if not isinstance(inner_val, dict):
+            raise TypeError("Value for CtyObject must be a dict")
         return {
             k: _convert_value_to_serializable(v, schema.attribute_types[k])
             for k, v in inner_val.items()
         }
     if isinstance(schema, CtyMap):
+        if not isinstance(inner_val, dict):
+            raise TypeError("Value for CtyMap must be a dict")
         return {
             k: _convert_value_to_serializable(v, schema.element_type)
             for k, v in inner_val.items()
         }
-    if isinstance(schema, (CtyList, CtySet)):
+    if isinstance(schema, CtyList | CtySet):
+        if not hasattr(inner_val, "__iter__"):
+            raise TypeError("Value for CtyList or CtySet must be iterable")
         items = (
             sorted(list(inner_val), key=repr)
             if isinstance(schema, CtySet)
@@ -130,6 +139,8 @@ def _convert_value_to_serializable(
             _convert_value_to_serializable(item, schema.element_type) for item in items
         ]
     if isinstance(schema, CtyTuple):
+        if not isinstance(inner_val, tuple):
+            raise TypeError("Value for CtyTuple must be a tuple")
         return [
             _convert_value_to_serializable(item, schema.element_types[i])
             for i, item in enumerate(inner_val)
@@ -141,7 +152,7 @@ def _convert_value_to_serializable(
     return inner_val
 
 
-def _msgpack_default_handler(obj: Any) -> Any:
+def _msgpack_default_handler(obj: Any) -> str:
     """
     A handler for msgpack to serialize types it doesn't know,
     like arbitrarily large Python integers.
@@ -158,7 +169,6 @@ def _msgpack_default_handler(obj: Any) -> Any:
 
 def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
     serializable_data = _convert_value_to_serializable(value, schema)
-    # THE FIX: Use the `default` parameter to handle large integers.
     return msgpack.packb(
         serializable_data, default=_msgpack_default_handler, use_bin_type=True
     )

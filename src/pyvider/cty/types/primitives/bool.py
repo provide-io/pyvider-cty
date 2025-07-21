@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
 
-    def validate(self, value: object) -> "CtyValue[bool]":
+    def validate(self, value: object) -> "CtyValue[bool]":  # noqa: C901
         from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
@@ -28,9 +28,6 @@ class CtyBool(CtyType[bool]):
         else:
             raw_value = value
 
-        # FIX: Correctly handle null inputs by returning a null CtyValue
-        # instead of raising an error. This is critical for handling
-        # optional and computed attributes from Terraform.
         if raw_value is None:
             return CtyValue.null(self)
 
