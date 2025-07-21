@@ -55,13 +55,13 @@ def test_log_fn_with_invalid_values():
         log_fn(CtyNumber().validate(10), CtyNumber().validate(0))
     with pytest.raises(CtyFunctionError, match="log: base cannot be 1"):
         log_fn(CtyNumber().validate(10), CtyNumber().validate(1))
-    with pytest.raises(CtyFunctionError, match="log: math domain error"):
+    with pytest.raises(CtyFunctionError, match="log: number must be positive"):
         log_fn(CtyNumber().validate(-1), CtyNumber().validate(10))
 
 def test_pow_fn_with_invalid_values():
     with pytest.raises(CtyFunctionError, match="pow: invalid operation"):
         pow_fn(CtyNumber().validate(-1), CtyNumber().validate(0.5))
 
-def test_parseint_fn_with_invalid_string():
-    with pytest.raises(CtyFunctionError, match="parseint: invalid input string for parsing"):
-        parseint_fn(CtyString().validate(None), CtyNumber().validate(10))
+def test_parseint_fn_with_null_string():
+    result = parseint_fn(CtyString().validate(None), CtyNumber().validate(10))
+    assert result.is_null

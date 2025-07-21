@@ -89,9 +89,6 @@ class TestCtyObjectValidation:
 
     def test_validate_null_attribute(self) -> None:
         obj_type = CtyObject({"name": CtyString()})
-        # FIX: The test now expects the correct error message from the CtyObject
-        # validator, which correctly identifies that a required attribute
-        # cannot be null.
         with pytest.raises(
             CtyAttributeValidationError, match="Attribute cannot be null"
         ):

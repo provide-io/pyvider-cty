@@ -42,7 +42,7 @@ class CtyObject(CtyType[dict[str, object]]):
             )
         )
 
-    def validate(self, value: object) -> "CtyValue[dict[str, Any]]":
+    def validate(self, value: object) -> "CtyValue[dict[str, Any]]":  # noqa: C901
         if value is None:
             return CtyValue.null(self)
         from pyvider.cty.types.structural.dynamic import CtyDynamic

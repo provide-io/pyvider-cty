@@ -10,8 +10,6 @@ valid_data_strategy = st.fixed_dictionaries(
 )
 
 # A strategy for invalid data.
-# FIX: Generate text containing at least one letter to guarantee it cannot be
-# converted to a Decimal. This is the definitive fix for the test.
 invalid_data_strategy = st.fixed_dictionaries(
     {
         "name": st.text(max_size=50),

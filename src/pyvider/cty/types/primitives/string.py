@@ -29,7 +29,6 @@ class CtyString(CtyType[str]):
         else:
             raw_value = value
 
-        # FIX: Correctly handle null inputs by returning a null CtyValue.
         if raw_value is None:
             return CtyValue.null(self)
 

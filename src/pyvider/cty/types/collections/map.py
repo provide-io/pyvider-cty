@@ -71,10 +71,14 @@ class CtyMap[V](CtyType[dict[str, V]]):
         if map_value.is_null or map_value.is_unknown:
             return default if default is not None else CtyValue.null(self.element_type)
         internal_dict = map_value.value
-        return internal_dict.get(  # type: ignore
-            str(key),
-            default if default is not None else CtyValue.null(self.element_type),
-        )
+        if not isinstance(internal_dict, dict):
+            raise CtyMapValidationError(
+                f"Internal error: CtyValue of CtyMap type does not wrap a dict, got {type(internal_dict).__name__}"
+            )
+        result = internal_dict.get(str(key))
+        if result is not None:
+            return self.element_type.validate(result)
+        return default if default is not None else CtyValue.null(self.element_type)
 
     def equal(self, other: "CtyType[Any]") -> bool:
         if not isinstance(other, CtyMap):

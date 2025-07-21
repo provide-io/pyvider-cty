@@ -111,7 +111,9 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             raise CtyTupleValidationError(
                 "Internal tuple value is inconsistent with type definition."
             )
-        return container_value.value[effective_index]  # type: ignore
+        return self.element_types[effective_index].validate(
+            container_value.value[effective_index]
+        )
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyTuple):

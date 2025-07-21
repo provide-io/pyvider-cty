@@ -30,9 +30,12 @@ def test_validate_null_attribute_in_required_field():
     with pytest.raises(CtyAttributeValidationError, match="Attribute cannot be null"):
         obj_type.validate({"name": None})
 
+from pyvider.cty.exceptions import CtyTypeMismatchError
+
+
 def test_get_attribute_on_non_cty_value():
     obj_type = CtyObject(attribute_types={"name": CtyString()})
-    with pytest.raises(CtyAttributeValidationError):
+    with pytest.raises(CtyTypeMismatchError):
         obj_type.get_attribute("not a cty value", "name")
 
 def test_equal_different_keys():

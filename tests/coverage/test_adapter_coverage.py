@@ -18,3 +18,14 @@ class TestAdapterCoverage:
         cty_val = list_type.validate([[1, 2], [3]])
         native_val = cty_to_native(cty_val)
         assert native_val == [[1, 2], [3]]
+
+    def test_cty_to_native_with_set_and_tuple(self) -> None:
+        from pyvider.cty import CtySet, CtyTuple
+
+        set_type = CtySet(element_type=CtyString())
+        cty_set = set_type.validate({"a", "b"})
+        assert cty_to_native(cty_set) == ["a", "b"]
+
+        tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))
+        cty_tuple = tuple_type.validate(("a", 1))
+        assert cty_to_native(cty_tuple) == ("a", 1)
