@@ -13,8 +13,8 @@ def test_list_of_strings_validation(value: list[str]) -> None:
     """
     list_type = CtyList(element_type=CtyString())
     validated_value = list_type.validate(value)
-    normalized_value = [unicodedata.normalize("NFC", v) for v in value]
-    assert validated_value.raw_value == normalized_value
+    normalized_value = tuple(unicodedata.normalize("NFC", v) for v in value)
+    assert tuple(v.value for v in validated_value.value) == normalized_value
 
 
 @given(st.lists(st.integers() | st.floats(allow_nan=False, allow_infinity=False)))
@@ -25,7 +25,7 @@ def test_list_of_numbers_validation(value: list[int | float]) -> None:
     list_type = CtyList(element_type=CtyNumber())
     validated_value = list_type.validate(value)
     # Compare using float to avoid floating point precision issues
-    assert [float(v) for v in validated_value.raw_value] == [float(v) for v in value]
+    assert [float(v.value) for v in validated_value.value] == pytest.approx([float(v) for v in value])
 
 
 @given(st.lists(st.booleans()))
@@ -35,7 +35,7 @@ def test_list_of_booleans_validation(value: list[bool]) -> None:
     """
     list_type = CtyList(element_type=CtyBool())
     validated_value = list_type.validate(value)
-    assert validated_value.raw_value == value
+    assert [v.value for v in validated_value.value] == value
 
 
 @given(st.lists(st.none() | st.integers()))

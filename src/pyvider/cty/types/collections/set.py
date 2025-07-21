@@ -23,59 +23,38 @@ class CtySet[T](CtyType[frozenset[T]]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: object) -> CtyValue[frozenset[T]]:  # noqa: C901
-        from pyvider.cty.values import CtyValue
-
-        if value is None:
-            return CtyValue.null(self)
+    def validate(self, value: object) -> CtyValue[frozenset[T]]:
+        if value is None: return CtyValue.null(self)
         if isinstance(value, CtyValue):
-            if value.is_unknown:
-                return CtyValue.unknown(self)
-            if value.is_null:
-                return CtyValue.null(self)
-            if isinstance(value.type, CtySet) and value.type.equal(self):
-                return value
+            if value.is_unknown: return CtyValue.unknown(self)
+            if value.is_null: return CtyValue.null(self)
+            if isinstance(value.type, CtySet) and value.type.equal(self): return value
             value = value.value
 
-        if isinstance(value, list | tuple):
-            try:
-                value = frozenset(value)
-            except TypeError as e:
-                raise CtySetValidationError(
-                    f"Input collection contains unhashable elements: {e}"
-                ) from e
-
-        if not isinstance(value, set | frozenset):
-            raise CtySetValidationError(
-                f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}"
-            )
+        if not isinstance(value, list | tuple | set | frozenset):
+            raise CtySetValidationError(f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}")
 
         validated_items: set[CtyValue[Any]] = set()
         for raw_item in value:
             try:
+                # FIX: Validate each item first to get a hashable CtyValue
                 validated_item = self.element_type.validate(raw_item)
-                hash(validated_item)
                 validated_items.add(validated_item)
             except TypeError as e:
-                raise CtySetValidationError(f"Element is not hashable: {e}") from e
+                raise CtySetValidationError(f"Input collection contains unhashable elements: {e}") from e
             except CtyValidationError as e:
-                # Re-raise with Set context, preserving the original message.
                 raise CtySetValidationError(e.message, value=raw_item) from e
 
         return CtyValue(vtype=self, value=frozenset(validated_items))
 
     def equal(self, other: CtyType[Any]) -> bool:
-        if not isinstance(other, CtySet):
-            return False
+        if not isinstance(other, CtySet): return False
         return self.element_type.equal(other.element_type)
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
-
-        if isinstance(other, CtyDynamic):
-            return True
-        if not isinstance(other, CtySet):
-            return False
+        if isinstance(other, CtyDynamic): return True
+        if not isinstance(other, CtySet): return False
         return self.element_type.usable_as(other.element_type)
 
     def _to_wire_json(self) -> Any:
