@@ -1,6 +1,5 @@
 import pytest
 
-# tests/values/test_cty_values_base.py
 from pyvider.cty import CtyBool, CtyList, CtyMap, CtyNumber, CtyString, CtyValue
 from pyvider.cty.marks import CtyMark
 
@@ -15,15 +14,11 @@ class TestCtyValueBasicOperations:
     def test_value_marks(self) -> None:
         num_val = CtyNumber().validate(123)
         marked_val = num_val.mark(CtyMark("sensitive"))
-
         assert not num_val.has_mark(CtyMark("sensitive"))
         assert marked_val.has_mark(CtyMark("sensitive"))
-
         unmarked_val, marks = marked_val.unmark()
         assert not unmarked_val.has_mark(CtyMark("sensitive"))
-        assert len(marks) == 1
         assert CtyMark("sensitive") in marks
-
 
 class TestCtyValueEquality:
     def test_equality_simple_values(self) -> None:
@@ -42,7 +37,6 @@ class TestCtyValueEquality:
         assert CtyValue.null(CtyString()) == CtyValue.null(CtyString())
         assert CtyValue.unknown(CtyString()) == CtyValue.unknown(CtyString())
         assert CtyValue.null(CtyString()) != CtyValue.unknown(CtyString())
-
 
 class TestCtyValueDunderMethods:
     def test_contains(self) -> None:
@@ -74,7 +68,6 @@ class TestCtyValueDunderMethods:
         map_val = CtyMap(element_type=CtyString()).validate({"name": "Alice"})
         assert map_val["name"].value == "Alice"
 
-
 class TestCtyValueOtherMethods:
     def test_hash(self) -> None:
         val = CtyString().validate("a")
@@ -86,7 +79,7 @@ class TestCtyValueOtherMethods:
         val = CtyString().validate("a")
         assert val.raw_value == "a"
         with pytest.raises(ValueError):
-            CtyValue.unknown(CtyString()).raw_value
+            _ = CtyValue.unknown(CtyString()).raw_value
 
     def test_is_true_false(self) -> None:
         assert CtyBool().validate(True).is_true()

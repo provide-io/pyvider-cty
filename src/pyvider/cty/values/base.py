@@ -10,6 +10,7 @@ from typing import (
 
 from attrs import define, evolve, field
 
+from ..exceptions import CtyValidationError
 from .markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -153,8 +154,13 @@ class CtyValue[T]:
             if self.type.hash_fn:
                 return self.type.hash_fn(self.value)
 
-        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject | CtyTuple):
+        # DEFINITIVE FIX: Tuples are hashable if their contents are.
+        # Other collections (list, set, map, object) are not.
+        if isinstance(self.vtype, CtyTuple):
+            pass  # Allow fall-through to the general hashing logic
+        elif isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
             raise TypeError(f"unhashable type: 'CtyValue[{self.vtype.ctype}]'")
+
         if self.is_unknown or self.is_null:
             return hash((self.vtype, self.is_unknown, self.is_null, self.marks))
         return hash((self.vtype, self.is_unknown, self.is_null, self.marks, self.value))
@@ -174,14 +180,12 @@ class CtyValue[T]:
 
     def is_true(self) -> bool:
         from pyvider.cty.types import CtyDynamic
-
         if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
             return self.value.is_true()
         return self.value is True
 
     def is_false(self) -> bool:
         from pyvider.cty.types import CtyDynamic
-
         if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
             return self.value.is_false()
         return self.value is False
@@ -189,60 +193,38 @@ class CtyValue[T]:
     def is_empty(self) -> bool:
         return not self.value if hasattr(self.value, "__len__") else False
 
-    # --- Ergonomic Helpers ---
-
     def with_key(self, key: str, value: Any) -> Self:
         from ..types import CtyMap
-
-        if not isinstance(self.vtype, CtyMap):
-            raise TypeError("'.with_key()' can only be used on CtyMap values.")
-
+        if not isinstance(self.vtype, CtyMap): raise TypeError("'.with_key()' can only be used on CtyMap values.")
         new_dict = dict(self.value)
         new_dict[key] = value
         return self.vtype.validate(new_dict)
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
-
-        if not isinstance(self.vtype, CtyMap):
-            raise TypeError("'.without_key()' can only be used on CtyMap values.")
-
-        if key not in self.value:
-            return self
-
+        if not isinstance(self.vtype, CtyMap): raise TypeError("'.without_key()' can only be used on CtyMap values.")
+        if key not in self.value: return self
         new_dict = dict(self.value)
         del new_dict[key]
         return self.vtype.validate(new_dict)
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
-
-        if not isinstance(self.vtype, CtyList):
-            raise TypeError("'.append()' can only be used on CtyList values.")
-
+        if not isinstance(self.vtype, CtyList): raise TypeError("'.append()' can only be used on CtyList values.")
         new_list = list(self.value)
         new_list.append(value)
         return self.vtype.validate(new_list)
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
-
-        if not isinstance(self.vtype, CtyList):
-            raise TypeError("'.with_element_at()' can only be used on CtyList values.")
-
+        if not isinstance(self.vtype, CtyList): raise TypeError("'.with_element_at()' can only be used on CtyList values.")
         new_list = list(self.value)
-        if not (-len(new_list) <= index < len(new_list)):
-            raise IndexError("list index out of range")
-
+        if not (-len(new_list) <= index < len(new_list)): raise IndexError("list index out of range")
         new_list[index] = value
         return self.vtype.validate(new_list)
 
-    # --- Class Methods ---
-
     @classmethod
-    def unknown(
-        cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN
-    ) -> CtyValue[Any]:
+    def unknown(cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN) -> CtyValue[Any]:
         return cls(vtype=vtype, is_unknown=True, value=value)
 
     @classmethod
