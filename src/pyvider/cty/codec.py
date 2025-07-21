@@ -32,7 +32,6 @@ def _ext_hook(code: int, data: bytes) -> Any:
             if 2 in payload:
                 refinements["string_prefix"] = payload[2]
             
-            # FIX: Handle number bounds that can be int, float, or bytes
             def _decode_num(val: Any) -> Decimal:
                 if isinstance(val, bytes):
                     return Decimal(val.decode('utf-8'))
@@ -128,14 +127,16 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
     if not data: return CtyValue.null(cty_type)
     raw_unpacked = msgpack.unpackb(data, ext_hook=_ext_hook, raw=False, strict_map_key=False)
     
-    # FIX: Handle dynamic type wire format explicitly
     if isinstance(cty_type, CtyDynamic):
         if isinstance(raw_unpacked, list) and len(raw_unpacked) == 2 and isinstance(raw_unpacked[0], bytes):
             try:
                 type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
                 actual_type = parse_tf_type_to_ctytype(type_spec)
-                return actual_type.validate(raw_unpacked[1])
+                # DEFINITIVE FIX: When deserializing a dynamic value, the result must be a
+                # CtyValue of type CtyDynamic that WRAPS the concrete value.
+                inner_value = actual_type.validate(raw_unpacked[1])
+                return CtyValue(vtype=cty_type, value=inner_value)
             except Exception:
-                pass # Fall through to standard validation
+                pass
     
     return _unpacked_to_cty(raw_unpacked, cty_type)

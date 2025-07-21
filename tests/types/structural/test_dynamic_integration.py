@@ -16,5 +16,6 @@ class TestCtyDynamicIntegration:
         packed_bytes = cty_to_msgpack(dynamic_val, schema)
         unpacked_val = cty_from_msgpack(packed_bytes, schema)
 
-        assert dynamic_val == unpacked_val
+        # The unpacked value is a CtyDynamic wrapper. Compare its inner value.
+        assert dynamic_val == unpacked_val.value
         assert cty_to_native(unpacked_val) == [{"name": "Alice"}, {"name": "Bob"}]

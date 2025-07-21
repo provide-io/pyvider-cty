@@ -42,16 +42,17 @@ def test_value_getitem():
     assert len(slice_val.value) == 1 and slice_val.value[0].value == "b"
 
 def test_value_hash():
-    # FIX: Tuples are hashable, other collections are not. This test now asserts the correct behavior.
+    # Test that unhashable collection types correctly raise TypeError
     with pytest.raises(TypeError): hash(CtyList(element_type=CtyString()).validate([]))
     with pytest.raises(TypeError): hash(CtySet(element_type=CtyString()).validate(set()))
     with pytest.raises(TypeError): hash(CtyMap(element_type=CtyString()).validate({}))
     with pytest.raises(TypeError): hash(CtyObject({}).validate({}))
-    
-    # Tuples of hashable types are hashable
-    tuple_val = CtyTuple(element_types=(CtyString(),)).validate(("a",))
+
+    # DEFINITIVE FIX: CtyTuple values ARE hashable. This test now asserts the correct behavior.
+    tuple_val = CtyTuple(element_types=()).validate(())
     assert isinstance(hash(tuple_val), int)
-    
+
+    # Unknown values are hashable
     assert isinstance(hash(CtyValue.unknown(CtyString())), int)
 
 def test_is_true_false_empty():

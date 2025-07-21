@@ -27,11 +27,11 @@ def test_serialize_dynamic_with_non_cty_value() -> None:
     value = "hello"
     from pyvider.cty.codec import cty_to_msgpack
 
-    # The value "hello" is not a CtyValue, so we need to wrap it in one
-    # for the cty_to_msgpack function.
     packed = cty_to_msgpack(schema.validate(value), schema)
     unpacked = cty_from_msgpack(packed, schema)
-    assert unpacked.value == "hello"
+    # The unpacked value is a CtyDynamic wrapper, its inner value is the concrete one.
+    assert isinstance(unpacked.type, CtyDynamic)
+    assert unpacked.value == CtyString().validate("hello")
 
 
 def test_serialize_unsupported_type() -> None:
