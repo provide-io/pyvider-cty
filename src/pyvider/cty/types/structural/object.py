@@ -24,7 +24,9 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
 class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
     attribute_types: dict[str, "CtyType[Any]"] = field(factory=dict)
-    optional_attributes: frozenset[str] = field(factory=frozenset)
+    optional_attributes: frozenset[str] = field(
+        factory=frozenset, converter=frozenset
+    )
 
     def __attrs_post_init__(self) -> None:
         for name, attr_type in self.attribute_types.items():

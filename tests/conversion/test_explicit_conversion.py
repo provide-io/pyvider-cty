@@ -24,8 +24,6 @@ from pyvider.cty import (
     CtyType,
     CtyValue,
 )
-
-# This import will fail until the new module and exports are created.
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError
 from pyvider.cty.marks import CtyMark
@@ -59,7 +57,6 @@ class TestConvertFunction:
             (
                 CtyValue(CtySet(element_type=CtyString()), {"a", "b"}),
                 CtyList(element_type=CtyString()),
-                # Order is not guaranteed, so we check content and length
                 ["a", "b"],
             ),
             (
@@ -71,7 +68,7 @@ class TestConvertFunction:
             (CtyValue(CtyNumber(), 42), CtyDynamic(), CtyValue(CtyNumber(), 42)),
             # --- Special Values ---
             (CtyValue.null(CtyString()), CtyNumber(), None),
-            (CtyValue.unknown(CtyString()), CtyNumber(), None),  # Result is unknown
+            (CtyValue.unknown(CtyString()), CtyNumber(), None),
         ],
         ids=[
             "num_to_str",
@@ -95,30 +92,22 @@ class TestConvertFunction:
     def test_successful_conversions(
         self, source_val: CtyValue, target_type: CtyType, expected_val: object
     ) -> None:
-        """TDD: Verifies various successful type conversions."""
         converted_val = convert(source_val, target_type)
-
         if isinstance(target_type, CtyDynamic):
-            # For dynamic conversion, the result *is* the original value, type and all.
             assert converted_val == source_val
             return
-
         assert converted_val.type.equal(target_type)
-
         if source_val.is_null:
             assert converted_val.is_null
         elif source_val.is_unknown:
             assert converted_val.is_unknown
         elif isinstance(target_type, CtySet):
-            # Special handling for sets where order doesn't matter
             assert converted_val.value == expected_val
         elif isinstance(target_type, CtyList) and isinstance(source_val.type, CtySet):
-            # Special handling for set->list where order doesn't matter
             assert isinstance(converted_val.value, tuple)
             assert len(converted_val.value) == len(expected_val)
             assert {v.value for v in converted_val.value} == set(expected_val)
         elif isinstance(target_type, CtyList) and isinstance(source_val.type, CtyTuple):
-            # The expected value should be a list of CtyValues
             assert list(converted_val.value) == expected_val
         else:
             assert converted_val.raw_value == expected_val
@@ -146,15 +135,12 @@ class TestConvertFunction:
     def test_failed_conversions(
         self, source_val: CtyValue, target_type: CtyType
     ) -> None:
-        """TDD: Verifies that impossible conversions raise CtyConversionError."""
         with pytest.raises(CtyConversionError):
             convert(source_val, target_type)
 
     def test_conversion_preserves_marks(self) -> None:
-        """TDD: Ensures that converting a marked value carries the marks over."""
         marked_val = CtyValue(CtyNumber(), 123).mark(CtyMark("sensitive"))
         converted_val = convert(marked_val, CtyString())
-
         assert converted_val.has_mark(CtyMark("sensitive"))
         assert converted_val.value == "123"
 
@@ -165,6 +151,7 @@ class TestUnifyFunction:
     @pytest.mark.parametrize(
         "type_list, expected_unified_type",
         [
+            # --- Existing Passing Tests ---
             ([], CtyDynamic()),
             ([CtyString()], CtyString()),
             ([CtyString(), CtyString()], CtyString()),
@@ -193,6 +180,57 @@ class TestUnifyFunction:
                 [CtyTuple((CtyString(),)), CtyTuple((CtyString(), CtyNumber()))],
                 CtyDynamic(),
             ),
+            # --- NEW TDD TESTS FOR ADVANCED OBJECT UNIFICATION ---
+            (
+                [
+                    CtyObject({"a": CtyString(), "b": CtyNumber()}),
+                    CtyObject({"a": CtyString(), "c": CtyBool()}),
+                ],
+                CtyObject({"a": CtyString()}),
+            ),
+            (
+                [
+                    CtyObject({"common": CtyString()}),
+                    CtyObject({"common": CtyNumber()}),
+                ],
+                CtyObject({"common": CtyDynamic()}),
+            ),
+            (
+                [
+                    CtyObject({"a": CtyString(), "b": CtyNumber()}),
+                    CtyObject({"a": CtyString(), "b": CtyNumber(), "c": CtyBool()}),
+                    CtyObject({"a": CtyString(), "b": CtyNumber(), "d": CtyString()}),
+                ],
+                CtyObject({"a": CtyString(), "b": CtyNumber()}),
+            ),
+            (
+                [
+                    CtyObject({"a": CtyString()}), # a is required
+                    CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
+                ],
+                CtyObject({"a": CtyString()}), # a remains required
+            ),
+            (
+                [
+                    CtyObject({"a": CtyString()}), # a is required
+                    CtyObject({"a": CtyString()}, optional_attributes={"a"}), # a is optional
+                ],
+                CtyObject({"a": CtyString()}, optional_attributes={"a"}), # unified 'a' is optional
+            ),
+            (
+                [
+                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
+                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
+                ],
+                CtyObject({"a": CtyString()}, optional_attributes={"a"}), # optional + optional -> optional
+            ),
+            (
+                [
+                    CtyObject({}),
+                    CtyObject({"a": CtyString()}),
+                ],
+                CtyObject({}), # Intersection with empty object is empty object
+            ),
         ],
         ids=[
             "empty_list",
@@ -203,13 +241,20 @@ class TestUnifyFunction:
             "lists_of_different_elements",
             "list_and_set",
             "identical_objects",
-            "different_objects",
+            "objects_with_different_attrs",
             "tuples_of_different_length",
+            # --- NEW TDD TEST IDS ---
+            "TDD: objects_with_common_attribute",
+            "TDD: objects_with_recursive_unification",
+            "TDD: three_objects_with_common_subset",
+            "TDD: objects_with_optional_attributes_disjoint",
+            "TDD: objects_with_required_and_optional",
+            "TDD: objects_with_both_optional",
+            "TDD: object_unify_with_empty_object",
         ],
     )
     def test_unification_scenarios(
         self, type_list: Iterable[CtyType], expected_unified_type: CtyType
     ) -> None:
-        """TDD: Verifies various type unification scenarios."""
         unified_type = unify(type_list)
         assert unified_type.equal(expected_unified_type)
