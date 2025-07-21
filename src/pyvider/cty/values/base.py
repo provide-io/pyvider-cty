@@ -76,7 +76,7 @@ class CtyValue[T]:
         return True
 
     def __len__(self) -> int:
-        from pyvider.cty.types import CtyDynamic
+        from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtySet, CtyTuple
 
         if self.is_unknown:
             raise TypeError("Cannot get length of unknown value")
@@ -84,19 +84,25 @@ class CtyValue[T]:
             return len(self.value)
         if self.is_null:
             return 0
-        if hasattr(self.value, "__len__"):
-            return len(self.value)
+        if isinstance(self.vtype, (CtyList, CtyMap, CtySet, CtyTuple)):
+            if hasattr(self.value, "__len__"):
+                return len(self.value)
         raise TypeError(f"Value of type {self.vtype.__class__.__name__} has no len()")
 
     def __iter__(self) -> Iterator[Any]:
+        from pyvider.cty.types import CtyList, CtyMap, CtySet, CtyTuple
+
         if self.is_unknown:
             raise TypeError("Cannot iterate unknown value")
         if self.is_null:
             return iter([])
-        if hasattr(self.value, "__iter__"):
-            if isinstance(self.value, dict | MappingProxyType):
+        if isinstance(self.vtype, (CtyList, CtySet, CtyTuple)):
+            if hasattr(self.value, "__iter__"):
+                return iter(self.value)
+        if isinstance(self.vtype, CtyMap):
+            if hasattr(self.value, "__iter__"):
                 return iter(self.value.values())
-            return iter(self.value)
+
         raise TypeError(
             f"Value of type {self.vtype.__class__.__name__} is not iterable"
         )
