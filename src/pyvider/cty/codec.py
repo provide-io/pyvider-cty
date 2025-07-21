@@ -97,7 +97,7 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
     return [type_spec_bytes, serializable_inner]
 
 
-def _convert_value_to_serializable(
+def _convert_value_to_serializable(  # noqa: C901
     value: "CtyValue[Any]", schema: "CtyType[Any]"
 ) -> Any:
     if not isinstance(value, CtyValue):
@@ -169,7 +169,7 @@ def _msgpack_default_handler(obj: Any) -> str:
 
 def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
     serializable_data = _convert_value_to_serializable(value, schema)
-    return msgpack.packb(
+    return msgpack.packb(  # type: ignore
         serializable_data, default=_msgpack_default_handler, use_bin_type=True
     )
 

@@ -1,0 +1,19 @@
+from attrs import define, field
+from pyvider.cty.exceptions import CtyListValidationError as CtyListValidationError, CtyValidationError as CtyValidationError
+from pyvider.cty.path import CtyPath as CtyPath, IndexStep as IndexStep
+from pyvider.cty.types.base import CtyType as CtyType
+from pyvider.cty.types.structural import CtyDynamic as CtyDynamic
+from pyvider.cty.values import CtyValue as CtyValue
+from typing import Any, ClassVar, TypeVar
+
+T = TypeVar('T')
+
+@define(frozen=True, slots=True)
+class CtyList[T](CtyType[tuple[T, ...]]):
+    ctype: ClassVar[str] = ...
+    element_type: CtyType[T] = field(kw_only=True)
+    def __attrs_post_init__(self) -> None: ...
+    def validate(self, value: object) -> CtyValue[tuple[T, ...]]: ...
+    def element_at(self, container: object, index: int) -> CtyValue[T]: ...
+    def equal(self, other: CtyType[Any]) -> bool: ...
+    def usable_as(self, other: CtyType[Any]) -> bool: ...
