@@ -1,19 +1,20 @@
-import pytest
+from typing import Never
+
 import attrs
+import pytest
+
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
-from pyvider.cty.types import CtyTuple, CtyString, CtyNumber, CtyBool, CtyDynamic
+from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple
 
 
-def test_infer_tuple_with_mixed_types():
+def test_infer_tuple_with_mixed_types() -> None:
     raw_val = ("hello", 123, True)
     inferred_type = infer_cty_type_from_raw(raw_val)
-    expected_type = CtyTuple(
-        element_types=(CtyString(), CtyNumber(), CtyBool())
-    )
+    expected_type = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool()))
     assert inferred_type.equal(expected_type)
 
 
-def test_infer_from_set():
+def test_infer_from_set() -> None:
     raw_val = {"hello", "world"}
     inferred_type = infer_cty_type_from_raw(raw_val)
     from pyvider.cty.types import CtySet
@@ -22,7 +23,7 @@ def test_infer_from_set():
     assert inferred_type.equal(expected_type)
 
 
-def test_infer_map_with_non_identifier_keys():
+def test_infer_map_with_non_identifier_keys() -> None:
     raw_val = {"hello-world": 123}
     inferred_type = infer_cty_type_from_raw(raw_val)
     from pyvider.cty.types import CtyMap
@@ -40,7 +41,7 @@ class UnsafeAttrs:
             raise TypeError("This is an unsafe attrs class")
 
 
-def test_infer_from_unsafe_attrs():
+def test_infer_from_unsafe_attrs() -> None:
     # This test is designed to fail during instantiation, so we need to catch the error
     # and then we can't really test infer_cty_type_from_raw with it.
     # A different approach is needed to test the TypeError handling in infer_cty_type_from_raw.
@@ -54,17 +55,35 @@ def test_infer_from_unsafe_attrs():
     # to trigger the TypeError in a more direct way.
 
     class FakeAttrs:
-        def __init__(self):
-            self.__attrs_attrs__ = [attrs.Attribute(name='a', default=None, validator=None, repr=True, eq=True, order=True, hash=None, init=True, on_setattr=None, converter=None, kw_only=False, inherited=False, metadata=None)]
+        def __init__(self) -> None:
+            self.__attrs_attrs__ = [
+                attrs.Attribute(
+                    name="a",
+                    default=None,
+                    validator=None,
+                    repr=True,
+                    eq=True,
+                    order=True,
+                    hash=None,
+                    init=True,
+                    on_setattr=None,
+                    converter=None,
+                    kw_only=False,
+                    inherited=False,
+                    metadata=None,
+                    cmp=None,
+                )
+            ]
+
         @property
-        def a(self):
+        def a(self) -> Never:
             raise TypeError("permission denied")
 
     inferred_type = infer_cty_type_from_raw(FakeAttrs())
     assert inferred_type == CtyDynamic()
 
 
-def test_infer_from_other_types():
+def test_infer_from_other_types() -> None:
     class Other:
         pass
 

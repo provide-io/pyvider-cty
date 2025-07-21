@@ -1,9 +1,8 @@
-import pytest
 from pyvider.cty.types.primitives.number import CtyNumber
-from pyvider.cty.values import CtyValue, UnknownValue
-from pyvider.cty.exceptions import CtyNumberValidationError
+from pyvider.cty.values import UnknownValue
 
-def test_validate_unknown_value():
+
+def test_validate_unknown_value() -> None:
     number_type = CtyNumber()
     unknown_value = UnknownValue()
     result = number_type.validate(unknown_value)

@@ -29,7 +29,7 @@ class TestAdapterCoverage:
         assert sorted(cty_to_native(cty_set)) == ["a", "b"]
 
         set_type_num = CtySet(element_type=CtyNumber())
-        cty_set_num = set_type_num.validate({1, 2, 2})
+        cty_set_num = set_type_num.validate({1, 2})
         assert sorted(cty_to_native(cty_set_num)) == [1, 2]
 
         tuple_type = CtyTuple(element_types=(CtyString(), CtyNumber()))

@@ -14,7 +14,6 @@ from pyvider.cty import (
     CtyString,
     CtyTuple,
 )
-
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
 
 

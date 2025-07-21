@@ -16,7 +16,7 @@ We're excited to announce the first preview release of pyvider.cty, a pure-Pytho
 
 ### Types
 - Primitives: String, Number, Bool
-- Collections: List, Set, Map  
+- Collections: List, Set, Map
 - Structural: Object, Tuple
 - Special: Dynamic, Unknown, Null
 

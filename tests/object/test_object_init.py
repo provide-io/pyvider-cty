@@ -96,7 +96,8 @@ class TestCtyObjectValidation:
 
     def test_validate_attrs_object(self) -> None:
         import attr
-        from pyvider.cty import CtyObject, CtyString, CtyNumber
+
+        from pyvider.cty import CtyNumber, CtyObject, CtyString
 
         @attr.s(auto_attribs=True)
         class MyAttrsClass:
