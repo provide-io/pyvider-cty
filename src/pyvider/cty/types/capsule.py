@@ -4,6 +4,7 @@ Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from pyvider.cty.exceptions import CtyValidationError
@@ -55,6 +56,16 @@ class CtyCapsule(CtyType[Any]):
     def equal(self, other: "CtyType[Any]") -> bool:
         if not isinstance(other, CtyCapsule):
             return False
+        
+        # For CapsuleWithOps, equality depends on the functions too
+        if isinstance(self, CtyCapsuleWithOps) and isinstance(other, CtyCapsuleWithOps):
+            return (
+                self.name == other.name 
+                and self._py_type == other._py_type
+                and self.equal_fn == other.equal_fn
+                and self.hash_fn == other.hash_fn
+            )
+
         return self.name == other.name and self._py_type == other._py_type
 
     def usable_as(self, other: "CtyType[Any]") -> bool:
@@ -71,3 +82,30 @@ class CtyCapsule(CtyType[Any]):
 
     def __hash__(self) -> int:
         return hash((self.name, self._py_type))
+
+
+class CtyCapsuleWithOps(CtyCapsule):
+    """
+    A CtyCapsule that supports custom operations like equality and hashing.
+    """
+
+    def __init__(
+        self,
+        capsule_name: str,
+        py_type: type,
+        *,
+        equal_fn: Callable[[Any, Any], bool] | None = None,
+        hash_fn: Callable[[Any], int] | None = None,
+    ) -> None:
+        """
+        Initializes a CtyCapsule with custom operational functions.
+        """
+        super().__init__(capsule_name, py_type)
+        self.equal_fn = equal_fn
+        self.hash_fn = hash_fn
+
+    def __repr__(self) -> str:
+        return f"CtyCapsuleWithOps({self.name}, {self._py_type.__name__})"
+
+    def __hash__(self) -> int:
+        return hash((self.name, self._py_type, self.equal_fn, self.hash_fn))

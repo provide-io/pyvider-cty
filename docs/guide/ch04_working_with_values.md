@@ -30,45 +30,21 @@ This immutability has several advantages:
 
 In addition to the regular values that you create by validating raw data, `pyvider.cty` also has two special kinds of values:
 
-### 1. Null Values
+1.  **Null Values**: A null value represents the absence of a value. You can create a null value using the `null` method of a `cty` type:
 
-A null value represents the absence of a value. You can create a null value using the `null` method of a `cty` type.
+    ```python
+    from pyvider.cty import CtyString
 
-**Use Case:** Representing an optional attribute that is not present.
+    null_string = CtyString.null()
+    ```
 
-```python
-from pyvider.cty import CtyObject, CtyString, CtyValue
+2.  **Unknown Values**: An unknown value represents a value that is not yet known. This is useful when you are working with data that will be populated at a later time, such as in a multi-stage data processing pipeline. You can create an unknown value using the `unknown` method of a `cty` type:
 
-user_type = CtyObject({"name": CtyString(), "email": CtyString()})
+    ```python
+    from pyvider.cty import CtyNumber
 
-# A user with an email
-user_with_email = user_type.validate({"name": "Alice", "email": "alice@example.com"})
-
-# A user without an email
-user_without_email = user_type.validate({"name": "Bob", "email": CtyValue.null(CtyString())})
-
-assert user_without_email["email"].is_null
-```
-
-### 2. Unknown Values
-
-An unknown value represents a value that is not yet known. This is useful when you are working with data that will be populated at a later time, such as in a multi-stage data processing pipeline.
-
-**Use Case:** Planning infrastructure changes where some values will only be known after a resource is created.
-
-```python
-from pyvider.cty import CtyObject, CtyString, CtyValue
-
-server_type = CtyObject({"name": CtyString(), "ip_address": CtyString()})
-
-# A plan for a new server, where the IP address is not yet known
-server_plan = server_type.validate({
-    "name": "web-server-1",
-    "ip_address": CtyValue.unknown(CtyString()),
-})
-
-assert server_plan["ip_address"].is_unknown
-```
+    unknown_number = CtyNumber.unknown()
+    ```
 
 ## Operations on Values
 
@@ -80,8 +56,8 @@ For example, you can use the `cty_add` function to add two `cty` numbers:
 from pyvider.cty import CtyNumber
 from pyvider.cty.functions import cty_add
 
-num1 = CtyNumber().validate(10)
-num2 = CtyNumber().validate(20)
+num1 = CtyNumber(10)
+num2 = CtyNumber(20)
 
 result = cty_add(num1, num2)
 

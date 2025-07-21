@@ -22,22 +22,24 @@ This is the main, chapter-based guide to learning and using `pyvider.cty`.
 *   [Chapter 5: Primitive Types](./guide/ch05_primitive_types.md)
 *   [Chapter 6: Collection Types](./guide/ch06_collection_types.md)
 *   [Chapter 7: Structural Types](./guide/ch07_structural_types.md)
-*   [Chapter 8: Navigating Nested Data with CtyPath](./guide/ch08_paths.md)
 
 **Part 3: Advanced Topics**
-*   [Chapter 9: Dynamic Types](./guide/ch09_dynamic_types.md)
-*   [Chapter 10: Capsule Types](./guide/ch10_capsule_types.md)
-*   [Chapter 11: Marks](./guide/ch11_marks.md)
-*   [Chapter 12: Functions](./guide/ch12_functions.md)
-*   [Chapter 13: Serialization (JSON and Msgpack)](./guide/ch13_serialization.md)
+*   [Chapter 8: Dynamic Types](./guide/ch08_dynamic_types.md)
+*   [Chapter 9: Capsule Types](./guide/ch09_capsule_types.md)
+*   [Chapter 10: Marks](./guide/ch10_marks.md)
+*   [Chapter 11: Functions](./guide/ch11_functions.md)
+*   [Chapter 12: Serialization (JSON and Msgpack)](./guide/ch12_serialization.md)
+*   [Chapter 13: Path Navigation](./guide/ch19_path_navigation.md)
+*   [Chapter 14: Context Management](./guide/ch20_context_management.md)
+*   [Chapter 15: Terraform Interoperability](./guide/ch21_terraform_interop.md)
 
 **Part 4: Reference & Further Information**
-*   [Chapter 14: API Reference](./guide/ch14_api_reference.md)
-*   [Chapter 15: Configuration Variables](./guide/ch15_configuration_variables.md)
-*   [Chapter 16: Contributing to Pyvider Cty](./guide/ch16_contributing.md)
-*   [Chapter 17: Troubleshooting](./guide/ch17_troubleshooting.md)
-*   [Chapter 18: Glossary](./guide/ch18_glossary.md)
-*   [Chapter 19: Comparison with Go-Cty](./guide/ch19_go_cty_comparison.md)
+*   [Chapter 16: API Reference](./guide/ch14_api_reference.md)
+*   [Chapter 17: Configuration Variables](./guide/ch15_configuration_variables.md)
+*   [Chapter 18: Troubleshooting](./guide/ch16_troubleshooting.md)
+*   [Chapter 19: Glossary](./guide/ch17_glossary.md)
+*   [Chapter 20: Comparison with Go-Cty](./guide/ch18_go_cty_comparison.md)
+*   [Chapter 21: Contributing to Pyvider Cty](./guide/ch19_contributing.md)
 
 
 ## 🚀 Additional Resources
