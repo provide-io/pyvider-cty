@@ -1,5 +1,9 @@
-from pyvider.cty.exceptions.conversion import CtyConversionError, CtyTypeConversionError
-from pyvider.cty.types import CtyList, CtyNumber, CtyString  # Added CtyList
+from pyvider.cty.exceptions.conversion import (
+    CtyConversionError,
+    CtyTypeConversionError,
+    CtyTypeParseError,
+)
+from pyvider.cty.types import CtyList, CtyNumber, CtyString
 
 
 class TestCtyConversionError:
@@ -131,3 +135,14 @@ class TestCtyTypeConversionError:
         assert error.type_name == type_name
         assert error.source_value == source
         assert error.target_type == target
+
+
+class TestCtyTypeParseError:
+    def test_instantiation(self) -> None:
+        """Test CtyTypeParseError instantiation."""
+        type_string = "list(string"
+        error = CtyTypeParseError("Invalid type string", type_string=type_string)
+        expected_msg = f"Invalid type string: '{type_string}' (source_type=str)"
+        assert str(error) == expected_msg
+        assert error.type_string == type_string
+        assert error.source_value == type_string
