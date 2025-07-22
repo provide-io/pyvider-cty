@@ -2,66 +2,90 @@
 
 In `pyvider.cty`, a "value" is an instance of a `cty` type. Values are the lifeblood of the `cty` system, as they hold the actual data that you work with.
 
-## The `CtyValue` Base Class
+## The `CtyValue` Class
 
-All `pyvider.cty` values inherit from the `CtyValue` base class. This class provides the common interface for all values, including methods for accessing the raw data and performing type-safe operations.
+All `pyvider.cty` values are instances of the `CtyValue` class. This class provides the common interface for all values, including methods for accessing the raw data and performing type-safe operations.
 
 ### Accessing the Raw Value
 
-You can access the raw Python value of a `cty` value using the `raw_value` property:
+You can access the underlying, native Python representation of a `cty` value using the `.raw_value` property:
 
 ```python
-raw_value = cty_value.raw_value
-```
+from pyvider.cty import CtyString
 
-This will return the original Python value that was used to create the `cty` value.
+string_val = CtyString().validate("hello")
+raw_string = string_val.raw_value
+
+assert raw_string == "hello"
+```
 
 ### Immutability
 
-One of the key features of `cty` values is that they are **immutable**. This means that once a value is created, it cannot be changed. If you need to modify a value, you must create a new one.
-
-This immutability has several advantages:
+One of the key features of `cty` values is that they are **immutable**. This means that once a value is created, it cannot be changed. This has several advantages:
 
 *   **Predictability**: It makes your code more predictable, as you can be sure that a value will not change unexpectedly.
 *   **Safety**: It helps to prevent bugs caused by unintended side effects.
 *   **Concurrency**: It makes it easier to write concurrent code, as you don't have to worry about race conditions when accessing values.
 
-## Special Values
+## Special Values: Null and Unknown
 
-In addition to the regular values that you create by validating raw data, `pyvider.cty` also has two special kinds of values:
+In addition to regular values, `pyvider.cty` has two special kinds of values:
 
-1.  **Null Values**: A null value represents the absence of a value. You can create a null value using the `null` method of a `cty` type:
+1.  **Null Values**: A null value represents the explicit absence of a value.
+2.  **Unknown Values**: An unknown value represents a value that is not yet known but will be populated later.
 
-    ```python
-    from pyvider.cty import CtyString
-
-    null_string = CtyString.null()
-    ```
-
-2.  **Unknown Values**: An unknown value represents a value that is not yet known. This is useful when you are working with data that will be populated at a later time, such as in a multi-stage data processing pipeline. You can create an unknown value using the `unknown` method of a `cty` type:
-
-    ```python
-    from pyvider.cty import CtyNumber
-
-    unknown_number = CtyNumber.unknown()
-    ```
-
-## Operations on Values
-
-`pyvider.cty` provides a set of built-in functions for performing operations on `cty` values. These functions are type-safe, meaning that they will only work with the correct types of values.
-
-For example, you can use the `cty_add` function to add two `cty` numbers:
+You can create these using the class methods on `CtyValue`:
 
 ```python
-from pyvider.cty import CtyNumber
-from pyvider.cty.functions import cty_add
+from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyValue
 
-num1 = CtyNumber(10)
-num2 = CtyNumber(20)
+# 1. Define a user profile type.
+profile_type = CtyObject(
+    attribute_types={
+        "username": CtyString(),
+        "age": CtyNumber(),
+    },
+)
 
-result = cty_add(num1, num2)
+# 2. Create an unknown value of the profile type.
+# This represents a value that will be known later (e.g., after an API call).
+unknown_value = CtyValue.unknown(profile_type)
 
-assert result.raw_value == 30
+# 3. Create a null value of the profile type.
+# This represents an explicit absence of a value.
+null_value = CtyValue.null(profile_type)
+
+# 4. Check the state of each value.
+print(f"Unknown Value: Is Unknown? {unknown_value.is_unknown}, Is Null? {unknown_value.is_null}")
+print(f"Null Value:    Is Unknown? {null_value.is_unknown}, Is Null? {null_value.is_null}")
+
+# Accessing properties of a null or unknown value would raise an error.
+try:
+    _ = null_value["username"]
+except TypeError as e:
+    print(f"Attempting to access null value property failed as expected: {e}")
 ```
 
-We will explore the available functions in more detail in a later chapter.
+## Immutable Updates with Helper Methods
+
+Since `CtyValue` objects are immutable, you create modified versions instead of changing them in-place. `pyvider.cty` provides convenient helper methods on collection values for this purpose.
+
+```python
+from pyvider.cty import CtyMap, CtyNumber
+
+# 1. Define a map type and create an initial CtyValue.
+config_type = CtyMap(element_type=CtyNumber())
+config_val = config_type.validate({"timeout": 30})
+
+# 2. Use .with_key() to add/update an element, returning a NEW value.
+new_config_val = config_val.with_key("batch_size", 500).with_key("timeout", 60)
+
+# 3. Use .without_key() to remove an element, returning a NEW value.
+final_config_val = new_config_val.without_key("timeout")
+
+print(f"Original: {config_val.raw_value}")
+print(f"Updated:  {new_config_val.raw_value}")
+print(f"Final:    {final_config_val.raw_value}")
+```
+
+Similar methods like `.append()` and `.with_element_at()` exist for `CtyList` values.

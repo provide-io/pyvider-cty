@@ -1,4 +1,4 @@
-# Chapter 20: Context Management
+# Chapter 14: Context Management
 
 `pyvider.cty` provides a context management system that allows you to control the behavior of CTY operations in different situations. This is useful for tasks such as enabling stricter validation in a testing environment or changing serialization strategies for different output formats.
 

@@ -1,4 +1,4 @@
-# Chapter 16: Glossary
+# Chapter 18: Glossary
 
 This glossary defines key terms and concepts used throughout the `pyvider.cty` documentation.
 

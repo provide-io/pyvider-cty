@@ -1,60 +1,64 @@
 # Chapter 11: Functions
 
-`pyvider.cty` provides a rich set of built-in functions for manipulating `cty` values. These functions are type-safe, meaning that they will only work with the correct types of values.
+`pyvider.cty` provides a rich, built-in standard library of functions for manipulating `cty` values. These functions are type-safe and operate on `CtyValue` instances, returning new `CtyValue` instances.
 
 ## Calling Functions
 
-You can call a `cty` function by using its corresponding Python function from the `pyvider.cty.functions` module.
-
-For example, to call the `add` function, you would use the `cty_add` function:
+You can call a `cty` function by importing it from the `pyvider.cty.functions` module.
 
 ```python
 from pyvider.cty import CtyNumber
-from pyvider.cty.functions import cty_add
+from pyvider.cty.functions import add, abs_fn
 
-num1 = CtyNumber(10)
-num2 = CtyNumber(20)
+num1 = CtyNumber().validate(10)
+num2 = CtyNumber().validate(-20)
 
-result = cty_add(num1, num2)
+# Add two numbers
+sum_val = add(num1, num2)
+assert sum_val.raw_value == -10
 
-assert result.raw_value == 30
+# Get the absolute value
+abs_val = abs_fn(num2)
+assert abs_val.raw_value == 20
 ```
 
-## Categories of Functions
+## Overview of Available Functions
 
-The built-in functions in `pyvider.cty` can be divided into several categories:
+The standard library is extensive. Below is a categorized overview of some of the most common functions.
 
 ### Numeric Functions
-
-*   `cty_add`: Adds two numbers.
-*   `cty_subtract`: Subtracts one number from another.
-*   `cty_multiply`: Multiplies two numbers.
-*   `cty_divide`: Divides one number by another.
-*   `cty_modulo`: Computes the remainder of a division.
-*   `cty_power`: Raises a number to a power.
-*   `cty_negate`: Negates a number.
+- `add`, `subtract`, `multiply`, `divide`, `modulo`, `pow_fn`
+- `abs_fn`, `ceil_fn`, `floor_fn`, `int_fn`
+- `log_fn`, `signum_fn`, `parseint_fn`
 
 ### String Functions
-
-*   `cty_concat`: Concatenates two or more strings.
-*   `cty_length`: Returns the length of a string.
-*   `cty_slice`: Extracts a slice of a string.
-*   `cty_upper`: Converts a string to uppercase.
-*   `cty_lower`: Converts a string to lowercase.
+- `upper`, `lower`, `title`, `strrev`
+- `chomp`, `indent`, `trim`, `trimspace`, `trimprefix`, `trimsuffix`
+- `join`, `split`, `replace`, `substr`
+- `regex`, `regexall`, `regexreplace`
 
 ### Collection Functions
+- `length`, `slice`, `concat`, `contains`, `reverse`
+- `distinct`, `flatten`, `sort`
+- `keys`, `values` (for maps and objects)
+- `lookup`, `merge`, `zipmap` (for maps)
+- `element`, `chunklist`, `setproduct`
 
-*   `cty_length`: Returns the number of elements in a list, set, or map.
-*   `cty_slice`: Extracts a slice of a list.
-*   `cty_concat`: Concatenates two or more lists.
-*   `cty_contains`: Checks if a list or set contains a specific element.
-*   `cty_keys`: Returns a list of the keys in a map.
-*   `cty_values`: Returns a list of the values in a map.
+### Comparison Functions
+- `equal`, `not_equal`
+- `greater_than`, `less_than`, `greater_than_or_equal_to`, `less_than_or_equal_to`
+- `max_fn`, `min_fn`
 
 ### Type Conversion Functions
+- `to_string`, `to_number`, `to_bool`
 
-*   `cty_to_string`: Converts a value to a string.
-*   `cty_to_number`: Converts a value to a number.
-*   `cty_to_bool`: Converts a value to a boolean.
+### Encoding Functions
+- `jsonencode`, `jsondecode`, `csvdecode`
 
-This is just a selection of the available functions. For a complete list, please refer to the API reference.
+### Date/Time Functions
+- `formatdate`, `timeadd`
+
+### Structural and Logical Functions
+- `coalesce`, `coalescelist`
+
+For a complete list and function signatures, please refer to the source code in `src/pyvider/cty/functions/`.

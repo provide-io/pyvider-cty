@@ -1,4 +1,4 @@
-# Chapter 15: Troubleshooting
+# Chapter 17: Troubleshooting
 
 This chapter provides guidance on common issues you might encounter while using `pyvider.cty`.
 
