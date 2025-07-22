@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
@@ -231,7 +232,7 @@ func parseCtyType(data json.RawMessage) (cty.Type, error) {
 	return cty.NilType, fmt.Errorf("invalid type specification format")
 }
 
-func buildExpectedValue(ty cty.Type, valData json.RawMessage) (cty.Value, error) {
+func buildExpectedValue(ty cty.Type, valData json.RawMessage, path []string) (cty.Value, error) {
 	if ty.IsPrimitiveType() {
 		switch ty {
 		case cty.String:
@@ -244,11 +245,20 @@ func buildExpectedValue(ty cty.Type, valData json.RawMessage) (cty.Value, error)
 	}
 	if ty.IsListType() || ty.IsSetType() || ty.IsTupleType() {
 		var rawElems []json.RawMessage; if err := json.Unmarshal(valData, &rawElems); err != nil { return cty.NilVal, err }
+		if len(rawElems) == 0 {
+			if ty.IsListType() { return cty.ListValEmpty(ty.ElementType()), nil }
+			if ty.IsSetType() { return cty.SetValEmpty(ty.ElementType()), nil }
+			return cty.TupleVal(make([]cty.Value, 0)), nil
+		}
 		vals := make([]cty.Value, len(rawElems))
 		for i, rawElem := range rawElems {
-			elemTy := ty.ElementType()
-			if ty.IsTupleType() { elemTy = ty.TupleElementType(i) }
-			val, err := buildExpectedValue(elemTy, rawElem); if err != nil { return cty.NilVal, err }; vals[i] = val
+			var elemTy cty.Type
+			if ty.IsTupleType() {
+				elemTy = ty.TupleElementType(i)
+			} else {
+				elemTy = ty.ElementType()
+			}
+			val, err := buildExpectedValue(elemTy, rawElem, append(path, fmt.Sprintf("[%d]", i))); if err != nil { return cty.NilVal, err }; vals[i] = val
 		}
 		if ty.IsListType() { return cty.ListVal(vals), nil }
 		if ty.IsSetType() { return cty.SetVal(vals), nil }
@@ -256,16 +266,24 @@ func buildExpectedValue(ty cty.Type, valData json.RawMessage) (cty.Value, error)
 	}
 	if ty.IsMapType() || ty.IsObjectType() {
 		var rawMap map[string]json.RawMessage; if err := json.Unmarshal(valData, &rawMap); err != nil { return cty.NilVal, err }
+		if len(rawMap) == 0 {
+			if ty.IsObjectType() { return cty.ObjectVal(map[string]cty.Value{}), nil }
+			return cty.MapValEmpty(ty.ElementType()), nil
+		}
 		vals := make(map[string]cty.Value)
 		for k, rawVal := range rawMap {
-			elemTy := ty.ElementType()
-			if ty.IsObjectType() { elemTy = ty.AttributeType(k) }
-			val, err := buildExpectedValue(elemTy, rawVal); if err != nil { return cty.NilVal, err }; vals[k] = val
+			var elemTy cty.Type
+			if ty.IsObjectType() {
+				elemTy = ty.AttributeType(k)
+			} else {
+				elemTy = ty.ElementType()
+			}
+			val, err := buildExpectedValue(elemTy, rawVal, append(path, fmt.Sprintf(".%s", k))); if err != nil { return cty.NilVal, err }; vals[k] = val
 		}
 		if ty.IsMapType() { return cty.MapVal(vals), nil }
 		return cty.ObjectVal(vals), nil
 	}
-	return cty.NilVal, fmt.Errorf("cannot build expected value for type %s", ty.FriendlyName())
+	return cty.NilVal, fmt.Errorf("cannot build expected value for type %s at path %s", ty.FriendlyName(), strings.Join(path, ""))
 }
 
 func verifyFixtures(fixtureDir string) {
@@ -285,6 +303,7 @@ func verifyFixtures(fixtureDir string) {
 
 	failures := 0
 	for name, entry := range manifest {
+		path := []string{name}
 		ty, err := parseCtyType(entry.Type)
 		if err != nil {
 			logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to parse type from manifest", "case", name, "error", err)
@@ -309,29 +328,28 @@ func verifyFixtures(fixtureDir string) {
 
 		if entry.IsUnknown {
 			if deserializedVal.IsKnown() {
-				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Unknown, but is Known", "case", name)
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Unknown, but is Known", "path", strings.Join(path, ""))
 				failures++
 			}
 		} else if entry.IsNull {
 			if !deserializedVal.IsNull() {
-				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Null, but is not", "case", name)
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Null, but is not", "path", strings.Join(path, ""))
 				failures++
 			}
 		} else {
 			if !deserializedVal.IsKnown() {
-				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Known, but is Unknown", "case", name)
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Known, but is Unknown", "path", strings.Join(path, ""))
 				failures++
 				continue
 			}
-			expectedVal, err := buildExpectedValue(ty, entry.Value)
+			expectedVal, err := buildExpectedValue(ty, entry.Value, path)
 			if err != nil {
-				logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to build expected value", "case", name, "error", err)
+				logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to build expected value", "path", strings.Join(path, ""), "error", err)
 				failures++
 				continue
 			}
-			logger.Log(hclog.Debug, "🔍", "📊", "⚙️", "Comparing values", "name", name, "expected", expectedVal.GoString(), "got", deserializedVal.GoString())
 			if !deserializedVal.Equals(expectedVal).True() {
-				logger.Log(hclog.Error, "🔍", "📊", "❌", "Deserialized value does not equal expected value", "case", name)
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Deserialized value does not equal expected value", "path", strings.Join(path, ""), "expected", expectedVal.GoString(), "got", deserializedVal.GoString())
 				failures++
 			}
 		}
