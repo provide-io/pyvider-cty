@@ -4,7 +4,7 @@
 
 `pyvider.cty` provides a complete framework for creating and validating complex data structures with a rich and expressive type system. It is perfect for building applications that require robust data validation, such as infrastructure-as-code tools, configuration management systems, and more.
 
-This guide will walk you through from initial setup and basic usage to advanced topics and best practices, catering to both new users looking to integrate `pyvider.cty` into their projects and developers aiming to build complex data validation and manipulation workflows.
+This guide will walk you through from initial setup and basic usage to advanced topics and best practices.
 
 ---
 
@@ -34,16 +34,9 @@ This is the main, chapter-based guide to learning and using `pyvider.cty`.
 *   [Chapter 15: Terraform Interoperability](./guide/ch21_terraform_interop.md)
 
 **Part 4: Reference & Further Information**
-*   [Chapter 16: API Reference](./guide/ch14_api_reference.md)
-*   [Chapter 17: Configuration Variables](./guide/ch15_configuration_variables.md)
-*   [Chapter 18: Troubleshooting](./guide/ch16_troubleshooting.md)
-*   [Chapter 19: Glossary](./guide/ch17_glossary.md)
-*   [Chapter 20: Comparison with Go-Cty](./guide/ch18_go_cty_comparison.md)
-*   [Chapter 21: Contributing to Pyvider Cty](./guide/ch19_contributing.md)
-
-
-## 🚀 Additional Resources
-
-*   **[Migration from go-cty](./MIGRATION_FROM_GO_CTY.md)**: A guide for developers familiar with HashiCorp's `go-cty`.
-*   **[Object Wire Format](./object-wire-format.md)**: Technical specification for the serialization format.
-*   **[CtyMap Type System Design](./ctymap_type_system_design.md)**: A deep dive into the design of the `CtyMap` type.
+*   [Chapter 16: API Reference](./guide/ch16_api_reference.md)
+*   [Chapter 17: Configuration Variables](./guide/ch17_configuration_variables.md)
+*   [Chapter 18: Troubleshooting](./guide/ch18_troubleshooting.md)
+*   [Chapter 19: Glossary](./guide/ch19_glossary.md)
+*   [Chapter 20: Comparison with Go-Cty](./guide/ch20_go_cty_comparison.md)
+*   [Chapter 21: Contributing](./guide/ch21_contributing.md)

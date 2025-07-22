@@ -1,4 +1,4 @@
-# Chapter 19: Path Navigation
+# Chapter 13: Path Navigation
 
 `pyvider.cty` provides a powerful path language to navigate and access elements within complex `CtyValue` structures. This is particularly useful for debugging, validation, and extracting specific data from nested objects and collections.
 

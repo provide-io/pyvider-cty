@@ -46,8 +46,6 @@ async def run_script(
     timeout: int = 20,
     args: list[str] | None = None,
     cwd: Path | None = None,
-    expected_to_fail: bool = False,
-    expected_stderr_contains: str | None = None,
 ) -> tuple[bool, str, str, int]:
     """Runs a script and returns its success status, stdout, stderr, and exit code."""
     if args is None:
@@ -71,18 +69,7 @@ async def run_script(
         raw_exit_code = process.returncode
         exit_code: int = raw_exit_code if raw_exit_code is not None else -1
 
-        success = False
-        if expected_to_fail:
-            if exit_code != 0:
-                if (
-                    expected_stderr_contains and expected_stderr_contains in stderr
-                ) or not expected_stderr_contains:
-                    success = True
-            else:
-                stderr += "\nERROR: Script was expected to fail but exited with 0."
-        elif exit_code == 0:
-            success = True
-
+        success = exit_code == 0
         return success, stdout, stderr, exit_code
     except TimeoutError:
         if process:
@@ -118,8 +105,6 @@ async def main() -> None:
     for script_info in scripts_to_run:
         script_file = script_info["file"]
         script_args = script_info.get("args", [])
-        exp_fail = script_info.get("exp_fail", False)
-        exp_stderr = script_info.get("exp_stderr")
 
         script_path = examples_dir / script_file
         if not script_path.exists():
@@ -132,8 +117,6 @@ async def main() -> None:
             script_path,
             args=script_args,
             cwd=project_root,
-            expected_to_fail=exp_fail,
-            expected_stderr_contains=exp_stderr,
         )
         results.append((script_path.name, success, stdout, stderr, exit_code))
         if not success:

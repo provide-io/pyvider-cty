@@ -29,6 +29,10 @@ The examples are named with a `chXX_` prefix corresponding to the main documenta
 | **`ch09_capsule_types.py`** | 🔌 Demonstrates the capsule type. | Ch09 |
 | **`ch10_marks.py`** | 🔒 Demonstrates marks. | Ch10 |
 | **`ch11_functions.py`** | ⚡ Demonstrates functions. | Ch11 |
+| **`ch12_serialization.py`** | 📦 Demonstrates serialization. | Ch12 |
+| **`ch13_path_navigation.py`**| 🗺️ Demonstrates path navigation. | Ch13 |
+| **`ch14_context_management.py`**| 🧰 Demonstrates context management. | Ch14 |
+| **`ch15_terraform_interop.py`**| terraform Demonstrates Terraform interop. | Ch15 |
 
 ## 🏃‍♂️ Running Examples
 
@@ -38,44 +42,10 @@ The examples are named with a `chXX_` prefix corresponding to the main documenta
 
 ### **Environment Setup**
 
-The examples are designed to be run from the root of the `pyvider-cty` repository.
-Each example script includes:
-```python
-from examples.example_utils import configure_for_example
-configure_for_example()
-```
-This utility function automatically adjusts `sys.path` to ensure that the `pyvider.cty` library from the `src/` directory and `example_utils` itself are correctly imported.
-
-### **Running Individual Examples**
-(Run from the project root directory)
-```bash
-python examples/ch02_getting_started.py
-python examples/ch05_primitive_types.py
-python examples/ch06_collection_types.py
-python examples/ch07_structural_types.py
-python examples/ch08_dynamic_types.py
-python examples/ch09_capsule_types.py
-python examples/ch10_marks.py
-python examples/ch11_functions.py
-```
+Each example script includes a utility function that automatically adjusts `sys.path` to ensure that the `pyvider.cty` library from the `src/` directory is correctly imported.
 
 ### **Running All Examples**
 To run all the examples at once and check for failures, you can use the `run_all_examples.py` script:
 ```bash
 python examples/run_all_examples.py
 ```
-
-## 🤝 Contributing Examples
-
-When adding new examples:
-
-1. Use the `chXX_descriptive_name.py` format, where `XX` is the primary chapter number it relates to.
-2. Include comprehensive docstrings and comments.
-3. Add appropriate logging with `from pyvider.telemetry import logger`.
-4. Update this README with the new example.
-5. Ensure examples are self-contained and runnable where possible.
-6. Follow the established patterns for path resolution and `example_utils`.
-
----
-
-**Happy coding with pyvider-cty!** 🐍🚀

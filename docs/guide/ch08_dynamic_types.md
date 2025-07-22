@@ -4,7 +4,7 @@ The `CtyDynamic` type is a special type in `pyvider.cty` that can represent any 
 
 ## The `CtyDynamic` Type
 
-You can use the `CtyDynamic` type to create a type that can accept any valid `cty` value:
+When you validate a value against a `CtyDynamic` type, the resulting `cty` value will have the most specific type that can be inferred from the raw Python value.
 
 ```python
 from pyvider.cty import CtyDynamic, CtyString, CtyNumber
@@ -13,35 +13,40 @@ dynamic_type = CtyDynamic()
 
 # Validate a string
 cty_string = dynamic_type.validate("hello")
-assert isinstance(cty_string.type, CtyString)
+# The resulting value is a CtyDynamic that wraps a CtyString
+assert isinstance(cty_string.value.type, CtyString)
 
 # Validate a number
 cty_number = dynamic_type.validate(123)
-assert isinstance(cty_number.type, CtyNumber)
+assert isinstance(cty_number.value.type, CtyNumber)
 ```
-
-When you validate a value against a `CtyDynamic` type, the resulting `cty` value will have the most specific type that can be inferred from the raw Python value.
-
-## Use Cases for `CtyDynamic`
-
-The `CtyDynamic` type is particularly useful in the following scenarios:
-
-*   **Working with Unstructured Data**: If you are working with data that does not have a fixed schema, you can use the `CtyDynamic` type to represent it.
-
-*   **Building Generic Functions**: You can use the `CtyDynamic` type to build generic functions that can operate on any type of `cty` value.
-
-*   **Delayed Type-Checking**: In some cases, you may want to defer type-checking until a later stage in your data processing pipeline. You can use the `CtyDynamic` type to represent the data in the intermediate stages, and then perform the final validation at the end.
 
 ## `CtyDynamic` in Collections
 
-You can also use the `CtyDynamic` type within collection and structural types:
+You can also use the `CtyDynamic` type within collection and structural types. This is powerful for creating flexible data structures.
+
+### Example: Tuple with a Dynamic Element
+
+Here we define a tuple where the last element can be of any type.
 
 ```python
-from pyvider.cty import CtyList, CtyDynamic
+from pyvider.cty import CtyDynamic, CtyNumber, CtyObject, CtyString, CtyTuple
 
-# A list of any type of value
-dynamic_list_type = CtyList(element_type=CtyDynamic())
+# 1. Define a tuple type with a dynamic last element.
+coordinate_type = CtyTuple(
+    element_types=(CtyString(), CtyNumber(), CtyNumber(), CtyDynamic())
+)
 
-# Validate a list with mixed types
-cty_list = dynamic_list_type.validate(["hello", 123, True])
+# 2. Create raw data that matches the tuple's structure.
+point_data = ("GPS", 37.7749, -122.4194, {"accuracy": 10})
+
+# 3. Validate the data.
+validated_tuple = coordinate_type.validate(point_data)
+
+# 4. Access the dynamic element.
+# CtyDynamic.validate infers the most specific type, which is CtyObject here.
+metadata_val = validated_tuple
+print(f"Metadata Type (inferred): {metadata_val.value.type}")
+print(f"Metadata is an object: {isinstance(metadata_val.value.type, CtyObject)}")
+print(f"Metadata accuracy: {metadata_val.value['accuracy'].raw_value}")
 ```
