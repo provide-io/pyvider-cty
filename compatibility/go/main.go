@@ -308,8 +308,8 @@ func verifyFixtures(fixtureDir string) {
 		}
 
 		if entry.IsUnknown {
-			if !deserializedVal.IsUnknown() {
-				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Unknown, but is not", "case", name)
+			if deserializedVal.IsKnown() {
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Unknown, but is Known", "case", name)
 				failures++
 			}
 		} else if entry.IsNull {
@@ -318,6 +318,11 @@ func verifyFixtures(fixtureDir string) {
 				failures++
 			}
 		} else {
+			if !deserializedVal.IsKnown() {
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Known, but is Unknown", "case", name)
+				failures++
+				continue
+			}
 			expectedVal, err := buildExpectedValue(ty, entry.Value)
 			if err != nil {
 				logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to build expected value", "case", name, "error", err)

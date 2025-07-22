@@ -37,9 +37,15 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             val_id = id(val_to_process)
             processing.remove(val_id)
 
+            # Robustness check for malformed collection values
+            if isinstance(val_to_process.type, CtyList | CtySet | CtyTuple | CtyMap | CtyObject) and not hasattr(val_to_process.value, "__iter__"):
+                if isinstance(val_to_process.type, CtyList): results[val_id] = []
+                elif isinstance(val_to_process.type, CtySet): results[val_id] = []
+                elif isinstance(val_to_process.type, CtyTuple): results[val_id] = ()
+                elif isinstance(val_to_process.type, CtyMap | CtyObject): results[val_id] = {}
+                continue
+
             if isinstance(val_to_process.type, CtyDynamic):
-                # It's a wrapper. Its inner value must have been processed.
-                # Link the inner value's native result to the wrapper's ID.
                 inner_id = id(val_to_process.value)
                 results[val_id] = results[inner_id]
             elif isinstance(val_to_process.type, CtyObject | CtyMap):
@@ -74,29 +80,26 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
         if item_id in results or item_id in processing:
             continue
 
-        # For ANY non-primitive, use the sentinel pattern to process its children/inner value first.
         if isinstance(
             current_item.type,
             CtyObject | CtyMap | CtyList | CtySet | CtyTuple | CtyDynamic,
         ):
             processing.add(item_id)
-            work_stack.extend([current_item, POST_PROCESS])  # Push self and sentinel
+            work_stack.extend([current_item, POST_PROCESS])
 
             if isinstance(current_item.type, CtyDynamic):
-                work_stack.append(current_item.value)  # Push inner value
-            else:  # It's a standard container
+                work_stack.append(current_item.value)
+            elif hasattr(current_item.value, "__iter__"): # Robustness check
                 child_values = (
                     list(current_item.value.values())
                     if isinstance(current_item.value, dict)
                     else list(current_item.value)
-                    if hasattr(current_item.value, "__iter__")
-                    else []
                 )
-                work_stack.extend(reversed(child_values))  # Push children in reverse
-        else:  # Primitive types
+                work_stack.extend(reversed(child_values))
+        else:
             inner_val = current_item.value
             if isinstance(inner_val, Decimal):
-                if inner_val.as_tuple().exponent >= 0:  # type: ignore
+                if inner_val.as_tuple().exponent >= 0:
                     results[item_id] = int(inner_val)
                 else:
                     results[item_id] = float(inner_val)

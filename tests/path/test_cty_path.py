@@ -209,3 +209,35 @@ class TestPath:
     def test_string_representation(self) -> None:
         path = CtyPath.get_attr("users").index_step(1).key_step("name")
         assert str(path) == "users[1]['name']"
+
+class TestCtyPathStringRepresentation:
+    """
+    Tests for the human-readable string representation of CtyPath objects,
+    which is crucial for clear diagnostic messages.
+    """
+
+    def test_empty_path_representation(self) -> None:
+        path = CtyPath.empty()
+        assert str(path) == "(root)"
+
+    def test_simple_attribute_path(self) -> None:
+        path = CtyPath.get_attr("user")
+        assert str(path) == "user"
+
+    def test_complex_mixed_path(self) -> None:
+        path = (
+            CtyPath.get_attr("users")
+            .index_step(0)
+            .child("addresses")
+            .key_step("home")
+            .child("zip")
+        )
+        assert str(path) == "users[0].addresses['home'].zip"
+
+    def test_path_starting_with_index(self) -> None:
+        path = CtyPath.index(0).child("name")
+        assert str(path) == "[0].name"
+
+    def test_path_with_only_key(self) -> None:
+        path = CtyPath.key("config-key")
+        assert str(path) == "['config-key']"

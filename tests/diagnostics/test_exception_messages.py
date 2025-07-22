@@ -63,5 +63,4 @@ class TestValidationExceptionStructure:
         type_mismatch = CtyTypeMismatchError(
             "mismatch", actual_type=CtyString(), expected_type=CtyNumber()
         )
-        # FIX: The __str__ of a CtyType is its lowercase name, not its class name.
         assert "Expected number, got string" in str(type_mismatch)

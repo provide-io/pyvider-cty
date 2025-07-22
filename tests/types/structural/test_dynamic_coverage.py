@@ -10,5 +10,5 @@ def test_validate_with_wire_format_invalid_json() -> None:
     assert isinstance(result.type, CtyDynamic)
     assert isinstance(result.value.type, CtyList)
     assert result.value.type.element_type.equal(CtyString())
-    # The raw value should contain the original bytes object
-    assert result.raw_value == [b"{not-json}", "hello"]
+    # The raw value should contain the original bytes object, which gets decoded
+    assert result.raw_value == ["{not-json}", "hello"]

@@ -1,26 +1,49 @@
 # pyvider-cty/src/pyvider/cty/functions/__init__.py
 # This file makes the 'functions' module a package.
 
-# Optionally, you can import functions here to make them available
-# directly from pyvider.cty.functions, e.g.:
+from .bytes_functions import byteslen, bytesslice
 from .collection_functions import (
+    chunklist,
+    coalescelist,
+    compact,
     concat,
     contains,
     distinct,
+    element,
     flatten,
+    hasindex,
+    index,
     keys,
     length,
+    lookup,
+    merge,
+    reverse,
+    setproduct,
     slice,
     sort,
     values,
+    zipmap,
+)
+from .comparison_functions import (
+    equal,
+    greater_than,
+    greater_than_or_equal_to,
+    less_than,
+    less_than_or_equal_to,
+    max_fn,
+    min_fn,
+    not_equal,
 )
 from .conversion_functions import to_bool, to_number, to_string
+from .datetime_functions import formatdate, timeadd
+from .encoding_functions import csvdecode, jsondecode, jsonencode
 from .numeric_functions import (
     abs_fn,
     add,
     ceil_fn,
     divide,
     floor_fn,
+    int_fn,
     log_fn,
     modulo,
     multiply,
@@ -33,9 +56,13 @@ from .numeric_functions import (
 from .string_functions import (
     chomp,
     indent,
+    join,
     lower,
     regex,
     regexall,
+    regexreplace,
+    replace,
+    split,
     strrev,
     substr,
     title,
@@ -45,42 +72,68 @@ from .string_functions import (
     trimsuffix,
     upper,
 )
-
-# It's common to alias functions to their typical names (e.g., abs_fn to abs)
-# but this can cause conflicts with Python built-ins if not handled carefully.
-# For now, keeping the _fn suffix for clarity or until a robust registration/namespacing is in place.
+from .structural_functions import coalesce
 
 __all__ = [
     "abs_fn",
-    # Numeric functions
     "add",
+    "byteslen",
+    "bytesslice",
     "ceil_fn",
-    # String functions
     "chomp",
+    "chunklist",
+    "coalesce",
+    "coalescelist",
+    "compact",
     "concat",
     "contains",
+    "csvdecode",
     "distinct",
     "divide",
+    "element",
+    "equal",
     "flatten",
     "floor_fn",
+    "formatdate",
+    "greater_than",
+    "greater_than_or_equal_to",
+    "hasindex",
+    "index",
     "indent",
+    "int_fn",
+    "join",
+    "jsondecode",
+    "jsonencode",
     "keys",
     "length",
+    "less_than",
+    "less_than_or_equal_to",
     "log_fn",
+    "lookup",
     "lower",
+    "max_fn",
+    "merge",
+    "min_fn",
     "modulo",
     "multiply",
     "negate",
+    "not_equal",
     "parseint_fn",
     "pow_fn",
     "regex",
     "regexall",
+    "regexreplace",
+    "replace",
+    "reverse",
+    "setproduct",
     "signum_fn",
     "slice",
     "sort",
+    "split",
     "strrev",
     "substr",
     "subtract",
+    "timeadd",
     "title",
     "to_bool",
     "to_number",
@@ -91,4 +144,5 @@ __all__ = [
     "trimsuffix",
     "upper",
     "values",
+    "zipmap",
 ]

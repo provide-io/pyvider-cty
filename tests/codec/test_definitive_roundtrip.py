@@ -46,9 +46,6 @@ def assert_value_roundtrip(value: CtyValue) -> None:
 
         original_unmarked = deep_unmark(value)
 
-        # DEFINITIVE FIX: The unpacked value will always be a CtyDynamic wrapper.
-        # We must compare its inner value to the original concrete value.
-        # If the original was already dynamic, we compare wrapper to wrapper.
         value_to_compare = unpacked
         if not isinstance(original_unmarked.type, CtyDynamic):
             value_to_compare = unpacked.value
