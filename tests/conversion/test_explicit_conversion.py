@@ -58,7 +58,7 @@ class TestConvertFunction:
             (
                 CtyValue(CtyTuple(element_types=(CtyString(), CtyNumber())), ("a", 1)),
                 CtyList(element_type=CtyDynamic()),
-                [CtyValue(CtyString(), "a"), CtyValue(CtyNumber(), 1)],
+                [CtyDynamic().validate("a"), CtyDynamic().validate(1)],
             ),
             (CtyValue(CtyNumber(), 42), CtyDynamic(), CtyValue(CtyNumber(), 42)),
             (CtyValue.null(CtyString()), CtyNumber(), None),
@@ -196,8 +196,6 @@ class TestUnifyFunction:
                     CtyObject({}),
                     CtyObject({"a": CtyString()}),
                 ],
-                # FIX: Corrected expectation. The presence of an empty object
-                # forces the result to be an empty object.
                 CtyObject({}),
             ),
         ],

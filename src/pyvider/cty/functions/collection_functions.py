@@ -53,15 +53,21 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
     result_elements = []
     final_element_type: CtyType[Any] | None = None
     for outer_element_val in input_val.value:  # type: ignore
-        if outer_element_val.is_null:
+        
+        # Unwrap dynamic values to check the inner type
+        inner_val = outer_element_val
+        if isinstance(inner_val.type, CtyDynamic):
+            inner_val = inner_val.value
+
+        if inner_val.is_null:
             continue
-        if outer_element_val.is_unknown:
+        if inner_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-        if not isinstance(outer_element_val.type, CtyList | CtyTuple):
+        if not isinstance(inner_val.type, CtyList | CtyTuple):
             raise CtyFunctionError(
-                f"flatten: all elements must be lists or tuples; found {outer_element_val.type.ctype}"
+                f"flatten: all elements must be lists or tuples; found {inner_val.type.ctype}"
             )
-        for inner_element_val in outer_element_val.value:
+        for inner_element_val in inner_val.value:
             if final_element_type is None:
                 final_element_type = inner_element_val.type
             elif not final_element_type.equal(inner_element_val.type):
@@ -99,6 +105,7 @@ def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
                 f"sort: cannot sort list with null or unknown elements at index {i}."
             )
 
+    # Sort by the underlying raw value, not the CtyValue object itself.
     return CtyList[Any](element_type=element_type).validate(
         sorted(input_val.value, key=lambda x: x.value)
     )

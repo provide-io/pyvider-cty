@@ -1,11 +1,14 @@
-from pyvider.cty.types import CtyList, CtyString
-from pyvider.cty.types.structural.dynamic import CtyDynamic
+from pyvider.cty.types import CtyDynamic, CtyList, CtyString
 
 
 def test_validate_with_wire_format_invalid_json() -> None:
     dynamic_type = CtyDynamic()
     value = [b"{not-json}", "hello"]
     result = dynamic_type.validate(value)
-    assert result.type.equal(CtyList(element_type=CtyString()))
-    assert result.value[0].value == "{not-json}"
-    assert result.value[1].value == "hello"
+    
+    # The result should be a CtyDynamic value wrapping a CtyList
+    assert isinstance(result.type, CtyDynamic)
+    assert isinstance(result.value.type, CtyList)
+    assert result.value.type.element_type.equal(CtyString())
+    # The raw value should contain the original bytes object
+    assert result.raw_value == [b"{not-json}", "hello"]
