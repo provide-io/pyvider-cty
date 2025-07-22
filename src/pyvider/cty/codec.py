@@ -140,3 +140,15 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
                 pass
     
     return _unpacked_to_cty(raw_unpacked, cty_type)
+
+
+def cty_to_json(value: "CtyValue[Any]") -> bytes:
+    serializable_data = _convert_value_to_serializable(value, value.type)
+    return json.dumps(serializable_data).encode("utf-8")
+
+
+def cty_from_json(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
+    if not data:
+        return CtyValue.null(cty_type)
+    raw_unpacked = json.loads(data)
+    return _unpacked_to_cty(raw_unpacked, cty_type)
