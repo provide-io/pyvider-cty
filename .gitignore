@@ -395,8 +395,3 @@ result.json
 *.
 
 *-cty-*.json
-code.sh
-*.msgpack
-
-# Log files
-logs/

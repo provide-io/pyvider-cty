@@ -1,4 +1,4 @@
-# Chapter 15: Terraform Interoperability
+# Chapter 14: Terraform Interoperability
 
 `pyvider.cty` is designed to be compatible with Terraform's type system. This allows you to work with Terraform configurations and state files in a type-safe way.
 

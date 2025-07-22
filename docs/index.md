@@ -30,13 +30,10 @@ This is the main, chapter-based guide to learning and using `pyvider.cty`.
 *   [Chapter 11: Functions](./guide/ch11_functions.md)
 *   [Chapter 12: Serialization (JSON and Msgpack)](./guide/ch12_serialization.md)
 *   [Chapter 13: Path Navigation](./guide/ch19_path_navigation.md)
-*   [Chapter 14: Context Management](./guide/ch20_context_management.md)
-*   [Chapter 15: Terraform Interoperability](./guide/ch21_terraform_interop.md)
+*   [Chapter 14: Terraform Interoperability](./guide/ch21_terraform_interop.md)
 
 **Part 4: Reference & Further Information**
-*   [Chapter 16: API Reference](./guide/ch16_api_reference.md)
-*   [Chapter 17: Configuration Variables](./guide/ch17_configuration_variables.md)
-*   [Chapter 18: Troubleshooting](./guide/ch18_troubleshooting.md)
-*   [Chapter 19: Glossary](./guide/ch19_glossary.md)
-*   [Chapter 20: Comparison with Go-Cty](./guide/ch20_go_cty_comparison.md)
-*   [Chapter 21: Contributing](./guide/ch21_contributing.md)
+*   [Chapter 15: API Reference](./guide/ch16_api_reference.md)
+*   [Chapter 16: Troubleshooting](./guide/ch18_troubleshooting.md)
+*   [Chapter 17: Glossary](./guide/ch19_glossary.md)
+*   [Chapter 18: Comparison with Go-Cty](./guide/ch20_go_cty_comparison.md)
