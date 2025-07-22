@@ -90,7 +90,7 @@ def test_msgpack_serialization_from_python_to_go(tmp_path_factory, pytestconfig)
     # 2. Run the Python generator script to create fixtures and manifest
     try:
         subprocess.run(
-            [sys.executable, str(python_generator_script), "-d", str(py_fixture_dir)],
+            [sys.executable, str(python_generator_script), "--directory", str(py_fixture_dir)],
             check=True, capture_output=True, text=True
         )
     except subprocess.CalledProcessError as e:

@@ -37,9 +37,9 @@ def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
     
     f = io.StringIO(val.value)
-    reader = csv.DictReader(f)
     try:
+        reader = csv.DictReader(f)
         rows = list(reader)
         return CtyList(element_type=CtyDynamic()).validate(rows)
-    except csv.Error as e:
+    except Exception as e:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
