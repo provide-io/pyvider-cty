@@ -1,4 +1,4 @@
-# Chapter 16: API Reference
+# Chapter 15: API Reference
 
 This chapter provides a reference for the key public classes, functions, and interfaces in the `pyvider.cty` library.
 

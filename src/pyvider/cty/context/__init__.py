@@ -7,14 +7,15 @@ context within the CTY system, which can influence how types and values are
 processed or validated.
 """
 
-from pyvider.cty.context.operation_context import (
-    OperationContext,
-    get_current_operation,
-    operation_context,
+
+from pyvider.cty.context.validation_context import (
+    MAX_VALIDATION_DEPTH,
+    deeper_validation,
+    get_validation_depth,
 )
 
 __all__ = [
-    "OperationContext",
-    "get_current_operation",
-    "operation_context",
+    "MAX_VALIDATION_DEPTH",
+    "deeper_validation",
+    "get_validation_depth",
 ]
