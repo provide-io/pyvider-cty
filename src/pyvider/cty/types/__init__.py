@@ -11,6 +11,7 @@ implementations such as primitives (string, number, bool), collections
 
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.capsule import CtyCapsule, CtyCapsuleWithOps
+from pyvider.cty.types.capsule_types import BytesCapsule
 from pyvider.cty.types.collections import (
     CtyList,
     CtyMap,
@@ -28,6 +29,7 @@ from pyvider.cty.types.structural import (
 )
 
 __all__ = [
+    "BytesCapsule",
     "CtyBool",
     "CtyCapsule",
     "CtyCapsuleWithOps",

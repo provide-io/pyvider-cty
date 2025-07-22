@@ -18,6 +18,7 @@ from .exceptions import (
 from .marks import CtyMark
 from .parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
 from .types import (
+    BytesCapsule,
     CtyBool,
     CtyCapsule,
     CtyCapsuleWithOps,
@@ -34,6 +35,7 @@ from .types import (
 from .values import CtyValue
 
 __all__ = [
+    "BytesCapsule",
     "CtyAttributeValidationError",
     "CtyBool",
     "CtyCapsule",

@@ -65,6 +65,34 @@ class CtyValue[T]:
             and self.value == other.value
         )
 
+    def _check_comparable(self, other: object) -> CtyValue[Any]:
+        from ..types import CtyNumber, CtyString
+        if not isinstance(other, CtyValue):
+            raise TypeError(f"Cannot compare CtyValue with {type(other).__name__}")
+        if self.is_unknown or self.is_null or other.is_unknown or other.is_null:
+            raise TypeError("Cannot compare null or unknown values")
+        if not self.type.equal(other.type):
+            raise TypeError(f"Cannot compare CtyValues of different types: {self.type} and {other.type}")
+        if not isinstance(self.type, (CtyNumber, CtyString)):
+             raise TypeError(f"Value of type {self.type} is not comparable")
+        return other
+
+    def __lt__(self, other: object) -> bool:
+        other_val = self._check_comparable(other)
+        return self.value < other_val.value
+
+    def __le__(self, other: object) -> bool:
+        other_val = self._check_comparable(other)
+        return self.value <= other_val.value
+
+    def __gt__(self, other: object) -> bool:
+        other_val = self._check_comparable(other)
+        return self.value > other_val.value
+
+    def __ge__(self, other: object) -> bool:
+        other_val = self._check_comparable(other)
+        return self.value >= other_val.value
+
     def __contains__(self, item: Any) -> bool:
         if self.is_unknown or self.is_null:
             return False

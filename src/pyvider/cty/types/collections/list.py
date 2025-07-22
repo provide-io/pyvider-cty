@@ -95,7 +95,11 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 raise CtyListValidationError(
                     f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}"
                 )
-            return self.element_type.validate(container.value[index])
+            try:
+                return self.element_type.validate(container.value[index])
+            except TypeError as e:
+                raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
+
         raise CtyListValidationError(
             f"Expected CtyValue[CtyList], got {type(container).__name__}"
         )
