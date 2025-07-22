@@ -29,14 +29,17 @@ This is the main, chapter-based guide to learning and using `pyvider.cty`.
 *   [Chapter 10: Marks](./guide/ch10_marks.md)
 *   [Chapter 11: Functions](./guide/ch11_functions.md)
 *   [Chapter 12: Serialization (JSON and Msgpack)](./guide/ch12_serialization.md)
+*   [Chapter 13: Path Navigation](./guide/ch19_path_navigation.md)
+*   [Chapter 14: Context Management](./guide/ch20_context_management.md)
+*   [Chapter 15: Terraform Interoperability](./guide/ch21_terraform_interop.md)
 
 **Part 4: Reference & Further Information**
-*   [Chapter 13: API Reference](./guide/ch13_api_reference.md)
-*   [Chapter 14: Configuration Variables](./guide/ch14_configuration_variables.md)
-*   [Chapter 15: Troubleshooting](./guide/ch15_troubleshooting.md)
-*   [Chapter 16: Glossary](./guide/ch16_glossary.md)
-*   [Chapter 17: Comparison with Go-Cty](./guide/ch17_go_cty_comparison.md)
-*   [Chapter 18: Contributing to Pyvider Cty](./guide/ch18_contributing.md)
+*   [Chapter 16: API Reference](./guide/ch14_api_reference.md)
+*   [Chapter 17: Configuration Variables](./guide/ch15_configuration_variables.md)
+*   [Chapter 18: Troubleshooting](./guide/ch16_troubleshooting.md)
+*   [Chapter 19: Glossary](./guide/ch17_glossary.md)
+*   [Chapter 20: Comparison with Go-Cty](./guide/ch18_go_cty_comparison.md)
+*   [Chapter 21: Contributing to Pyvider Cty](./guide/ch19_contributing.md)
 
 
 ## 🚀 Additional Resources
