@@ -65,6 +65,10 @@ def cty_to_manifest_native(value: CtyValue) -> Any:
     if value.is_null or value.is_unknown:
         return None
     
+    # If the value is dynamic, recurse on its inner value
+    if isinstance(value.type, CtyDynamic):
+        return cty_to_manifest_native(value.value)
+
     val = value.value
     if isinstance(val, Decimal):
         return str(val)

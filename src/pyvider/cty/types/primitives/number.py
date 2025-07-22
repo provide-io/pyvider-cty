@@ -34,6 +34,9 @@ class CtyNumber(CtyType[Decimal]):
 
         if isinstance(raw_value, bool):
             raw_value = 1 if raw_value else 0
+        
+        if isinstance(raw_value, bytes):
+            raw_value = raw_value.decode('utf-8')
 
         try:
             return CtyValue(vtype=self, value=Decimal(raw_value))  # type: ignore

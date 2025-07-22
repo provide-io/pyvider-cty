@@ -154,10 +154,8 @@ class CtyValue[T]:
             if self.type.hash_fn:
                 return self.type.hash_fn(self.value)
 
-        # DEFINITIVE FIX: Tuples are hashable if their contents are.
-        # Other collections (list, set, map, object) are not.
         if isinstance(self.vtype, CtyTuple):
-            pass  # Allow fall-through to the general hashing logic
+            pass
         elif isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
             raise TypeError(f"unhashable type: 'CtyValue[{self.vtype.ctype}]'")
 

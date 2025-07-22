@@ -307,7 +307,6 @@ func verifyFixtures(fixtureDir string) {
 			continue
 		}
 
-		// DEFINITIVE FIX: Use the correct method calls IsUnknown() and IsNull()
 		if entry.IsUnknown {
 			if !deserializedVal.IsUnknown() {
 				logger.Log(hclog.Error, "🔍", "📊", "❌", "Value should be Unknown, but is not", "case", name)

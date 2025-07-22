@@ -5,7 +5,7 @@ from typing import Any
 import msgpack  # type: ignore
 
 from .conversion import encode_cty_type_to_wire_json
-from .exceptions import DeserializationError
+from .exceptions import CtyValidationError, DeserializationError
 from .parser import parse_tf_type_to_ctytype
 from .types import (
     CtyDynamic,
@@ -131,24 +131,17 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
         if isinstance(raw_unpacked, list) and len(raw_unpacked) == 2 and isinstance(raw_unpacked[0], bytes):
             try:
                 type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
+                # If JSON is malformed, JSONDecodeError will be raised and caught.
+                # The logic will then fall through to the final _unpacked_to_cty call.
+                
+                # These will raise CtyValidationError if the type spec is invalid,
+                # which is the desired behavior to not silently ignore errors.
                 actual_type = parse_tf_type_to_ctytype(type_spec)
-                # DEFINITIVE FIX: When deserializing a dynamic value, the result must be a
-                # CtyValue of type CtyDynamic that WRAPS the concrete value.
                 inner_value = actual_type.validate(raw_unpacked[1])
                 return CtyValue(vtype=cty_type, value=inner_value)
-            except Exception:
+            except json.JSONDecodeError:
+                # If type spec is not valid JSON, it's not a dynamic value wire format.
+                # Fall through to treat it as a regular list.
                 pass
     
-    return _unpacked_to_cty(raw_unpacked, cty_type)
-
-
-def cty_to_json(value: "CtyValue[Any]") -> bytes:
-    serializable_data = _convert_value_to_serializable(value, value.type)
-    return json.dumps(serializable_data).encode("utf-8")
-
-
-def cty_from_json(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
-    if not data:
-        return CtyValue.null(cty_type)
-    raw_unpacked = json.loads(data)
     return _unpacked_to_cty(raw_unpacked, cty_type)

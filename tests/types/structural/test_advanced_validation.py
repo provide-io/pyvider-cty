@@ -21,4 +21,4 @@ class TestAdvancedCtyValidation:
         unpacked_val = cty_from_msgpack(packed_bytes, schema)
 
         # The unpacked value is a CtyDynamic wrapper. Compare its inner value.
-        assert dynamic_val == unpacked_val.value
+        assert dynamic_val.value == unpacked_val.value
