@@ -25,13 +25,13 @@ class CtyDynamic(CtyType[object]):
         from pyvider.cty.values import CtyValue
 
         if isinstance(value, CtyValue):
-            # If it's already a CtyValue, just wrap it.
+            if isinstance(value.type, CtyDynamic):
+                return value
             return CtyValue(vtype=self, value=value)
 
         if value is None:
             return CtyValue.null(self)
 
-        # Check for the special wire format: a list of [type_spec_bytes, value].
         if isinstance(value, list) and len(value) == 2 and isinstance(value[0], bytes):
             try:
                 type_spec = json.loads(value[0].decode("utf-8"))
@@ -39,11 +39,8 @@ class CtyDynamic(CtyType[object]):
                 concrete_value = actual_type.validate(value[1])
                 return CtyValue(vtype=self, value=concrete_value)
             except Exception:
-                # If decoding fails, it's not the special wire format.
-                # Fall through to the standard inference logic below.
                 pass
 
-        # If it's not the wire format, infer the type from the raw Python value.
         inferred_type = infer_cty_type_from_raw(value)
         concrete_value = inferred_type.validate(value)
         return CtyValue(vtype=self, value=concrete_value)

@@ -37,7 +37,6 @@ class CtySet[T](CtyType[frozenset[T]]):
         validated_items: set[CtyValue[Any]] = set()
         for raw_item in value:
             try:
-                # FIX: Validate each item first to get a hashable CtyValue
                 validated_item = self.element_type.validate(raw_item)
                 validated_items.add(validated_item)
             except TypeError as e:

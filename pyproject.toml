@@ -4,8 +4,8 @@
 
 [project]
 name = "pyvider-cty"
-description = "pyvider.cty - core data types and serialization."
-version = "0.0.11"
+description = "Pyvider Cty Package - Core data types and serialization."
+version = "0.0.111"
 requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -71,6 +71,10 @@ asyncio_mode = "auto"
 pythonpath = ["src", "."]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "benchmark: mark test as a performance benchmark",
+    "compat: mark test as a cross-language compatibility test",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:cannot collect test class.*:pytest.PytestCollectionWarning",

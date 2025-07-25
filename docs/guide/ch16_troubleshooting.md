@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:docs/guide/ch17_troubleshooting.md
-# Chapter 17: Troubleshooting
-========
 # Chapter 16: Troubleshooting
->>>>>>>> mono-cty:docs/guide/ch16_troubleshooting.md
 
 This chapter provides guidance on common issues you might encounter while using `pyvider.cty`.
 

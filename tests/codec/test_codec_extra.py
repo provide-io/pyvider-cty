@@ -35,7 +35,8 @@ def test_serialize_dynamic_with_raw_python_value():
     # The first element is the type spec, the second is the serialized value.
     assert isinstance(unpacked, list)
     assert len(unpacked) == 2
-    assert b'"object"' in unpacked[0]  # Check that the inferred type is an object
+    # CORRECTED: A dict with uniform value types should be inferred as a map.
+    assert b'["map", "string"]' == unpacked[0]
     assert unpacked[1] == {"key": "value"}
 
 
