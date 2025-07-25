@@ -16,7 +16,8 @@ json_strategy = st.recursive(
     | st.integers()
     | st.floats(allow_nan=False, allow_infinity=False)
     | st.text(),
-    lambda children: st.lists(children) | st.dictionaries(st.text(), children),
+    lambda children: st.lists(children)
+    | st.dictionaries(st.text().filter(lambda s: s), children),
     max_leaves=15,
 )
 

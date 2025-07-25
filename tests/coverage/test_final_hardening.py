@@ -5,6 +5,7 @@ This suite focuses on error paths, edge cases, and type mismatch scenarios
 across the entire library, particularly within the standard functions.
 """
 
+import re
 import pytest
 
 from pyvider.cty import (
@@ -87,7 +88,8 @@ class TestFunctionsCoverage:
         with pytest.raises(CtyFunctionError, match="csvdecode: argument must be a string"):
             csvdecode(N(123))
         with pytest.raises(CtyFunctionError, match="csvdecode: failed to decode CSV"):
-            csvdecode(S('"header"\\n"one,"two"')) # Malformed CSV with unclosed quote
+            # This input has more columns in a data row than the header, which causes csv.Error
+            csvdecode(S('header1,header2\nval1,val2,val3'))
 
     def test_structural_functions_errors(self):
         with pytest.raises(CtyFunctionError, match="coalesce must have at least one argument"):

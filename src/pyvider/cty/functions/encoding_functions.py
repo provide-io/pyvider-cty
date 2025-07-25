@@ -38,6 +38,7 @@ def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     
     f = io.StringIO(val.value)
     try:
+        # The csv module can raise csv.Error for malformed data
         reader = csv.DictReader(f)
         rows = list(reader)
         return CtyList(element_type=CtyDynamic()).validate(rows)

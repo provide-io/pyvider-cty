@@ -62,7 +62,6 @@ def convert(value: CtyValue, target_type: CtyType) -> CtyValue[Any]:
         return value.with_marks(value.marks)
 
     if isinstance(target_type, CtyString):
-        # FINAL FIX: Explicitly prevent capsules from being converted to strings via str().
         if not isinstance(value.type, CtyCapsule):
             raw = value.value
             if isinstance(raw, bool):

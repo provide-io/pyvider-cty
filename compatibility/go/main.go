@@ -233,6 +233,13 @@ func parseCtyType(data json.RawMessage) (cty.Type, error) {
 }
 
 func buildExpectedValue(ty cty.Type, valData json.RawMessage, path []string) (cty.Value, error) {
+	var sentinel map[string]string
+	if err := json.Unmarshal(valData, &sentinel); err == nil {
+		if val, ok := sentinel["$pyvider-cty-special-value"]; ok && val == "unknown" {
+			return cty.UnknownVal(ty), nil
+		}
+	}
+
 	if ty.IsPrimitiveType() {
 		switch ty {
 		case cty.String:
@@ -348,8 +355,12 @@ func verifyFixtures(fixtureDir string) {
 				failures++
 				continue
 			}
-			if !deserializedVal.Equals(expectedVal).True() {
-				logger.Log(hclog.Error, "🔍", "📊", "❌", "Deserialized value does not equal expected value", "path", strings.Join(path, ""), "expected", expectedVal.GoString(), "got", deserializedVal.GoString())
+			
+			eqResult := deserializedVal.Equals(expectedVal)
+			if !(eqResult.IsKnown() && eqResult.True()) {
+				logger.Log(hclog.Error, "🔍", "📊", "❌", "Deserialized value does not equal expected value", "path", strings.Join(path, ""))
+				logger.Log(hclog.Error, "🔍", "📊", "➡️", "Expected", "value", expectedVal.GoString())
+				logger.Log(hclog.Error, "🔍", "📊", "⬅️", "Got", "value", deserializedVal.GoString())
 				failures++
 			}
 		}

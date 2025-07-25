@@ -5,9 +5,6 @@ from typing import Any
 
 import attrs
 
-# NOTE: Do NOT import from pyvider.cty.types at the top level.
-# This is the root of the circular import problem.
-# We will import them locally inside the functions that need them.
 from pyvider.cty.types import CtyType
 
 
@@ -62,8 +59,9 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         CtyTuple,
         CtyType,
     )
+    from pyvider.cty.values import CtyValue
 
-    if hasattr(value, "vtype") or isinstance(value, CtyType):
+    if isinstance(value, CtyValue) or isinstance(value, CtyType):
         return CtyDynamic()
     if value is None:
         return CtyDynamic()
@@ -85,18 +83,33 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
             processing.remove(container_id)
 
             if isinstance(container, dict):
-                if all(isinstance(k, str) and k.isidentifier() for k in container):
-                    attr_types = {
-                        k: results.get(id(v), CtyDynamic())
-                        for k, v in container.items()
-                    }
-                    results[container_id] = CtyObject(attribute_types=attr_types)
-                else:
-                    value_types = {
-                        results.get(id(v), CtyDynamic()) for v in container.values()
-                    }
-                    unified_value_type = _unify_types(value_types)
+                if not all(isinstance(k, str) for k in container):
+                    results[container_id] = CtyMap(element_type=CtyDynamic())
+                    continue
+
+                value_types: set[CtyType[Any]] = set()
+                for v in container.values():
+                    if isinstance(v, CtyValue):
+                        value_types.add(v.type)
+                    else:
+                        value_types.add(results.get(id(v), CtyDynamic()))
+
+                unified_value_type = _unify_types(value_types)
+
+                # If all values unify to a single, non-dynamic type, it's a map.
+                # Otherwise, it's an object. This is the corrected logic.
+                is_mappable = not isinstance(unified_value_type, CtyDynamic)
+
+                if is_mappable:
                     results[container_id] = CtyMap(element_type=unified_value_type)
+                else:
+                    attr_types = {}
+                    for k, v in container.items():
+                        if isinstance(v, CtyValue):
+                            attr_types[k] = v.type
+                        else:
+                            attr_types[k] = results.get(id(v), CtyDynamic())
+                    results[container_id] = CtyObject(attribute_types=attr_types)
             elif isinstance(container, tuple):
                 element_types_tuple = tuple(
                     results.get(id(item), CtyDynamic()) for item in container
@@ -130,8 +143,9 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         if item_id in results or item_id in processing:
             continue
 
-        if attrs.has(type(current_item)):
-            current_item = _attrs_to_dict_safe(current_item)
+        if isinstance(current_item, CtyValue):
+            results[item_id] = current_item.type
+            continue
 
         if not isinstance(current_item, dict | list | tuple | set):
             if isinstance(current_item, bool):

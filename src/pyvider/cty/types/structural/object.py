@@ -106,7 +106,6 @@ class CtyObject(CtyType[dict[str, object]]):
                     e.message, value=raw_attr_value, path=new_path, original_exception=e
                 ) from e
 
-            # DEFINITIVE FIX: A required attribute cannot be null. An optional one can.
             if (
                 name not in self.optional_attributes
                 and validated_attr.is_null

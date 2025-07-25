@@ -7,6 +7,7 @@ import msgpack  # type: ignore
 from .conversion import encode_cty_type_to_wire_json
 from .exceptions import CtyValidationError, DeserializationError
 from .parser import parse_tf_type_to_ctytype
+from pyvider.telemetry import logger
 from .types import (
     CtyDynamic,
     CtyList,
@@ -71,14 +72,15 @@ def _serialize_unknown(value: "CtyValue[Any]") -> Any:
 
 
 def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
-    inner_value = value.value if isinstance(value.type, CtyDynamic) else value
-    if isinstance(inner_value, CtyValue):
-        actual_type = inner_value.type
-        serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
-    else:
+    inner_value = value.value
+    if not isinstance(inner_value, CtyValue):
         from .conversion.raw_to_cty import infer_cty_type_from_raw
-        actual_type = infer_cty_type_from_raw(inner_value)
-        serializable_inner = _convert_value_to_serializable(actual_type.validate(inner_value), actual_type)
+        inferred_type = infer_cty_type_from_raw(inner_value)
+        inner_value = inferred_type.validate(inner_value)
+
+    actual_type = inner_value.type
+    serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
+    
     type_spec_json = encode_cty_type_to_wire_json(actual_type)
     type_spec_bytes = json.dumps(type_spec_json).encode("utf-8")
     return [type_spec_bytes, serializable_inner]
@@ -87,7 +89,12 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
 def _convert_value_to_serializable(value: "CtyValue[Any]", schema: "CtyType[Any]") -> Any:
     if not isinstance(value, CtyValue): value = schema.validate(value)
     if value.is_unknown: return _serialize_unknown(value)
-    if value.is_null: return None
+    if value.is_null:
+        if isinstance(schema, CtyMap | CtyObject):
+            return {}
+        if isinstance(schema, CtyList | CtySet):
+            return []
+        return None
     if isinstance(schema, CtyDynamic): return _serialize_dynamic(value)
     inner_val = value.value
     if isinstance(schema, CtyObject):
@@ -131,17 +138,15 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
         if isinstance(raw_unpacked, list) and len(raw_unpacked) == 2 and isinstance(raw_unpacked[0], bytes):
             try:
                 type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
-                # If JSON is malformed, JSONDecodeError will be raised and caught.
-                # The logic will then fall through to the final _unpacked_to_cty call.
-                
-                # These will raise CtyValidationError if the type spec is invalid,
-                # which is the desired behavior to not silently ignore errors.
+                # Let CtyValidationError from parsing or validation propagate up.
                 actual_type = parse_tf_type_to_ctytype(type_spec)
                 inner_value = actual_type.validate(raw_unpacked[1])
                 return CtyValue(vtype=cty_type, value=inner_value)
-            except json.JSONDecodeError:
-                # If type spec is not valid JSON, it's not a dynamic value wire format.
-                # Fall through to treat it as a regular list.
-                pass
+            except json.JSONDecodeError as e:
+                # Fallback only for malformed JSON in the type spec.
+                logger.debug(
+                    "Dynamic value deserialization failed due to invalid JSON type spec, falling back to inference.",
+                    exc_info=e,
+                )
     
     return _unpacked_to_cty(raw_unpacked, cty_type)
