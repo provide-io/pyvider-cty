@@ -4,6 +4,7 @@ CTY-to-CTY type conversion.
 """
 
 from collections.abc import Iterable
+from functools import lru_cache
 from typing import Any
 
 from ..exceptions import CtyConversionError, CtyValidationError
@@ -114,9 +115,10 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
     )
 
 
-def unify(types: Iterable["CtyType[Any]"]) -> "CtyType[Any]":
+@lru_cache(maxsize=1024)
+def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
     """
-    Finds a single common CtyType that all of the given types can convert to.
+    Memoized implementation of unify; operates on a hashable frozenset.
     """
     type_set = set(types)
     if not type_set:
@@ -159,3 +161,11 @@ def unify(types: Iterable["CtyType[Any]"]) -> "CtyType[Any]":
         )
 
     return CtyDynamic()
+
+
+def unify(types: Iterable["CtyType[Any]"]) -> "CtyType[Any]":
+    """
+    Finds a single common CtyType that all of the given types can convert to.
+    This is a wrapper that enables caching by converting input to a frozenset.
+    """
+    return _unify_frozen(frozenset(types))

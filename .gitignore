@@ -400,3 +400,5 @@ code.sh
 
 # Log files
 logs/
+*code*.sh
+*.log.*
