@@ -1,11 +1,70 @@
 from __future__ import annotations
 
+from collections import namedtuple
 from decimal import Decimal
+from functools import wraps
 from typing import Any
 
 import attrs
 
 from pyvider.cty.types import CtyType
+
+
+def _unhashable_lru_cache(maxsize=128, typed=False):
+    """
+    A custom LRU cache decorator that can handle unhashable arguments
+    like dicts and lists by converting them to a canonical, hashable form.
+    """
+    def decorator(func):
+        cache = {}
+        # Stats for cache_info()
+        hits = 0
+        misses = 0
+
+        def _make_hashable(arg: Any) -> Any:
+            """Recursively convert unhashable types to hashable ones."""
+            if isinstance(arg, dict):
+                return frozenset((k, _make_hashable(v)) for k, v in sorted(arg.items()))
+            if isinstance(arg, list | set):
+                return tuple(_make_hashable(v) for v in arg)
+            if isinstance(arg, tuple):
+                 return tuple(_make_hashable(v) for v in arg)
+            return arg
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            nonlocal hits, misses
+            # Create a single hashable key from all arguments
+            key = (_make_hashable(args), _make_hashable(kwargs))
+
+            if key in cache:
+                hits += 1
+                return cache[key]
+
+            misses += 1
+            result = func(*args, **kwargs) # Call original function with original args
+            cache[key] = result
+
+            if len(cache) > maxsize:
+                # FIFO eviction
+                del cache[next(iter(cache))]
+
+            return result
+
+        def cache_info():
+            CacheInfo = namedtuple('CacheInfo', ['hits', 'misses', 'maxsize', 'currsize'])
+            return CacheInfo(hits=hits, misses=misses, maxsize=maxsize, currsize=len(cache))
+
+        def cache_clear():
+            nonlocal hits, misses
+            cache.clear()
+            hits = 0
+            misses = 0
+
+        wrapper.cache_info = cache_info
+        wrapper.cache_clear = cache_clear
+        return wrapper
+    return decorator
 
 
 def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
@@ -42,6 +101,7 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     return res
 
 
+@_unhashable_lru_cache(maxsize=2048)
 def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     """
     Infers the most specific CtyType from a raw Python value.
