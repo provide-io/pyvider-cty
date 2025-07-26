@@ -148,7 +148,7 @@ def join(separator: "CtyValue[Any]", elements: "CtyValue[Any]") -> "CtyValue[Any
         raise CtyFunctionError("join: arguments must be string and list/tuple")
     if separator.is_null or separator.is_unknown or elements.is_null or elements.is_unknown:
         return CtyValue.unknown(CtyString())
-    
+
     str_elements = [str(el.value) for el in elements.value]
     return CtyString().validate(separator.value.join(str_elements))
 
@@ -158,7 +158,7 @@ def split(separator: "CtyValue[Any]", text: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("split: arguments must be strings")
     if separator.is_null or separator.is_unknown or text.is_null or text.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyString()))
-    
+
     parts = text.value.split(separator.value)
     return CtyList(element_type=CtyString()).validate(parts)
 
@@ -168,7 +168,7 @@ def replace(string: "CtyValue[Any]", substring: "CtyValue[Any]", replacement: "C
         raise CtyFunctionError("replace: all arguments must be strings")
     if string.is_null or string.is_unknown or substring.is_null or substring.is_unknown or replacement.is_null or replacement.is_unknown:
         return CtyValue.unknown(CtyString())
-    
+
     result = string.value.replace(substring.value, replacement.value)
     return CtyString().validate(result)
 
@@ -178,7 +178,7 @@ def regexreplace(string: "CtyValue[Any]", pattern: "CtyValue[Any]", replacement:
         raise CtyFunctionError("regexreplace: all arguments must be strings")
     if string.is_null or string.is_unknown or pattern.is_null or pattern.is_unknown or replacement.is_null or replacement.is_unknown:
         return CtyValue.unknown(CtyString())
-    
+
     try:
         result = re.sub(pattern.value, replacement.value, string.value)
         return CtyString().validate(result)

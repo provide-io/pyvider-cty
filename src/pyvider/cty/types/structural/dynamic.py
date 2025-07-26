@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define
 
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 
 if TYPE_CHECKING:
@@ -14,6 +15,7 @@ class CtyDynamic(CtyType[object]):
     """Represents a dynamic type that can hold any CtyValue."""
 
     ctype: ClassVar[str] = "dynamic"
+    _type_order: ClassVar[int] = 9  # CORRECTED ORDER
 
     def validate(self, value: object) -> "CtyValue[Any]":
         """
@@ -38,7 +40,10 @@ class CtyDynamic(CtyType[object]):
                 actual_type = parse_tf_type_to_ctytype(type_spec)
                 concrete_value = actual_type.validate(value[1])
                 return CtyValue(vtype=self, value=concrete_value)
-            except Exception:
+            except json.JSONDecodeError:
+                pass
+            except CtyValidationError:
+                # If validation against the explicit type fails, we must also fall back.
                 pass
 
         inferred_type = infer_cty_type_from_raw(value)

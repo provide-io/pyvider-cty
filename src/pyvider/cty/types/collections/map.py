@@ -18,6 +18,7 @@ V = TypeVar("V")
 @define(frozen=True, slots=True)
 class CtyMap[V](CtyType[dict[str, V]]):
     ctype: ClassVar[str] = "map"
+    _type_order: ClassVar[int] = 6
     element_type: CtyType[V] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
@@ -56,7 +57,9 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 raise CtyMapValidationError(
                     e.message, value=v, path=new_path, original_exception=e
                 ) from e
-        return CtyValue(vtype=self, value=validated_map)
+
+        is_unknown = any(v.is_unknown for v in validated_map.values())
+        return CtyValue(vtype=self, value=validated_map, is_unknown=is_unknown)
 
     def get(
         self,

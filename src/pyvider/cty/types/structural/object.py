@@ -23,6 +23,7 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
 @define(frozen=True, slots=True)
 class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
+    _type_order: ClassVar[int] = 7
     attribute_types: dict[str, "CtyType[Any]"] = field(factory=dict)
     optional_attributes: frozenset[str] = field(
         factory=frozenset, converter=frozenset
@@ -117,7 +118,8 @@ class CtyObject(CtyType[dict[str, object]]):
 
             validated_attrs[name] = validated_attr
 
-        return CtyValue(vtype=self, value=validated_attrs)
+        is_unknown = any(v.is_unknown for v in validated_attrs.values())
+        return CtyValue(vtype=self, value=validated_attrs, is_unknown=is_unknown)
 
     def get_attribute(self, obj_value: "CtyValue[Any]", name: str) -> "CtyValue[Any]":
         if not isinstance(obj_value, CtyValue):

@@ -1,8 +1,8 @@
+from datetime import datetime, timedelta
 import re
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pyvider.cty import CtyNumber, CtyString, CtyValue
+from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
 # A simplified mapping from Go's time layout to Python's strftime format.

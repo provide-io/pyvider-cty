@@ -21,6 +21,7 @@ T = TypeVar("T")
 @define(frozen=True, slots=True)
 class CtyList[T](CtyType[tuple[T, ...]]):
     ctype: ClassVar[str] = "list"
+    _type_order: ClassVar[int] = 5
     element_type: CtyType[T] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
@@ -75,7 +76,8 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                     e.message, value=item, path=new_path, original_exception=e
                 ) from e
 
-        return CtyValue(vtype=self, value=tuple(validated_elements))
+        is_unknown = any(v.is_unknown for v in validated_elements)
+        return CtyValue(vtype=self, value=tuple(validated_elements), is_unknown=is_unknown)
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
         from pyvider.cty.values import CtyValue

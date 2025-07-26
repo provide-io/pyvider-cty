@@ -38,6 +38,7 @@ EXPECTED_RESULTS = {
     "deeply_nested_object": {
         "type": CtyObject({"id": CtyString(), "enabled": CtyBool(), "ports": CtyList(element_type=CtyNumber()), "config": CtyObject({"retries": CtyNumber(), "params": CtyMap(element_type=CtyString())}), "metadata": CtyMap(element_type=CtyString()), "extra": CtyString()}, optional_attributes={"metadata"}),
         "value": { "id": CtyString().validate("obj1"), "enabled": CtyBool().validate(True), "ports": CtyList(element_type=CtyNumber()).validate([80, 443]), "config": CtyObject({"retries": CtyNumber(), "params": CtyMap(element_type=CtyString())}).validate({"retries": 3, "params": {"timeout": "5s"}}), "metadata": CtyValue.null(CtyMap(element_type=CtyString())), "extra": CtyValue.unknown(CtyString()) },
+        "is_unknown": True,
     },
     "dynamic_wrapped_string": {"type": CtyDynamic(), "value": CtyString().validate("dynamic")},
     "dynamic_wrapped_object": { "type": CtyDynamic(), "value": CtyObject({"key": CtyString()}).validate({"key": "value"}) },
@@ -84,10 +85,8 @@ def test_msgpack_serialization_from_python_to_go(tmp_path_factory, pytestconfig)
     python_generator_script = project_root / "compatibility" / "python" / "generator.py"
     go_compat_dir = project_root / "compatibility" / "go"
     
-    # 1. Create a temporary directory for Python-generated fixtures
     py_fixture_dir = tmp_path_factory.mktemp("py-fixtures")
 
-    # 2. Run the Python generator script to create fixtures and manifest
     try:
         subprocess.run(
             [sys.executable, str(python_generator_script), "--directory", str(py_fixture_dir)],
@@ -96,7 +95,6 @@ def test_msgpack_serialization_from_python_to_go(tmp_path_factory, pytestconfig)
     except subprocess.CalledProcessError as e:
         pytest.fail(f"Python fixture generator failed:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}", pytrace=False)
 
-    # 3. Run the Go verifier on the generated fixtures
     reporter = pytestconfig.pluginmanager.getplugin("terminalreporter")
     reporter.write_line("\n\n--- Verifying Python-generated fixtures with Go tool ---", bold=True)
     
@@ -106,6 +104,7 @@ def test_msgpack_serialization_from_python_to_go(tmp_path_factory, pytestconfig)
         "verify",
         "--directory", str(py_fixture_dir.resolve()),
         "--log-file", str(log_file_path.resolve()),
+        "--log-level", "trace",
     ]
 
     try:
@@ -120,10 +119,12 @@ def test_msgpack_serialization_from_python_to_go(tmp_path_factory, pytestconfig)
             if result.stderr: reporter.write(result.stderr)
             reporter.write_line("----------------------------------", bold=True)
     except subprocess.CalledProcessError as e:
+        log_contents = log_file_path.read_text() if log_file_path.exists() else "Log file not found."
         reporter.write_line(f"❌ Go verifier failed. Logs are available at: {log_file_path}", red=True)
         pytest.fail(
             f"Go verifier failed to validate Python fixtures:\n"
             f"STDOUT:\n{e.stdout}\n"
-            f"STDERR:\n{e.stderr}",
+            f"STDERR:\n{e.stderr}\n\n"
+            f"--- Go Verifier Log ({log_file_path}) ---\n{log_contents}",
             pytrace=False
         )

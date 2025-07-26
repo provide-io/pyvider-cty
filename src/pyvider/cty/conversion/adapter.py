@@ -39,8 +39,7 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
 
             # Robustness check for malformed collection values
             if isinstance(val_to_process.type, CtyList | CtySet | CtyTuple | CtyMap | CtyObject) and not hasattr(val_to_process.value, "__iter__"):
-                if isinstance(val_to_process.type, CtyList): results[val_id] = []
-                elif isinstance(val_to_process.type, CtySet): results[val_id] = []
+                if isinstance(val_to_process.type, CtyList) or isinstance(val_to_process.type, CtySet): results[val_id] = []
                 elif isinstance(val_to_process.type, CtyTuple): results[val_id] = ()
                 elif isinstance(val_to_process.type, CtyMap | CtyObject): results[val_id] = {}
                 continue

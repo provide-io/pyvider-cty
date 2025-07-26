@@ -143,7 +143,7 @@ def unify(types: Iterable[CtyType]) -> CtyType[Any]:
         for key in common_keys:
             attr_types_to_unify = [t.attribute_types[key] for t in type_set]
             unified_attrs[key] = unify(attr_types_to_unify)
-        
+
         final_optional_attrs = common_keys.intersection(all_optional_keys)
 
         return CtyObject(

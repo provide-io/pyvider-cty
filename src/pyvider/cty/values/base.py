@@ -10,7 +10,6 @@ from typing import (
 
 from attrs import define, evolve, field
 
-from ..exceptions import CtyValidationError
 from .markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -47,6 +46,52 @@ class CtyValue[T]:
         from ..conversion.adapter import cty_to_native
 
         return cty_to_native(self)  # type: ignore
+
+    def _canonical_sort_key(self) -> tuple:
+        """
+        Generates a sort key that mimics go-cty's canonical value ordering.
+        This is critical for producing canonical representations of sets.
+        """
+        # Local import to break circular dependency
+        from ..types import (
+            CtyBool,
+            CtyCapsule,
+            CtyList,
+            CtyMap,
+            CtyNumber,
+            CtyObject,
+            CtySet,
+            CtyString,
+            CtyTuple,
+        )
+
+        if self.is_null:
+            return (0,)  # Nulls sort first.
+        if self.is_unknown:
+            return (1,)  # Unknowns sort after nulls.
+
+        # Known values are sorted by type rank, then by value.
+        type_rank = self.type._type_order
+        key_prefix = (2, type_rank)
+
+        if isinstance(self.type, (CtyBool, CtyNumber, CtyString)):
+            return key_prefix + (self.value,)
+
+        if isinstance(self.type, (CtyList, CtyTuple)):
+            return key_prefix + tuple(v._canonical_sort_key() for v in self.value)
+
+        if isinstance(self.type, CtySet):
+            sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
+            return key_prefix + tuple(v._canonical_sort_key() for v in sorted_elements)
+
+        if isinstance(self.type, (CtyMap, CtyObject)):
+            sorted_items = sorted(self.value.items())
+            return key_prefix + tuple((k, v._canonical_sort_key()) for k, v in sorted_items)
+
+        if isinstance(self.type, CtyCapsule):
+            return key_prefix + (repr(self.value),)
+
+        return key_prefix + (repr(self.value),)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CtyValue):

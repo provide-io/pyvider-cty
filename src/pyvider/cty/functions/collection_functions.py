@@ -140,11 +140,11 @@ def hasindex(collection: "CtyValue[Any]", key: "CtyValue[Any]") -> "CtyValue[Any
 def index(collection: "CtyValue[Any]", key: "CtyValue[Any]") -> "CtyValue[Any]":
     if not hasindex(collection, key).value:
         raise CtyFunctionError("index: key does not exist in collection")
-    
+
     key_val = key.value
     if isinstance(key.type, CtyNumber):
         key_val = int(key_val)
-        
+
     return collection[key_val]
 
 def element(collection: "CtyValue[Any]", idx: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -201,16 +201,16 @@ def setproduct(*args: "CtyValue[Any]") -> "CtyValue[Any]":
     if not all(isinstance(arg.type, CtyList | CtySet | CtyTuple) for arg in args):
         raise CtyFunctionError("setproduct: all arguments must be collections")
     if any(v.is_unknown for v in args): return CtyValue.unknown(CtySet(element_type=CtyDynamic()))
-    
+
     iterables = [list(arg.value) for arg in args if not arg.is_null]
     if not iterables: return CtySet(element_type=CtyDynamic()).validate([])
 
     prod = product(*iterables)
     result_tuples = [tuple(item) for item in prod]
-    
+
     elem_types = [arg.type.element_type if isinstance(arg.type, CtyList | CtySet) else CtyDynamic() for arg in args if not arg.is_null]
     tuple_type = CtyTuple(element_types=tuple(elem_types))
-    
+
     return CtySet(element_type=tuple_type).validate(result_tuples)
 
 def zipmap(keys: "CtyValue[Any]", values: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -218,11 +218,11 @@ def zipmap(keys: "CtyValue[Any]", values: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("zipmap: arguments must be lists or tuples")
     if keys.is_unknown or values.is_unknown: return CtyValue.unknown(CtyMap(element_type=CtyDynamic()))
     if keys.is_null or values.is_null: return CtyMap(element_type=CtyDynamic()).validate({})
-    
+
     key_list = [k.value for k in keys.value]
     val_list = list(values.value)
-    
+
     result_map = {key_list[i]: val_list[i] for i in range(min(len(key_list), len(val_list)))}
-    
+
     val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
     return CtyMap(element_type=val_elem_type).validate(result_map)

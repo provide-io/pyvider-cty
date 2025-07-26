@@ -5,7 +5,7 @@ within the CTY type system.
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ClassVar
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
@@ -18,6 +18,7 @@ class CtyCapsule(CtyType[Any]):
     Represents a capsule type in the Cty type system.
     Capsule types are opaque types that can be used to wrap arbitrary Python objects.
     """
+    _type_order: ClassVar[int] = 8  # CORRECTED ORDER
 
     def __init__(self, capsule_name: str, py_type: type) -> None:
         super().__init__()
@@ -65,7 +66,7 @@ class CtyCapsule(CtyType[Any]):
                 and self.hash_fn == other.hash_fn
                 and self.convert_fn == other.convert_fn
             )
-        
+
         return self.name == other.name and self._py_type == other._py_type
 
     def usable_as(self, other: "CtyType[Any]") -> bool:

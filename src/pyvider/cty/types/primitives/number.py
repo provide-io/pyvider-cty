@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 @define(frozen=True, slots=True)
 class CtyNumber(CtyType[Decimal]):
     ctype: ClassVar[str] = "number"
+    _type_order: ClassVar[int] = 0
 
     def validate(self, value: object) -> "CtyValue[Decimal]":
         from pyvider.cty.values import CtyValue, UnknownValue
@@ -34,7 +35,7 @@ class CtyNumber(CtyType[Decimal]):
 
         if isinstance(raw_value, bool):
             raw_value = 1 if raw_value else 0
-        
+
         if isinstance(raw_value, bytes):
             raw_value = raw_value.decode('utf-8')
 
