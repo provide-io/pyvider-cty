@@ -183,11 +183,15 @@ def chunklist(collection: "CtyValue[Any]", size: "CtyValue[Any]") -> "CtyValue[A
     if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
         raise CtyFunctionError("chunklist: arguments must be a list/tuple and a number")
     if collection.is_null or collection.is_unknown or size.is_null or size.is_unknown:
-        return CtyValue.unknown(CtyList(element_type=collection.type))
+        return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
     chunk_size = int(size.value)
-    if chunk_size <= 0: raise CtyFunctionError("chunklist: size must be a positive number")
-    chunks = [collection.value[i:i + chunk_size] for i in range(0, len(collection.value), chunk_size)]
-    return CtyList(element_type=collection.type).validate(chunks)
+    if chunk_size <= 0:
+        raise CtyFunctionError("chunklist: size must be a positive number")
+    chunks = [
+        collection.value[i : i + chunk_size]
+        for i in range(0, len(collection.value), chunk_size)
+    ]
+    return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)
 
 def lookup(collection: "CtyValue[Any]", key: "CtyValue[Any]", default: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(collection.type, CtyMap | CtyObject):
