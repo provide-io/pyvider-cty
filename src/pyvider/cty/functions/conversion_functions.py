@@ -9,6 +9,8 @@ def to_string(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyString())
     if isinstance(input_val.type, CtyBool):
         return CtyString().validate("true" if input_val.value else "false")
+    if isinstance(input_val.type, CtyNumber):
+        return CtyString().validate(str(input_val.value))
     return CtyString().validate(str(input_val.value))
 
 

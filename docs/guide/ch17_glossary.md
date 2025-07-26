@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:docs/guide/ch18_glossary.md
-# Chapter 18: Glossary
-========
 # Chapter 17: Glossary
->>>>>>>> mono-cty:docs/guide/ch17_glossary.md
 
 This glossary defines key terms and concepts used throughout the `pyvider.cty` documentation.
 

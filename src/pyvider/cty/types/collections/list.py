@@ -77,7 +77,9 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 ) from e
 
         is_unknown = any(v.is_unknown for v in validated_elements)
-        return CtyValue(vtype=self, value=tuple(validated_elements), is_unknown=is_unknown)
+        return CtyValue(
+            vtype=self, value=tuple(validated_elements), is_unknown=is_unknown
+        )
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
         from pyvider.cty.values import CtyValue
@@ -100,7 +102,9 @@ class CtyList[T](CtyType[tuple[T, ...]]):
             try:
                 return self.element_type.validate(container.value[index])
             except TypeError as e:
-                raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
+                raise TypeError(
+                    f"list indices must be integers or slices, not {type(index).__name__}"
+                ) from e
 
         raise CtyListValidationError(
             f"Expected CtyValue[CtyList], got {type(container).__name__}"

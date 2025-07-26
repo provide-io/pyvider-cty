@@ -61,7 +61,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     )
     from pyvider.cty.values import CtyValue
 
-    if isinstance(value, CtyValue) or isinstance(value, CtyType):
+    if isinstance(value, CtyValue | CtyType):
         return CtyDynamic()
     if value is None:
         return CtyDynamic()

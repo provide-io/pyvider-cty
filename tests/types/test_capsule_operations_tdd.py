@@ -33,37 +33,34 @@ class OpaqueObject:
 
 
 class TestCtyCapsuleWithEqAndHash:
-    @pytest.fixture
-    def mock_equal_fn(self) -> Mock:
-        return Mock(return_value=False)
+    def test_equality_uses_custom_equal_fn(self) -> None:
+        # Use a mock as a "spy" to track calls to a real lambda
+        call_tracker = Mock()
+        def my_equal_fn(a: Any, b: Any) -> bool:
+            call_tracker(a, b)
+            return True
 
-    @pytest.fixture
-    def mock_hash_fn(self) -> Mock:
-        return Mock(return_value=42)
-
-    @pytest.fixture
-    def capsule_type_with_ops(
-        self, mock_equal_fn: Mock, mock_hash_fn: Mock
-    ) -> CtyCapsuleWithOps:
-        return CtyCapsuleWithOps(
-            "Opaque", OpaqueObject, equal_fn=mock_equal_fn, hash_fn=mock_hash_fn
+        capsule_type = CtyCapsuleWithOps(
+            "Opaque", OpaqueObject, equal_fn=my_equal_fn
         )
-
-    def test_equality_uses_custom_equal_fn(
-        self, capsule_type_with_ops: CtyCapsuleWithOps, mock_equal_fn: Mock
-    ) -> None:
-        val1 = capsule_type_with_ops.validate(OpaqueObject(1, "foo"))
-        val2 = capsule_type_with_ops.validate(OpaqueObject(2, "bar"))
-        mock_equal_fn.return_value = True
+        val1 = capsule_type.validate(OpaqueObject(1, "foo"))
+        val2 = capsule_type.validate(OpaqueObject(2, "bar"))
         assert val1 == val2
-        mock_equal_fn.assert_called_once_with(val1.value, val2.value)
+        call_tracker.assert_called_once_with(val1.value, val2.value)
 
-    def test_hash_uses_custom_hash_fn(
-        self, capsule_type_with_ops: CtyCapsuleWithOps, mock_hash_fn: Mock
-    ) -> None:
-        val = capsule_type_with_ops.validate(OpaqueObject(1, "foo"))
+    def test_hash_uses_custom_hash_fn(self) -> None:
+        # Use a mock as a "spy" to track calls to a real lambda
+        call_tracker = Mock()
+        def my_hash_fn(a: Any) -> int:
+            call_tracker(a)
+            return 42
+
+        capsule_type = CtyCapsuleWithOps(
+            "Opaque", OpaqueObject, hash_fn=my_hash_fn
+        )
+        val = capsule_type.validate(OpaqueObject(1, "foo"))
         assert hash(val) == 42
-        mock_hash_fn.assert_called_once_with(val.value)
+        call_tracker.assert_called_once_with(val.value)
 
     def test_base_capsule_and_ops_capsule_are_not_equal(self) -> None:
         base_type = CtyCapsule("Opaque", OpaqueObject)
@@ -84,7 +81,10 @@ class TestCtyCapsuleWithConversion:
     def capsule_type_with_converter(
         self, mock_convert_fn: Mock
     ) -> CtyCapsuleWithOps:
-        return CtyCapsuleWithOps("Opaque", OpaqueObject, convert_fn=mock_convert_fn)
+        # Use a real lambda that calls the mock to satisfy the arity check
+        def convert_wrapper(val: Any, target_type: CtyType) -> CtyValue | None:
+            return mock_convert_fn(val, target_type)
+        return CtyCapsuleWithOps("Opaque", OpaqueObject, convert_fn=convert_wrapper)
 
     def test_successful_conversion_uses_custom_fn(
         self, capsule_type_with_converter: CtyCapsuleWithOps, mock_convert_fn: Mock
