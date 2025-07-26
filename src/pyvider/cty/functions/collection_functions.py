@@ -41,8 +41,8 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     result_elements = []
     final_element_type: CtyType[Any] | None = None
     for outer_element_val in input_val.value:
-        inner_val = outer_element_val.value if isinstance(outer_element_val.type, CtyDynamic) else outer_element_val
-        if inner_val.is_null: continue
+        inner_val = outer_element_val.value if isinstance(outer_element_val, CtyValue) and isinstance(outer_element_val.type, CtyDynamic) else outer_element_val
+        if not isinstance(inner_val, CtyValue) or inner_val.is_null: continue
         if inner_val.is_unknown: return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
         if not isinstance(inner_val.type, CtyList | CtyTuple):
             raise CtyFunctionError(f"flatten: all elements must be lists or tuples; found {inner_val.type.ctype}")
@@ -165,10 +165,19 @@ def coalescelist(*args: "CtyValue[Any]") -> "CtyValue[Any]":
     raise CtyFunctionError("coalescelist: no non-empty list or tuple found in arguments")
 
 def compact(collection: "CtyValue[Any]") -> "CtyValue[Any]":
-    if not isinstance(collection.type, CtyList | CtySet | CtyTuple) or not isinstance(collection.type.element_type, CtyString):
+    if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
-    if collection.is_null or collection.is_unknown: return collection
-    return CtyList(element_type=CtyString()).validate([v for v in collection.value if v.value])
+    if isinstance(collection.type, CtyTuple):
+        if not all(isinstance(t, CtyString) for t in collection.type.element_types):
+            raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+    elif not isinstance(collection.type.element_type, CtyString):
+        raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+
+    if collection.is_null or collection.is_unknown:
+        return collection
+    return CtyList(element_type=CtyString()).validate(
+        [v for v in collection.value if v.value]
+    )
 
 def chunklist(collection: "CtyValue[Any]", size: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
