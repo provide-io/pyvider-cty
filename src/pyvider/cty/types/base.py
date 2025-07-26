@@ -24,6 +24,7 @@ class CtyType[T](CtyTypeProtocol[T], ABC):
     """
 
     ctype: ClassVar[str | None] = None
+    _type_order: ClassVar[int] = 99
 
     @abstractmethod
     def validate(self, value: object) -> "CtyValue[T]":

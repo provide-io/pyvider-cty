@@ -57,7 +57,7 @@ def go_fixtures(pytestconfig) -> Path:
     logs_dir = project_root / "logs"
     os.makedirs(logs_dir, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-    log_file_path = logs_dir / f"gocompat-{timestamp}.log"
+    log_file_path = logs_dir / f"gocompat-generate-{timestamp}.log"
     
     reporter = pytestconfig.pluginmanager.getplugin("terminalreporter")
 
@@ -67,12 +67,12 @@ def go_fixtures(pytestconfig) -> Path:
             cwd=go_compat_dir, check=True, capture_output=True, text=True,
         )
         
-        # The Go tool now defaults to debug, so we only need to provide the log file.
         command = [
             "go", "run", ".",
             "generate",
             "--directory", str(fixture_dir.resolve()),
             "--log-file", str(log_file_path.resolve()),
+            "--log-level", "trace",
         ]
         
         reporter.write_line(f"\n\nℹ️  Go compatibility tool logs will be saved to: {log_file_path}", bold=True)

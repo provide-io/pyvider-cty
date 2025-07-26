@@ -17,6 +17,7 @@ from pyvider.cty.values import CtyValue
 @define(frozen=True, slots=True)
 class CtyTuple(CtyType[tuple[object, ...]]):
     ctype: ClassVar[str] = "tuple"
+    _type_order: ClassVar[int] = 3
     element_types: tuple[CtyType[Any], ...] = field()
 
     @element_types.validator
@@ -65,7 +66,9 @@ class CtyTuple(CtyType[tuple[object, ...]]):
                 raise CtyTupleValidationError(
                     e.message, value=raw_element, path=new_path, original_exception=e
                 ) from e
-        return CtyValue(self, tuple(validated_elements))
+
+        is_unknown = any(v.is_unknown for v in validated_elements)
+        return CtyValue(self, tuple(validated_elements), is_unknown=is_unknown)
 
     def element_at(
         self, container_value: CtyValue[Any], index: int | slice

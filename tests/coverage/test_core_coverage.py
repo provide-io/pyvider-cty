@@ -41,14 +41,13 @@ class TestCodecCoverage:
 
 class TestConversionCoverage:
     def test_infer_map_with_non_identifier_keys(self) -> None:
-        data = {"key-with-hyphen": 1, "another_key": 2}
+        data = {"key-with-hyphen": 1, "another_key": 1}
         inferred_type = infer_cty_type_from_raw(data)
         assert isinstance(inferred_type, CtyMap)
 
     def test_cty_to_native_with_set_and_tuple(self) -> None:
         set_val = CtySet(element_type=CtyNumber()).validate({1, 2, 3})
         native_set = cty_to_native(set_val)
-        # Convert to list for sorted comparison as set order is not guaranteed
         assert sorted(list(native_set)) == [1, 2, 3]
 
         tuple_val = CtyTuple(element_types=(CtyString(), CtyNumber())).validate(

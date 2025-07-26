@@ -4,10 +4,11 @@ from typing import Any
 
 import msgpack  # type: ignore
 
-from .conversion import encode_cty_type_to_wire_json
-from .exceptions import CtyValidationError, DeserializationError
-from .parser import parse_tf_type_to_ctytype
 from pyvider.telemetry import logger
+
+from .conversion import encode_cty_type_to_wire_json
+from .exceptions import DeserializationError
+from .parser import parse_tf_type_to_ctytype
 from .types import (
     CtyDynamic,
     CtyList,
@@ -32,7 +33,7 @@ def _ext_hook(code: int, data: bytes) -> Any:
                 refinements["is_known_null"] = payload[1]
             if 2 in payload:
                 refinements["string_prefix"] = payload[2]
-            
+
             def _decode_num(val: Any) -> Decimal:
                 if isinstance(val, bytes):
                     return Decimal(val.decode('utf-8'))
@@ -80,7 +81,7 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
 
     actual_type = inner_value.type
     serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
-    
+
     type_spec_json = encode_cty_type_to_wire_json(actual_type)
     type_spec_bytes = json.dumps(type_spec_json).encode("utf-8")
     return [type_spec_bytes, serializable_inner]
@@ -89,23 +90,19 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
 def _convert_value_to_serializable(value: "CtyValue[Any]", schema: "CtyType[Any]") -> Any:
     if not isinstance(value, CtyValue): value = schema.validate(value)
     if value.is_unknown: return _serialize_unknown(value)
-    if value.is_null:
-        if isinstance(schema, CtyMap | CtyObject):
-            return {}
-        if isinstance(schema, CtyList | CtySet):
-            return []
-        return None
+    if value.is_null: return None
     if isinstance(schema, CtyDynamic): return _serialize_dynamic(value)
+
     inner_val = value.value
     if isinstance(schema, CtyObject):
         if not isinstance(inner_val, dict): raise TypeError("Value for CtyObject must be a dict")
-        return {k: _convert_value_to_serializable(v, schema.attribute_types[k]) for k, v in inner_val.items()}
+        return {k: _convert_value_to_serializable(v, schema.attribute_types[k]) for k, v in sorted(inner_val.items())}
     if isinstance(schema, CtyMap):
         if not isinstance(inner_val, dict): raise TypeError("Value for CtyMap must be a dict")
-        return {k: _convert_value_to_serializable(v, schema.element_type) for k, v in inner_val.items()}
+        return {k: _convert_value_to_serializable(v, schema.element_type) for k, v in sorted(inner_val.items())}
     if isinstance(schema, CtyList | CtySet):
         if not hasattr(inner_val, "__iter__"): raise TypeError("Value for CtyList or CtySet must be iterable")
-        items = sorted(list(inner_val), key=repr) if isinstance(schema, CtySet) else inner_val
+        items = sorted(list(inner_val), key=lambda v: v._canonical_sort_key()) if isinstance(schema, CtySet) else inner_val
         return [_convert_value_to_serializable(item, schema.element_type) for item in items]
     if isinstance(schema, CtyTuple):
         if not isinstance(inner_val, tuple): raise TypeError("Value for CtyTuple must be a tuple")
@@ -133,7 +130,7 @@ def _unpacked_to_cty(data: Any, schema: "CtyType[Any]") -> "CtyValue[Any]":
 def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
     if not data: return CtyValue.null(cty_type)
     raw_unpacked = msgpack.unpackb(data, ext_hook=_ext_hook, raw=False, strict_map_key=False)
-    
+
     if isinstance(cty_type, CtyDynamic):
         if isinstance(raw_unpacked, list) and len(raw_unpacked) == 2 and isinstance(raw_unpacked[0], bytes):
             try:
@@ -148,5 +145,5 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
                     "Dynamic value deserialization failed due to invalid JSON type spec, falling back to inference.",
                     exc_info=e,
                 )
-    
+
     return _unpacked_to_cty(raw_unpacked, cty_type)

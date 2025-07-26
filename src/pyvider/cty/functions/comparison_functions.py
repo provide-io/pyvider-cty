@@ -21,7 +21,7 @@ def _compare(a: "CtyValue[Any]", b: "CtyValue[Any]", op: str) -> "CtyValue[Any]"
         return CtyValue.unknown(CtyBool())
     if not isinstance(a.type, CtyNumber | CtyString) or not a.type.equal(b.type):
         raise CtyFunctionError(f"Cannot compare {a.type.ctype} with {b.type.ctype}")
-    
+
     ops = {
         ">": lambda x, y: x > y,
         ">=": lambda x, y: x >= y,
@@ -52,11 +52,11 @@ def _multi_compare(*args: "CtyValue[Any]", op: str) -> "CtyValue[Any]":
         raise CtyFunctionError(f"{op} requires at least one argument")
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(args[0].type)
-    
+
     known_args = [v for v in args if not v.is_null]
     if not known_args:
         return CtyValue.null(args[0].type)
-        
+
     is_all_numbers = all(isinstance(v.type, CtyNumber) for v in known_args)
     is_all_strings = all(isinstance(v.type, CtyString) for v in known_args)
 

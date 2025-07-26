@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:docs/guide/ch16_api_reference.md
+# Chapter 16: API Reference
+========
 # Chapter 15: API Reference
+>>>>>>>> mono-cty:docs/guide/ch15_api_reference.md
 
 This chapter provides a reference for the key public classes, functions, and interfaces in the `pyvider.cty` library.
 

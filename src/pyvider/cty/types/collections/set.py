@@ -15,6 +15,7 @@ T = TypeVar("T")
 @define(frozen=True, slots=True)
 class CtySet[T](CtyType[frozenset[T]]):
     ctype: ClassVar[str] = "set"
+    _type_order: ClassVar[int] = 4
     element_type: CtyType[T] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
@@ -44,7 +45,8 @@ class CtySet[T](CtyType[frozenset[T]]):
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
 
-        return CtyValue(vtype=self, value=frozenset(validated_items))
+        is_unknown = any(v.is_unknown for v in validated_items)
+        return CtyValue(vtype=self, value=frozenset(validated_items), is_unknown=is_unknown)
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtySet): return False

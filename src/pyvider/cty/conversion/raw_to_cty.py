@@ -96,8 +96,6 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
 
                 unified_value_type = _unify_types(value_types)
 
-                # If all values unify to a single, non-dynamic type, it's a map.
-                # Otherwise, it's an object. This is the corrected logic.
                 is_mappable = not isinstance(unified_value_type, CtyDynamic)
 
                 if is_mappable:

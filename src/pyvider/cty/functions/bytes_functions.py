@@ -18,6 +18,6 @@ def bytesslice(buffer: "CtyValue[Any]", start: "CtyValue[Any]", end: "CtyValue[A
         raise CtyFunctionError("bytesslice: arguments must be Bytes capsule, number, number")
     if buffer.is_unknown or buffer.is_null or start.is_unknown or start.is_null or end.is_unknown or end.is_null:
         return CtyValue.unknown(BytesCapsule)
-    
+
     start_idx, end_idx = int(start.value), int(end.value)
     return BytesCapsule.validate(buffer.value[start_idx:end_idx])

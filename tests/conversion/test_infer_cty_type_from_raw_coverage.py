@@ -42,17 +42,8 @@ class UnsafeAttrs:
 
 
 def test_infer_from_unsafe_attrs() -> None:
-    # This test is designed to fail during instantiation, so we need to catch the error
-    # and then we can't really test infer_cty_type_from_raw with it.
-    # A different approach is needed to test the TypeError handling in infer_cty_type_from_raw.
-    # For now, let's just confirm the attrs class behaves as expected.
     with pytest.raises(TypeError, match="This is an unsafe attrs class"):
         UnsafeAttrs(x=1)
-
-    # To test the `except TypeError` in `infer_cty_type_from_raw`, we need to mock `_attrs_to_dict_safe`
-    # to raise a TypeError. This is a bit complex for this test file.
-    # I will add a test case with a non-attrs class that has a `__attrs_attrs__` attribute
-    # to trigger the TypeError in a more direct way.
 
     class FakeAttrs:
         def __init__(self) -> None:

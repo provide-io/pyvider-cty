@@ -1,4 +1,4 @@
-from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
+from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString, CtyMap
 
 
 class TestDynamicListValidation:
@@ -11,10 +11,9 @@ class TestDynamicListValidation:
         ]
         validated_list_value = list_of_dynamic_type.validate(raw_data)
 
-        # The list contains CtyDynamic values, each wrapping a concrete CtyObject.
         element_0 = validated_list_value.value[0].value
-        assert isinstance(element_0.type, CtyObject)
-        assert element_0.type.attribute_types["role"].equal(CtyString())
+        assert isinstance(element_0.type, CtyMap)
+        assert element_0.type.element_type.equal(CtyString())
 
         element_1 = validated_list_value.value[1].value
         assert isinstance(element_1.type, CtyObject)

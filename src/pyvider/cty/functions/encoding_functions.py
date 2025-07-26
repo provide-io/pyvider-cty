@@ -35,7 +35,7 @@ def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError(f"csvdecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
-    
+
     f = io.StringIO(val.value)
     try:
         # The csv module can raise csv.Error for malformed data
