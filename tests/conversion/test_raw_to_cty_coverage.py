@@ -20,3 +20,40 @@ def test_infer_empty_dict() -> None:
     inferred_type = infer_cty_type_from_raw({})
     assert isinstance(inferred_type, CtyObject)
     assert inferred_type.attribute_types == {}
+
+
+def test_infer_from_cty_value():
+    from pyvider.cty import CtyValue, CtyDynamic, CtyString
+
+    val = CtyString().validate("hello")
+    inferred = infer_cty_type_from_raw(val)
+    assert isinstance(inferred, CtyDynamic)
+
+
+def test_infer_from_attrs_object():
+    import attrs
+    from pyvider.cty import CtyObject, CtyString, CtyNumber
+
+    @attrs.define
+    class MyAttrs:
+        a: str
+        b: int
+
+    inst = MyAttrs("hi", 1)
+    inferred = infer_cty_type_from_raw(inst)
+    assert isinstance(inferred, CtyObject)
+    assert inferred.attribute_types["a"].equal(CtyString())
+    assert inferred.attribute_types["b"].equal(CtyNumber())
+
+
+def test_infer_dict_with_cty_values():
+    from pyvider.cty import CtyValue, CtyObject, CtyString, CtyNumber
+
+    val = {
+        "a": CtyString().validate("hello"),
+        "b": CtyNumber().validate(123),
+    }
+    inferred = infer_cty_type_from_raw(val)
+    assert isinstance(inferred, CtyObject)
+    assert inferred.attribute_types["a"].equal(CtyString())
+    assert inferred.attribute_types["b"].equal(CtyNumber())

@@ -23,6 +23,8 @@ from pyvider.cty import (
     CtyTuple,
     CtyType,
     CtyValue,
+    CtyCapsule,
+    CtyCapsuleWithOps,
 )
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError
@@ -112,6 +114,67 @@ class TestConvertFunction:
         converted_val = convert(marked_val, CtyString())
         assert converted_val.has_mark(CtyMark("sensitive"))
         assert converted_val.value == "123"
+
+    def test_convert_list_to_list_same_type(self):
+        list_val = CtyValue(CtyList(element_type=CtyString()), ["a", "b"])
+        converted_val = convert(list_val, CtyList(element_type=CtyString()))
+        assert converted_val is list_val
+
+    def test_convert_list_to_list_of_dynamic(self):
+        list_val = CtyValue(CtyList(element_type=CtyString()), ["a", "b"])
+        converted_val = convert(list_val, CtyList(element_type=CtyDynamic()))
+        assert converted_val.type.equal(CtyList(element_type=CtyDynamic()))
+        assert len(converted_val.value) == 2
+        assert converted_val.value[0].type.equal(CtyDynamic())
+        assert converted_val.value[0].value.type.equal(CtyString())
+
+    def test_capsule_conversion(self):
+        class MyType:
+            def __init__(self, value):
+                self.value = value
+
+        def convert_my_type(raw, target_type):
+            if target_type.equal(CtyString()):
+                return CtyString().validate(str(raw.value))
+            return None
+
+        capsule_type = CtyCapsuleWithOps(
+            "MyType",
+            MyType,
+            convert_fn=convert_my_type,
+        )
+
+        val = CtyValue(capsule_type, MyType(123))
+        converted = convert(val, CtyString())
+        assert converted.type.equal(CtyString())
+        assert converted.raw_value == "123"
+
+        with pytest.raises(CtyConversionError):
+            convert(val, CtyNumber())
+
+        def bad_converter_non_cty(raw, target_type):
+            return "not a cty value"
+
+        capsule_type_bad_converter = CtyCapsuleWithOps(
+            "MyType",
+            MyType,
+            convert_fn=bad_converter_non_cty,
+        )
+        val_bad = CtyValue(capsule_type_bad_converter, MyType(123))
+        with pytest.raises(CtyConversionError, match="non-CtyValue"):
+            convert(val_bad, CtyString())
+
+        def bad_converter_wrong_type(raw, target_type):
+            return CtyNumber().validate(123)
+
+        capsule_type_wrong_type = CtyCapsuleWithOps(
+            "MyType",
+            MyType,
+            convert_fn=bad_converter_wrong_type,
+        )
+        val_wrong = CtyValue(capsule_type_wrong_type, MyType(123))
+        with pytest.raises(CtyConversionError, match="wrong type"):
+            convert(val_wrong, CtyString())
 
 
 class TestUnifyFunction:
