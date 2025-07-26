@@ -150,6 +150,30 @@ class TestBytesFunctions:
     def test_bytesslice(self):
         assert bytesslice(BytesCapsule.validate(b"hello"), N(1), N(4)).value == b"ell"
 
+    def test_byteslen_wrong_type(self):
+        with pytest.raises(CtyFunctionError):
+            byteslen(S("hello"))
+
+    def test_byteslen_null_unknown(self):
+        assert byteslen(CtyValue.null(BytesCapsule)).is_unknown
+        assert byteslen(CtyValue.unknown(BytesCapsule)).is_unknown
+
+    def test_bytesslice_wrong_type(self):
+        with pytest.raises(CtyFunctionError):
+            bytesslice(S("hello"), N(0), N(1))
+        with pytest.raises(CtyFunctionError):
+            bytesslice(BytesCapsule.validate(b"hello"), S("0"), N(1))
+        with pytest.raises(CtyFunctionError):
+            bytesslice(BytesCapsule.validate(b"hello"), N(0), S("1"))
+
+    def test_bytesslice_null_unknown(self):
+        assert bytesslice(CtyValue.null(BytesCapsule), N(0), N(1)).is_unknown
+        assert bytesslice(CtyValue.unknown(BytesCapsule), N(0), N(1)).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), CtyValue.null(CtyNumber()), N(1)).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), CtyValue.unknown(CtyNumber()), N(1)).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber())).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.unknown(CtyNumber())).is_unknown
+
 class TestStructuralFunctions:
     def test_coalesce(self):
         val1 = S("a")
