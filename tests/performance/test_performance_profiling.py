@@ -101,3 +101,4 @@ def test_benchmark_full_conversion_roundtrip(
     # The benchmark fixture runs the provided function multiple times
     # to get statistically stable results.
     benchmark(core_roundtrip_operation, test_data, cty_schema)
+

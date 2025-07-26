@@ -3,7 +3,7 @@
 Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
-
+import inspect
 from collections.abc import Callable
 from typing import Any, ClassVar
 
@@ -18,6 +18,7 @@ class CtyCapsule(CtyType[Any]):
     Represents a capsule type in the Cty type system.
     Capsule types are opaque types that can be used to wrap arbitrary Python objects.
     """
+
     _type_order: ClassVar[int] = 8  # CORRECTED ORDER
 
     def __init__(self, capsule_name: str, py_type: type) -> None:
@@ -96,7 +97,8 @@ class CtyCapsuleWithOps(CtyCapsule):
         *,
         equal_fn: Callable[[Any, Any], bool] | None = None,
         hash_fn: Callable[[Any], int] | None = None,
-        convert_fn: Callable[[Any, CtyType], CtyValue | None] | None = None,
+        convert_fn: Callable[[Any, "CtyType[Any]"], "CtyValue[Any] | None"]
+        | None = None,
     ) -> None:
         """
         Initializes a CtyCapsule with custom operational functions.
@@ -105,9 +107,21 @@ class CtyCapsuleWithOps(CtyCapsule):
         self.equal_fn = equal_fn
         self.hash_fn = hash_fn
         self.convert_fn = convert_fn
+        self._validate_ops_arity()
+
+    def _validate_ops_arity(self) -> None:
+        """Internal method to validate the arity of provided operational functions."""
+        if self.equal_fn and len(inspect.signature(self.equal_fn).parameters) != 2:
+            raise TypeError("`equal_fn` must be a callable that accepts 2 arguments")
+        if self.hash_fn and len(inspect.signature(self.hash_fn).parameters) != 1:
+            raise TypeError("`hash_fn` must be a callable that accepts 1 argument")
+        if self.convert_fn and len(inspect.signature(self.convert_fn).parameters) != 2:
+            raise TypeError("`convert_fn` must be a callable that accepts 2 arguments")
 
     def __repr__(self) -> str:
         return f"CtyCapsuleWithOps({self.name}, {self._py_type.__name__})"
 
     def __hash__(self) -> int:
-        return hash((self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn))
+        return hash(
+            (self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn)
+        )

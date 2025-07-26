@@ -38,10 +38,13 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             processing.remove(val_id)
 
             # Robustness check for malformed collection values
-            if isinstance(val_to_process.type, CtyList | CtySet | CtyTuple | CtyMap | CtyObject) and not hasattr(val_to_process.value, "__iter__"):
-                if isinstance(val_to_process.type, CtyList) or isinstance(val_to_process.type, CtySet): results[val_id] = []
-                elif isinstance(val_to_process.type, CtyTuple): results[val_id] = ()
-                elif isinstance(val_to_process.type, CtyMap | CtyObject): results[val_id] = {}
+            if not hasattr(val_to_process.value, "__iter__"):
+                if isinstance(val_to_process.type, CtyList | CtySet):
+                    results[val_id] = []
+                elif isinstance(val_to_process.type, CtyTuple):
+                    results[val_id] = ()
+                elif isinstance(val_to_process.type, CtyMap | CtyObject):
+                    results[val_id] = {}
                 continue
 
             if isinstance(val_to_process.type, CtyDynamic):
@@ -88,7 +91,7 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
 
             if isinstance(current_item.type, CtyDynamic):
                 work_stack.append(current_item.value)
-            elif hasattr(current_item.value, "__iter__"): # Robustness check
+            elif hasattr(current_item.value, "__iter__"):  # Robustness check
                 child_values = (
                     list(current_item.value.values())
                     if isinstance(current_item.value, dict)
@@ -98,7 +101,8 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
         else:
             inner_val = current_item.value
             if isinstance(inner_val, Decimal):
-                if inner_val.as_tuple().exponent >= 0:
+                exponent = inner_val.as_tuple().exponent
+                if isinstance(exponent, int) and exponent >= 0:
                     results[item_id] = int(inner_val)
                 else:
                     results[item_id] = float(inner_val)

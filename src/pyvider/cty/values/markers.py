@@ -17,7 +17,8 @@ class UnknownValue:
 class UnrefinedUnknownValue(UnknownValue):
     """A marker class for a simple, unrefined unknown value."""
 
-    pass
+    def __repr__(self) -> str:
+        return "UNREFINED_UNKNOWN"
 
 
 @define(frozen=True, slots=True, auto_attribs=True, match_args=True)

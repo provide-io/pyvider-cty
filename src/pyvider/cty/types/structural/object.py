@@ -25,9 +25,7 @@ class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
     _type_order: ClassVar[int] = 7
     attribute_types: dict[str, "CtyType[Any]"] = field(factory=dict)
-    optional_attributes: frozenset[str] = field(
-        factory=frozenset, converter=frozenset
-    )
+    optional_attributes: frozenset[str] = field(factory=frozenset, converter=frozenset)
 
     def __attrs_post_init__(self) -> None:
         for name, attr_type in self.attribute_types.items():

@@ -7,7 +7,6 @@ context within the CTY system, which can influence how types and values are
 processed or validated.
 """
 
-
 from pyvider.cty.context.validation_context import (
     MAX_VALIDATION_DEPTH,
     deeper_validation,
