@@ -8,30 +8,13 @@ import attrs
 from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
 
+from ._utils import _attrs_to_dict_safe
+
 
 def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
     """Unifies a set of CtyTypes into a single representative type."""
     from pyvider.cty.conversion.explicit import unify
     return unify(types)
-
-
-def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
-    """Safely converts an attrs instance to a dict, avoiding Cty framework types."""
-    from pyvider.cty.types import CtyType
-
-    if isinstance(inst, CtyType):
-        raise TypeError(
-            f"Cannot infer data type from a CtyType instance: {type(inst).__name__}"
-        )
-    if isinstance(inst, CtyValue):
-        raise TypeError(
-            f"Cannot infer data type from a CtyValue instance: {type(inst).__name__}"
-        )
-
-    res = {}
-    for a in getattr(type(inst), "__attrs_attrs__", []):
-        res[a.name] = getattr(inst, a.name)
-    return res
 
 
 def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
