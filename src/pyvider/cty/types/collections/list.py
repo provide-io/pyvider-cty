@@ -33,20 +33,21 @@ class CtyList[T](CtyType[tuple[T, ...]]):
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:  # noqa: C901
         from pyvider.cty.values import CtyValue
 
+        if isinstance(value, CtyValue):
+            if self.equal(value.type) and isinstance(value.value, tuple):
+                return value  # Fast path for already-validated values
+            if value.is_null:
+                return CtyValue.null(self)
+            if value.is_unknown:
+                return CtyValue.unknown(self)
+            value = value.value
+
         if value is None:
             return CtyValue.null(self)
 
         raw_list_to_validate: Sequence[object] | None = None
 
-        if isinstance(value, CtyValue):
-            if value.is_null:
-                return CtyValue.null(self)
-            if value.is_unknown:
-                return CtyValue.unknown(self)
-            if isinstance(value.type, CtyList) and self.equal(value.type):
-                return value
-            raw_list_to_validate = value.value  # type: ignore
-        elif isinstance(value, list | tuple | set | frozenset):
+        if isinstance(value, list | tuple | set | frozenset):
             raw_list_to_validate = list(value)
         else:
             raise CtyListValidationError(

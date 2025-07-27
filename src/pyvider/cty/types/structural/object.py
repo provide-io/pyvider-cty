@@ -38,6 +38,15 @@ class CtyObject(CtyType[dict[str, object]]):
         )
 
     def validate(self, value: object) -> "CtyValue[dict[str, Any]]":  # noqa: C901
+        if isinstance(value, CtyValue):
+            if self.equal(value.type) and isinstance(value.value, dict):
+                return value # Fast path
+            if value.is_unknown:
+                return CtyValue.unknown(self)
+            if value.is_null:
+                return CtyValue.null(self)
+            value = value.value
+
         if value is None:
             return CtyValue.null(self)
         from pyvider.cty.types.structural.dynamic import CtyDynamic
@@ -47,13 +56,6 @@ class CtyObject(CtyType[dict[str, object]]):
             raise CtyAttributeValidationError(
                 f"Unknown optional attributes: {', '.join(sorted(list(unknown_optionals)))}"
             )
-
-        if isinstance(value, CtyValue):
-            if value.is_unknown:
-                return CtyValue.unknown(self)
-            if value.is_null:
-                return CtyValue.null(self)
-            value = value.value
 
         if hasattr(type(value), "__attrs_attrs__"):
             value = _attrs_to_dict_safe(value)

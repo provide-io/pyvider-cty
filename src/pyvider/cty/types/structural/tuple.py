@@ -36,7 +36,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
 
     def validate(self, value: object) -> CtyValue[tuple[Any, ...]]:
         if isinstance(value, CtyValue):
-            if isinstance(value.type, CtyTuple) and value.type.equal(self):
+            if isinstance(value.type, CtyTuple) and value.type.equal(self) and isinstance(value.value, tuple):
                 return value
             if value.is_unknown:
                 return CtyValue.unknown(self)
