@@ -17,6 +17,7 @@ from pyvider.cty import (
 )
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -71,7 +72,15 @@ def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
 def length(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple | CtyMap | CtyString):
         raise CtyFunctionError(f"length: input must be a collection or string, got {input_val.type.ctype}")
-    if input_val.is_null or input_val.is_unknown: return CtyValue.unknown(CtyNumber())
+    if input_val.is_unknown:
+        if isinstance(input_val.value, RefinedUnknownValue):
+            lower = input_val.value.collection_length_lower_bound
+            upper = input_val.value.collection_length_upper_bound
+            if lower is not None and lower == upper:
+                return CtyNumber().validate(lower)
+        return CtyValue.unknown(CtyNumber())
+    if input_val.is_null:
+        return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(len(input_val.value))
 
 def slice(input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyValue[Any]") -> "CtyValue[Any]":

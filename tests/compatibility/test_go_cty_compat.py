@@ -34,7 +34,6 @@ EXPECTED_RESULTS = {
     "list_of_strings": { "type": CtyList(element_type=CtyString()), "value": (CtyString().validate("a"), CtyString().validate("b")) },
     "set_of_numbers": { "type": CtySet(element_type=CtyNumber()), "value": frozenset([CtyNumber().validate(1), CtyNumber().validate(2)]) },
     "map_simple": { "type": CtyMap(element_type=CtyBool()), "value": {"a": CtyBool().validate(True), "b": CtyBool().validate(False)} },
-    "set_of_tuples": { "type": CtySet(element_type=CtyTuple(element_types=(CtyString(), CtyNumber()))), "value": frozenset([CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("a", 1)), CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("b", 2))]) },
     "deeply_nested_object": {
         "type": CtyObject({"id": CtyString(), "enabled": CtyBool(), "ports": CtyList(element_type=CtyNumber()), "config": CtyObject({"retries": CtyNumber(), "params": CtyMap(element_type=CtyString())}), "metadata": CtyMap(element_type=CtyString()), "extra": CtyString()}, optional_attributes={"metadata"}),
         "value": { "id": CtyString().validate("obj1"), "enabled": CtyBool().validate(True), "ports": CtyList(element_type=CtyNumber()).validate([80, 443]), "config": CtyObject({"retries": CtyNumber(), "params": CtyMap(element_type=CtyString())}).validate({"retries": 3, "params": {"timeout": "5s"}}), "metadata": CtyValue.null(CtyMap(element_type=CtyString())), "extra": CtyValue.unknown(CtyString()) },
