@@ -21,10 +21,36 @@ def pytest_addoption(parser):
         help="Run the Go/Python cross-language compatibility tests.",
     )
 
+@pytest.fixture(scope="session")
+def log_dir(pytestconfig) -> Path:
+    """
+    Provides the session-scoped, timestamped log directory path that was
+    created during the pytest_configure hook.
+    """
+    # Retrieve the path that was created and stored in the configure hook.
+    return pytestconfig._log_dir
+
 def pytest_configure(config):
-    """Adds custom markers."""
+    """
+    Adds custom markers and dynamically configures logging paths before
+    any tests are run.
+    """
     config.addinivalue_line("markers", "benchmark: mark test as a performance benchmark")
     config.addinivalue_line("markers", "compat: mark test as a cross-language compatibility test")
+
+    # --- Centralized Logging Setup ---
+    # This logic runs once at the beginning of the test session.
+    project_root = config.rootpath
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    log_dir_path = project_root / "logs" / f"test-run-{timestamp}"
+    os.makedirs(log_dir_path, exist_ok=True)
+
+    # Attach the path to the config object so the `log_dir` fixture can access it.
+    # The underscore indicates a custom, internal attribute.
+    config._log_dir = log_dir_path
+
+    # Dynamically set the path for pytest's own log file.
+    config.option.log_file = str(log_dir_path / "pytest_debug.log")
 
 def pytest_collection_modifyitems(config, items):
     """Skips tests based on command-line options."""
@@ -41,23 +67,20 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_compat)
 
 @pytest.fixture(scope="session")
-def go_fixtures(pytestconfig) -> Path:
+def go_fixtures(pytestconfig, log_dir: Path) -> Path:
     """
     A session-scoped fixture that automatically runs the Go fixture generator.
     This ensures that the canonical `.msgpack` files from go-cty are always
     present before the compatibility tests run.
     """
-    project_root = Path(__file__).parent.parent
+    project_root = pytestconfig.rootpath
     go_compat_dir = project_root / "compatibility" / "go"
     fixture_dir = project_root / "tests" / "fixtures" / "go-cty"
 
     if not shutil.which("go"):
         pytest.skip("Go runtime not found, skipping cross-language compatibility tests.")
 
-    logs_dir = project_root / "logs"
-    os.makedirs(logs_dir, exist_ok=True)
-    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-    log_file_path = logs_dir / f"gocompat-generate-{timestamp}.log"
+    log_file_path = log_dir / "go-generate-debug.log"
     
     reporter = pytestconfig.pluginmanager.getplugin("terminalreporter")
 
@@ -82,15 +105,9 @@ def go_fixtures(pytestconfig) -> Path:
             cwd=go_compat_dir, check=True, capture_output=True, text=True,
         )
         
-        if result.stdout or result.stderr:
-            reporter.write_line("--- Go Fixture Generator Console Output ---", bold=True)
-            if result.stdout:
-                reporter.write_line("--- STDOUT ---")
-                reporter.write(result.stdout)
-            if result.stderr:
-                reporter.write_line("--- STDERR ---")
-                reporter.write(result.stderr)
-            reporter.write_line("-----------------------------------------", bold=True)
+        # Capture stdout/stderr to files for review
+        (log_dir / "go-generate-stdout.log").write_text(result.stdout)
+        (log_dir / "go-generate-stderr.log").write_text(result.stderr)
 
     except subprocess.CalledProcessError as e:
         reporter.write_line(f"❌ Go fixture generator failed. Logs are available at: {log_file_path}", red=True)

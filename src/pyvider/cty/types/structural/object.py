@@ -2,6 +2,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
+from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
     CtyTypeMismatchError,
@@ -11,13 +12,6 @@ from pyvider.cty.exceptions import (
 from pyvider.cty.path import CtyPath, GetAttrStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.values import CtyValue
-
-
-def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
-    res = {}
-    for a in getattr(type(inst), "__attrs_attrs__", []):
-        res[a.name] = getattr(inst, a.name)
-    return res
 
 
 @define(frozen=True, slots=True)

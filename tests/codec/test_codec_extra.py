@@ -19,17 +19,23 @@ from pyvider.cty.codec import (
 )
 
 
-def test_serialize_dynamic_with_raw_python_value():
+def test_serialize_dynamic_with_validated_value():
+    """
+    Tests that a CtyDynamic value, correctly created via its validator,
+    serializes as expected.
+    """
     dynamic_type = CtyDynamic()
     raw_value = {"key": "value"}
-    cty_val = CtyValue(dynamic_type, raw_value)
+    # The correct pattern is to use the validator, which wraps the raw value
+    # in a concrete CtyValue inside the CtyDynamic CtyValue.
+    cty_val = dynamic_type.validate(raw_value)
 
     packed = cty_to_msgpack(cty_val, dynamic_type)
     unpacked = msgpack.unpackb(packed, raw=False)
 
     assert isinstance(unpacked, list)
     assert len(unpacked) == 2
-    # Corrected: A dict with uniform string values should be inferred as a map.
+    # A dict with uniform string values should be inferred as a map.
     assert b'["map","string"]' == unpacked[0]
     assert unpacked[1] == {"key": "value"}
 

@@ -5,7 +5,7 @@ from typing import Any
 import msgpack  # type: ignore
 
 from .conversion import encode_cty_type_to_wire_json
-from .exceptions import DeserializationError, CtyValidationError
+from .exceptions import CtyValidationError, DeserializationError, SerializationError
 from .parser import parse_tf_type_to_ctytype
 from .types import (
     CtyDynamic,
@@ -85,11 +85,14 @@ def _serialize_unknown(value: "CtyValue[Any]") -> Any:
 
 def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
     inner_value = value.value
+    # The assumption is that for a CtyDynamic value, the inner .value is ALWAYS a concrete CtyValue.
+    # The validation step is responsible for this wrapping.
     if not isinstance(inner_value, CtyValue):
-        from .conversion.raw_to_cty import infer_cty_type_from_raw
-
-        inferred_type = infer_cty_type_from_raw(inner_value)
-        inner_value = inferred_type.validate(inner_value)
+        # This should ideally never be reached if the CtyValue was constructed correctly.
+        raise SerializationError(
+            "CtyDynamic value is malformed; its inner value is not a CtyValue instance.",
+            value=value,
+        )
 
     actual_type = inner_value.type
     serializable_inner = _convert_value_to_serializable(inner_value, actual_type)

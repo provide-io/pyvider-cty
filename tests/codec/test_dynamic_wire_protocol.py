@@ -15,17 +15,25 @@ from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
 def test_dynamic_string_wire_format() -> None:
     schema = CtyDynamic()
-    concrete_value = CtyString().validate("hello")
-    actual_packed = cty_to_msgpack(concrete_value, schema)
+    # This is the raw Python value we want to wrap.
+    raw_value = "hello"
+    # The correct pattern is to use the schema's validator, which creates
+    # the CtyDynamic wrapper around the inferred concrete CtyValue.
+    dynamic_value = schema.validate(raw_value)
+    
+    actual_packed = cty_to_msgpack(dynamic_value, schema)
+
     expected_type_spec = json.dumps("string", separators=(",", ":")).encode("utf-8")
     expected_payload = "hello"
     expected_packed = msgpack.packb(
         [expected_type_spec, expected_payload], use_bin_type=True
     )
     assert actual_packed == expected_packed
+    
     deserialized = cty_from_msgpack(actual_packed, schema)
     assert isinstance(deserialized.type, CtyDynamic)
-    assert deserialized.value == concrete_value
+    # The deserialized value's inner value should equal the concrete value.
+    assert deserialized.value == CtyString().validate(raw_value)
 
 
 def test_dynamic_object_wire_format() -> None:
