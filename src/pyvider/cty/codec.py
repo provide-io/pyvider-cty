@@ -5,7 +5,7 @@ from typing import Any
 import msgpack  # type: ignore
 
 from .conversion import encode_cty_type_to_wire_json
-from .exceptions import DeserializationError
+from .exceptions import DeserializationError, CtyValidationError
 from .parser import parse_tf_type_to_ctytype
 from .types import (
     CtyDynamic,
@@ -95,7 +95,8 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
     serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
 
     type_spec_json = encode_cty_type_to_wire_json(actual_type)
-    type_spec_bytes = json.dumps(type_spec_json).encode("utf-8")
+    # Use separators=(',', ':') to produce compact JSON, matching go-cty.
+    type_spec_bytes = json.dumps(type_spec_json, separators=(",", ":")).encode("utf-8")
     return [type_spec_bytes, serializable_inner]
 
 
@@ -185,15 +186,17 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
         and len(raw_unpacked) == 2
         and isinstance(raw_unpacked[0], bytes)
     ):
-            try:
-                type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
-                actual_type = parse_tf_type_to_ctytype(type_spec)
-                inner_value = actual_type.validate(raw_unpacked[1])
-                return CtyValue(vtype=cty_type, value=inner_value)
-            except json.JSONDecodeError as e:
-                raise DeserializationError(
-                    "Failed to decode dynamic value type spec from JSON"
-                ) from e
+        try:
+            type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
+            actual_type = parse_tf_type_to_ctytype(type_spec)
+            inner_value = actual_type.validate(raw_unpacked[1])
+            return CtyValue(vtype=cty_type, value=inner_value)
+        except json.JSONDecodeError as e:
+            raise DeserializationError(
+                "Failed to decode dynamic value type spec from JSON"
+            ) from e
+        except CtyValidationError as e:
             # Let CtyValidationError from parsing or validation propagate up.
+            raise e
 
     return _unpacked_to_cty(raw_unpacked, cty_type)

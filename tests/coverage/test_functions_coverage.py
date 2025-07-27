@@ -80,7 +80,7 @@ class TestCollectionFunctionsCoverage:
 
     def test_flatten_type_error(self) -> None:
         with pytest.raises(
-            CtyFunctionError, match="flatten: all elements must be lists or tuples"
+            CtyFunctionError, match="flatten: all elements must be lists, sets, or tuples"
         ):
             flatten(CtyList(element_type=CtyString()).validate(["a", "b", "c"]))
 

@@ -17,7 +17,7 @@ def test_dynamic_string_wire_format() -> None:
     schema = CtyDynamic()
     concrete_value = CtyString().validate("hello")
     actual_packed = cty_to_msgpack(concrete_value, schema)
-    expected_type_spec = json.dumps("string").encode("utf-8")
+    expected_type_spec = json.dumps("string", separators=(",", ":")).encode("utf-8")
     expected_payload = "hello"
     expected_packed = msgpack.packb(
         [expected_type_spec, expected_payload], use_bin_type=True
@@ -65,7 +65,7 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     dynamic_value = schema.validate(raw_data)
     actual_packed = cty_to_msgpack(dynamic_value, schema)
 
-    expected_type_spec = json.dumps(["list", "number"]).encode("utf-8")
+    expected_type_spec = json.dumps(["list", "number"], separators=(",", ":")).encode("utf-8")
     serializable_inner = ["10", "20", "30"]
     expected_payload = serializable_inner
     expected_packed = msgpack.packb(

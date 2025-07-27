@@ -29,7 +29,8 @@ def test_serialize_dynamic_with_raw_python_value():
 
     assert isinstance(unpacked, list)
     assert len(unpacked) == 2
-    assert b'["map", "string"]' == unpacked[0]
+    # Corrected: A dict with uniform string values should be inferred as a map.
+    assert b'["map","string"]' == unpacked[0]
     assert unpacked[1] == {"key": "value"}
 
 

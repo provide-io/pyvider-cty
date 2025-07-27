@@ -126,38 +126,37 @@ def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
     if len(type_set) == 1:
         return type_set.pop()
 
+    if CtyDynamic() in type_set:
+        return CtyDynamic()
+
     if all(isinstance(t, CtyList) for t in type_set):
         element_types = {t.element_type for t in type_set if isinstance(t, CtyList)}
         unified_element_type = unify(element_types)
         return CtyList(element_type=unified_element_type)
 
     if all(isinstance(t, CtyObject) for t in type_set):
-        if any(not t.attribute_types for t in type_set if isinstance(t, CtyObject)):
-            return CtyObject({})
-
-        all_object_attrs = [
-            set(t.attribute_types.keys()) for t in type_set if isinstance(t, CtyObject)
-        ]
-        common_keys = set.intersection(*all_object_attrs)
-
-        if not common_keys:
+        obj_types = [t for t in type_set if isinstance(t, CtyObject)]
+        if not obj_types:
             return CtyDynamic()
 
-        all_optional_keys = set().union(
-            *(t.optional_attributes for t in type_set if isinstance(t, CtyObject))
-        )
-        unified_attrs = {}
-        for key in common_keys:
-            attr_types_to_unify = [
-                t.attribute_types[key] for t in type_set if isinstance(t, CtyObject)
-            ]
-            unified_attrs[key] = unify(attr_types_to_unify)
+        key_sets = [set(t.attribute_types.keys()) for t in obj_types]
+        # If key sets are not identical, unification results in CtyDynamic.
+        if not all(ks == key_sets[0] for ks in key_sets):
+            return CtyDynamic()
 
-        final_optional_attrs = common_keys.intersection(all_optional_keys)
+        common_keys = key_sets[0]
+        unified_attrs = {}
+        unified_optionals = set()
+
+        for key in common_keys:
+            attr_types_to_unify = {t.attribute_types[key] for t in obj_types}
+            unified_attrs[key] = unify(attr_types_to_unify)
+            if any(key in t.optional_attributes for t in obj_types):
+                unified_optionals.add(key)
 
         return CtyObject(
             attribute_types=unified_attrs,
-            optional_attributes=frozenset(final_optional_attrs),
+            optional_attributes=frozenset(unified_optionals),
         )
 
     return CtyDynamic()

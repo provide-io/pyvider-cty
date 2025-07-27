@@ -50,7 +50,7 @@ class TestConvertFunction:
             (
                 CtyValue(CtyList(element_type=CtyString()), ["a", "b"]),
                 CtySet(element_type=CtyString()),
-                frozenset([CtyValue(CtyString(), "a"), CtyValue(CtyString(), "b")]),
+                CtySet(element_type=CtyString()).validate(["a", "b"]),
             ),
             (
                 CtyValue(CtySet(element_type=CtyString()), {"a", "b"}),
@@ -80,7 +80,7 @@ class TestConvertFunction:
         elif source_val.is_unknown:
             assert converted_val.is_unknown
         elif isinstance(target_type, CtySet):
-            assert converted_val.value == expected_val
+            assert converted_val == expected_val
         elif isinstance(target_type, CtyList) and isinstance(source_val.type, CtySet):
             assert isinstance(converted_val.value, tuple)
             assert len(converted_val.value) == len(expected_val)
@@ -216,7 +216,7 @@ class TestUnifyFunction:
                     CtyObject({"a": CtyString(), "b": CtyNumber()}),
                     CtyObject({"a": CtyString(), "c": CtyBool()}),
                 ],
-                CtyObject({"a": CtyString()}),
+                CtyDynamic(),
             ),
             (
                 [
@@ -231,14 +231,14 @@ class TestUnifyFunction:
                     CtyObject({"a": CtyString(), "b": CtyNumber(), "c": CtyBool()}),
                     CtyObject({"a": CtyString(), "b": CtyNumber(), "d": CtyString()}),
                 ],
-                CtyObject({"a": CtyString(), "b": CtyNumber()}),
+                CtyDynamic(),
             ),
             (
                 [
                     CtyObject({"a": CtyString()}),
                     CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
                 ],
-                CtyObject({"a": CtyString()}),
+                CtyDynamic(),
             ),
             (
                 [
@@ -259,7 +259,7 @@ class TestUnifyFunction:
                     CtyObject({}),
                     CtyObject({"a": CtyString()}),
                 ],
-                CtyObject({}),
+                CtyDynamic(),
             ),
         ],
     )

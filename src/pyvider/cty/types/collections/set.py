@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from typing import Any, ClassVar, TypeVar, final
 
 from attrs import define, field
@@ -13,7 +14,7 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtySet[T](CtyType[frozenset[T]]):
+class CtySet[T](CtyType[tuple[T, ...]]):
     ctype: ClassVar[str] = "set"
     _type_order: ClassVar[int] = 4
     element_type: CtyType[T] = field(kw_only=True)
@@ -24,7 +25,7 @@ class CtySet[T](CtyType[frozenset[T]]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
-    def validate(self, value: object) -> CtyValue[frozenset[T]]:
+    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
         if value is None:
             return CtyValue.null(self)
         if isinstance(value, CtyValue):
@@ -41,21 +42,22 @@ class CtySet[T](CtyType[frozenset[T]]):
                 f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}"
             )
 
-        validated_items: set[CtyValue[Any]] = set()
+        unique_items: OrderedDict[tuple[Any, ...], CtyValue[Any]] = OrderedDict()
         for raw_item in value:
             try:
                 validated_item = self.element_type.validate(raw_item)
-                validated_items.add(validated_item)
-            except TypeError as e:
-                raise CtySetValidationError(
-                    f"Input collection contains unhashable elements: {e}"
-                ) from e
+                key = validated_item._canonical_sort_key()
+                unique_items[key] = validated_item
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
+            except Exception as e:
+                raise CtySetValidationError(
+                    f"Failed to process element for set: {e}", value=raw_item
+                ) from e
 
-        is_unknown = any(v.is_unknown for v in validated_items)
+        is_unknown = any(v.is_unknown for v in unique_items.values())
         return CtyValue(
-            vtype=self, value=frozenset(validated_items), is_unknown=is_unknown
+            vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown
         )
 
     def equal(self, other: CtyType[Any]) -> bool:

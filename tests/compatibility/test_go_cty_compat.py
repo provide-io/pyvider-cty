@@ -32,9 +32,9 @@ EXPECTED_RESULTS = {
     "unknown_refined_num": { "type": CtyNumber(), "is_unknown": True, "value": RefinedUnknownValue(number_lower_bound=(Decimal("100"), True), number_upper_bound=(Decimal("200"), False)) },
     "unknown_refined_list": { "type": CtyList(element_type=CtyString()), "is_unknown": True, "value": RefinedUnknownValue(collection_length_lower_bound=3, collection_length_upper_bound=3) },
     "list_of_strings": { "type": CtyList(element_type=CtyString()), "value": (CtyString().validate("a"), CtyString().validate("b")) },
-    "set_of_numbers": { "type": CtySet(element_type=CtyNumber()), "value": fset([CtyNumber().validate(1), CtyNumber().validate(2)]) },
+    "set_of_numbers": { "type": CtySet(element_type=CtyNumber()), "value": frozenset([CtyNumber().validate(1), CtyNumber().validate(2)]) },
     "map_simple": { "type": CtyMap(element_type=CtyBool()), "value": {"a": CtyBool().validate(True), "b": CtyBool().validate(False)} },
-    "set_of_tuples": { "type": CtySet(element_type=CtyTuple(element_types=(CtyString(), CtyNumber()))), "value": fset([CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("a", 1)), CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("b", 2))]) },
+    "set_of_tuples": { "type": CtySet(element_type=CtyTuple(element_types=(CtyString(), CtyNumber()))), "value": frozenset([CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("a", 1)), CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("b", 2))]) },
     "deeply_nested_object": {
         "type": CtyObject({"id": CtyString(), "enabled": CtyBool(), "ports": CtyList(element_type=CtyNumber()), "config": CtyObject({"retries": CtyNumber(), "params": CtyMap(element_type=CtyString())}), "metadata": CtyMap(element_type=CtyString()), "extra": CtyString()}, optional_attributes={"metadata"}),
         "value": { "id": CtyString().validate("obj1"), "enabled": CtyBool().validate(True), "ports": CtyList(element_type=CtyNumber()).validate([80, 443]), "config": CtyObject({"retries": CtyNumber(), "params": CtyMap(element_type=CtyString())}).validate({"retries": 3, "params": {"timeout": "5s"}}), "metadata": CtyValue.null(CtyMap(element_type=CtyString())), "extra": CtyValue.unknown(CtyString()) },
