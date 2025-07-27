@@ -108,6 +108,18 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
         if isinstance(target_type.element_type, CtyDynamic):
             return target_type.validate(value.value).with_marks(set(value.marks))
 
+    if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
+        new_attrs = {}
+        source_attrs = value.value
+        for name, target_attr_type in target_type.attribute_types.items():
+            if name in source_attrs:
+                new_attrs[name] = convert(source_attrs[name], target_attr_type)
+            elif name in target_type.optional_attributes:
+                new_attrs[name] = CtyValue.null(target_attr_type)
+            else:
+                raise CtyConversionError(f"Missing required attribute '{name}' for conversion")
+        return target_type.validate(new_attrs).with_marks(set(value.marks))
+
     raise CtyConversionError(
         f"Cannot convert from {value.type} to {target_type}",
         source_value=value,

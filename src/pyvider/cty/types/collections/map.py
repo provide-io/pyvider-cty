@@ -28,16 +28,18 @@ class CtyMap[V](CtyType[dict[str, V]]):
             )
 
     def validate(self, value: object) -> "CtyValue[dict[str, V]]":
-        if value is None:
-            return CtyValue.null(self)
         if isinstance(value, CtyValue):
+            if self.equal(value.type) and isinstance(value.value, dict):
+                return value # Fast path
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
                 return CtyValue.unknown(self)
-            if isinstance(value.type, CtyMap) and self.equal(value.type):
-                return value
             value = value.value
+        
+        if value is None:
+            return CtyValue.null(self)
+
         if not isinstance(value, dict):
             raise CtyMapValidationError(
                 f"Input must be a dictionary, got {type(value).__name__}."

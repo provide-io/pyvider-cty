@@ -32,9 +32,11 @@ def formatdate(spec: "CtyValue[Any]", timestamp: "CtyValue[Any]") -> "CtyValue[A
         raise CtyFunctionError(f"formatdate: invalid timestamp format: {e}") from e
 
 def _parse_duration(duration_str: str) -> timedelta:
+    # This regex now ensures the entire string consists only of valid duration parts.
+    if not re.fullmatch(r"(\d+\.?\d*[hms])+", duration_str):
+        raise ValueError(f"Invalid duration string format: '{duration_str}'")
+    
     parts = re.findall(r"(\d+\.?\d*)([hms])", duration_str)
-    if not parts:
-        raise ValueError("Invalid duration string")
     total_seconds = 0
     for value, unit in parts:
         val = float(value)
