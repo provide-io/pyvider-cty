@@ -31,18 +31,16 @@ class CtyCapsule(CtyType[Any]):
         return self._py_type
 
     def validate(self, value: object) -> "CtyValue[Any]":
+        val_to_check: object | None
+        original_marks = frozenset()
+
         if isinstance(value, CtyValue):
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
                 return CtyValue.unknown(self)
-            if (
-                isinstance(value.type, CtyCapsule)
-                and value.type.name == self.name
-                and value.type.py_type == self.py_type
-            ):
-                return value
             val_to_check = value.value
+            original_marks = value.marks
         else:
             val_to_check = value
 
@@ -53,7 +51,7 @@ class CtyCapsule(CtyType[Any]):
             raise CtyValidationError(
                 f"Value is not an instance of {self._py_type.__name__}. Got {type(val_to_check).__name__}."
             )
-        return CtyValue(self, val_to_check)
+        return CtyValue(self, val_to_check, marks=original_marks)
 
     def equal(self, other: "CtyType[Any]") -> bool:
         if not isinstance(other, CtyCapsule) or isinstance(other, CtyCapsuleWithOps):
@@ -67,6 +65,9 @@ class CtyCapsule(CtyType[Any]):
 
     def _to_wire_json(self) -> Any:
         return None
+
+    def __str__(self) -> str:
+        return f"CtyCapsule({self.name})"
 
     def __repr__(self) -> str:
         return f"CtyCapsule({self.name}, {self._py_type.__name__})"
