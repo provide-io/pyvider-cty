@@ -28,7 +28,8 @@ def test_infer_from_list_of_mixed_types():
 def test_infer_from_map_with_non_string_keys():
     inferred = infer_cty_type_from_raw({1: "a"})
     assert isinstance(inferred, CtyMap)
-    assert isinstance(inferred.element_type, CtyDynamic)
+    # The value types are uniform (all string), so the element type should be CtyString.
+    assert isinstance(inferred.element_type, CtyString)
 
 
 def test_attrs_to_dict_safe_with_cty_type():

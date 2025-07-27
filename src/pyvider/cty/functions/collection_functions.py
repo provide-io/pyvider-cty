@@ -15,6 +15,7 @@ from pyvider.cty import (
     CtyValue,
     unify,
 )
+from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
 
 
@@ -35,8 +36,8 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyList(element_type=element_type).validate(result_elements)
 
 def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
-    if not isinstance(input_val.type, CtyList | CtyTuple):
-        raise CtyFunctionError(f"flatten: input must be a list or tuple, got {input_val.type.ctype}")
+    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
+        raise CtyFunctionError(f"flatten: input must be a list, set, or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown: return input_val
     result_elements = []
     final_element_type: CtyType[Any] | None = None
@@ -44,8 +45,8 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         inner_val = outer_element_val.value if isinstance(outer_element_val, CtyValue) and isinstance(outer_element_val.type, CtyDynamic) else outer_element_val
         if not isinstance(inner_val, CtyValue) or inner_val.is_null: continue
         if inner_val.is_unknown: return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-        if not isinstance(inner_val.type, CtyList | CtyTuple):
-            raise CtyFunctionError(f"flatten: all elements must be lists or tuples; found {inner_val.type.ctype}")
+        if not isinstance(inner_val.type, CtyList | CtySet | CtyTuple):
+            raise CtyFunctionError(f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}")
         for inner_element_val in inner_val.value:
             if final_element_type is None: final_element_type = inner_element_val.type
             elif not final_element_type.equal(inner_element_val.type): final_element_type = CtyDynamic()
@@ -196,9 +197,18 @@ def chunklist(collection: "CtyValue[Any]", size: "CtyValue[Any]") -> "CtyValue[A
 def lookup(collection: "CtyValue[Any]", key: "CtyValue[Any]", default: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(collection.type, CtyMap | CtyObject):
         raise CtyFunctionError("lookup: collection must be a map or object")
-    if collection.is_unknown or key.is_unknown: return CtyValue.unknown(unify([collection.type.element_type, default.type]))
-    if collection.is_null or key.is_null or key.value not in collection.value:
+
+    if isinstance(collection.type, CtyMap):
+        element_type = collection.type.element_type
+    else:
+        element_type = CtyDynamic()
+
+    if collection.is_unknown or key.is_unknown:
+        return CtyValue.unknown(unify([element_type, default.type]))
+
+    if collection.is_null or key.is_null or not isinstance(collection.value, dict) or key.value not in collection.value:
         return default
+        
     return collection.value[key.value]
 
 def merge(*args: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -208,7 +218,9 @@ def merge(*args: "CtyValue[Any]") -> "CtyValue[Any]":
     result = {}
     for arg in args:
         if not arg.is_null: result.update(arg.value)
-    return CtyDynamic().validate(result)
+    
+    inferred_type = infer_cty_type_from_raw(result)
+    return inferred_type.validate(result)
 
 def setproduct(*args: "CtyValue[Any]") -> "CtyValue[Any]":
     if not all(isinstance(arg.type, CtyList | CtySet | CtyTuple) for arg in args):

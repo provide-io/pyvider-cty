@@ -57,8 +57,10 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             elif isinstance(val_to_process.type, CtyList):
                 results[val_id] = [results[id(item)] for item in val_to_process.value]
             elif isinstance(val_to_process.type, CtySet):
+                # Use _canonical_sort_key for consistent sorting of set elements
                 results[val_id] = sorted(
-                    [results[id(item)] for item in val_to_process.value], key=repr
+                    [results[id(item)] for item in val_to_process.value],
+                    key=lambda v: v._canonical_sort_key() if isinstance(v, CtyValue) else repr(v)
                 )
             elif isinstance(val_to_process.type, CtyTuple):
                 results[val_id] = tuple(

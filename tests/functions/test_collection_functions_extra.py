@@ -104,7 +104,7 @@ class TestFlatten:
         l = CtyList(element_type=CtyDynamic()).validate(
             [CtyList(element_type=CtyString()).validate(["a"]), CtyString().validate("b")]
         )
-        with pytest.raises(CtyFunctionError, match="all elements must be lists or tuples"):
+        with pytest.raises(CtyFunctionError, match="all elements must be lists, sets, or tuples"):
             flatten(l)
 
     def test_flatten_wrong_type(self):

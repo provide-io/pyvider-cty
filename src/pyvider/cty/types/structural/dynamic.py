@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define
 
-from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.exceptions import CtyValidationError, DeserializationError
 from pyvider.cty.types.base import CtyType
 
 if TYPE_CHECKING:
@@ -40,11 +40,13 @@ class CtyDynamic(CtyType[object]):
                 actual_type = parse_tf_type_to_ctytype(type_spec)
                 concrete_value = actual_type.validate(value[1])
                 return CtyValue(vtype=self, value=concrete_value)
-            except json.JSONDecodeError:
-                pass
-            except CtyValidationError:
-                # If validation against the explicit type fails, we must also fall back.
-                pass
+            except json.JSONDecodeError as e:
+                raise DeserializationError(
+                    "Failed to decode dynamic value type spec from JSON during validation"
+                ) from e
+            except CtyValidationError as e:
+                # Re-raise validation errors from the inner type.
+                raise e
 
         inferred_type = infer_cty_type_from_raw(value)
         concrete_value = inferred_type.validate(value)

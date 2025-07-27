@@ -31,7 +31,7 @@ class TestCollectionFunctionsCoverage:
         assert distinct(CtyValue.null(CtyList(element_type=CtyString()))).is_null
 
     def test_flatten_error_paths(self) -> None:
-        with pytest.raises(CtyFunctionError, match="flatten: input must be a list or tuple"):
+        with pytest.raises(CtyFunctionError, match="flatten: input must be a list, set, or tuple"):
             flatten(CtyString().validate("hello"))
         assert flatten(CtyValue.null(CtyList(element_type=CtyDynamic()))).is_null
         

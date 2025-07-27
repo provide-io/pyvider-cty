@@ -25,7 +25,6 @@ class CtyValue[T]:
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
     marks: frozenset[Any] = field(factory=frozenset)
-    key_mapping: dict[str, CtyValue[Any]] = field(factory=dict)
 
     def __attrs_post_init__(self) -> None:
         if self.is_unknown and self.is_null:
@@ -245,15 +244,15 @@ class CtyValue[T]:
             CtyMap,
             CtyObject,
             CtySet,
-            CtyTuple,
         )
 
         if isinstance(self.type, CtyCapsuleWithOps) and self.type.hash_fn:
             return self.type.hash_fn(self.value)
 
-        if isinstance(self.vtype, CtyTuple):
-            pass
-        elif isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
+        # NOTE: This is a known deviation from go-cty, where tuples are not hashable.
+        # This is a pragmatic choice to allow `setproduct` and sets of tuples to function
+        # without a more complex internal set implementation.
+        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
             raise TypeError(f"unhashable type: 'CtyValue[{self.vtype.ctype}]'")
 
         if self.is_unknown or self.is_null:
