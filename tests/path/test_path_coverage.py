@@ -85,6 +85,7 @@ def test_key_step_with_invalid_key_type() -> None:
     with pytest.raises(AttributePathError):
         step.apply_type(CtyMap(element_type=CtyString()))
 
+
 def test_path_edge_cases_from_z_file() -> None:
     """Integrates and fixes tests from the old z_high_coverage_final file."""
     obj_type = CtyObject(attribute_types={"name": CtyString()})

@@ -33,7 +33,11 @@ class CtySet[T](CtyType[tuple[T, ...]]):
                 return CtyValue.unknown(self)
             if value.is_null:
                 return CtyValue.null(self)
-            if isinstance(value.type, CtySet) and value.type.equal(self) and isinstance(value.value, frozenset):
+            if (
+                isinstance(value.type, CtySet)
+                and value.type.equal(self)
+                and isinstance(value.value, frozenset)
+            ):
                 return value
             value = value.value
 
