@@ -23,9 +23,9 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     using a context-aware cache to handle object cycles and repeated sub-objects.
     """
     structural_cache = get_structural_key_cache()
-    # This function is only called from within the `with_inference_cache` context,
-    # so the cache is guaranteed to exist.
-    assert structural_cache is not None
+    if structural_cache is None:
+        # This should not be reached if called within `with_inference_cache`
+        raise RuntimeError("Structural cache not available in context.")
 
     val_id = id(value)
     if val_id in structural_cache:
@@ -37,13 +37,13 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
             frozenset((k, _get_structural_cache_key(v)) for k, v in value.items()),
         )
     elif isinstance(value, list):
-        key = (list, tuple(_get_structural_cache_key(v) for v in value))
+        key = (list, tuple(_get_structural_cache_key(v) for v in value))  # type: ignore
     elif isinstance(value, tuple):
-        key = (tuple, tuple(_get_structural_cache_key(v) for v in value))
+        key = (tuple, tuple(_get_structural_cache_key(v) for v in value))  # type: ignore
     elif isinstance(value, set | frozenset):
-        key = (frozenset, frozenset(_get_structural_cache_key(v) for v in value))
+        key = (frozenset, frozenset(_get_structural_cache_key(v) for v in value))  # type: ignore
     else:
-        key = (type(value),)
+        key = (type(value),)  # type: ignore
 
     structural_cache[val_id] = key
     return key
@@ -83,7 +83,8 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
 
     # Use the context-aware caches. They are guaranteed to be non-None here.
     container_cache = get_container_schema_cache()
-    assert container_cache is not None
+    if container_cache is None:
+        raise RuntimeError("Container schema cache not available in context.")
 
     structural_key = _get_structural_cache_key(value)
     if structural_key in container_cache:
