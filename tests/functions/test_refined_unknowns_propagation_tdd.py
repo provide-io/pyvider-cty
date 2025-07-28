@@ -2,12 +2,13 @@
 TDD: Verifies that numeric functions consistently propagate or resolve
 refined unknown value constraints.
 """
+
 from decimal import Decimal
-import pytest
 
 from pyvider.cty import CtyNumber, CtyValue
-from pyvider.cty.functions import subtract, divide, negate, abs_fn
+from pyvider.cty.functions import abs_fn, divide, negate, subtract
 from pyvider.cty.values.markers import RefinedUnknownValue
+
 
 def refined_unknown_num(
     lower_bound: tuple[Decimal, bool] | None = None,
@@ -19,6 +20,7 @@ def refined_unknown_num(
             number_lower_bound=lower_bound, number_upper_bound=upper_bound
         ),
     )
+
 
 class TestRefinedUnknownPropagation:
     def test_subtract_from_refined_unknown_adjusts_bounds(self) -> None:

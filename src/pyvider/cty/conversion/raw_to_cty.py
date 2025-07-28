@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import unicodedata
-from typing import Any
 from decimal import Decimal
+from typing import Any
+import unicodedata
 
 import attrs
 
@@ -69,7 +69,6 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         CtyList,
         CtyMap,
         CtyNumber,
-        CtyObject,
         CtySet,
         CtyString,
         CtyTuple,
@@ -111,7 +110,11 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                 }
 
             child_types = [
-                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic()))
+                (
+                    v.type
+                    if isinstance(v, CtyValue)
+                    else results.get(id(v), CtyDynamic())
+                )
                 for v in (
                     container.values() if isinstance(container, dict) else container
                 )

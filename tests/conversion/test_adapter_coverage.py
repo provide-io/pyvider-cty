@@ -1,17 +1,17 @@
+
 import pytest
-from decimal import Decimal
 
 from pyvider.cty import (
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
     CtyValue,
-    CtyDynamic,
-    CtyNumber,
-    CtyList,
-    CtyObject,
-    CtyBool,
-    CtyMap,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
 
@@ -33,7 +33,9 @@ class TestAdapterCoverage:
         obj_type = CtyObject(
             {
                 "a": CtyList(element_type=CtyMap(element_type=CtyNumber())),
-                "b": CtySet(element_type=CtyTuple(element_types=(CtyString(), CtyBool()))),
+                "b": CtySet(
+                    element_type=CtyTuple(element_types=(CtyString(), CtyBool()))
+                ),
             }
         )
         cty_val = obj_type.validate(

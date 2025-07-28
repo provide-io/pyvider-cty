@@ -1,17 +1,16 @@
-import pytest
 from pyvider.cty.exceptions.validation import (
-    CtyValidationError,
     CtyAttributeValidationError,
     CtyListValidationError,
     CtyMapValidationError,
     CtySetValidationError,
     CtyTupleValidationError,
-    CtyTypeValidationError,
     CtyTypeMismatchError,
+    CtyTypeValidationError,
+    CtyValidationError,
     _get_type_name_from_original,
 )
 from pyvider.cty.path import CtyPath
-from pyvider.cty.types import CtyString, CtyNumber
+from pyvider.cty.types import CtyNumber, CtyString
 
 
 class TestCtyValidationError:

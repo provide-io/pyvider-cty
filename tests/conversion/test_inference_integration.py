@@ -1,6 +1,5 @@
 import attrs
 import msgpack
-import pytest
 
 from pyvider.cty import CtyDynamic, CtyObject, CtyValue
 from pyvider.cty.codec import cty_from_msgpack
@@ -20,13 +19,13 @@ def test_validate_raw_attrs_object_with_ctydynamic() -> None:
 
     # The schema for deserialization is CtyDynamic
     schema = CtyDynamic()
-    
+
     # cty_from_msgpack will infer the type and wrap it
     cty_val = cty_from_msgpack(packed_data, schema)
-    
+
     assert isinstance(cty_val, CtyValue)
     assert isinstance(cty_val.type, CtyDynamic)
-    
+
     # The inner value should be the inferred CtyObject
     inner_value = cty_val.value
     assert isinstance(inner_value.type, CtyObject)

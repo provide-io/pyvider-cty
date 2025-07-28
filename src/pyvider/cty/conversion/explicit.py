@@ -62,9 +62,7 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
     if isinstance(target_type, CtyDynamic):
         return value.with_marks(set(value.marks))
 
-    if isinstance(target_type, CtyString) and not isinstance(
-        value.type, CtyCapsule
-    ):
+    if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
         raw = value.value
         if isinstance(raw, bool):
             new_val = "true" if raw else "false"
@@ -117,7 +115,9 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
             elif name in target_type.optional_attributes:
                 new_attrs[name] = CtyValue.null(target_attr_type)
             else:
-                raise CtyConversionError(f"Missing required attribute '{name}' for conversion")
+                raise CtyConversionError(
+                    f"Missing required attribute '{name}' for conversion"
+                )
         return target_type.validate(new_attrs).with_marks(set(value.marks))
 
     raise CtyConversionError(

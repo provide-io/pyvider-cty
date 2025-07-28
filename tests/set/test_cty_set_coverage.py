@@ -1,7 +1,7 @@
 import pytest
 
 from pyvider.cty.exceptions import CtySetValidationError
-from pyvider.cty.types import CtyDynamic, CtyNumber, CtyString, CtyTuple
+from pyvider.cty.types import CtyNumber, CtyString, CtyTuple
 from pyvider.cty.types.collections.set import CtySet
 
 

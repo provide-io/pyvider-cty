@@ -1,16 +1,14 @@
-import pytest
 from decimal import Decimal
 
 from pyvider.cty import (
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
-    CtyValue,
-    CtyDynamic,
-    CtyNumber,
-    CtyList,
-    CtyObject,
-    CtyBool,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
 
@@ -63,6 +61,7 @@ def test_cty_to_native_with_decimal():
     native_float = cty_to_native(cty_val_float)
     assert isinstance(native_float, float)
     assert native_float == 123.45
+
 
 class TestCtyToNativeCorrectness:
     """

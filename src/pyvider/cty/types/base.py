@@ -1,19 +1,32 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
+    Protocol,
     TypeVar,
+    runtime_checkable,
 )
 
 from attrs import define
 
-from .types_base import CtyTypeProtocol  # Import the protocol
-
+# Forward reference to CtyValue to avoid importing it directly at runtime
 if TYPE_CHECKING:
-    from pyvider.cty.values import CtyValue
+    from pyvider.cty.values.base import CtyValue
 
 T = TypeVar("T")
+
+
+@runtime_checkable
+class CtyTypeProtocol(Protocol[T]):
+    """Protocol defining the essential interface of a CtyType."""
+
+    def validate(self, value: object) -> CtyValue[T]: ...
+    def equal(self, other: Any) -> bool: ...
+    def usable_as(self, other: Any) -> bool: ...
+    def is_primitive_type(self) -> bool: ...
 
 
 # The concrete ABC now implements the protocol
@@ -27,15 +40,15 @@ class CtyType[T](CtyTypeProtocol[T], ABC):
     _type_order: ClassVar[int] = 99
 
     @abstractmethod
-    def validate(self, value: object) -> "CtyValue[T]":
+    def validate(self, value: object) -> CtyValue[T]:
         pass
 
     @abstractmethod
-    def equal(self, other: "CtyType[T]") -> bool:
+    def equal(self, other: CtyType[T]) -> bool:
         pass
 
     @abstractmethod
-    def usable_as(self, other: "CtyType[T]") -> bool:
+    def usable_as(self, other: CtyType[T]) -> bool:
         pass
 
     @abstractmethod

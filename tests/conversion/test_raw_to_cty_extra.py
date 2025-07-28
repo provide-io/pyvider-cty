@@ -1,18 +1,16 @@
 import pytest
+
 from pyvider.cty import (
+    CtyDynamic,
+    CtyList,
     CtyMap,
     CtyNumber,
-    CtySet,
     CtyString,
-    CtyList,
-    CtyDynamic,
-    CtyObject,
-    CtyTuple,
-    CtyValue,
-    CtyType,
-    CtyBool,
 )
-from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw, _attrs_to_dict_safe
+from pyvider.cty.conversion.raw_to_cty import (
+    _attrs_to_dict_safe,
+    infer_cty_type_from_raw,
+)
 
 
 def test_infer_from_none():
@@ -45,6 +43,7 @@ def test_attrs_to_dict_safe_with_cty_value():
 def test_infer_from_unsupported_type():
     class Foo:
         pass
+
     assert isinstance(infer_cty_type_from_raw(Foo()), CtyDynamic)
 
 
