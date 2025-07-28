@@ -60,6 +60,10 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
         return result.with_marks(set(value.marks))
 
     if isinstance(value.type, CtyDynamic):
+        if not isinstance(value.value, CtyValue):
+            raise CtyConversionError(
+                "Dynamic value does not contain a CtyValue", source_value=value
+            )
         return convert(value.value, target_type)
 
     if isinstance(target_type, CtyDynamic):

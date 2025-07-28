@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pyvider.cty import CtyNumber
 from pyvider.cty.functions import add, abs_fn
 

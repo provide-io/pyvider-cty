@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import re
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
@@ -40,8 +40,8 @@ def formatdate(spec: "CtyValue[Any]", timestamp: "CtyValue[Any]") -> "CtyValue[A
     if spec.is_unknown or spec.is_null or timestamp.is_unknown or timestamp.is_null:
         return CtyValue.unknown(CtyString())
     try:
-        dt = datetime.fromisoformat(timestamp.value.replace("Z", "+00:00"))
-        py_format_spec = _translate_go_format(spec.value)
+        dt = datetime.fromisoformat(cast(str, timestamp.value).replace("Z", "+00:00"))
+        py_format_spec = _translate_go_format(cast(str, spec.value))
         return CtyString().validate(dt.strftime(py_format_spec))
     except ValueError as e:
         raise CtyFunctionError(f"formatdate: invalid timestamp format: {e}") from e
@@ -71,8 +71,8 @@ def timeadd(timestamp: "CtyValue[Any]", duration: "CtyValue[Any]") -> "CtyValue[
     ):
         return CtyValue.unknown(CtyString())
     try:
-        dt = datetime.fromisoformat(timestamp.value.replace("Z", "+00:00"))
-        td = _parse_duration(duration.value)
+        dt = datetime.fromisoformat(cast(str, timestamp.value).replace("Z", "+00:00"))
+        td = _parse_duration(cast(str, duration.value))
         new_dt = dt + td
         return CtyString().validate(new_dt.isoformat())
     except ValueError as e:

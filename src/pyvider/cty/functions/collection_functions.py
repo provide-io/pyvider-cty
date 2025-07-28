@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import (
     CtyBool,
@@ -29,6 +29,8 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return input_val
     seen = set()
     result_elements = []
+    if not hasattr(input_val.value, "__iter__"):
+        raise CtyFunctionError("distinct: input value is not iterable")
     for cty_element in input_val.value:
         try:
             if cty_element not in seen:
@@ -55,6 +57,8 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
         return input_val
     result_elements = []
     final_element_type: CtyType[Any] | None = None
+    if not hasattr(input_val.value, "__iter__"):
+        raise CtyFunctionError("flatten: input value is not iterable")
     for outer_element_val in input_val.value:
         inner_val = (
             outer_element_val.value
@@ -70,6 +74,8 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
             raise CtyFunctionError(
                 f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}"
             )
+        if not hasattr(inner_val.value, "__iter__"):
+            raise CtyFunctionError("flatten: inner value is not iterable")
         for inner_element_val in inner_val.value:
             if final_element_type is None:
                 final_element_type = inner_element_val.type
@@ -128,7 +134,7 @@ def length(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyNumber())
     if input_val.is_null:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(len(input_val.value))
+    return CtyNumber().validate(len(cast(list[Any], input_val.value)))
 
 
 def slice(
@@ -156,8 +162,10 @@ def slice(
         or end_val.is_unknown
     ):
         return CtyValue.unknown(CtyList(element_type=element_type))
-    start, end = int(start_val.value), int(end_val.value)
-    return CtyList(element_type=element_type).validate(input_val.value[start:end])
+    start, end = int(cast(int, start_val.value)), int(cast(int, end_val.value))
+    return CtyList(element_type=element_type).validate(
+        cast(list[Any], input_val.value)[start:end]
+    )
 
 
 def concat(*lists: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -170,6 +178,8 @@ def concat(*lists: "CtyValue[Any]") -> "CtyValue[Any]":
     for lst in lists:
         if lst.is_null:
             continue
+        if not hasattr(lst.value, "__iter__"):
+            raise CtyFunctionError("concat: inner value is not iterable")
         for element in lst.value:
             if final_element_type is None:
                 final_element_type = element.type
@@ -188,6 +198,8 @@ def contains(collection: "CtyValue[Any]", value: "CtyValue[Any]") -> "CtyValue[A
         )
     if collection.is_null or collection.is_unknown:
         return CtyValue.unknown(CtyBool())
+    if not hasattr(collection.value, "__iter__"):
+        raise CtyFunctionError("contains: collection value is not iterable")
     return CtyBool().validate(value in collection.value)
 
 
@@ -198,6 +210,8 @@ def keys(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyString()))
+    if not isinstance(input_val.value, dict):
+        raise CtyFunctionError("keys: input value is not a map or object")
     return CtyList(element_type=CtyString()).validate(
         sorted(list(input_val.value.keys()))
     )
@@ -225,7 +239,9 @@ def reverse(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("reverse: input must be a list or tuple")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return input_val.type.validate(list(reversed(input_val.value)))
+    if not hasattr(input_val.value, "__iter__"):
+        raise CtyFunctionError("reverse: input value is not iterable")
+    return input_val.type.validate(list(reversed(input_val.value)))  # type: ignore
 
 
 def hasindex(collection: "CtyValue[Any]", key: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -236,12 +252,12 @@ def hasindex(collection: "CtyValue[Any]", key: "CtyValue[Any]") -> "CtyValue[Any
     if isinstance(collection.type, CtyList | CtyTuple):
         if not isinstance(key.type, CtyNumber) or key.is_null:
             return CtyBool().validate(False)
-        idx = int(key.value)
-        return CtyBool().validate(0 <= idx < len(collection.value))
+        idx = int(key.value)  # type: ignore
+        return CtyBool().validate(0 <= idx < len(collection.value))  # type: ignore
     if isinstance(collection.type, CtyMap | CtyObject):
         if not isinstance(key.type, CtyString) or key.is_null:
             return CtyBool().validate(False)
-        return CtyBool().validate(key.value in collection.value)
+        return CtyBool().validate(key.value in collection.value)  # type: ignore
     raise CtyFunctionError(
         f"hasindex: collection must be a list, tuple, map, or object, got {collection.type.ctype}"
     )
@@ -253,7 +269,7 @@ def index(collection: "CtyValue[Any]", key: "CtyValue[Any]") -> "CtyValue[Any]":
 
     key_val = key.value
     if isinstance(key.type, CtyNumber):
-        key_val = int(key_val)
+        key_val = int(key_val)  # type: ignore
 
     return collection[key_val]
 
@@ -268,12 +284,12 @@ def element(collection: "CtyValue[Any]", idx: "CtyValue[Any]") -> "CtyValue[Any]
             else CtyDynamic()
         )
         return CtyValue.unknown(elem_type)
-    length = len(collection.value)
+    length = len(collection.value)  # type: ignore
     if length == 0:
         raise CtyFunctionError(
             "element: cannot use element function with an empty list"
         )
-    return collection.value[int(idx.value) % length]
+    return collection.value[int(idx.value) % length]  # type: ignore
 
 
 def coalescelist(*args: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -283,7 +299,7 @@ def coalescelist(*args: "CtyValue[Any]") -> "CtyValue[Any]":
         if (
             isinstance(arg.type, CtyList | CtyTuple)
             and not arg.is_null
-            and len(arg.value) > 0
+            and len(arg.value) > 0  # type: ignore
         ):
             return arg
     raise CtyFunctionError(
@@ -308,6 +324,8 @@ def compact(collection: "CtyValue[Any]") -> "CtyValue[Any]":
 
     if collection.is_null or collection.is_unknown:
         return collection
+    if not hasattr(collection.value, "__iter__"):
+        raise CtyFunctionError("compact: collection value is not iterable")
     return CtyList(element_type=CtyString()).validate(
         [v for v in collection.value if v.value]
     )
@@ -320,12 +338,14 @@ def chunklist(collection: "CtyValue[Any]", size: "CtyValue[Any]") -> "CtyValue[A
         raise CtyFunctionError("chunklist: arguments must be a list/tuple and a number")
     if collection.is_null or collection.is_unknown or size.is_null or size.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-    chunk_size = int(size.value)
+    if not hasattr(collection.value, "__iter__"):
+        raise CtyFunctionError("chunklist: collection value is not iterable")
+    chunk_size = int(size.value)  # type: ignore
     if chunk_size <= 0:
         raise CtyFunctionError("chunklist: size must be a positive number")
     chunks = [
-        collection.value[i : i + chunk_size]
-        for i in range(0, len(collection.value), chunk_size)
+        collection.value[i : i + chunk_size]  # type: ignore
+        for i in range(0, len(collection.value), chunk_size)  # type: ignore
     ]
     return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)
 
@@ -352,7 +372,7 @@ def lookup(
     ):
         return default
 
-    return collection.value[key.value]
+    return collection.value[key.value]  # type: ignore
 
 
 def merge(*args: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -360,10 +380,10 @@ def merge(*args: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("merge: all arguments must be maps or objects")
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
-    result = {}
+    result: dict[str, Any] = {}
     for arg in args:
         if not arg.is_null:
-            result.update(arg.value)
+            result.update(arg.value)  # type: ignore
 
     inferred_type = infer_cty_type_from_raw(result)
     return inferred_type.validate(result)
@@ -375,7 +395,7 @@ def setproduct(*args: "CtyValue[Any]") -> "CtyValue[Any]":
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtySet(element_type=CtyDynamic()))
 
-    iterables = [list(arg.value) for arg in args if not arg.is_null]
+    iterables = [list(arg.value) for arg in args if not arg.is_null]  # type: ignore
     if not iterables:
         return CtySet(element_type=CtyDynamic()).validate([])
 
@@ -403,6 +423,11 @@ def zipmap(keys: "CtyValue[Any]", values: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyMap(element_type=CtyDynamic()))
     if keys.is_null or values.is_null:
         return CtyMap(element_type=CtyDynamic()).validate({})
+
+    if not hasattr(keys.value, "__iter__"):
+        raise CtyFunctionError("zipmap: keys value is not iterable")
+    if not hasattr(values.value, "__iter__"):
+        raise CtyFunctionError("zipmap: values value is not iterable")
 
     key_list = [k.value for k in keys.value]
     val_list = list(values.value)
