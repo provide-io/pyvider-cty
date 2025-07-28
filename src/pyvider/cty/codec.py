@@ -1,6 +1,6 @@
 from decimal import Decimal
 import json
-from typing import Any, cast
+from typing import Any
 
 import msgpack  # type: ignore
 
@@ -160,11 +160,8 @@ def _msgpack_default_handler(obj: Any) -> Any:
 
 def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
     serializable_data = _convert_value_to_serializable(value, schema)
-    return cast(
-        bytes,
-        msgpack.packb(
-            serializable_data, default=_msgpack_default_handler, use_bin_type=True
-        ),
+    return msgpack.packb(
+        serializable_data, default=_msgpack_default_handler, use_bin_type=True
     )
 
 

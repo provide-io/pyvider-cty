@@ -1,5 +1,5 @@
-from typing import Any, ClassVar
 import unicodedata
+from typing import Any, ClassVar
 
 from attrs import define, field
 
@@ -41,7 +41,7 @@ class CtyObject(CtyType[dict[str, object]]):
     def validate(self, value: object) -> "CtyValue[dict[str, Any]]":  # noqa: C901
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
-                return value  # Fast path
+                return value # Fast path
             if value.is_unknown:
                 return CtyValue.unknown(self)
             if value.is_null:
