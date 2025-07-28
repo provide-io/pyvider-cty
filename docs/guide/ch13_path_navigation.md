@@ -26,7 +26,7 @@ path_to_key = CtyPath.key("my_key")
 Paths can be chained together to create more complex navigation:
 
 ```python
-complex_path = CtyPath.get_attr("users").index(0).child("name")
+complex_path = CtyPath.get_attr("users").index(0).get_attr("name")
 ```
 
 ### Applying a Path
