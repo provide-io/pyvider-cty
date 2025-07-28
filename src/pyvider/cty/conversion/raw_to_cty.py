@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import unicodedata
-from decimal import Decimal
 from typing import Any
+from decimal import Decimal
 
 import attrs
 
-from pyvider.cty.types import CtyType
+from pyvider.cty.types import CtyObject, CtyType
 from pyvider.cty.values import CtyValue
 
 from ._cache import (
@@ -31,22 +31,19 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     if val_id in structural_cache:
         return structural_cache[val_id]
 
-    match value:
-        case dict():
-            key = (
-                dict,
-                frozenset(
-                    (k, _get_structural_cache_key(v)) for k, v in value.items()
-                ),
-            )
-        case list():
-            key = (list, tuple(_get_structural_cache_key(v) for v in value))
-        case tuple():
-            key = (tuple, tuple(_get_structural_cache_key(v) for v in value))
-        case set() | frozenset():
-            key = (frozenset, frozenset(_get_structural_cache_key(v) for v in value))
-        case _:
-            key = (type(value),)
+    if isinstance(value, dict):
+        key = (
+            dict,
+            frozenset((k, _get_structural_cache_key(v)) for k, v in value.items()),
+        )
+    elif isinstance(value, list):
+        key = (list, tuple(_get_structural_cache_key(v) for v in value))
+    elif isinstance(value, tuple):
+        key = (tuple, tuple(_get_structural_cache_key(v) for v in value))
+    elif isinstance(value, set | frozenset):
+        key = (frozenset, frozenset(_get_structural_cache_key(v) for v in value))
+    else:
+        key = (type(value),)
 
     structural_cache[val_id] = key
     return key
@@ -72,9 +69,11 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         CtyList,
         CtyMap,
         CtyNumber,
+        CtyObject,
         CtySet,
         CtyString,
         CtyTuple,
+        CtyType,
     )
 
     if isinstance(value, CtyValue | CtyType) or value is None:
@@ -112,11 +111,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                 }
 
             child_types = [
-                (
-                    v.type
-                    if isinstance(v, CtyValue)
-                    else results.get(id(v), CtyDynamic())
-                )
+                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic()))
                 for v in (
                     container.values() if isinstance(container, dict) else container
                 )

@@ -20,13 +20,9 @@ def jsonencode(val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(
-            f"jsondecode: argument must be a string, got {val.type.ctype}"
-        )
+        raise CtyFunctionError(f"jsondecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyDynamic())
-    if not isinstance(val.value, str):
-        raise CtyFunctionError("jsondecode: argument must be a string")
     try:
         native_val = json.loads(val.value)
         return CtyDynamic().validate(native_val)
@@ -36,15 +32,13 @@ def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(
-            f"csvdecode: argument must be a string, got {val.type.ctype}"
-        )
+        raise CtyFunctionError(f"csvdecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
-    if not isinstance(val.value, str):
-        raise CtyFunctionError("csvdecode: argument must be a string")
+
     f = io.StringIO(val.value)
     try:
+        # The csv module can raise csv.Error for malformed data
         reader = csv.DictReader(f)
         rows = list(reader)
         return CtyList(element_type=CtyDynamic()).validate(rows)

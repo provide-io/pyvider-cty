@@ -1,5 +1,5 @@
-from typing import Any, ClassVar, TypeVar
 import unicodedata
+from typing import Any, ClassVar, TypeVar
 
 from attrs import define, field
 
@@ -31,13 +31,13 @@ class CtyMap[V](CtyType[dict[str, V]]):
     def validate(self, value: object) -> "CtyValue[dict[str, V]]":
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
-                return value  # Fast path
+                return value # Fast path
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
                 return CtyValue.unknown(self)
             value = value.value
-
+        
         if value is None:
             return CtyValue.null(self)
 
@@ -51,9 +51,9 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 raise CtyMapValidationError(
                     f"Map keys must be strings, but got key of type {type(k).__name__}"
                 )
-
+            
             normalized_key = unicodedata.normalize("NFC", k)
-
+            
             try:
                 validated_map[normalized_key] = self.element_type.validate(v)
             except CtyValidationError as e:
@@ -84,10 +84,10 @@ class CtyMap[V](CtyType[dict[str, V]]):
             raise CtyMapValidationError(
                 f"Internal error: CtyValue of CtyMap type does not wrap a dict, got {type(internal_dict).__name__}"
             )
-
+        
         normalized_key = unicodedata.normalize("NFC", str(key))
         result = internal_dict.get(normalized_key)
-
+        
         if result is not None:
             return self.element_type.validate(result)
         return default if default is not None else CtyValue.null(self.element_type)

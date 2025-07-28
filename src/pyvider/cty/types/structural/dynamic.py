@@ -34,6 +34,9 @@ class CtyDynamic(CtyType[object]):
         if value is None:
             return CtyValue.null(self)
 
+        # HARDENED BEHAVIOR: If the payload matches the wire format structure,
+        # it MUST be processed as such. Failure to do so is a fatal error,
+        # not a signal to fall back to inference.
         if isinstance(value, list) and len(value) == 2 and isinstance(value[0], bytes):
             try:
                 type_spec = json.loads(value[0].decode("utf-8"))
@@ -48,6 +51,7 @@ class CtyDynamic(CtyType[object]):
                 # Re-raise validation errors from the inner type.
                 raise e
 
+        # Fallback for all other raw Python values.
         inferred_type = infer_cty_type_from_raw(value)
         concrete_value = inferred_type.validate(value)
         return CtyValue(vtype=self, value=concrete_value)
