@@ -1,13 +1,15 @@
 from decimal import Decimal, InvalidOperation
 import math
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-def _propagate_refined_unknowns(op: str, a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
+def _propagate_refined_unknowns(
+    op: str, a: "CtyValue[Any]", b: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     """Helper to propagate refinements for binary numeric operations."""
     if not (
         isinstance(a.value, RefinedUnknownValue)
@@ -21,8 +23,8 @@ def _propagate_refined_unknowns(op: str, a: "CtyValue[Any]", b: "CtyValue[Any]")
     ref_b = (
         b.value if isinstance(b.value, RefinedUnknownValue) else RefinedUnknownValue()
     )
-    val_a = a.value if not a.is_unknown else None
-    val_b = b.value if not b.is_unknown else None
+    val_a = cast(Decimal, a.value) if not a.is_unknown else None
+    val_b = cast(Decimal, b.value) if not b.is_unknown else None
 
     new_ref: dict[str, Any] = {}
     if op == "add":
@@ -100,6 +102,7 @@ def _propagate_refined_unknowns(op: str, a: "CtyValue[Any]", b: "CtyValue[Any]")
         # This covers the most important cases for now.
         known_val, unknown_ref = (val_a, ref_b) if val_a is not None else (val_b, ref_a)
         if known_val is not None:
+            assert isinstance(known_val, Decimal)
             if known_val > 0:
                 if unknown_ref.number_lower_bound:
                     new_ref["number_lower_bound"] = (
@@ -158,7 +161,9 @@ def add(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyNumber())
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("add", a, b)
-    return CtyNumber().validate(a.value + b.value)  # type: ignore
+    assert isinstance(a.value, Decimal)
+    assert isinstance(b.value, Decimal)
+    return CtyNumber().validate(a.value + b.value)
 
 
 def subtract(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -168,7 +173,9 @@ def subtract(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyNumber())
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("subtract", a, b)
-    return CtyNumber().validate(a.value - b.value)  # type: ignore
+    assert isinstance(a.value, Decimal)
+    assert isinstance(b.value, Decimal)
+    return CtyNumber().validate(a.value - b.value)
 
 
 def multiply(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -180,7 +187,9 @@ def multiply(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyNumber().validate(0)
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("multiply", a, b)
-    return CtyNumber().validate(a.value * b.value)  # type: ignore
+    assert isinstance(a.value, Decimal)
+    assert isinstance(b.value, Decimal)
+    return CtyNumber().validate(a.value * b.value)
 
 
 def divide(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -192,7 +201,9 @@ def divide(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("divide by zero")
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("divide", a, b)
-    return CtyNumber().validate(a.value / b.value)  # type: ignore
+    assert isinstance(a.value, Decimal)
+    assert isinstance(b.value, Decimal)
+    return CtyNumber().validate(a.value / b.value)
 
 
 def modulo(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":

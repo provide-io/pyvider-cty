@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pyvider.cty import CtyCapsule
 
 # Create a dummy file handle object

@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyDynamic, CtyList, CtyObject, CtyString, CtyValue
 from pyvider.cty.conversion import cty_to_native
@@ -26,7 +26,7 @@ def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyDynamic())
     try:
-        native_val = json.loads(val.value)
+        native_val = json.loads(cast(str, val.value))
         return CtyDynamic().validate(native_val)
     except json.JSONDecodeError as e:
         raise CtyFunctionError(f"jsondecode: failed to decode JSON: {e}") from e
@@ -40,7 +40,7 @@ def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
 
-    f = io.StringIO(val.value)
+    f = io.StringIO(cast(str, val.value))
     try:
         # The csv module can raise csv.Error for malformed data
         reader = csv.DictReader(f)

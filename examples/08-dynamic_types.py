@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pyvider.cty import CtyDynamic, CtyString, CtyNumber, CtyObject, CtyTuple
 
 # The CtyDynamic Type

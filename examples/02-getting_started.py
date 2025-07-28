@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pyvider.cty import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyObject, CtyDynamic,
     CtyValue
