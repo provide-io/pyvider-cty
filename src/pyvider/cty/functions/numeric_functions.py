@@ -7,7 +7,7 @@ from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
+def _propagate_refined_unknowns(op: str, a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
     """Helper to propagate refinements for binary numeric operations."""
     if not (
         isinstance(a.value, RefinedUnknownValue)
@@ -123,30 +123,29 @@ def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
                         unknown_ref.number_lower_bound[1],
                     )
 
-    elif op == "divide":
-        if val_b is not None:
-            if val_b > 0:
-                if ref_a.number_lower_bound:
-                    new_ref["number_lower_bound"] = (
-                        ref_a.number_lower_bound[0] / val_b,
-                        ref_a.number_lower_bound[1],
-                    )
-                if ref_a.number_upper_bound:
-                    new_ref["number_upper_bound"] = (
-                        ref_a.number_upper_bound[0] / val_b,
-                        ref_a.number_upper_bound[1],
-                    )
-            elif val_b < 0:
-                if ref_a.number_upper_bound:
-                    new_ref["number_lower_bound"] = (
-                        ref_a.number_upper_bound[0] / val_b,
-                        ref_a.number_upper_bound[1],
-                    )
-                if ref_a.number_lower_bound:
-                    new_ref["number_upper_bound"] = (
-                        ref_a.number_lower_bound[0] / val_b,
-                        ref_a.number_lower_bound[1],
-                    )
+    elif op == "divide" and val_b is not None:
+        if val_b > 0:
+            if ref_a.number_lower_bound:
+                new_ref["number_lower_bound"] = (
+                    ref_a.number_lower_bound[0] / val_b,
+                    ref_a.number_lower_bound[1],
+                )
+            if ref_a.number_upper_bound:
+                new_ref["number_upper_bound"] = (
+                    ref_a.number_upper_bound[0] / val_b,
+                    ref_a.number_upper_bound[1],
+                )
+        elif val_b < 0:
+            if ref_a.number_upper_bound:
+                new_ref["number_lower_bound"] = (
+                    ref_a.number_upper_bound[0] / val_b,
+                    ref_a.number_upper_bound[1],
+                )
+            if ref_a.number_lower_bound:
+                new_ref["number_upper_bound"] = (
+                    ref_a.number_lower_bound[0] / val_b,
+                    ref_a.number_lower_bound[1],
+                )
 
     # Always return a RefinedUnknownValue to prevent AttributeErrors, even if it's empty.
     return CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
@@ -159,7 +158,7 @@ def add(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyNumber())
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("add", a, b)
-    return CtyNumber().validate(a.value + b.value)
+    return CtyNumber().validate(a.value + b.value)  # type: ignore
 
 
 def subtract(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -169,7 +168,7 @@ def subtract(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyNumber())
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("subtract", a, b)
-    return CtyNumber().validate(a.value - b.value)
+    return CtyNumber().validate(a.value - b.value)  # type: ignore
 
 
 def multiply(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -181,7 +180,7 @@ def multiply(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyNumber().validate(0)
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("multiply", a, b)
-    return CtyNumber().validate(a.value * b.value)
+    return CtyNumber().validate(a.value * b.value)  # type: ignore
 
 
 def divide(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -193,7 +192,7 @@ def divide(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("divide by zero")
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("divide", a, b)
-    return CtyNumber().validate(a.value / b.value)
+    return CtyNumber().validate(a.value / b.value)  # type: ignore
 
 
 def modulo(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -203,7 +202,7 @@ def modulo(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyValue.unknown(CtyNumber())
     if b.value == 0:
         raise CtyFunctionError("modulo by zero")
-    return CtyNumber().validate(math.fmod(a.value, b.value))
+    return CtyNumber().validate(math.fmod(a.value, b.value))  # type: ignore
 
 
 def negate(a: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -226,12 +225,12 @@ def negate(a: "CtyValue[Any]") -> "CtyValue[Any]":
                     ref.number_lower_bound[1],
                 )
             return (
-                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
+                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))  # type: ignore
                 if new_ref
                 else CtyValue.unknown(CtyNumber())
             )
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(-a.value)
+    return CtyNumber().validate(-a.value)  # type: ignore
 
 
 def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -264,12 +263,12 @@ def abs_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
             elif upper and upper[0] <= 0:
                 new_ref["number_lower_bound"] = (-upper[0], upper[1])
             return (
-                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
+                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))  # type: ignore
                 if new_ref
                 else CtyValue.unknown(CtyNumber())
             )
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(abs(input_val.value))
+    return CtyNumber().validate(abs(input_val.value))  # type: ignore
 
 
 def ceil_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -279,7 +278,7 @@ def ceil_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyNumber().validate(Decimal(math.ceil(input_val.value)))
+    return CtyNumber().validate(Decimal(math.ceil(input_val.value)))  # type: ignore
 
 
 def floor_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -289,7 +288,7 @@ def floor_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyNumber().validate(Decimal(math.floor(input_val.value)))
+    return CtyNumber().validate(Decimal(math.floor(input_val.value)))  # type: ignore
 
 
 def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -300,14 +299,14 @@ def log_fn(num_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValue[Any
     if num_val.is_null or num_val.is_unknown or base_val.is_null or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
     num, base = num_val.value, base_val.value
-    if num <= 0:
+    if num <= 0:  # type: ignore
         raise CtyFunctionError(f"log: number must be positive, got {num}")
-    if base <= 0:
+    if base <= 0:  # type: ignore
         raise CtyFunctionError(f"log: base must be positive, got {base}")
     if base == 1:
         raise CtyFunctionError("log: base cannot be 1")
     try:
-        result = Decimal(str(math.log(float(num), float(base))))
+        result = Decimal(str(math.log(float(num), float(base))))  # type: ignore
         return CtyNumber().validate(result)
     except ValueError as e:
         raise CtyFunctionError(f"log: math domain error: {e}") from e
@@ -326,7 +325,7 @@ def pow_fn(num_val: "CtyValue[Any]", power_val: "CtyValue[Any]") -> "CtyValue[An
     ):
         return CtyValue.unknown(CtyNumber())
     try:
-        result = num_val.value**power_val.value
+        result = num_val.value**power_val.value  # type: ignore
         return CtyNumber().validate(result)
     except InvalidOperation as e:
         raise CtyFunctionError(f"pow: invalid operation: {e}") from e
@@ -340,9 +339,9 @@ def signum_fn(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if input_val.is_null or input_val.is_unknown:
         return input_val
     val = input_val.value
-    if val < 0:
+    if val < 0:  # type: ignore
         return CtyNumber().validate(Decimal("-1"))
-    if val > 0:
+    if val > 0:  # type: ignore
         return CtyNumber().validate(Decimal("1"))
     return CtyNumber().validate(Decimal("0"))
 
@@ -356,13 +355,13 @@ def parseint_fn(str_val: "CtyValue[Any]", base_val: "CtyValue[Any]") -> "CtyValu
         return CtyValue.null(CtyNumber())
     if str_val.is_unknown or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    s, base = str_val.value, int(base_val.value)
+    s, base = str_val.value, int(base_val.value)  # type: ignore
     if not (base == 0 or 2 <= base <= 36):
         raise CtyFunctionError(
             f"parseint: base must be 0 or between 2 and 36, got {base}"
         )
     try:
-        parsed_int = int(s, base)
+        parsed_int = int(s, base)  # type: ignore
         return CtyNumber().validate(Decimal(parsed_int))
     except (ValueError, TypeError):
         return CtyValue.null(CtyNumber())
@@ -373,4 +372,4 @@ def int_fn(val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError(f"int: argument must be a number, got {val.type.ctype}")
     if val.is_null or val.is_unknown:
         return val
-    return CtyNumber().validate(Decimal(int(val.value)))
+    return CtyNumber().validate(Decimal(int(val.value)))  # type: ignore

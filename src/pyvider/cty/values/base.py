@@ -165,8 +165,8 @@ class CtyValue[T]:
         if self.is_unknown or self.is_null:
             return False
         if hasattr(self.value, "__contains__"):
-            return item in self.value
-        return self.value == item
+            return bool(item in self.value)
+        return self.value == item  # type: ignore
 
     def __bool__(self) -> bool:
         from pyvider.cty.types import CtyDynamic
@@ -232,7 +232,7 @@ class CtyValue[T]:
         if isinstance(self.vtype, CtyTuple):
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyMap):
-            return self.vtype.get(self, key)
+            return self.vtype.get(self, key)  # type: ignore
         raise TypeError(
             f"Value of type {self.vtype.__class__.__name__} is not subscriptable"
         )
@@ -295,7 +295,7 @@ class CtyValue[T]:
             raise TypeError("Internal value of CtyMap must be a dict.")
         new_dict = self.value.copy()
         new_dict[key] = value
-        return self.vtype.validate(new_dict)
+        return self.vtype.validate(new_dict)  # type: ignore
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
@@ -308,7 +308,7 @@ class CtyValue[T]:
             return self
         new_dict = self.value.copy()
         del new_dict[key]
-        return self.vtype.validate(new_dict)
+        return self.vtype.validate(new_dict)  # type: ignore
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
@@ -319,7 +319,7 @@ class CtyValue[T]:
             raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
         new_list.append(value)
-        return self.vtype.validate(new_list)
+        return self.vtype.validate(new_list)  # type: ignore
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
@@ -332,7 +332,7 @@ class CtyValue[T]:
         if not (-len(new_list) <= index < len(new_list)):
             raise IndexError("list index out of range")
         new_list[index] = value
-        return self.vtype.validate(new_list)
+        return self.vtype.validate(new_list)  # type: ignore
 
     @classmethod
     def unknown(

@@ -24,7 +24,7 @@ from ..types import (
 from ..values import CtyValue
 
 
-def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[Any]":
+def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[Any]":  # noqa: C901
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """
@@ -59,15 +59,15 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
             )
         return result.with_marks(set(value.marks))
 
+    if isinstance(value.type, CtyDynamic):
+        return convert(value.value, target_type)
+
     if isinstance(target_type, CtyDynamic):
         return value.with_marks(set(value.marks))
 
     if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
         raw = value.value
-        if isinstance(raw, bool):
-            new_val = "true" if raw else "false"
-        else:
-            new_val = str(raw)
+        new_val = "true" if raw else "false" if isinstance(raw, bool) else str(raw)
         return CtyValue(target_type, new_val).with_marks(set(value.marks))
 
     if isinstance(target_type, CtyNumber):
@@ -109,6 +109,8 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
     if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
         new_attrs = {}
         source_attrs = value.value
+        if not isinstance(source_attrs, dict):
+            raise CtyConversionError("Source object is not a dictionary")
         for name, target_attr_type in target_type.attribute_types.items():
             if name in source_attrs:
                 new_attrs[name] = convert(source_attrs[name], target_attr_type)
@@ -168,7 +170,7 @@ def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
 
         return CtyObject(
             attribute_types=unified_attrs,
-            optional_attributes=frozenset(unified_optionals),
+            optional_attributes=frozenset(unified_optionals),  # type: ignore
         )
 
     return CtyDynamic()

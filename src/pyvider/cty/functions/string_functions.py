@@ -79,15 +79,15 @@ def substr(
         or length_val.is_unknown
     ):
         return CtyValue.unknown(CtyString())
-    offset, length = int(offset_val.value), int(length_val.value)
+    offset, length = int(offset_val.value), int(length_val.value)  # type: ignore
     if offset < 0:
         raise CtyFunctionError("substr: offset must be a non-negative integer")
     if length < -1:
         raise CtyFunctionError("substr: length must be non-negative or -1")
     s = input_val.value
     if length == -1:
-        return CtyString().validate(s[offset:])
-    return CtyString().validate(s[offset : offset + length])
+        return CtyString().validate(s[offset:])  # type: ignore
+    return CtyString().validate(s[offset : offset + length])  # type: ignore
 
 
 def trim(input_val: "CtyValue[Any]", cutset_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -102,7 +102,7 @@ def trim(input_val: "CtyValue[Any]", cutset_val: "CtyValue[Any]") -> "CtyValue[A
         or cutset_val.is_unknown
     ):
         return CtyValue.unknown(CtyString())
-    return CtyString().validate(input_val.value.strip(cutset_val.value))
+    return CtyString().validate(input_val.value.strip(cutset_val.value))  # type: ignore
 
 
 def title(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -112,7 +112,7 @@ def title(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.title())
+    return CtyString().validate(input_val.value.title())  # type: ignore
 
 
 def trimprefix(
@@ -129,8 +129,8 @@ def trimprefix(
         or prefix_val.is_unknown
     ):
         return CtyValue.unknown(CtyString())
-    if input_val.value.startswith(prefix_val.value):
-        return CtyString().validate(input_val.value[len(prefix_val.value) :])
+    if input_val.value.startswith(prefix_val.value):  # type: ignore
+        return CtyString().validate(input_val.value[len(prefix_val.value) :])  # type: ignore
     return input_val
 
 
@@ -148,8 +148,8 @@ def trimsuffix(
         or suffix_val.is_unknown
     ):
         return CtyValue.unknown(CtyString())
-    if input_val.value.endswith(suffix_val.value):
-        return CtyString().validate(input_val.value[: -len(suffix_val.value)])
+    if input_val.value.endswith(suffix_val.value):  # type: ignore
+        return CtyString().validate(input_val.value[: -len(suffix_val.value)])  # type: ignore
     return input_val
 
 
@@ -166,7 +166,7 @@ def regex(input_val: "CtyValue[Any]", pattern_val: "CtyValue[Any]") -> "CtyValue
     ):
         return CtyValue.unknown(CtyString())
     try:
-        match = re.search(pattern_val.value, input_val.value)
+        match = re.search(pattern_val.value, input_val.value)  # type: ignore
         return CtyString().validate(match.group(0) if match else "")
     except re.error as e:
         raise CtyFunctionError(f"regex: invalid regular expression: {e}") from e
@@ -187,7 +187,7 @@ def regexall(
     ):
         return CtyValue.unknown(CtyList(element_type=CtyString()))
     try:
-        matches = re.findall(pattern_val.value, input_val.value)
+        matches = re.findall(pattern_val.value, input_val.value)  # type: ignore
         return CtyList(element_type=CtyString()).validate(matches)
     except re.error as e:
         raise CtyFunctionError(f"regexall: invalid regular expression: {e}") from e
@@ -200,7 +200,7 @@ def upper(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.upper())
+    return CtyString().validate(input_val.value.upper())  # type: ignore
 
 
 def lower(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -210,7 +210,7 @@ def lower(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.lower())
+    return CtyString().validate(input_val.value.lower())  # type: ignore
 
 
 def join(separator: "CtyValue[Any]", elements: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -226,8 +226,8 @@ def join(separator: "CtyValue[Any]", elements: "CtyValue[Any]") -> "CtyValue[Any
     ):
         return CtyValue.unknown(CtyString())
 
-    str_elements = [str(el.value) for el in elements.value]
-    return CtyString().validate(separator.value.join(str_elements))
+    str_elements = [str(el.value) for el in elements.value]  # type: ignore
+    return CtyString().validate(separator.value.join(str_elements))  # type: ignore
 
 
 def split(separator: "CtyValue[Any]", text: "CtyValue[Any]") -> "CtyValue[Any]":
@@ -238,7 +238,7 @@ def split(separator: "CtyValue[Any]", text: "CtyValue[Any]") -> "CtyValue[Any]":
     if separator.is_null or separator.is_unknown or text.is_null or text.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyString()))
 
-    parts = text.value.split(separator.value)
+    parts = text.value.split(separator.value)  # type: ignore
     return CtyList(element_type=CtyString()).validate(parts)
 
 
@@ -261,7 +261,7 @@ def replace(
     ):
         return CtyValue.unknown(CtyString())
 
-    result = string.value.replace(substring.value, replacement.value)
+    result = string.value.replace(substring.value, replacement.value)  # type: ignore
     return CtyString().validate(result)
 
 
@@ -285,7 +285,7 @@ def regexreplace(
         return CtyValue.unknown(CtyString())
 
     try:
-        result = re.sub(pattern.value, replacement.value, string.value)
+        result = re.sub(pattern.value, replacement.value, string.value)  # type: ignore
         return CtyString().validate(result)
     except re.error as e:
         raise CtyFunctionError(f"regexreplace: invalid regular expression: {e}") from e

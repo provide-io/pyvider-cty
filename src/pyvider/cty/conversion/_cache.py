@@ -53,7 +53,7 @@ def inference_cache_context() -> Generator[None]:
         yield
 
 
-def with_inference_cache(func: F) -> F:
+def with_inference_cache(func: F) -> F:  # noqa: UP047
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.

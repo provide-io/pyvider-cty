@@ -48,20 +48,13 @@ def formatdate(spec: "CtyValue[Any]", timestamp: "CtyValue[Any]") -> "CtyValue[A
 
 
 def _parse_duration(duration_str: str) -> timedelta:
-    # This regex now ensures the entire string consists only of valid duration parts.
     if not re.fullmatch(r"(\d+\.?\d*[hms])+", duration_str):
         raise ValueError(f"Invalid duration string format: '{duration_str}'")
 
-    parts = re.findall(r"(\d+\.?\d*)([hms])", duration_str)
-    total_seconds = 0
-    for value, unit in parts:
-        val = float(value)
-        if unit == "h":
-            total_seconds += val * 3600
-        elif unit == "m":
-            total_seconds += val * 60
-        elif unit == "s":
-            total_seconds += val
+    total_seconds = sum(
+        float(value) * {"h": 3600, "m": 60, "s": 1}[unit]
+        for value, unit in re.findall(r"(\d+\.?\d*)([hms])", duration_str)
+    )
     return timedelta(seconds=total_seconds)
 
 
