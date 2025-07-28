@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Any, ClassVar
 
 from attrs import define, field
@@ -63,6 +64,9 @@ class CtyObject(CtyType[dict[str, object]]):
             raise CtyAttributeValidationError(
                 f"Expected a dictionary for CtyObject, got {type(value).__name__}"
             )
+
+        # Normalize keys to NFC before validation to ensure consistency.
+        value = {unicodedata.normalize("NFC", k): v for k, v in value.items()}
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
         all_expected_attrs = set(self.attribute_types.keys())

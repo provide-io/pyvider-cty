@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Any, ClassVar, TypeVar
 
 from attrs import define, field
@@ -50,11 +51,14 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 raise CtyMapValidationError(
                     f"Map keys must be strings, but got key of type {type(k).__name__}"
                 )
+            
+            normalized_key = unicodedata.normalize("NFC", k)
+            
             try:
-                validated_map[k] = self.element_type.validate(v)
+                validated_map[normalized_key] = self.element_type.validate(v)
             except CtyValidationError as e:
                 new_path = CtyPath(
-                    steps=[KeyStep(k)] + (e.path.steps if e.path else [])
+                    steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else [])
                 )
                 raise CtyMapValidationError(
                     e.message, value=v, path=new_path, original_exception=e
@@ -80,7 +84,10 @@ class CtyMap[V](CtyType[dict[str, V]]):
             raise CtyMapValidationError(
                 f"Internal error: CtyValue of CtyMap type does not wrap a dict, got {type(internal_dict).__name__}"
             )
-        result = internal_dict.get(str(key))
+        
+        normalized_key = unicodedata.normalize("NFC", str(key))
+        result = internal_dict.get(normalized_key)
+        
         if result is not None:
             return self.element_type.validate(result)
         return default if default is not None else CtyValue.null(self.element_type)

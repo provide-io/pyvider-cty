@@ -4,7 +4,7 @@ import attrs
 import pytest
 
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
-from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple
+from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple, CtyObject
 
 
 def test_infer_tuple_with_mixed_types() -> None:
@@ -23,12 +23,11 @@ def test_infer_from_set() -> None:
     assert inferred_type.equal(expected_type)
 
 
-def test_infer_map_with_non_identifier_keys() -> None:
+def test_infer_object_with_non_identifier_keys() -> None:
     raw_val = {"hello-world": 123}
     inferred_type = infer_cty_type_from_raw(raw_val)
-    from pyvider.cty.types import CtyMap
-
-    expected_type = CtyMap(element_type=CtyNumber())
+    # All string-keyed dicts should be inferred as objects.
+    expected_type = CtyObject(attribute_types={"hello-world": CtyNumber()})
     assert inferred_type.equal(expected_type)
 
 

@@ -12,9 +12,9 @@ class TestDynamicListValidation:
         validated_list_value = list_of_dynamic_type.validate(raw_data)
 
         element_0 = validated_list_value.value[0].value
-        # Corrected: This should be a map because the values are uniform (all strings).
-        assert isinstance(element_0.type, CtyMap)
-        assert element_0.type.element_type.equal(CtyString())
+        # Corrected: This should be an object because keys are strings.
+        assert isinstance(element_0.type, CtyObject)
+        assert element_0.type.attribute_types["role"].equal(CtyString())
 
         element_1 = validated_list_value.value[1].value
         # Corrected: This is an object because the value types are not uniform.

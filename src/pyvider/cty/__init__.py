@@ -16,12 +16,6 @@ from .exceptions import (
     CtyValidationError,
 )
 from .marks import CtyMark
-from .parallel import (
-    parallel_convert,
-    parallel_from_msgpack,
-    parallel_to_msgpack,
-    parallel_validate,
-)
 from .parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
 from .types import (
     BytesCapsule,
@@ -66,10 +60,6 @@ __all__ = [
     "CtyValidationError",
     "CtyValue",
     "convert",
-    "parallel_convert",
-    "parallel_from_msgpack",
-    "parallel_to_msgpack",
-    "parallel_validate",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
     "unify",

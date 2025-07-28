@@ -4,8 +4,7 @@ TDD Test Suite for Pre-Release Hardening Recommendations.
 This suite defines the required strict behavior for:
 1. Deserialization of CtyDynamic values, which must fail on malformed payloads.
 2. The CtyCapsuleWithOps constructor, which must validate function arity.
-
-These tests are expected to fail until the corresponding features are implemented.
+3. Hashing rules for CtyValue, aligning with Python idioms.
 """
 import json
 from typing import Any
@@ -16,6 +15,12 @@ import pytest
 from pyvider.cty import (
     CtyCapsuleWithOps,
     CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyObject,
+    CtySet,
+    CtyString,
+    CtyTuple,
     CtyType,
     CtyValue,
 )
@@ -114,3 +119,34 @@ class TestCapsuleWithOpsContract:
             )
         except TypeError as e:
             pytest.fail(f"Correctly defined functions raised an unexpected error: {e}")
+
+
+class TestValueHashingContract:
+    """
+    TDD tests for Recommendation #2: Formalize Python-Idiomatic Hashing.
+    This suite asserts that Tuples are hashable, while all other collections are not.
+    """
+
+    def test_tuple_value_is_hashable(self) -> None:
+        """TDD: A CtyValue wrapping a tuple of hashable primitives MUST be hashable."""
+        tuple_type = CtyTuple(element_types=(CtyString(),))
+        tuple_val = tuple_type.validate(("hello",))
+        try:
+            # The ability to be a key in a set proves hashability.
+            _ = {tuple_val}
+        except TypeError:
+            pytest.fail("CtyValue(CtyTuple, ...) was not hashable, but should be.")
+
+    @pytest.mark.parametrize(
+        "unhashable_val",
+        [
+            CtyList(element_type=CtyString()).validate(["a"]),
+            CtySet(element_type=CtyString()).validate({"a"}),
+            CtyMap(element_type=CtyString()).validate({"a": "b"}),
+            CtyObject({"a": CtyString()}).validate({"a": "b"}),
+        ],
+    )
+    def test_collection_values_are_unhashable(self, unhashable_val: CtyValue) -> None:
+        """TDD: CtyValues wrapping lists, sets, maps, and objects MUST be unhashable."""
+        with pytest.raises(TypeError, match="unhashable type"):
+            hash(unhashable_val)
