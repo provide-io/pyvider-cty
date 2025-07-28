@@ -125,6 +125,13 @@ func getTestCasesForGeneration() map[string]TestCase {
 		"list_of_strings":    {Value: cty.ListVal([]cty.Value{cty.StringVal("a"), cty.StringVal("b")}), Type: cty.List(cty.String)},
 		"set_of_numbers":     {Value: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberIntVal(2)}), Type: cty.Set(cty.Number)},
 		"map_simple":         {Value: cty.MapVal(map[string]cty.Value{"a": cty.True, "b": cty.False}), Type: cty.Map(cty.Bool)},
+		"set_of_tuples": {
+			Value: cty.SetVal([]cty.Value{
+				cty.TupleVal([]cty.Value{cty.StringVal("a"), cty.NumberIntVal(1)}),
+				cty.TupleVal([]cty.Value{cty.StringVal("b"), cty.NumberIntVal(2)}),
+			}),
+			Type: cty.Set(cty.Tuple([]cty.Type{cty.String, cty.Number})),
+		},
 		"deeply_nested_object": {
 			Value: cty.ObjectVal(map[string]cty.Value{
 				"id":      cty.StringVal("obj1"), "enabled": cty.True, "ports":   cty.ListVal([]cty.Value{cty.NumberIntVal(80), cty.NumberIntVal(443)}),

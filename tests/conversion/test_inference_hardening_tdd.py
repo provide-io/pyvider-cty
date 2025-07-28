@@ -41,16 +41,16 @@ class TestInferenceHardening:
 
     def test_string_keyed_dict_inference_logic(self) -> None:
         """
-        TDD: A dictionary with all-string keys is inferred as a CtyMap if its
-        value types are uniform, and a CtyObject if they are mixed.
+        TDD: A dictionary with all-string keys should be inferred as a CtyObject
+        to preserve the named attributes.
         """
-        # Case 1: Uniform value types (should be CtyMap)
+        # Case 1: Uniform value types (should still be CtyObject)
         uniform_dict = {"key1": "value1", "key2": "value2"}
         inferred_uniform = infer_cty_type_from_raw(uniform_dict)
         assert isinstance(
-            inferred_uniform, CtyMap
-        ), "String-keyed dict with uniform values was not inferred as a Map."
-        assert inferred_uniform.element_type.equal(CtyString())
+            inferred_uniform, CtyObject
+        ), "String-keyed dict with uniform values was not inferred as an Object."
+        assert inferred_uniform.attribute_types["key1"].equal(CtyString())
 
         # Case 2: Mixed value types (should be CtyObject)
         mixed_dict = {"key1": "value1", "key2": 123}

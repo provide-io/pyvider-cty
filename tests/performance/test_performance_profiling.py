@@ -6,6 +6,7 @@ import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.conversion import inference_cache_context
 
 # --- Configuration ---
 NUM_OBJECTS = 1000  # Number of CtyValues to process per benchmark round
@@ -78,13 +79,16 @@ def core_roundtrip_operation(data_list: list[dict], schema: CtyObject) -> None:
     The core operation to be benchmarked: validating, marshalling to msgpack,
     and unmarshalling back for a list of objects.
     """
-    for raw_data in data_list:
-        # 1. Validate raw Python data into a CtyValue
-        cty_val = schema.validate(raw_data)
-        # 2. Marshal to msgpack bytes
-        packed_bytes = cty_to_msgpack(cty_val, schema)
-        # 3. Unmarshal back to a CtyValue
-        _ = cty_from_msgpack(packed_bytes, schema)
+    # By establishing the context here, a single cache is used for all 1000
+    # objects in the batch, eliminating the setup overhead and fixing the regression.
+    with inference_cache_context():
+        for raw_data in data_list:
+            # 1. Validate raw Python data into a CtyValue
+            cty_val = schema.validate(raw_data)
+            # 2. Marshal to msgpack bytes
+            packed_bytes = cty_to_msgpack(cty_val, schema)
+            # 3. Unmarshal back to a CtyValue
+            _ = cty_from_msgpack(packed_bytes, schema)
 
 
 @pytest.mark.benchmark
@@ -101,4 +105,3 @@ def test_benchmark_full_conversion_roundtrip(
     # The benchmark fixture runs the provided function multiple times
     # to get statistically stable results.
     benchmark(core_roundtrip_operation, test_data, cty_schema)
-

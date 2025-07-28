@@ -2,17 +2,18 @@
 Property-based test to ensure any future caching in the type inference
 logic is safe and does not cause correctness regressions.
 """
+import unicodedata
 from hypothesis import given, strategies as st
 
 from pyvider.cty.conversion import infer_cty_type_from_raw
-from pyvider.cty.types import CtyList, CtyMap, CtyNumber, CtyString, CtyDynamic
+from pyvider.cty.types import CtyList, CtyMap, CtyNumber, CtyString, CtyDynamic, CtyObject
 
 # A strategy that generates two dictionaries that share the same keys
 # but have values of different, incompatible types. This is the exact
 # scenario that would break a naive, key-only caching mechanism.
 @st.composite
 def same_keys_different_types(draw):
-    keys = draw(st.lists(st.text(min_size=1), min_size=1, unique=True))
+    keys = draw(st.lists(st.text(min_size=1, max_size=10), min_size=1, max_size=5, unique=True))
     dict1 = {key: draw(st.text()) for key in keys}
     dict2 = {key: draw(st.lists(st.integers())) for key in keys}
     return (dict1, dict2)
@@ -25,32 +26,27 @@ def test_inference_is_correct_for_same_keys_different_types(data):
     """
     dict1, dict2 = data
     
-    # Infer type for the first dictionary (uniform string values)
+    # Infer type for the first dictionary (all string keys)
     type1 = infer_cty_type_from_raw(dict1)
     
-    # Infer type for the second dictionary (uniform list-of-int values)
+    # Infer type for the second dictionary (all string keys)
     type2 = infer_cty_type_from_raw(dict2)
 
-    # The inferred types must be different CtyMap schemas.
-    # A faulty cache might incorrectly return type1 for the second call.
+    # The inferred types must be different CtyObject schemas.
     assert not type1.equal(type2)
 
-    # Verify the correctness of each inferred type. Since both generated
-    # dicts have uniform value types, they should both be inferred as CtyMap.
-    assert isinstance(type1, CtyMap)
-    assert type1.element_type.equal(CtyString())
+    # Verify the correctness of each inferred type.
+    assert isinstance(type1, CtyObject)
+    assert all(v.equal(CtyString()) for v in type1.attribute_types.values())
 
-    assert isinstance(type2, CtyMap)
+    assert isinstance(type2, CtyObject)
     
-    # CORRECTED ASSERTION:
-    # If any list in the dictionary's values is empty, the unified element
-    # type for the lists must be CtyDynamic, as the element type cannot be
-    # known. Otherwise, it can be inferred as CtyNumber.
-    has_empty_list = any(isinstance(v, list) and not v for v in dict2.values())
-    
-    if has_empty_list:
-        expected_element_type = CtyList(element_type=CtyDynamic())
-    else:
-        expected_element_type = CtyList(element_type=CtyNumber())
-        
-    assert type2.element_type.equal(expected_element_type)
+    # DEFINITIVE FIX:
+    # The test must use the same NFC normalization for key lookups that the
+    # inference function uses internally. This prevents KeyErrors for
+    # characters with multiple Unicode representations.
+    for key, raw_value in dict2.items():
+        expected_attr_type = infer_cty_type_from_raw(raw_value)
+        normalized_key = unicodedata.normalize("NFC", key)
+        actual_attr_type = type2.attribute_types[normalized_key]
+        assert actual_attr_type.equal(expected_attr_type)

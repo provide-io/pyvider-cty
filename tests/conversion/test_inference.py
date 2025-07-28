@@ -53,13 +53,14 @@ def test_infer_tuple_of_primitives() -> None:
     assert isinstance(inferred_type.element_types[1], CtyNumber)
 
 
-def test_infer_map_of_primitives() -> None:
-    inferred_type = infer_cty_type_from_raw({"a": 1, "c": 2})
-    assert isinstance(inferred_type, CtyMap)
-    assert isinstance(inferred_type.element_type, CtyNumber)
-
-
 def test_infer_object_of_primitives() -> None:
+    inferred_type = infer_cty_type_from_raw({"a": 1, "c": 2})
+    assert isinstance(inferred_type, CtyObject)
+    assert isinstance(inferred_type.attribute_types["a"], CtyNumber)
+    assert isinstance(inferred_type.attribute_types["c"], CtyNumber)
+
+
+def test_infer_object_of_primitives_mixed() -> None:
     inferred_type = infer_cty_type_from_raw({"a": 1, "b": "c"})
     assert isinstance(inferred_type, CtyObject)
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber)
@@ -68,21 +69,21 @@ def test_infer_object_of_primitives() -> None:
 
 def test_infer_nested_object() -> None:
     inferred_type = infer_cty_type_from_raw({"user": {"name": "Alice", "age": 30}})
-    assert isinstance(inferred_type, CtyMap)
-    assert isinstance(inferred_type.element_type, CtyObject)
+    assert isinstance(inferred_type, CtyObject)
+    assert isinstance(inferred_type.attribute_types["user"], CtyObject)
     assert isinstance(
-        inferred_type.element_type.attribute_types["name"], CtyString
+        inferred_type.attribute_types["user"].attribute_types["name"], CtyString
     )
     assert isinstance(
-        inferred_type.element_type.attribute_types["age"], CtyNumber
+        inferred_type.attribute_types["user"].attribute_types["age"], CtyNumber
     )
 
 
 def test_infer_list_of_objects() -> None:
     inferred_type = infer_cty_type_from_raw([{"name": "Alice"}, {"name": "Bob"}])
     assert isinstance(inferred_type, CtyList)
-    assert isinstance(inferred_type.element_type, CtyMap)
-    assert isinstance(inferred_type.element_type.element_type, CtyString)
+    assert isinstance(inferred_type.element_type, CtyObject)
+    assert isinstance(inferred_type.element_type.attribute_types["name"], CtyString)
 
 
 def test_infer_mixed_list() -> None:

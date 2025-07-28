@@ -41,6 +41,7 @@ def get_test_cases() -> dict[str, CtyValue]:
         "list_of_strings": CtyList(element_type=CtyString()).validate(["py-a", "py-b"]),
         "set_of_numbers": CtySet(element_type=CtyNumber()).validate({100, 200, 300}),
         "map_simple": CtyMap(element_type=CtyBool()).validate({"py_a": True, "py_b": False}),
+        "set_of_tuples": CtySet(element_type=tuple_type).validate([("a", 1), ("b", 2)]),
         "deeply_nested_object": CtyObject(
             {
                 "id": CtyString(), "enabled": CtyBool(), "ports": CtyList(element_type=CtyNumber()),

@@ -9,7 +9,7 @@ def coalesce(*args: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("coalesce must have at least one argument")
 
     for arg in args:
-        if not arg.is_null:
+        if not arg.is_null and not arg.is_unknown:
             return arg
 
     return CtyValue.null(args[-1].type)

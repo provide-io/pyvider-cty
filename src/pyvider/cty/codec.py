@@ -56,7 +56,8 @@ def _ext_hook(code: int, data: bytes) -> Any:
             raise DeserializationError(
                 f"Failed to decode refined unknown payload: {e}"
             ) from e
-    return msgpack.ExtType(code, data)
+    # Per protocol, any other extension code is an unrefined unknown.
+    return UNREFINED_UNKNOWN
 
 
 def _serialize_unknown(value: "CtyValue[Any]") -> Any:
@@ -85,10 +86,7 @@ def _serialize_unknown(value: "CtyValue[Any]") -> Any:
 
 def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
     inner_value = value.value
-    # The assumption is that for a CtyDynamic value, the inner .value is ALWAYS a concrete CtyValue.
-    # The validation step is responsible for this wrapping.
     if not isinstance(inner_value, CtyValue):
-        # This should ideally never be reached if the CtyValue was constructed correctly.
         raise SerializationError(
             "CtyDynamic value is malformed; its inner value is not a CtyValue instance.",
             value=value,
@@ -98,7 +96,6 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
     serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
 
     type_spec_json = encode_cty_type_to_wire_json(actual_type)
-    # Use separators=(',', ':') to produce compact JSON, matching go-cty.
     type_spec_bytes = json.dumps(type_spec_json, separators=(",", ":")).encode("utf-8")
     return [type_spec_bytes, serializable_inner]
 
@@ -153,8 +150,8 @@ def _convert_value_to_serializable(
     return inner_val
 
 
-def _msgpack_default_handler(obj: Any) -> str:
-    if isinstance(obj, int):
+def _msgpack_default_handler(obj: Any) -> Any:
+    if isinstance(obj, Decimal):
         return str(obj)
     raise TypeError(
         f"Object of type {type(obj).__name__} is not MessagePack serializable"
@@ -192,14 +189,13 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
         try:
             type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
             actual_type = parse_tf_type_to_ctytype(type_spec)
-            inner_value = actual_type.validate(raw_unpacked[1])
+            inner_value = _unpacked_to_cty(raw_unpacked[1], actual_type)
             return CtyValue(vtype=cty_type, value=inner_value)
         except json.JSONDecodeError as e:
             raise DeserializationError(
                 "Failed to decode dynamic value type spec from JSON"
             ) from e
         except CtyValidationError as e:
-            # Let CtyValidationError from parsing or validation propagate up.
             raise e
 
     return _unpacked_to_cty(raw_unpacked, cty_type)
