@@ -5,7 +5,7 @@ CTY-to-CTY type conversion.
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
 from ..exceptions import CtyConversionError, CtyValidationError
 from ..types import (
@@ -62,9 +62,7 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
     if isinstance(target_type, CtyDynamic):
         return value.with_marks(set(value.marks))
 
-    if isinstance(target_type, CtyString) and not isinstance(
-        value.type, CtyCapsule
-    ):
+    if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
         raw = value.value
         if isinstance(raw, bool):
             new_val = "true" if raw else "false"
@@ -111,13 +109,17 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
     if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
         new_attrs = {}
         source_attrs = value.value
+        if not isinstance(source_attrs, dict):
+            raise CtyConversionError("Source object attributes are not a dict")
         for name, target_attr_type in target_type.attribute_types.items():
             if name in source_attrs:
                 new_attrs[name] = convert(source_attrs[name], target_attr_type)
             elif name in target_type.optional_attributes:
                 new_attrs[name] = CtyValue.null(target_attr_type)
             else:
-                raise CtyConversionError(f"Missing required attribute '{name}' for conversion")
+                raise CtyConversionError(
+                    f"Missing required attribute '{name}' for conversion"
+                )
         return target_type.validate(new_attrs).with_marks(set(value.marks))
 
     raise CtyConversionError(
@@ -168,7 +170,7 @@ def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
 
         return CtyObject(
             attribute_types=unified_attrs,
-            optional_attributes=frozenset(unified_optionals),
+            optional_attributes=cast(frozenset[str], frozenset(unified_optionals)),
         )
 
     return CtyDynamic()
