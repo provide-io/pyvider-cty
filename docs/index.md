@@ -13,27 +13,27 @@ This guide will walk you through from initial setup and basic usage to advanced 
 This is the main, chapter-based guide to learning and using `pyvider.cty`.
 
 **Part 1: Introduction & Setup**
-*   [Chapter 1: Welcome to Pyvider Cty](./guide/ch01_welcome.md)
-*   [Chapter 2: Getting Started](./guide/ch02_getting_started.md)
+*   [01- Welcome to Pyvider Cty](./guide/01-welcome.md)
+*   [02- Getting Started](./guide/02-getting_started.md)
 
 **Part 2: Core Concepts**
-*   [Chapter 3: Understanding Types](./guide/ch03_understanding_types.md)
-*   [Chapter 4: Working with Values](./guide/ch04_working_with_values.md)
-*   [Chapter 5: Primitive Types](./guide/ch05_primitive_types.md)
-*   [Chapter 6: Collection Types](./guide/ch06_collection_types.md)
-*   [Chapter 7: Structural Types](./guide/ch07_structural_types.md)
+*   [03- Understanding Types](./guide/03-understanding_types.md)
+*   [04- Working with Values](./guide/04-working_with_values.md)
+*   [05- Primitive Types](./guide/05-primitive_types.md)
+*   [06- Collection Types](./guide/06-collection_types.md)
+*   [07- Structural Types](./guide/07-structural_types.md)
 
 **Part 3: Advanced Topics**
-*   [Chapter 8: Dynamic Types](./guide/ch08_dynamic_types.md)
-*   [Chapter 9: Capsule Types](./guide/ch09_capsule_types.md)
-*   [Chapter 10: Marks](./guide/ch10_marks.md)
-*   [Chapter 11: Functions](./guide/ch11_functions.md)
-*   [Chapter 12: Serialization (JSON and Msgpack)](./guide/ch12_serialization.md)
-*   [Chapter 14: Terraform Interoperability](./guide/ch14_terraform_interop.md)
+*   [08- Dynamic Types](./guide/08-dynamic_types.md)
+*   [09- Capsule Types](./guide/09-capsule_types.md)
+*   [10- Marks](./guide/10-marks.md)
+*   [11- Functions](./guide/11-functions.md)
+*   [12- Serialization (JSON and Msgpack)](./guide/12-serialization.md)
+*   [14- Terraform Interoperability](./guide/14-terraform_interop.md)
 
 **Part 4: Reference & Further Information**
-*   [Chapter 15: API Reference](./guide/ch16_api_reference.md)
-*   [Chapter 16: Troubleshooting](./guide/ch18_troubleshooting.md)
-*   [Chapter 17: Glossary](./guide/ch19_glossary.md)
-*   [Chapter 18: Comparison with Go-Cty](./guide/ch20_go_cty_comparison.md)
+*   [15- API Reference](./guide/15-api_reference.md)
+*   [16- Troubleshooting](./guide/16-troubleshooting.md)
+*   [17- Glossary](./guide/17-glossary.md)
+*   [18- Comparison with Go-Cty](./guide/18-go_cty_comparison.md)
 *   [Release Readiness Evaluation](./release_readiness.md)
