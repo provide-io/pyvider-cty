@@ -326,6 +326,8 @@ def compact(collection: "CtyValue[Any]") -> "CtyValue[Any]":
         return collection
     if not hasattr(collection.value, "__iter__"):
         raise CtyFunctionError("compact: collection value is not iterable")
+    if not hasattr(collection.value, "__iter__"):
+        raise CtyFunctionError("compact: collection value is not iterable")
     return CtyList(element_type=CtyString()).validate(
         [v for v in collection.value if v.value]
     )
