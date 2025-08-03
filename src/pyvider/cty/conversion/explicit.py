@@ -71,7 +71,10 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
 
     if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
         raw = value.value
-        new_val = "true" if raw else "false" if isinstance(raw, bool) else str(raw)
+        if isinstance(raw, bool):
+            new_val = "true" if raw else "false"
+        else:
+            new_val = str(raw)
         return CtyValue(target_type, new_val).with_marks(set(value.marks))
 
     if isinstance(target_type, CtyNumber):
