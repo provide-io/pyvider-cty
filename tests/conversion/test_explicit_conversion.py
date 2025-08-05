@@ -13,9 +13,9 @@ import pytest
 
 from pyvider.cty import (
     CtyBool,
-    CtyCapsuleWithOps,
     CtyDynamic,
     CtyList,
+    CtyMap,
     CtyNumber,
     CtyObject,
     CtySet,
@@ -23,6 +23,8 @@ from pyvider.cty import (
     CtyTuple,
     CtyType,
     CtyValue,
+    CtyCapsule,
+    CtyCapsuleWithOps,
 )
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError
@@ -234,9 +236,7 @@ class TestUnifyFunction:
             (
                 [
                     CtyObject({"a": CtyString()}),
-                    CtyObject(
-                        {"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}
-                    ),
+                    CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
                 ],
                 CtyDynamic(),
             ),

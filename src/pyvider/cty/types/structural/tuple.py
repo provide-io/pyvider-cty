@@ -11,6 +11,7 @@ from pyvider.cty.exceptions import (
 )
 from pyvider.cty.path import CtyPath, IndexStep
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 
@@ -34,6 +35,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
                     f"Element type at index {i} must be a CtyType, got {type(typ).__name__}"
                 )
 
+    @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[Any, ...]]:
         if isinstance(value, CtyValue):
             if (

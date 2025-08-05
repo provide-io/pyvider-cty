@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from typing import Any, cast
+from typing import Any
 
 from pyvider.cty import CtyDynamic, CtyList, CtyObject, CtyString, CtyValue
 from pyvider.cty.conversion import cty_to_native
@@ -20,13 +20,11 @@ def jsonencode(val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(
-            f"jsondecode: argument must be a string, got {val.type.ctype}"
-        )
+        raise CtyFunctionError(f"jsondecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyDynamic())
     try:
-        native_val = json.loads(cast(str, val.value))
+        native_val = json.loads(val.value)
         return CtyDynamic().validate(native_val)
     except json.JSONDecodeError as e:
         raise CtyFunctionError(f"jsondecode: failed to decode JSON: {e}") from e
@@ -34,13 +32,11 @@ def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(
-            f"csvdecode: argument must be a string, got {val.type.ctype}"
-        )
+        raise CtyFunctionError(f"csvdecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
 
-    f = io.StringIO(cast(str, val.value))
+    f = io.StringIO(val.value)
     try:
         # The csv module can raise csv.Error for malformed data
         reader = csv.DictReader(f)

@@ -20,7 +20,7 @@ from .values import CtyValue
 from .values.markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
 
 
-def _ext_hook(code: int, data: bytes) -> Any:  # noqa: C901
+def _ext_hook(code: int, data: bytes) -> Any:
     if code == 0:
         return UNREFINED_UNKNOWN
     if code == 12:
@@ -100,7 +100,7 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
     return [type_spec_bytes, serializable_inner]
 
 
-def _convert_value_to_serializable(  # noqa: C901
+def _convert_value_to_serializable(
     value: "CtyValue[Any]", schema: "CtyType[Any]"
 ) -> Any:
     if not isinstance(value, CtyValue):
@@ -160,7 +160,7 @@ def _msgpack_default_handler(obj: Any) -> Any:
 
 def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
     serializable_data = _convert_value_to_serializable(value, schema)
-    return msgpack.packb(  # type: ignore
+    return msgpack.packb(
         serializable_data, default=_msgpack_default_handler, use_bin_type=True
     )
 

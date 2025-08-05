@@ -5,6 +5,7 @@ from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError, DeserializationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
@@ -15,16 +16,18 @@ class CtyDynamic(CtyType[object]):
     """Represents a dynamic type that can hold any CtyValue."""
 
     ctype: ClassVar[str] = "dynamic"
-    _type_order: ClassVar[int] = 9  # CORRECTED ORDER
+    _type_order: ClassVar[int] = 9
 
+    @with_recursion_detection
     def validate(self, value: object) -> "CtyValue[Any]":
         """
         Validates a raw Python value for a dynamic type. The result is always a
         CtyValue of type CtyDynamic, which wraps the inferred concrete value.
         """
+        from pyvider.cty.values import CtyValue
+
         from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
         from pyvider.cty.parser import parse_tf_type_to_ctytype
-        from pyvider.cty.values import CtyValue
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyDynamic):
@@ -34,9 +37,6 @@ class CtyDynamic(CtyType[object]):
         if value is None:
             return CtyValue.null(self)
 
-        # HARDENED BEHAVIOR: If the payload matches the wire format structure,
-        # it MUST be processed as such. Failure to do so is a fatal error,
-        # not a signal to fall back to inference.
         if isinstance(value, list) and len(value) == 2 and isinstance(value[0], bytes):
             try:
                 type_spec = json.loads(value[0].decode("utf-8"))
@@ -48,10 +48,8 @@ class CtyDynamic(CtyType[object]):
                     "Failed to decode dynamic value type spec from JSON during validation"
                 ) from e
             except CtyValidationError as e:
-                # Re-raise validation errors from the inner type.
                 raise e
 
-        # Fallback for all other raw Python values.
         inferred_type = infer_cty_type_from_raw(value)
         concrete_value = inferred_type.validate(value)
         return CtyValue(vtype=self, value=concrete_value)

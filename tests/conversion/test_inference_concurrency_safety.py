@@ -2,9 +2,10 @@
 TDD: Ensures the type inference cache is thread-safe and does not leak state
 between concurrent operations.
 """
-
 import threading
 from typing import Any
+
+import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.conversion import infer_cty_type_from_raw
@@ -59,12 +60,16 @@ class TestInferenceConcurrencySafety:
         type1_result = results.get(thread1.ident)
         type2_result = results.get(thread2.ident)
 
-        assert not isinstance(type1_result, Exception), (
-            f"Thread 1 failed with: {type1_result}"
-        )
-        assert not isinstance(type2_result, Exception), (
-            f"Thread 2 failed with: {type2_result}"
-        )
+        assert not isinstance(
+            type1_result, Exception
+        ), f"Thread 1 failed with: {type1_result}"
+        assert not isinstance(
+            type2_result, Exception
+        ), f"Thread 2 failed with: {type2_result}"
 
-        assert type1_result.equal(expected_type1), "Thread 1 produced an incorrect type"
-        assert type2_result.equal(expected_type2), "Thread 2 produced an incorrect type"
+        assert type1_result.equal(
+            expected_type1
+        ), "Thread 1 produced an incorrect type"
+        assert type2_result.equal(
+            expected_type2
+        ), "Thread 2 produced an incorrect type"

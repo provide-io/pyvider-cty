@@ -1,5 +1,5 @@
-from typing import Any, ClassVar, TypeVar
 import unicodedata
+from typing import Any, ClassVar, TypeVar
 
 from attrs import define, field
 
@@ -11,6 +11,7 @@ from pyvider.cty.exceptions import (
 )
 from pyvider.cty.path import CtyPath, KeyStep
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 V = TypeVar("V")
@@ -28,6 +29,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 f"element_type must be a CtyType instance, got {type(self.element_type).__name__}"
             )
 
+    @with_recursion_detection
     def validate(self, value: object) -> "CtyValue[dict[str, V]]":
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):

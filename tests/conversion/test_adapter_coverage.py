@@ -1,26 +1,29 @@
-
 import pytest
+from decimal import Decimal
 
 from pyvider.cty import (
-    CtyBool,
-    CtyDynamic,
-    CtyList,
-    CtyMap,
-    CtyNumber,
-    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
     CtyValue,
+    CtyDynamic,
+    CtyNumber,
+    CtyList,
+    CtyObject,
+    CtyBool,
+    CtyMap,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
 
 
 class TestAdapterCoverage:
-    def test_cty_to_native_unknown_raises_error(self):
+    def test_cty_to_native_unknown_returns_none(self):
+        """
+        Verifies that converting an unknown CtyValue to a native type
+        gracefully returns None instead of raising an error.
+        """
         unknown_val = CtyValue.unknown(CtyString())
-        with pytest.raises(ValueError, match="Cannot convert an unknown CtyValue"):
-            cty_to_native(unknown_val)
+        assert cty_to_native(unknown_val) is None
 
     def test_cty_to_native_already_native(self):
         assert cty_to_native(123) == 123
@@ -33,9 +36,7 @@ class TestAdapterCoverage:
         obj_type = CtyObject(
             {
                 "a": CtyList(element_type=CtyMap(element_type=CtyNumber())),
-                "b": CtySet(
-                    element_type=CtyTuple(element_types=(CtyString(), CtyBool()))
-                ),
+                "b": CtySet(element_type=CtyTuple(element_types=(CtyString(), CtyBool()))),
             }
         )
         cty_val = obj_type.validate(

@@ -17,8 +17,8 @@ from pyvider.cty import (
     CtyNumber,
     CtySet,
     CtyString,
-    CtyTuple,
     CtyValue,
+    CtyTuple,
 )
 from pyvider.cty.exceptions import CtySetValidationError
 

@@ -4,14 +4,7 @@ import attrs
 import pytest
 
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
-from pyvider.cty.types import (
-    CtyBool,
-    CtyDynamic,
-    CtyNumber,
-    CtyObject,
-    CtyString,
-    CtyTuple,
-)
+from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple, CtyObject
 
 
 def test_infer_tuple_with_mixed_types() -> None:

@@ -3,9 +3,8 @@
 Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
-
-from collections.abc import Callable
 import inspect
+from collections.abc import Callable
 from typing import Any, ClassVar
 
 from pyvider.cty.exceptions import CtyValidationError
@@ -33,7 +32,7 @@ class CtyCapsule(CtyType[Any]):
 
     def validate(self, value: object) -> "CtyValue[Any]":
         val_to_check: object | None
-        original_marks: frozenset[Any] = frozenset()
+        original_marks = frozenset()
 
         if isinstance(value, CtyValue):
             if value.is_null:

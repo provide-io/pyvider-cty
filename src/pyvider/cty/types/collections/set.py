@@ -7,6 +7,7 @@ from attrs import define, field
 
 from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 T = TypeVar("T")
@@ -25,6 +26,7 @@ class CtySet[T](CtyType[tuple[T, ...]]):
                 f"Expected CtyType for element_type, got {type(self.element_type)}"
             )
 
+    @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
         if value is None:
             return CtyValue.null(self)

@@ -27,6 +27,11 @@ class CtyValue[T]:
     marks: frozenset[Any] = field(factory=frozenset)
 
     def __attrs_post_init__(self) -> None:
+        from pyvider.cty.types import CtyDynamic
+        if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
+            object.__setattr__(self, "is_unknown", self.value.is_unknown)
+            object.__setattr__(self, "is_null", self.value.is_null)
+
         if self.is_unknown and self.is_null:
             object.__setattr__(self, "is_null", False)
         elif self.is_null and self.value is not None:
@@ -77,12 +82,10 @@ class CtyValue[T]:
         ):
             return (*key_prefix, *(v._canonical_sort_key() for v in self.value))
 
-        if (
-            isinstance(self.type, CtySet)
-            and self.value is not None
-            and hasattr(self.value, "__iter__")
-        ):
-            sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
+        if isinstance(self.type, CtySet) and self.value is not None and hasattr(self.value, "__iter__"):
+            sorted_elements = sorted(
+                self.value, key=lambda v: v._canonical_sort_key()
+            )
             return (*key_prefix, *(v._canonical_sort_key() for v in sorted_elements))
 
         if (
@@ -91,10 +94,7 @@ class CtyValue[T]:
             and hasattr(self.value, "items")
         ):
             sorted_items = sorted(self.value.items())
-            return (
-                *key_prefix,
-                *((k, v._canonical_sort_key()) for k, v in sorted_items),
-            )
+            return (*key_prefix, *((k, v._canonical_sort_key()) for k, v in sorted_items))
 
         if isinstance(self.type, CtyCapsule):
             return (*key_prefix, repr(self.value))
@@ -165,8 +165,8 @@ class CtyValue[T]:
         if self.is_unknown or self.is_null:
             return False
         if hasattr(self.value, "__contains__"):
-            return bool(item in self.value)
-        return self.value == item  # type: ignore
+            return item in self.value
+        return self.value == item
 
     def __bool__(self) -> bool:
         from pyvider.cty.types import CtyDynamic
@@ -232,7 +232,7 @@ class CtyValue[T]:
         if isinstance(self.vtype, CtyTuple):
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyMap):
-            return self.vtype.get(self, key)  # type: ignore
+            return self.vtype.get(self, key)
         raise TypeError(
             f"Value of type {self.vtype.__class__.__name__} is not subscriptable"
         )
@@ -295,7 +295,7 @@ class CtyValue[T]:
             raise TypeError("Internal value of CtyMap must be a dict.")
         new_dict = self.value.copy()
         new_dict[key] = value
-        return self.vtype.validate(new_dict)  # type: ignore
+        return self.vtype.validate(new_dict)
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
@@ -308,7 +308,7 @@ class CtyValue[T]:
             return self
         new_dict = self.value.copy()
         del new_dict[key]
-        return self.vtype.validate(new_dict)  # type: ignore
+        return self.vtype.validate(new_dict)
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
@@ -319,7 +319,7 @@ class CtyValue[T]:
             raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
         new_list.append(value)
-        return self.vtype.validate(new_list)  # type: ignore
+        return self.vtype.validate(new_list)
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
@@ -332,7 +332,7 @@ class CtyValue[T]:
         if not (-len(new_list) <= index < len(new_list)):
             raise IndexError("list index out of range")
         new_list[index] = value
-        return self.vtype.validate(new_list)  # type: ignore
+        return self.vtype.validate(new_list)
 
     @classmethod
     def unknown(

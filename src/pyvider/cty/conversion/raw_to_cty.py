@@ -1,8 +1,8 @@
-from __future__ import annotations
+# pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
 
-from decimal import Decimal
-from typing import Any
 import unicodedata
+from typing import Any
+from decimal import Decimal
 
 import attrs
 
@@ -19,41 +19,73 @@ from ._utils import _attrs_to_dict_safe
 
 def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     """
-    Recursively generates a stable, structural cache key from a raw Python object,
+    Iteratively generates a stable, structural cache key from a raw Python object,
     using a context-aware cache to handle object cycles and repeated sub-objects.
     """
     structural_cache = get_structural_key_cache()
-    if structural_cache is None:
-        # This should not be reached if called within `with_inference_cache`
-        raise RuntimeError("Structural cache not available in context.")
+    assert structural_cache is not None
 
-    val_id = id(value)
-    if val_id in structural_cache:
-        return structural_cache[val_id]
+    work_stack: list[Any] = [value]
+    post_process_stack: list[Any] = []
+    # This set tracks everything that has been pushed to the work_stack
+    # to prevent re-processing and infinite loops.
+    visited_ids: set[int] = set()
 
-    if isinstance(value, dict):
-        key = (
-            dict,
-            frozenset((k, _get_structural_cache_key(v)) for k, v in value.items()),
-        )
-    elif isinstance(value, list):
-        key = (list, tuple(_get_structural_cache_key(v) for v in value))  # type: ignore
-    elif isinstance(value, tuple):
-        key = (tuple, tuple(_get_structural_cache_key(v) for v in value))  # type: ignore
-    elif isinstance(value, set | frozenset):
-        key = (frozenset, frozenset(_get_structural_cache_key(v) for v in value))  # type: ignore
-    else:
-        key = (type(value),)  # type: ignore
+    while work_stack:
+        current_item = work_stack.pop()
+        item_id = id(current_item)
 
-    structural_cache[val_id] = key
-    return key
+        if item_id in structural_cache:
+            continue
 
+        if not isinstance(current_item, dict | list | tuple | set | frozenset):
+            structural_cache[item_id] = (type(current_item),)
+            continue
 
-def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
-    """Unifies a set of CtyTypes into a single representative type."""
-    from pyvider.cty.conversion.explicit import unify
+        if item_id in visited_ids:
+            continue
+        
+        visited_ids.add(item_id)
 
-    return unify(types)
+        # Placeholder is essential for cycle detection.
+        structural_cache[item_id] = (type(current_item), item_id, "placeholder")
+        post_process_stack.append(current_item)
+
+        children = []
+        if isinstance(current_item, dict):
+            children.extend(current_item.values())
+        elif isinstance(current_item, list | tuple | set | frozenset):
+            children.extend(current_item)
+        
+        work_stack.extend(children)
+
+    # Build the final keys from the bottom up.
+    while post_process_stack:
+        container = post_process_stack.pop()
+        container_id = id(container)
+        
+        key: tuple[Any, ...]
+        if isinstance(container, dict):
+            # Sort items by key's string representation for deterministic order.
+            sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
+            key = (
+                dict,
+                frozenset((k, structural_cache[id(v)]) for k, v in sorted_items),
+            )
+        elif isinstance(container, list):
+            key = (list, tuple(structural_cache[id(v)] for v in container))
+        elif isinstance(container, tuple):
+            key = (tuple, tuple(structural_cache[id(v)] for v in container))
+        elif isinstance(container, set | frozenset):
+            # Sort elements by their string representation for deterministic order.
+            sorted_items = sorted(list(container), key=repr)
+            key = (frozenset, frozenset(structural_cache[id(v)] for v in sorted_items))
+        else:
+            key = (type(container),)
+
+        structural_cache[container_id] = key
+
+    return structural_cache.get(id(value), (type(value),))
 
 
 @with_inference_cache
@@ -69,22 +101,24 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         CtyList,
         CtyMap,
         CtyNumber,
+        CtyObject,
         CtySet,
         CtyString,
         CtyTuple,
         CtyType,
     )
 
-    if isinstance(value, CtyValue | CtyType) or value is None:
+    if isinstance(value, CtyValue) or value is None:
+        return CtyDynamic()
+
+    if isinstance(value, CtyType):
         return CtyDynamic()
 
     if attrs.has(type(value)):
         value = _attrs_to_dict_safe(value)
 
-    # Use the context-aware caches. They are guaranteed to be non-None here.
     container_cache = get_container_schema_cache()
-    if container_cache is None:
-        raise RuntimeError("Container schema cache not available in context.")
+    assert container_cache is not None
 
     structural_key = _get_structural_cache_key(value)
     if structural_key in container_cache:
@@ -110,15 +144,12 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                     unicodedata.normalize("NFC", k): v for k, v in container.items()
                 }
 
+            child_values = (
+                container.values() if isinstance(container, dict) else container
+            )
             child_types = [
-                (
-                    v.type
-                    if isinstance(v, CtyValue)
-                    else results.get(id(v), CtyDynamic())
-                )
-                for v in (
-                    container.values() if isinstance(container, dict) else container
-                )
+                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic()))
+                for v in child_values
             ]
 
             inferred_schema: CtyType[Any]
@@ -140,6 +171,8 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                     if isinstance(container, list)
                     else CtySet(element_type=unified)
                 )
+            else:
+                inferred_schema = CtyDynamic()
 
             results[container_id] = inferred_schema
             continue
@@ -194,3 +227,10 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     container_cache[final_structural_key] = final_type
 
     return final_type
+
+
+def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
+    """Unifies a set of CtyTypes into a single representative type."""
+    from pyvider.cty.conversion.explicit import unify
+
+    return unify(types)

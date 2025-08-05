@@ -43,8 +43,7 @@ from pyvider.cty import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyObject, CtyDynamic,
     CtyValue
 )
-from pyvider.cty.functions import jsonencode, jsondecode
-from pyvider.cty.conversion import convert
+from pyvider.cty.conversion import to_json, from_json
 ```
 
 **2. Define a Type Schema**
@@ -100,19 +99,17 @@ for tag_value in person_value['tags']:
 `pyvider.cty` can serialize values to JSON for storage or transmission.
 
 ```python
-json_representation = jsonencode(person_value)
-print(f"\nJSON representation:\n{json_representation.value}")
+json_representation = to_json(person_value)
+print(f"\nJSON representation:\n{json_representation}")
 ```
 
 **6. Deserialize from JSON**
 
-To reconstruct a `CtyValue` from JSON, you must provide the `target_type` to guide the process. `jsondecode` will return a `CtyDynamic` value, which can then be converted to the desired type.
+To reconstruct a `CtyValue` from JSON, you must provide the `target_type` to guide the process.
 
 ```python
-reconstructed_value = jsondecode(json_representation)
-converted_value = convert(reconstructed_value, person_type)
-assert converted_value.type.equal(person_type)
-assert converted_value['name'].value == "Alice"
+reconstructed_value = from_json(json_representation, person_type)
+assert reconstructed_value['name'].value == "Alice"
 print("\nSuccessfully reconstructed value from JSON.")
 ```
 

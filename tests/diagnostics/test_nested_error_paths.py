@@ -2,19 +2,12 @@
 TDD: Verifies that validation error messages for deeply nested structures
 have correctly formatted and complete paths.
 """
-
 import pytest
 
 from pyvider.cty import (
-    CtyList,
-    CtyMap,
-    CtyNumber,
-    CtyObject,
-    CtyString,
-    CtyTuple,
-    CtyValidationError,
+    CtyList, CtyMap, CtyNumber, CtyObject, CtyString, CtyTuple,
+    CtyValidationError
 )
-
 
 class TestNestedErrorPaths:
     def test_error_in_list_within_object_within_list(self) -> None:
@@ -41,7 +34,10 @@ class TestNestedErrorPaths:
         schema = CtyObject(
             attribute_types={
                 "config": CtyTuple(
-                    element_types=(CtyString(), CtyMap(element_type=CtyNumber()))
+                    element_types=(
+                        CtyString(),
+                        CtyMap(element_type=CtyNumber())
+                    )
                 )
             }
         )

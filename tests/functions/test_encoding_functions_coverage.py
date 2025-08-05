@@ -1,8 +1,7 @@
 import pytest
-
-from pyvider.cty import CtyNumber, CtyString, CtyValue
+from pyvider.cty import CtyString, CtyValue, CtyNumber, CtyList, CtyObject, CtyDynamic
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import csvdecode, jsondecode, jsonencode
+from pyvider.cty.functions import jsonencode, jsondecode, csvdecode
 
 
 class TestEncodingFunctionsCoverage:
@@ -40,4 +39,4 @@ class TestEncodingFunctionsCoverage:
     def test_csvdecode_invalid_csv(self, mocker):
         mocker.patch("csv.DictReader", side_effect=Exception("test error"))
         with pytest.raises(CtyFunctionError):
-            csvdecode(CtyString().validate("a,b\n1,2"))
+            csvdecode(CtyString().validate('a,b\n1,2'))
