@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 from pyvider.cty import CtyNumber, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
@@ -12,7 +12,7 @@ def byteslen(buffer: "CtyValue[Any]") -> "CtyValue[Any]":
         )
     if buffer.is_unknown or buffer.is_null:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(len(cast(bytes, buffer.value)))
+    return CtyNumber().validate(len(buffer.value))
 
 
 def bytesslice(
@@ -36,5 +36,5 @@ def bytesslice(
     ):
         return CtyValue.unknown(BytesCapsule)
 
-    start_idx, end_idx = int(cast(int, start.value)), int(cast(int, end.value))
-    return BytesCapsule.validate(cast(bytes, buffer.value)[start_idx:end_idx])
+    start_idx, end_idx = int(start.value), int(end.value)
+    return BytesCapsule.validate(buffer.value[start_idx:end_idx])

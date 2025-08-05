@@ -65,10 +65,9 @@ bool_type = CtyBool()
 cty_true = bool_type.validate(True)
 assert cty_true.raw_value is True
 
-# `CtyBool` can be validated from integers `1` and `0`.
 # Validate an invalid value (will raise a ValidationError)
 try:
-    bool_type.validate("not a bool")
+    bool_type.validate(1)
 except Exception as e:
     print(f"Validation failed: {e}")
 ```

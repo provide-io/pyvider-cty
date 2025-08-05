@@ -1,28 +1,27 @@
 #!/usr/bin/env python3
+from examples.example_utils import configure_for_example
+from pyvider.cty.types import CtyCapsule
 
-from pyvider.cty import CtyCapsule
+configure_for_example()
 
-# Create a dummy file handle object
+
 class FileHandle:
-    def __init__(self, path):
+    def __init__(self, path: str) -> None:
         self.path = path
 
+
 file_handle_type = CtyCapsule("FileHandle", FileHandle)
-print("CtyCapsule example successful.")
 
 file_handle = FileHandle("/path/to/file")
 
-# Encapsulate the file handle in a CtyCapsule value
 cty_file_handle = file_handle_type.validate(file_handle)
-print("Encapsulation successful.")
 
-# Access the encapsulated object
 encapsulated_handle = cty_file_handle.raw_value
 assert encapsulated_handle.path == "/path/to/file"
-print("Access successful.")
 
-# Type Safety
 try:
     file_handle_type.validate("not a file handle")
 except Exception as e:
-    print(f"Validation failed as expected: {e}")
+    print(f"Capsule validation failed as expected: {e}")
+
+print("Capsule type examples ran successfully.")

@@ -20,7 +20,6 @@ class TestCtyValueBasicOperations:
         assert not unmarked_val.has_mark(CtyMark("sensitive"))
         assert CtyMark("sensitive") in marks
 
-
 class TestCtyValueEquality:
     def test_equality_simple_values(self) -> None:
         assert CtyString().validate("a") == CtyString().validate("a")
@@ -38,7 +37,6 @@ class TestCtyValueEquality:
         assert CtyValue.null(CtyString()) == CtyValue.null(CtyString())
         assert CtyValue.unknown(CtyString()) == CtyValue.unknown(CtyString())
         assert CtyValue.null(CtyString()) != CtyValue.unknown(CtyString())
-
 
 class TestCtyValueDunderMethods:
     def test_contains(self) -> None:
@@ -69,7 +67,6 @@ class TestCtyValueDunderMethods:
         assert list_val[0].value == "a"
         map_val = CtyMap(element_type=CtyString()).validate({"name": "Alice"})
         assert map_val["name"].value == "Alice"
-
 
 class TestCtyValueOtherMethods:
     def test_hash(self) -> None:

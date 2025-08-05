@@ -9,12 +9,7 @@ To create a `CtyCapsule` type, you must provide a name for the type:
 ```python
 from pyvider.cty import CtyCapsule
 
-# Create a dummy file handle object
-class FileHandle:
-    def __init__(self, path):
-        self.path = path
-
-file_handle_type = CtyCapsule("FileHandle", FileHandle)
+file_handle_type = CtyCapsule("FileHandle")
 ```
 
 This creates a new `CtyCapsule` type that can be used to encapsulate file handle objects.
@@ -24,6 +19,11 @@ This creates a new `CtyCapsule` type that can be used to encapsulate file handle
 You can encapsulate a foreign data type in a `CtyCapsule` value using the `validate` method:
 
 ```python
+# Create a dummy file handle object
+class FileHandle:
+    def __init__(self, path):
+        self.path = path
+
 file_handle = FileHandle("/path/to/file")
 
 # Encapsulate the file handle in a CtyCapsule value

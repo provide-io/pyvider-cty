@@ -24,6 +24,9 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
     if not isinstance(value, CtyValue):
         return value
 
+    if value.is_unknown:
+        return None  # Gracefully handle unknown values by returning None.
+
     POST_PROCESS = object()
     work_stack: list[Any] = [value]
     results: dict[int, Any] = {}
@@ -60,9 +63,7 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
                 # Use _canonical_sort_key for consistent sorting of set elements
                 results[val_id] = sorted(
                     [results[id(item)] for item in val_to_process.value],
-                    key=lambda v: v._canonical_sort_key()
-                    if isinstance(v, CtyValue)
-                    else repr(v),
+                    key=lambda v: v._canonical_sort_key() if isinstance(v, CtyValue) else repr(v)
                 )
             elif isinstance(val_to_process.type, CtyTuple):
                 results[val_id] = tuple(
@@ -75,9 +76,8 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             continue
 
         if current_item.is_unknown:
-            raise ValueError(
-                "Cannot convert an unknown CtyValue to a native Python type."
-            )
+            results[id(current_item)] = None
+            continue
         if current_item.is_null:
             results[id(current_item)] = None
             continue

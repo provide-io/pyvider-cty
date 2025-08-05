@@ -1,38 +1,39 @@
 import pytest
-
 from pyvider.cty import (
-    CtyDynamic,
     CtyList,
-    CtyMap,
-    CtyNumber,
-    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
     CtyValue,
+    CtyNumber,
+    CtyBool,
+    CtyDynamic,
+    CtyMap,
+    CtyObject,
 )
-from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions import (
-    chunklist,
-    coalescelist,
-    compact,
+    distinct,
+    flatten,
+    sort,
+    length,
+    slice,
     concat,
     contains,
-    distinct,
-    element,
-    flatten,
+    keys,
+    values,
+    reverse,
     hasindex,
     index,
-    keys,
-    length,
+    element,
+    coalescelist,
+    compact,
+    chunklist,
     lookup,
     merge,
-    reverse,
-    slice,
-    sort,
-    values,
+    setproduct,
     zipmap,
 )
+from pyvider.cty.exceptions import CtyFunctionError
 
 
 class TestDistinct:
@@ -41,7 +42,7 @@ class TestDistinct:
         assert distinct(l).raw_value == ["a", "b"]
 
     def test_distinct_with_set(self):
-        s = CtySet(element_type=CtyNumber()).validate({1, 2})
+        s = CtySet(element_type=CtyNumber()).validate({1, 2, 1})
         assert sorted(distinct(s).raw_value) == [1, 2]
 
     def test_distinct_with_tuple(self):
@@ -55,9 +56,7 @@ class TestDistinct:
         assert distinct(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_distinct_with_unhashable(self):
-        l = CtyList(element_type=CtyList(element_type=CtyString())).validate(
-            [["a"], ["a"]]
-        )
+        l = CtyList(element_type=CtyList(element_type=CtyString())).validate([["a"], ["a"]])
         with pytest.raises(CtyFunctionError, match="not hashable"):
             distinct(l)
 
@@ -88,11 +87,7 @@ class TestFlatten:
 
     def test_flatten_with_null_element(self):
         l = CtyList(element_type=CtyDynamic()).validate(
-            [
-                CtyList(element_type=CtyString()).validate(["a"]),
-                None,
-                CtyList(element_type=CtyString()).validate(["b"]),
-            ]
+            [CtyList(element_type=CtyString()).validate(["a"]), None, CtyList(element_type=CtyString()).validate(["b"])]
         )
         assert flatten(l).raw_value == ["a", "b"]
 
@@ -107,14 +102,9 @@ class TestFlatten:
 
     def test_flatten_with_non_list_element(self):
         l = CtyList(element_type=CtyDynamic()).validate(
-            [
-                CtyList(element_type=CtyString()).validate(["a"]),
-                CtyString().validate("b"),
-            ]
+            [CtyList(element_type=CtyString()).validate(["a"]), CtyString().validate("b")]
         )
-        with pytest.raises(
-            CtyFunctionError, match="all elements must be lists, sets, or tuples"
-        ):
+        with pytest.raises(CtyFunctionError, match="all elements must be lists, sets, or tuples"):
             flatten(l)
 
     def test_flatten_wrong_type(self):
@@ -213,9 +203,9 @@ class TestReverse:
         assert reverse(l).raw_value == ["c", "b", "a"]
 
     def test_reverse_tuple(self):
-        t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(
-            ("a", "b", "c")
-        )
+        t = CtyTuple(
+            element_types=(CtyString(), CtyString(), CtyString())
+        ).validate(("a", "b", "c"))
         assert reverse(t).raw_value == ("c", "b", "a")
 
     def test_reverse_null_unknown(self):
@@ -242,13 +232,9 @@ class TestHasIndexIndex:
 
     def test_hasindex_null_unknown(self):
         l = CtyList(element_type=CtyString()).validate(["a"])
-        assert (
-            hasindex(
-                CtyValue.null(CtyList(element_type=CtyString())),
-                CtyNumber().validate(0),
-            ).raw_value
-            is False
-        )
+        assert hasindex(
+            CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(0)
+        ).raw_value is False
         assert hasindex(
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyNumber().validate(0),
@@ -281,9 +267,9 @@ class TestElement:
         assert element(l, CtyNumber().validate(3)).raw_value == "a"
 
     def test_element_tuple(self):
-        t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(
-            ("a", "b", "c")
-        )
+        t = CtyTuple(
+            element_types=(CtyString(), CtyString(), CtyString())
+        ).validate(("a", "b", "c"))
         assert element(t, CtyNumber().validate(1)).raw_value == "b"
         assert element(t, CtyNumber().validate(3)).raw_value == "a"
 
@@ -305,9 +291,7 @@ class TestElement:
 
     def test_element_empty_list(self):
         l = CtyList(element_type=CtyString()).validate([])
-        with pytest.raises(
-            CtyFunctionError, match="cannot use element function with an empty list"
-        ):
+        with pytest.raises(CtyFunctionError, match="cannot use element function with an empty list"):
             element(l, CtyNumber().validate(0))
 
 
@@ -418,10 +402,7 @@ class TestChunklist:
         with pytest.raises(CtyFunctionError):
             chunklist(CtyString().validate("hello"), CtyNumber().validate(2))
         with pytest.raises(CtyFunctionError):
-            chunklist(
-                CtyList(element_type=CtyString()).validate(["a"]),
-                CtyString().validate("2"),
-            )
+            chunklist(CtyList(element_type=CtyString()).validate(["a"]), CtyString().validate("2"))
 
     def test_chunklist_invalid_size(self):
         l = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
@@ -432,66 +413,31 @@ class TestChunklist:
 class TestLookup:
     def test_lookup_map_found(self):
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
-        assert (
-            lookup(
-                m, CtyString().validate("a"), CtyString().validate("default")
-            ).raw_value
-            == "x"
-        )
+        assert lookup(m, CtyString().validate("a"), CtyString().validate("default")).raw_value == "x"
 
     def test_lookup_map_not_found(self):
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
-        assert (
-            lookup(
-                m, CtyString().validate("b"), CtyString().validate("default")
-            ).raw_value
-            == "default"
-        )
+        assert lookup(m, CtyString().validate("b"), CtyString().validate("default")).raw_value == "default"
 
     def test_lookup_object_found(self):
         o = CtyObject({"a": CtyString()}).validate({"a": "x"})
-        assert (
-            lookup(
-                o, CtyString().validate("a"), CtyString().validate("default")
-            ).raw_value
-            == "x"
-        )
+        assert lookup(o, CtyString().validate("a"), CtyString().validate("default")).raw_value == "x"
 
     def test_lookup_object_not_found(self):
         o = CtyObject({"a": CtyString()}).validate({"a": "x"})
-        assert (
-            lookup(
-                o, CtyString().validate("b"), CtyString().validate("default")
-            ).raw_value
-            == "default"
-        )
+        assert lookup(o, CtyString().validate("b"), CtyString().validate("default")).raw_value == "default"
 
     def test_lookup_null_unknown(self):
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
         d = CtyString().validate("default")
-        assert (
-            lookup(
-                CtyValue.null(CtyMap(element_type=CtyString())),
-                CtyString().validate("a"),
-                d,
-            ).raw_value
-            == "default"
-        )
-        assert lookup(
-            CtyValue.unknown(CtyMap(element_type=CtyString())),
-            CtyString().validate("a"),
-            d,
-        ).is_unknown
+        assert lookup(CtyValue.null(CtyMap(element_type=CtyString())), CtyString().validate("a"), d).raw_value == "default"
+        assert lookup(CtyValue.unknown(CtyMap(element_type=CtyString())), CtyString().validate("a"), d).is_unknown
         assert lookup(m, CtyValue.null(CtyString()), d).raw_value == "default"
         assert lookup(m, CtyValue.unknown(CtyString()), d).is_unknown
 
     def test_lookup_wrong_type(self):
         with pytest.raises(CtyFunctionError):
-            lookup(
-                CtyString().validate("a"),
-                CtyString().validate("a"),
-                CtyString().validate("a"),
-            )
+            lookup(CtyString().validate("a"), CtyString().validate("a"), CtyString().validate("a"))
 
 
 class TestMerge:
@@ -518,16 +464,12 @@ class TestMerge:
 
     def test_merge_with_null_unknown(self):
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
-        assert merge(m, CtyValue.null(CtyMap(element_type=CtyString()))).raw_value == {
-            "a": "x"
-        }
+        assert merge(m, CtyValue.null(CtyMap(element_type=CtyString()))).raw_value == {"a": "x"}
         assert merge(m, CtyValue.unknown(CtyMap(element_type=CtyString()))).is_unknown
 
     def test_merge_wrong_type(self):
         with pytest.raises(CtyFunctionError):
-            merge(
-                CtyString().validate("a"), CtyMap(element_type=CtyString()).validate({})
-            )
+            merge(CtyString().validate("a"), CtyMap(element_type=CtyString()).validate({}))
 
 
 class TestSetProductZipmap:
@@ -539,27 +481,14 @@ class TestSetProductZipmap:
     def test_zipmap_null_unknown(self):
         keys = CtyList(element_type=CtyString()).validate(["a", "b"])
         values = CtyList(element_type=CtyNumber()).validate([1, 2])
-        assert (
-            zipmap(keys, CtyValue.null(CtyList(element_type=CtyNumber()))).raw_value
-            == {}
-        )
-        assert zipmap(
-            keys, CtyValue.unknown(CtyList(element_type=CtyNumber()))
-        ).is_unknown
-        assert (
-            zipmap(CtyValue.null(CtyList(element_type=CtyString())), values).raw_value
-            == {}
-        )
-        assert zipmap(
-            CtyValue.unknown(CtyList(element_type=CtyString())), values
-        ).is_unknown
+        assert zipmap(keys, CtyValue.null(CtyList(element_type=CtyNumber()))).raw_value == {}
+        assert zipmap(keys, CtyValue.unknown(CtyList(element_type=CtyNumber()))).is_unknown
+        assert zipmap(CtyValue.null(CtyList(element_type=CtyString())), values).raw_value == {}
+        assert zipmap(CtyValue.unknown(CtyList(element_type=CtyString())), values).is_unknown
 
     def test_zipmap_wrong_type(self):
         with pytest.raises(CtyFunctionError):
-            zipmap(
-                CtyString().validate("a"),
-                CtyList(element_type=CtyNumber()).validate([]),
-            )
+            zipmap(CtyString().validate("a"), CtyList(element_type=CtyNumber()).validate([]))
 
     def test_zipmap_different_lengths(self):
         keys = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
@@ -581,21 +510,15 @@ class TestSort:
         assert sort(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_sort_with_null_element(self):
-        l = CtyList(element_type=CtyDynamic()).validate(
-            [CtyString().validate("a"), CtyValue.null(CtyString())]
-        )
-        with pytest.raises(
-            CtyFunctionError, match="cannot sort list with null or unknown elements"
-        ):
+        l = CtyList(element_type=CtyDynamic()).validate([CtyString().validate("a"), CtyValue.null(CtyString())])
+        with pytest.raises(CtyFunctionError, match="cannot sort list with null or unknown elements"):
             sort(l)
 
     def test_sort_with_unknown_element(self):
         l = CtyList(element_type=CtyDynamic()).validate(
             [CtyString().validate("a"), CtyValue.unknown(CtyString())]
         )
-        with pytest.raises(
-            CtyFunctionError, match="cannot sort list with null or unknown elements"
-        ):
+        with pytest.raises(CtyFunctionError, match="cannot sort list with null or unknown elements"):
             sort(l)
 
     def test_sort_wrong_type(self):
@@ -604,9 +527,7 @@ class TestSort:
 
     def test_sort_unsupported_element_type(self):
         l = CtyList(element_type=CtyList(element_type=CtyString())).validate([["a"]])
-        with pytest.raises(
-            CtyFunctionError, match="elements must be string, number, or bool"
-        ):
+        with pytest.raises(CtyFunctionError, match="elements must be string, number, or bool"):
             sort(l)
 
 
@@ -649,9 +570,9 @@ class TestSlice:
         ]
 
     def test_slice_tuple(self):
-        t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(
-            ("a", "b", "c")
-        )
+        t = CtyTuple(
+            element_types=(CtyString(), CtyString(), CtyString())
+        ).validate(("a", "b", "c"))
         assert slice(t, CtyNumber().validate(1), CtyNumber().validate(3)).raw_value == [
             "b",
             "c",
@@ -669,7 +590,9 @@ class TestSlice:
             CtyNumber().validate(0),
             CtyNumber().validate(1),
         ).is_unknown
-        assert slice(l, CtyValue.null(CtyNumber()), CtyNumber().validate(1)).is_unknown
+        assert slice(
+            l, CtyValue.null(CtyNumber()), CtyNumber().validate(1)
+        ).is_unknown
         assert slice(
             l, CtyValue.unknown(CtyNumber()), CtyNumber().validate(1)
         ).is_unknown
@@ -717,13 +640,13 @@ class TestConcat:
 
     def test_concat_with_null_unknown(self):
         l = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert concat(
-            l, CtyValue.null(CtyList(element_type=CtyString()))
-        ).raw_value == [
+        assert concat(l, CtyValue.null(CtyList(element_type=CtyString()))).raw_value == [
             "a",
             "b",
         ]
-        assert concat(l, CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
+        assert concat(
+            l, CtyValue.unknown(CtyList(element_type=CtyString()))
+        ).is_unknown
 
     def test_concat_wrong_type(self):
         with pytest.raises(CtyFunctionError):

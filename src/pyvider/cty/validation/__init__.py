@@ -1,0 +1,45 @@
+"""
+Advanced validation utilities for CTY.
+
+This module provides sophisticated validation capabilities designed for
+production IaC requirements including advanced recursion detection,
+performance monitoring, and comprehensive diagnostics.
+"""
+
+from .recursion import (
+    RecursionDetector,
+    RecursionContext,
+    with_recursion_detection,
+    get_recursion_context,
+    clear_recursion_context,
+)
+
+# Define validate_config here to avoid circular imports
+def validate_config(schema, config):
+    """
+    Validates a configuration against a CtyType schema.
+
+    This function serves as the primary entry point for validation,
+    delegating to the `validate` method of the provided schema. It allows
+    the CtyValidationError to propagate, which is the expected contract
+    for testing and low-level framework integration.
+
+    Args:
+        schema: The CtyType object to validate against.
+        config: The raw Python data to validate.
+
+    Raises:
+        CtyValidationError: If the configuration does not conform to the schema.
+    """
+    # The schema (a CtyType instance) has the validation logic.
+    # We simply call it and let it raise its exception on failure.
+    schema.validate(config)
+
+__all__ = [
+    "RecursionDetector",
+    "RecursionContext", 
+    "with_recursion_detection",
+    "get_recursion_context",
+    "clear_recursion_context",
+    "validate_config",
+]

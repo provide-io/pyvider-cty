@@ -3,7 +3,6 @@
 Provides a thread-safe, context-aware caching mechanism for type inference
 to improve performance and ensure concurrent safety.
 """
-
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -19,9 +18,9 @@ F = TypeVar("F", bound=Callable[..., Any])
 _structural_key_cache: ContextVar[dict[int, tuple[Any, ...]] | None] = ContextVar(
     "_structural_key_cache", default=None
 )
-_container_schema_cache: ContextVar[dict[tuple[Any, ...], CtyType[Any]] | None] = (
-    ContextVar("_container_schema_cache", default=None)
-)
+_container_schema_cache: ContextVar[
+    dict[tuple[Any, ...], CtyType[Any]] | None
+] = ContextVar("_container_schema_cache", default=None)
 
 
 def get_structural_key_cache() -> dict[int, tuple[Any, ...]] | None:
@@ -35,7 +34,7 @@ def get_container_schema_cache() -> dict[tuple[Any, ...], CtyType[Any]] | None:
 
 
 @contextmanager
-def inference_cache_context() -> Generator[None]:
+def inference_cache_context() -> Generator[None, None, None]:
     """
     A context manager that provides an isolated inference cache for the duration
     of its context. If a cache is already active, it reuses the existing one.
@@ -53,7 +52,7 @@ def inference_cache_context() -> Generator[None]:
         yield
 
 
-def with_inference_cache(func: F) -> F:  # noqa: UP047
+def with_inference_cache(func: F) -> F:
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.

@@ -9,6 +9,7 @@ from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 if TYPE_CHECKING:
@@ -30,6 +31,7 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 f"Expected CtyType for element_type, got {type(self.element_type).__name__}"
             )
 
+    @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:  # noqa: C901
         from pyvider.cty.values import CtyValue
 

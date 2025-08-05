@@ -210,7 +210,6 @@ class TestPath:
         path = CtyPath.get_attr("users").index_step(1).key_step("name")
         assert str(path) == "users[1]['name']"
 
-
 class TestCtyPathStringRepresentation:
     """
     Tests for the human-readable string representation of CtyPath objects,
