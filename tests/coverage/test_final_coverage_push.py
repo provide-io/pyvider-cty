@@ -1,87 +1,121 @@
 """
-This test suite specifically targets remaining edge cases and error paths
-to bring code coverage as close to 100% as possible.
+Final test suite to address all significant remaining coverage gaps, bringing
+the library to a production-ready state of test coverage.
 """
-import re
+from decimal import Decimal
 import pytest
 
 from pyvider.cty import (
-    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject,
-    CtyString, CtyTuple, CtyValue
+    CtyDynamic, CtyList, CtyMap, CtyNumber, CtyString, CtyValue, convert
 )
-from pyvider.cty.exceptions import CtyTupleValidationError
-from pyvider.cty.marks import CtyMark
-from pyvider.cty.types.base import CtyType
-from pyvider.cty.types.capsule import CtyCapsuleWithOps
-from pyvider.cty.types.types_base import CtyTypeProtocol
+from pyvider.cty.exceptions import CtyConversionError
+from pyvider.cty.functions import (
+    add, greater_than, less_than, multiply, subtract
+)
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-class TestFinalCoverage:
-    """Targeted tests for remaining uncovered lines."""
+def refined_unknown_num(
+    lower_bound: tuple[Decimal, bool] | None = None,
+    upper_bound: tuple[Decimal, bool] | None = None,
+) -> CtyValue:
+    return CtyValue.unknown(
+        CtyNumber(),
+        value=RefinedUnknownValue(
+            number_lower_bound=lower_bound, number_upper_bound=upper_bound
+        ),
+    )
 
-    def test_value_base_coverage(self) -> None:
-        """Covers remaining lines in src/pyvider/cty/values/base.py"""
-        val_null_with_value = CtyValue(vtype=CtyString(), is_null=True, value="should be removed")
-        assert val_null_with_value.is_null and val_null_with_value.value is None
 
-        class Opaque: pass
-        ops_type = CtyCapsuleWithOps("Opaque", Opaque, equal_fn=lambda a, b: a is b)
-        val1 = ops_type.validate(Opaque())
-        val2 = ops_type.validate(Opaque())
-        assert val1 != val2 and val1 == val1
+class TestFinalCoveragePush:
+    """A single suite to cover all remaining untested lines."""
 
-        list_val = CtyList(element_type=CtyString()).validate(["a", "b"])
-        dynamic_val = CtyDynamic().validate(list_val)
-        assert len(dynamic_val) == 2
+    # --- Coverage for: src/pyvider/cty/values/base.py ---
 
-        map_val = CtyMap(element_type=CtyString()).validate({"a": "val_a", "b": "val_b"})
-        iterated_values = {v.value for v in map_val}
-        assert iterated_values == {"val_a", "val_b"}
-        obj_val = CtyObject({"a": CtyString()}).validate({"a": "b"})
-        with pytest.raises(TypeError, match="is not iterable"): list(obj_val)
+    def test_value_comparison_dunders_on_malformed_value(self) -> None:
+        """Covers internal TypeErrors for comparisons on malformed CtyValues."""
+        malformed_number = CtyValue(vtype=CtyNumber(), value="not-a-decimal")
+        n5 = CtyNumber().validate(5)
 
-        ops_type_hash = CtyCapsuleWithOps("Opaque", Opaque, hash_fn=lambda v: 12345)
-        val_hash = ops_type_hash.validate(Opaque())
-        assert hash(val_hash) == 12345
+        with pytest.raises(TypeError): _ = malformed_number < n5
+        with pytest.raises(TypeError): _ = malformed_number <= n5
+        with pytest.raises(TypeError): _ = malformed_number > n5
+        with pytest.raises(TypeError): _ = malformed_number >= n5
 
-        true_val = CtyDynamic().validate(CtyBool().validate(True))
-        false_val = CtyDynamic().validate(CtyBool().validate(False))
-        assert true_val.is_true() and not true_val.is_false()
-        assert not false_val.is_true() and false_val.is_false()
+    def test_value_comparison_dunders_on_non_comparable_type(self) -> None:
+        """Covers TypeErrors when comparing uncomparable CtyValue types."""
+        list_val = CtyList(element_type=CtyString()).validate([])
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val < list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val <= list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val > list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val >= list_val
 
-        with pytest.raises(TypeError, match=re.escape("'.without_key()' can only be used on CtyMap values.")):
-            list_val.without_key("a")
+    def test_collection_helpers_on_malformed_value(self) -> None:
+        """Covers internal TypeErrors for helper methods on malformed CtyValues."""
+        malformed_map = CtyValue(vtype=CtyMap(element_type=CtyString()), value=123)
+        with pytest.raises(TypeError, match="Internal value of CtyMap must be a dict"):
+            malformed_map.without_key("a")
 
-    def test_types_base_coverage(self) -> None:
-        """Covers remaining lines in src/pyvider/cty/types/types_base.py"""
-        class MyType(CtyType):
-            def validate(self, value): return CtyValue(self, value)
-            def equal(self, other): return isinstance(other, MyType)
-            def usable_as(self, other): return self.equal(other)
-            def _to_wire_json(self): return "mytype"
-        
-        my_instance = MyType()
-        assert isinstance(my_instance, CtyTypeProtocol)
-        assert my_instance == MyType()
-        assert my_instance != CtyString()
-        assert hash(my_instance) == hash(MyType())
-        assert repr(my_instance) == "MyType()"
+        malformed_list = CtyValue(vtype=CtyList(element_type=CtyString()), value=123)
+        with pytest.raises(TypeError, match="Internal value of CtyList must be a list or tuple"):
+            malformed_list.with_element_at(0, "a")
 
-    def test_tuple_type_coverage(self) -> None:
-        """Covers remaining lines in src/pyvider/cty/types/structural/tuple.py"""
-        tuple_type = CtyTuple((CtyString(), CtyNumber()))
-        
-        # Test __getitem__
-        assert tuple_type[0].equal(CtyString())
-        
-        # Test element_at with slice on unknown/null
-        unknown_val = CtyValue.unknown(tuple_type)
-        sliced_unknown = tuple_type.element_at(unknown_val, slice(0, 1))
-        assert sliced_unknown.is_unknown
-        assert isinstance(sliced_unknown.type, CtyTuple)
-        assert len(sliced_unknown.type.element_types) == 1
+    # --- Coverage for: src/pyvider/cty/functions/comparison_functions.py ---
 
-        # Test element_at with inconsistent internal value
-        inconsistent_val = CtyValue(tuple_type, value=("a", "b", "c")) # Wrong length
-        with pytest.raises(CtyTupleValidationError, match="Internal tuple value is inconsistent"):
-            tuple_type.element_at(inconsistent_val, 0)
+    def test_comparison_both_refined_can_resolve(self) -> None:
+        """Covers comparison where two refined unknowns do not overlap."""
+        # (unknown < 10) < (unknown > 20) -> should be True
+        unknown_lt_10 = refined_unknown_num(upper_bound=(Decimal("10"), False))
+        unknown_gt_20 = refined_unknown_num(lower_bound=(Decimal("20"), False))
+        assert less_than(unknown_lt_10, unknown_gt_20).value is True
+        assert greater_than(unknown_gt_20, unknown_lt_10).value is True
+
+    # --- Coverage for: src/pyvider/cty/functions/numeric_functions.py ---
+
+    def test_numeric_refined_propagation_coverage(self) -> None:
+        """Covers various unexercised branches in refined unknown propagation."""
+        # Case: add with one bound missing
+        r1 = refined_unknown_num(lower_bound=(Decimal(10), True))
+        r2 = refined_unknown_num(upper_bound=(Decimal(20), True))
+        res_add = add(r1, r2)
+        assert res_add.is_unknown and res_add.value.number_lower_bound is None
+
+        # Case: subtract with known minuend
+        known_100 = CtyNumber().validate(100)
+        res_sub = subtract(known_100, r1)
+        assert res_sub.is_unknown and res_sub.value.number_upper_bound is not None
+
+        # Case: multiply with two refined unknowns (currently simplified, will be unknown)
+        res_mul = multiply(r1, r2)
+        assert res_mul.is_unknown and res_mul.value.number_lower_bound is None
+
+    # --- Coverage for: src/pyvider/cty/conversion/explicit.py ---
+
+    def test_convert_list_to_list_of_dynamic(self) -> None:
+        """Covers converting a typed list to a list of dynamic."""
+        source_val = CtyList(element_type=CtyString()).validate(["a", "b"])
+        target_type = CtyList(element_type=CtyDynamic())
+        result = convert(source_val, target_type)
+        assert result.type.equal(target_type)
+        assert result.value[0].type.is_dynamic_type()
+
+    # --- Coverage for: src/pyvider/cty/conversion/adapter.py ---
+
+    def test_cty_to_native_with_malformed_set(self) -> None:
+        """Covers cty_to_native with a CtySet whose internal value is not iterable."""
+        from pyvider.cty import CtySet
+        from pyvider.cty.conversion.adapter import cty_to_native
+        malformed_set = CtyValue(vtype=CtySet(element_type=CtyString()), value=123)
+        assert cty_to_native(malformed_set) == []
+
+    # --- Coverage for: src/pyvider/cty/types/base.py ---
+
+    def test_type_protocol_conformance_check(self) -> None:
+        """Covers the runtime_checkable branches of the CtyTypeProtocol."""
+        from pyvider.cty.types.base import CtyTypeProtocol
+        class IncompleteType:
+            def validate(self, value): pass
+        assert not isinstance(IncompleteType(), CtyTypeProtocol)
+
+
+# 🐍🎯🧪🪄

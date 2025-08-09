@@ -31,3 +31,6 @@ class TestCtyListTypeComparison:
 
     def test_usable_as_dynamic(self, string_list_type: CtyList[str]) -> None:
         assert string_list_type.usable_as(CtyDynamic())
+
+
+# 🐍🎯🧪🪄

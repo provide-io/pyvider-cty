@@ -8,6 +8,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import attrs
+
 from pyvider.cty import (
     CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtySet,
     CtyString, CtyTuple, CtyValue
@@ -61,6 +63,22 @@ def get_test_cases() -> dict[str, CtyValue]:
 def cty_to_manifest_native(value: CtyValue) -> Any:
     """Converts a CtyValue to a native Python type suitable for the JSON manifest."""
     if value.is_unknown:
+        if isinstance(value.value, RefinedUnknownValue):
+            refinements = {k: v for k, v in attrs.asdict(value.value).items() if v is not None}
+            if not refinements:
+                return _UNKNOWN_SENTINEL
+            
+            formatted_refinements = {}
+            for k, v in refinements.items():
+                if isinstance(v, tuple) and isinstance(v[0], Decimal):
+                    formatted_refinements[k] = (str(v[0]), v[1])
+                else:
+                    formatted_refinements[k] = v
+            
+            return {
+                "$pyvider-cty-special-value": "unknown",
+                "refinements": formatted_refinements,
+            }
         return _UNKNOWN_SENTINEL
     if value.is_null:
         return None
@@ -74,8 +92,8 @@ def cty_to_manifest_native(value: CtyValue) -> Any:
     if isinstance(val, tuple):
         return [cty_to_manifest_native(item) for item in val]
     if isinstance(val, frozenset):
-        native_items = [cty_to_manifest_native(item) for item in val]
-        return sorted(native_items, key=repr)
+        sorted_cty_items = sorted(val, key=lambda v: v._canonical_sort_key())
+        return [cty_to_manifest_native(item) for item in sorted_cty_items]
     if isinstance(val, dict):
         return {k: cty_to_manifest_native(v) for k, v in sorted(val.items())}
     
@@ -93,15 +111,14 @@ def main():
     manifest = {}
 
     for name, value in test_cases.items():
-        msgpack_bytes = cty_to_msgpack(value, value.type)
+        schema_for_packing = CtyDynamic() if isinstance(value.type, CtyDynamic) else value.type
+        msgpack_bytes = cty_to_msgpack(value, schema_for_packing)
         (output_dir / f"{name}.msgpack").write_bytes(msgpack_bytes)
 
-        manifest_value = value
-        if isinstance(value.type, CtyDynamic):
-            manifest_value = value.value
+        manifest_type = CtyDynamic() if isinstance(value.type, CtyDynamic) else value.type
 
         manifest[name] = {
-            "type": encode_cty_type_to_wire_json(manifest_value.type),
+            "type": encode_cty_type_to_wire_json(manifest_type),
             "value": cty_to_manifest_native(value),
             "isUnknown": value.is_unknown,
             "isNull": value.is_null,
@@ -112,3 +129,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# 🐍🎯📄🪄

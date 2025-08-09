@@ -1,7 +1,12 @@
+#
+# pyvider/cty/types/structural/object.py
+#
 from typing import Any, ClassVar
+import unicodedata
 
 from attrs import define, field
 
+from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
     CtyTypeMismatchError,
@@ -10,23 +15,16 @@ from pyvider.cty.exceptions import (
 )
 from pyvider.cty.path import CtyPath, GetAttrStep
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
-
-
-def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
-    res = {}
-    for a in getattr(type(inst), "__attrs_attrs__", []):
-        res[a.name] = getattr(inst, a.name)
-    return res
 
 
 @define(frozen=True, slots=True)
 class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
+    _type_order: ClassVar[int] = 7
     attribute_types: dict[str, "CtyType[Any]"] = field(factory=dict)
-    optional_attributes: frozenset[str] = field(
-        factory=frozenset, converter=frozenset
-    )
+    optional_attributes: frozenset[str] = field(factory=frozenset, converter=frozenset)
 
     def __attrs_post_init__(self) -> None:
         for name, attr_type in self.attribute_types.items():
@@ -44,7 +42,17 @@ class CtyObject(CtyType[dict[str, object]]):
             )
         )
 
+    @with_recursion_detection
     def validate(self, value: object) -> "CtyValue[dict[str, Any]]":  # noqa: C901
+        if isinstance(value, CtyValue):
+            if self.equal(value.type) and isinstance(value.value, dict):
+                return value  # Fast path
+            if value.is_unknown:
+                return CtyValue.unknown(self)
+            if value.is_null:
+                return CtyValue.null(self)
+            value = value.value
+
         if value is None:
             return CtyValue.null(self)
         from pyvider.cty.types.structural.dynamic import CtyDynamic
@@ -55,19 +63,15 @@ class CtyObject(CtyType[dict[str, object]]):
                 f"Unknown optional attributes: {', '.join(sorted(list(unknown_optionals)))}"
             )
 
-        if isinstance(value, CtyValue):
-            if value.is_unknown:
-                return CtyValue.unknown(self)
-            if value.is_null:
-                return CtyValue.null(self)
-            value = value.value
-
         if hasattr(type(value), "__attrs_attrs__"):
             value = _attrs_to_dict_safe(value)
         if not isinstance(value, dict):
             raise CtyAttributeValidationError(
                 f"Expected a dictionary for CtyObject, got {type(value).__name__}"
             )
+
+        # Normalize keys to NFC before validation to ensure consistency.
+        value = {unicodedata.normalize("NFC", k): v for k, v in value.items()}
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
         all_expected_attrs = set(self.attribute_types.keys())
@@ -117,7 +121,8 @@ class CtyObject(CtyType[dict[str, object]]):
 
             validated_attrs[name] = validated_attr
 
-        return CtyValue(vtype=self, value=validated_attrs)
+        is_unknown = any(v.is_unknown for v in validated_attrs.values())
+        return CtyValue(vtype=self, value=validated_attrs, is_unknown=is_unknown)
 
     def get_attribute(self, obj_value: "CtyValue[Any]", name: str) -> "CtyValue[Any]":
         if not isinstance(obj_value, CtyValue):
@@ -178,3 +183,7 @@ class CtyObject(CtyType[dict[str, object]]):
 
     def is_primitive_type(self) -> bool:
         return False
+
+
+
+# 🐍🎯📄🪄

@@ -30,7 +30,7 @@ def deep_unmark(value: CtyValue) -> CtyValue:
     new_inner_value = value.value
     if isinstance(new_inner_value, CtyValue):
         new_inner_value = deep_unmark(new_inner_value)
-    elif isinstance(new_inner_value, list | tuple):
+    elif isinstance(new_inner_value, list | tuple | frozenset):
         new_inner_value = type(new_inner_value)(deep_unmark(v) for v in new_inner_value)
     elif isinstance(new_inner_value, dict | MappingProxyType):
         new_inner_value = type(new_inner_value)(
@@ -41,30 +41,42 @@ def deep_unmark(value: CtyValue) -> CtyValue:
 
 def assert_value_roundtrip(value: CtyValue) -> None:
     try:
-        packed = cty_to_msgpack(value, CtyDynamic())
-        unpacked = cty_from_msgpack(packed, CtyDynamic())
+        # We pack with the value's concrete type, but unpack with CtyDynamic
+        # to test the full dynamic wire protocol.
+        packed = cty_to_msgpack(value, value.type)
+        unpacked = cty_from_msgpack(packed, value.type)
 
         original_unmarked = deep_unmark(value)
+        unpacked_unmarked = deep_unmark(unpacked)
 
-        value_to_compare = unpacked
-        if not isinstance(original_unmarked.type, CtyDynamic):
-            value_to_compare = unpacked.value
-
-        assert value_to_compare == original_unmarked, (
-            f"Roundtrip failed!\n"
+        assert unpacked_unmarked == original_unmarked, (
+            f"Direct roundtrip failed!\n"
             f"Original (norm): {normalize_repr(original_unmarked)}\n"
-            f"Got (norm):      {normalize_repr(value_to_compare)}"
+            f"Got (norm):      {normalize_repr(unpacked_unmarked)}"
         )
+
+        # Now test the CtyDynamic roundtrip
+        dynamic_value = CtyDynamic().validate(value)
+        packed_dynamic = cty_to_msgpack(dynamic_value, CtyDynamic())
+        unpacked_dynamic = cty_from_msgpack(packed_dynamic, CtyDynamic())
+
+        unpacked_inner_value = deep_unmark(unpacked_dynamic.value)
+
+        assert unpacked_inner_value == original_unmarked, (
+            f"Dynamic roundtrip failed!\n"
+            f"Original (norm): {normalize_repr(original_unmarked)}\n"
+            f"Got (norm):      {normalize_repr(unpacked_inner_value)}"
+        )
+
     except Exception as e:
-        pytest.fail(f"Roundtrip assertion failed with an exception: {e}", pytrace=False)
+        pytest.fail(f"Roundtrip assertion failed with an exception: {e!r}", pytrace=True)
 
 
 class TestTddDefinitiveCorrectness:
     def test_dynamic_wrapping_list_of_marked_strings(self) -> None:
         list_type = CtyList(element_type=CtyString())
         marked_list_val = list_type.validate(["a", "b"]).mark(CtyMark("sensitive"))
-        dynamic_val = CtyDynamic().validate(marked_list_val)
-        assert_value_roundtrip(dynamic_val)
+        assert_value_roundtrip(marked_list_val)
 
     def test_map_of_tuples_containing_marked_values(self) -> None:
         tuple_type = CtyTuple(element_types=(CtyNumber(), CtyString()))
@@ -91,3 +103,6 @@ class TestTddDefinitiveCorrectness:
         marked_bool = CtyBool().validate(True).mark(CtyMark("sensitive"))
         list_val = list_type.validate([marked_num, marked_bool, "unmarked"])
         assert_value_roundtrip(list_val)
+
+
+# 🐍🎯🧪🪄

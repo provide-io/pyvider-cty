@@ -4,7 +4,7 @@ import attrs
 import pytest
 
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
-from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple
+from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple, CtyObject
 
 
 def test_infer_tuple_with_mixed_types() -> None:
@@ -23,12 +23,11 @@ def test_infer_from_set() -> None:
     assert inferred_type.equal(expected_type)
 
 
-def test_infer_map_with_non_identifier_keys() -> None:
+def test_infer_object_with_non_identifier_keys() -> None:
     raw_val = {"hello-world": 123}
     inferred_type = infer_cty_type_from_raw(raw_val)
-    from pyvider.cty.types import CtyMap
-
-    expected_type = CtyMap(element_type=CtyNumber())
+    # All string-keyed dicts should be inferred as objects.
+    expected_type = CtyObject(attribute_types={"hello-world": CtyNumber()})
     assert inferred_type.equal(expected_type)
 
 
@@ -42,17 +41,8 @@ class UnsafeAttrs:
 
 
 def test_infer_from_unsafe_attrs() -> None:
-    # This test is designed to fail during instantiation, so we need to catch the error
-    # and then we can't really test infer_cty_type_from_raw with it.
-    # A different approach is needed to test the TypeError handling in infer_cty_type_from_raw.
-    # For now, let's just confirm the attrs class behaves as expected.
     with pytest.raises(TypeError, match="This is an unsafe attrs class"):
         UnsafeAttrs(x=1)
-
-    # To test the `except TypeError` in `infer_cty_type_from_raw`, we need to mock `_attrs_to_dict_safe`
-    # to raise a TypeError. This is a bit complex for this test file.
-    # I will add a test case with a non-attrs class that has a `__attrs_attrs__` attribute
-    # to trigger the TypeError in a more direct way.
 
     class FakeAttrs:
         def __init__(self) -> None:
@@ -89,3 +79,6 @@ def test_infer_from_other_types() -> None:
 
     inferred_type = infer_cty_type_from_raw(Other())
     assert inferred_type == CtyDynamic()
+
+
+# 🐍🎯🧪🪄

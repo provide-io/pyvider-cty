@@ -41,3 +41,6 @@ class TestCtyListWithNestedTypes:
         data = [[1, 2], [3, "four", 5]]
         with pytest.raises(CtyListValidationError):
             nested_list_type.validate(data)
+
+
+# 🐍🎯🧪🪄

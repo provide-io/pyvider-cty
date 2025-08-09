@@ -1,3 +1,6 @@
+#
+# pyvider/cty/values/base.py
+#
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -10,7 +13,6 @@ from typing import (
 
 from attrs import define, evolve, field
 
-from ..exceptions import CtyValidationError
 from .markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -26,9 +28,14 @@ class CtyValue[T]:
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
     marks: frozenset[Any] = field(factory=frozenset)
-    key_mapping: dict[str, CtyValue[Any]] = field(factory=dict)
 
     def __attrs_post_init__(self) -> None:
+        from pyvider.cty.types import CtyDynamic
+
+        if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
+            object.__setattr__(self, "is_unknown", self.value.is_unknown)
+            object.__setattr__(self, "is_null", self.value.is_null)
+
         if self.is_unknown and self.is_null:
             object.__setattr__(self, "is_null", False)
         elif self.is_null and self.value is not None:
@@ -48,14 +55,73 @@ class CtyValue[T]:
 
         return cty_to_native(self)  # type: ignore
 
+    def _canonical_sort_key(self) -> tuple[Any, ...]:
+        from ..types import (
+            CtyBool,
+            CtyCapsule,
+            CtyList,
+            CtyMap,
+            CtyNumber,
+            CtyObject,
+            CtySet,
+            CtyString,
+            CtyTuple,
+        )
+
+        if self.is_null:
+            return (0,)
+        if self.is_unknown:
+            return (1,)
+
+        type_rank = self.type._type_order
+        key_prefix = (2, type_rank)
+
+        if isinstance(self.type, CtyBool | CtyNumber | CtyString):
+            return (*key_prefix, self.value)
+
+        if (
+            isinstance(self.type, CtyList | CtyTuple)
+            and self.value is not None
+            and hasattr(self.value, "__iter__")
+        ):
+            return (*key_prefix, *(v._canonical_sort_key() for v in self.value))
+
+        if (
+            isinstance(self.type, CtySet)
+            and self.value is not None
+            and hasattr(self.value, "__iter__")
+        ):
+            sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
+            return (*key_prefix, *(v._canonical_sort_key() for v in sorted_elements))
+
+        if (
+            isinstance(self.type, CtyMap | CtyObject)
+            and self.value is not None
+            and hasattr(self.value, "items")
+        ):
+            sorted_items = sorted(self.value.items())
+            return (
+                *key_prefix,
+                *((k, v._canonical_sort_key()) for k, v in sorted_items),
+            )
+
+        if isinstance(self.type, CtyCapsule):
+            return (*key_prefix, repr(self.value))
+
+        # Fallback for any other type
+        return (*key_prefix, repr(self.value))
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CtyValue):
             return NotImplemented
         from ..types import CtyCapsuleWithOps
 
-        if isinstance(self.type, CtyCapsuleWithOps) and self.type.equal(other.type):
-            if self.type.equal_fn:
-                return self.type.equal_fn(self.value, other.value)
+        if (
+            isinstance(self.type, CtyCapsuleWithOps)
+            and self.type.equal(other.type)
+            and self.type.equal_fn
+        ):
+            return self.type.equal_fn(self.value, other.value)
 
         return (
             self.type.equal(other.type)
@@ -67,38 +133,49 @@ class CtyValue[T]:
 
     def _check_comparable(self, other: object) -> CtyValue[Any]:
         from ..types import CtyNumber, CtyString
+
         if not isinstance(other, CtyValue):
             raise TypeError(f"Cannot compare CtyValue with {type(other).__name__}")
         if self.is_unknown or self.is_null or other.is_unknown or other.is_null:
             raise TypeError("Cannot compare null or unknown values")
         if not self.type.equal(other.type):
-            raise TypeError(f"Cannot compare CtyValues of different types: {self.type} and {other.type}")
-        if not isinstance(self.type, (CtyNumber, CtyString)):
-             raise TypeError(f"Value of type {self.type} is not comparable")
+            raise TypeError(
+                f"Cannot compare CtyValues of different types: {self.type} and {other.type}"
+            )
+        if not isinstance(self.type, CtyNumber | CtyString):
+            raise TypeError(f"Value of type {self.type} is not comparable")
         return other
 
     def __lt__(self, other: object) -> bool:
         other_val = self._check_comparable(other)
-        return self.value < other_val.value
+        if hasattr(self.value, "__lt__"):
+            return bool(self.value < other_val.value)
+        raise TypeError(f"Value of type {self.type} is not comparable")
 
     def __le__(self, other: object) -> bool:
         other_val = self._check_comparable(other)
-        return self.value <= other_val.value
+        if hasattr(self.value, "__le__"):
+            return bool(self.value <= other_val.value)
+        raise TypeError(f"Value of type {self.type} is not comparable")
 
     def __gt__(self, other: object) -> bool:
         other_val = self._check_comparable(other)
-        return self.value > other_val.value
+        if hasattr(self.value, "__gt__"):
+            return bool(self.value > other_val.value)
+        raise TypeError(f"Value of type {self.type} is not comparable")
 
     def __ge__(self, other: object) -> bool:
         other_val = self._check_comparable(other)
-        return self.value >= other_val.value
+        if hasattr(self.value, "__ge__"):
+            return bool(self.value >= other_val.value)
+        raise TypeError(f"Value of type {self.type} is not comparable")
 
     def __contains__(self, item: Any) -> bool:
         if self.is_unknown or self.is_null:
             return False
         if hasattr(self.value, "__contains__"):
             return item in self.value
-        return self.value == item  # type: ignore
+        return self.value == item
 
     def __bool__(self) -> bool:
         from pyvider.cty.types import CtyDynamic
@@ -118,9 +195,10 @@ class CtyValue[T]:
             return len(self.value)
         if self.is_null:
             return 0
-        if isinstance(self.vtype, (CtyList, CtyMap, CtySet, CtyTuple)):
-            if hasattr(self.value, "__len__"):
-                return len(self.value)
+        if isinstance(self.vtype, CtyList | CtyMap | CtySet | CtyTuple) and hasattr(
+            self.value, "__len__"
+        ):
+            return len(self.value)
         raise TypeError(f"Value of type {self.vtype.__class__.__name__} has no len()")
 
     def __iter__(self) -> Iterator[Any]:
@@ -130,19 +208,19 @@ class CtyValue[T]:
             raise TypeError("Cannot iterate unknown value")
         if self.is_null:
             return iter([])
-        if isinstance(self.vtype, (CtyList, CtySet, CtyTuple)):
-            if hasattr(self.value, "__iter__"):
-                return iter(self.value)
-        if isinstance(self.vtype, CtyMap):
-            if hasattr(self.value, "__iter__"):
-                return iter(self.value.values())
+        if isinstance(self.vtype, CtyList | CtySet | CtyTuple) and hasattr(
+            self.value, "__iter__"
+        ):
+            return iter(self.value)
+        if isinstance(self.vtype, CtyMap) and hasattr(self.value, "values"):
+            return iter(self.value.values())
 
         raise TypeError(
             f"Value of type {self.vtype.__class__.__name__} is not iterable"
         )
 
     def __getitem__(self, key: Any) -> CtyValue[Any]:
-        from pyvider.cty.types import CtyList, CtyMap, CtyObject, CtyTuple
+        from ..types import CtyList, CtyMap, CtyObject, CtyTuple
 
         if self.is_unknown or self.is_null:
             raise TypeError("Cannot index into unknown or null value")
@@ -158,12 +236,12 @@ class CtyValue[T]:
                     f"CtyList value is not a list/tuple, but {type(self.value).__name__}"
                 )
             if isinstance(key, slice):
-                return CtyValue(vtype=self.vtype, value=self.value[key])
+                return CtyValue(vtype=self.vtype, value=tuple(self.value[key]))
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyTuple):
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyMap):
-            return self.vtype.get(self, key)  # type: ignore
+            return self.vtype.get(self, key)
         raise TypeError(
             f"Value of type {self.vtype.__class__.__name__} is not subscriptable"
         )
@@ -175,16 +253,12 @@ class CtyValue[T]:
             CtyMap,
             CtyObject,
             CtySet,
-            CtyTuple,
         )
 
-        if isinstance(self.type, CtyCapsuleWithOps):
-            if self.type.hash_fn:
-                return self.type.hash_fn(self.value)
+        if isinstance(self.type, CtyCapsuleWithOps) and self.type.hash_fn:
+            return self.type.hash_fn(self.value)
 
-        if isinstance(self.vtype, CtyTuple):
-            pass
-        elif isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
+        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
             raise TypeError(f"unhashable type: 'CtyValue[{self.vtype.ctype}]'")
 
         if self.is_unknown or self.is_null:
@@ -206,12 +280,14 @@ class CtyValue[T]:
 
     def is_true(self) -> bool:
         from pyvider.cty.types import CtyDynamic
+
         if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
             return self.value.is_true()
         return self.value is True
 
     def is_false(self) -> bool:
         from pyvider.cty.types import CtyDynamic
+
         if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
             return self.value.is_false()
         return self.value is False
@@ -221,38 +297,62 @@ class CtyValue[T]:
 
     def with_key(self, key: str, value: Any) -> Self:
         from ..types import CtyMap
-        if not isinstance(self.vtype, CtyMap): raise TypeError("'.with_key()' can only be used on CtyMap values.")
-        new_dict = dict(self.value)
+
+        if not isinstance(self.vtype, CtyMap):
+            raise TypeError("'.with_key()' can only be used on CtyMap values.")
+        if not isinstance(self.value, dict):
+            raise TypeError("Internal value of CtyMap must be a dict.")
+        new_dict = self.value.copy()
         new_dict[key] = value
         return self.vtype.validate(new_dict)
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
-        if not isinstance(self.vtype, CtyMap): raise TypeError("'.without_key()' can only be used on CtyMap values.")
-        if key not in self.value: return self
-        new_dict = dict(self.value)
+
+        if not isinstance(self.vtype, CtyMap):
+            raise TypeError("'.without_key()' can only be used on CtyMap values.")
+        if not isinstance(self.value, dict):
+            raise TypeError("Internal value of CtyMap must be a dict.")
+        if key not in self.value:
+            return self
+        new_dict = self.value.copy()
         del new_dict[key]
         return self.vtype.validate(new_dict)
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
-        if not isinstance(self.vtype, CtyList): raise TypeError("'.append()' can only be used on CtyList values.")
+
+        if not isinstance(self.vtype, CtyList):
+            raise TypeError("'.append()' can only be used on CtyList values.")
+        if not isinstance(self.value, list | tuple):
+            raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
         new_list.append(value)
         return self.vtype.validate(new_list)
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
-        if not isinstance(self.vtype, CtyList): raise TypeError("'.with_element_at()' can only be used on CtyList values.")
+
+        if not isinstance(self.vtype, CtyList):
+            raise TypeError("'.with_element_at()' can only be used on CtyList values.")
+        if not isinstance(self.value, list | tuple):
+            raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
-        if not (-len(new_list) <= index < len(new_list)): raise IndexError("list index out of range")
+        if not (-len(new_list) <= index < len(new_list)):
+            raise IndexError("list index out of range")
         new_list[index] = value
         return self.vtype.validate(new_list)
 
     @classmethod
-    def unknown(cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN) -> CtyValue[Any]:
+    def unknown(
+        cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN
+    ) -> CtyValue[Any]:
         return cls(vtype=vtype, is_unknown=True, value=value)
 
     @classmethod
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
+
+
+
+# 🐍🎯🏛️🪄

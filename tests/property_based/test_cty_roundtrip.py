@@ -25,11 +25,15 @@ json_strategy = st.recursive(
 def deep_prepare_for_comparison(data):
     """
     Recursively prepares data for comparison by:
+    - Normalizing string keys and values to NFC form.
     - Wrapping floats in pytest.approx to handle precision differences.
-    - Normalizing strings to NFC form to match the framework's behavior.
     """
     if isinstance(data, dict):
-        return {k: deep_prepare_for_comparison(v) for k, v in data.items()}
+        # CORRECTED: Normalize keys in addition to values.
+        return {
+            unicodedata.normalize("NFC", k): deep_prepare_for_comparison(v)
+            for k, v in data.items()
+        }
     if isinstance(data, list):
         return [deep_prepare_for_comparison(v) for v in data]
     if isinstance(data, float):
@@ -78,3 +82,6 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
             f"CTY round-trip failed for input:\n{native_data!r}\n"
             f"Error: {type(e).__name__}: {e}"
         )
+
+
+# 🐍🎯🧪🪄

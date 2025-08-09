@@ -1,3 +1,6 @@
+#
+# pyvider/cty/types/primitives/string.py
+#
 from typing import TYPE_CHECKING, Any, ClassVar
 import unicodedata
 
@@ -13,6 +16,7 @@ if TYPE_CHECKING:
 @define(frozen=True, slots=True)
 class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
+    _type_order: ClassVar[int] = 1
 
     def validate(self, value: object) -> "CtyValue[str]":
         from pyvider.cty.values import CtyValue, UnknownValue
@@ -65,3 +69,7 @@ class CtyString(CtyType[str]):
 
     def is_primitive_type(self) -> bool:
         return True
+
+
+
+# 🐍🎯📄🪄

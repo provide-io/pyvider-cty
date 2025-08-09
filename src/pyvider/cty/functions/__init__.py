@@ -1,6 +1,6 @@
-# pyvider-cty/src/pyvider/cty/functions/__init__.py
-# This file makes the 'functions' module a package.
-
+#
+# pyvider/cty/functions/__init__.py
+#
 from .bytes_functions import byteslen, bytesslice
 from .collection_functions import (
     chunklist,
@@ -98,8 +98,8 @@ __all__ = [
     "greater_than",
     "greater_than_or_equal_to",
     "hasindex",
-    "index",
     "indent",
+    "index",
     "int_fn",
     "join",
     "jsondecode",
@@ -146,3 +146,7 @@ __all__ = [
     "values",
     "zipmap",
 ]
+
+
+
+# 🐍🎯🚀🪄

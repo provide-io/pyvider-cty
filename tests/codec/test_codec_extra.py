@@ -19,36 +19,33 @@ from pyvider.cty.codec import (
 )
 
 
-def test_serialize_dynamic_with_raw_python_value():
-    # This test covers the case where a raw python value is passed to _serialize_dynamic
+def test_serialize_dynamic_with_validated_value():
+    """
+    Tests that a CtyDynamic value, correctly created via its validator,
+    serializes as expected.
+    """
     dynamic_type = CtyDynamic()
     raw_value = {"key": "value"}
-    cty_val = CtyValue(dynamic_type, raw_value)
+    # The correct pattern is to use the validator, which wraps the raw value
+    # in a concrete CtyValue inside the CtyDynamic CtyValue.
+    cty_val = dynamic_type.validate(raw_value)
 
-    # When cty_to_msgpack is called, it will internally call _serialize_dynamic
-    # with a CtyValue that wraps the raw python dict. The logic inside _serialize_dynamic
-    # should handle this by inferring the type.
     packed = cty_to_msgpack(cty_val, dynamic_type)
     unpacked = msgpack.unpackb(packed, raw=False)
 
-    # We expect it to be serialized as a dynamic value, which is a two-element list.
-    # The first element is the type spec, the second is the serialized value.
     assert isinstance(unpacked, list)
     assert len(unpacked) == 2
-    # CORRECTED: A dict with uniform value types should be inferred as a map.
-    assert b'["map", "string"]' == unpacked[0]
+    # A dict with string keys should be inferred as an object.
+    assert b'["object",{"key":"string"}]' == unpacked[0]
     assert unpacked[1] == {"key": "value"}
 
 
 def test_convert_value_to_serializable_with_raw_value():
-    # This covers the case where a raw value is passed to _convert_value_to_serializable
-    # instead of a CtyValue instance.
     serializable = _convert_value_to_serializable("hello", CtyString())
     assert serializable == "hello"
 
 
 def test_incorrect_container_type_raises_error():
-    # Covers the TypeError branches for wrong container types.
     with pytest.raises(TypeError, match="Value for CtyObject must be a dict"):
         _convert_value_to_serializable(
             CtyValue(CtyObject({}), ["not", "a", "dict"]), CtyObject({})
@@ -74,7 +71,6 @@ def test_incorrect_container_type_raises_error():
 
 
 def test_msgpack_default_handler_unsupported_type():
-    # Covers the TypeError in the default handler
     class Unsupported:
         pass
 
@@ -82,3 +78,6 @@ def test_msgpack_default_handler_unsupported_type():
         TypeError, match="Object of type Unsupported is not MessagePack serializable"
     ):
         msgpack.packb(Unsupported(), default=_msgpack_default_handler)
+
+
+# 🐍🎯🧪🪄

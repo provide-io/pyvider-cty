@@ -70,19 +70,42 @@ fi
 
 # --- Virtual Environment and Dependencies ---
 
+# Detect OS and architecture for platform-specific venv directories
+TFOS=$(uname -s | tr '[:upper:]' '[:lower:]')
+TFARCH=$(uname -m)
+case "$TFARCH" in
+    x86_64) TFARCH="amd64" ;;
+    aarch64) TFARCH="arm64" ;;
+    arm64) TFARCH="arm64" ;;
+esac
+
+VENV_DIR=".venv_${TFOS}_${TFARCH}"
+
+# Configure uv to use our platform-specific virtual environment
+export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
+
 print_header "🐍 Creating Python virtual environment with 'uv'"
-uv venv
+echo "Using platform-specific venv directory: ${VENV_DIR}"
+
+# Check if venv already exists and is functional
+if [ -d "${VENV_DIR}" ] && [ -f "${VENV_DIR}/bin/activate" ] && [ -f "${VENV_DIR}/bin/python" ]; then
+    echo -e "${COLOR_GREEN}✅ Virtual environment '${VENV_DIR}' already exists and appears functional.${COLOR_NC}"
+else
+    echo "Creating new virtual environment at '${VENV_DIR}'..."
+    uv venv "${VENV_DIR}"
+fi
 
 print_header "🔗 Activating the virtual environment"
 # Activation is done before installing dependencies so that any console
 # scripts provided by those dependencies are immediately on the PATH.
-source .venv/bin/activate
-echo "Virtual environment activated at '$(pwd)/.venv'"
+source "${VENV_DIR}/bin/activate"
+echo "Virtual environment activated at '$(pwd)/${VENV_DIR}'"
 
 print_header "📦 Syncing base and development dependencies"
 # 'uv sync' is the modern, fast way to install dependencies from pyproject.toml.
 # Using --all-groups ensures that optional dependencies, like those for
 # testing and linting, are also installed.
+# UV_PROJECT_ENVIRONMENT ensures uv uses our platform-specific virtual environment
 uv sync --all-groups
 
 print_header "✏️ Installing '${PROJECT_NAME}' in editable mode"
@@ -117,6 +140,16 @@ else
             fi
         fi
     done
+    
+    # Special handling for tofusoup - install with dependencies if it exists
+    TOFUSOUP_DIR="${PARENT_DIR}/tofusoup"
+    if [ -d "${TOFUSOUP_DIR}" ]; then
+        echo "Found tofusoup package. Installing in editable mode with dependencies..."
+        if ! uv pip install -e "${TOFUSOUP_DIR}"; then
+            echo -e "${COLOR_YELLOW}⚠️  Warning: Failed to install tofusoup package from '${TOFUSOUP_DIR}' in editable mode.${COLOR_NC}"
+            echo "Attempting to continue..."
+        fi
+    fi
 fi
 
 
@@ -125,12 +158,66 @@ fi
 print_header "🔧 Configuring PYTHONPATH"
 # Prepending the current directory's src and root to PYTHONPATH ensures
 # that local modules are resolved correctly, supporting both 'src' and flat layouts.
-# The ${PYTHONPATH:+:${PYTHONPATH}} syntax safely appends the existing PYTHONPATH
-# only if it's already set, avoiding an "unbound variable" error.
-export PYTHONPATH="${PWD}/src:${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
+
+# Function to deduplicate PATH entries while preserving order
+# The first occurrence of each path is preserved, later duplicates are removed
+deduplicate_path() {
+    local path_to_dedupe="$1"
+    local seen_paths=""
+    local deduped_path=""
+    local current_path=""
+    
+    # Handle empty input
+    if [ -z "$path_to_dedupe" ]; then
+        echo ""
+        return
+    fi
+    
+    # Split path by colon and process each entry
+    # Use a more portable approach than read -ra
+    local old_ifs="$IFS"
+    IFS=':'
+    for current_path in $path_to_dedupe; do
+        # Skip empty paths
+        if [ -n "$current_path" ]; then
+            # Check if we've seen this path before
+            case ":$seen_paths:" in
+                *":$current_path:"*) 
+                    # Already seen, skip (preserves first occurrence)
+                    ;;
+                *)
+                    # Not seen before, add it
+                    seen_paths="$seen_paths:$current_path"
+                    if [ -z "$deduped_path" ]; then
+                        deduped_path="$current_path"
+                    else
+                        deduped_path="$deduped_path:$current_path"
+                    fi
+                    ;;
+            esac
+        fi
+    done
+    IFS="$old_ifs"
+    
+    echo "$deduped_path"
+}
+
+# Build new PYTHONPATH with current directories first
+NEW_PYTHONPATH="${PWD}/src:${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
+
+# Deduplicate the PYTHONPATH to prevent accumulation of duplicate entries
+PYTHONPATH_DEDUPED=$(deduplicate_path "$NEW_PYTHONPATH")
+
+export PYTHONPATH="$PYTHONPATH_DEDUPED"
+
+# Also deduplicate PATH to prevent accumulation of duplicate entries
+PATH_DEDUPED=$(deduplicate_path "$PATH")
+export PATH="$PATH_DEDUPED"
 echo "PYTHONPATH set to: ${PYTHONPATH}"
 
 print_header "✅ Environment setup complete!"
 echo -e "The '${COLOR_GREEN}${PROJECT_NAME}${COLOR_NC}' development environment is ready."
 echo "The virtual environment is active in this shell."
 echo "To exit, simply run 'deactivate'."
+
+# 🐍🎯🌍🪄
