@@ -53,3 +53,6 @@ class TestCtyObjectAttributes:
         value = CtyValue(person_type, "not a dict")
         with pytest.raises(CtyTypeMismatchError):
             person_type.get_attribute(value, "name")
+
+
+# 🐍🎯🧪🪄

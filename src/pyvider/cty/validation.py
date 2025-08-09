@@ -1,3 +1,6 @@
+#
+# pyvider/cty/validation.py
+#
 from typing import Any
 
 from .types import CtyType
@@ -22,3 +25,7 @@ def validate_config(schema: "CtyType[Any]", config: Any) -> None:
     # The schema (a CtyType instance) has the validation logic.
     # We simply call it and let it raise its exception on failure.
     schema.validate(config)
+
+
+
+# 🐍🎯📄🪄

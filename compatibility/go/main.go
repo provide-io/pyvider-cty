@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 	"github.com/zclconf/go-cty/cty/msgpack"
 )
 
@@ -39,7 +40,7 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		level := hclog.LevelFromString(logLevel)
 		if level == hclog.NoLevel {
-			level = hclog.Debug
+			level = hclog.Debug // Default to debug if parsing fails
 		}
 
 		opts := &hclog.LoggerOptions{Name: "compat-suite", Level: level}
@@ -82,7 +83,8 @@ var verifyCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "debug", "Set the logging level (e.g., 'debug', 'info', 'warn', 'error')")
+	// Added 'trace' to help text
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "debug", "Set the logging level (e.g., 'trace', 'debug', 'info', 'warn', 'error')")
 	rootCmd.PersistentFlags().StringVar(&logFile, "log-file", "", "Path to a file to write logs to.")
 	generateCmd.Flags().StringVar(&directory, "directory", "", "The directory for fixture files.")
 	verifyCmd.Flags().StringVar(&directory, "directory", "", "The directory for fixture files.")
@@ -195,7 +197,7 @@ func parseCtyType(data json.RawMessage) (cty.Type, error) {
 
 	var typeList []json.RawMessage
 	if err := json.Unmarshal(data, &typeList); err == nil {
-		if len(typeList) != 2 { return cty.NilType, fmt.Errorf("type array must have 2 elements") }
+		if len(typeList) < 2 { return cty.NilType, fmt.Errorf("type array must have at least 2 elements") }
 		var typeKind string
 		if err := json.Unmarshal(typeList[0], &typeKind); err != nil { return cty.NilType, err }
 
@@ -215,6 +217,11 @@ func parseCtyType(data json.RawMessage) (cty.Type, error) {
 				if err != nil { return cty.NilType, err }
 				attrTypes[name] = attrType
 			}
+			if len(typeList) > 2 {
+				var optionals []string
+				if err := json.Unmarshal(typeList[2], &optionals); err != nil { return cty.NilType, err }
+				return cty.ObjectWithOptionalAttrs(attrTypes, optionals), nil
+			}
 			return cty.Object(attrTypes), nil
 		case "tuple":
 			var elemTypesRaw []json.RawMessage
@@ -233,11 +240,58 @@ func parseCtyType(data json.RawMessage) (cty.Type, error) {
 }
 
 func buildExpectedValue(ty cty.Type, valData json.RawMessage, path []string) (cty.Value, error) {
-	var sentinel map[string]string
+	if string(valData) == "null" {
+		return cty.NullVal(ty), nil
+	}
+
+	var sentinel map[string]interface{}
 	if err := json.Unmarshal(valData, &sentinel); err == nil {
-		if val, ok := sentinel["$pyvider-cty-special-value"]; ok && val == "unknown" {
-			return cty.UnknownVal(ty), nil
+		if val, ok := sentinel["$pyvider-cty-special-value"].(string); ok && val == "unknown" {
+			// If there are no refinements, it's an unrefined unknown.
+			if _, hasRefinements := sentinel["refinements"]; !hasRefinements {
+				return cty.UnknownVal(ty), nil
+			}
+
+			// Otherwise, build a refined unknown value.
+			builder := cty.UnknownVal(ty).Refine()
+			refinementsData, _ := sentinel["refinements"]
+			refinementsMap, ok := refinementsData.(map[string]interface{})
+			if !ok { return cty.NilVal, fmt.Errorf("refinements must be an object") }
+
+			if isNull, ok := refinementsMap["is_known_null"].(bool); ok {
+				if isNull { builder = builder.Null() } else { builder = builder.NotNull() }
+			}
+			if prefix, ok := refinementsMap["string_prefix"].(string); ok {
+				builder = builder.StringPrefix(prefix)
+			}
+			if lowerBound, ok := refinementsMap["number_lower_bound"].([]interface{}); ok {
+				numStr, _ := lowerBound[0].(string)
+				inclusive, _ := lowerBound[1].(bool)
+				bf := new(big.Float); bf.SetString(numStr)
+				builder = builder.NumberRangeLowerBound(cty.NumberVal(bf), inclusive)
+			}
+			if upperBound, ok := refinementsMap["number_upper_bound"].([]interface{}); ok {
+				numStr, _ := upperBound[0].(string)
+				inclusive, _ := upperBound[1].(bool)
+				bf := new(big.Float); bf.SetString(numStr)
+				builder = builder.NumberRangeUpperBound(cty.NumberVal(bf), inclusive)
+			}
+			if lower, ok := refinementsMap["collection_length_lower_bound"].(float64); ok {
+				builder = builder.CollectionLengthLowerBound(int(lower))
+			}
+			if upper, ok := refinementsMap["collection_length_upper_bound"].(float64); ok {
+				builder = builder.CollectionLengthUpperBound(int(upper))
+			}
+			return builder.NewValue(), nil
 		}
+	}
+
+	if ty == cty.DynamicPseudoType {
+		inferredType, err := ctyjson.ImpliedType(valData)
+		if err != nil {
+			return cty.NilVal, err
+		}
+		return ctyjson.Unmarshal(valData, inferredType)
 	}
 
 	if ty.IsPrimitiveType() {
@@ -311,12 +365,14 @@ func verifyFixtures(fixtureDir string) {
 	failures := 0
 	for name, entry := range manifest {
 		path := []string{name}
+		logger.Log(hclog.Trace, "🔍", "📄", "⚙️", "Processing manifest entry", "case", name, "entry_type", string(entry.Type), "entry_value", string(entry.Value))
 		ty, err := parseCtyType(entry.Type)
 		if err != nil {
 			logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to parse type from manifest", "case", name, "error", err)
 			failures++
 			continue
 		}
+		logger.Log(hclog.Trace, "🔍", "🔧", "✅", "Parsed type", "case", name, "type", ty.GoString())
 
 		fixturePath := filepath.Join(fixtureDir, name+".msgpack")
 		fixtureBytes, err := os.ReadFile(fixturePath)
@@ -325,6 +381,7 @@ func verifyFixtures(fixtureDir string) {
 			failures++
 			continue
 		}
+		logger.Log(hclog.Trace, "🔍", "💾", "✅", "Read fixture bytes", "case", name, "byte_count", len(fixtureBytes))
 
 		deserializedVal, err := msgpack.Unmarshal(fixtureBytes, ty)
 		if err != nil {
@@ -332,6 +389,15 @@ func verifyFixtures(fixtureDir string) {
 			failures++
 			continue
 		}
+		logger.Log(hclog.Trace, "🔍", "🔧", "✅", "Deserialized value from fixture", "case", name, "value", deserializedVal.GoString())
+
+		expectedVal, err := buildExpectedValue(ty, entry.Value, path)
+		if err != nil {
+			logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to build expected value", "path", strings.Join(path, ""), "error", err)
+			failures++
+			continue
+		}
+		logger.Log(hclog.Trace, "🔍", "🔧", "✅", "Built expected value from manifest", "case", name, "value", expectedVal.GoString())
 
 		if entry.IsUnknown {
 			if deserializedVal.IsKnown() {
@@ -349,13 +415,6 @@ func verifyFixtures(fixtureDir string) {
 				failures++
 				continue
 			}
-			expectedVal, err := buildExpectedValue(ty, entry.Value, path)
-			if err != nil {
-				logger.Log(hclog.Error, "🔍", "🔧", "❌", "Failed to build expected value", "path", strings.Join(path, ""), "error", err)
-				failures++
-				continue
-			}
-			
 			eqResult := deserializedVal.Equals(expectedVal)
 			if !(eqResult.IsKnown() && eqResult.True()) {
 				logger.Log(hclog.Error, "🔍", "📊", "❌", "Deserialized value does not equal expected value", "path", strings.Join(path, ""))
@@ -382,3 +441,5 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// 🐍🎯📄🪄

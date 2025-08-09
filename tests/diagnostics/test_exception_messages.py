@@ -64,3 +64,6 @@ class TestValidationExceptionStructure:
             "mismatch", actual_type=CtyString(), expected_type=CtyNumber()
         )
         assert "Expected number, got string" in str(type_mismatch)
+
+
+# 🐍🎯🧪🪄

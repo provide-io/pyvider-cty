@@ -16,10 +16,12 @@ FIXTURE_DIR_GO ?= ../../tests/fixtures/go-cty
 # Default target
 all: tidy
 
-# Tidy Go modules to ensure dependencies are consistent
+# Tidy and download Go modules to ensure dependencies are consistent and available
 tidy:
 	@echo " tidying Go modules..."
 	@$(GO_CMD) mod tidy
+	@echo " downloading Go modules..."
+	@$(GO_CMD) mod download
 
 # Generate Go -> Python fixtures
 # This target builds and runs the Go tool to create .msgpack files that the
@@ -45,4 +47,3 @@ verify: tidy
 clean:
 	@echo " cleaning Go fixtures from $(FIXTURE_DIR_GO)..."
 	@rm -f $(FIXTURE_DIR_GO)/*.msgpack
-

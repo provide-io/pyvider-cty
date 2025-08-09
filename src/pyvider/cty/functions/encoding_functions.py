@@ -1,3 +1,6 @@
+#
+# pyvider/cty/functions/encoding_functions.py
+#
 import csv
 import io
 import json
@@ -20,7 +23,9 @@ def jsonencode(val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(f"jsondecode: argument must be a string, got {val.type.ctype}")
+        raise CtyFunctionError(
+            f"jsondecode: argument must be a string, got {val.type.ctype}"
+        )
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyDynamic())
     try:
@@ -32,10 +37,12 @@ def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(f"csvdecode: argument must be a string, got {val.type.ctype}")
+        raise CtyFunctionError(
+            f"csvdecode: argument must be a string, got {val.type.ctype}"
+        )
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
-    
+
     f = io.StringIO(val.value)
     try:
         # The csv module can raise csv.Error for malformed data
@@ -44,3 +51,7 @@ def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
         return CtyList(element_type=CtyDynamic()).validate(rows)
     except Exception as e:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
+
+
+
+# 🐍🎯📄🪄

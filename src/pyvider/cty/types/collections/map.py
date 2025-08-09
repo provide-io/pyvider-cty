@@ -1,4 +1,8 @@
+#
+# pyvider/cty/types/collections/map.py
+#
 from typing import Any, ClassVar, TypeVar
+import unicodedata
 
 from attrs import define, field
 
@@ -10,6 +14,7 @@ from pyvider.cty.exceptions import (
 )
 from pyvider.cty.path import CtyPath, KeyStep
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 V = TypeVar("V")
@@ -18,6 +23,7 @@ V = TypeVar("V")
 @define(frozen=True, slots=True)
 class CtyMap[V](CtyType[dict[str, V]]):
     ctype: ClassVar[str] = "map"
+    _type_order: ClassVar[int] = 6
     element_type: CtyType[V] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
@@ -26,17 +32,20 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 f"element_type must be a CtyType instance, got {type(self.element_type).__name__}"
             )
 
+    @with_recursion_detection
     def validate(self, value: object) -> "CtyValue[dict[str, V]]":
-        if value is None:
-            return CtyValue.null(self)
         if isinstance(value, CtyValue):
+            if self.equal(value.type) and isinstance(value.value, dict):
+                return value  # Fast path
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
                 return CtyValue.unknown(self)
-            if isinstance(value.type, CtyMap) and self.equal(value.type):
-                return value
             value = value.value
+
+        if value is None:
+            return CtyValue.null(self)
+
         if not isinstance(value, dict):
             raise CtyMapValidationError(
                 f"Input must be a dictionary, got {type(value).__name__}."
@@ -47,16 +56,21 @@ class CtyMap[V](CtyType[dict[str, V]]):
                 raise CtyMapValidationError(
                     f"Map keys must be strings, but got key of type {type(k).__name__}"
                 )
+
+            normalized_key = unicodedata.normalize("NFC", k)
+
             try:
-                validated_map[k] = self.element_type.validate(v)
+                validated_map[normalized_key] = self.element_type.validate(v)
             except CtyValidationError as e:
                 new_path = CtyPath(
-                    steps=[KeyStep(k)] + (e.path.steps if e.path else [])
+                    steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else [])
                 )
                 raise CtyMapValidationError(
                     e.message, value=v, path=new_path, original_exception=e
                 ) from e
-        return CtyValue(vtype=self, value=validated_map)
+
+        is_unknown = any(v.is_unknown for v in validated_map.values())
+        return CtyValue(vtype=self, value=validated_map, is_unknown=is_unknown)
 
     def get(
         self,
@@ -75,7 +89,10 @@ class CtyMap[V](CtyType[dict[str, V]]):
             raise CtyMapValidationError(
                 f"Internal error: CtyValue of CtyMap type does not wrap a dict, got {type(internal_dict).__name__}"
             )
-        result = internal_dict.get(str(key))
+
+        normalized_key = unicodedata.normalize("NFC", str(key))
+        result = internal_dict.get(normalized_key)
+
         if result is not None:
             return self.element_type.validate(result)
         return default if default is not None else CtyValue.null(self.element_type)
@@ -99,3 +116,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
 
     def __str__(self) -> str:
         return f"map({self.element_type})"
+
+
+
+# 🐍🎯📄🪄

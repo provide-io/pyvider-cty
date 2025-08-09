@@ -4,12 +4,13 @@ import pytest
 from pyvider.cty import CtyDynamic, CtyString, CtyValue
 from pyvider.cty.codec import _ext_hook, _serialize_unknown, cty_from_msgpack
 from pyvider.cty.exceptions import DeserializationError
-from pyvider.cty.values import RefinedUnknownValue
+from pyvider.cty.values import UNREFINED_UNKNOWN, RefinedUnknownValue
 
 
 def test_ext_hook_with_invalid_code() -> None:
     ext = msgpack.ExtType(99, b"")
-    assert _ext_hook(ext.code, ext.data) == ext
+    # Any unknown extension code should be treated as an unrefined unknown.
+    assert _ext_hook(ext.code, ext.data) is UNREFINED_UNKNOWN
 
 
 def test_ext_hook_with_malformed_refined_unknown() -> None:
@@ -51,3 +52,6 @@ def test_serialize_refined_unknown_with_no_payload() -> None:
     val = CtyValue.unknown(CtyString(), value=RefinedUnknownValue())
     serialized = _serialize_unknown(val)
     assert serialized.code == 0
+
+
+# 🐍🎯🧪🪄

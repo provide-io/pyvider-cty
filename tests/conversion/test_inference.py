@@ -53,13 +53,14 @@ def test_infer_tuple_of_primitives() -> None:
     assert isinstance(inferred_type.element_types[1], CtyNumber)
 
 
-def test_infer_map_of_primitives() -> None:
-    inferred_type = infer_cty_type_from_raw({"a-b": 1, "c": 2})
-    assert isinstance(inferred_type, CtyMap)
-    assert isinstance(inferred_type.element_type, CtyNumber)
-
-
 def test_infer_object_of_primitives() -> None:
+    inferred_type = infer_cty_type_from_raw({"a": 1, "c": 2})
+    assert isinstance(inferred_type, CtyObject)
+    assert isinstance(inferred_type.attribute_types["a"], CtyNumber)
+    assert isinstance(inferred_type.attribute_types["c"], CtyNumber)
+
+
+def test_infer_object_of_primitives_mixed() -> None:
     inferred_type = infer_cty_type_from_raw({"a": 1, "b": "c"})
     assert isinstance(inferred_type, CtyObject)
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber)
@@ -115,3 +116,6 @@ def test_infer_from_attrs_object() -> None:
     assert isinstance(inferred_type, CtyObject)
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber)
     assert isinstance(inferred_type.attribute_types["b"], CtyString)
+
+
+# 🐍🎯🧪🪄

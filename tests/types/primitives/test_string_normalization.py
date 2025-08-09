@@ -31,3 +31,6 @@ def test_string_normalization_on_validate(
     assert validated_value.value == unicodedata.normalize(
         "NFC", expected_normalized_str
     )
+
+
+# 🐍🎯🧪🪄

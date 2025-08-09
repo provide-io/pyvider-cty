@@ -56,3 +56,6 @@ class TestCtyTupleValidation:
         schema = CtyTuple((CtyString(),))
         with pytest.raises(CtyTupleValidationError):
             schema.validate("not a tuple")
+
+
+# 🐍🎯🧪🪄

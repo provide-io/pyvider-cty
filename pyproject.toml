@@ -32,13 +32,14 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "bandit>=1.8.3",
+"bandit>=1.8.3",
     "hypothesis>=6.131.0",
     "memray>=1.17.2",
     "mypy>=1.9.0",
     "psutil>=7.0.0",
     "pyright>=1.1.401",
     "pytest>=8.3.0",
+    "pre-commit>=3.5.0",
     "pytest-asyncio>=0.25.0",
     "pytest-benchmark>=4.0.0",
     "pytest-cov>=6.0.0",
@@ -67,6 +68,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "DEBUG"
+log_file_level = "DEBUG"
+log_file_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 asyncio_mode = "auto"
 pythonpath = ["src", "."]
 testpaths = ["tests"]
@@ -88,6 +91,7 @@ norecursedirs = [
     "htmlcov",
     ".hypothesis",
 ]
+# The log_file path will be set dynamically in conftest.py
 addopts = "-ra -q --color=yes"
 
 # ---------------------------------------------------------------------------- #

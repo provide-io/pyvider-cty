@@ -1,3 +1,6 @@
+#
+# pyvider/cty/exceptions/validation.py
+#
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -178,3 +181,7 @@ class CtyTypeMismatchError(CtyValidationError):
         type_info = f"Expected {expected_type}, got {actual_type}"
         full_message = f"{message} ({type_info})"
         super().__init__(full_message, path=path)
+
+
+
+# 🐍🎯📄🪄

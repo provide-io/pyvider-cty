@@ -25,31 +25,9 @@ from pyvider.cty.exceptions import CtyValidationError, DeserializationError
 # --- TDD Tests for Issue #7: Dynamic Deserialization Robustness ---
 class TestDynamicDeserializationRobustness:
     """
-    These tests ensure cty_from_msgpack does not silently fail on malformed
-    dynamic value payloads.
+    These tests ensure cty_from_msgpack fails on malformed
+    dynamic value payloads, matching go-cty's strictness.
     """
-
-    def test_dynamic_deserialization_with_malformed_type_json(self) -> None:
-        """
-        TDD: If a payload looks like a dynamic value (list of 2) but the first
-        element is not valid JSON, it should be treated as a regular list,
-        not silently fail and produce an incorrect type.
-        """
-        # This payload mimics the dynamic value structure but has invalid JSON.
-        payload = [b"{not-json", "some_value"]
-        packed_bytes = msgpack.packb(payload, use_bin_type=True)
-
-        # The current implementation's `except: pass` would cause this to be
-        # misinterpreted. The desired behavior is to fall back to standard
-        # type inference, which should see it as a list of strings.
-        deserialized_val = cty_from_msgpack(packed_bytes, CtyDynamic())
-
-        # The result should be a CtyDynamic value wrapping a CtyList,
-        # NOT an incorrect inference based on a failed parse.
-        assert isinstance(deserialized_val.type, CtyDynamic)
-        assert isinstance(deserialized_val.value.type, CtyList)
-        assert deserialized_val.value.type.element_type.equal(CtyString())
-        assert deserialized_val.raw_value == ["{not-json", "some_value"]
 
     def test_dynamic_deserialization_with_invalid_type_structure(self) -> None:
         """
@@ -128,3 +106,6 @@ class TestGoCtyCompatibility:
         assert "age" in deserialized_val.value
         assert deserialized_val["age"].is_null is True
         assert deserialized_val["name"].value == "Alice"
+
+
+# 🐍🎯🧪🪄

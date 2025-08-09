@@ -48,7 +48,8 @@ def test_value_hash():
     with pytest.raises(TypeError): hash(CtyMap(element_type=CtyString()).validate({}))
     with pytest.raises(TypeError): hash(CtyObject({}).validate({}))
 
-    # DEFINITIVE FIX: CtyTuple values ARE hashable. This test now asserts the correct behavior.
+    # NOTE: This is a known deviation from go-cty, where tuples are not hashable.
+    # This is a pragmatic choice to allow `setproduct` and sets of tuples to function.
     tuple_val = CtyTuple(element_types=()).validate(())
     assert isinstance(hash(tuple_val), int)
 
@@ -74,3 +75,6 @@ def test_post_init():
 
 def test_raw_value_unknown():
     with pytest.raises(ValueError): _ = CtyValue.unknown(CtyString()).raw_value
+
+
+# 🐍🎯🧪🪄

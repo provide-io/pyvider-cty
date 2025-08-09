@@ -1,3 +1,6 @@
+#
+# pyvider/cty/types/structural/tuple.py
+#
 from __future__ import annotations
 
 from typing import Any, ClassVar
@@ -11,12 +14,14 @@ from pyvider.cty.exceptions import (
 )
 from pyvider.cty.path import CtyPath, IndexStep
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 
 @define(frozen=True, slots=True)
 class CtyTuple(CtyType[tuple[object, ...]]):
     ctype: ClassVar[str] = "tuple"
+    _type_order: ClassVar[int] = 3
     element_types: tuple[CtyType[Any], ...] = field()
 
     @element_types.validator
@@ -33,9 +38,14 @@ class CtyTuple(CtyType[tuple[object, ...]]):
                     f"Element type at index {i} must be a CtyType, got {type(typ).__name__}"
                 )
 
+    @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[Any, ...]]:
         if isinstance(value, CtyValue):
-            if isinstance(value.type, CtyTuple) and value.type.equal(self):
+            if (
+                isinstance(value.type, CtyTuple)
+                and value.type.equal(self)
+                and isinstance(value.value, tuple)
+            ):
                 return value
             if value.is_unknown:
                 return CtyValue.unknown(self)
@@ -65,7 +75,9 @@ class CtyTuple(CtyType[tuple[object, ...]]):
                 raise CtyTupleValidationError(
                     e.message, value=raw_element, path=new_path, original_exception=e
                 ) from e
-        return CtyValue(self, tuple(validated_elements))
+
+        is_unknown = any(v.is_unknown for v in validated_elements)
+        return CtyValue(self, tuple(validated_elements), is_unknown=is_unknown)
 
     def element_at(
         self, container_value: CtyValue[Any], index: int | slice
@@ -169,3 +181,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             )
         slice_obj = slice(start, end, step)
         return self.element_at(container_value, slice_obj)
+
+
+
+# 🐍🎯📄🪄

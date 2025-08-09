@@ -1,3 +1,6 @@
+#
+# pyvider/cty/types/collections/list.py
+#
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -9,6 +12,7 @@ from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
+from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 if TYPE_CHECKING:
@@ -21,6 +25,7 @@ T = TypeVar("T")
 @define(frozen=True, slots=True)
 class CtyList[T](CtyType[tuple[T, ...]]):
     ctype: ClassVar[str] = "list"
+    _type_order: ClassVar[int] = 5
     element_type: CtyType[T] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
@@ -29,23 +34,25 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                 f"Expected CtyType for element_type, got {type(self.element_type).__name__}"
             )
 
+    @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:  # noqa: C901
         from pyvider.cty.values import CtyValue
+
+        if isinstance(value, CtyValue):
+            if self.equal(value.type) and isinstance(value.value, tuple):
+                return value  # Fast path for already-validated values
+            if value.is_null:
+                return CtyValue.null(self)
+            if value.is_unknown:
+                return CtyValue.unknown(self)
+            value = value.value
 
         if value is None:
             return CtyValue.null(self)
 
         raw_list_to_validate: Sequence[object] | None = None
 
-        if isinstance(value, CtyValue):
-            if value.is_null:
-                return CtyValue.null(self)
-            if value.is_unknown:
-                return CtyValue.unknown(self)
-            if isinstance(value.type, CtyList) and self.equal(value.type):
-                return value
-            raw_list_to_validate = value.value  # type: ignore
-        elif isinstance(value, list | tuple | set | frozenset):
+        if isinstance(value, list | tuple | set | frozenset):
             raw_list_to_validate = list(value)
         else:
             raise CtyListValidationError(
@@ -75,7 +82,10 @@ class CtyList[T](CtyType[tuple[T, ...]]):
                     e.message, value=item, path=new_path, original_exception=e
                 ) from e
 
-        return CtyValue(vtype=self, value=tuple(validated_elements))
+        is_unknown = any(v.is_unknown for v in validated_elements)
+        return CtyValue(
+            vtype=self, value=tuple(validated_elements), is_unknown=is_unknown
+        )
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
         from pyvider.cty.values import CtyValue
@@ -98,7 +108,9 @@ class CtyList[T](CtyType[tuple[T, ...]]):
             try:
                 return self.element_type.validate(container.value[index])
             except TypeError as e:
-                raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
+                raise TypeError(
+                    f"list indices must be integers or slices, not {type(index).__name__}"
+                ) from e
 
         raise CtyListValidationError(
             f"Expected CtyValue[CtyList], got {type(container).__name__}"
@@ -126,3 +138,7 @@ class CtyList[T](CtyType[tuple[T, ...]]):
 
     def __repr__(self) -> str:
         return f"CtyList(element_type={self.element_type!r})"
+
+
+
+# 🐍🎯📄🪄

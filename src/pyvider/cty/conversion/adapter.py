@@ -1,3 +1,6 @@
+#
+# pyvider/cty/conversion/adapter.py
+#
 from __future__ import annotations
 
 from decimal import Decimal
@@ -24,6 +27,9 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
     if not isinstance(value, CtyValue):
         return value
 
+    if value.is_unknown:
+        return None  # Gracefully handle unknown values by returning None.
+
     POST_PROCESS = object()
     work_stack: list[Any] = [value]
     results: dict[int, Any] = {}
@@ -38,11 +44,13 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             processing.remove(val_id)
 
             # Robustness check for malformed collection values
-            if isinstance(val_to_process.type, CtyList | CtySet | CtyTuple | CtyMap | CtyObject) and not hasattr(val_to_process.value, "__iter__"):
-                if isinstance(val_to_process.type, CtyList): results[val_id] = []
-                elif isinstance(val_to_process.type, CtySet): results[val_id] = []
-                elif isinstance(val_to_process.type, CtyTuple): results[val_id] = ()
-                elif isinstance(val_to_process.type, CtyMap | CtyObject): results[val_id] = {}
+            if not hasattr(val_to_process.value, "__iter__"):
+                if isinstance(val_to_process.type, CtyList | CtySet):
+                    results[val_id] = []
+                elif isinstance(val_to_process.type, CtyTuple):
+                    results[val_id] = ()
+                elif isinstance(val_to_process.type, CtyMap | CtyObject):
+                    results[val_id] = {}
                 continue
 
             if isinstance(val_to_process.type, CtyDynamic):
@@ -55,8 +63,12 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             elif isinstance(val_to_process.type, CtyList):
                 results[val_id] = [results[id(item)] for item in val_to_process.value]
             elif isinstance(val_to_process.type, CtySet):
+                # Use _canonical_sort_key for consistent sorting of set elements
                 results[val_id] = sorted(
-                    [results[id(item)] for item in val_to_process.value], key=repr
+                    [results[id(item)] for item in val_to_process.value],
+                    key=lambda v: v._canonical_sort_key()
+                    if isinstance(v, CtyValue)
+                    else repr(v),
                 )
             elif isinstance(val_to_process.type, CtyTuple):
                 results[val_id] = tuple(
@@ -69,9 +81,8 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
             continue
 
         if current_item.is_unknown:
-            raise ValueError(
-                "Cannot convert an unknown CtyValue to a native Python type."
-            )
+            results[id(current_item)] = None
+            continue
         if current_item.is_null:
             results[id(current_item)] = None
             continue
@@ -89,7 +100,7 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
 
             if isinstance(current_item.type, CtyDynamic):
                 work_stack.append(current_item.value)
-            elif hasattr(current_item.value, "__iter__"): # Robustness check
+            elif hasattr(current_item.value, "__iter__"):  # Robustness check
                 child_values = (
                     list(current_item.value.values())
                     if isinstance(current_item.value, dict)
@@ -99,7 +110,8 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
         else:
             inner_val = current_item.value
             if isinstance(inner_val, Decimal):
-                if inner_val.as_tuple().exponent >= 0:
+                exponent = inner_val.as_tuple().exponent
+                if isinstance(exponent, int) and exponent >= 0:
                     results[item_id] = int(inner_val)
                 else:
                     results[item_id] = float(inner_val)
@@ -107,3 +119,7 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
                 results[item_id] = inner_val
 
     return results.get(id(value))
+
+
+
+# 🐍🎯📄🪄

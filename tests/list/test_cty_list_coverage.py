@@ -47,3 +47,6 @@ def test_element_at_on_non_list_internal_value() -> None:
         match="Internal error: CtyValue of CtyList type does not wrap a list/tuple",
     ):
         list_type.element_at(inconsistent_value, 0)
+
+
+# 🐍🎯🧪🪄

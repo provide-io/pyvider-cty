@@ -1,3 +1,6 @@
+#
+# pyvider/cty/path/base.py
+#
 from abc import ABC, abstractmethod
 from typing import Any, TypeVar
 
@@ -227,3 +230,7 @@ class CtyPath:
 
     def __str__(self) -> str:
         return self.string()
+
+
+
+# 🐍🎯🏛️🪄
