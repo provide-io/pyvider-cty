@@ -1,3 +1,6 @@
+#
+# pyvider/cty/types/primitives/number.py
+#
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -62,3 +65,7 @@ class CtyNumber(CtyType[Decimal]):
 
     def is_primitive_type(self) -> bool:
         return True
+
+
+
+# 🐍🎯📄🪄

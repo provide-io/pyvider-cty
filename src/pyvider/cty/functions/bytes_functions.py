@@ -1,3 +1,6 @@
+#
+# pyvider/cty/functions/bytes_functions.py
+#
 from typing import Any
 
 from pyvider.cty import CtyNumber, CtyValue
@@ -38,3 +41,7 @@ def bytesslice(
 
     start_idx, end_idx = int(start.value), int(end.value)
     return BytesCapsule.validate(buffer.value[start_idx:end_idx])
+
+
+
+# 🐍🎯📄🪄

@@ -1,3 +1,6 @@
+#
+# pyvider/cty/exceptions/__init__.py
+#
 """
 Exception hierarchy for the pyvider.cty type system.
 """
@@ -64,3 +67,7 @@ __all__ = [
     "TransformationError",
     "WireFormatError",
 ]
+
+
+
+# 🐍🎯🚀🪄

@@ -1,3 +1,6 @@
+#
+# pyvider/cty/types/primitives/bool.py
+#
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define
@@ -65,3 +68,7 @@ class CtyBool(CtyType[bool]):
 
     def is_primitive_type(self) -> bool:
         return True
+
+
+
+# 🐍🎯📄🪄

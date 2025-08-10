@@ -78,3 +78,6 @@ def test_msgpack_default_handler_unsupported_type():
         TypeError, match="Object of type Unsupported is not MessagePack serializable"
     ):
         msgpack.packb(Unsupported(), default=_msgpack_default_handler)
+
+
+# 🐍🎯🧪🪄

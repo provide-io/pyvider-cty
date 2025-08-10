@@ -268,3 +268,6 @@ class TestUnifyFunction:
     ) -> None:
         unified_type = unify(type_list)
         assert unified_type.equal(expected_unified_type)
+
+
+# 🐍🎯🧪🪄

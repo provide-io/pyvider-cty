@@ -75,3 +75,6 @@ def test_post_init():
 
 def test_raw_value_unknown():
     with pytest.raises(ValueError): _ = CtyValue.unknown(CtyString()).raw_value
+
+
+# 🐍🎯🧪🪄

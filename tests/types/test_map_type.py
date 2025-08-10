@@ -69,3 +69,6 @@ class TestCtyMap:
         """Ensures the constructor raises an error for invalid element types."""
         with pytest.raises(InvalidTypeError):
             CtyMap(element_type="not a cty type")
+
+
+# 🐍🎯🧪🪄

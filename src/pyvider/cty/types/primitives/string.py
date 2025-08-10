@@ -1,3 +1,6 @@
+#
+# pyvider/cty/types/primitives/string.py
+#
 from typing import TYPE_CHECKING, Any, ClassVar
 import unicodedata
 
@@ -66,3 +69,7 @@ class CtyString(CtyType[str]):
 
     def is_primitive_type(self) -> bool:
         return True
+
+
+
+# 🐍🎯📄🪄

@@ -1,5 +1,8 @@
-import unicodedata
+#
+# pyvider/cty/types/collections/map.py
+#
 from typing import Any, ClassVar, TypeVar
+import unicodedata
 
 from attrs import define, field
 
@@ -113,3 +116,7 @@ class CtyMap[V](CtyType[dict[str, V]]):
 
     def __str__(self) -> str:
         return f"map({self.element_type})"
+
+
+
+# 🐍🎯📄🪄

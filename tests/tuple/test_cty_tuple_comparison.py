@@ -17,3 +17,6 @@ class TestCtyTupleComparison:
         assert not t1.equal(t3)
         assert not t1.equal(t4)
         assert not t1.equal(CtyString())
+
+
+# 🐍🎯🧪🪄

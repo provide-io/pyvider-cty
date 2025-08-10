@@ -27,3 +27,6 @@ class TestInferenceCacheCorrectness:
 
         assert isinstance(dict_type, CtyObject)
         assert isinstance(dict_type.attribute_types["k1"], CtyObject)
+
+
+# 🐍🎯🧪🪄
