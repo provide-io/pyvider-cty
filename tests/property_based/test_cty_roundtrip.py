@@ -82,3 +82,6 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
             f"CTY round-trip failed for input:\n{native_data!r}\n"
             f"Error: {type(e).__name__}: {e}"
         )
+
+
+# 🐍🎯🧪🪄

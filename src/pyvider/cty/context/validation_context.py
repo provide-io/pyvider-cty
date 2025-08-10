@@ -1,4 +1,6 @@
-# In a new file: pyvider/cty/context/validation_context.py
+#
+# pyvider/cty/context/validation_context.py
+#
 from collections.abc import Generator
 from contextlib import contextmanager
 import contextvars
@@ -21,3 +23,7 @@ def deeper_validation() -> Generator[None]:
 def get_validation_depth() -> int:
     """Returns the current validation depth."""
     return _validation_depth.get()
+
+
+
+# 🐍🎯📄🪄

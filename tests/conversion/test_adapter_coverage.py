@@ -134,3 +134,6 @@ class TestAdapterCoverage:
         val = CtyNumber().validate(123)
         native = cty_to_native(val)
         assert native == 123
+
+
+# 🐍🎯🧪🪄

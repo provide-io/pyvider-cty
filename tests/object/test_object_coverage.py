@@ -68,3 +68,6 @@ def test_usable_as_not_subset_required() -> None:
     )
     type2 = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
     assert type1.usable_as(type2) is False
+
+
+# 🐍🎯🧪🪄

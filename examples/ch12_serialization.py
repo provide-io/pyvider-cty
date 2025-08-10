@@ -18,3 +18,5 @@ print(f"Serialized Msgpack (bytes): {msgpack_bytes!r}")
 reconstructed_value = cty_from_msgpack(msgpack_bytes, user_type)
 assert reconstructed_value == user_value
 print("\nSuccessfully reconstructed value from Msgpack.")
+
+# 🐍🎯📄🪄

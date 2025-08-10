@@ -1,3 +1,6 @@
+#
+# pyvider/cty/values/base.py
+#
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -28,6 +31,7 @@ class CtyValue[T]:
 
     def __attrs_post_init__(self) -> None:
         from pyvider.cty.types import CtyDynamic
+
         if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
             object.__setattr__(self, "is_unknown", self.value.is_unknown)
             object.__setattr__(self, "is_null", self.value.is_null)
@@ -82,10 +86,12 @@ class CtyValue[T]:
         ):
             return (*key_prefix, *(v._canonical_sort_key() for v in self.value))
 
-        if isinstance(self.type, CtySet) and self.value is not None and hasattr(self.value, "__iter__"):
-            sorted_elements = sorted(
-                self.value, key=lambda v: v._canonical_sort_key()
-            )
+        if (
+            isinstance(self.type, CtySet)
+            and self.value is not None
+            and hasattr(self.value, "__iter__")
+        ):
+            sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
             return (*key_prefix, *(v._canonical_sort_key() for v in sorted_elements))
 
         if (
@@ -94,7 +100,10 @@ class CtyValue[T]:
             and hasattr(self.value, "items")
         ):
             sorted_items = sorted(self.value.items())
-            return (*key_prefix, *((k, v._canonical_sort_key()) for k, v in sorted_items))
+            return (
+                *key_prefix,
+                *((k, v._canonical_sort_key()) for k, v in sorted_items),
+            )
 
         if isinstance(self.type, CtyCapsule):
             return (*key_prefix, repr(self.value))
@@ -343,3 +352,7 @@ class CtyValue[T]:
     @classmethod
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
+
+
+
+# 🐍🎯🏛️🪄
