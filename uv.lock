@@ -808,6 +808,7 @@ source = { editable = "." }
 dependencies = [
     { name = "attrs" },
     { name = "msgpack" },
+    { name = "pytest" },
     { name = "pyvider-telemetry" },
 ]
 
@@ -835,6 +836,7 @@ dev = [
 requires-dist = [
     { name = "attrs", specifier = ">=25.1.0" },
     { name = "msgpack", specifier = ">=1.1.0" },
+    { name = "pytest", specifier = ">=8.4.1" },
     { name = "pyvider-telemetry", specifier = ">=0.0.13" },
 ]
 
