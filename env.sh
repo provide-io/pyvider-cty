@@ -115,6 +115,9 @@ fi
 if [[ "$TFOS" != "darwin" && "$TFOS" != "linux" ]]; then
     print_warning "Detected OS: $TFOS (only darwin and linux are fully tested)"
 fi
+
+# Set UV project environment early so uv commands use the correct venv
+export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
 # --- Virtual Environment ---
 print_header "🐍 Setting Up Virtual Environment"
 echo "Directory: ${VENV_DIR}"
@@ -131,6 +134,7 @@ fi
 # Activate virtual environment
 source "${VENV_DIR}/bin/activate"
 export VIRTUAL_ENV="$(pwd)/${VENV_DIR}"
+export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
 # --- Dependency Installation ---
 print_header "📦 Installing Dependencies"
 
@@ -160,6 +164,63 @@ PARENT_DIR=$(dirname "$(pwd)")
 SIBLING_COUNT=0
 
 
+# Special handling for specific packages
+pyvider_components_DIR="${PARENT_DIR}/pyvider-components"
+if [ -d "${PYVIDER_COMPONENTS_DIR}" ]; then
+    echo "Found pyvider-components package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${PYVIDER_COMPONENTS_DIR}"; then
+        print_warning "Failed to install pyvider-components package from '${PYVIDER_COMPONENTS_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
+pyvider_hcl_DIR="${PARENT_DIR}/pyvider-hcl"
+if [ -d "${PYVIDER_HCL_DIR}" ]; then
+    echo "Found pyvider-hcl package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${PYVIDER_HCL_DIR}"; then
+        print_warning "Failed to install pyvider-hcl package from '${PYVIDER_HCL_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
+pyvider_rpcplugin_DIR="${PARENT_DIR}/pyvider-rpcplugin"
+if [ -d "${PYVIDER_RPCPLUGIN_DIR}" ]; then
+    echo "Found pyvider-rpcplugin package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${PYVIDER_RPCPLUGIN_DIR}"; then
+        print_warning "Failed to install pyvider-rpcplugin package from '${PYVIDER_RPCPLUGIN_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
+pyvider_telemetry_DIR="${PARENT_DIR}/pyvider-telemetry"
+if [ -d "${PYVIDER_TELEMETRY_DIR}" ]; then
+    echo "Found pyvider-telemetry package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${PYVIDER_TELEMETRY_DIR}"; then
+        print_warning "Failed to install pyvider-telemetry package from '${PYVIDER_TELEMETRY_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
+tofusoup_DIR="${PARENT_DIR}/tofusoup"
+if [ -d "${TOFUSOUP_DIR}" ]; then
+    echo "Found tofusoup package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${TOFUSOUP_DIR}"; then
+        print_warning "Failed to install tofusoup package from '${TOFUSOUP_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
+flavor_DIR="${PARENT_DIR}/flavor"
+if [ -d "${FLAVOR_DIR}" ]; then
+    echo "Found flavor package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${FLAVOR_DIR}"; then
+        print_warning "Failed to install flavor package from '${FLAVOR_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
+wrkenv_DIR="${PARENT_DIR}/wrkenv"
+if [ -d "${WRKENV_DIR}" ]; then
+    echo "Found wrkenv package. Installing in editable mode with dependencies..."
+    if ! uv pip install -e "${WRKENV_DIR}"; then
+        print_warning "Failed to install wrkenv package from '${WRKENV_DIR}' in editable mode."
+        echo "Attempting to continue..."
+    fi
+fi
 
 if [ $SIBLING_COUNT -eq 0 ]; then
     print_warning "No sibling packages found"
@@ -172,7 +233,9 @@ export PYTHONPATH="${PWD}/src:${PWD}"
 echo "PYTHONPATH: ${PYTHONPATH}"
 
 # Clean up PATH - remove duplicates
-NEW_PATH="${VENV_DIR}/bin"
+# Ensure UV bin directories are included
+UV_BIN_PATHS="$HOME/.local/bin:$HOME/.cargo/bin"
+NEW_PATH="${VENV_DIR}/bin:${UV_BIN_PATHS}"
 OLD_IFS="$IFS"
 IFS=':'
 for p in $PATH; do
