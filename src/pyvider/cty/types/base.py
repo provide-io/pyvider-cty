@@ -8,6 +8,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
+    Generic,
     Protocol,
     TypeVar,
     runtime_checkable,
@@ -34,7 +35,7 @@ class CtyTypeProtocol(Protocol[T]):
 
 # The concrete ABC now implements the protocol
 @define(slots=True)
-class CtyType[T](CtyTypeProtocol[T], ABC):
+class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
     """
     Generic abstract base class for all Cty types.
     """
