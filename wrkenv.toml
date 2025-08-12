@@ -1,0 +1,15 @@
+[workenv]
+tf_flavor = "opentofu"
+
+[workenv.env]
+include_tool_verification = true
+sibling_patterns = []
+special_siblings = [
+    {"name" = "pyvider-components", "var_name" = "pyvider_components", "with_deps" = true},
+    {"name" = "pyvider-hcl", "var_name" = "pyvider_hcl", "with_deps" = true},
+    {"name" = "pyvider-rpcplugin", "var_name" = "pyvider_rpcplugin", "with_deps" = true},
+    {"name" = "pyvider-telemetry", "var_name" = "pyvider_telemetry", "with_deps" = true},
+    {"name" = "tofusoup", "var_name" = "tofusoup", "with_deps" = true},
+    {"name" = "flavor", "var_name" = "flavor", "with_deps" = true},
+    {"name" = "wrkenv", "var_name" = "wrkenv", "with_deps" = true}
+]
