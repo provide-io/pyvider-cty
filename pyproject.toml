@@ -27,12 +27,13 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
+    "pytest>=8.4.1",
     "pyvider-telemetry>=0.0.13",
 ]
 
 [dependency-groups]
 dev = [
-"bandit>=1.8.3",
+    "bandit>=1.8.3",
     "hypothesis>=6.131.0",
     "memray>=1.17.2",
     "mypy>=1.9.0",
