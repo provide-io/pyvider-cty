@@ -8,6 +8,3 @@ def test_validate_unknown_value() -> None:
     result = number_type.validate(unknown_value)
     assert result.is_unknown
     assert result.type.equal(number_type)
-
-
-# 🐍🎯🧪🪄

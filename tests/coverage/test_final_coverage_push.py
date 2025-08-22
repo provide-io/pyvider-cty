@@ -116,6 +116,3 @@ class TestFinalCoveragePush:
         class IncompleteType:
             def validate(self, value): pass
         assert not isinstance(IncompleteType(), CtyTypeProtocol)
-
-
-# 🐍🎯🧪🪄

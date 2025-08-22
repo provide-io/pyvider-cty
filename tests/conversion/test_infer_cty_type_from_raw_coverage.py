@@ -79,6 +79,3 @@ def test_infer_from_other_types() -> None:
 
     inferred_type = infer_cty_type_from_raw(Other())
     assert inferred_type == CtyDynamic()
-
-
-# 🐍🎯🧪🪄

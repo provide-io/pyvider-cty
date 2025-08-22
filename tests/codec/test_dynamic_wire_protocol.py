@@ -83,6 +83,3 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     deserialized = cty_from_msgpack(actual_packed, schema)
     assert isinstance(deserialized.type, CtyDynamic)
     assert deserialized.value == concrete_value
-
-
-# 🐍🎯🧪🪄

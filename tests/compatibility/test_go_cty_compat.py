@@ -126,6 +126,3 @@ def test_msgpack_serialization_from_python_to_go(tmp_path_factory, pytestconfig,
             f"--- Go Verifier Log ({log_file_path}) ---\n{log_contents}",
             pytrace=False
         )
-
-
-# 🐍🎯🧪🪄

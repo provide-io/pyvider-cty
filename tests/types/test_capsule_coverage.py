@@ -23,6 +23,3 @@ def test_validate_with_cty_value_different_capsule_type() -> None:
 def test_to_wire_json() -> None:
     capsule_type = CtyCapsule("MyObject", MyObject)
     assert capsule_type._to_wire_json() is None
-
-
-# 🐍🎯🧪🪄

@@ -1,8 +1,5 @@
-#
-# pyvider/cty/types/structural/object.py
-#
-from typing import Any, ClassVar
 import unicodedata
+from typing import Any, ClassVar
 
 from attrs import define, field
 
@@ -57,7 +54,9 @@ class CtyObject(CtyType[dict[str, object]]):
             return CtyValue.null(self)
         from pyvider.cty.types.structural.dynamic import CtyDynamic
 
-        unknown_optionals = self.optional_attributes - set(self.attribute_types.keys())
+        unknown_optionals = self.optional_attributes - set(
+            self.attribute_types.keys()
+        )
         if unknown_optionals:
             raise CtyAttributeValidationError(
                 f"Unknown optional attributes: {', '.join(sorted(list(unknown_optionals)))}"
@@ -136,7 +135,9 @@ class CtyObject(CtyType[dict[str, object]]):
         if obj_value.is_null:
             return CtyValue.null(self.attribute_types[name])
         if isinstance(obj_value.value, dict):
-            return obj_value.value.get(name, CtyValue.null(self.attribute_types[name]))  # type: ignore
+            return obj_value.value.get(
+                name, CtyValue.null(self.attribute_types[name])
+            )  # type: ignore
         raise CtyTypeMismatchError("CtyObject value is not a dict")
 
     def has_attribute(self, name: str) -> bool:
@@ -183,7 +184,3 @@ class CtyObject(CtyType[dict[str, object]]):
 
     def is_primitive_type(self) -> bool:
         return False
-
-
-
-# 🐍🎯📄🪄

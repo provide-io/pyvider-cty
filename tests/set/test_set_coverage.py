@@ -44,6 +44,3 @@ def test_to_wire_json(string_set_type) -> None:
 #     assert CtyNumber() in validated_types
 #     assert CtyBool() in validated_types
 #     assert len(validated_types) == 3
-
-
-# 🐍🎯🧪🪄

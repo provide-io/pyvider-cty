@@ -1,9 +1,8 @@
-#
-# pyvider/cty/conversion/raw_to_cty.py
-#
-from decimal import Decimal
-from typing import Any
+# pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
+
 import unicodedata
+from typing import Any
+from decimal import Decimal
 
 import attrs
 
@@ -45,7 +44,7 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
 
         if item_id in visited_ids:
             continue
-
+        
         visited_ids.add(item_id)
 
         # Placeholder is essential for cycle detection.
@@ -57,14 +56,14 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
             children.extend(current_item.values())
         elif isinstance(current_item, list | tuple | set | frozenset):
             children.extend(current_item)
-
+        
         work_stack.extend(children)
 
     # Build the final keys from the bottom up.
     while post_process_stack:
         container = post_process_stack.pop()
         container_id = id(container)
-
+        
         key: tuple[Any, ...]
         if isinstance(container, dict):
             # Sort items by key's string representation for deterministic order.
@@ -102,6 +101,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         CtyList,
         CtyMap,
         CtyNumber,
+        CtyObject,
         CtySet,
         CtyString,
         CtyTuple,
@@ -148,11 +148,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                 container.values() if isinstance(container, dict) else container
             )
             child_types = [
-                (
-                    v.type
-                    if isinstance(v, CtyValue)
-                    else results.get(id(v), CtyDynamic())
-                )
+                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic()))
                 for v in child_values
             ]
 
@@ -238,7 +234,3 @@ def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
     from pyvider.cty.conversion.explicit import unify
 
     return unify(types)
-
-
-
-# 🐍🎯📄🪄

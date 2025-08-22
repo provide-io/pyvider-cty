@@ -367,7 +367,3 @@ class WireFormatError(TransformationError):
 
 
 # 🐍🏗️🐣
-
-
-
-# 🐍🎯📄🪄

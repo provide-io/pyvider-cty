@@ -57,6 +57,3 @@ class TestCtyMark:
         # Test with a single value
         mark_single = CtyMark("test", "a")
         assert mark_single.details == frozenset(["a"])
-
-
-# 🐍🎯🧪🪄

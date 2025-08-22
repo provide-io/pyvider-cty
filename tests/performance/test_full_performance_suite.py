@@ -110,6 +110,3 @@ def test_benchmark_full_round_trip(benchmark, complex_raw_data):
         _ = cty_to_native(unpacked_val)
 
     benchmark(round_trip_operation)
-
-
-# 🐍🎯🧪🪄

@@ -40,7 +40,3 @@ class CtyFunctionError(CtyError):
 
 
 # 🐍🏗️🐣
-
-
-
-# 🐍🎯🏛️🪄
