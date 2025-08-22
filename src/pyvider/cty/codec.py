@@ -1,6 +1,3 @@
-#
-# pyvider/cty/codec.py
-#
 from decimal import Decimal
 import json
 from typing import Any
@@ -202,7 +199,3 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
             raise e
 
     return _unpacked_to_cty(raw_unpacked, cty_type)
-
-
-
-# 🐍🎯📄🪄

@@ -91,6 +91,3 @@ class TestCtyValueOtherMethods:
         assert CtyList(element_type=CtyString()).validate([]).is_empty()
         assert not CtyList(element_type=CtyString()).validate(["a"]).is_empty()
         assert not CtyString().validate("a").is_empty()
-
-
-# 🐍🎯🧪🪄

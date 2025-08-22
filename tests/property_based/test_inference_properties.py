@@ -20,6 +20,3 @@ def test_infer_cty_type_from_raw_complex(value) -> None:
     """
     inferred_type = infer_cty_type_from_raw(value)
     assert inferred_type is not None
-
-
-# 🐍🎯🧪🪄

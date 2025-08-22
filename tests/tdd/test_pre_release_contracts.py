@@ -150,6 +150,3 @@ class TestValueHashingContract:
         """TDD: CtyValues wrapping lists, sets, maps, and objects MUST be unhashable."""
         with pytest.raises(TypeError, match="unhashable type"):
             hash(unhashable_val)
-
-
-# 🐍🎯🧪🪄

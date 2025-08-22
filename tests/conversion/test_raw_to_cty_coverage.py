@@ -58,6 +58,3 @@ def test_infer_dict_with_cty_values():
     assert isinstance(inferred, CtyObject)
     assert inferred.attribute_types["a"].equal(CtyString())
     assert inferred.attribute_types["b"].equal(CtyNumber())
-
-
-# 🐍🎯🧪🪄

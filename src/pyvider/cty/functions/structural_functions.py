@@ -1,6 +1,3 @@
-#
-# pyvider/cty/functions/structural_functions.py
-#
 from typing import Any
 
 from pyvider.cty import CtyValue
@@ -16,7 +13,3 @@ def coalesce(*args: "CtyValue[Any]") -> "CtyValue[Any]":
             return arg
 
     return CtyValue.null(args[-1].type)
-
-
-
-# 🐍🎯📄🪄

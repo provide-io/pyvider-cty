@@ -1,6 +1,3 @@
-#
-# pyvider/cty/functions/conversion_functions.py
-#
 from typing import Any
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
@@ -37,7 +34,3 @@ def to_bool(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError(
             f"tobool: cannot convert {input_val.type.ctype} to bool"
         ) from e
-
-
-
-# 🐍🎯📄🪄

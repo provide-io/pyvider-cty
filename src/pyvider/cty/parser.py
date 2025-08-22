@@ -1,6 +1,4 @@
-#
-# pyvider/cty/parser.py
-#
+# pyvider-cty/src/pyvider/cty/parser.py
 """
 Contains logic for parsing Terraform's JSON-based type constraint strings
 into the framework's internal CtyType objects.
@@ -78,7 +76,3 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> "CtyType[Any]":  # noqa: C901
 
 # Alias for backward compatibility if needed, though direct use is preferred.
 parse_type_string_to_ctytype = parse_tf_type_to_ctytype
-
-
-
-# 🐍🎯📄🪄

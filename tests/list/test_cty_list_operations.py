@@ -21,6 +21,3 @@ class TestCtyListValueOperations:
         sliced = string_list_val[1:4]
         assert isinstance(sliced, CtyValue)
         assert [item.value for item in sliced.value] == ["b", "c", "d"]
-
-
-# 🐍🎯🧪🪄

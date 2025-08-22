@@ -918,6 +918,3 @@ class TestStructuralFunctions:
         assert coalesce(val1, val2).value == "a"
         assert coalesce(null_val, val2).value == "b"
         assert coalesce(null_val, null_val, val1).value == "a"
-
-
-# 🐍🎯🧪🪄

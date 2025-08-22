@@ -23,6 +23,3 @@ def test_validate_with_cty_value_different_set_type() -> None:
     value = other_set_type.validate({1, 2, 3})
     with pytest.raises(CtySetValidationError):
         set_type.validate(value)
-
-
-# 🐍🎯🧪🪄

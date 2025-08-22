@@ -51,6 +51,3 @@ class TestCtyBoolType:
     def test_validate_valid_bool(self) -> None:
         result = self.bool_type.validate(True)
         assert result.value is True
-
-
-# 🐍🎯🧪🪄

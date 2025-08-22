@@ -34,5 +34,3 @@ except Exception as e:
     print(f"Map validation failed as expected: {e}")
 
 print("Collection type examples ran successfully.")
-
-# 🐍🎯📄🪄

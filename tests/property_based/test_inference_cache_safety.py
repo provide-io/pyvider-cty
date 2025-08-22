@@ -50,6 +50,3 @@ def test_inference_is_correct_for_same_keys_different_types(data):
         normalized_key = unicodedata.normalize("NFC", key)
         actual_attr_type = type2.attribute_types[normalized_key]
         assert actual_attr_type.equal(expected_attr_type)
-
-
-# 🐍🎯🧪🪄

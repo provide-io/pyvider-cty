@@ -152,6 +152,3 @@ class TestAdvancedRecursionDetection:
             assert result is False, f"Thread {thread_id} validation failed (returned unknown)"
             assert metrics["total_validations"] > 0
             assert metrics["max_depth_reached"] > 0
-
-
-# 🐍🎯🧪🪄

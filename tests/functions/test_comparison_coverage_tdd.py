@@ -61,6 +61,3 @@ class TestRefinedUnknownComparisonCoverage:
         known_20 = CtyNumber().validate(20)
         result = greater_than(unknown_lt_10, known_20)
         assert not result.is_unknown and result.value is False
-
-
-# 🐍🎯🧪🪄

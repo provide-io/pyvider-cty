@@ -52,5 +52,3 @@ print(f"CPU cores: {cpu.raw_value}")
 # `first_disk` is a CtyValue(CtyObject), so we can index it.
 print(f"First disk size: {first_disk['size'].raw_value} GB")
 print(f"First disk type: {disk_type.raw_value}")
-
-# 🐍🎯📄🪄

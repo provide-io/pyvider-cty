@@ -96,6 +96,3 @@ def test_benchmark_full_conversion_roundtrip(
     # by the benchmark fixture itself via the `with_inference_cache` decorator
     # on the underlying functions.
     benchmark(core_roundtrip_operation, test_data, cty_schema)
-
-
-# 🐍🎯🧪🪄

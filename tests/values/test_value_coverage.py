@@ -90,6 +90,3 @@ class TestCtyValueCoverage:
         # This should be a no-op and return the same value.
         new_val = map_val.without_key("non-existent-key")
         assert new_val is map_val
-
-
-# 🐍🎯🧪🪄

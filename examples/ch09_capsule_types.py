@@ -25,5 +25,3 @@ except Exception as e:
     print(f"Capsule validation failed as expected: {e}")
 
 print("Capsule type examples ran successfully.")
-
-# 🐍🎯📄🪄

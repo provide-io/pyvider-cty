@@ -1,6 +1,4 @@
-#
 # pyvider/cty/values/markers.py
-#
 """
 This module contains simple marker classes to break import cycles.
 """
@@ -37,7 +35,3 @@ class RefinedUnknownValue(UnknownValue):
 
 # This singleton represents an unknown value with no refinements.
 UNREFINED_UNKNOWN = UnrefinedUnknownValue()
-
-
-
-# 🐍🎯📄🪄

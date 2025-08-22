@@ -121,6 +121,3 @@ class TestCtyToNativeCorrectness:
         assert native_result["id"] == 1
         assert isinstance(native_result["data"], list)
         assert native_result["data"] == ["x", "y", "z"]
-
-
-# 🐍🎯🧪🪄

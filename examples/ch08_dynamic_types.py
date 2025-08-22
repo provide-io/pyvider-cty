@@ -17,5 +17,3 @@ dynamic_list_type = CtyList(element_type=CtyDynamic())
 cty_list = dynamic_list_type.validate(["hello", 123, True])
 
 print("Dynamic type examples ran successfully.")
-
-# 🐍🎯📄🪄

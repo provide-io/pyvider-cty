@@ -1,10 +1,7 @@
-#
-# pyvider/cty/types/collections/set.py
-#
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Any, ClassVar, Generic, TypeVar, final
+from typing import Any, ClassVar, TypeVar, final
 
 from attrs import define, field
 
@@ -18,7 +15,7 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtySet(CtyType[tuple[T, ...]], Generic[T]):
+class CtySet[T](CtyType[tuple[T, ...]]):
     ctype: ClassVar[str] = "set"
     _type_order: ClassVar[int] = 4
     element_type: CtyType[T] = field(kw_only=True)
@@ -88,7 +85,3 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
 
     def __str__(self) -> str:
         return f"set({self.element_type})"
-
-
-
-# 🐍🎯📄🪄

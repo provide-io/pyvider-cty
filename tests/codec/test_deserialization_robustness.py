@@ -106,6 +106,3 @@ class TestGoCtyCompatibility:
         assert "age" in deserialized_val.value
         assert deserialized_val["age"].is_null is True
         assert deserialized_val["name"].value == "Alice"
-
-
-# 🐍🎯🧪🪄

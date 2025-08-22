@@ -34,6 +34,3 @@ class TestMapDiagnostics:
             match="Map keys must be strings, but got key of type int",
         ):
             schema.validate(config)
-
-
-# 🐍🎯🧪🪄

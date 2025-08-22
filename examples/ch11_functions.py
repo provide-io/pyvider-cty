@@ -17,5 +17,3 @@ abs_result = abs_fn(num1)
 assert abs_result.raw_value == 10
 
 print("Functions examples ran successfully.")
-
-# 🐍🎯📄🪄

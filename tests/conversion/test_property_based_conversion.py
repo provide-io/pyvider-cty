@@ -96,6 +96,3 @@ def test_infer_type_of_list_of_mixed_objects() -> None:
     native_result = cty_to_native(cty_value)
 
     assert native_result == mixed_list
-
-
-# 🐍🎯🧪🪄

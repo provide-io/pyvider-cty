@@ -241,6 +241,3 @@ class TestCtyPathStringRepresentation:
     def test_path_with_only_key(self) -> None:
         path = CtyPath.key("config-key")
         assert str(path) == "['config-key']"
-
-
-# 🐍🎯🧪🪄

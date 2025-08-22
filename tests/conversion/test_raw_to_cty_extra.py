@@ -53,6 +53,3 @@ def test_infer_from_list_of_lists():
     assert isinstance(inferred, CtyList)
     assert isinstance(inferred.element_type, CtyList)
     assert isinstance(inferred.element_type.element_type, CtyNumber)
-
-
-# 🐍🎯🧪🪄

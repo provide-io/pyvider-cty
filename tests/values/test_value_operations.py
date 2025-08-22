@@ -104,6 +104,3 @@ class TestCtyValueListOperations:
         """Verifies that .with_element_at() validates the new element against the list's element type."""
         with pytest.raises(CtyValidationError):
             list_val.with_element_at(0, 456)
-
-
-# 🐍🎯🧪🪄

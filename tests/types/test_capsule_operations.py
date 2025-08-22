@@ -160,6 +160,3 @@ class TestCtyCapsuleWithConversion:
 
         with pytest.raises(CtyConversionError, match="returned a value of the wrong type"):
             convert(capsule_val, target_type)
-
-
-# 🐍🎯🧪🪄

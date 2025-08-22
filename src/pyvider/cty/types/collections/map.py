@@ -1,8 +1,5 @@
-#
-# pyvider/cty/types/collections/map.py
-#
-from typing import Any, ClassVar, Generic, TypeVar
 import unicodedata
+from typing import Any, ClassVar, TypeVar
 
 from attrs import define, field
 
@@ -21,7 +18,7 @@ V = TypeVar("V")
 
 
 @define(frozen=True, slots=True)
-class CtyMap(CtyType[dict[str, V]], Generic[V]):
+class CtyMap[V](CtyType[dict[str, V]]):
     ctype: ClassVar[str] = "map"
     _type_order: ClassVar[int] = 6
     element_type: CtyType[V] = field(kw_only=True)
@@ -116,7 +113,3 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def __str__(self) -> str:
         return f"map({self.element_type})"
-
-
-
-# 🐍🎯📄🪄
