@@ -16,5 +16,3 @@ assert sensitive_string.has_mark("private") is False
 assert sensitive_string.marks == {"sensitive"}
 
 print("Marks examples ran successfully.")
-
-# 🐍🎯📄🪄

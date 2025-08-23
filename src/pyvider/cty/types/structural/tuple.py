@@ -1,6 +1,3 @@
-#
-# pyvider/cty/types/structural/tuple.py
-#
 from __future__ import annotations
 
 from typing import Any, ClassVar
@@ -181,7 +178,3 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             )
         slice_obj = slice(start, end, step)
         return self.element_at(container_value, slice_obj)
-
-
-
-# 🐍🎯📄🪄

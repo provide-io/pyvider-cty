@@ -1,13 +1,10 @@
-#
 # pyvider/cty/types/capsule.py
-#
 """
 Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
-
-from collections.abc import Callable
 import inspect
+from collections.abc import Callable
 from typing import Any, ClassVar
 
 from pyvider.cty.exceptions import CtyValidationError
@@ -130,7 +127,3 @@ class CtyCapsuleWithOps(CtyCapsule):
         return hash(
             (self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn)
         )
-
-
-
-# 🐍🎯📄🪄

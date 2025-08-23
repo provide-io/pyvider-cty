@@ -39,6 +39,3 @@ def test_attrs_to_dict_safe_with_cty_value_raises_error():
     cty_val = CtyString().validate("hello")
     with pytest.raises(TypeError, match="Cannot infer data type from a CtyValue instance"):
         _attrs_to_dict_safe(cty_val)
-
-
-# 🐍🎯🧪🪄

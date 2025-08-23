@@ -1,6 +1,3 @@
-#
-# pyvider/cty/marks.py
-#
 from typing import Any
 
 from attrs import define, field
@@ -34,7 +31,3 @@ class CtyMark:
 
     def __str__(self) -> str:
         return self.name
-
-
-
-# 🐍🎯📄🪄

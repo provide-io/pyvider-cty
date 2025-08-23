@@ -200,6 +200,3 @@ def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyList(element_type=input_val.type.element_type).validate(
         list(input_val.value.values())
     )
-
-
-# 🐍🎯🧪🪄

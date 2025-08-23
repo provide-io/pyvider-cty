@@ -31,6 +31,3 @@ def test_validate_with_exception() -> None:
         CtyStringValidationError, match="Cannot convert BadString to string."
     ):
         string_type.validate(BadString())
-
-
-# 🐍🎯🧪🪄

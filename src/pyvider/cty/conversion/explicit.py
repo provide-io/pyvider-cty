@@ -1,6 +1,3 @@
-#
-# pyvider/cty/conversion/explicit.py
-#
 """
 Implementation of the public `convert` and `unify` functions for explicit
 CTY-to-CTY type conversion.
@@ -192,7 +189,3 @@ def unify(types: Iterable["CtyType[Any]"]) -> "CtyType[Any]":
     This is a wrapper that enables caching by converting input to a frozenset.
     """
     return _unify_frozen(frozenset(types))
-
-
-
-# 🐍🎯📄🪄

@@ -34,5 +34,3 @@ except Exception as e:
     print(f"Bool validation failed as expected: {e}")
 
 print("Primitive type examples ran successfully.")
-
-# 🐍🎯📄🪄
