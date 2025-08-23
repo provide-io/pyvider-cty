@@ -52,6 +52,3 @@ def test_serialize_refined_unknown_with_no_payload() -> None:
     val = CtyValue.unknown(CtyString(), value=RefinedUnknownValue())
     serialized = _serialize_unknown(val)
     assert serialized.code == 0
-
-
-# 🐍🎯🧪🪄

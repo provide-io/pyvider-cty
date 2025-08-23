@@ -1,8 +1,5 @@
-#
-# pyvider/cty/conversion/_utils.py
-#
+# pyvider-cty/src/pyvider/cty/conversion/_utils.py
 """Internal conversion utilities to avoid circular dependencies."""
-
 from typing import Any
 
 
@@ -29,7 +26,3 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     for a in getattr(type(inst), "__attrs_attrs__", []):
         res[a.name] = getattr(inst, a.name)
     return res
-
-
-
-# 🐍🎯🛠️🪄

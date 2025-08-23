@@ -116,6 +116,3 @@ def test_infer_from_attrs_object() -> None:
     assert isinstance(inferred_type, CtyObject)
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber)
     assert isinstance(inferred_type.attribute_types["b"], CtyString)
-
-
-# 🐍🎯🧪🪄

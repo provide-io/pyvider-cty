@@ -139,6 +139,3 @@ class TestCtyObjectMethods:
         obj_type3 = CtyObject({"name": CtyString(), "age": CtyString()})
         assert self.obj_type.usable_as(obj_type2)
         assert not self.obj_type.usable_as(obj_type3)
-
-
-# 🐍🎯🧪🪄

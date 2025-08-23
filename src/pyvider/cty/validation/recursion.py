@@ -1,6 +1,3 @@
-#
-# pyvider/cty/validation/recursion.py
-#
 """
 Advanced recursion detection for CTY validation.
 
@@ -16,12 +13,14 @@ The implementation is designed for production IaC requirements where:
 - Debugging and monitoring capabilities are essential
 """
 
+import inspect
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-import threading
-import time
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
+from weakref import WeakKeyDictionary
 
 from pyvider.telemetry import logger
 
@@ -45,7 +44,7 @@ class RecursionContext:
     """Thread-local context for tracking validation recursion."""
 
     # Object identity tracking for cycle detection
-    validation_graph: dict[int, ValidationNode] = field(default_factory=dict)
+    validation_graph: Dict[int, ValidationNode] = field(default_factory=dict)
 
     # Path tracking for detailed diagnostics
     validation_path: list[str] = field(default_factory=list)
@@ -96,12 +95,12 @@ class RecursionDetector:
     - Performance pathological cases (excessive validation time)
     """
 
-    def __init__(self, context: RecursionContext | None = None):
+    def __init__(self, context: Optional[RecursionContext] = None):
         self.context = context or get_recursion_context()
 
     def should_continue_validation(
         self, value: Any, current_path: str = ""
-    ) -> tuple[bool, str | None]:
+    ) -> Tuple[bool, Optional[str]]:
         """
         Determine if validation should continue for the given value.
 
@@ -216,7 +215,7 @@ class RecursionDetector:
         """Get the current validation path for diagnostics."""
         return " -> ".join(self.context.validation_path)
 
-    def get_performance_metrics(self) -> dict[str, Any]:
+    def get_performance_metrics(self) -> Dict[str, Any]:
         """Get performance metrics for monitoring and debugging."""
         elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
         return {
@@ -272,7 +271,3 @@ def with_recursion_detection(func: Callable) -> Callable:
                 pass
 
     return wrapper
-
-
-
-# 🐍🎯📄🪄

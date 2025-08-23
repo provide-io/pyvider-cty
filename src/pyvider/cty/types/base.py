@@ -1,6 +1,3 @@
-#
-# pyvider/cty/types/base.py
-#
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -8,7 +5,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Generic,
     Protocol,
     TypeVar,
     runtime_checkable,
@@ -35,7 +31,7 @@ class CtyTypeProtocol(Protocol[T]):
 
 # The concrete ABC now implements the protocol
 @define(slots=True)
-class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
+class CtyType[T](CtyTypeProtocol[T], ABC):
     """
     Generic abstract base class for all Cty types.
     """
@@ -44,15 +40,15 @@ class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
     _type_order: ClassVar[int] = 99
 
     @abstractmethod
-    def validate(self, value: object) -> CtyValue[T]:
+    def validate(self, value: object) -> "CtyValue[T]":
         pass
 
     @abstractmethod
-    def equal(self, other: CtyType[T]) -> bool:
+    def equal(self, other: "CtyType[T]") -> bool:
         pass
 
     @abstractmethod
-    def usable_as(self, other: CtyType[T]) -> bool:
+    def usable_as(self, other: "CtyType[T]") -> bool:
         pass
 
     @abstractmethod
@@ -77,7 +73,3 @@ class CtyType(CtyTypeProtocol[T], ABC, Generic[T]):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
-
-
-
-# 🐍🎯🏛️🪄

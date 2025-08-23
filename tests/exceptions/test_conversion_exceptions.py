@@ -146,6 +146,3 @@ class TestCtyTypeParseError:
         assert str(error) == expected_msg
         assert error.type_string == type_string
         assert error.source_value == type_string
-
-
-# 🐍🎯🧪🪄

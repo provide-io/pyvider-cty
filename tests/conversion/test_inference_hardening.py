@@ -73,6 +73,3 @@ class TestInferenceHardening:
         assert isinstance(
             inferred_mixed.element_type, CtyDynamic
         ), "Map with mixed values should have a CtyDynamic element type."
-
-
-# 🐍🎯🧪🪄
