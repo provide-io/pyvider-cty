@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
 
 from attrs import define, field
 
@@ -20,7 +20,7 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtyList[T](CtyType[tuple[T, ...]]):
+class CtyList(CtyType[tuple[T, ...]], Generic[T]):
     ctype: ClassVar[str] = "list"
     _type_order: ClassVar[int] = 5
     element_type: CtyType[T] = field(kw_only=True)
