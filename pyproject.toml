@@ -5,7 +5,7 @@
 [project]
 name = "pyvider-cty"
 description = "Pyvider Cty Package - Core data types and serialization."
-version = "0.0.112"
+version = "0.0.113"
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "Apache-2.0" }
