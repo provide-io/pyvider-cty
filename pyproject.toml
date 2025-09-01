@@ -30,7 +30,8 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    "pyvider-telemetry>=0.0.13",
+    "provide-foundation>=0.0.16",
+    "pyvider-telemetry>=0.0.13",  # Keep for backward compatibility
 ]
 
 [dependency-groups]

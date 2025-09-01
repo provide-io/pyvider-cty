@@ -22,7 +22,7 @@ from functools import wraps
 from typing import Any, Dict, Optional, Tuple
 from weakref import WeakKeyDictionary
 
-from pyvider.telemetry import logger
+from provide.foundation import logger
 
 
 @dataclass

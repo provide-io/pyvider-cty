@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from provide.foundation.errors import ValidationError as FoundationValidationError
 from pyvider.cty.exceptions.base import CtyError
 
 if TYPE_CHECKING:
@@ -9,8 +10,12 @@ if TYPE_CHECKING:
     from pyvider.cty.types import CtyType
 
 
-class CtyValidationError(CtyError):
-    """Base exception for all validation errors."""
+class CtyValidationError(FoundationValidationError):
+    """Base exception for all validation errors.
+    
+    Inherits from foundation's ValidationError for enhanced diagnostics
+    and automatic retry/circuit breaker support where applicable.
+    """
 
     def __init__(
         self,
@@ -18,12 +23,25 @@ class CtyValidationError(CtyError):
         value: object = None,
         type_name: str | None = None,
         path: CtyPath | None = None,
+        **kwargs
     ) -> None:
         self.value = value
         self.type_name = type_name
         self.path = path
         self.message = message
-        super().__init__(self.message)
+        
+        # Add context to foundation error
+        if type_name:
+            kwargs.setdefault('context', {})['cty.type'] = type_name
+        if path:
+            kwargs.setdefault('context', {})['cty.path'] = str(path)
+        if value is not None:
+            kwargs.setdefault('context', {})['cty.value_type'] = type(value).__name__
+            
+        super().__init__(self.message, **kwargs)
+    
+    def _default_code(self) -> str:
+        return "CTY_VALIDATION_ERROR"
 
     def __str__(self) -> str:
         """Creates a user-friendly, path-aware error message."""

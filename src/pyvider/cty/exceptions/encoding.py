@@ -41,10 +41,17 @@ class TransformationError(CtyError):
             message: The base error message.
             schema: The schema object that was being transformed.
             target_type: The intended target type of the transformation.
-            **kwargs: Additional keyword arguments.
+            **kwargs: Additional keyword arguments for foundation error context.
         """
         self.schema = schema
         self.target_type = target_type
+        
+        # Add foundation context
+        if schema is not None:
+            kwargs.setdefault('context', {})['transformation.schema_type'] = type(schema).__name__
+        if target_type is not None:
+            target_name = getattr(target_type, '__name__', str(target_type))
+            kwargs.setdefault('context', {})['transformation.target_type'] = target_name
 
         context_parts = []
         if schema is not None:
