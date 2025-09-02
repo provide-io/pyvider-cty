@@ -15,6 +15,7 @@ class CtyConversionError(CtyError):
         *,
         source_value: object | None = None,
         target_type: object | None = None,
+        **kwargs
     ) -> None:
         """
         Initializes the CtyConversionError.
@@ -23,12 +24,17 @@ class CtyConversionError(CtyError):
             message: The base error message.
             source_value: The value that was being converted.
             target_type: The intended target type of the conversion.
+            **kwargs: Additional foundation error context.
         """
         self.source_value = source_value
         self.target_type = target_type
+        
+        # Build message with old format for compatibility
         context_parts = []
         if source_value is not None:
             context_parts.append(f"source_type={type(source_value).__name__}")
+            # Also add to foundation context
+            kwargs.setdefault('context', {})['conversion.source_type'] = type(source_value).__name__
         if target_type is not None:
             target_name = (
                 target_type.__name__
@@ -36,9 +42,15 @@ class CtyConversionError(CtyError):
                 else str(target_type)
             )
             context_parts.append(f"target_type={target_name}")
+            kwargs.setdefault('context', {})['conversion.target_type'] = target_name
+            
         if context_parts:
             message = f"{message} ({', '.join(context_parts)})"
-        super().__init__(message)
+            
+        super().__init__(message, **kwargs)
+    
+    def _default_code(self) -> str:
+        return "CTY_CONVERSION_ERROR"
 
 
 class CtyTypeConversionError(CtyConversionError):

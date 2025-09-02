@@ -5,8 +5,10 @@
 Defines the base exception for the CTY type system.
 """
 
+from provide.foundation.errors import FoundationError
 
-class CtyError(Exception):
+
+class CtyError(FoundationError):
     """
     Base exception for all pyvider.cty errors.
 
@@ -14,15 +16,21 @@ class CtyError(Exception):
     system. It provides a foundation for more specific error types and can
     be used to catch any cty-related error.
 
+    Now inherits from FoundationError to provide rich context support,
+    telemetry integration, and enhanced diagnostics.
+
     Attributes:
         message: A human-readable error description
     """
 
     def __init__(
-        self, message: str = "An error occurred in the cty type system"
+        self, message: str = "An error occurred in the cty type system", **kwargs
     ) -> None:
         self.message = message
-        super().__init__(self.message)
+        super().__init__(self.message, **kwargs)
+    
+    def _default_code(self) -> str:
+        return "CTY_ERROR"
 
 
 class CtyFunctionError(CtyError):
