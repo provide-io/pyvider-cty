@@ -853,7 +853,6 @@ wheels = [
 
 [[package]]
 name = "pyvider-cty"
-version = "0.0.113"
 source = { editable = "." }
 dependencies = [
     { name = "attrs" },
