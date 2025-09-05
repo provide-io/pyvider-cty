@@ -3,6 +3,8 @@ The pyvider.cty package is a pure-Python implementation of the concepts
 from HashiCorp's `cty` library, providing a rich type system for the framework.
 """
 
+from pyvider.cty._version import __version__
+
 from .conversion import convert, unify
 from .exceptions import (
     CtyAttributeValidationError,
@@ -35,6 +37,7 @@ from .types import (
 from .values import CtyValue
 
 __all__ = [
+    "__version__",
     "BytesCapsule",
     "CtyAttributeValidationError",
     "CtyBool",
