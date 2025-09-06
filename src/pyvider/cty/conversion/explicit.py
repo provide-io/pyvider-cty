@@ -30,6 +30,7 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """
+    # Add error boundary context for conversion operations
     with error_boundary(context={
         "operation": "cty_value_conversion",
         "source_type": str(value.type),
@@ -37,6 +38,7 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
         "value_is_null": value.is_null,
         "value_is_unknown": value.is_unknown
     }):
+        # Early exit cases within error boundary
         if value.type.equal(target_type):
             return value
 
@@ -45,6 +47,8 @@ def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[An
         if value.is_unknown:
             return CtyValue.unknown(target_type)
 
+        # Continue with conversion logic (rest stays outside for now due to complexity)
+    
     if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
         result = value.type.convert_fn(value.value, target_type)
         if result is None:
