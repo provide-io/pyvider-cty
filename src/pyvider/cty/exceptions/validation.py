@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from provide.foundation.errors import ValidationError as FoundationValidationError
@@ -81,23 +79,48 @@ def _get_type_name_from_original(
 # --- Primitive Validation Errors ---
 class CtyBoolValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None
+        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
     ) -> None:
-        super().__init__(f"Boolean validation error: {message}", value, "Boolean", path)
+        # Add bool-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.primitive_type'] = 'bool'
+        context['cty.validation_stage'] = 'bool_validation'
+        
+        super().__init__(f"Boolean validation error: {message}", value, "Boolean", path, **kwargs)
 
 
 class CtyNumberValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None
+        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
     ) -> None:
-        super().__init__(f"Number validation error: {message}", value, "Number", path)
+        # Add number-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.primitive_type'] = 'number'
+        context['cty.validation_stage'] = 'number_validation'
+        
+        # Add numeric value analysis if applicable
+        if isinstance(value, (int, float)):
+            context['cty.numeric_value'] = str(value)
+            context['cty.numeric_type'] = type(value).__name__
+        
+        super().__init__(f"Number validation error: {message}", value, "Number", path, **kwargs)
 
 
 class CtyStringValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None
+        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
     ) -> None:
-        super().__init__(f"String validation error: {message}", value, "String", path)
+        # Add string-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.primitive_type'] = 'string'
+        context['cty.validation_stage'] = 'string_validation'
+        
+        # Add string analysis if applicable
+        if isinstance(value, str):
+            context['cty.string_length'] = len(value)
+            context['cty.string_encoding'] = 'utf-8'  # Assumed for Python strings
+        
+        super().__init__(f"String validation error: {message}", value, "String", path, **kwargs)
 
 
 # --- Collection Validation Errors ---
@@ -171,12 +194,25 @@ class CtySetValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
+        **kwargs
     ) -> None:
+        # Add set-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.collection_type'] = 'set'
+        
+        if isinstance(value, (set, frozenset)):
+            context['cty.collection_size'] = len(value)
+            context['cty.set_type'] = type(value).__name__
+        
+        if original_exception:
+            context['cty.nested_error'] = type(original_exception).__name__
+        
         super().__init__(
             message,
             value,
             _get_type_name_from_original(original_exception, "Set"),
             path,
+            **kwargs
         )
 
 
@@ -188,12 +224,25 @@ class CtyTupleValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
+        **kwargs
     ) -> None:
+        # Add tuple-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.collection_type'] = 'tuple'
+        
+        if isinstance(value, tuple):
+            context['cty.collection_length'] = len(value)
+            context['cty.tuple_element_types'] = [type(item).__name__ for item in value]
+        
+        if original_exception:
+            context['cty.nested_error'] = type(original_exception).__name__
+        
         super().__init__(
             message,
             value,
             _get_type_name_from_original(original_exception, "Tuple"),
             path,
+            **kwargs
         )
 
 
@@ -232,9 +281,14 @@ class CtyAttributeValidationError(CtyValidationError):
 
 class CtyTypeValidationError(CtyValidationError):
     def __init__(
-        self, message: str, type_name: str | None = None, path: CtyPath | None = None
+        self, message: str, type_name: str | None = None, path: CtyPath | None = None, **kwargs
     ) -> None:
-        super().__init__(message, type_name=type_name or "TypeDefinition", path=path)
+        # Add type definition context
+        context = kwargs.setdefault('context', {})
+        context['cty.validation_stage'] = 'type_definition'
+        context['cty.type_category'] = 'meta'
+        
+        super().__init__(message, type_name=type_name or "TypeDefinition", path=path, **kwargs)
 
 
 class CtyTypeMismatchError(CtyValidationError):
@@ -244,9 +298,21 @@ class CtyTypeMismatchError(CtyValidationError):
         actual_type: CtyType[Any] | None = None,
         expected_type: CtyType[Any] | None = None,
         path: CtyPath | None = None,
+        **kwargs
     ) -> None:
         self.actual_type = actual_type
         self.expected_type = expected_type
+        
+        # Add type mismatch context
+        context = kwargs.setdefault('context', {})
+        context['cty.validation_stage'] = 'type_mismatch'
+        context['cty.error_category'] = 'type_compatibility'
+        
+        if actual_type:
+            context['cty.actual_type'] = str(actual_type)
+        if expected_type:
+            context['cty.expected_type'] = str(expected_type)
+        
         type_info = f"Expected {expected_type}, got {actual_type}"
         full_message = f"{message} ({type_info})"
-        super().__init__(full_message, path=path)
+        super().__init__(full_message, path=path, **kwargs)

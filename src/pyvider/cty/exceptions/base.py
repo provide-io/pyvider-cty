@@ -37,14 +37,44 @@ class CtyFunctionError(CtyError):
     """
     Exception raised for errors during the execution of a CTY standard library function.
 
+    Enhanced with rich context support for function name, arguments, and execution details.
+
     Attributes:
         message: A human-readable error description
+        function_name: Name of the CTY function that failed
     """
 
     def __init__(
-        self, message: str = "An error occurred during CTY function execution"
+        self,
+        message: str = "An error occurred during CTY function execution",
+        *,
+        function_name: str | None = None,
+        input_types: list[str] | None = None,
+        **kwargs
     ) -> None:
-        super().__init__(message)
+        self.function_name = function_name
+        self.input_types = input_types or []
+        
+        # Add function-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.error_category'] = 'function_execution'
+        context['cty.operation'] = 'cty_function'
+        
+        if function_name:
+            context['cty.function_name'] = function_name
+        
+        if input_types:
+            context['cty.function_input_types'] = input_types
+            context['cty.function_arity'] = len(input_types)
+        
+        # Enhance message if function name available
+        if function_name:
+            message = f"CTY function '{function_name}' failed: {message}"
+        
+        super().__init__(message, **kwargs)
+    
+    def _default_code(self) -> str:
+        return "CTY_FUNCTION_ERROR"
 
 
 # 🐍🏗️🐣
