@@ -19,7 +19,7 @@ class CtyString(CtyType[str]):
     def validate(self, value: object) -> "CtyValue[str]":
         from pyvider.cty.values import CtyValue, UnknownValue
 
-        with error_boundary(f"string_validation", context={"value_type": type(value).__name__}):
+        with error_boundary(context={"operation": "string_validation", "value_type": type(value).__name__}):
             if isinstance(value, UnknownValue):
                 return CtyValue.unknown(self)
 

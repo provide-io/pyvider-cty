@@ -64,7 +64,8 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         validated_elements: list[CtyValue[T]] = []
         for i, item in enumerate(raw_list_to_validate):
-            with error_boundary(f"list_element_validation", context={
+            with error_boundary(context={
+                "operation": "list_element_validation",
                 "list_index": i,
                 "element_type": str(self.element_type),
                 "item_type": type(item).__name__

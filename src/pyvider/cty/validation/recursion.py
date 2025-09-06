@@ -246,7 +246,8 @@ def with_recursion_detection(func: Callable) -> Callable:
         detector = RecursionDetector(context)
         scope_name = f"{self.__class__.__name__}.validate(type={type(value).__name__})"
         
-        with error_boundary(f"recursion_detection", context={
+        with error_boundary(context={
+            "operation": "recursion_detection",
             "type_name": self.__class__.__name__,
             "value_type": type(value).__name__,
             "validation_depth": len(context.validation_path),

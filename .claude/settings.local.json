@@ -1,5 +1,18 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(source env.sh)",
+      "Bash(/dev/null)",
+      "Bash(pytest:*)",
+      "Bash(uv pip install:*)",
+      "Bash(uv pip:*)",
+      "Bash(uv sync:*)",
+      "Bash(python:*)",
+      "Bash(echo:*)",
+      "Bash(export UV_PROJECT_ENVIRONMENT=\"workenv/pyvider-cty_darwin_arm64\")",
+      "Bash(grep:*)",
+      "Bash(source:*)"
+    ],
     "additionalDirectories": [
       "/Users/tim/code/gh/provide-io"
     ]
