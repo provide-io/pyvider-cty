@@ -14,7 +14,8 @@
       "Bash(OPENOBSERVE_USER=tim@provide.io )",
       "Bash(OPENOBSERVE_PASSWORD=password )",
       "Bash(OPENOBSERVE_URL=http://localhost:5080/api/default )",
-      "Bash(OPENOBSERVE_USER=\"tim@provide.io\" )"
+      "Bash(OPENOBSERVE_USER=\"tim@provide.io\" )",
+      "Bash(foundation logs generate:*)"
     ],
     "deny": [],
     "ask": [],
