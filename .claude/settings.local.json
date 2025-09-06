@@ -1,12 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(PYTHONPATH:*)"
-    ],
-    "additionalDirectories": [
-      "/Users/tim/code/gh/provide-io"
+      "Bash(PYTHONPATH:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/tim/code/gh/provide-io"
+    ]
   }
 }
