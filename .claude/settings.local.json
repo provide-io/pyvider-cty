@@ -1,22 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(source env.sh)",
-      "Bash(/dev/null)",
-      "Bash(pytest:*)",
-      "Bash(uv pip install:*)",
-      "Bash(uv pip:*)",
-      "Bash(uv sync:*)",
-      "Bash(python:*)",
-      "Bash(echo:*)",
-      "Bash(export UV_PROJECT_ENVIRONMENT=\"workenv/pyvider-cty_darwin_arm64\")",
-      "Bash(grep:*)",
-      "Bash(source:*)",
-      "Bash(export UV_PROJECT_ENVIRONMENT=\"workenv/pyvider_darwin_arm64\")",
-      "Bash(PYTHONPATH=/dev/null python -c \"\nimport sys\nimport builtins\n\n# Save the original __import__\norig_import = builtins.__import__\n\ndef mock_import(name, *args, **kwargs):\n    if ''cryptography'' in name:\n        raise ImportError(f''No module named \\''{name}\\'''')\n    return orig_import(name, *args, **kwargs)\n\n# Replace the import function\nbuiltins.__import__ = mock_import\n\nprint(''=== Testing with mocked missing cryptography ==='')\n\ntry:\n    from provide.foundation.crypto import signatures\n    print(''❌ Should have failed to import signatures module'')\nexcept ImportError as e:\n    print(f''✅ Signatures import fails as expected: {e}'')\n\ntry:\n    from provide.foundation.crypto import keys  \n    print(''❌ Should have failed to import keys module'')\nexcept ImportError as e:\n    print(f''✅ Keys import fails as expected: {e}'')\n\ntry:\n    from provide.foundation.crypto import certificates\n    print(''❌ Should have failed to import certificates module'')\nexcept ImportError as e:\n    print(f''✅ Certificates import fails as expected: {e}'')\n\nprint(''\\n=== Testing crypto __init__.py with missing cryptography ==='')\ntry:\n    from provide.foundation import crypto\n    print(''✅ Crypto module imports work (should use stubs)'')\n    \n    # Check that cryptography-dependent functions are None\n    if crypto.generate_signing_keypair is None:\n        print(''✅ generate_signing_keypair is None'')\n    else:\n        print(f''❌ generate_signing_keypair should be None, got: {crypto.generate_signing_keypair}'')\n        \n    if crypto.create_self_signed is None:\n        print(''✅ create_self_signed is None'')\n    else:\n        print(f''❌ create_self_signed should be None, got: {crypto.create_self_signed}'')\n        \n    # But core hashing should still work\n    hash_result = crypto.hash_data(b''test data'')\n    print(f''✅ Core hashing works: {hash_result[:16]}...'')\n    \n    print(''\\n🎉 All tests passed!'')\n    \nexcept Exception as e:\n    print(f''❌ Test failed: {e}'')\n    import traceback\n    traceback.print_exc()\n\nfinally:\n    # Restore original import\n    builtins.__import__ = orig_import\n\")"
+      "Bash(PYTHONPATH=/dev/null python -c \"\nimport sys\nimport builtins\n\n# Save the original __import__\norig_import = builtins.__import__\n\ndef mock_import(name, *args, **kwargs):\n    if ''cryptography'' in name:\n        raise ImportError(f''No module named \\''{name}\\'''')\n    return orig_import(name, *args, **kwargs)\n\n# Replace the import function\nbuiltins.__import__ = mock_import\n\nprint(''=== Testing crypto __init__.py with missing cryptography ==='')\ntry:\n    from provide.foundation import crypto\n    print(''✅ Crypto module imports work (should use stubs)'')\n    \n    # Check that cryptography-dependent functions are None\n    if crypto.generate_signing_keypair is None:\n        print(''✅ generate_signing_keypair is None'')\n    else:\n        print(f''❌ generate_signing_keypair should be None, got: {crypto.generate_signing_keypair}'')\n        \n    if crypto.create_self_signed is None:\n        print(''✅ create_self_signed is None'')\n    else:\n        print(f''❌ create_self_signed should be None, got: {crypto.create_self_signed}'')\n        \n    # But core hashing should still work\n    hash_result = crypto.hash_data(b''test data'')\n    print(f''✅ Core hashing works: {hash_result[:16]}...'')\n    \n    print(''\\n🎉 All crypto tests passed!'')\n    \n    # Test basic foundation import too\n    from provide.foundation import logger, get_logger\n    log = get_logger(''test'')\n    log.info(''Test message works without crypto'')\n    print(''✅ Basic foundation logging works'')\n    \n    print(''\\n🎉 ALL TESTS PASSED! Foundation works without cryptography.'')\n    \nexcept Exception as e:\n    print(f''❌ Test failed: {e}'')\n    import traceback\n    traceback.print_exc()\n\nfinally:\n    # Restore original import\n    builtins.__import__ = orig_import\n\")"
     ],
     "additionalDirectories": [
       "/Users/tim/code/gh/provide-io"
-    ]
+    ],
+    "deny": [],
+    "ask": []
   }
 }
