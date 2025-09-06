@@ -30,13 +30,28 @@ class CtyValidationError(FoundationValidationError):
         self.path = path
         self.message = message
         
-        # Add context to foundation error
+        # Add rich context to foundation error with more detailed information
+        context = kwargs.setdefault('context', {})
+        
+        # Core CTY context
         if type_name:
-            kwargs.setdefault('context', {})['cty.type'] = type_name
+            context['cty.type'] = type_name
         if path:
-            kwargs.setdefault('context', {})['cty.path'] = str(path)
+            context['cty.path'] = str(path)
+            context['cty.path_depth'] = len(path.steps) if path else 0
+        
+        # Value context with safe representation
         if value is not None:
-            kwargs.setdefault('context', {})['cty.value_type'] = type(value).__name__
+            context['cty.value_type'] = type(value).__name__
+            # Safe value representation for debugging (truncated to avoid huge objects)
+            try:
+                value_repr = repr(value)
+                context['cty.value_repr'] = value_repr[:200] + "..." if len(value_repr) > 200 else value_repr
+            except Exception:
+                context['cty.value_repr'] = f"<repr failed for {type(value).__name__}>"
+        
+        # Add validation context if available
+        context['cty.validation_stage'] = 'type_validation'
             
         super().__init__(self.message, **kwargs)
     
@@ -98,12 +113,24 @@ class CtyListValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
+        **kwargs
     ) -> None:
+        # Add list-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.collection_type'] = 'list'
+        
+        if isinstance(value, (list, tuple)):
+            context['cty.collection_length'] = len(value)
+        
+        if original_exception:
+            context['cty.nested_error'] = type(original_exception).__name__
+            
         super().__init__(
             message,
             value,
             _get_type_name_from_original(original_exception, "List"),
             path,
+            **kwargs
         )
 
 
