@@ -3,7 +3,8 @@
     "allow": [
       "Bash(PYTHONPATH:*)",
       "Bash(find:*)",
-      "WebFetch(domain:opentelemetry.io)"
+      "WebFetch(domain:opentelemetry.io)",
+      "WebFetch(domain:opentelemetry-python.readthedocs.io)"
     ],
     "deny": [],
     "ask": [],
