@@ -4,7 +4,9 @@
       "Bash(PYTHONPATH:*)",
       "Bash(find:*)",
       "WebFetch(domain:opentelemetry.io)",
-      "WebFetch(domain:opentelemetry-python.readthedocs.io)"
+      "WebFetch(domain:opentelemetry-python.readthedocs.io)",
+      "WebFetch(domain:localhost)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],
