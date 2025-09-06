@@ -20,7 +20,7 @@ class CtyValidationError(FoundationValidationError):
         message: str,
         value: object = None,
         type_name: str | None = None,
-        path: CtyPath | None = None,
+        path: "CtyPath | None" = None,
         **kwargs
     ) -> None:
         self.value = value
@@ -133,7 +133,7 @@ class CtyListValidationError(CtyCollectionValidationError):
         self,
         message: str,
         value: object = None,
-        path: CtyPath | None = None,
+        path: "CtyPath | None" = None,
         *,
         original_exception: CtyValidationError | None = None,
         **kwargs
@@ -162,7 +162,7 @@ class CtyMapValidationError(CtyCollectionValidationError):
         self,
         message: str,
         value: object = None,
-        path: CtyPath | None = None,
+        path: "CtyPath | None" = None,
         *,
         original_exception: CtyValidationError | None = None,
         **kwargs
@@ -191,7 +191,7 @@ class CtySetValidationError(CtyCollectionValidationError):
         self,
         message: str,
         value: object = None,
-        path: CtyPath | None = None,
+        path: "CtyPath | None" = None,
         *,
         original_exception: CtyValidationError | None = None,
         **kwargs
@@ -221,7 +221,7 @@ class CtyTupleValidationError(CtyCollectionValidationError):
         self,
         message: str,
         value: object = None,
-        path: CtyPath | None = None,
+        path: "CtyPath | None" = None,
         *,
         original_exception: CtyValidationError | None = None,
         **kwargs
@@ -252,7 +252,7 @@ class CtyAttributeValidationError(CtyValidationError):
         self,
         message: str,
         value: object = None,
-        path: CtyPath | None = None,
+        path: "CtyPath | None" = None,
         *,
         original_exception: CtyValidationError | None = None,
         **kwargs
@@ -295,9 +295,9 @@ class CtyTypeMismatchError(CtyValidationError):
     def __init__(
         self,
         message: str,
-        actual_type: CtyType[Any] | None = None,
-        expected_type: CtyType[Any] | None = None,
-        path: CtyPath | None = None,
+        actual_type: "CtyType[Any] | None" = None,
+        expected_type: "CtyType[Any] | None" = None,
+        path: "CtyPath | None" = None,
         **kwargs
     ) -> None:
         self.actual_type = actual_type
