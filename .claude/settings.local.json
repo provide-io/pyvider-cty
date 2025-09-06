@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(PYTHONPATH:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:opentelemetry.io)"
     ],
     "deny": [],
     "ask": [],
