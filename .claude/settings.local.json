@@ -11,7 +11,8 @@
       "Bash(echo:*)",
       "Bash(export UV_PROJECT_ENVIRONMENT=\"workenv/pyvider-cty_darwin_arm64\")",
       "Bash(grep:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(export UV_PROJECT_ENVIRONMENT=\"workenv/pyvider_darwin_arm64\")"
     ],
     "additionalDirectories": [
       "/Users/tim/code/gh/provide-io"
