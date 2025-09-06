@@ -5,7 +5,7 @@
 [project]
 name = "pyvider-cty"
 description = "Pyvider Cty Package - Core data types and serialization."
-version = "0.0.113"
+dynamic = ["version"]
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -62,6 +62,9 @@ package-dir = {"" = "src"} # Specifies that packages are under src
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
 
 
 ################################################################################
