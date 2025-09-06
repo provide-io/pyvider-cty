@@ -79,7 +79,7 @@ def _get_type_name_from_original(
 # --- Primitive Validation Errors ---
 class CtyBoolValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
+        self, message: str, value: object = None, path: "CtyPath | None" = None, **kwargs
     ) -> None:
         # Add bool-specific context
         context = kwargs.setdefault('context', {})
@@ -91,7 +91,7 @@ class CtyBoolValidationError(CtyValidationError):
 
 class CtyNumberValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
+        self, message: str, value: object = None, path: "CtyPath | None" = None, **kwargs
     ) -> None:
         # Add number-specific context
         context = kwargs.setdefault('context', {})
@@ -108,7 +108,7 @@ class CtyNumberValidationError(CtyValidationError):
 
 class CtyStringValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
+        self, message: str, value: object = None, path: "CtyPath | None" = None, **kwargs
     ) -> None:
         # Add string-specific context
         context = kwargs.setdefault('context', {})
@@ -281,7 +281,7 @@ class CtyAttributeValidationError(CtyValidationError):
 
 class CtyTypeValidationError(CtyValidationError):
     def __init__(
-        self, message: str, type_name: str | None = None, path: CtyPath | None = None, **kwargs
+        self, message: str, type_name: str | None = None, path: "CtyPath | None" = None, **kwargs
     ) -> None:
         # Add type definition context
         context = kwargs.setdefault('context', {})
