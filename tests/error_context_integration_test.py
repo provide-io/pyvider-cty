@@ -9,8 +9,9 @@ are working correctly across the pyvider-cty codebase.
 import pytest
 from pyvider.cty import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyMap, CtyObject,
-    CtyValidationError, CtyFunctionError
+    CtyValidationError
 )
+from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.conversion import convert
 from pyvider.cty.parser import parse_tf_type_to_ctytype
 from pyvider.cty.functions.collection_functions import length, keys, values, element, concat
