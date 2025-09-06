@@ -2,6 +2,7 @@ import unicodedata
 from typing import Any, ClassVar
 
 from attrs import define, field
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.exceptions import (
@@ -81,44 +82,50 @@ class CtyObject(CtyType[dict[str, object]]):
             )
 
         for name, attr_type in self.attribute_types.items():
-            path = CtyPath(steps=[GetAttrStep(name)])
-            if name not in value:
-                if name in self.optional_attributes:
-                    validated_attrs[name] = CtyValue.null(attr_type)
-                    continue
-                raise CtyAttributeValidationError(
-                    "Missing required attribute", value=None, path=path
-                )
+            with error_boundary(context={
+                "operation": "object_attribute_validation",
+                "attribute_name": name,
+                "attribute_type": str(attr_type),
+                "is_optional": name in self.optional_attributes
+            }):
+                path = CtyPath(steps=[GetAttrStep(name)])
+                if name not in value:
+                    if name in self.optional_attributes:
+                        validated_attrs[name] = CtyValue.null(attr_type)
+                        continue
+                    raise CtyAttributeValidationError(
+                        "Missing required attribute", value=None, path=path
+                    )
 
-            raw_attr_value = value.get(name)
-            try:
-                existing_marks: frozenset[Any] = frozenset()
-                if isinstance(raw_attr_value, CtyValue):
-                    existing_marks = raw_attr_value.marks
+                raw_attr_value = value.get(name)
+                try:
+                    existing_marks: frozenset[Any] = frozenset()
+                    if isinstance(raw_attr_value, CtyValue):
+                        existing_marks = raw_attr_value.marks
 
-                validated_attr = attr_type.validate(raw_attr_value)
+                    validated_attr = attr_type.validate(raw_attr_value)
 
-                if existing_marks:
-                    validated_attr = validated_attr.with_marks(existing_marks)  # type: ignore
+                    if existing_marks:
+                        validated_attr = validated_attr.with_marks(existing_marks)  # type: ignore
 
-            except CtyValidationError as e:
-                new_path = CtyPath(
-                    steps=[GetAttrStep(name)] + (e.path.steps if e.path else [])
-                )
-                raise CtyAttributeValidationError(
-                    e.message, value=raw_attr_value, path=new_path, original_exception=e
-                ) from e
+                except CtyValidationError as e:
+                    new_path = CtyPath(
+                        steps=[GetAttrStep(name)] + (e.path.steps if e.path else [])
+                    )
+                    raise CtyAttributeValidationError(
+                        e.message, value=raw_attr_value, path=new_path, original_exception=e
+                    ) from e
 
-            if (
-                name not in self.optional_attributes
-                and validated_attr.is_null
-                and not isinstance(attr_type, CtyDynamic)
-            ):
-                raise CtyAttributeValidationError(
-                    "Attribute cannot be null", value=None, path=path
-                )
+                if (
+                    name not in self.optional_attributes
+                    and validated_attr.is_null
+                    and not isinstance(attr_type, CtyDynamic)
+                ):
+                    raise CtyAttributeValidationError(
+                        "Attribute cannot be null", value=None, path=path
+                    )
 
-            validated_attrs[name] = validated_attr
+                validated_attrs[name] = validated_attr
 
         is_unknown = any(v.is_unknown for v in validated_attrs.values())
         return CtyValue(vtype=self, value=validated_attrs, is_unknown=is_unknown)

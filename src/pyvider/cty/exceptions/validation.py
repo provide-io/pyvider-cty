@@ -142,12 +142,24 @@ class CtyMapValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
+        **kwargs
     ) -> None:
+        # Add map-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.collection_type'] = 'map'
+        
+        if isinstance(value, dict):
+            context['cty.collection_size'] = len(value)
+        
+        if original_exception:
+            context['cty.nested_error'] = type(original_exception).__name__
+            
         super().__init__(
             message,
             value,
             _get_type_name_from_original(original_exception, "Map"),
             path,
+            **kwargs
         )
 
 
@@ -194,12 +206,27 @@ class CtyAttributeValidationError(CtyValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
+        **kwargs
     ) -> None:
+        # Add object-specific context
+        context = kwargs.setdefault('context', {})
+        context['cty.validation_type'] = 'object_attribute'
+        
+        if path and path.steps:
+            # Extract attribute name from path
+            first_step = path.steps[0]
+            if hasattr(first_step, 'attribute_name'):
+                context['cty.attribute_name'] = first_step.attribute_name
+        
+        if original_exception:
+            context['cty.nested_error'] = type(original_exception).__name__
+            
         super().__init__(
             message,
             value,
             _get_type_name_from_original(original_exception, "Object"),
             path,
+            **kwargs
         )
 
 
