@@ -23,6 +23,7 @@ from typing import Any, Dict, Optional, Tuple
 from weakref import WeakKeyDictionary
 
 from provide.foundation import logger
+from provide.foundation.errors import error_boundary
 
 
 @dataclass
@@ -244,30 +245,37 @@ def with_recursion_detection(func: Callable) -> Callable:
 
         detector = RecursionDetector(context)
         scope_name = f"{self.__class__.__name__}.validate(type={type(value).__name__})"
-        detector.enter_validation_scope(scope_name)
+        
+        with error_boundary(f"recursion_detection", context={
+            "type_name": self.__class__.__name__,
+            "value_type": type(value).__name__,
+            "validation_depth": len(context.validation_path),
+            "total_validations": context.total_validations
+        }):
+            detector.enter_validation_scope(scope_name)
 
-        try:
-            should_continue, reason = detector.should_continue_validation(
-                value, detector.get_current_path()
-            )
-            if not should_continue:
-                from pyvider.cty.values import CtyValue
-
-                logger.warning(
-                    "CTY validation stopped due to recursion detection",
-                    reason=reason,
-                    value_type=type(value).__name__,
-                    path=detector.get_current_path(),
+            try:
+                should_continue, reason = detector.should_continue_validation(
+                    value, detector.get_current_path()
                 )
-                return CtyValue.unknown(self)
+                if not should_continue:
+                    from pyvider.cty.values import CtyValue
 
-            # The decorator no longer passes the internal flag down.
-            return func(self, value, *args, **kwargs)
-        finally:
-            detector.exit_validation_scope()
-            # The context is now only cleared by the top-level caller (e.g., test setup),
-            # not by the decorator.
-            if is_top_level_call:
-                pass
+                    logger.warning(
+                        "CTY validation stopped due to recursion detection",
+                        reason=reason,
+                        value_type=type(value).__name__,
+                        path=detector.get_current_path(),
+                    )
+                    return CtyValue.unknown(self)
+
+                # The decorator no longer passes the internal flag down.
+                return func(self, value, *args, **kwargs)
+            finally:
+                detector.exit_validation_scope()
+                # The context is now only cleared by the top-level caller (e.g., test setup),
+                # not by the decorator.
+                if is_top_level_call:
+                    pass
 
     return wrapper
