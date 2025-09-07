@@ -5,6 +5,7 @@ from typing import Any
 from decimal import Decimal
 
 import attrs
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.types import CtyObject, CtyType
 from pyvider.cty.values import CtyValue
@@ -95,27 +96,33 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     This function uses an iterative approach with a work stack to avoid recursion limits
     and leverages a context-aware cache for performance and thread-safety.
     """
-    from pyvider.cty.types import (
-        CtyBool,
-        CtyDynamic,
-        CtyList,
-        CtyMap,
-        CtyNumber,
-        CtyObject,
-        CtySet,
-        CtyString,
-        CtyTuple,
-        CtyType,
-    )
+    with error_boundary(context={
+        "operation": "cty_type_inference",
+        "value_type": type(value).__name__,
+        "is_attrs_class": attrs.has(type(value)) if hasattr(value, '__class__') else False,
+        "value_repr": str(value)[:100] if value is not None else "None"  # Truncated for safety
+    }):
+        from pyvider.cty.types import (
+            CtyBool,
+            CtyDynamic,
+            CtyList,
+            CtyMap,
+            CtyNumber,
+            CtyObject,
+            CtySet,
+            CtyString,
+            CtyTuple,
+            CtyType,
+        )
 
-    if isinstance(value, CtyValue) or value is None:
-        return CtyDynamic()
+        if isinstance(value, CtyValue) or value is None:
+            return CtyDynamic()
 
-    if isinstance(value, CtyType):
-        return CtyDynamic()
+        if isinstance(value, CtyType):
+            return CtyDynamic()
 
-    if attrs.has(type(value)):
-        value = _attrs_to_dict_safe(value)
+        if attrs.has(type(value)):
+            value = _attrs_to_dict_safe(value)
 
     container_cache = get_container_schema_cache()
     assert container_cache is not None
