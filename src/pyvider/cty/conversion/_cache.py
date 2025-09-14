@@ -3,6 +3,7 @@
 Provides a thread-safe, context-aware caching mechanism for type inference
 to improve performance and ensure concurrent safety.
 """
+import threading
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar, copy_context
@@ -56,12 +57,12 @@ def with_inference_cache(func: F) -> F:
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.
-    Ensures thread safety by running in a copied context.
+    Ensures thread safety by running in a fresh context for each thread.
     """
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # Create a new context for this thread to ensure complete isolation
+        # Use a clean context for each thread
         ctx = copy_context()
         return ctx.run(_run_with_cache, func, args, kwargs)
 
