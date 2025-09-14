@@ -37,19 +37,20 @@ def get_container_schema_cache() -> dict[tuple[Any, ...], CtyType[Any]] | None:
 def inference_cache_context() -> Generator[None, None, None]:
     """
     A context manager that provides an isolated inference cache for the duration
-    of its context. If a cache is already active, it reuses the existing one.
+    of its context. Always creates a new isolated cache for thread safety.
     """
-    if _structural_key_cache.get() is None:
-        token_struct = _structural_key_cache.set({})
-        token_container = _container_schema_cache.set({})
-        try:
-            yield
-        finally:
-            _structural_key_cache.reset(token_struct)
-            _container_schema_cache.reset(token_container)
-    else:
-        # A cache is already active, so just yield to the inner block.
+    # Always create a new isolated cache to ensure thread safety.
+    # Save previous values to restore them later (if any).
+    prev_struct = _structural_key_cache.get()
+    prev_container = _container_schema_cache.get()
+
+    token_struct = _structural_key_cache.set({})
+    token_container = _container_schema_cache.set({})
+    try:
         yield
+    finally:
+        _structural_key_cache.reset(token_struct)
+        _container_schema_cache.reset(token_container)
 
 
 def with_inference_cache(func: F) -> F:

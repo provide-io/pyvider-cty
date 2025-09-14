@@ -32,13 +32,31 @@ class CtyObject(CtyType[dict[str, object]]):
                 )
 
     def __hash__(self) -> int:
-        return hash(
-            (
-                self.ctype,
-                frozenset(self.attribute_types.items()),
-                self.optional_attributes,
-            )
+        # Use a recursive hashing approach that safely handles nested objects
+        def safe_hash_type(cty_type: "CtyType[Any]") -> int:
+            if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
+                # For nested objects, use a simpler hash to avoid recursion
+                return hash((cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys()))))
+            return hash(cty_type)
+
+        attr_hashes = tuple(
+            (name, safe_hash_type(attr_type))
+            for name, attr_type in sorted(self.attribute_types.items())
         )
+        return hash((self.ctype, attr_hashes, self.optional_attributes))
+
+    def __repr__(self) -> str:
+        # Provide a safe representation that doesn't recurse infinitely
+        attr_keys = sorted(self.attribute_types.keys())
+        optional_list = sorted(self.optional_attributes)
+        if len(attr_keys) > 5:
+            # Truncate long attribute lists
+            attr_display = f"{attr_keys[:5]}...+{len(attr_keys)-5} more"
+        else:
+            attr_display = str(attr_keys)
+
+        optional_display = f", optional={optional_list}" if optional_list else ""
+        return f"CtyObject(attributes={attr_display}{optional_display})"
 
     @with_recursion_detection
     def validate(self, value: object) -> "CtyValue[dict[str, Any]]":  # noqa: C901
