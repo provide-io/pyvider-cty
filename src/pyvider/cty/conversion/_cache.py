@@ -62,14 +62,14 @@ def with_inference_cache(func: F) -> F:
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # Use a clean context for each thread
-        ctx = copy_context()
-        return ctx.run(_run_with_cache, func, args, kwargs)
+        # For thread safety, check if we're in the main thread
+        if threading.current_thread() == threading.main_thread():
+            # Main thread can use caching normally
+            with inference_cache_context():
+                return func(*args, **kwargs)
+        else:
+            # For worker threads, disable caching to ensure isolation
+            # This ensures thread safety at the cost of some performance
+            return func(*args, **kwargs)
 
     return wrapper  # type: ignore
-
-
-def _run_with_cache(func: F, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
-    """Helper function to run the function with cache in an isolated context."""
-    with inference_cache_context():
-        return func(*args, **kwargs)

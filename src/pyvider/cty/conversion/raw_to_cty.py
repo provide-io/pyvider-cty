@@ -24,7 +24,9 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     using a context-aware cache to handle object cycles and repeated sub-objects.
     """
     structural_cache = get_structural_key_cache()
-    assert structural_cache is not None
+    if structural_cache is None:
+        # Fallback for when no cache is available (thread safety mode)
+        return (type(value), id(value))
 
     work_stack: list[Any] = [value]
     post_process_stack: list[Any] = []
@@ -125,11 +127,14 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
             value = _attrs_to_dict_safe(value)
 
     container_cache = get_container_schema_cache()
-    assert container_cache is not None
 
-    structural_key = _get_structural_cache_key(value)
-    if structural_key in container_cache:
-        return container_cache[structural_key]
+    # If no cache is available (e.g., in worker threads for thread safety),
+    # proceed without caching
+    structural_key = None
+    if container_cache is not None:
+        structural_key = _get_structural_cache_key(value)
+        if structural_key in container_cache:
+            return container_cache[structural_key]
 
     POST_PROCESS = object()
     work_stack: list[Any] = [value]
@@ -212,7 +217,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
             continue
 
         structural_key = _get_structural_cache_key(current_item)
-        if structural_key in container_cache:
+        if container_cache is not None and structural_key in container_cache:
             results[item_id] = container_cache[structural_key]
             continue
 
@@ -230,8 +235,10 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
 
     final_type = results.get(id(value), CtyDynamic())
 
-    final_structural_key = _get_structural_cache_key(value)
-    container_cache[final_structural_key] = final_type
+    # Cache the result if caching is available
+    if container_cache is not None:
+        final_structural_key = _get_structural_cache_key(value)
+        container_cache[final_structural_key] = final_type
 
     return final_type
 
