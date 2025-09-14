@@ -31,7 +31,8 @@ dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
     # "provide-foundation>=0.0.16",  # Install with pip install -e
-    "pyvider-telemetry>=0.0.13",  # Keep for backward compatibility
+    "pygit2>=1.18.2",
+    "pyvider-telemetry>=0.0.13", # Keep for backward compatibility
 ]
 
 [dependency-groups]
