@@ -5,7 +5,7 @@ to improve performance and ensure concurrent safety.
 """
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import ContextVar, copy_context
 from functools import wraps
 from typing import Any, TypeVar
 
@@ -37,31 +37,38 @@ def get_container_schema_cache() -> dict[tuple[Any, ...], CtyType[Any]] | None:
 def inference_cache_context() -> Generator[None, None, None]:
     """
     A context manager that provides an isolated inference cache for the duration
-    of its context. Always creates a new isolated cache for thread safety.
+    of its context. If a cache is already active, it reuses the existing one.
     """
-    # Always create a new isolated cache to ensure thread safety.
-    # Save previous values to restore them later (if any).
-    prev_struct = _structural_key_cache.get()
-    prev_container = _container_schema_cache.get()
-
-    token_struct = _structural_key_cache.set({})
-    token_container = _container_schema_cache.set({})
-    try:
+    if _structural_key_cache.get() is None:
+        token_struct = _structural_key_cache.set({})
+        token_container = _container_schema_cache.set({})
+        try:
+            yield
+        finally:
+            _structural_key_cache.reset(token_struct)
+            _container_schema_cache.reset(token_container)
+    else:
+        # A cache is already active, so just yield to the inner block.
         yield
-    finally:
-        _structural_key_cache.reset(token_struct)
-        _container_schema_cache.reset(token_container)
 
 
 def with_inference_cache(func: F) -> F:
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.
+    Ensures thread safety by running in a copied context.
     """
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        with inference_cache_context():
-            return func(*args, **kwargs)
+        # Create a new context for this thread to ensure complete isolation
+        ctx = copy_context()
+        return ctx.run(_run_with_cache, func, args, kwargs)
 
     return wrapper  # type: ignore
+
+
+def _run_with_cache(func: F, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+    """Helper function to run the function with cache in an isolated context."""
+    with inference_cache_context():
+        return func(*args, **kwargs)
