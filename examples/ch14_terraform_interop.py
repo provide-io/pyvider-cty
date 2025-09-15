@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
-from pyvider.cty.parser import parse_tf_type_to_ctytype
 from pyvider.cty import CtyList, CtyString
+from pyvider.cty.parser import parse_tf_type_to_ctytype
 
 configure_for_example()
 

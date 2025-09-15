@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyNumber, CtyObject, CtyString
-from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
 configure_for_example()
 

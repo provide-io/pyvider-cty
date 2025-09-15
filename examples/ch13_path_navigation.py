@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
-from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList
+from pyvider.cty import CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.path import CtyPath
 
 configure_for_example()
