@@ -41,18 +41,26 @@ class TestFinalCoveragePush:
         malformed_number = CtyValue(vtype=CtyNumber(), value="not-a-decimal")
         n5 = CtyNumber().validate(5)
 
-        with pytest.raises(TypeError): _ = malformed_number < n5
-        with pytest.raises(TypeError): _ = malformed_number <= n5
-        with pytest.raises(TypeError): _ = malformed_number > n5
-        with pytest.raises(TypeError): _ = malformed_number >= n5
+        with pytest.raises(TypeError):
+            _ = malformed_number < n5
+        with pytest.raises(TypeError):
+            _ = malformed_number <= n5
+        with pytest.raises(TypeError):
+            _ = malformed_number > n5
+        with pytest.raises(TypeError):
+            _ = malformed_number >= n5
 
     def test_value_comparison_dunders_on_non_comparable_type(self) -> None:
         """Covers TypeErrors when comparing uncomparable CtyValue types."""
         list_val = CtyList(element_type=CtyString()).validate([])
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val < list_val
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val <= list_val
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val > list_val
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val >= list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val < list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val <= list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val > list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val >= list_val
 
     def test_collection_helpers_on_malformed_value(self) -> None:
         """Covers internal TypeErrors for helper methods on malformed CtyValues."""

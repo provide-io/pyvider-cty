@@ -50,13 +50,19 @@ EXPECTED_RESULTS = {
 }
 
 def deep_value_equal(a: CtyValue, b: CtyValue) -> bool:
-    if not isinstance(a, CtyValue) or not isinstance(b, CtyValue): return False
-    if not a.type.equal(b.type) or a.is_null != b.is_null or a.is_unknown != b.is_unknown: return False
-    if a.is_null or a.is_unknown: return True
+    if not isinstance(a, CtyValue) or not isinstance(b, CtyValue):
+        return False
+    if not a.type.equal(b.type) or a.is_null != b.is_null or a.is_unknown != b.is_unknown:
+        return False
+    if a.is_null or a.is_unknown:
+        return True
     val_a, val_b = a.value, b.value
-    if isinstance(val_a, dict) and isinstance(val_b, dict): return val_a.keys() == val_b.keys() and all(deep_value_equal(val_a[k], val_b[k]) for k in val_a)
-    if isinstance(val_a, tuple) and isinstance(val_b, tuple): return len(val_a) == len(val_b) and all(deep_value_equal(val_a[i], val_b[i]) for i in range(len(val_a)))
-    if isinstance(val_a, frozenset) and isinstance(val_b, frozenset): return len(val_a) == len(val_b) and all(any(deep_value_equal(item_a, item_b) for item_b in val_b) for item_a in val_a)
+    if isinstance(val_a, dict) and isinstance(val_b, dict):
+        return val_a.keys() == val_b.keys() and all(deep_value_equal(val_a[k], val_b[k]) for k in val_a)
+    if isinstance(val_a, tuple) and isinstance(val_b, tuple):
+        return len(val_a) == len(val_b) and all(deep_value_equal(val_a[i], val_b[i]) for i in range(len(val_a)))
+    if isinstance(val_a, frozenset) and isinstance(val_b, frozenset):
+        return len(val_a) == len(val_b) and all(any(deep_value_equal(item_a, item_b) for item_b in val_b) for item_a in val_a)
     return val_a == val_b
 
 @pytest.mark.compat
@@ -70,7 +76,8 @@ def test_msgpack_deserialization_from_go_cty(fixture_name: str, go_fixtures: Pat
     assert deserialized_val.type.equal(expected_type)
     if expected_spec.get("is_unknown", False):
         assert deserialized_val.is_unknown
-        if "value" in expected_spec: assert deserialized_val.value == expected_spec["value"]
+        if "value" in expected_spec:
+            assert deserialized_val.value == expected_spec["value"]
     elif expected_spec.get("is_null", False):
         assert deserialized_val.is_null
     else:
