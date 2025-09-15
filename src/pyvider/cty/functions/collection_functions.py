@@ -19,6 +19,37 @@ from pyvider.cty import (
     CtyValue,
     unify,
 )
+from pyvider.cty.config.defaults import (
+    ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER,
+    ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE,
+    ERR_COALESCE_MIN_ONE_ARG,
+    ERR_COALESCELIST_NO_NON_EMPTY_LIST,
+    ERR_COMPACT_ARG_MUST_BE_COLLECTION_OF_STRINGS,
+    ERR_CONCAT_ALL_ARGS_MUST_BE_LISTS,
+    ERR_CONTAINS_COLLECTION_MUST_BE_LIST_SET_TUPLE,
+    ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
+    ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
+    ERR_ELEMENT_CANNOT_USE_WITH_EMPTY_LIST,
+    ERR_ELEMENT_COLLECTION_MUST_BE_LIST_TUPLE,
+    ERR_FLATTEN_ALL_ELEMENTS_MUST_BE_LISTS,
+    ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
+    ERR_HASINDEX_COLLECTION_MUST_BE_LIST_TUPLE_MAP_OBJECT,
+    ERR_INDEX_KEY_DOES_NOT_EXIST,
+    ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT,
+    ERR_LENGTH_INPUT_MUST_BE_COLLECTION_STRING,
+    ERR_LOOKUP_COLLECTION_MUST_BE_MAP_OBJECT,
+    ERR_MERGE_ALL_ARGS_MUST_BE_MAPS_OBJECTS,
+    ERR_REVERSE_INPUT_MUST_BE_LIST_TUPLE,
+    ERR_SETPRODUCT_ALL_ARGS_MUST_BE_COLLECTIONS,
+    ERR_SLICE_ARGS_MUST_BE_START_END_NUMBERS,
+    ERR_SLICE_INPUT_MUST_BE_LIST_TUPLE,
+    ERR_SORT_CANNOT_SORT_WITH_NULL_UNKNOWN,
+    ERR_SORT_ELEMENTS_MUST_BE_STRING_NUMBER_BOOL,
+    ERR_SORT_INPUT_MUST_BE_LIST_SET_TUPLE,
+    ERR_SORT_INPUT_VALUE_NOT_ITERABLE,
+    ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
+    ERR_ZIPMAP_ARGS_MUST_BE_LISTS,
+)
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
@@ -26,7 +57,8 @@ from pyvider.cty.values.markers import RefinedUnknownValue
 
 def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"distinct: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        error_message = ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=input_val.type.ctype)
+        raise CtyFunctionError(error_message)
     if input_val.is_null or input_val.is_unknown:
         return input_val
     seen = set()
@@ -37,7 +69,10 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
                 seen.add(cty_element)
                 result_elements.append(cty_element)
         except TypeError as e:
-            raise CtyFunctionError(f"distinct: element of type {cty_element.type.ctype} is not hashable. Error: {e}") from e
+            error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(
+                type=cty_element.type.ctype, error=e
+            )
+            raise CtyFunctionError(error_message) from e
     element_type = input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
     return CtyList(element_type=element_type).validate(result_elements)
 
