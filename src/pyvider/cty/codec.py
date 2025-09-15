@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 import json
-from typing import Any
+from typing import Any, cast
 
 import msgpack  # type: ignore
 from provide.foundation.errors import error_boundary
@@ -216,7 +216,7 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -
     if isinstance(schema, CtyMap):
         return _serialize_map_value(inner_val, schema)
     if isinstance(schema, CtyList | CtySet):
-        return _serialize_collection_value(inner_val, schema)
+        return _serialize_collection_value(inner_val, cast(CtyList | CtySet, schema))
     if isinstance(schema, CtyTuple):
         return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from provide.foundation.errors import FoundationError
+from provide.foundation.errors import FoundationError  # type: ignore[import-untyped]
 
 #
 # pyvider/cty/exceptions/base.py
@@ -60,7 +60,7 @@ class CtyFunctionError(CtyError):
         self.input_types = input_types or []
 
         # Add function-specific context
-        context = kwargs.setdefault("context", {})
+        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
         context["cty.error_category"] = "function_execution"
         context["cty.operation"] = "cty_function"
 

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-# pyvider-cty/src/pyvider/cty/conversion/_utils.py
-"""Internal conversion utilities to avoid circular dependencies."""
-
 from pyvider.cty.config.defaults import (
     ERR_CANNOT_INFER_FROM_CTY_TYPE,
     ERR_CANNOT_INFER_FROM_CTY_VALUE,
 )
+
+# pyvider-cty/src/pyvider/cty/conversion/_utils.py
+"""Internal conversion utilities to avoid circular dependencies."""
 
 
 def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
