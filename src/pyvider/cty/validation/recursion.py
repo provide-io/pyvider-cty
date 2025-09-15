@@ -13,17 +13,23 @@ The implementation is designed for production IaC requirements where:
 - Debugging and monitoring capabilities are essential
 """
 
+from __future__ import annotations
+
 import inspect
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Dict, Optional, Tuple
 from weakref import WeakKeyDictionary
 
 from provide.foundation import logger
 from provide.foundation.errors import error_boundary
+from pyvider.cty.config.defaults import (
+    MAX_VALIDATION_DEPTH,
+    MAX_OBJECT_REVISITS,
+    MAX_VALIDATION_TIME_MS,
+)
 
 
 @dataclass
@@ -45,7 +51,7 @@ class RecursionContext:
     """Thread-local context for tracking validation recursion."""
 
     # Object identity tracking for cycle detection
-    validation_graph: Dict[int, ValidationNode] = field(default_factory=dict)
+    validation_graph: dict[int, ValidationNode] = field(default_factory=dict)
 
     # Path tracking for detailed diagnostics
     validation_path: list[str] = field(default_factory=list)
@@ -56,9 +62,9 @@ class RecursionContext:
     validation_start_time: float = field(default_factory=time.time)
 
     # Configuration thresholds
-    max_depth_allowed: int = 500  # A safer default, well below Python's typical limit.
-    max_object_revisits: int = 100  # Allow many revisits for complex schemas
-    max_validation_time_ms: int = 30000  # 30 second timeout for pathological cases
+    max_depth_allowed: int = MAX_VALIDATION_DEPTH
+    max_object_revisits: int = MAX_OBJECT_REVISITS
+    max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
 
     def reset(self):
         """Reset context for new validation session."""
@@ -96,12 +102,12 @@ class RecursionDetector:
     - Performance pathological cases (excessive validation time)
     """
 
-    def __init__(self, context: Optional[RecursionContext] = None):
+    def __init__(self, context: RecursionContext | None = None):
         self.context = context or get_recursion_context()
 
     def should_continue_validation(
         self, value: Any, current_path: str = ""
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Determine if validation should continue for the given value.
 
@@ -216,7 +222,7 @@ class RecursionDetector:
         """Get the current validation path for diagnostics."""
         return " -> ".join(self.context.validation_path)
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics for monitoring and debugging."""
         elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
         return {
