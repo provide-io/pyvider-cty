@@ -38,43 +38,57 @@ from pyvider.cty.values.markers import (
 )
 
 
+def _decode_number_value(val: Any) -> Decimal:
+    """Decode a numeric value from bytes or other format to Decimal."""
+    if isinstance(val, bytes):
+        return Decimal(val.decode("utf-8"))
+    return Decimal(val)
+
+
+def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]:
+    """Extract refinement data from a msgpack payload."""
+    refinements = {}
+
+    if 1 in payload:
+        refinements["is_known_null"] = payload[1]
+    if 2 in payload:
+        refinements["string_prefix"] = payload[2]
+    if 3 in payload:
+        refinements["number_lower_bound"] = (
+            _decode_number_value(payload[3][0]),
+            payload[3][1],
+        )
+    if 4 in payload:
+        refinements["number_upper_bound"] = (
+            _decode_number_value(payload[4][0]),
+            payload[4][1],
+        )
+    if 5 in payload:
+        refinements["collection_length_lower_bound"] = payload[5]
+    if 6 in payload:
+        refinements["collection_length_upper_bound"] = payload[6]
+
+    return refinements
+
+
+def _decode_refined_unknown_payload(data: bytes) -> RefinedUnknownValue:
+    """Decode a refined unknown value from msgpack data."""
+    try:
+        payload = msgpack.unpackb(data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE)
+        refinements = _extract_refinements_from_payload(payload)
+        return RefinedUnknownValue(**refinements)
+    except Exception as e:
+        raise DeserializationError(
+            f"Failed to decode refined unknown payload: {e}"
+        ) from e
+
+
 def _ext_hook(code: int, data: bytes) -> Any:
     match code:
         case 0:
             return UNREFINED_UNKNOWN
         case 12:
-            try:
-                payload = msgpack.unpackb(data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE)
-                refinements = {}
-                if 1 in payload:
-                    refinements["is_known_null"] = payload[1]
-                if 2 in payload:
-                    refinements["string_prefix"] = payload[2]
-
-                def _decode_num(val: Any) -> Decimal:
-                    if isinstance(val, bytes):
-                        return Decimal(val.decode("utf-8"))
-                    return Decimal(val)
-
-                if 3 in payload:
-                    refinements["number_lower_bound"] = (
-                        _decode_num(payload[3][0]),
-                        payload[3][1],
-                    )
-                if 4 in payload:
-                    refinements["number_upper_bound"] = (
-                        _decode_num(payload[4][0]),
-                        payload[4][1],
-                    )
-                if 5 in payload:
-                    refinements["collection_length_lower_bound"] = payload[5]
-                if 6 in payload:
-                    refinements["collection_length_upper_bound"] = payload[6]
-                return RefinedUnknownValue(**refinements)
-            except Exception as e:
-                raise DeserializationError(
-                    f"Failed to decode refined unknown payload: {e}"
-                ) from e
+            return _decode_refined_unknown_payload(data)
         case _:
             # Per protocol, any other extension code is an unrefined unknown.
             return UNREFINED_UNKNOWN
