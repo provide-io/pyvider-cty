@@ -28,22 +28,29 @@ def test_value_bool() -> None:
     assert bool(CtyValue(CtyDynamic(), CtyString().validate("a")))
 
 def test_value_len() -> None:
-    with pytest.raises(TypeError): len(CtyValue.unknown(CtyString()))
+    with pytest.raises(TypeError):
+        len(CtyValue.unknown(CtyString()))
     assert len(CtyValue.null(CtyList(element_type=CtyString()))) == 0
-    with pytest.raises(TypeError): len(CtyString().validate("a"))
+    with pytest.raises(TypeError):
+        len(CtyString().validate("a"))
     assert len(CtyValue(CtyDynamic(), CtyList(element_type=CtyString()).validate(["a"]))) == 1
 
 def test_value_iter() -> None:
-    with pytest.raises(TypeError): iter(CtyValue.unknown(CtyString()))
+    with pytest.raises(TypeError):
+        iter(CtyValue.unknown(CtyString()))
     assert list(iter(CtyValue.null(CtyList(element_type=CtyString())))) == []
     map_val = CtyMap(element_type=CtyString()).validate({"a": "b"})
     assert [v.value for v in iter(map_val)] == ["b"]
-    with pytest.raises(TypeError): iter(CtyString().validate("a"))
+    with pytest.raises(TypeError):
+        iter(CtyString().validate("a"))
 
 def test_value_getitem() -> None:
-    with pytest.raises(TypeError): CtyValue.unknown(CtyString())["a"]
-    with pytest.raises(TypeError): CtyString().validate("a")["a"]
-    with pytest.raises(TypeError): CtyObject({}).validate({})[1]
+    with pytest.raises(TypeError):
+        CtyValue.unknown(CtyString())["a"]
+    with pytest.raises(TypeError):
+        CtyString().validate("a")["a"]
+    with pytest.raises(TypeError):
+        CtyObject({}).validate({})[1]
     list_val = CtyList(element_type=CtyString()).validate(["a", "b"])
     assert list_val[0].value == "a"
     slice_val = list_val[1:]
@@ -52,10 +59,14 @@ def test_value_getitem() -> None:
 
 def test_value_hash() -> None:
     # Test that unhashable collection types correctly raise TypeError
-    with pytest.raises(TypeError): hash(CtyList(element_type=CtyString()).validate([]))
-    with pytest.raises(TypeError): hash(CtySet(element_type=CtyString()).validate(set()))
-    with pytest.raises(TypeError): hash(CtyMap(element_type=CtyString()).validate({}))
-    with pytest.raises(TypeError): hash(CtyObject({}).validate({}))
+    with pytest.raises(TypeError):
+        hash(CtyList(element_type=CtyString()).validate([]))
+    with pytest.raises(TypeError):
+        hash(CtySet(element_type=CtyString()).validate(set()))
+    with pytest.raises(TypeError):
+        hash(CtyMap(element_type=CtyString()).validate({}))
+    with pytest.raises(TypeError):
+        hash(CtyObject({}).validate({}))
 
     # NOTE: This is a known deviation from go-cty, where tuples are not hashable.
     # This is a pragmatic choice to allow `setproduct` and sets of tuples to function.
@@ -83,4 +94,5 @@ def test_post_init() -> None:
     assert val2.is_null and val2.value is None
 
 def test_raw_value_unknown() -> None:
-    with pytest.raises(ValueError): _ = CtyValue.unknown(CtyString()).raw_value
+    with pytest.raises(ValueError):
+        _ = CtyValue.unknown(CtyString()).raw_value
