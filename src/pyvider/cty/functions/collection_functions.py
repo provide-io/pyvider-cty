@@ -419,10 +419,7 @@ def lookup(
     if not isinstance(collection.type, CtyMap | CtyObject):
         raise CtyFunctionError("lookup: collection must be a map or object")
 
-    if isinstance(collection.type, CtyMap):
-        element_type = collection.type.element_type
-    else:
-        element_type = CtyDynamic()
+    element_type = collection.type.element_type if isinstance(collection.type, CtyMap) else CtyDynamic()
 
     if collection.is_unknown or key.is_unknown:
         return CtyValue.unknown(unify([element_type, default.type]))
@@ -446,7 +443,7 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     result: dict[str, Any] = {}
     for arg in args:
         if not arg.is_null:
-            result.update(arg.value)
+            result.update(arg.value)  # type: ignore[arg-type]
 
     inferred_type = infer_cty_type_from_raw(result)
     return inferred_type.validate(result)
@@ -458,9 +455,9 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtySet(element_type=CtyDynamic()))
 
-    iterables = [list(arg.value) for arg in args if not arg.is_null]
+    iterables = [list(arg.value) for arg in args if not arg.is_null]  # type: ignore[arg-type]
     if not iterables:
-        return CtySet(element_type=CtyDynamic()).validate([])
+        return CtySet(element_type=CtyDynamic()).validate([])  # type: ignore[return-value]
 
     prod = product(*iterables)
     result_tuples = [tuple(item) for item in prod]
@@ -474,7 +471,7 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     ]
     tuple_type = CtyTuple(element_types=tuple(elem_types))
 
-    return CtySet(element_type=tuple_type).validate(result_tuples)
+    return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[return-value]
 
 
 def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:

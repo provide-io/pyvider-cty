@@ -12,7 +12,7 @@ Defines the base exception for the CTY type system.
 """
 
 
-class CtyError(FoundationError):
+class CtyError(FoundationError):  # type: ignore[misc]
     """
     Base exception for all pyvider.cty errors.
 

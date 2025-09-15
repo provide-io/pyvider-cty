@@ -106,10 +106,7 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             value.type, CtyCapsule
         ):
             raw = value.value
-            if isinstance(raw, bool):
-                new_val = "true" if raw else "false"
-            else:
-                new_val = str(raw)
+            new_val = ("true" if raw else "false") if isinstance(raw, bool) else str(raw)
             return CtyValue(target_type, new_val).with_marks(set(value.marks))
 
         # Number conversion
