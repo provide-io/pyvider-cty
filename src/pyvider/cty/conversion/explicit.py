@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any
+from typing import Any, TypeVar, overload
 
 from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
@@ -38,6 +38,10 @@ Implementation of the public `convert` and `unify` functions for explicit
 CTY-to-CTY type conversion.
 """
 
+T = TypeVar("T")
+
+@overload
+def convert(value: CtyValue[Any], target_type: CtyType[T]) -> CtyValue[T]: ...
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
     """

@@ -16,7 +16,7 @@ from pyvider.cty.types import (
 from pyvider.cty.values import CtyValue
 
 
-def cty_to_native(value: Any) -> Any:  # noqa: C901
+def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
     """
     Converts a CtyValue to its raw Python representation using an iterative
     approach to avoid recursion limits. This is safe for deeply nested structures.
