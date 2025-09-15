@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider/cty/context/__init__.py
 """
 Provides context management for CTY operations.

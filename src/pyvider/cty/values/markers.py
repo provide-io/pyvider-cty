@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider/cty/values/markers.py
 """
 This module contains simple marker classes to break import cycles.

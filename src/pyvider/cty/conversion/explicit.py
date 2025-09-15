@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Implementation of the public `convert` and `unify` functions for explicit
 CTY-to-CTY type conversion.
@@ -26,7 +28,7 @@ from ..types import (
 from ..values import CtyValue
 
 
-def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[Any]":  # noqa: C901
+def convert(value: CtyValue[Any], target_type: "CtyType[Any]") -> CtyValue[Any]:  # noqa: C901
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unicodedata
 from typing import Any, ClassVar
 
@@ -21,7 +23,7 @@ from pyvider.cty.values import CtyValue
 class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
     _type_order: ClassVar[int] = 7
-    attribute_types: dict[str, "CtyType[Any]"] = field(factory=dict)
+    attribute_types: dict[str, CtyType[Any]] = field(factory=dict)
     optional_attributes: frozenset[str] = field(factory=frozenset, converter=frozenset)
 
     def __attrs_post_init__(self) -> None:
@@ -33,7 +35,7 @@ class CtyObject(CtyType[dict[str, object]]):
 
     def __hash__(self) -> int:
         # Use a recursive hashing approach that safely handles nested objects
-        def safe_hash_type(cty_type: "CtyType[Any]") -> int:
+        def safe_hash_type(cty_type: CtyType[Any]) -> int:
             if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
                 # For nested objects, use a simpler hash to avoid recursion
                 return hash((cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys()))))
@@ -59,7 +61,7 @@ class CtyObject(CtyType[dict[str, object]]):
         return f"CtyObject(attributes={attr_display}{optional_display})"
 
     @with_recursion_detection
-    def validate(self, value: object) -> "CtyValue[dict[str, Any]]":  # noqa: C901
+    def validate(self, value: object) -> CtyValue[dict[str, Any]]:  # noqa: C901
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
                 return value  # Fast path
@@ -148,7 +150,7 @@ class CtyObject(CtyType[dict[str, object]]):
         is_unknown = any(v.is_unknown for v in validated_attrs.values())
         return CtyValue(vtype=self, value=validated_attrs, is_unknown=is_unknown)
 
-    def get_attribute(self, obj_value: "CtyValue[Any]", name: str) -> "CtyValue[Any]":
+    def get_attribute(self, obj_value: CtyValue[Any], name: str) -> CtyValue[Any]:
         if not isinstance(obj_value, CtyValue):
             raise CtyTypeMismatchError("get_attribute requires a CtyValue object")
         if not self.has_attribute(name):

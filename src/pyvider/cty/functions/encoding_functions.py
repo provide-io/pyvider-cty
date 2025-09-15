@@ -1,6 +1,8 @@
 import csv
 import io
 import json
+from __future__ import annotations
+
 from typing import Any
 
 from pyvider.cty import CtyDynamic, CtyList, CtyObject, CtyString, CtyValue
@@ -8,7 +10,7 @@ from pyvider.cty.conversion import cty_to_native
 from pyvider.cty.exceptions import CtyFunctionError
 
 
-def jsonencode(val: "CtyValue[Any]") -> "CtyValue[Any]":
+def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
     if val.is_unknown:
         return CtyValue.unknown(CtyString())
     try:
@@ -18,7 +20,7 @@ def jsonencode(val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError(f"jsonencode: failed to encode value: {e}") from e
 
 
-def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
+def jsondecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyString):
         raise CtyFunctionError(f"jsondecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:
@@ -30,7 +32,7 @@ def jsondecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError(f"jsondecode: failed to decode JSON: {e}") from e
 
 
-def csvdecode(val: "CtyValue[Any]") -> "CtyValue[Any]":
+def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyString):
         raise CtyFunctionError(f"csvdecode: argument must be a string, got {val.type.ctype}")
     if val.is_unknown or val.is_null:

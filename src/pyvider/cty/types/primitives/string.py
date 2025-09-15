@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, ClassVar
 import unicodedata
 
@@ -16,7 +18,7 @@ class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
     _type_order: ClassVar[int] = 1
 
-    def validate(self, value: object) -> "CtyValue[str]":
+    def validate(self, value: object) -> CtyValue[str]:
         from pyvider.cty.values import CtyValue, UnknownValue
 
         with error_boundary(context={"operation": "string_validation", "value_type": type(value).__name__}):
@@ -52,10 +54,10 @@ class CtyString(CtyType[str]):
                     f"Cannot convert {type(raw_value).__name__} to string: {e}"
                 ) from e
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyString)
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         return isinstance(other, CtyString | CtyDynamic)

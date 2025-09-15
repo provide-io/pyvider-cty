@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Centralized default values for pyvider-cty configuration.
 All defaults are defined here instead of inline in field definitions.
 """
