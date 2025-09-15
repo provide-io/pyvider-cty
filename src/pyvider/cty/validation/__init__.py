@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pyvider.cty.validation.recursion import (
     RecursionContext,
     RecursionDetector,
@@ -18,7 +20,7 @@ performance monitoring, and comprehensive diagnostics.
 
 
 # Define validate_config here to avoid circular imports
-def validate_config(schema, config) -> None:
+def validate_config(schema: Any, config: Any) -> None:
     """
     Validates a configuration against a CtyType schema.
 

@@ -133,7 +133,7 @@ def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
             raise CtyFunctionError("concat: all arguments must be lists or tuples")
         result_elements = []
         final_element_type: CtyType[Any] | None = None
-        if any(l.is_unknown for l in lists):
+        if any(lst.is_unknown for lst in lists):
             return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
         for lst in lists:
             if lst.is_null:
