@@ -120,6 +120,50 @@ def _serialize_dynamic(value: CtyValue[Any]) -> list[Any]:
     return [type_spec_bytes, serializable_inner]
 
 
+def _serialize_object_value(inner_val: Any, schema: CtyObject) -> dict[str, Any]:
+    """Serialize a CtyObject value."""
+    if not isinstance(inner_val, dict):
+        raise TypeError("Value for CtyObject must be a dict")
+    return {
+        k: _convert_value_to_serializable(v, schema.attribute_types[k])
+        for k, v in sorted(inner_val.items())
+    }
+
+
+def _serialize_map_value(inner_val: Any, schema: CtyMap) -> dict[str, Any]:
+    """Serialize a CtyMap value."""
+    if not isinstance(inner_val, dict):
+        raise TypeError("Value for CtyMap must be a dict")
+    return {
+        k: _convert_value_to_serializable(v, schema.element_type)
+        for k, v in sorted(inner_val.items())
+    }
+
+
+def _serialize_collection_value(inner_val: Any, schema: CtyList | CtySet) -> list[Any]:
+    """Serialize a CtyList or CtySet value."""
+    if not hasattr(inner_val, "__iter__"):
+        raise TypeError("Value for CtyList or CtySet must be iterable")
+    items = (
+        sorted(list(inner_val), key=lambda v: v._canonical_sort_key())
+        if isinstance(schema, CtySet)
+        else inner_val
+    )
+    return [
+        _convert_value_to_serializable(item, schema.element_type) for item in items
+    ]
+
+
+def _serialize_tuple_value(inner_val: Any, schema: CtyTuple) -> list[Any]:
+    """Serialize a CtyTuple value."""
+    if not isinstance(inner_val, tuple):
+        raise TypeError("Value for CtyTuple must be a tuple")
+    return [
+        _convert_value_to_serializable(item, schema.element_types[i])
+        for i, item in enumerate(inner_val)
+    ]
+
+
 def _convert_value_to_serializable(
     value: CtyValue[Any], schema: CtyType[Any]
 ) -> Any:
@@ -134,37 +178,13 @@ def _convert_value_to_serializable(
 
     inner_val = value.value
     if isinstance(schema, CtyObject):
-        if not isinstance(inner_val, dict):
-            raise TypeError("Value for CtyObject must be a dict")
-        return {
-            k: _convert_value_to_serializable(v, schema.attribute_types[k])
-            for k, v in sorted(inner_val.items())
-        }
+        return _serialize_object_value(inner_val, schema)
     if isinstance(schema, CtyMap):
-        if not isinstance(inner_val, dict):
-            raise TypeError("Value for CtyMap must be a dict")
-        return {
-            k: _convert_value_to_serializable(v, schema.element_type)
-            for k, v in sorted(inner_val.items())
-        }
+        return _serialize_map_value(inner_val, schema)
     if isinstance(schema, CtyList | CtySet):
-        if not hasattr(inner_val, "__iter__"):
-            raise TypeError("Value for CtyList or CtySet must be iterable")
-        items = (
-            sorted(list(inner_val), key=lambda v: v._canonical_sort_key())
-            if isinstance(schema, CtySet)
-            else inner_val
-        )
-        return [
-            _convert_value_to_serializable(item, schema.element_type) for item in items
-        ]
+        return _serialize_collection_value(inner_val, schema)
     if isinstance(schema, CtyTuple):
-        if not isinstance(inner_val, tuple):
-            raise TypeError("Value for CtyTuple must be a tuple")
-        return [
-            _convert_value_to_serializable(item, schema.element_types[i])
-            for i, item in enumerate(inner_val)
-        ]
+        return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):
         return str(inner_val)
     return inner_val
