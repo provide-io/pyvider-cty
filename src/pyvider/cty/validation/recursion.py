@@ -42,7 +42,7 @@ class ValidationNode:
     parent_path: str
     first_seen_at: float = field(default_factory=time.time)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.visits = 1
 
 

@@ -71,18 +71,17 @@ def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
                 if unknown_ref.number_lower_bound:
                     new_ref["number_upper_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
 
-    elif op == "divide":
-        if val_b is not None:
-            if val_b > POSITIVE_BOUNDARY:
-                if ref_a.number_lower_bound:
-                    new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
-                if ref_a.number_upper_bound:
-                    new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
-            elif val_b < POSITIVE_BOUNDARY:
-                if ref_a.number_upper_bound:
-                    new_ref["number_lower_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
-                if ref_a.number_lower_bound:
-                    new_ref["number_upper_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
+    elif op == "divide" and val_b is not None:
+        if val_b > POSITIVE_BOUNDARY:
+            if ref_a.number_lower_bound:
+                new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
+            if ref_a.number_upper_bound:
+                new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
+        elif val_b < POSITIVE_BOUNDARY:
+            if ref_a.number_upper_bound:
+                new_ref["number_lower_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
+            if ref_a.number_lower_bound:
+                new_ref["number_upper_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
 
     # Always return a RefinedUnknownValue to prevent AttributeErrors, even if it's empty.
     return CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
@@ -144,7 +143,8 @@ def negate(a: CtyValue[Any]) -> CtyValue[Any]:
         return CtyValue.null(CtyNumber())
     if a.is_unknown:
         if isinstance(a.value, RefinedUnknownValue):
-            ref = a.value; new_ref = {}
+            ref = a.value
+            new_ref = {}
             if ref.number_upper_bound:
                 new_ref["number_lower_bound"] = (-ref.number_upper_bound[0], ref.number_upper_bound[1])
             if ref.number_lower_bound:
@@ -160,10 +160,12 @@ def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return CtyValue.null(CtyNumber())
     if input_val.is_unknown:
         if isinstance(input_val.value, RefinedUnknownValue):
-            ref = input_val.value; new_ref = {}
+            ref = input_val.value
+            new_ref = {}
             lower, upper = ref.number_lower_bound, ref.number_upper_bound
             if lower and upper:
-                l_val, l_inc = lower; u_val, u_inc = upper
+                l_val, l_inc = lower
+                u_val, u_inc = upper
                 if l_val >= 0:
                     return input_val
                 if u_val <= 0:

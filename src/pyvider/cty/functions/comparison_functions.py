@@ -131,9 +131,8 @@ def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
                 if op == "max":
                     if ref.number_upper_bound and (extreme_known.value >= ref.number_upper_bound[0]):
                         continue
-                elif op == "min":
-                    if ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
-                        continue
+                elif op == "min" and ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
+                    continue
             remaining_unknowns.append(unk)
         unknown_args = remaining_unknowns
 
