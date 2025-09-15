@@ -3,16 +3,24 @@ Generates canonical MessagePack fixtures and a JSON manifest from pyvider.cty.
 This script is the "source of truth" for the reverse compatibility test.
 """
 import argparse
-import json
 from decimal import Decimal
+import json
 from pathlib import Path
 from typing import Any
 
 import attrs
 
 from pyvider.cty import (
-    CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtySet,
-    CtyString, CtyTuple, CtyValue
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyObject,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyValue,
 )
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.conversion import encode_cty_type_to_wire_json
@@ -67,14 +75,14 @@ def cty_to_manifest_native(value: CtyValue) -> Any:
             refinements = {k: v for k, v in attrs.asdict(value.value).items() if v is not None}
             if not refinements:
                 return _UNKNOWN_SENTINEL
-            
+
             formatted_refinements = {}
             for k, v in refinements.items():
                 if isinstance(v, tuple) and isinstance(v[0], Decimal):
                     formatted_refinements[k] = (str(v[0]), v[1])
                 else:
                     formatted_refinements[k] = v
-            
+
             return {
                 "$pyvider-cty-special-value": "unknown",
                 "refinements": formatted_refinements,
@@ -82,7 +90,7 @@ def cty_to_manifest_native(value: CtyValue) -> Any:
         return _UNKNOWN_SENTINEL
     if value.is_null:
         return None
-    
+
     if isinstance(value.type, CtyDynamic):
         return cty_to_manifest_native(value.value)
 
@@ -96,7 +104,7 @@ def cty_to_manifest_native(value: CtyValue) -> Any:
         return [cty_to_manifest_native(item) for item in sorted_cty_items]
     if isinstance(val, dict):
         return {k: cty_to_manifest_native(v) for k, v in sorted(val.items())}
-    
+
     return val
 
 def main():

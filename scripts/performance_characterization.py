@@ -74,7 +74,7 @@ def main() -> None:
     with multiprocessing.Pool(processes=cpu_count) as pool:
         for i in range(NUM_TRIALS):
             print(f"Running trial {i + 1}/{NUM_TRIALS}...", end="", flush=True)
-            
+
             test_data = [
                 generate_complex_object_data(NESTING_DEPTH)
                 for _ in range(NUM_OBJECTS_PER_TRIAL)
@@ -85,13 +85,13 @@ def main() -> None:
             # pool.map will chunk the data and send it to worker processes.
             pool.map(workload, test_data)
             end_time = time.perf_counter()
-            
+
             duration_ms = (end_time - start_time) * 1000
             trial_durations.append(duration_ms)
             print(f" done. ({duration_ms:.2f} ms)")
 
     print("\n--- Performance Results ---")
-    
+
     mean_duration = statistics.mean(trial_durations)
     median_duration = statistics.median(trial_durations)
     stdev_duration = statistics.stdev(trial_durations) if len(trial_durations) > 1 else 0.0
