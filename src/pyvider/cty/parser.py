@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.config.defaults import (
     TYPE_KIND_LIST,
