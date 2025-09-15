@@ -35,7 +35,7 @@ def test_infer_primitive_types(raw_value: Any, expected_type_cls: type) -> None:
 
 def test_infer_list_of_primitives() -> None:
     inferred_type = infer_cty_type_from_raw([1, 2, 3])
-    assert isinstance(inferred_type, CtyList), f"Expected CtyList, but got {type(inferred_type).__name__}", f"Expected CtyList, but got {type(inferred_type).__name__}"
+    assert isinstance(inferred_type, CtyList), f"Expected CtyList, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_type, CtyNumber), f"Expected element type CtyNumber, but got {type(inferred_type.element_type).__name__}"
 
 
