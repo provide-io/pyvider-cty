@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider/cty/types/capsule.py
 """
 Defines the CtyCapsule type for encapsulating opaque Python objects
@@ -30,7 +32,7 @@ class CtyCapsule(CtyType[Any]):
     def py_type(self) -> type:
         return self._py_type
 
-    def validate(self, value: object) -> "CtyValue[Any]":
+    def validate(self, value: object) -> CtyValue[Any]:
         val_to_check: object | None
         original_marks = frozenset()
 
@@ -53,12 +55,12 @@ class CtyCapsule(CtyType[Any]):
             )
         return CtyValue(self, val_to_check, marks=original_marks)
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyCapsule) or isinstance(other, CtyCapsuleWithOps):
             return False
         return self.name == other.name and self._py_type == other._py_type
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         if isinstance(other, CtyDynamic):
             return True
         return self.equal(other)
@@ -88,7 +90,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         *,
         equal_fn: Callable[[Any, Any], bool] | None = None,
         hash_fn: Callable[[Any], int] | None = None,
-        convert_fn: Callable[[Any, "CtyType[Any]"], "CtyValue[Any] | None"]
+        convert_fn: Callable[[Any, CtyType[Any]], CtyValue[Any] | None]
         | None = None,
     ) -> None:
         """
@@ -109,7 +111,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         if self.convert_fn and len(inspect.signature(self.convert_fn).parameters) != 2:
             raise TypeError("`convert_fn` must be a callable that accepts 2 arguments")
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyCapsuleWithOps):
             return False
         return (

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define
@@ -14,7 +16,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     _type_order: ClassVar[int] = 2  # Correct go-cty order
 
-    def validate(self, value: object) -> "CtyValue[bool]":  # noqa: C901
+    def validate(self, value: object) -> CtyValue[bool]:  # noqa: C901
         from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
@@ -49,10 +51,10 @@ class CtyBool(CtyType[bool]):
             f"Cannot convert {type(raw_value).__name__} to bool."
         )
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyBool)
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         return isinstance(other, CtyBool | CtyDynamic)

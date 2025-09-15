@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any, TypeVar
 
@@ -15,11 +17,11 @@ T = TypeVar("T")
 
 class PathStep(ABC):
     @abstractmethod
-    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
+    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         pass
 
     @abstractmethod
-    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
+    def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         pass
 
     @abstractmethod
@@ -36,7 +38,7 @@ class GetAttrStep(PathStep):
         if not value:
             raise ValueError("Attribute name cannot be empty")
 
-    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
+    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError(
                 f"Cannot get attribute '{self.name}' from null value"
@@ -49,7 +51,7 @@ class GetAttrStep(PathStep):
             f"Cannot get attribute from non-object value of type {value.type.__class__.__name__}"
         )
 
-    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
+    def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         from pyvider.cty.types.structural import CtyObject
 
         if not isinstance(vtype, CtyObject):
@@ -68,7 +70,7 @@ class GetAttrStep(PathStep):
 class IndexStep(PathStep):
     index: int = field()
 
-    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
+    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError("Cannot index into null value")
         if value.is_unknown:
@@ -85,7 +87,7 @@ class IndexStep(PathStep):
             f"Cannot index into value of type {type(value.type).__name__}"
         )
 
-    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
+    def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         from pyvider.cty.types.collections import CtyList
         from pyvider.cty.types.structural import CtyDynamic, CtyTuple
 
@@ -112,7 +114,7 @@ class IndexStep(PathStep):
 class KeyStep(PathStep):
     key: object = field()
 
-    def apply(self, value: "CtyValue[Any]") -> "CtyValue[Any]":
+    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError("Cannot get key from null value")
         if value.is_unknown:
@@ -129,7 +131,7 @@ class KeyStep(PathStep):
             f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}"
         )
 
-    def apply_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
+    def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         from pyvider.cty.types import CtyString
         from pyvider.cty.types.collections import CtyMap
         from pyvider.cty.types.structural import CtyDynamic
@@ -181,7 +183,7 @@ class CtyPath:
     def key_step(self, key: object) -> "CtyPath":
         return CtyPath([*self.steps, KeyStep(key)])
 
-    def apply_path(self, value: object) -> "CtyValue[Any]":
+    def apply_path(self, value: object) -> CtyValue[Any]:
         if not self.steps:
             if isinstance(value, CtyValue):
                 return value
@@ -198,7 +200,7 @@ class CtyPath:
                 raise AttributePathError(f"Error at step {i + 1} ({step}): {e}") from e
         return current
 
-    def apply_path_type(self, vtype: "CtyType[Any]") -> "CtyType[Any]":
+    def apply_path_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         if not self.steps:
             return vtype
         current = vtype

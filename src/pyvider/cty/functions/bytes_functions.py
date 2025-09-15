@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from pyvider.cty import CtyNumber, CtyValue
@@ -5,7 +7,7 @@ from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.types import BytesCapsule
 
 
-def byteslen(buffer: "CtyValue[Any]") -> "CtyValue[Any]":
+def byteslen(buffer: CtyValue[Any]) -> CtyValue[Any]:
     if not buffer.type.equal(BytesCapsule):
         raise CtyFunctionError(
             f"byteslen: argument must be a Bytes capsule, got {buffer.type.ctype}"
@@ -16,8 +18,8 @@ def byteslen(buffer: "CtyValue[Any]") -> "CtyValue[Any]":
 
 
 def bytesslice(
-    buffer: "CtyValue[Any]", start: "CtyValue[Any]", end: "CtyValue[Any]"
-) -> "CtyValue[Any]":
+    buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]
+) -> CtyValue[Any]:
     if (
         not buffer.type.equal(BytesCapsule)
         or not isinstance(start.type, CtyNumber)

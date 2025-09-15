@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Defines standard, built-in capsule types for pyvider.cty.
 """
