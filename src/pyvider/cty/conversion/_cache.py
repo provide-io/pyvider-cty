@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/conversion/_cache.py
 """
 Provides a thread-safe, context-aware caching mechanism for type inference
