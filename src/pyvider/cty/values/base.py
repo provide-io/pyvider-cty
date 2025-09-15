@@ -99,11 +99,7 @@ class CtyValue(Generic[T]):
         ):
             return (*key_prefix, *(v._canonical_sort_key() for v in self.value))
 
-        if (
-            isinstance(self.type, CtySet)
-            and self.value is not None
-            and hasattr(self.value, "__iter__")
-        ):
+        if isinstance(self.type, CtySet) and self.value is not None and hasattr(self.value, "__iter__"):
             sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
             return (*key_prefix, *(v._canonical_sort_key() for v in sorted_elements))
 
@@ -129,11 +125,7 @@ class CtyValue(Generic[T]):
             return NotImplemented
         from ..types import CtyCapsuleWithOps
 
-        if (
-            isinstance(self.type, CtyCapsuleWithOps)
-            and self.type.equal(other.type)
-            and self.type.equal_fn
-        ):
+        if isinstance(self.type, CtyCapsuleWithOps) and self.type.equal(other.type) and self.type.equal_fn:
             return self.type.equal_fn(self.value, other.value)
 
         return (
@@ -148,17 +140,13 @@ class CtyValue(Generic[T]):
         from ..types import CtyNumber, CtyString
 
         if not isinstance(other, CtyValue):
-            error_message = ERR_CANNOT_COMPARE_CTYVALUE_WITH.format(
-                type_name=type(other).__name__
-            )
+            error_message = ERR_CANNOT_COMPARE_CTYVALUE_WITH.format(type_name=type(other).__name__)
             raise TypeError(error_message)
         if self.is_unknown or self.is_null or other.is_unknown or other.is_null:
             error_message = ERR_CANNOT_COMPARE_NULL_UNKNOWN
             raise TypeError(error_message)
         if not self.type.equal(other.type):
-            error_message = ERR_CANNOT_COMPARE_DIFFERENT_TYPES.format(
-                type1=self.type, type2=other.type
-            )
+            error_message = ERR_CANNOT_COMPARE_DIFFERENT_TYPES.format(type1=self.type, type2=other.type)
             raise TypeError(error_message)
         if not isinstance(self.type, CtyNumber | CtyString):
             error_message = ERR_VALUE_TYPE_NOT_COMPARABLE.format(type=self.type)
@@ -219,13 +207,9 @@ class CtyValue(Generic[T]):
             return len(self.value)
         if self.is_null:
             return 0
-        if isinstance(self.vtype, CtyList | CtyMap | CtySet | CtyTuple) and hasattr(
-            self.value, "__len__"
-        ):
+        if isinstance(self.vtype, CtyList | CtyMap | CtySet | CtyTuple) and hasattr(self.value, "__len__"):
             return len(self.value)
-        error_message = ERR_VALUE_TYPE_NO_LEN.format(
-            type_name=self.vtype.__class__.__name__
-        )
+        error_message = ERR_VALUE_TYPE_NO_LEN.format(type_name=self.vtype.__class__.__name__)
         raise TypeError(error_message)
 
     def __iter__(self) -> Iterator[Any]:
@@ -236,16 +220,12 @@ class CtyValue(Generic[T]):
             raise TypeError(error_message)
         if self.is_null:
             return iter([])
-        if isinstance(self.vtype, CtyList | CtySet | CtyTuple) and hasattr(
-            self.value, "__iter__"
-        ):
+        if isinstance(self.vtype, CtyList | CtySet | CtyTuple) and hasattr(self.value, "__iter__"):
             return iter(self.value)
         if isinstance(self.vtype, CtyMap) and hasattr(self.value, "values"):
             return iter(self.value.values())
 
-        error_message = ERR_VALUE_TYPE_NOT_ITERABLE.format(
-            type_name=self.vtype.__class__.__name__
-        )
+        error_message = ERR_VALUE_TYPE_NOT_ITERABLE.format(type_name=self.vtype.__class__.__name__)
         raise TypeError(error_message)
 
     def __getitem__(self, key: Any) -> CtyValue[Any]:
@@ -256,15 +236,11 @@ class CtyValue(Generic[T]):
             raise TypeError(error_message)
         if isinstance(self.vtype, CtyObject):
             if not isinstance(key, str):
-                raise TypeError(
-                    f"Object attribute name must be a string, got {type(key).__name__}"
-                )
+                raise TypeError(f"Object attribute name must be a string, got {type(key).__name__}")
             return self.vtype.get_attribute(self, key)
         if isinstance(self.vtype, CtyList):
             if not isinstance(self.value, list | tuple):
-                raise TypeError(
-                    f"CtyList value is not a list/tuple, but {type(self.value).__name__}"
-                )
+                raise TypeError(f"CtyList value is not a list/tuple, but {type(self.value).__name__}")
             if isinstance(key, slice):
                 return CtyValue(vtype=self.vtype, value=tuple(self.value[key]))
             return self.vtype.element_at(self, key)
@@ -272,9 +248,7 @@ class CtyValue(Generic[T]):
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyMap):
             return self.vtype.get(self, key)  # type: ignore[arg-type]
-        error_message = ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE.format(
-            type_name=self.vtype.__class__.__name__
-        )
+        error_message = ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE.format(type_name=self.vtype.__class__.__name__)
         raise TypeError(error_message)
 
     def __hash__(self) -> int:
@@ -376,9 +350,7 @@ class CtyValue(Generic[T]):
         return self.vtype.validate(new_list)  # type: ignore[return-value]
 
     @classmethod
-    def unknown(
-        cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN
-    ) -> CtyValue[Any]:
+    def unknown(cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN) -> CtyValue[Any]:
         return cls(vtype=vtype, is_unknown=True, value=value)
 
     @classmethod

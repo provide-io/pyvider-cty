@@ -79,13 +79,9 @@ def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]
             payload[REFINEMENT_NUMBER_UPPER_BOUND][1],
         )
     if REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND in payload:
-        refinements["collection_length_lower_bound"] = payload[
-            REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND
-        ]
+        refinements["collection_length_lower_bound"] = payload[REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND]
     if REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND in payload:
-        refinements["collection_length_upper_bound"] = payload[
-            REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND
-        ]
+        refinements["collection_length_upper_bound"] = payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND]
 
     return refinements
 
@@ -93,9 +89,7 @@ def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]
 def _decode_refined_unknown_payload(data: bytes) -> RefinedUnknownValue:
     """Decode a refined unknown value from msgpack data."""
     try:
-        payload = msgpack.unpackb(
-            data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE
-        )
+        payload = msgpack.unpackb(data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE)
         refinements = _extract_refinements_from_payload(payload)
         return RefinedUnknownValue(**refinements)
     except Exception as e:
@@ -129,13 +123,9 @@ def _serialize_unknown(value: CtyValue[Any]) -> Any:
         num, inclusive = value.value.number_upper_bound
         payload[REFINEMENT_NUMBER_UPPER_BOUND] = [str(num).encode("utf-8"), inclusive]
     if value.value.collection_length_lower_bound is not None:
-        payload[REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND] = (
-            value.value.collection_length_lower_bound
-        )
+        payload[REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND] = value.value.collection_length_lower_bound
     if value.value.collection_length_upper_bound is not None:
-        payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND] = (
-            value.value.collection_length_upper_bound
-        )
+        payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND] = value.value.collection_length_upper_bound
     if not payload:
         return msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"")
     packed_payload = msgpack.packb(payload)
@@ -163,8 +153,7 @@ def _serialize_object_value(inner_val: Any, schema: CtyObject) -> dict[str, Any]
     if not isinstance(inner_val, dict):
         raise TypeError(ERR_VALUE_FOR_OBJECT)
     return {
-        k: _convert_value_to_serializable(v, schema.attribute_types[k])
-        for k, v in sorted(inner_val.items())
+        k: _convert_value_to_serializable(v, schema.attribute_types[k]) for k, v in sorted(inner_val.items())
     }
 
 
@@ -172,10 +161,7 @@ def _serialize_map_value(inner_val: Any, schema: CtyMap) -> dict[str, Any]:
     """Serialize a CtyMap value."""
     if not isinstance(inner_val, dict):
         raise TypeError(ERR_VALUE_FOR_MAP)
-    return {
-        k: _convert_value_to_serializable(v, schema.element_type)
-        for k, v in sorted(inner_val.items())
-    }
+    return {k: _convert_value_to_serializable(v, schema.element_type) for k, v in sorted(inner_val.items())}
 
 
 def _serialize_collection_value(inner_val: Any, schema: CtyList | CtySet) -> list[Any]:
@@ -194,10 +180,7 @@ def _serialize_tuple_value(inner_val: Any, schema: CtyTuple) -> list[Any]:
     """Serialize a CtyTuple value."""
     if not isinstance(inner_val, tuple):
         raise TypeError(ERR_VALUE_FOR_TUPLE)
-    return [
-        _convert_value_to_serializable(item, schema.element_types[i])
-        for i, item in enumerate(inner_val)
-    ]
+    return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
 
 
 def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -> Any:
@@ -227,9 +210,7 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -
 def _msgpack_default_handler(obj: Any) -> Any:
     if isinstance(obj, Decimal):
         return str(obj)
-    error_message = ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE.format(
-        type_name=type(obj).__name__
-    )
+    error_message = ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE.format(type_name=type(obj).__name__)
     raise TypeError(error_message)
 
 
@@ -240,9 +221,7 @@ def cty_to_msgpack(value: CtyValue[Any], schema: CtyType[Any]) -> bytes:
             "value_type": type(value).__name__,
             "schema_type": str(schema),
             "value_is_null": value.is_null if hasattr(value, "is_null") else False,
-            "value_is_unknown": value.is_unknown
-            if hasattr(value, "is_unknown")
-            else False,
+            "value_is_unknown": value.is_unknown if hasattr(value, "is_unknown") else False,
         }
     ):
         serializable_data = _convert_value_to_serializable(value, schema)

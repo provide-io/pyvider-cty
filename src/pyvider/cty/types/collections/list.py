@@ -53,9 +53,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if isinstance(value, list | tuple | set | frozenset):
             raw_list_to_validate = list(value)
         else:
-            raise CtyListValidationError(
-                f"Expected list, tuple, or CtyValue list, got {type(value).__name__}"
-            )
+            raise CtyListValidationError(f"Expected list, tuple, or CtyValue list, got {type(value).__name__}")
 
         if not isinstance(raw_list_to_validate, list | tuple):
             raise CtyListValidationError(
@@ -81,17 +79,13 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                     validated_item = self.element_type.validate(item)
                     validated_elements.append(validated_item)
                 except CtyValidationError as e:
-                    new_path = CtyPath(
-                        steps=[IndexStep(i)] + (e.path.steps if e.path else [])
-                    )
+                    new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
                     raise CtyListValidationError(
                         e.message, value=item, path=new_path, original_exception=e
                     ) from e
 
         is_unknown = any(v.is_unknown for v in validated_elements)
-        return CtyValue(
-            vtype=self, value=tuple(validated_elements), is_unknown=is_unknown
-        )
+        return CtyValue(vtype=self, value=tuple(validated_elements), is_unknown=is_unknown)
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
         from pyvider.cty.values import CtyValue
@@ -102,9 +96,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                     f"Expected CtyValue with CtyList type, got CtyValue with {type(container.type).__name__}"
                 )
             if container.is_null:
-                raise IndexError(
-                    f"Cannot access element at index {index} in a null list."
-                )
+                raise IndexError(f"Cannot access element at index {index} in a null list.")
             if container.is_unknown:
                 return CtyValue.unknown(self.element_type)
             if not isinstance(container.value, list | tuple):
@@ -114,13 +106,9 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
             try:
                 return self.element_type.validate(container.value[index])
             except TypeError as e:
-                raise TypeError(
-                    f"list indices must be integers or slices, not {type(index).__name__}"
-                ) from e
+                raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
 
-        raise CtyListValidationError(
-            f"Expected CtyValue[CtyList], got {type(container).__name__}"
-        )
+        raise CtyListValidationError(f"Expected CtyValue[CtyList], got {type(container).__name__}")
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyList):

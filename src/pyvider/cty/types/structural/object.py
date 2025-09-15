@@ -38,14 +38,11 @@ class CtyObject(CtyType[dict[str, object]]):
         def safe_hash_type(cty_type: CtyType[Any]) -> int:
             if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
                 # For nested objects, use a simpler hash to avoid recursion
-                return hash(
-                    (cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys())))
-                )
+                return hash((cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys()))))
             return hash(cty_type)
 
         attr_hashes = tuple(
-            (name, safe_hash_type(attr_type))
-            for name, attr_type in sorted(self.attribute_types.items())
+            (name, safe_hash_type(attr_type)) for name, attr_type in sorted(self.attribute_types.items())
         )
         return hash((self.ctype, attr_hashes, self.optional_attributes))
 
@@ -97,9 +94,7 @@ class CtyObject(CtyType[dict[str, object]]):
         all_expected_attrs = set(self.attribute_types.keys())
         unknown = set(value.keys()) - all_expected_attrs
         if unknown:
-            raise CtyAttributeValidationError(
-                f"Unknown attributes: {', '.join(sorted(list(unknown)))}"
-            )
+            raise CtyAttributeValidationError(f"Unknown attributes: {', '.join(sorted(list(unknown)))}")
 
         for name, attr_type in self.attribute_types.items():
             with error_boundary(
@@ -115,9 +110,7 @@ class CtyObject(CtyType[dict[str, object]]):
                     if name in self.optional_attributes:
                         validated_attrs[name] = CtyValue.null(attr_type)
                         continue
-                    raise CtyAttributeValidationError(
-                        "Missing required attribute", value=None, path=path
-                    )
+                    raise CtyAttributeValidationError("Missing required attribute", value=None, path=path)
 
                 raw_attr_value = value.get(name)
                 try:
@@ -131,9 +124,7 @@ class CtyObject(CtyType[dict[str, object]]):
                         validated_attr = validated_attr.with_marks(existing_marks)  # type: ignore
 
                 except CtyValidationError as e:
-                    new_path = CtyPath(
-                        steps=[GetAttrStep(name)] + (e.path.steps if e.path else [])
-                    )
+                    new_path = CtyPath(steps=[GetAttrStep(name)] + (e.path.steps if e.path else []))
                     raise CtyAttributeValidationError(
                         e.message,
                         value=raw_attr_value,
@@ -146,9 +137,7 @@ class CtyObject(CtyType[dict[str, object]]):
                     and validated_attr.is_null
                     and not isinstance(attr_type, CtyDynamic)
                 ):
-                    raise CtyAttributeValidationError(
-                        "Attribute cannot be null", value=None, path=path
-                    )
+                    raise CtyAttributeValidationError("Attribute cannot be null", value=None, path=path)
 
                 validated_attrs[name] = validated_attr
 
@@ -159,9 +148,7 @@ class CtyObject(CtyType[dict[str, object]]):
         if not isinstance(obj_value, CtyValue):
             raise CtyTypeMismatchError("get_attribute requires a CtyValue object")
         if not self.has_attribute(name):
-            raise CtyAttributeValidationError(
-                f"Object has no attribute '{name}'", path=CtyPath.get_attr(name)
-            )
+            raise CtyAttributeValidationError(f"Object has no attribute '{name}'", path=CtyPath.get_attr(name))
         if obj_value.is_unknown:
             return CtyValue.unknown(self.attribute_types[name])
         if obj_value.is_null:
@@ -203,10 +190,7 @@ class CtyObject(CtyType[dict[str, object]]):
         )
 
     def _to_wire_json(self) -> Any:
-        attrs_json = {
-            name: attr_type._to_wire_json()
-            for name, attr_type in self.attribute_types.items()
-        }
+        attrs_json = {name: attr_type._to_wire_json() for name, attr_type in self.attribute_types.items()}
         return [self.ctype, attrs_json]
 
     def is_primitive_type(self) -> bool:

@@ -27,9 +27,7 @@ class CtyError(FoundationError):  # type: ignore[misc]
         message: A human-readable error description
     """
 
-    def __init__(
-        self, message: str = "An error occurred in the cty type system", **kwargs: Any
-    ) -> None:
+    def __init__(self, message: str = "An error occurred in the cty type system", **kwargs: Any) -> None:
         self.message = message
         super().__init__(self.message, **kwargs)
 

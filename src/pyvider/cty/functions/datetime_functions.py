@@ -40,9 +40,7 @@ def _translate_go_format(go_fmt: str) -> str:
 
 
 def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(spec.type, CtyString) or not isinstance(
-        timestamp.type, CtyString
-    ):
+    if not isinstance(spec.type, CtyString) or not isinstance(timestamp.type, CtyString):
         raise CtyFunctionError("formatdate: arguments must be strings")
     if spec.is_unknown or spec.is_null or timestamp.is_unknown or timestamp.is_null:
         return CtyValue.unknown(CtyString())
@@ -74,16 +72,9 @@ def _parse_duration(duration_str: str) -> timedelta:
 
 
 def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(timestamp.type, CtyString) or not isinstance(
-        duration.type, CtyString
-    ):
+    if not isinstance(timestamp.type, CtyString) or not isinstance(duration.type, CtyString):
         raise CtyFunctionError("timeadd: arguments must be strings")
-    if (
-        timestamp.is_unknown
-        or timestamp.is_null
-        or duration.is_unknown
-        or duration.is_null
-    ):
+    if timestamp.is_unknown or timestamp.is_null or duration.is_unknown or duration.is_null:
         return CtyValue.unknown(CtyString())
     try:
         dt = datetime.fromisoformat(timestamp.value.replace("Z", "+00:00"))

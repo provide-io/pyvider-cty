@@ -47,9 +47,7 @@ class CtyBool(CtyType[bool]):
             if raw_value == 0:
                 return CtyValue(vtype=self, value=False)
 
-        raise CtyBoolValidationError(
-            f"Cannot convert {type(raw_value).__name__} to bool."
-        )
+        raise CtyBoolValidationError(f"Cannot convert {type(raw_value).__name__} to bool.")
 
     def equal(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyBool)

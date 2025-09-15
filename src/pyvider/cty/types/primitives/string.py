@@ -43,9 +43,7 @@ class CtyString(CtyType[str]):
                 return CtyValue.null(self)
 
             if not isinstance(raw_value, str | bytes):
-                raise CtyStringValidationError(
-                    f"Cannot convert {type(raw_value).__name__} to string."
-                )
+                raise CtyStringValidationError(f"Cannot convert {type(raw_value).__name__} to string.")
 
             try:
                 str_value = raw_value.decode("utf-8") if isinstance(raw_value, bytes) else str(raw_value)

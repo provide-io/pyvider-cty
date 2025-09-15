@@ -40,9 +40,7 @@ class GetAttrStep(PathStep):
 
     def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
-            raise AttributePathError(
-                f"Cannot get attribute '{self.name}' from null value"
-            )
+            raise AttributePathError(f"Cannot get attribute '{self.name}' from null value")
         from pyvider.cty.types.structural import CtyObject
 
         if isinstance(value.type, CtyObject):
@@ -55,9 +53,7 @@ class GetAttrStep(PathStep):
         from pyvider.cty.types.structural import CtyObject
 
         if not isinstance(vtype, CtyObject):
-            raise AttributePathError(
-                f"Cannot get attribute from non-object type {vtype.__class__.__name__}"
-            )
+            raise AttributePathError(f"Cannot get attribute from non-object type {vtype.__class__.__name__}")
         if not vtype.has_attribute(self.name):
             raise AttributePathError(f"Object type has no attribute {self.name}")
         return vtype.attribute_types[self.name]
@@ -83,9 +79,7 @@ class IndexStep(PathStep):
         if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
             result = self.apply(value.value)
             return CtyValue(result.type, result.value)
-        raise AttributePathError(
-            f"Cannot index into value of type {type(value.type).__name__}"
-        )
+        raise AttributePathError(f"Cannot index into value of type {type(value.type).__name__}")
 
     def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         from pyvider.cty.types.collections import CtyList
@@ -97,14 +91,10 @@ class IndexStep(PathStep):
             try:
                 return vtype.element_types[self.index]
             except IndexError as e:
-                raise AttributePathError(
-                    f"Tuple index {self.index} out of bounds"
-                ) from e
+                raise AttributePathError(f"Tuple index {self.index} out of bounds") from e
         if isinstance(vtype, CtyDynamic):
             return CtyDynamic()
-        raise AttributePathError(
-            f"Cannot index into non-collection type {vtype.__class__.__name__}"
-        )
+        raise AttributePathError(f"Cannot index into non-collection type {vtype.__class__.__name__}")
 
     def __str__(self) -> str:
         return f"[{self.index}]"
@@ -139,15 +129,11 @@ class KeyStep(PathStep):
         if isinstance(vtype, CtyDynamic):
             return CtyDynamic()
         if not isinstance(vtype, CtyMap):
-            raise AttributePathError(
-                f"Cannot get key from non-map type {vtype.__class__.__name__}"
-            )
+            raise AttributePathError(f"Cannot get key from non-map type {vtype.__class__.__name__}")
         try:
             CtyString().validate(self.key)
         except CtyValidationError as e:
-            raise AttributePathError(
-                f"Invalid key for map: {self.key!r} is not a valid string"
-            ) from e
+            raise AttributePathError(f"Invalid key for map: {self.key!r} is not a valid string") from e
         return vtype.element_type
 
     def __str__(self) -> str:
@@ -189,9 +175,7 @@ class CtyPath:
                 return value
             raise AttributePathError("Cannot return non-CtyValue from apply_path")
         if not isinstance(value, CtyValue):
-            raise AttributePathError(
-                f"Cannot apply path to non-CtyValue: {type(value).__name__}"
-            )
+            raise AttributePathError(f"Cannot apply path to non-CtyValue: {type(value).__name__}")
         current = value
         for i, step in enumerate(self.steps):
             try:
@@ -208,9 +192,7 @@ class CtyPath:
             try:
                 current = step.apply_type(current)
             except AttributePathError as e:
-                raise AttributePathError(
-                    f"Error at type step {i + 1} ({step}): {e}"
-                ) from e
+                raise AttributePathError(f"Error at type step {i + 1} ({step}): {e}") from e
         return current
 
     def string(self) -> str:

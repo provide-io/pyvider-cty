@@ -22,9 +22,7 @@ def to_number(input_val: CtyValue[Any]) -> CtyValue[Any]:
     try:
         return CtyNumber().validate(input_val.value)
     except Exception as e:
-        raise CtyFunctionError(
-            f"tostring: cannot convert {input_val.type.ctype} to number"
-        ) from e
+        raise CtyFunctionError(f"tostring: cannot convert {input_val.type.ctype} to number") from e
 
 
 def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -33,6 +31,4 @@ def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
     try:
         return CtyBool().validate(input_val.value)
     except Exception as e:
-        raise CtyFunctionError(
-            f"tobool: cannot convert {input_val.type.ctype} to bool"
-        ) from e
+        raise CtyFunctionError(f"tobool: cannot convert {input_val.type.ctype} to bool") from e
