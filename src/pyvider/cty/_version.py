@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 #
 # _version.py
 #
@@ -7,8 +9,6 @@ from __future__ import annotations
 Version handling for pyvider-cty.
 Uses VERSION file with robust fallback mechanisms.
 """
-
-from pathlib import Path
 
 
 def _find_project_root() -> Path | None:

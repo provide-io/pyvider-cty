@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-# pyvider-cty/src/pyvider/cty/conversion/_cache.py
-"""
-Provides a thread-safe, context-aware caching mechanism for type inference
-to improve performance and ensure concurrent safety.
-"""
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -13,6 +8,12 @@ import threading
 from typing import Any, TypeVar
 
 from pyvider.cty.types import CtyType
+
+# pyvider-cty/src/pyvider/cty/conversion/_cache.py
+"""
+Provides a thread-safe, context-aware caching mechanism for type inference
+to improve performance and ensure concurrent safety.
+"""
 
 F = TypeVar("F", bound=Callable[..., Any])
 

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from provide.foundation.errors import FoundationError
+
 #
 # pyvider/cty/exceptions/base.py
 #
 """
 Defines the base exception for the CTY type system.
 """
-
-from provide.foundation.errors import FoundationError
 
 
 class CtyError(FoundationError):

@@ -1,13 +1,5 @@
 from __future__ import annotations
 
-"""
-Advanced validation utilities for CTY.
-
-This module provides sophisticated validation capabilities designed for
-production IaC requirements including advanced recursion detection,
-performance monitoring, and comprehensive diagnostics.
-"""
-
 from pyvider.cty.validation.recursion import (
     RecursionContext,
     RecursionDetector,
@@ -15,6 +7,14 @@ from pyvider.cty.validation.recursion import (
     get_recursion_context,
     with_recursion_detection,
 )
+
+"""
+Advanced validation utilities for CTY.
+
+This module provides sophisticated validation capabilities designed for
+production IaC requirements including advanced recursion detection,
+performance monitoring, and comprehensive diagnostics.
+"""
 
 
 # Define validate_config here to avoid circular imports
