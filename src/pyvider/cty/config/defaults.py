@@ -102,6 +102,7 @@ ERR_MIN_ONE_ARG = "{op} requires at least one argument"
 ERR_CANNOT_INFER_FROM_CTY_TYPE = "Cannot infer data type from a CtyType instance: {type_name}"
 ERR_CANNOT_INFER_FROM_CTY_VALUE = "Cannot infer data type from a CtyValue instance: {type_name}"
 ERR_VALUE_TYPE_NO_LEN = "Values of type {type_name} do not have a length"
+ERR_MISSING_REQUIRED_ATTRIBUTE = "Missing required attribute '{name}'"
 
 # Conversion error messages
 ERR_CAPSULE_CANNOT_CONVERT = "Capsule type {value_type} cannot be converted to {target_type}"
