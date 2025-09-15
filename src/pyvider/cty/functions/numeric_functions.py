@@ -10,68 +10,79 @@ from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
-    """Helper to propagate refinements for binary numeric operations."""
-    if not (isinstance(a.value, RefinedUnknownValue) or isinstance(b.value, RefinedUnknownValue)):
-        return CtyValue.unknown(CtyNumber())
-
+def _get_refined_components(a: CtyValue, b: CtyValue) -> tuple[RefinedUnknownValue, RefinedUnknownValue, Any, Any]:
+    """Extract refinement components from two values."""
     ref_a = a.value if isinstance(a.value, RefinedUnknownValue) else RefinedUnknownValue()
     ref_b = b.value if isinstance(b.value, RefinedUnknownValue) else RefinedUnknownValue()
     val_a = a.value if not a.is_unknown else None
     val_b = b.value if not b.is_unknown else None
+    return ref_a, ref_b, val_a, val_b
 
+
+def _propagate_add_refinements(ref_a: RefinedUnknownValue, ref_b: RefinedUnknownValue, val_a: Any, val_b: Any) -> dict[str, Any]:
+    """Handle refinement propagation for addition."""
     new_ref: dict[str, Any] = {}
-    if op == "add":
-        if val_a is not None:  # a is known, b is refined/unrefined
-            if ref_b.number_lower_bound:
-                new_ref["number_lower_bound"] = (val_a + ref_b.number_lower_bound[0], ref_b.number_lower_bound[1])
-            if ref_b.number_upper_bound:
-                new_ref["number_upper_bound"] = (val_a + ref_b.number_upper_bound[0], ref_b.number_upper_bound[1])
-        elif val_b is not None:  # b is known, a is refined/unrefined
-            if ref_a.number_lower_bound:
-                new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] + val_b, ref_a.number_lower_bound[1])
-            if ref_a.number_upper_bound:
-                new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] + val_b, ref_a.number_upper_bound[1])
-        else:  # both are refined/unrefined
-            if ref_a.number_lower_bound and ref_b.number_lower_bound:
-                new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] + ref_b.number_lower_bound[0], ref_a.number_lower_bound[1] and ref_b.number_lower_bound[1])
-            if ref_a.number_upper_bound and ref_b.number_upper_bound:
-                new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] + ref_b.number_upper_bound[0], ref_a.number_upper_bound[1] and ref_b.number_upper_bound[1])
+    if val_a is not None:  # a is known, b is refined/unrefined
+        if ref_b.number_lower_bound:
+            new_ref["number_lower_bound"] = (val_a + ref_b.number_lower_bound[0], ref_b.number_lower_bound[1])
+        if ref_b.number_upper_bound:
+            new_ref["number_upper_bound"] = (val_a + ref_b.number_upper_bound[0], ref_b.number_upper_bound[1])
+    elif val_b is not None:  # b is known, a is refined/unrefined
+        if ref_a.number_lower_bound:
+            new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] + val_b, ref_a.number_lower_bound[1])
+        if ref_a.number_upper_bound:
+            new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] + val_b, ref_a.number_upper_bound[1])
+    else:  # both are refined/unrefined
+        if ref_a.number_lower_bound and ref_b.number_lower_bound:
+            new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] + ref_b.number_lower_bound[0], ref_a.number_lower_bound[1] and ref_b.number_lower_bound[1])
+        if ref_a.number_upper_bound and ref_b.number_upper_bound:
+            new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] + ref_b.number_upper_bound[0], ref_a.number_upper_bound[1] and ref_b.number_upper_bound[1])
+    return new_ref
 
-    elif op == "subtract":
-        if val_b is not None:
-            if ref_a.number_lower_bound:
-                new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] - val_b, ref_a.number_lower_bound[1])
-            if ref_a.number_upper_bound:
-                new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] - val_b, ref_a.number_upper_bound[1])
-        elif val_a is not None:
-            if ref_b.number_upper_bound:
-                new_ref["number_lower_bound"] = (val_a - ref_b.number_upper_bound[0], ref_b.number_upper_bound[1])
-            if ref_b.number_lower_bound:
-                new_ref["number_upper_bound"] = (val_a - ref_b.number_lower_bound[0], ref_b.number_lower_bound[1])
-        else:
-            if ref_a.number_lower_bound and ref_b.number_upper_bound:
-                new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] - ref_b.number_upper_bound[0], ref_a.number_lower_bound[1] and ref_b.number_upper_bound[1])
-            if ref_a.number_upper_bound and ref_b.number_lower_bound:
-                new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] - ref_b.number_lower_bound[0], ref_a.number_upper_bound[1] and ref_b.number_lower_bound[1])
 
-    elif op == "multiply":
-        # This logic is simplified; a full implementation would handle four cases for bound combinations.
-        # This covers the most important cases for now.
-        known_val, unknown_ref = (val_a, ref_b) if val_a is not None else (val_b, ref_a)
-        if known_val is not None:
-            if known_val > POSITIVE_BOUNDARY:
-                if unknown_ref.number_lower_bound:
-                    new_ref["number_lower_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
-                if unknown_ref.number_upper_bound:
-                    new_ref["number_upper_bound"] = (unknown_ref.number_upper_bound[0] * known_val, unknown_ref.number_upper_bound[1])
-            elif known_val < POSITIVE_BOUNDARY:
-                if unknown_ref.number_upper_bound:
-                    new_ref["number_lower_bound"] = (unknown_ref.number_upper_bound[0] * known_val, unknown_ref.number_upper_bound[1])
-                if unknown_ref.number_lower_bound:
-                    new_ref["number_upper_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
+def _propagate_subtract_refinements(ref_a: RefinedUnknownValue, ref_b: RefinedUnknownValue, val_a: Any, val_b: Any) -> dict[str, Any]:
+    """Handle refinement propagation for subtraction."""
+    new_ref: dict[str, Any] = {}
+    if val_b is not None:
+        if ref_a.number_lower_bound:
+            new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] - val_b, ref_a.number_lower_bound[1])
+        if ref_a.number_upper_bound:
+            new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] - val_b, ref_a.number_upper_bound[1])
+    elif val_a is not None:
+        if ref_b.number_upper_bound:
+            new_ref["number_lower_bound"] = (val_a - ref_b.number_upper_bound[0], ref_b.number_upper_bound[1])
+        if ref_b.number_lower_bound:
+            new_ref["number_upper_bound"] = (val_a - ref_b.number_lower_bound[0], ref_b.number_lower_bound[1])
+    else:
+        if ref_a.number_lower_bound and ref_b.number_upper_bound:
+            new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] - ref_b.number_upper_bound[0], ref_a.number_lower_bound[1] and ref_b.number_upper_bound[1])
+        if ref_a.number_upper_bound and ref_b.number_lower_bound:
+            new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] - ref_b.number_lower_bound[0], ref_a.number_upper_bound[1] and ref_b.number_lower_bound[1])
+    return new_ref
 
-    elif op == "divide" and val_b is not None:
+
+def _propagate_multiply_refinements(ref_a: RefinedUnknownValue, ref_b: RefinedUnknownValue, val_a: Any, val_b: Any) -> dict[str, Any]:
+    """Handle refinement propagation for multiplication."""
+    new_ref: dict[str, Any] = {}
+    known_val, unknown_ref = (val_a, ref_b) if val_a is not None else (val_b, ref_a)
+    if known_val is not None:
+        if known_val > POSITIVE_BOUNDARY:
+            if unknown_ref.number_lower_bound:
+                new_ref["number_lower_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
+            if unknown_ref.number_upper_bound:
+                new_ref["number_upper_bound"] = (unknown_ref.number_upper_bound[0] * known_val, unknown_ref.number_upper_bound[1])
+        elif known_val < POSITIVE_BOUNDARY:
+            if unknown_ref.number_upper_bound:
+                new_ref["number_lower_bound"] = (unknown_ref.number_upper_bound[0] * known_val, unknown_ref.number_upper_bound[1])
+            if unknown_ref.number_lower_bound:
+                new_ref["number_upper_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
+    return new_ref
+
+
+def _propagate_divide_refinements(ref_a: RefinedUnknownValue, val_b: Any) -> dict[str, Any]:
+    """Handle refinement propagation for division."""
+    new_ref: dict[str, Any] = {}
+    if val_b is not None:
         if val_b > POSITIVE_BOUNDARY:
             if ref_a.number_lower_bound:
                 new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
@@ -82,8 +93,27 @@ def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
                 new_ref["number_lower_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
             if ref_a.number_lower_bound:
                 new_ref["number_upper_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
+    return new_ref
 
-    # Always return a RefinedUnknownValue to prevent AttributeErrors, even if it's empty.
+
+def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
+    """Helper to propagate refinements for binary numeric operations."""
+    if not (isinstance(a.value, RefinedUnknownValue) or isinstance(b.value, RefinedUnknownValue)):
+        return CtyValue.unknown(CtyNumber())
+
+    ref_a, ref_b, val_a, val_b = _get_refined_components(a, b)
+
+    if op == "add":
+        new_ref = _propagate_add_refinements(ref_a, ref_b, val_a, val_b)
+    elif op == "subtract":
+        new_ref = _propagate_subtract_refinements(ref_a, ref_b, val_a, val_b)
+    elif op == "multiply":
+        new_ref = _propagate_multiply_refinements(ref_a, ref_b, val_a, val_b)
+    elif op == "divide":
+        new_ref = _propagate_divide_refinements(ref_a, val_b)
+    else:
+        new_ref = {}
+
     return CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
 
 
