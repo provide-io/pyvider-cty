@@ -41,27 +41,52 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
     element_type = input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
     return CtyList(element_type=element_type).validate(result_elements)
 
+def _extract_inner_value(outer_element_val: Any) -> Any:
+    """Extract the inner value from a potentially dynamic outer element."""
+    return (
+        outer_element_val.value
+        if isinstance(outer_element_val, CtyValue) and isinstance(outer_element_val.type, CtyDynamic)
+        else outer_element_val
+    )
+
+
+def _validate_collection_element(inner_val: Any) -> None:
+    """Validate that an inner value is a proper collection for flattening."""
+    if not isinstance(inner_val.type, CtyList | CtySet | CtyTuple):
+        raise CtyFunctionError(f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}")
+
+
+def _determine_unified_element_type(final_element_type: CtyType[Any] | None, new_element_type: CtyType[Any]) -> CtyType[Any]:
+    """Determine the unified element type for flattened elements."""
+    if final_element_type is None:
+        return new_element_type
+    elif not final_element_type.equal(new_element_type):
+        return CtyDynamic()
+    return final_element_type
+
+
 def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"flatten: input must be a list, set, or tuple, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
+
     result_elements = []
     final_element_type: CtyType[Any] | None = None
+
     for outer_element_val in input_val.value:
-        inner_val = outer_element_val.value if isinstance(outer_element_val, CtyValue) and isinstance(outer_element_val.type, CtyDynamic) else outer_element_val
+        inner_val = _extract_inner_value(outer_element_val)
         if not isinstance(inner_val, CtyValue) or inner_val.is_null:
             continue
         if inner_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-        if not isinstance(inner_val.type, CtyList | CtySet | CtyTuple):
-            raise CtyFunctionError(f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}")
+
+        _validate_collection_element(inner_val)
+
         for inner_element_val in inner_val.value:
-            if final_element_type is None:
-                final_element_type = inner_element_val.type
-            elif not final_element_type.equal(inner_element_val.type):
-                final_element_type = CtyDynamic()
+            final_element_type = _determine_unified_element_type(final_element_type, inner_element_val.type)
             result_elements.append(inner_element_val)
+
     if final_element_type is None:
         return CtyList(element_type=CtyDynamic()).validate([])
     return CtyList(element_type=final_element_type).validate(result_elements)
