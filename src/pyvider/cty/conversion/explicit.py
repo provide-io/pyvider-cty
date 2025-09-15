@@ -40,8 +40,10 @@ CTY-to-CTY type conversion.
 
 T = TypeVar("T")
 
+
 @overload
 def convert(value: CtyValue[Any], target_type: CtyType[T]) -> CtyValue[T]: ...
+
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
     """
