@@ -19,7 +19,7 @@ def byteslen(buffer: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(error_message)
     if buffer.is_unknown or buffer.is_null:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(len(buffer.value))
+    return CtyNumber().validate(len(buffer.value))  # type: ignore[arg-type]
 
 
 def bytesslice(
@@ -42,5 +42,5 @@ def bytesslice(
     ):
         return CtyValue.unknown(BytesCapsule)
 
-    start_idx, end_idx = int(start.value), int(end.value)
-    return BytesCapsule.validate(buffer.value[start_idx:end_idx])
+    start_idx, end_idx = int(start.value), int(end.value)  # type: ignore[call-overload]
+    return BytesCapsule.validate(buffer.value[start_idx:end_idx])  # type: ignore[index]
