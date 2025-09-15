@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
 
 import unicodedata

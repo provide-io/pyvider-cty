@@ -41,15 +41,15 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
     _type_order: ClassVar[int] = 99
 
     @abstractmethod
-    def validate(self, value: object) -> "CtyValue[T]":
+    def validate(self, value: object) -> CtyValue[T]:
         pass
 
     @abstractmethod
-    def equal(self, other: "CtyType[T]") -> bool:
+    def equal(self, other: CtyType[T]) -> bool:
         pass
 
     @abstractmethod
-    def usable_as(self, other: "CtyType[T]") -> bool:
+    def usable_as(self, other: CtyType[T]) -> bool:
         pass
 
     @abstractmethod

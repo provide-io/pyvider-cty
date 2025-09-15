@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/conversion/_utils.py
 """Internal conversion utilities to avoid circular dependencies."""
 from typing import Any

@@ -28,7 +28,7 @@ from ..types import (
 from ..values import CtyValue
 
 
-def convert(value: CtyValue[Any], target_type: "CtyType[Any]") -> CtyValue[Any]:  # noqa: C901
+def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """
@@ -157,7 +157,7 @@ def convert(value: CtyValue[Any], target_type: "CtyType[Any]") -> CtyValue[Any]:
 
 
 @lru_cache(maxsize=1024)
-def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
+def _unify_frozen(types: frozenset[CtyType[Any]]) -> CtyType[Any]:
     """
     Memoized implementation of unify; operates on a hashable frozenset.
     """
@@ -203,7 +203,7 @@ def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
     return CtyDynamic()
 
 
-def unify(types: Iterable["CtyType[Any]"]) -> "CtyType[Any]":
+def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any]:
     """
     Finds a single common CtyType that all of the given types can convert to.
     This is a wrapper that enables caching by converting input to a frozenset.
