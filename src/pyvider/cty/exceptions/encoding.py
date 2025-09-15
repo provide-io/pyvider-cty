@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pyvider.cty.exceptions.base import CtyError
 
 #
@@ -88,7 +90,7 @@ class InvalidTypeError(CtyError):
         invalid_type: The invalid type that caused the error
     """
 
-    def __init__(self, message: str, invalid_type: object = None, **kwargs) -> None:
+    def __init__(self, message: str, invalid_type: object = None, **kwargs: Any) -> None:
         """
         Initializes the InvalidTypeError.
 
@@ -125,7 +127,7 @@ class AttributePathError(CtyError):
         value: The value the path was being applied to
     """
 
-    def __init__(self, message: str, path: object = None, value: object = None, **kwargs) -> None:
+    def __init__(self, message: str, path: object = None, value: object = None, **kwargs: Any) -> None:
         """
         Initializes the AttributePathError.
 
@@ -174,7 +176,7 @@ class EncodingError(CtyError):
     """
 
     def __init__(
-        self, message: str, data: object = None, encoding: str | None = None, **kwargs
+        self, message: str, data: object = None, encoding: str | None = None, **kwargs: Any
     ) -> None:
         """
         Initializes the EncodingError.
@@ -230,7 +232,7 @@ class SerializationError(EncodingError):
     """
 
     def __init__(
-        self, message: str, value: object = None, format_name: str | None = None, **kwargs
+        self, message: str, value: object = None, format_name: str | None = None, **kwargs: Any
     ) -> None:
         """
         Initializes the SerializationError.
@@ -268,7 +270,7 @@ class DeserializationError(EncodingError):
     """
 
     def __init__(
-        self, message: str, data: object = None, format_name: str | None = None, **kwargs
+        self, message: str, data: object = None, format_name: str | None = None, **kwargs: Any
     ) -> None:
         """
         Initializes the DeserializationError.

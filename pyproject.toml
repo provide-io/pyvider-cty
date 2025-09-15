@@ -30,28 +30,13 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    # "provide-foundation>=0.0.16",  # Install with pip install -e
     "pygit2>=1.18.2",
-    "pyvider-telemetry>=0.0.13", # Keep for backward compatibility
+    "provide-foundation>=0.0.0",
 ]
 
 [dependency-groups]
 dev = [
-    "bandit>=1.8.3",
-    "hypothesis>=6.131.0",
-    "memray>=1.17.2",
-    "mypy>=1.9.0",
-    "psutil>=7.0.0",
-    "pyright>=1.1.401",
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.25.0",
-    "pytest-benchmark>=4.0.0",
-    "pytest-cov>=6.0.0",
-    "pytest-mock>=3.14.0",
-    "pytest-xdist>=3.6.0",
-    "ruff>=0.9.0",
-    "twine>=6.0.0",
-    "ty>=0.0.1a10",
+    "provide-testkit[standard,advanced-testing,typecheck,build]",
 ]
 
 [build-system]
@@ -66,6 +51,10 @@ where = ["src"]
 
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
+
+[tool.uv.sources]
+provide-foundation = { path = "../provide-foundation", editable = true }
+provide-testkit = { path = "../provide-testkit", editable = true }
 
 
 ################################################################################
@@ -108,7 +97,7 @@ addopts = "-ra -q --color=yes"
 [tool.ruff]
 line-length = 88
 indent-width = 4
-target-version = "py313"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "ANN", "B", "C90", "SIM", "PTH", "RUF"]
@@ -130,7 +119,7 @@ line-ending = "auto"
 # ---------------------------------------------------------------------------- #
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.11"
 mypy_path = "src"
 strict = true
 pretty = true
