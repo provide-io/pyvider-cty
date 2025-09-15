@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 from typing import Any, ClassVar
 
 from attrs import define, field
@@ -77,7 +78,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
         return CtyValue(self, tuple(validated_elements), is_unknown=is_unknown)
 
     def element_at(
-        self, container_value: CtyValue[Any], index: int | slice
+        self, container_value: CtyValue[Any], index: int | builtins.slice
     ) -> CtyValue[Any]:
         if not isinstance(index, int | slice):
             raise TypeError(
@@ -153,7 +154,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
         return [self.ctype, elems_json]
 
     def __getitem__(
-        self, index: int | slice
+        self, index: int | builtins.slice
     ) -> CtyType[Any] | CtyTuple | tuple[CtyType[Any], ...]:
         return self.element_types[index]
 

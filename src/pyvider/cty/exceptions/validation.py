@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from provide.foundation.errors import ValidationError as FoundationValidationError
+from provide.foundation.errors import ValidationError as FoundationValidationError  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
     from pyvider.cty.path import CtyPath

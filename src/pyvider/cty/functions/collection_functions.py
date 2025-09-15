@@ -443,7 +443,7 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("merge: all arguments must be maps or objects")
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
-    result = {}
+    result: dict[str, Any] = {}
     for arg in args:
         if not arg.is_null:
             result.update(arg.value)

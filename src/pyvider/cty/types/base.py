@@ -17,14 +17,14 @@ from attrs import define
 if TYPE_CHECKING:
     from pyvider.cty.values.base import CtyValue
 
-T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
 
 
 @runtime_checkable
-class CtyTypeProtocol(Protocol[T]):
+class CtyTypeProtocol(Protocol[T_co]):
     """Protocol defining the essential interface of a CtyType."""
 
-    def validate(self, value: object) -> CtyValue[T]: ...
+    def validate(self, value: object) -> CtyValue[T_co]: ...
     def equal(self, other: Any) -> bool: ...
     def usable_as(self, other: Any) -> bool: ...
     def is_primitive_type(self) -> bool: ...
