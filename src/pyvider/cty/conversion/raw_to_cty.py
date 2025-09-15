@@ -19,6 +19,55 @@ from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
 
 
+def _extract_container_children(container: Any) -> list[Any]:
+    """Extract child elements from a container for cache key generation."""
+    children = []
+    if isinstance(container, dict):
+        children.extend(container.values())
+    elif isinstance(container, list | tuple | set | frozenset):
+        children.extend(container)
+    return children
+
+
+def _generate_container_cache_key(container: Any, structural_cache: dict[int, tuple[Any, ...]]) -> tuple[Any, ...]:
+    """Generate a cache key for a container based on its type and contents."""
+    if isinstance(container, dict):
+        # Sort items by key's string representation for deterministic order.
+        sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
+        return (
+            dict,
+            frozenset((k, structural_cache[id(v)]) for k, v in sorted_items),
+        )
+    elif isinstance(container, list):
+        return (list, tuple(structural_cache[id(v)] for v in container))
+    elif isinstance(container, tuple):
+        return (tuple, tuple(structural_cache[id(v)] for v in container))
+    elif isinstance(container, set | frozenset):
+        # Sort elements by their string representation for deterministic order.
+        sorted_items = sorted(list(container), key=repr)
+        return (frozenset, frozenset(structural_cache[id(v)] for v in sorted_items))
+    else:
+        return (type(container),)
+
+
+def _process_container_children(current_item: Any, work_stack: list[Any], post_process_stack: list[Any],
+                               structural_cache: dict[int, tuple[Any, ...]], visited_ids: set[int]) -> None:
+    """Process a container item and add its children to the work stack."""
+    item_id = id(current_item)
+
+    if item_id in visited_ids:
+        return
+
+    visited_ids.add(item_id)
+
+    # Placeholder is essential for cycle detection.
+    structural_cache[item_id] = (type(current_item), item_id, "placeholder")
+    post_process_stack.append(current_item)
+
+    children = _extract_container_children(current_item)
+    work_stack.extend(children)
+
+
 def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     """
     Iteratively generates a stable, structural cache key from a raw Python object,
@@ -31,10 +80,9 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
 
     work_stack: list[Any] = [value]
     post_process_stack: list[Any] = []
-    # This set tracks everything that has been pushed to the work_stack
-    # to prevent re-processing and infinite loops.
     visited_ids: set[int] = set()
 
+    # Process all items to build cache entries
     while work_stack:
         current_item = work_stack.pop()
         item_id = id(current_item)
@@ -46,47 +94,13 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
             structural_cache[item_id] = (type(current_item),)
             continue
 
-        if item_id in visited_ids:
-            continue
+        _process_container_children(current_item, work_stack, post_process_stack, structural_cache, visited_ids)
 
-        visited_ids.add(item_id)
-
-        # Placeholder is essential for cycle detection.
-        structural_cache[item_id] = (type(current_item), item_id, "placeholder")
-        post_process_stack.append(current_item)
-
-        children = []
-        if isinstance(current_item, dict):
-            children.extend(current_item.values())
-        elif isinstance(current_item, list | tuple | set | frozenset):
-            children.extend(current_item)
-
-        work_stack.extend(children)
-
-    # Build the final keys from the bottom up.
+    # Build the final keys from the bottom up
     while post_process_stack:
         container = post_process_stack.pop()
         container_id = id(container)
-
-        key: tuple[Any, ...]
-        if isinstance(container, dict):
-            # Sort items by key's string representation for deterministic order.
-            sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
-            key = (
-                dict,
-                frozenset((k, structural_cache[id(v)]) for k, v in sorted_items),
-            )
-        elif isinstance(container, list):
-            key = (list, tuple(structural_cache[id(v)] for v in container))
-        elif isinstance(container, tuple):
-            key = (tuple, tuple(structural_cache[id(v)] for v in container))
-        elif isinstance(container, set | frozenset):
-            # Sort elements by their string representation for deterministic order.
-            sorted_items = sorted(list(container), key=repr)
-            key = (frozenset, frozenset(structural_cache[id(v)] for v in sorted_items))
-        else:
-            key = (type(container),)
-
+        key = _generate_container_cache_key(container, structural_cache)
         structural_cache[container_id] = key
 
     return structural_cache.get(id(value), (type(value),))
