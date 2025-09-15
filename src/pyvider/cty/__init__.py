@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-"""
-The pyvider.cty package is a pure-Python implementation of the concepts
-from HashiCorp's `cty` library, providing a rich type system for the framework.
-"""
-
 from pyvider.cty._version import __version__
-
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
@@ -37,6 +31,11 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+
+"""
+The pyvider.cty package is a pure-Python implementation of the concepts
+from HashiCorp's `cty` library, providing a rich type system for the framework.
+"""
 
 __all__ = [
     "BytesCapsule",
