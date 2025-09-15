@@ -14,11 +14,13 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.functions import (
+    add,
     greater_than,
     length,
     less_than,
     max_fn,
     min_fn,
+    multiply,
 )
 from pyvider.cty.values.markers import RefinedUnknownValue
 
@@ -100,7 +102,6 @@ class TestRefinedUnknownsIntegration:
         result = length(unknown_list)
         assert result.is_unknown is True
 
-from pyvider.cty.functions import add, multiply
 
 
 class TestRefinedUnknownsNumericIntegration:

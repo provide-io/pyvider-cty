@@ -103,12 +103,14 @@ class TestComparisonFunctions:
     def test_less_than(self) -> None:
         assert less_than(N(5), N(10)).is_true()
         assert less_than(S("a"), S("b")).is_true()
-        with pytest.raises(CtyFunctionError): less_than(N(1), S("a"))
+        with pytest.raises(CtyFunctionError):
+            less_than(N(1), S("a"))
 
     def test_max_min(self) -> None:
         assert max_fn(N(1), N(10), N(5)).value == 10
         assert min_fn(S("z"), S("a"), S("m")).value == "a"
-        with pytest.raises(CtyFunctionError): min_fn(N(1), S("a"))
+        with pytest.raises(CtyFunctionError):
+            min_fn(N(1), S("a"))
 
     def test_compare_with_null(self) -> None:
         assert greater_than(CtyValue.null(CtyNumber()), N(1)).is_unknown
@@ -830,7 +832,8 @@ class TestCollectionFunctions:
 
     def test_index(self) -> None:
         assert index(L(CtyString(), ["a", "b"]), N(1)).value == "b"
-        with pytest.raises(CtyFunctionError): index(L(CtyString(), []), N(0))
+        with pytest.raises(CtyFunctionError):
+            index(L(CtyString(), []), N(0))
 
     def test_element(self) -> None:
         assert element(L(CtyString(), ["a", "b"]), N(3)).value == "b" # wraps

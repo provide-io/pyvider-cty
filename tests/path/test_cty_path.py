@@ -1,6 +1,14 @@
 import pytest
 
-from pyvider.cty import CtyObject, CtyString, CtyValue
+from pyvider.cty import (
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyObject,
+    CtyString,
+    CtyTuple,
+    CtyValue,
+)
 from pyvider.cty.exceptions import AttributePathError
 from pyvider.cty.path import (
     CtyPath,
@@ -57,7 +65,6 @@ class TestGetAttrStep:
             step.apply_type(obj_type)
 
 
-from pyvider.cty import CtyDynamic, CtyList, CtyTuple
 
 
 class TestIndexStep:
@@ -119,7 +126,6 @@ class TestIndexStep:
             step.apply_type(tuple_type)
 
 
-from pyvider.cty import CtyMap
 
 
 class TestKeyStep:
