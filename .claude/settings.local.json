@@ -23,7 +23,8 @@
       "Bash(while read file)",
       "Bash(awk:*)",
       "Bash(./validate-pipeline.sh)",
-      "Bash(rye run:*)"
+      "Bash(rye run:*)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": [],
