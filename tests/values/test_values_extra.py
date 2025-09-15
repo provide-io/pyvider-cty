@@ -16,10 +16,12 @@ from pyvider.cty import (
 def test_value_eq() -> None:
     assert CtyString().validate("a") != "a"
 
+
 def test_value_contains() -> None:
     assert "a" in CtyString().validate("a")
     assert "b" not in CtyString().validate("a")
     assert not CtyValue.unknown(CtyString()).__contains__("a")
+
 
 def test_value_bool() -> None:
     assert bool(CtyString().validate("a"))
@@ -27,13 +29,18 @@ def test_value_bool() -> None:
     assert not bool(CtyValue.unknown(CtyString()))
     assert bool(CtyValue(CtyDynamic(), CtyString().validate("a")))
 
+
 def test_value_len() -> None:
     with pytest.raises(TypeError):
         len(CtyValue.unknown(CtyString()))
     assert len(CtyValue.null(CtyList(element_type=CtyString()))) == 0
     with pytest.raises(TypeError):
         len(CtyString().validate("a"))
-    assert len(CtyValue(CtyDynamic(), CtyList(element_type=CtyString()).validate(["a"]))) == 1
+    assert (
+        len(CtyValue(CtyDynamic(), CtyList(element_type=CtyString()).validate(["a"])))
+        == 1
+    )
+
 
 def test_value_iter() -> None:
     with pytest.raises(TypeError):
@@ -43,6 +50,7 @@ def test_value_iter() -> None:
     assert [v.value for v in iter(map_val)] == ["b"]
     with pytest.raises(TypeError):
         iter(CtyString().validate("a"))
+
 
 def test_value_getitem() -> None:
     with pytest.raises(TypeError):
@@ -56,6 +64,7 @@ def test_value_getitem() -> None:
     slice_val = list_val[1:]
     assert isinstance(slice_val, CtyValue) and isinstance(slice_val.value, tuple)
     assert len(slice_val.value) == 1 and slice_val.value[0].value == "b"
+
 
 def test_value_hash() -> None:
     # Test that unhashable collection types correctly raise TypeError
@@ -76,9 +85,14 @@ def test_value_hash() -> None:
     # Unknown values are hashable
     assert isinstance(hash(CtyValue.unknown(CtyString())), int)
 
+
 def test_is_true_false_empty() -> None:
-    assert CtyBool().validate(True).is_true() and not CtyBool().validate(False).is_true()
-    assert not CtyBool().validate(True).is_false() and CtyBool().validate(False).is_false()
+    assert (
+        CtyBool().validate(True).is_true() and not CtyBool().validate(False).is_true()
+    )
+    assert (
+        not CtyBool().validate(True).is_false() and CtyBool().validate(False).is_false()
+    )
     assert CtyValue(CtyDynamic(), CtyBool().validate(True)).is_true()
     assert not CtyValue(CtyDynamic(), CtyBool().validate(False)).is_true()
     assert not CtyValue(CtyDynamic(), CtyBool().validate(True)).is_false()
@@ -87,11 +101,13 @@ def test_is_true_false_empty() -> None:
     assert CtyString().validate("").is_empty()
     assert CtyMap(element_type=CtyString()).validate({}).is_empty()
 
+
 def test_post_init() -> None:
     val = CtyValue(vtype=CtyString(), is_unknown=True, is_null=True)
     assert val.is_unknown and not val.is_null
     val2 = CtyValue(vtype=CtyString(), is_null=True, value="some value")
     assert val2.is_null and val2.value is None
+
 
 def test_raw_value_unknown() -> None:
     with pytest.raises(ValueError):

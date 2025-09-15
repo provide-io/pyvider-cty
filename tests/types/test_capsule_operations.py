@@ -28,6 +28,7 @@ from pyvider.cty.marks import CtyMark
 @define(frozen=True)
 class OpaqueObject:
     """A simple class to be encapsulated."""
+
     id: int
     data: str
 
@@ -36,13 +37,12 @@ class TestCtyCapsuleWithEqAndHash:
     def test_equality_uses_custom_equal_fn(self) -> None:
         # Use a mock as a "spy" to track calls to a real lambda
         call_tracker = Mock()
+
         def my_equal_fn(a: Any, b: Any) -> bool:
             call_tracker(a, b)
             return True
 
-        capsule_type = CtyCapsuleWithOps(
-            "Opaque", OpaqueObject, equal_fn=my_equal_fn
-        )
+        capsule_type = CtyCapsuleWithOps("Opaque", OpaqueObject, equal_fn=my_equal_fn)
         val1 = capsule_type.validate(OpaqueObject(1, "foo"))
         val2 = capsule_type.validate(OpaqueObject(2, "bar"))
         assert val1 == val2
@@ -51,13 +51,12 @@ class TestCtyCapsuleWithEqAndHash:
     def test_hash_uses_custom_hash_fn(self) -> None:
         # Use a mock as a "spy" to track calls to a real lambda
         call_tracker = Mock()
+
         def my_hash_fn(a: Any) -> int:
             call_tracker(a)
             return 42
 
-        capsule_type = CtyCapsuleWithOps(
-            "Opaque", OpaqueObject, hash_fn=my_hash_fn
-        )
+        capsule_type = CtyCapsuleWithOps("Opaque", OpaqueObject, hash_fn=my_hash_fn)
         val = capsule_type.validate(OpaqueObject(1, "foo"))
         assert hash(val) == 42
         call_tracker.assert_called_once_with(val.value)
@@ -78,12 +77,11 @@ class TestCtyCapsuleWithConversion:
         return Mock(return_value=None)
 
     @pytest.fixture
-    def capsule_type_with_converter(
-        self, mock_convert_fn: Mock
-    ) -> CtyCapsuleWithOps:
+    def capsule_type_with_converter(self, mock_convert_fn: Mock) -> CtyCapsuleWithOps:
         # Use a real lambda that calls the mock to satisfy the arity check
         def convert_wrapper(val: Any, target_type: CtyType) -> CtyValue | None:
             return mock_convert_fn(val, target_type)
+
         return CtyCapsuleWithOps("Opaque", OpaqueObject, convert_fn=convert_wrapper)
 
     def test_successful_conversion_uses_custom_fn(
@@ -122,7 +120,7 @@ class TestCtyCapsuleWithConversion:
 
     def test_conversion_on_capsule_without_converter_fails(self) -> None:
         """TDD: Verifies conversion fails if no `convert_fn` is defined."""
-        capsule_type = CtyCapsuleWithOps("Opaque", OpaqueObject) # No convert_fn
+        capsule_type = CtyCapsuleWithOps("Opaque", OpaqueObject)  # No convert_fn
         capsule_val = capsule_type.validate(OpaqueObject(1, "d"))
 
         with pytest.raises(CtyConversionError):
@@ -158,5 +156,7 @@ class TestCtyCapsuleWithConversion:
         wrong_result = CtyValue(CtyNumber(), 123)
         mock_convert_fn.return_value = wrong_result
 
-        with pytest.raises(CtyConversionError, match="returned a value of the wrong type"):
+        with pytest.raises(
+            CtyConversionError, match="returned a value of the wrong type"
+        ):
             convert(capsule_val, target_type)

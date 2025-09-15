@@ -43,13 +43,15 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """
-    with error_boundary(context={
-        "operation": "cty_value_conversion",
-        "source_type": str(value.type),
-        "target_type": str(target_type),
-        "value_is_null": value.is_null,
-        "value_is_unknown": value.is_unknown
-    }):
+    with error_boundary(
+        context={
+            "operation": "cty_value_conversion",
+            "source_type": str(value.type),
+            "target_type": str(target_type),
+            "value_is_null": value.is_null,
+            "value_is_unknown": value.is_unknown,
+        }
+    ):
         # Early exit cases
         if value.type.equal(target_type):
             return value
@@ -93,16 +95,16 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         if isinstance(value.type, CtyDynamic):
             if not isinstance(value.value, CtyValue):
                 error_message = ERR_DYNAMIC_VALUE_NOT_CTYVALUE
-                raise CtyConversionError(
-                    error_message, source_value=value
-                )
+                raise CtyConversionError(error_message, source_value=value)
             return convert(value.value, target_type)
 
         if isinstance(target_type, CtyDynamic):
             return value.with_marks(set(value.marks))
 
         # String conversion
-        if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
+        if isinstance(target_type, CtyString) and not isinstance(
+            value.type, CtyCapsule
+        ):
             raw = value.value
             if isinstance(raw, bool):
                 new_val = "true" if raw else "false"
@@ -141,10 +143,14 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             )
 
         # Collection conversions
-        if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
+        if isinstance(target_type, CtySet) and isinstance(
+            value.type, CtyList | CtyTuple
+        ):
             return target_type.validate(value.value).with_marks(set(value.marks))
 
-        if isinstance(target_type, CtyList) and isinstance(value.type, CtySet | CtyTuple):
+        if isinstance(target_type, CtyList) and isinstance(
+            value.type, CtySet | CtyTuple
+        ):
             return target_type.validate(value.value).with_marks(set(value.marks))
 
         if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
@@ -167,9 +173,7 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                     new_attrs[name] = CtyValue.null(target_attr_type)
                 else:
                     error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
-                    raise CtyConversionError(
-                        error_message
-                    )
+                    raise CtyConversionError(error_message)
             return target_type.validate(new_attrs).with_marks(set(value.marks))
 
         # Fallback - no conversion available

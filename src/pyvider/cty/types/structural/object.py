@@ -38,7 +38,9 @@ class CtyObject(CtyType[dict[str, object]]):
         def safe_hash_type(cty_type: CtyType[Any]) -> int:
             if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
                 # For nested objects, use a simpler hash to avoid recursion
-                return hash((cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys()))))
+                return hash(
+                    (cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys())))
+                )
             return hash(cty_type)
 
         attr_hashes = tuple(
@@ -53,7 +55,7 @@ class CtyObject(CtyType[dict[str, object]]):
         optional_list = sorted(self.optional_attributes)
         if len(attr_keys) > 5:
             # Truncate long attribute lists
-            attr_display = f"{attr_keys[:5]}...+{len(attr_keys)-5} more"
+            attr_display = f"{attr_keys[:5]}...+{len(attr_keys) - 5} more"
         else:
             attr_display = str(attr_keys)
 
@@ -75,9 +77,7 @@ class CtyObject(CtyType[dict[str, object]]):
             return CtyValue.null(self)
         from pyvider.cty.types.structural.dynamic import CtyDynamic
 
-        unknown_optionals = self.optional_attributes - set(
-            self.attribute_types.keys()
-        )
+        unknown_optionals = self.optional_attributes - set(self.attribute_types.keys())
         if unknown_optionals:
             raise CtyAttributeValidationError(
                 f"Unknown optional attributes: {', '.join(sorted(list(unknown_optionals)))}"
@@ -102,12 +102,14 @@ class CtyObject(CtyType[dict[str, object]]):
             )
 
         for name, attr_type in self.attribute_types.items():
-            with error_boundary(context={
-                "operation": "object_attribute_validation",
-                "attribute_name": name,
-                "attribute_type": str(attr_type),
-                "is_optional": name in self.optional_attributes
-            }):
+            with error_boundary(
+                context={
+                    "operation": "object_attribute_validation",
+                    "attribute_name": name,
+                    "attribute_type": str(attr_type),
+                    "is_optional": name in self.optional_attributes,
+                }
+            ):
                 path = CtyPath(steps=[GetAttrStep(name)])
                 if name not in value:
                     if name in self.optional_attributes:
@@ -133,7 +135,10 @@ class CtyObject(CtyType[dict[str, object]]):
                         steps=[GetAttrStep(name)] + (e.path.steps if e.path else [])
                     )
                     raise CtyAttributeValidationError(
-                        e.message, value=raw_attr_value, path=new_path, original_exception=e
+                        e.message,
+                        value=raw_attr_value,
+                        path=new_path,
+                        original_exception=e,
                     ) from e
 
                 if (
@@ -162,9 +167,7 @@ class CtyObject(CtyType[dict[str, object]]):
         if obj_value.is_null:
             return CtyValue.null(self.attribute_types[name])
         if isinstance(obj_value.value, dict):
-            return obj_value.value.get(
-                name, CtyValue.null(self.attribute_types[name])
-            )  # type: ignore
+            return obj_value.value.get(name, CtyValue.null(self.attribute_types[name]))  # type: ignore
         raise CtyTypeMismatchError("CtyObject value is not a dict")
 
     def has_attribute(self, name: str) -> bool:

@@ -35,11 +35,13 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
     Parses a Terraform type constraint, represented as a raw Python object
     (typically from JSON), into a CtyType instance.
     """
-    with error_boundary(context={
-        "operation": "terraform_type_parsing",
-        "tf_type": str(tf_type),
-        "tf_type_python_type": type(tf_type).__name__
-    }):
+    with error_boundary(
+        context={
+            "operation": "terraform_type_parsing",
+            "tf_type": str(tf_type),
+            "tf_type_python_type": type(tf_type).__name__,
+        }
+    ):
         if isinstance(tf_type, str):
             match tf_type:
                 case "string":
@@ -51,7 +53,9 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
                 case "dynamic":
                     return CtyDynamic()
                 case _:
-                    raise CtyValidationError(f"Unknown primitive type name: '{tf_type}'")
+                    raise CtyValidationError(
+                        f"Unknown primitive type name: '{tf_type}'"
+                    )
 
         if isinstance(tf_type, list) and len(tf_type) == 2:
             type_kind, type_spec = tf_type
@@ -75,7 +79,8 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
                             f"Object type spec must be a dictionary, got {type(type_spec).__name__}"
                         )
                     attr_types = {
-                        name: parse_tf_type_to_ctytype(spec) for name, spec in type_spec.items()
+                        name: parse_tf_type_to_ctytype(spec)
+                        for name, spec in type_spec.items()
                     }
                     return CtyObject(attribute_types=attr_types)
                 case "tuple":
@@ -83,7 +88,9 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
                         raise CtyValidationError(
                             f"Tuple type spec must be a list, got {type(type_spec).__name__}"
                         )
-                    elem_types = tuple(parse_tf_type_to_ctytype(spec) for spec in type_spec)
+                    elem_types = tuple(
+                        parse_tf_type_to_ctytype(spec) for spec in type_spec
+                    )
                     return CtyTuple(element_types=elem_types)
 
         raise CtyValidationError(f"Invalid Terraform type specification: {tf_type}")

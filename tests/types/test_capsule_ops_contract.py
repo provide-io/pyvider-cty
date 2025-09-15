@@ -2,6 +2,7 @@
 TDD: Strengthens the CtyCapsuleWithOps contract by validating function arity
 in the constructor.
 """
+
 from typing import Any
 
 import pytest

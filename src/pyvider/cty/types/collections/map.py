@@ -52,12 +52,14 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             )
         validated_map: dict[str, CtyValue[V]] = {}
         for k, v in value.items():
-            with error_boundary(context={
-                "operation": "map_element_validation",
-                "map_key": str(k),
-                "element_type": str(self.element_type),
-                "value_type": type(v).__name__
-            }):
+            with error_boundary(
+                context={
+                    "operation": "map_element_validation",
+                    "map_key": str(k),
+                    "element_type": str(self.element_type),
+                    "value_type": type(v).__name__,
+                }
+            ):
                 if not isinstance(k, str):
                     raise CtyMapValidationError(
                         f"Map keys must be strings, but got key of type {type(k).__name__}"
@@ -69,7 +71,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                     validated_map[normalized_key] = self.element_type.validate(v)
                 except CtyValidationError as e:
                     new_path = CtyPath(
-                        steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else [])
+                        steps=[KeyStep(normalized_key)]
+                        + (e.path.steps if e.path else [])
                     )
                     raise CtyMapValidationError(
                         e.message, value=v, path=new_path, original_exception=e

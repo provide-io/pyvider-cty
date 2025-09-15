@@ -9,7 +9,7 @@ from typing import Any, TypeVar
 
 from pyvider.cty.types import CtyType
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 # pyvider-cty/src/pyvider/cty/conversion/_cache.py
 """
@@ -24,9 +24,9 @@ F = TypeVar("F", bound=Callable[..., Any])
 _structural_key_cache: ContextVar[dict[int, tuple[Any, ...]] | None] = ContextVar(
     "_structural_key_cache", default=None
 )
-_container_schema_cache: ContextVar[
-    dict[tuple[Any, ...], CtyType[Any]] | None
-] = ContextVar("_container_schema_cache", default=None)
+_container_schema_cache: ContextVar[dict[tuple[Any, ...], CtyType[Any]] | None] = (
+    ContextVar("_container_schema_cache", default=None)
+)
 
 
 def get_structural_key_cache() -> dict[int, tuple[Any, ...]] | None:

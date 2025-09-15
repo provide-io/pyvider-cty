@@ -55,7 +55,9 @@ class TestCtyValueMapOperations:
         with pytest.raises(TypeError):
             list_val.with_key("foo", "bar")
 
-    def test_map_with_key_with_wrong_element_type_raises_error(self, map_val: CtyValue) -> None:
+    def test_map_with_key_with_wrong_element_type_raises_error(
+        self, map_val: CtyValue
+    ) -> None:
         """Verifies that .with_key() validates the new value against the map's element type."""
         with pytest.raises(CtyValidationError):
             map_val.with_key("b", "not-a-number")
@@ -99,7 +101,9 @@ class TestCtyValueListOperations:
         with pytest.raises(TypeError):
             map_val.append("c")
 
-    def test_list_with_element_at_with_wrong_element_type_raises_error(self, list_val: CtyValue) -> None:
+    def test_list_with_element_at_with_wrong_element_type_raises_error(
+        self, list_val: CtyValue
+    ) -> None:
         """Verifies that .with_element_at() validates the new element against the list's element type."""
         with pytest.raises(CtyValidationError):
             list_val.with_element_at(0, 456)
