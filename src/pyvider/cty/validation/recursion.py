@@ -15,20 +15,19 @@ The implementation is designed for production IaC requirements where:
 
 from __future__ import annotations
 
-import inspect
-import threading
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
+import threading
+import time
 from typing import Any
-from weakref import WeakKeyDictionary
 
 from provide.foundation import logger
 from provide.foundation.errors import error_boundary
+
 from pyvider.cty.config.defaults import (
-    MAX_VALIDATION_DEPTH,
     MAX_OBJECT_REVISITS,
+    MAX_VALIDATION_DEPTH,
     MAX_VALIDATION_TIME_MS,
 )
 
@@ -67,7 +66,7 @@ class RecursionContext:
     max_object_revisits: int = MAX_OBJECT_REVISITS
     max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset context for new validation session."""
         self.validation_graph.clear()
         self.validation_path.clear()
@@ -87,7 +86,7 @@ def get_recursion_context() -> RecursionContext:
     return _thread_local.recursion_context
 
 
-def clear_recursion_context():
+def clear_recursion_context() -> None:
     """Clear thread-local recursion context."""
     if hasattr(_thread_local, "recursion_context"):
         _thread_local.recursion_context.reset()
@@ -103,7 +102,7 @@ class RecursionDetector:
     - Performance pathological cases (excessive validation time)
     """
 
-    def __init__(self, context: RecursionContext | None = None):
+    def __init__(self, context: RecursionContext | None = None) -> None:
         self.context = context or get_recursion_context()
 
     def should_continue_validation(
@@ -210,11 +209,11 @@ class RecursionDetector:
 
         return True, None
 
-    def enter_validation_scope(self, scope_name: str):
+    def enter_validation_scope(self, scope_name: str) -> None:
         """Enter a new validation scope for path tracking."""
         self.context.validation_path.append(scope_name)
 
-    def exit_validation_scope(self):
+    def exit_validation_scope(self) -> None:
         """Exit the current validation scope."""
         if self.context.validation_path:
             self.context.validation_path.pop()
@@ -252,7 +251,7 @@ def with_recursion_detection(func: Callable) -> Callable:
 
         detector = RecursionDetector(context)
         scope_name = f"{self.__class__.__name__}.validate(type={type(value).__name__})"
-        
+
         with error_boundary(context={
             "operation": "recursion_detection",
             "type_name": self.__class__.__name__,

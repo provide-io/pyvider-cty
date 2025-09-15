@@ -39,7 +39,6 @@ from .types import (
 from .values import CtyValue
 
 __all__ = [
-    "__version__",
     "BytesCapsule",
     "CtyAttributeValidationError",
     "CtyBool",
@@ -64,6 +63,7 @@ __all__ = [
     "CtyTypeParseError",
     "CtyValidationError",
     "CtyValue",
+    "__version__",
     "convert",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",

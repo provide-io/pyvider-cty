@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-# pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
-
-import unicodedata
-from typing import Any
 from decimal import Decimal
+from typing import Any
+
+# pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
+import unicodedata
 
 import attrs
 from provide.foundation.errors import error_boundary
 
-from pyvider.cty.types import CtyObject, CtyType
+from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
 
 from ._cache import (
@@ -49,7 +49,7 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
 
         if item_id in visited_ids:
             continue
-        
+
         visited_ids.add(item_id)
 
         # Placeholder is essential for cycle detection.
@@ -61,14 +61,14 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
             children.extend(current_item.values())
         elif isinstance(current_item, list | tuple | set | frozenset):
             children.extend(current_item)
-        
+
         work_stack.extend(children)
 
     # Build the final keys from the bottom up.
     while post_process_stack:
         container = post_process_stack.pop()
         container_id = id(container)
-        
+
         key: tuple[Any, ...]
         if isinstance(container, dict):
             # Sort items by key's string representation for deterministic order.

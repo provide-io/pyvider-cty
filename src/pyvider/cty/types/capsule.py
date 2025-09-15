@@ -5,8 +5,8 @@ from __future__ import annotations
 Defines the CtyCapsule type for encapsulating opaque Python objects
 within the CTY type system.
 """
-import inspect
 from collections.abc import Callable
+import inspect
 from typing import Any, ClassVar
 
 from pyvider.cty.exceptions import CtyValidationError

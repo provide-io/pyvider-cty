@@ -5,11 +5,11 @@ from __future__ import annotations
 Provides a thread-safe, context-aware caching mechanism for type inference
 to improve performance and ensure concurrent safety.
 """
-import threading
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from contextvars import ContextVar, copy_context
+from contextvars import ContextVar
 from functools import wraps
+import threading
 from typing import Any, TypeVar
 
 from ..types import CtyType
@@ -37,7 +37,7 @@ def get_container_schema_cache() -> dict[tuple[Any, ...], CtyType[Any]] | None:
 
 
 @contextmanager
-def inference_cache_context() -> Generator[None, None, None]:
+def inference_cache_context() -> Generator[None]:
     """
     A context manager that provides an isolated inference cache for the duration
     of its context. If a cache is already active, it reuses the existing one.
@@ -55,7 +55,7 @@ def inference_cache_context() -> Generator[None, None, None]:
         yield
 
 
-def with_inference_cache(func: F) -> F:
+def with_inference_cache[F: Callable[..., Any]](func: F) -> F:
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.

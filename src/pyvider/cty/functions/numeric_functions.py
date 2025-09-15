@@ -5,9 +5,9 @@ import math
 from typing import Any
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
+from pyvider.cty.config.defaults import POSITIVE_BOUNDARY, ZERO_VALUE
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
-from pyvider.cty.config.defaults import ZERO_VALUE, POSITIVE_BOUNDARY
 
 
 def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
