@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-"""
-Implementation of the public `convert` and `unify` functions for explicit
-CTY-to-CTY type conversion.
-"""
-
 from collections.abc import Iterable
 from functools import lru_cache
 from typing import Any
@@ -26,6 +21,11 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+
+"""
+Implementation of the public `convert` and `unify` functions for explicit
+CTY-to-CTY type conversion.
+"""
 
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901

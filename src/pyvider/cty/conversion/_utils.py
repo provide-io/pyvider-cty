@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 # pyvider-cty/src/pyvider/cty/conversion/_utils.py
 """Internal conversion utilities to avoid circular dependencies."""
-from typing import Any
 
 
 def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:

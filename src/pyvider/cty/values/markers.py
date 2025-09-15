@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
+from attrs import define
+
 # pyvider/cty/values/markers.py
 """
 This module contains simple marker classes to break import cycles.
 """
-
-from decimal import Decimal
-
-from attrs import define
 
 
 class UnknownValue:

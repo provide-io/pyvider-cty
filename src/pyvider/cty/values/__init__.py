@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from pyvider.cty.values.base import CtyValue
+from pyvider.cty.values.markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
+
 #
 # pyvider/cty/values/__init__.py
 #
@@ -10,9 +13,6 @@ This package defines CtyValue, the runtime representation of values
 within the CTY type system. CtyValue instances pair a Python value
 with its corresponding CtyType and associated metadata.
 """
-
-from pyvider.cty.values.base import CtyValue
-from pyvider.cty.values.markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
 
 __all__ = [
     "UNREFINED_UNKNOWN",

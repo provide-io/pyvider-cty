@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-# pyvider/cty/types/capsule.py
-"""
-Defines the CtyCapsule type for encapsulating opaque Python objects
-within the CTY type system.
-"""
 from collections.abc import Callable
 import inspect
 from typing import Any, ClassVar
@@ -13,6 +8,12 @@ from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.values import CtyValue
+
+# pyvider/cty/types/capsule.py
+"""
+Defines the CtyCapsule type for encapsulating opaque Python objects
+within the CTY type system.
+"""
 
 
 class CtyCapsule(CtyType[Any]):

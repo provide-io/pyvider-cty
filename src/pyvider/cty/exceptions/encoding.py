@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pyvider.cty.exceptions.base import CtyError
+
 #
 # pyvider/cty/exceptions/encoding.py
 #
@@ -7,8 +9,6 @@ from __future__ import annotations
 Defines exceptions related to CTY schema transformations, path errors,
 and general encoding/serialization processes.
 """
-
-from pyvider.cty.exceptions.base import CtyError
 
 ################################################################################
 # Transformation and Path Errors

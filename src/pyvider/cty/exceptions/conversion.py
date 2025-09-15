@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from pyvider.cty.exceptions.base import CtyError
+
 # pyvider/cty/exceptions/conversion.py
 """
 Defines exceptions related to CTY type and value conversions.
 """
-
-from pyvider.cty.exceptions.base import CtyError
 
 
 class CtyConversionError(CtyError):
