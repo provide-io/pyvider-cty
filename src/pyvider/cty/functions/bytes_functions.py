@@ -13,18 +13,14 @@ from pyvider.cty.types import BytesCapsule
 
 def byteslen(buffer: CtyValue[Any]) -> CtyValue[Any]:
     if not buffer.type.equal(BytesCapsule):
-        error_message = ERR_BYTESLEN_ARG_MUST_BE_BYTES_CAPSULE.format(
-            type=buffer.type.ctype
-        )
+        error_message = ERR_BYTESLEN_ARG_MUST_BE_BYTES_CAPSULE.format(type=buffer.type.ctype)
         raise CtyFunctionError(error_message)
     if buffer.is_unknown or buffer.is_null:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(len(buffer.value))  # type: ignore[arg-type]
 
 
-def bytesslice(
-    buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]
-) -> CtyValue[Any]:
+def bytesslice(buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]) -> CtyValue[Any]:
     if (
         not buffer.type.equal(BytesCapsule)
         or not isinstance(start.type, CtyNumber)

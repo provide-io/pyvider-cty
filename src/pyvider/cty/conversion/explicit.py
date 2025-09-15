@@ -102,9 +102,7 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             return value.with_marks(set(value.marks))
 
         # String conversion
-        if isinstance(target_type, CtyString) and not isinstance(
-            value.type, CtyCapsule
-        ):
+        if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
             raw = value.value
             new_val = ("true" if raw else "false") if isinstance(raw, bool) else str(raw)
             return CtyValue(target_type, new_val).with_marks(set(value.marks))
@@ -140,14 +138,10 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             )
 
         # Collection conversions
-        if isinstance(target_type, CtySet) and isinstance(
-            value.type, CtyList | CtyTuple
-        ):
+        if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
             return target_type.validate(value.value).with_marks(set(value.marks))
 
-        if isinstance(target_type, CtyList) and isinstance(
-            value.type, CtySet | CtyTuple
-        ):
+        if isinstance(target_type, CtyList) and isinstance(value.type, CtySet | CtyTuple):
             return target_type.validate(value.value).with_marks(set(value.marks))
 
         if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
@@ -174,9 +168,7 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             return target_type.validate(new_attrs).with_marks(set(value.marks))
 
         # Fallback - no conversion available
-        error_message = ERR_CANNOT_CONVERT_GENERAL.format(
-            value_type=value.type, target_type=target_type
-        )
+        error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
         raise CtyConversionError(
             error_message,
             source_value=value,

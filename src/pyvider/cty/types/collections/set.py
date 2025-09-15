@@ -22,9 +22,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
 
     def __attrs_post_init__(self) -> None:
         if not isinstance(self.element_type, CtyType):
-            raise CtySetValidationError(
-                f"Expected CtyType for element_type, got {type(self.element_type)}"
-            )
+            raise CtySetValidationError(f"Expected CtyType for element_type, got {type(self.element_type)}")
 
     @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
@@ -57,14 +55,10 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
             except Exception as e:
-                raise CtySetValidationError(
-                    f"Failed to process element for set: {e}", value=raw_item
-                ) from e
+                raise CtySetValidationError(f"Failed to process element for set: {e}", value=raw_item) from e
 
         is_unknown = any(v.is_unknown for v in unique_items.values())
-        return CtyValue(
-            vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown
-        )
+        return CtyValue(vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown)
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtySet):

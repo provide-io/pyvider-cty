@@ -90,9 +90,7 @@ class InvalidTypeError(CtyError):
         invalid_type: The invalid type that caused the error
     """
 
-    def __init__(
-        self, message: str, invalid_type: object = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, message: str, invalid_type: object = None, **kwargs: Any) -> None:
         """
         Initializes the InvalidTypeError.
 
@@ -109,9 +107,7 @@ class InvalidTypeError(CtyError):
 
         if invalid_type is not None:
             context["cty.invalid_type"] = type(invalid_type).__name__
-            context["cty.invalid_type_str"] = str(invalid_type)[
-                :100
-            ]  # Truncated for safety
+            context["cty.invalid_type_str"] = str(invalid_type)[:100]  # Truncated for safety
 
         super().__init__(message, **kwargs)
 
@@ -131,9 +127,7 @@ class AttributePathError(CtyError):
         value: The value the path was being applied to
     """
 
-    def __init__(
-        self, message: str, path: object = None, value: object = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, message: str, path: object = None, value: object = None, **kwargs: Any) -> None:
         """
         Initializes the AttributePathError.
 
@@ -219,9 +213,7 @@ class EncodingError(CtyError):
                     data_repr[:100] + "..." if len(data_repr) > 100 else data_repr
                 )
             except Exception:
-                context["encoding.data_preview"] = (
-                    f"<repr failed for {type(data).__name__}>"
-                )
+                context["encoding.data_preview"] = f"<repr failed for {type(data).__name__}>"
 
         # Add format information to the message if available
         if encoding is not None and not message.strip().startswith(encoding.upper()):
@@ -307,9 +299,7 @@ class DeserializationError(EncodingError):
         context["cty.serialization_direction"] = "deserialize"
 
         if data is not None:
-            context["cty.deserialized_data_size"] = (
-                len(data) if hasattr(data, "__len__") else "unknown"
-            )
+            context["cty.deserialized_data_size"] = len(data) if hasattr(data, "__len__") else "unknown"
 
         super().__init__(message, data, format_name, **kwargs)
 
@@ -351,9 +341,7 @@ class JsonEncodingError(EncodingError):
         operation: The operation that failed (encode/decode)
     """
 
-    def __init__(
-        self, message: str, data: object = None, operation: str | None = None
-    ) -> None:
+    def __init__(self, message: str, data: object = None, operation: str | None = None) -> None:
         """
         Initializes the JsonEncodingError.
 
@@ -370,12 +358,8 @@ class JsonEncodingError(EncodingError):
         if operation and self.encoding:
             current_message = str(self.args[0]) if self.args else ""
             # Remove the "JSON encoding error: " part, add op, then re-add prefix
-            base_message = current_message.replace(
-                f"{self.encoding.upper()} encoding error: ", "", 1
-            )
-            formatted_message = (
-                f"{self.encoding.upper()} {operation} error: {base_message}"
-            )
+            base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
+            formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
             self.args = (formatted_message, *self.args[1:])  # type: ignore[misc]
 
 
@@ -392,9 +376,7 @@ class MsgPackEncodingError(EncodingError):
         operation: The operation that failed (encode/decode)
     """
 
-    def __init__(
-        self, message: str, data: object = None, operation: str | None = None
-    ) -> None:
+    def __init__(self, message: str, data: object = None, operation: str | None = None) -> None:
         """
         Initializes the MsgPackEncodingError.
 
@@ -407,12 +389,8 @@ class MsgPackEncodingError(EncodingError):
         super().__init__(message, data, "msgpack")
         if operation and self.encoding:
             current_message = str(self.args[0]) if self.args else ""
-            base_message = current_message.replace(
-                f"{self.encoding.upper()} encoding error: ", "", 1
-            )
-            formatted_message = (
-                f"{self.encoding.upper()} {operation} error: {base_message}"
-            )
+            base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
+            formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
             self.args = (formatted_message, *self.args[1:])  # type: ignore[misc]
 
 
@@ -450,9 +428,7 @@ class WireFormatError(TransformationError):
         self.operation = operation
 
         # Initialize TransformationError with the original message and its specific args
-        super().__init__(
-            message, schema=kwargs.get("schema"), target_type=kwargs.get("target_type")
-        )
+        super().__init__(message, schema=kwargs.get("schema"), target_type=kwargs.get("target_type"))
 
         # self.args[0] now contains message possibly formatted by TransformationError
         # Append WireFormatError specific details to it

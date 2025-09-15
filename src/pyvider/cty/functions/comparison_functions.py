@@ -90,9 +90,7 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
 
     # Handle known value comparisons
     if not isinstance(a.type, CtyNumber | CtyString) or not a.type.equal(b.type):
-        error_message = ERR_CANNOT_COMPARE.format(
-            type1=a.type.ctype, type2=b.type.ctype
-        )
+        error_message = ERR_CANNOT_COMPARE.format(type1=a.type.ctype, type2=b.type.ctype)
         raise CtyFunctionError(error_message)
 
     ops = COMPARISON_OPS_MAP
@@ -139,9 +137,7 @@ def _validate_homogeneous_types(known_args: list[CtyValue[Any]], op: str) -> Non
         raise CtyFunctionError(error_message)
 
 
-def _find_extreme_value(
-    known_args: list[CtyValue[Any]], op: str
-) -> CtyValue[Any] | None:
+def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[Any] | None:
     """Find the extreme (min/max) value among known arguments."""
     if not known_args:
         return None
@@ -158,15 +154,9 @@ def _filter_dominated_unknowns(
         if isinstance(unk.value, RefinedUnknownValue):
             ref = unk.value
             if op == "max":
-                if ref.number_upper_bound and (
-                    extreme_known.value >= ref.number_upper_bound[0]
-                ):
+                if ref.number_upper_bound and (extreme_known.value >= ref.number_upper_bound[0]):
                     continue
-            elif (
-                op == "min"
-                and ref.number_lower_bound
-                and (extreme_known.value <= ref.number_lower_bound[0])
-            ):
+            elif op == "min" and ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
                 continue
         remaining_unknowns.append(unk)
     return remaining_unknowns
