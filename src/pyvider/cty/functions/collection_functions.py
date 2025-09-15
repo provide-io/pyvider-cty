@@ -38,7 +38,7 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return input_val
     seen = set()
     result_elements = []
-    for cty_element in input_val.value:
+    for cty_element in input_val.value:  # type: ignore[attr-defined]
         try:
             if cty_element not in seen:
                 seen.add(cty_element)
@@ -53,7 +53,7 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
         if isinstance(input_val.type, CtyList | CtySet)
         else CtyDynamic()
     )
-    return CtyList(element_type=element_type).validate(result_elements)
+    return CtyList(element_type=element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
 def _extract_inner_value(outer_element_val: Any) -> Any:
@@ -96,7 +96,7 @@ def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     result_elements = []
     final_element_type: CtyType[Any] | None = None
 
-    for outer_element_val in input_val.value:
+    for outer_element_val in input_val.value:  # type: ignore[attr-defined]
         inner_val = _extract_inner_value(outer_element_val)
         if not isinstance(inner_val, CtyValue) or inner_val.is_null:
             continue
@@ -105,15 +105,15 @@ def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
         _validate_collection_element(inner_val)
 
-        for inner_element_val in inner_val.value:
+        for inner_element_val in inner_val.value:  # type: ignore[attr-defined]
             final_element_type = _determine_unified_element_type(
                 final_element_type, inner_element_val.type
             )
             result_elements.append(inner_element_val)
 
     if final_element_type is None:
-        return CtyList(element_type=CtyDynamic()).validate([])
-    return CtyList(element_type=final_element_type).validate(result_elements)
+        return CtyList(element_type=CtyDynamic()).validate([])  # type: ignore[no-any-return]
+    return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
 def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -151,8 +151,8 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
             )
 
     return CtyList[Any](element_type=element_type).validate(
-        sorted(input_val.value, key=lambda x: x.value)
-    )
+        sorted(input_val.value, key=lambda x: x.value)  # type: ignore[attr-defined]
+    )  # type: ignore[no-any-return]
 
 
 def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -179,7 +179,7 @@ def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
             return CtyValue.unknown(CtyNumber())
         if input_val.is_null:
             return CtyValue.unknown(CtyNumber())
-        return CtyNumber().validate(len(input_val.value))
+        return CtyNumber().validate(len(input_val.value))  # type: ignore[arg-type]
 
 
 def slice(
@@ -207,8 +207,8 @@ def slice(
         or end_val.is_unknown
     ):
         return CtyValue.unknown(CtyList(element_type=element_type))
-    start, end = int(start_val.value), int(end_val.value)
-    return CtyList(element_type=element_type).validate(input_val.value[start:end])
+    start, end = int(start_val.value), int(end_val.value)  # type: ignore[call-overload]
+    return CtyList(element_type=element_type).validate(input_val.value[start:end])  # type: ignore[no-any-return,index]
 
 
 def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
@@ -228,15 +228,15 @@ def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
         for lst in lists:
             if lst.is_null:
                 continue
-            for element in lst.value:
+            for element in lst.value:  # type: ignore[attr-defined]
                 if final_element_type is None:
                     final_element_type = element.type
                 elif not final_element_type.equal(element.type):
                     final_element_type = CtyDynamic()
                 result_elements.append(element)
         if final_element_type is None:
-            return CtyList(element_type=CtyDynamic()).validate([])
-        return CtyList(element_type=final_element_type).validate(result_elements)
+            return CtyList(element_type=CtyDynamic()).validate([])  # type: ignore[no-any-return]
+        return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
@@ -246,7 +246,7 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
         )
     if collection.is_null or collection.is_unknown:
         return CtyValue.unknown(CtyBool())
-    return CtyBool().validate(value in collection.value)
+    return CtyBool().validate(value in collection.value)  # type: ignore[attr-defined]
 
 
 def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -265,8 +265,8 @@ def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
         if input_val.is_null or input_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyString()))
         return CtyList(element_type=CtyString()).validate(
-            sorted(list(input_val.value.keys()))
-        )
+            sorted(list(input_val.value.keys()))  # type: ignore[attr-defined]
+        )  # type: ignore[no-any-return]
 
 
 def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -291,7 +291,7 @@ def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
             return CtyValue.unknown(CtyList(element_type=elem_type))
         if not isinstance(input_val.value, dict):
             raise CtyFunctionError("values: input value is not a map or object")
-        return CtyList(element_type=elem_type).validate(list(input_val.value.values()))
+        return CtyList(element_type=elem_type).validate(list(input_val.value.values()))  # type: ignore[no-any-return,attr-defined]
 
 
 def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -299,7 +299,7 @@ def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("reverse: input must be a list or tuple")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return input_val.type.validate(list(reversed(input_val.value)))
+    return input_val.type.validate(list(reversed(input_val.value)))  # type: ignore[no-any-return,attr-defined]
 
 
 def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
@@ -311,11 +311,11 @@ def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
         if not isinstance(key.type, CtyNumber) or key.is_null:
             return CtyBool().validate(False)
         idx = int(key.value)
-        return CtyBool().validate(0 <= idx < len(collection.value))
+        return CtyBool().validate(0 <= idx < len(collection.value))  # type: ignore[arg-type]
     if isinstance(collection.type, CtyMap | CtyObject):
         if not isinstance(key.type, CtyString) or key.is_null:
             return CtyBool().validate(False)
-        return CtyBool().validate(key.value in collection.value)
+        return CtyBool().validate(key.value in collection.value)  # type: ignore[attr-defined]
     raise CtyFunctionError(
         f"hasindex: collection must be a list, tuple, map, or object, got {collection.type.ctype}"
     )
@@ -351,12 +351,12 @@ def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
                 else CtyDynamic()
             )
             return CtyValue.unknown(elem_type)
-        length = len(collection.value)
+        length = len(collection.value)  # type: ignore[arg-type]
         if length == 0:
             raise CtyFunctionError(
                 "element: cannot use element function with an empty list"
             )
-        return collection.value[int(idx.value) % length]
+        return collection.value[int(idx.value) % length]  # type: ignore[index,arg-type]
 
 
 def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
@@ -366,7 +366,7 @@ def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
         if (
             isinstance(arg.type, CtyList | CtyTuple)
             and not arg.is_null
-            and len(arg.value) > 0
+            and len(arg.value) > 0  # type: ignore[arg-type]
         ):
             return arg
     raise CtyFunctionError(
@@ -392,8 +392,8 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     if collection.is_null or collection.is_unknown:
         return collection
     return CtyList(element_type=CtyString()).validate(
-        [v for v in collection.value if v.value]
-    )
+        [v for v in collection.value if v.value]  # type: ignore[attr-defined]
+    )  # type: ignore[no-any-return]
 
 
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
@@ -407,10 +407,10 @@ def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
     if chunk_size <= 0:
         raise CtyFunctionError("chunklist: size must be a positive number")
     chunks = [
-        collection.value[i : i + chunk_size]
-        for i in range(0, len(collection.value), chunk_size)
+        collection.value[i : i + chunk_size]  # type: ignore[index]
+        for i in range(0, len(collection.value), chunk_size)  # type: ignore[arg-type]
     ]
-    return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)
+    return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)  # type: ignore[no-any-return]
 
 
 def lookup(
@@ -428,11 +428,11 @@ def lookup(
         collection.is_null
         or key.is_null
         or not isinstance(collection.value, dict)
-        or key.value not in collection.value
+        or key.value not in collection.value  # type: ignore[attr-defined]
     ):
         return default
 
-    return collection.value[key.value]
+    return collection.value[key.value]  # type: ignore[no-any-return,index]
 
 
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
@@ -443,10 +443,10 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     result: dict[str, Any] = {}
     for arg in args:
         if not arg.is_null:
-            result.update(arg.value)  # type: ignore[arg-type]
+            result.update(arg.value)  # type: ignore[arg-type,call-overload]
 
     inferred_type = infer_cty_type_from_raw(result)
-    return inferred_type.validate(result)
+    return inferred_type.validate(result)  # type: ignore[no-any-return]
 
 
 def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
@@ -455,9 +455,9 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtySet(element_type=CtyDynamic()))
 
-    iterables = [list(arg.value) for arg in args if not arg.is_null]  # type: ignore[arg-type]
+    iterables = [list(arg.value) for arg in args if not arg.is_null]  # type: ignore[call-overload]
     if not iterables:
-        return CtySet(element_type=CtyDynamic()).validate([])  # type: ignore[return-value]
+        return CtySet(element_type=CtyDynamic()).validate([])  # type: ignore[no-any-return]
 
     prod = product(*iterables)
     result_tuples = [tuple(item) for item in prod]
@@ -471,7 +471,7 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     ]
     tuple_type = CtyTuple(element_types=tuple(elem_types))
 
-    return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[return-value]
+    return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[no-any-return]
 
 
 def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
@@ -482,10 +482,10 @@ def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     if keys.is_unknown or values.is_unknown:
         return CtyValue.unknown(CtyMap(element_type=CtyDynamic()))
     if keys.is_null or values.is_null:
-        return CtyMap(element_type=CtyDynamic()).validate({})
+        return CtyMap(element_type=CtyDynamic()).validate({})  # type: ignore[no-any-return]
 
-    key_list = [k.value for k in keys.value]
-    val_list = list(values.value)
+    key_list = [k.value for k in keys.value]  # type: ignore[attr-defined]
+    val_list = list(values.value)  # type: ignore[call-overload]
 
     result_map = {
         key_list[i]: val_list[i] for i in range(min(len(key_list), len(val_list)))
@@ -494,4 +494,4 @@ def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     val_elem_type = (
         values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
     )
-    return CtyMap(element_type=val_elem_type).validate(result_map)
+    return CtyMap(element_type=val_elem_type).validate(result_map)  # type: ignore[no-any-return]
