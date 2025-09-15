@@ -9,6 +9,8 @@ from typing import Any, TypeVar
 
 from pyvider.cty.types import CtyType
 
+F = TypeVar('F', bound=Callable[..., Any])
+
 # pyvider-cty/src/pyvider/cty/conversion/_cache.py
 """
 Provides a thread-safe, context-aware caching mechanism for type inference
@@ -56,7 +58,7 @@ def inference_cache_context() -> Generator[None]:
         yield
 
 
-def with_inference_cache[F: Callable[..., Any]](func: F) -> F:
+def with_inference_cache(func: F) -> F:
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.
