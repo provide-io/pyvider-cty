@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from pyvider.cty.values.base import CtyValue
 
 T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
 
 
 @runtime_checkable
