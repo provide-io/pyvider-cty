@@ -47,16 +47,16 @@ class TransformationError(CtyError):
         """
         self.schema = schema
         self.target_type = target_type
-        
+
         # Add rich transformation context
         context = kwargs.setdefault('context', {})
         context['cty.operation'] = 'schema_transformation'
         context['cty.error_category'] = 'transformation'
-        
+
         if schema is not None:
             context['transformation.schema_type'] = type(schema).__name__
             context['cty.source_schema_type'] = type(schema).__name__
-        
+
         if target_type is not None:
             target_name = getattr(target_type, '__name__', str(target_type))
             context['transformation.target_type'] = target_name
@@ -97,16 +97,16 @@ class InvalidTypeError(CtyError):
             invalid_type: The type object that was found to be invalid.
         """
         self.invalid_type = invalid_type
-        
+
         # Add type validation context
         context = kwargs.setdefault('context', {})
         context['cty.error_category'] = 'invalid_type'
         context['cty.validation_stage'] = 'type_definition'
-        
+
         if invalid_type is not None:
             context['cty.invalid_type'] = type(invalid_type).__name__
             context['cty.invalid_type_str'] = str(invalid_type)[:100]  # Truncated for safety
-        
+
         super().__init__(message, **kwargs)
 
 
@@ -136,22 +136,22 @@ class AttributePathError(CtyError):
         """
         self.path = path
         self.value = value
-        
+
         # Add path operation context
         context = kwargs.setdefault('context', {})
         context['cty.error_category'] = 'path_operation'
         context['cty.operation'] = 'attribute_path_access'
-        
+
         if path is not None:
             context['cty.path'] = str(path)
             if hasattr(path, 'steps'):
                 context['cty.path_depth'] = len(path.steps)
-        
+
         if value is not None:
             context['cty.value_type'] = type(value).__name__
             if hasattr(value, 'type'):
                 context['cty.cty_type'] = str(value.type)
-        
+
         super().__init__(message, **kwargs)
 
 
@@ -188,16 +188,16 @@ class EncodingError(CtyError):
         self.encoding = encoding
         # Store original message if subclasses want to modify it AFTER super call
         self._original_message = message
-        
+
         # Add encoding context
         context = kwargs.setdefault('context', {})
         context['cty.error_category'] = 'encoding'
         context['cty.operation'] = 'serialization'
-        
+
         if encoding:
             context['cty.encoding_format'] = encoding
             context['encoding.format'] = encoding
-        
+
         if data is not None:
             context['cty.data_type'] = type(data).__name__
             # Safe data representation for debugging
@@ -241,16 +241,16 @@ class SerializationError(EncodingError):
             format_name: The name of the serialization format.
         """
         self.value = value
-        
+
         # Add serialization-specific context
         context = kwargs.setdefault('context', {})
         context['cty.serialization_direction'] = 'serialize'
-        
+
         if value is not None and hasattr(value, 'type'):
             context['cty.serialized_cty_type'] = str(value.type)
             if hasattr(value, 'is_null'):
                 context['cty.serialized_is_null'] = value.is_null
-        
+
         super().__init__(message, value, format_name, **kwargs)
 
 
@@ -281,10 +281,10 @@ class DeserializationError(EncodingError):
         # Add deserialization-specific context
         context = kwargs.setdefault('context', {})
         context['cty.serialization_direction'] = 'deserialize'
-        
+
         if data is not None:
             context['cty.deserialized_data_size'] = len(data) if hasattr(data, '__len__') else 'unknown'
-        
+
         super().__init__(message, data, format_name, **kwargs)
 
 

@@ -159,28 +159,28 @@ class CtyPath:
     steps: list[PathStep] = field(factory=list)
 
     @classmethod
-    def empty(cls) -> "CtyPath":
+    def empty(cls) -> CtyPath:
         return cls([])
 
     @classmethod
-    def get_attr(cls, name: str) -> "CtyPath":
+    def get_attr(cls, name: str) -> CtyPath:
         return cls([GetAttrStep(name)])
 
     @classmethod
-    def index(cls, index: int) -> "CtyPath":
+    def index(cls, index: int) -> CtyPath:
         return cls([IndexStep(index)])
 
     @classmethod
-    def key(cls, key: object) -> "CtyPath":
+    def key(cls, key: object) -> CtyPath:
         return cls([KeyStep(key)])
 
-    def child(self, name: str) -> "CtyPath":
+    def child(self, name: str) -> CtyPath:
         return CtyPath([*self.steps, GetAttrStep(name)])
 
-    def index_step(self, index: int) -> "CtyPath":
+    def index_step(self, index: int) -> CtyPath:
         return CtyPath([*self.steps, IndexStep(index)])
 
-    def key_step(self, key: object) -> "CtyPath":
+    def key_step(self, key: object) -> CtyPath:
         return CtyPath([*self.steps, KeyStep(key)])
 
     def apply_path(self, value: object) -> CtyValue[Any]:

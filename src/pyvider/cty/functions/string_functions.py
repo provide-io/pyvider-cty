@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-
 from typing import Any
 
 from pyvider.cty import CtyList, CtyNumber, CtyString, CtyTuple, CtyValue

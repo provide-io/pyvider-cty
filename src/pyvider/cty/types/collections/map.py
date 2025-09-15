@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, ClassVar, TypeVar
 import unicodedata
-from typing import Any, ClassVar, Generic, TypeVar
 
 from attrs import define, field
 from provide.foundation.errors import error_boundary
@@ -21,7 +21,7 @@ V = TypeVar("V")
 
 
 @define(frozen=True, slots=True)
-class CtyMap(CtyType[dict[str, V]], Generic[V]):
+class CtyMap[V](CtyType[dict[str, V]]):
     ctype: ClassVar[str] = "map"
     _type_order: ClassVar[int] = 6
     element_type: CtyType[V] = field(kw_only=True)

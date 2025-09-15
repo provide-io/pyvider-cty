@@ -263,7 +263,7 @@ def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]
 
     if collection.is_null or key.is_null or not isinstance(collection.value, dict) or key.value not in collection.value:
         return default
-        
+
     return collection.value[key.value]
 
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
@@ -273,7 +273,7 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     result = {}
     for arg in args:
         if not arg.is_null: result.update(arg.value)
-    
+
     inferred_type = infer_cty_type_from_raw(result)
     return inferred_type.validate(result)
 

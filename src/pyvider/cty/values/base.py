@@ -4,7 +4,6 @@ from collections.abc import Iterator
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Self,
     TypeVar,
 )
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 
 
 @define(frozen=True, slots=True)
-class CtyValue(Generic[T]):
+class CtyValue[T]:
     vtype: CtyType[T] = field()
     value: object | None = field(default=None)
     is_unknown: bool = field(default=False)

@@ -30,7 +30,7 @@ class CtyError(FoundationError):
     ) -> None:
         self.message = message
         super().__init__(self.message, **kwargs)
-    
+
     def _default_code(self) -> str:
         return "CTY_ERROR"
 
@@ -56,25 +56,25 @@ class CtyFunctionError(CtyError):
     ) -> None:
         self.function_name = function_name
         self.input_types = input_types or []
-        
+
         # Add function-specific context
         context = kwargs.setdefault('context', {})
         context['cty.error_category'] = 'function_execution'
         context['cty.operation'] = 'cty_function'
-        
+
         if function_name:
             context['cty.function_name'] = function_name
-        
+
         if input_types:
             context['cty.function_input_types'] = input_types
             context['cty.function_arity'] = len(input_types)
-        
+
         # Enhance message if function name available
         if function_name:
             message = f"CTY function '{function_name}' failed: {message}"
-        
+
         super().__init__(message, **kwargs)
-    
+
     def _default_code(self) -> str:
         return "CTY_FUNCTION_ERROR"
 

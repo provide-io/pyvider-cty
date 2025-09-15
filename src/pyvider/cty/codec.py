@@ -6,6 +6,7 @@ from typing import Any
 
 import msgpack  # type: ignore
 from provide.foundation.errors import error_boundary
+
 from pyvider.cty.config.defaults import (
     MSGPACK_EXT_TYPE_CTY,
     MSGPACK_EXT_TYPE_REFINED_UNKNOWN,
@@ -194,7 +195,7 @@ def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:
 
 def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
     with error_boundary(context={
-        "operation": "cty_from_msgpack_deserialization", 
+        "operation": "cty_from_msgpack_deserialization",
         "data_size": len(data),
         "schema_type": str(cty_type),
         "is_dynamic_type": isinstance(cty_type, CtyDynamic)
