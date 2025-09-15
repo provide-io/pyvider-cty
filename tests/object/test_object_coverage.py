@@ -1,6 +1,10 @@
 import pytest
 
-from pyvider.cty.exceptions import CtyAttributeValidationError, InvalidTypeError
+from pyvider.cty.exceptions import (
+    CtyAttributeValidationError,
+    CtyTypeMismatchError,
+    InvalidTypeError,
+)
 from pyvider.cty.types import CtyNumber, CtyString
 from pyvider.cty.types.structural.object import CtyObject, _attrs_to_dict_safe
 
@@ -40,7 +44,6 @@ def test_validate_null_attribute_in_required_field() -> None:
         obj_type.validate({"name": None})
 
 
-from pyvider.cty.exceptions import CtyTypeMismatchError
 
 
 def test_get_attribute_on_non_cty_value() -> None:
