@@ -16,8 +16,8 @@ from pyvider.cty.config.defaults import (
     TYPE_KIND_SET,
 )
 
-from .exceptions import CtyValidationError
-from .types import (
+from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.types import (
     CtyBool,
     CtyDynamic,
     CtyList,
