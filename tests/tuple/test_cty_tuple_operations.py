@@ -1,4 +1,3 @@
-from decimal import Decimal
 import pytest
 
 from pyvider.cty import (
@@ -8,6 +7,7 @@ from pyvider.cty import (
     CtyTuple,
     CtyValue,
 )
+
 
 class TestCtyTupleOperations:
     @pytest.fixture

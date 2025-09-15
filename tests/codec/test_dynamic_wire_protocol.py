@@ -20,7 +20,7 @@ def test_dynamic_string_wire_format() -> None:
     # The correct pattern is to use the schema's validator, which creates
     # the CtyDynamic wrapper around the inferred concrete CtyValue.
     dynamic_value = schema.validate(raw_value)
-    
+
     actual_packed = cty_to_msgpack(dynamic_value, schema)
 
     expected_type_spec = json.dumps("string", separators=(",", ":")).encode("utf-8")
@@ -29,7 +29,7 @@ def test_dynamic_string_wire_format() -> None:
         [expected_type_spec, expected_payload], use_bin_type=True
     )
     assert actual_packed == expected_packed
-    
+
     deserialized = cty_from_msgpack(actual_packed, schema)
     assert isinstance(deserialized.type, CtyDynamic)
     # The deserialized value's inner value should equal the concrete value.
@@ -41,17 +41,17 @@ def test_dynamic_object_wire_format() -> None:
     raw_data = {"name": "test", "enabled": True}
     obj_type = CtyObject(attribute_types={"name": CtyString(), "enabled": CtyBool()})
     concrete_value = obj_type.validate(raw_data)
-    
+
     dynamic_value = schema.validate(raw_data)
     actual_packed = cty_to_msgpack(dynamic_value, schema)
 
     # Unpack both actual and an expected version to compare dictionaries.
     # This is robust against key ordering differences in msgpack libraries.
     unpacked_actual = msgpack.unpackb(actual_packed, raw=False)
-    
+
     expected_type_spec_json = ["object", {"enabled": "bool", "name": "string"}]
     expected_payload = {"enabled": True, "name": "test"}
-    
+
     # Verify the structure and content of the unpacked data
     assert isinstance(unpacked_actual, list)
     assert len(unpacked_actual) == 2

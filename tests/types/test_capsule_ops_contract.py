@@ -3,9 +3,11 @@ TDD: Strengthens the CtyCapsuleWithOps contract by validating function arity
 in the constructor.
 """
 from typing import Any
+
 import pytest
 
-from pyvider.cty import CtyCapsuleWithOps, CtyType, CtyValue
+from pyvider.cty import CtyCapsuleWithOps
+
 
 class TestCapsuleWithOpsContract:
     class Opaque:

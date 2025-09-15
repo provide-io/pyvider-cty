@@ -13,9 +13,9 @@ import pytest
 
 from pyvider.cty import (
     CtyBool,
+    CtyCapsuleWithOps,
     CtyDynamic,
     CtyList,
-    CtyMap,
     CtyNumber,
     CtyObject,
     CtySet,
@@ -23,8 +23,6 @@ from pyvider.cty import (
     CtyTuple,
     CtyType,
     CtyValue,
-    CtyCapsule,
-    CtyCapsuleWithOps,
 )
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError
@@ -115,12 +113,12 @@ class TestConvertFunction:
         assert converted_val.has_mark(CtyMark("sensitive"))
         assert converted_val.value == "123"
 
-    def test_convert_list_to_list_same_type(self):
+    def test_convert_list_to_list_same_type(self) -> None:
         list_val = CtyValue(CtyList(element_type=CtyString()), ["a", "b"])
         converted_val = convert(list_val, CtyList(element_type=CtyString()))
         assert converted_val is list_val
 
-    def test_convert_list_to_list_of_dynamic(self):
+    def test_convert_list_to_list_of_dynamic(self) -> None:
         list_val = CtyValue(CtyList(element_type=CtyString()), ["a", "b"])
         converted_val = convert(list_val, CtyList(element_type=CtyDynamic()))
         assert converted_val.type.equal(CtyList(element_type=CtyDynamic()))
@@ -128,9 +126,9 @@ class TestConvertFunction:
         assert converted_val.value[0].type.equal(CtyDynamic())
         assert converted_val.value[0].value.type.equal(CtyString())
 
-    def test_capsule_conversion(self):
+    def test_capsule_conversion(self) -> None:
         class MyType:
-            def __init__(self, value):
+            def __init__(self, value) -> None:
                 self.value = value
 
         def convert_my_type(raw, target_type):
@@ -152,7 +150,7 @@ class TestConvertFunction:
         with pytest.raises(CtyConversionError):
             convert(val, CtyNumber())
 
-        def bad_converter_non_cty(raw, target_type):
+        def bad_converter_non_cty(raw, target_type) -> str:
             return "not a cty value"
 
         capsule_type_bad_converter = CtyCapsuleWithOps(

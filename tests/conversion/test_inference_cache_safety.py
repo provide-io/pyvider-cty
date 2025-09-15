@@ -2,11 +2,11 @@
 TDD: Ensures the type inference cache is safe and does not cause correctness
 regressions by mis-identifying types based on insufficient cache keys.
 """
-import pytest
 from hypothesis import given, strategies as st
 
 from pyvider.cty.conversion import infer_cty_type_from_raw
-from pyvider.cty.types import CtyList, CtyMap, CtyNumber, CtyString, CtyObject
+from pyvider.cty.types import CtyNumber, CtyObject, CtyString
+
 
 @st.composite
 def same_keys_different_types(draw):
@@ -17,7 +17,7 @@ def same_keys_different_types(draw):
 
 class TestInferenceCacheSafety:
     @given(data=same_keys_different_types())
-    def test_cache_does_not_collide_on_same_keys_different_types(self, data):
+    def test_cache_does_not_collide_on_same_keys_different_types(self, data) -> None:
         """
         TDD: Inferring types for two dicts with identical keys but different
         value types must produce two distinct and correct schemas. A naive
