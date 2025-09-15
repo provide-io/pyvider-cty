@@ -62,6 +62,7 @@ def test_cty_to_native_with_decimal() -> None:
     assert isinstance(native_float, float)
     assert native_float == 123.45
 
+
 class TestCtyToNativeCorrectness:
     """
     This test suite verifies the contract that `cty_to_native` ALWAYS returns

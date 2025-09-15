@@ -5,6 +5,7 @@ This suite defines the expected behavior for functions when they operate on
 refined unknown values. The goal is for functions to leverage the refinement
 constraints to produce a more precise result (i.e., a known value) where possible.
 """
+
 from decimal import Decimal
 
 from pyvider.cty import (
@@ -36,6 +37,7 @@ def refined_unknown_num(
             number_lower_bound=lower_bound, number_upper_bound=upper_bound
         ),
     )
+
 
 # Helper for creating a refined unknown list value
 def refined_unknown_list(
@@ -103,7 +105,6 @@ class TestRefinedUnknownsIntegration:
         assert result.is_unknown is True
 
 
-
 class TestRefinedUnknownsNumericIntegration:
     """Tests that numeric functions leverage refinements."""
 
@@ -129,8 +130,7 @@ class TestRefinedUnknownsNumericIntegration:
         """
         # An unknown number known to be between 10 and 20.
         unknown_10_20 = refined_unknown_num(
-            lower_bound=(Decimal("10"), True),
-            upper_bound=(Decimal("20"), True)
+            lower_bound=(Decimal("10"), True), upper_bound=(Decimal("20"), True)
         )
         known_2 = CtyNumber().validate(2)
 
@@ -140,6 +140,7 @@ class TestRefinedUnknownsNumericIntegration:
         assert isinstance(result.value, RefinedUnknownValue)
         assert result.value.number_lower_bound == (Decimal("20"), True)
         assert result.value.number_upper_bound == (Decimal("40"), True)
+
 
 class TestRefinedUnknownsComparisonCoverage:
     """Tests for uncovered branches in comparison functions."""
@@ -163,8 +164,7 @@ class TestRefinedUnknownsComparisonCoverage:
         """
         # An unknown number between 10 and 20.
         unknown_10_20 = refined_unknown_num(
-            lower_bound=(Decimal("10"), True),
-            upper_bound=(Decimal("20"), True)
+            lower_bound=(Decimal("10"), True), upper_bound=(Decimal("20"), True)
         )
         known_15 = CtyNumber().validate(15)
 

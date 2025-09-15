@@ -29,7 +29,9 @@ def _extract_container_children(container: Any) -> list[Any]:
     return children
 
 
-def _generate_container_cache_key(container: Any, structural_cache: dict[int, tuple[Any, ...]]) -> tuple[Any, ...]:
+def _generate_container_cache_key(
+    container: Any, structural_cache: dict[int, tuple[Any, ...]]
+) -> tuple[Any, ...]:
     """Generate a cache key for a container based on its type and contents."""
     if isinstance(container, dict):
         # Sort items by key's string representation for deterministic order.
@@ -50,8 +52,13 @@ def _generate_container_cache_key(container: Any, structural_cache: dict[int, tu
         return (type(container),)
 
 
-def _process_container_children(current_item: Any, work_stack: list[Any], post_process_stack: list[Any],
-                               structural_cache: dict[int, tuple[Any, ...]], visited_ids: set[int]) -> None:
+def _process_container_children(
+    current_item: Any,
+    work_stack: list[Any],
+    post_process_stack: list[Any],
+    structural_cache: dict[int, tuple[Any, ...]],
+    visited_ids: set[int],
+) -> None:
     """Process a container item and add its children to the work stack."""
     item_id = id(current_item)
 
@@ -94,7 +101,9 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
             structural_cache[item_id] = (type(current_item),)
             continue
 
-        _process_container_children(current_item, work_stack, post_process_stack, structural_cache, visited_ids)
+        _process_container_children(
+            current_item, work_stack, post_process_stack, structural_cache, visited_ids
+        )
 
     # Build the final keys from the bottom up
     while post_process_stack:
@@ -113,12 +122,18 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     This function uses an iterative approach with a work stack to avoid recursion limits
     and leverages a context-aware cache for performance and thread-safety.
     """
-    with error_boundary(context={
-        "operation": "cty_type_inference",
-        "value_type": type(value).__name__,
-        "is_attrs_class": attrs.has(type(value)) if hasattr(value, '__class__') else False,
-        "value_repr": str(value)[:100] if value is not None else "None"  # Truncated for safety
-    }):
+    with error_boundary(
+        context={
+            "operation": "cty_type_inference",
+            "value_type": type(value).__name__,
+            "is_attrs_class": attrs.has(type(value))
+            if hasattr(value, "__class__")
+            else False,
+            "value_repr": str(value)[:100]
+            if value is not None
+            else "None",  # Truncated for safety
+        }
+    ):
         from pyvider.cty.types import (
             CtyBool,
             CtyDynamic,
@@ -175,7 +190,11 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                 container.values() if isinstance(container, dict) else container
             )
             child_types = [
-                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic()))
+                (
+                    v.type
+                    if isinstance(v, CtyValue)
+                    else results.get(id(v), CtyDynamic())
+                )
                 for v in child_values
             ]
 

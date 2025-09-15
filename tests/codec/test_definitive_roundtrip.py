@@ -69,7 +69,9 @@ def assert_value_roundtrip(value: CtyValue) -> None:
         )
 
     except Exception as e:
-        pytest.fail(f"Roundtrip assertion failed with an exception: {e!r}", pytrace=True)
+        pytest.fail(
+            f"Roundtrip assertion failed with an exception: {e!r}", pytrace=True
+        )
 
 
 class TestTddDefinitiveCorrectness:

@@ -2,6 +2,7 @@
 TDD: This suite adds targeted tests for all unexercised branches in the
 refined unknown propagation logic of numeric and comparison functions.
 """
+
 from decimal import Decimal
 
 from pyvider.cty import CtyNumber, CtyValue
@@ -26,6 +27,7 @@ def refined_unknown_num(
             number_lower_bound=lower_bound, number_upper_bound=upper_bound
         ),
     )
+
 
 class TestRefinedUnknownsCoverage:
     def test_multiply_by_zero_is_zero(self) -> None:

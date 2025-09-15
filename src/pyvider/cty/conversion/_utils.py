@@ -21,10 +21,14 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     from pyvider.cty.values import CtyValue
 
     if isinstance(inst, CtyType):
-        error_message = ERR_CANNOT_INFER_FROM_CTY_TYPE.format(type_name=type(inst).__name__)
+        error_message = ERR_CANNOT_INFER_FROM_CTY_TYPE.format(
+            type_name=type(inst).__name__
+        )
         raise TypeError(error_message)
     if isinstance(inst, CtyValue):
-        error_message = ERR_CANNOT_INFER_FROM_CTY_VALUE.format(type_name=type(inst).__name__)
+        error_message = ERR_CANNOT_INFER_FROM_CTY_VALUE.format(
+            type_name=type(inst).__name__
+        )
         raise TypeError(error_message)
 
     res = {}

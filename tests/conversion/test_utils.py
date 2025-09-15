@@ -19,6 +19,7 @@ def test_attrs_to_dict_safe_with_attrs_instance() -> None:
 
 def test_attrs_to_dict_safe_with_non_attrs_class() -> None:
     """Tests that a non-attrs class results in an empty dict."""
+
     class NotAttrs:
         def __init__(self) -> None:
             self.a = 1
@@ -29,12 +30,16 @@ def test_attrs_to_dict_safe_with_non_attrs_class() -> None:
 
 def test_attrs_to_dict_safe_with_cty_type_raises_error() -> None:
     """Tests that passing a CtyType instance raises a TypeError."""
-    with pytest.raises(TypeError, match="Cannot infer data type from a CtyType instance"):
+    with pytest.raises(
+        TypeError, match="Cannot infer data type from a CtyType instance"
+    ):
         _attrs_to_dict_safe(CtyString())
 
 
 def test_attrs_to_dict_safe_with_cty_value_raises_error() -> None:
     """Tests that passing a CtyValue instance raises a TypeError."""
     cty_val = CtyString().validate("hello")
-    with pytest.raises(TypeError, match="Cannot infer data type from a CtyValue instance"):
+    with pytest.raises(
+        TypeError, match="Cannot infer data type from a CtyValue instance"
+    ):
         _attrs_to_dict_safe(cty_val)

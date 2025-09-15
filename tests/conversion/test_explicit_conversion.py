@@ -234,7 +234,9 @@ class TestUnifyFunction:
             (
                 [
                     CtyObject({"a": CtyString()}),
-                    CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
+                    CtyObject(
+                        {"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}
+                    ),
                 ],
                 CtyDynamic(),
             ),

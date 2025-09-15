@@ -2,6 +2,7 @@
 TDD: Ensures the structural cache correctly distinguishes between list-like
 and dict-like containers, even when they contain identical values.
 """
+
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.types import CtyList, CtyObject
 

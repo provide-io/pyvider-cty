@@ -2,6 +2,7 @@
 TDD: Ensures the type inference cache is safe and does not cause correctness
 regressions by mis-identifying types based on insufficient cache keys.
 """
+
 from hypothesis import given, strategies as st
 
 from pyvider.cty.conversion import infer_cty_type_from_raw
@@ -14,6 +15,7 @@ def same_keys_different_types(draw):
     dict1 = {key: draw(st.text()) for key in keys}
     dict2 = {key: draw(st.integers()) for key in keys}
     return (dict1, dict2)
+
 
 class TestInferenceCacheSafety:
     @given(data=same_keys_different_types())

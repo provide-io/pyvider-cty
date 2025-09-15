@@ -6,6 +6,7 @@ This suite defines the required strict behavior for:
 2. The CtyCapsuleWithOps constructor, which must validate function arity.
 3. Hashing rules for CtyValue, aligning with Python idioms.
 """
+
 from typing import Any
 
 import msgpack  # type: ignore
@@ -34,7 +35,9 @@ class TestStrictDynamicDeserialization:
     payloads, mirroring go-cty's strict behavior.
     """
 
-    def test_dynamic_deserialization_with_malformed_type_json_raises_error(self) -> None:
+    def test_dynamic_deserialization_with_malformed_type_json_raises_error(
+        self,
+    ) -> None:
         """
         TDD: A malformed type spec in a dynamic value payload must always
         raise a DeserializationError. There is no fallback.
@@ -44,7 +47,8 @@ class TestStrictDynamicDeserialization:
         packed_bytes = msgpack.packb(payload, use_bin_type=True)
 
         with pytest.raises(
-            DeserializationError, match="Failed to decode dynamic value type spec from JSON"
+            DeserializationError,
+            match="Failed to decode dynamic value type spec from JSON",
         ):
             cty_from_msgpack(packed_bytes, CtyDynamic())
 

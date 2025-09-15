@@ -43,6 +43,7 @@ class CtyValue(Generic[T]):
 
     def __attrs_post_init__(self) -> None:
         from pyvider.cty.types import CtyDynamic
+
         if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
             object.__setattr__(self, "is_unknown", self.value.is_unknown)
             object.__setattr__(self, "is_null", self.value.is_null)
@@ -98,10 +99,12 @@ class CtyValue(Generic[T]):
         ):
             return (*key_prefix, *(v._canonical_sort_key() for v in self.value))
 
-        if isinstance(self.type, CtySet) and self.value is not None and hasattr(self.value, "__iter__"):
-            sorted_elements = sorted(
-                self.value, key=lambda v: v._canonical_sort_key()
-            )
+        if (
+            isinstance(self.type, CtySet)
+            and self.value is not None
+            and hasattr(self.value, "__iter__")
+        ):
+            sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
             return (*key_prefix, *(v._canonical_sort_key() for v in sorted_elements))
 
         if (
@@ -110,7 +113,10 @@ class CtyValue(Generic[T]):
             and hasattr(self.value, "items")
         ):
             sorted_items = sorted(self.value.items())
-            return (*key_prefix, *((k, v._canonical_sort_key()) for k, v in sorted_items))
+            return (
+                *key_prefix,
+                *((k, v._canonical_sort_key()) for k, v in sorted_items),
+            )
 
         if isinstance(self.type, CtyCapsule):
             return (*key_prefix, repr(self.value))
@@ -142,7 +148,9 @@ class CtyValue(Generic[T]):
         from ..types import CtyNumber, CtyString
 
         if not isinstance(other, CtyValue):
-            error_message = ERR_CANNOT_COMPARE_CTYVALUE_WITH.format(type_name=type(other).__name__)
+            error_message = ERR_CANNOT_COMPARE_CTYVALUE_WITH.format(
+                type_name=type(other).__name__
+            )
             raise TypeError(error_message)
         if self.is_unknown or self.is_null or other.is_unknown or other.is_null:
             error_message = ERR_CANNOT_COMPARE_NULL_UNKNOWN
@@ -215,7 +223,9 @@ class CtyValue(Generic[T]):
             self.value, "__len__"
         ):
             return len(self.value)
-        error_message = ERR_VALUE_TYPE_NO_LEN.format(type_name=self.vtype.__class__.__name__)
+        error_message = ERR_VALUE_TYPE_NO_LEN.format(
+            type_name=self.vtype.__class__.__name__
+        )
         raise TypeError(error_message)
 
     def __iter__(self) -> Iterator[Any]:
@@ -233,7 +243,9 @@ class CtyValue(Generic[T]):
         if isinstance(self.vtype, CtyMap) and hasattr(self.value, "values"):
             return iter(self.value.values())
 
-        error_message = ERR_VALUE_TYPE_NOT_ITERABLE.format(type_name=self.vtype.__class__.__name__)
+        error_message = ERR_VALUE_TYPE_NOT_ITERABLE.format(
+            type_name=self.vtype.__class__.__name__
+        )
         raise TypeError(error_message)
 
     def __getitem__(self, key: Any) -> CtyValue[Any]:
@@ -260,7 +272,9 @@ class CtyValue(Generic[T]):
             return self.vtype.element_at(self, key)
         if isinstance(self.vtype, CtyMap):
             return self.vtype.get(self, key)
-        error_message = ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE.format(type_name=self.vtype.__class__.__name__)
+        error_message = ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE.format(
+            type_name=self.vtype.__class__.__name__
+        )
         raise TypeError(error_message)
 
     def __hash__(self) -> int:

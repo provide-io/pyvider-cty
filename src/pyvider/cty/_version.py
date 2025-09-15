@@ -44,6 +44,7 @@ def get_version() -> str:
     # Fallback to package metadata
     try:
         from importlib.metadata import PackageNotFoundError, version
+
         return version("pyvider-cty")
     except PackageNotFoundError:
         pass

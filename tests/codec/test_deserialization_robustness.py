@@ -4,6 +4,7 @@ TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
 These tests are designed to fail with the current implementation and define
 the desired, more robust behavior for the MessagePack deserializer.
 """
+
 from decimal import Decimal
 import json
 

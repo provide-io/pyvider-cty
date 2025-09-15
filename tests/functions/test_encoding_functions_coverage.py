@@ -40,4 +40,4 @@ class TestEncodingFunctionsCoverage:
     def test_csvdecode_invalid_csv(self, mocker) -> None:
         mocker.patch("csv.DictReader", side_effect=Exception("test error"))
         with pytest.raises(CtyFunctionError):
-            csvdecode(CtyString().validate('a,b\n1,2'))
+            csvdecode(CtyString().validate("a,b\n1,2"))

@@ -37,6 +37,7 @@ def test_get_on_null_or_unknown_without_default() -> None:
     assert map_type.get(null_value, "a").is_null
     assert map_type.get(unknown_value, "a").is_null
 
+
 def test_map_constructor_with_value_type_keyword() -> None:
     """Tests that the CtyMap constructor correctly handles the `element_type` keyword."""
     # This test corrects a failure where a test was using an old keyword `value_type`.

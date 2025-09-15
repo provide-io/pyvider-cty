@@ -49,16 +49,34 @@ class TestCtyBool:
         assert result.is_null, "Validating None should return a null CtyValue"
 
     def test_validate_cty_value(self) -> None:
-        assert self.bool_type.validate(self.bool_type.validate(True)).value is True, "Double validation of True should preserve the value"
-        assert self.bool_type.validate(self.bool_type.validate(False)).value is False, "Double validation of False should preserve the value"
-        assert self.bool_type.validate(CtyValue.null(CtyBool())).is_null, "Validating null CtyValue should remain null"
-        assert self.bool_type.validate(CtyValue.unknown(CtyBool())).is_unknown, "Validating unknown CtyValue should remain unknown"
+        assert self.bool_type.validate(self.bool_type.validate(True)).value is True, (
+            "Double validation of True should preserve the value"
+        )
+        assert self.bool_type.validate(self.bool_type.validate(False)).value is False, (
+            "Double validation of False should preserve the value"
+        )
+        assert self.bool_type.validate(CtyValue.null(CtyBool())).is_null, (
+            "Validating null CtyValue should remain null"
+        )
+        assert self.bool_type.validate(CtyValue.unknown(CtyBool())).is_unknown, (
+            "Validating unknown CtyValue should remain unknown"
+        )
 
     def test_equal(self) -> None:
-        assert self.bool_type.equal(CtyBool()), "CtyBool instances should be equal to each other"
-        assert not self.bool_type.equal(CtyString()), "CtyBool should not be equal to CtyString"
+        assert self.bool_type.equal(CtyBool()), (
+            "CtyBool instances should be equal to each other"
+        )
+        assert not self.bool_type.equal(CtyString()), (
+            "CtyBool should not be equal to CtyString"
+        )
 
     def test_usable_as(self) -> None:
-        assert self.bool_type.usable_as(CtyBool()), "CtyBool should be usable as CtyBool"
-        assert self.bool_type.usable_as(CtyDynamic()), "CtyBool should be usable as CtyDynamic"
-        assert not self.bool_type.usable_as(CtyString()), "CtyBool should not be usable as CtyString"
+        assert self.bool_type.usable_as(CtyBool()), (
+            "CtyBool should be usable as CtyBool"
+        )
+        assert self.bool_type.usable_as(CtyDynamic()), (
+            "CtyBool should be usable as CtyDynamic"
+        )
+        assert not self.bool_type.usable_as(CtyString()), (
+            "CtyBool should not be usable as CtyString"
+        )

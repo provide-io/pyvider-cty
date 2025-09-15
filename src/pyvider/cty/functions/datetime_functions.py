@@ -15,10 +15,22 @@ from pyvider.cty.exceptions import CtyFunctionError
 # A simplified mapping from Go's time layout to Python's strftime format.
 # This is not exhaustive but covers common cases.
 GO_TO_PYTHON_FORMAT_MAP = {
-    "2006": "%Y", "06": "%y", "01": "%m", "Jan": "%b", "January": "%B",
-    "02": "%d", "_2": "%e", "15": "%H", "03": "%I", "04": "%M", "05": "%S",
-    "PM": "%p", "MST": "%Z", "Z07:00": "%z",
+    "2006": "%Y",
+    "06": "%y",
+    "01": "%m",
+    "Jan": "%b",
+    "January": "%B",
+    "02": "%d",
+    "_2": "%e",
+    "15": "%H",
+    "03": "%I",
+    "04": "%M",
+    "05": "%S",
+    "PM": "%p",
+    "MST": "%Z",
+    "Z07:00": "%z",
 }
+
 
 def _translate_go_format(go_fmt: str) -> str:
     py_fmt = go_fmt
@@ -26,8 +38,11 @@ def _translate_go_format(go_fmt: str) -> str:
         py_fmt = py_fmt.replace(go, py)
     return py_fmt
 
+
 def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(spec.type, CtyString) or not isinstance(timestamp.type, CtyString):
+    if not isinstance(spec.type, CtyString) or not isinstance(
+        timestamp.type, CtyString
+    ):
         raise CtyFunctionError("formatdate: arguments must be strings")
     if spec.is_unknown or spec.is_null or timestamp.is_unknown or timestamp.is_null:
         return CtyValue.unknown(CtyString())
@@ -37,6 +52,7 @@ def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
         return CtyString().validate(dt.strftime(py_format_spec))
     except ValueError as e:
         raise CtyFunctionError(f"formatdate: invalid timestamp format: {e}") from e
+
 
 def _parse_duration(duration_str: str) -> timedelta:
     # This regex now ensures the entire string consists only of valid duration parts.
@@ -56,10 +72,18 @@ def _parse_duration(duration_str: str) -> timedelta:
                 total_seconds += val * SECONDS_PER_SECOND
     return timedelta(seconds=total_seconds)
 
+
 def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(timestamp.type, CtyString) or not isinstance(duration.type, CtyString):
+    if not isinstance(timestamp.type, CtyString) or not isinstance(
+        duration.type, CtyString
+    ):
         raise CtyFunctionError("timeadd: arguments must be strings")
-    if timestamp.is_unknown or timestamp.is_null or duration.is_unknown or duration.is_null:
+    if (
+        timestamp.is_unknown
+        or timestamp.is_null
+        or duration.is_unknown
+        or duration.is_null
+    ):
         return CtyValue.unknown(CtyString())
     try:
         dt = datetime.fromisoformat(timestamp.value.replace("Z", "+00:00"))

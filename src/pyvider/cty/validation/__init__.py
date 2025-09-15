@@ -40,6 +40,7 @@ def validate_config(schema: Any, config: Any) -> None:
     # We simply call it and let it raise its exception on failure.
     schema.validate(config)
 
+
 __all__ = [
     "RecursionContext",
     "RecursionDetector",
