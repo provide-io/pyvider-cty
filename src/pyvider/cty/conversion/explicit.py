@@ -6,6 +6,17 @@ from typing import Any
 
 from provide.foundation.errors import error_boundary
 
+from pyvider.cty.config.defaults import (
+    ERR_CANNOT_CONVERT_GENERAL,
+    ERR_CANNOT_CONVERT_TO_BOOL,
+    ERR_CANNOT_CONVERT_VALIDATION,
+    ERR_CAPSULE_CANNOT_CONVERT,
+    ERR_CUSTOM_CONVERTER_NON_CTYVALUE,
+    ERR_CUSTOM_CONVERTER_WRONG_TYPE,
+    ERR_DYNAMIC_VALUE_NOT_CTYVALUE,
+    ERR_MISSING_REQUIRED_ATTRIBUTE,
+    ERR_SOURCE_OBJECT_NOT_DICT,
+)
 from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
 from pyvider.cty.types import (
     CtyBool,
@@ -52,21 +63,27 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
             result = value.type.convert_fn(value.value, target_type)
             if result is None:
+                error_message = ERR_CAPSULE_CANNOT_CONVERT.format(
+                    value_type=value.type, target_type=target_type
+                )
                 raise CtyConversionError(
-                    f"Capsule type {value.type} cannot be converted to {target_type}",
+                    error_message,
                     source_value=value,
                     target_type=target_type,
                 )
             if not isinstance(result, CtyValue):
+                error_message = ERR_CUSTOM_CONVERTER_NON_CTYVALUE
                 raise CtyConversionError(
-                    "Custom capsule converter returned a non-CtyValue object",
+                    error_message,
                     source_value=value,
                     target_type=target_type,
                 )
             if not result.type.equal(target_type):
+                error_message = ERR_CUSTOM_CONVERTER_WRONG_TYPE.format(
+                    result_type=result.type, target_type=target_type
+                )
                 raise CtyConversionError(
-                    f"Custom capsule converter returned a value of the wrong type "
-                    f"(got {result.type}, want {target_type})",
+                    error_message,
                     source_value=value,
                     target_type=target_type,
                 )
@@ -75,8 +92,9 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # Dynamic type handling
         if isinstance(value.type, CtyDynamic):
             if not isinstance(value.value, CtyValue):
+                error_message = ERR_DYNAMIC_VALUE_NOT_CTYVALUE
                 raise CtyConversionError(
-                    "Dynamic value does not contain a CtyValue", source_value=value
+                    error_message, source_value=value
                 )
             return convert(value.value, target_type)
 
@@ -98,8 +116,11 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                 validated = target_type.validate(value.value)
                 return validated.with_marks(set(value.marks))
             except CtyValidationError as e:
+                error_message = ERR_CANNOT_CONVERT_VALIDATION.format(
+                    value_type=value.type, target_type=target_type, message=e.message
+                )
                 raise CtyConversionError(
-                    f"Cannot convert {value.type} to {target_type}: {e.message}",
+                    error_message,
                     source_value=value,
                     target_type=target_type,
                 ) from e
@@ -112,8 +133,9 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                     return CtyValue(target_type, True).with_marks(set(value.marks))
                 if s == "false":
                     return CtyValue(target_type, False).with_marks(set(value.marks))
+            error_message = ERR_CANNOT_CONVERT_TO_BOOL.format(value_type=value.type)
             raise CtyConversionError(
-                f"Cannot convert {value.type} to bool",
+                error_message,
                 source_value=value,
                 target_type=target_type,
             )
@@ -136,21 +158,26 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             new_attrs = {}
             source_attrs = value.value
             if not isinstance(source_attrs, dict):
-                raise CtyConversionError("Source object is not a dictionary")
+                error_message = ERR_SOURCE_OBJECT_NOT_DICT
+                raise CtyConversionError(error_message)
             for name, target_attr_type in target_type.attribute_types.items():
                 if name in source_attrs:
                     new_attrs[name] = convert(source_attrs[name], target_attr_type)
                 elif name in target_type.optional_attributes:
                     new_attrs[name] = CtyValue.null(target_attr_type)
                 else:
+                    error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
                     raise CtyConversionError(
-                        f"Missing required attribute '{name}' for conversion"
+                        error_message
                     )
             return target_type.validate(new_attrs).with_marks(set(value.marks))
 
         # Fallback - no conversion available
+        error_message = ERR_CANNOT_CONVERT_GENERAL.format(
+            value_type=value.type, target_type=target_type
+        )
         raise CtyConversionError(
-            f"Cannot convert from {value.type} to {target_type}",
+            error_message,
             source_value=value,
             target_type=target_type,
         )
