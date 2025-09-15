@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pyvider.cty.exceptions.base import CtyError
 
 # pyvider/cty/exceptions/conversion.py
@@ -17,7 +19,7 @@ class CtyConversionError(CtyError):
         *,
         source_value: object | None = None,
         target_type: object | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         """
         Initializes the CtyConversionError.
@@ -80,7 +82,7 @@ class CtyTypeConversionError(CtyConversionError):
         type_name: str | None = None,
         source_value: object | None = None,
         target_type: object | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         """
         Initializes the CtyTypeConversionError.
@@ -109,7 +111,7 @@ class CtyTypeConversionError(CtyConversionError):
 class CtyTypeParseError(CtyConversionError):
     """Raised when a CTY type string cannot be parsed."""
 
-    def __init__(self, message: str, type_string: str, **kwargs) -> None:
+    def __init__(self, message: str, type_string: str, **kwargs: Any) -> None:
         self.type_string = type_string
 
         # Add parsing context

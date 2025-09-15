@@ -22,7 +22,7 @@ class CtyValidationError(FoundationValidationError):
         value: object = None,
         type_name: str | None = None,
         path: CtyPath | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         self.value = value
         self.type_name = type_name
@@ -80,7 +80,7 @@ def _get_type_name_from_original(
 # --- Primitive Validation Errors ---
 class CtyBoolValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
+        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs: Any
     ) -> None:
         # Add bool-specific context
         context = kwargs.setdefault('context', {})
@@ -92,7 +92,7 @@ class CtyBoolValidationError(CtyValidationError):
 
 class CtyNumberValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
+        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs: Any
     ) -> None:
         # Add number-specific context
         context = kwargs.setdefault('context', {})
@@ -109,7 +109,7 @@ class CtyNumberValidationError(CtyValidationError):
 
 class CtyStringValidationError(CtyValidationError):
     def __init__(
-        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs
+        self, message: str, value: object = None, path: CtyPath | None = None, **kwargs: Any
     ) -> None:
         # Add string-specific context
         context = kwargs.setdefault('context', {})
@@ -137,7 +137,7 @@ class CtyListValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         # Add list-specific context
         context = kwargs.setdefault('context', {})
@@ -166,7 +166,7 @@ class CtyMapValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         # Add map-specific context
         context = kwargs.setdefault('context', {})
@@ -195,7 +195,7 @@ class CtySetValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         # Add set-specific context
         context = kwargs.setdefault('context', {})
@@ -225,7 +225,7 @@ class CtyTupleValidationError(CtyCollectionValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         # Add tuple-specific context
         context = kwargs.setdefault('context', {})
@@ -256,7 +256,7 @@ class CtyAttributeValidationError(CtyValidationError):
         path: CtyPath | None = None,
         *,
         original_exception: CtyValidationError | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         # Add object-specific context
         context = kwargs.setdefault('context', {})
@@ -282,7 +282,7 @@ class CtyAttributeValidationError(CtyValidationError):
 
 class CtyTypeValidationError(CtyValidationError):
     def __init__(
-        self, message: str, type_name: str | None = None, path: CtyPath | None = None, **kwargs
+        self, message: str, type_name: str | None = None, path: CtyPath | None = None, **kwargs: Any
     ) -> None:
         # Add type definition context
         context = kwargs.setdefault('context', {})
@@ -299,7 +299,7 @@ class CtyTypeMismatchError(CtyValidationError):
         actual_type: CtyType[Any] | None = None,
         expected_type: CtyType[Any] | None = None,
         path: CtyPath | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         self.actual_type = actual_type
         self.expected_type = expected_type

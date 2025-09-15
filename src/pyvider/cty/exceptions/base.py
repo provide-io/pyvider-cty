@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from provide.foundation.errors import FoundationError
 
 #
@@ -26,7 +28,7 @@ class CtyError(FoundationError):
     """
 
     def __init__(
-        self, message: str = "An error occurred in the cty type system", **kwargs
+        self, message: str = "An error occurred in the cty type system", **kwargs: Any
     ) -> None:
         self.message = message
         super().__init__(self.message, **kwargs)
@@ -52,7 +54,7 @@ class CtyFunctionError(CtyError):
         *,
         function_name: str | None = None,
         input_types: list[str] | None = None,
-        **kwargs
+        **kwargs: Any
     ) -> None:
         self.function_name = function_name
         self.input_types = input_types or []
