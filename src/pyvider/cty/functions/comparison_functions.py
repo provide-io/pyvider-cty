@@ -34,39 +34,51 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
             if ref_a.number_upper_bound:
                 upper, inclusive = ref_a.number_upper_bound
                 if b_val > upper or (b_val == upper and not inclusive):
-                    if op in (">", ">="): return CtyBool().validate(False)
-                    if op in ("<", "<="): return CtyBool().validate(True)
+                    if op in (">", ">="):
+                        return CtyBool().validate(False)
+                    if op in ("<", "<="):
+                        return CtyBool().validate(True)
             if ref_a.number_lower_bound:
                 lower, inclusive = ref_a.number_lower_bound
                 if b_val < lower or (b_val == lower and not inclusive):
-                    if op in ("<", "<="): return CtyBool().validate(False)
-                    if op in (">", ">="): return CtyBool().validate(True)
+                    if op in ("<", "<="):
+                        return CtyBool().validate(False)
+                    if op in (">", ">="):
+                        return CtyBool().validate(True)
         elif b.is_unknown and not a.is_unknown and ref_b:
             a_val = a.value
             if ref_b.number_upper_bound:
                 upper, inclusive = ref_b.number_upper_bound
                 if a_val > upper or (a_val == upper and not inclusive):
-                    if op in ("<", "<="): return CtyBool().validate(False)
-                    if op in (">", ">="): return CtyBool().validate(True)
+                    if op in ("<", "<="):
+                        return CtyBool().validate(False)
+                    if op in (">", ">="):
+                        return CtyBool().validate(True)
             if ref_b.number_lower_bound:
                 lower, inclusive = ref_b.number_lower_bound
                 if a_val < lower or (a_val == lower and not inclusive):
-                    if op in (">", ">="): return CtyBool().validate(False)
-                    if op in ("<", "<="): return CtyBool().validate(True)
+                    if op in (">", ">="):
+                        return CtyBool().validate(False)
+                    if op in ("<", "<="):
+                        return CtyBool().validate(True)
         # Case 2: Both are refined unknowns
         elif a.is_unknown and b.is_unknown and ref_a and ref_b:
             if ref_a.number_upper_bound and ref_b.number_lower_bound:
                 a_upper, a_inc = ref_a.number_upper_bound
                 b_lower, b_inc = ref_b.number_lower_bound
                 if a_upper < b_lower or (a_upper == b_lower and not (a_inc and b_inc)):
-                    if op in ("<", "<="): return CtyBool().validate(True)
-                    if op in (">", ">="): return CtyBool().validate(False)
+                    if op in ("<", "<="):
+                        return CtyBool().validate(True)
+                    if op in (">", ">="):
+                        return CtyBool().validate(False)
             if ref_a.number_lower_bound and ref_b.number_upper_bound:
                 a_lower, a_inc = ref_a.number_lower_bound
                 b_upper, b_inc = ref_b.number_upper_bound
                 if a_lower > b_upper or (a_lower == b_upper and not (a_inc and b_inc)):
-                    if op in (">", ">="): return CtyBool().validate(True)
-                    if op in ("<", "<="): return CtyBool().validate(False)
+                    if op in (">", ">="):
+                        return CtyBool().validate(True)
+                    if op in ("<", "<="):
+                        return CtyBool().validate(False)
 
         return CtyValue.unknown(CtyBool())
 
@@ -78,10 +90,17 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
     return CtyBool().validate(ops[op](a.value, b.value))
 
 
-def greater_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, ">")
-def greater_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, ">=")
-def less_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, "<")
-def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, "<=")
+def greater_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    return _compare(a, b, ">")
+
+def greater_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    return _compare(a, b, ">=")
+
+def less_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    return _compare(a, b, "<")
+
+def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    return _compare(a, b, "<=")
 
 
 def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
@@ -125,5 +144,8 @@ def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
     return CtyValue.unknown(args[0].type)
 
 
-def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]: return _multi_compare(*args, op="max")
-def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]: return _multi_compare(*args, op="min")
+def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
+    return _multi_compare(*args, op="max")
+
+def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
+    return _multi_compare(*args, op="min")

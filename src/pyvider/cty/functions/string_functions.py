@@ -62,10 +62,13 @@ def substr(
     if input_val.is_null or input_val.is_unknown or offset_val.is_null or offset_val.is_unknown or length_val.is_null or length_val.is_unknown:
         return CtyValue.unknown(CtyString())
     offset, length = int(offset_val.value), int(length_val.value)
-    if offset < 0: raise CtyFunctionError("substr: offset must be a non-negative integer")
-    if length < -1: raise CtyFunctionError("substr: length must be non-negative or -1")
+    if offset < 0:
+        raise CtyFunctionError("substr: offset must be a non-negative integer")
+    if length < -1:
+        raise CtyFunctionError("substr: length must be non-negative or -1")
     s = input_val.value
-    if length == -1: return CtyString().validate(s[offset:])
+    if length == -1:
+        return CtyString().validate(s[offset:])
     return CtyString().validate(s[offset : offset + length])
 
 
