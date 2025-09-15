@@ -13,7 +13,7 @@ def test_attrs_to_dict_safe_no_attrs() -> None:
     class NoAttrs:
         pass
 
-    assert _attrs_to_dict_safe(NoAttrs()) == {}
+    assert _attrs_to_dict_safe(NoAttrs()) == {}, "Object with no attrs should return empty dict"
 
 
 def test_attrs_post_init_invalid_attribute_type() -> None:
@@ -55,13 +55,13 @@ def test_get_attribute_on_non_cty_value() -> None:
 def test_equal_different_keys() -> None:
     type1 = CtyObject(attribute_types={"name": CtyString()})
     type2 = CtyObject(attribute_types={"age": CtyNumber()})
-    assert type1.equal(type2) is False
+    assert type1.equal(type2) is False, "Object types with different attribute keys should not be equal"
 
 
 def test_usable_as_not_subset() -> None:
     type1 = CtyObject(attribute_types={"name": CtyString()})
     type2 = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
-    assert type1.usable_as(type2) is False
+    assert type1.usable_as(type2) is False, "Object type with fewer attributes should not be usable as type with more attributes"
 
 
 def test_usable_as_not_subset_required() -> None:
@@ -70,4 +70,4 @@ def test_usable_as_not_subset_required() -> None:
         optional_attributes={"age"},
     )
     type2 = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
-    assert type1.usable_as(type2) is False
+    assert type1.usable_as(type2) is False, "Object type with fewer attributes should not be usable as type with more attributes"

@@ -18,7 +18,7 @@ def test_primitive_roundtrip() -> None:
     value = schema.validate("hello world")
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert value == new_value
+    assert value == new_value, f"Roundtrip failed: original {value} != deserialized {new_value}"
 
 
 def test_list_roundtrip() -> None:
@@ -26,7 +26,7 @@ def test_list_roundtrip() -> None:
     value = schema.validate([1, 2, 3])
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert value == new_value
+    assert value == new_value, f"Roundtrip failed: original {value} != deserialized {new_value}"
 
 
 def test_map_roundtrip() -> None:
@@ -34,7 +34,7 @@ def test_map_roundtrip() -> None:
     value = schema.validate({"a": True, "b": False})
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert value == new_value
+    assert value == new_value, f"Roundtrip failed: original {value} != deserialized {new_value}"
 
 
 def test_object_roundtrip() -> None:
@@ -42,7 +42,7 @@ def test_object_roundtrip() -> None:
     value = schema.validate({"name": "Alice", "age": 30})
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert value == new_value
+    assert value == new_value, f"Roundtrip failed: original {value} != deserialized {new_value}"
 
 
 def test_null_roundtrip() -> None:
@@ -50,7 +50,7 @@ def test_null_roundtrip() -> None:
     value = CtyValue.null(schema)
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert value == new_value
+    assert value == new_value, f"Roundtrip failed: original {value} != deserialized {new_value}"
 
 
 
@@ -59,7 +59,7 @@ def test_unknown_roundtrip() -> None:
     value = CtyValue.unknown(schema)
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert value.is_unknown and new_value.is_unknown
+    assert value.is_unknown and new_value.is_unknown, "Both original and deserialized values should be unknown"
 
 
 def test_refined_unknown_roundtrip() -> None:
@@ -75,7 +75,7 @@ def test_refined_unknown_roundtrip() -> None:
     value = CtyValue.unknown(schema, value=RefinedUnknownValue(**refinements))
     msgpack_data = cty_to_msgpack(value, schema)
     new_value = cty_from_msgpack(msgpack_data, schema)
-    assert new_value.is_unknown
-    assert isinstance(new_value.value, RefinedUnknownValue)
+    assert new_value.is_unknown, "Deserialized value should be unknown"
+    assert isinstance(new_value.value, RefinedUnknownValue), f"Expected RefinedUnknownValue, but got {type(new_value.value)}"
     for key, val in refinements.items():
-        assert getattr(new_value.value, key) == val
+        assert getattr(new_value.value, key) == val, f"Refinement {key}: expected {val}, but got {getattr(new_value.value, key)}"
