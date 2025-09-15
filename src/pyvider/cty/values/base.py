@@ -4,9 +4,12 @@ from collections.abc import Iterator
 from typing import (
     TYPE_CHECKING,
     Any,
+    ClassVar,
     Generic,
     Self,
+    TypeGuard,
     TypeVar,
+    overload,
 )
 
 from attrs import define, evolve, field
