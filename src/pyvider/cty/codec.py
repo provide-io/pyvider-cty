@@ -5,7 +5,7 @@ import json
 from typing import Any, cast
 
 import msgpack  # type: ignore
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.config.defaults import (
     ERR_DECODE_DYNAMIC_TYPE,

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
 
 from attrs import define, field
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep

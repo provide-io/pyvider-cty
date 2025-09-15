@@ -7,7 +7,7 @@ from typing import Any
 import unicodedata
 
 import attrs
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.conversion._cache import (
     get_container_schema_cache,

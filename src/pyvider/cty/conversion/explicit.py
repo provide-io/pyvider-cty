@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from functools import lru_cache
 from typing import Any
 
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.config.defaults import (
     ERR_CANNOT_CONVERT_GENERAL,

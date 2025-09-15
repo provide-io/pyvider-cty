@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import product
 from typing import Any
 
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty import (
     CtyBool,
