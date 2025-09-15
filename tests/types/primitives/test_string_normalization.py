@@ -30,4 +30,4 @@ def test_string_normalization_on_validate(
     # The string should be normalized to NFC, which is the canonical form.
     assert validated_value.value == unicodedata.normalize(
         "NFC", expected_normalized_str
-    )
+    ), f"Expected normalized string {unicodedata.normalize('NFC', expected_normalized_str)!r}, but got {validated_value.value!r}"
