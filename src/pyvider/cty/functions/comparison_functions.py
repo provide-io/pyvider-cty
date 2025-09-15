@@ -103,38 +103,64 @@ def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, "<=")
 
 
-def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
-    if not args:
-        raise CtyFunctionError(f"{op} requires at least one argument")
+def _partition_args(*args: CtyValue[Any]) -> tuple[list[CtyValue[Any]], list[CtyValue[Any]]]:
+    """Separate arguments into known and unknown values."""
     known_args, unknown_args = [], []
     for v in args:
         if v.is_unknown:
             unknown_args.append(v)
         elif not v.is_null:
             known_args.append(v)
+    return known_args, unknown_args
+
+
+def _validate_homogeneous_types(known_args: list[CtyValue[Any]], op: str) -> None:
+    """Ensure all known arguments have compatible types."""
+    if not known_args:
+        return
+    is_all_numbers = all(isinstance(v.type, CtyNumber) for v in known_args)
+    is_all_strings = all(isinstance(v.type, CtyString) for v in known_args)
+    if not (is_all_numbers or is_all_strings):
+        raise CtyFunctionError(f"All arguments to {op} must be of the same type (all numbers or all strings)")
+
+
+def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[Any] | None:
+    """Find the extreme (min/max) value among known arguments."""
+    if not known_args:
+        return None
+    ops = {"max": __builtins__["max"], "min": __builtins__["min"]}
+    return ops[op](known_args, key=lambda v: v.value)
+
+
+def _filter_dominated_unknowns(unknown_args: list[CtyValue[Any]], extreme_known: CtyValue[Any], op: str) -> list[CtyValue[Any]]:
+    """Remove unknown values that are definitely dominated by the extreme known value."""
+    remaining_unknowns = []
+    for unk in unknown_args:
+        if isinstance(unk.value, RefinedUnknownValue):
+            ref = unk.value
+            if op == "max":
+                if ref.number_upper_bound and (extreme_known.value >= ref.number_upper_bound[0]):
+                    continue
+            elif op == "min" and ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
+                continue
+        remaining_unknowns.append(unk)
+    return remaining_unknowns
+
+
+def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
+    if not args:
+        raise CtyFunctionError(f"{op} requires at least one argument")
+
+    known_args, unknown_args = _partition_args(*args)
+
     if not known_args and not unknown_args:
         return CtyValue.null(args[0].type)
-    if known_args:
-        is_all_numbers = all(isinstance(v.type, CtyNumber) for v in known_args)
-        is_all_strings = all(isinstance(v.type, CtyString) for v in known_args)
-        if not (is_all_numbers or is_all_strings):
-            raise CtyFunctionError(f"All arguments to {op} must be of the same type (all numbers or all strings)")
 
-    ops = {"max": __builtins__["max"], "min": __builtins__["min"]}
-    extreme_known = ops[op](known_args, key=lambda v: v.value) if known_args else None
+    _validate_homogeneous_types(known_args, op)
+    extreme_known = _find_extreme_value(known_args, op)
 
     if extreme_known:
-        remaining_unknowns = []
-        for unk in unknown_args:
-            if isinstance(unk.value, RefinedUnknownValue):
-                ref = unk.value
-                if op == "max":
-                    if ref.number_upper_bound and (extreme_known.value >= ref.number_upper_bound[0]):
-                        continue
-                elif op == "min" and ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
-                    continue
-            remaining_unknowns.append(unk)
-        unknown_args = remaining_unknowns
+        unknown_args = _filter_dominated_unknowns(unknown_args, extreme_known, op)
 
     if not unknown_args:
         return extreme_known if extreme_known else CtyValue.null(args[0].type)
