@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 import json
+from typing import Any
 
 import msgpack  # type: ignore
 from provide.foundation.errors import error_boundary

@@ -21,6 +21,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
+from typing import Any
 from weakref import WeakKeyDictionary
 
 from provide.foundation import logger
