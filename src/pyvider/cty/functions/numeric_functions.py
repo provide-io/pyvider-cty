@@ -20,9 +20,8 @@ def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
     val_b = b.value if not b.is_unknown else None
 
     new_ref: dict[str, Any] = {}
-    match op:
-        case "add":
-            if val_a is not None:  # a is known, b is refined/unrefined
+    if op == "add":
+        if val_a is not None:  # a is known, b is refined/unrefined
             if ref_b.number_lower_bound: new_ref["number_lower_bound"] = (val_a + ref_b.number_lower_bound[0], ref_b.number_lower_bound[1])
             if ref_b.number_upper_bound: new_ref["number_upper_bound"] = (val_a + ref_b.number_upper_bound[0], ref_b.number_upper_bound[1])
         elif val_b is not None:  # b is known, a is refined/unrefined
@@ -34,8 +33,8 @@ def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
             if ref_a.number_upper_bound and ref_b.number_upper_bound:
                 new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] + ref_b.number_upper_bound[0], ref_a.number_upper_bound[1] and ref_b.number_upper_bound[1])
 
-        case "subtract":
-            if val_b is not None:
+    elif op == "subtract":
+        if val_b is not None:
             if ref_a.number_lower_bound: new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] - val_b, ref_a.number_lower_bound[1])
             if ref_a.number_upper_bound: new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] - val_b, ref_a.number_upper_bound[1])
         elif val_a is not None:
@@ -45,24 +44,24 @@ def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
             if ref_a.number_lower_bound and ref_b.number_upper_bound: new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] - ref_b.number_upper_bound[0], ref_a.number_lower_bound[1] and ref_b.number_upper_bound[1])
             if ref_a.number_upper_bound and ref_b.number_lower_bound: new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] - ref_b.number_lower_bound[0], ref_a.number_upper_bound[1] and ref_b.number_lower_bound[1])
 
-        case "multiply":
-            # This logic is simplified; a full implementation would handle four cases for bound combinations.
+    elif op == "multiply":
+        # This logic is simplified; a full implementation would handle four cases for bound combinations.
         # This covers the most important cases for now.
         known_val, unknown_ref = (val_a, ref_b) if val_a is not None else (val_b, ref_a)
         if known_val is not None:
-            if known_val > 0:
+            if known_val > POSITIVE_BOUNDARY:
                 if unknown_ref.number_lower_bound: new_ref["number_lower_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
                 if unknown_ref.number_upper_bound: new_ref["number_upper_bound"] = (unknown_ref.number_upper_bound[0] * known_val, unknown_ref.number_upper_bound[1])
-            elif known_val < 0:
+            elif known_val < POSITIVE_BOUNDARY:
                 if unknown_ref.number_upper_bound: new_ref["number_lower_bound"] = (unknown_ref.number_upper_bound[0] * known_val, unknown_ref.number_upper_bound[1])
                 if unknown_ref.number_lower_bound: new_ref["number_upper_bound"] = (unknown_ref.number_lower_bound[0] * known_val, unknown_ref.number_lower_bound[1])
 
-        case "divide":
-            if val_b is not None:
-            if val_b > 0:
+    elif op == "divide":
+        if val_b is not None:
+            if val_b > POSITIVE_BOUNDARY:
                 if ref_a.number_lower_bound: new_ref["number_lower_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
                 if ref_a.number_upper_bound: new_ref["number_upper_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
-            elif val_b < 0:
+            elif val_b < POSITIVE_BOUNDARY:
                 if ref_a.number_upper_bound: new_ref["number_lower_bound"] = (ref_a.number_upper_bound[0] / val_b, ref_a.number_upper_bound[1])
                 if ref_a.number_lower_bound: new_ref["number_upper_bound"] = (ref_a.number_lower_bound[0] / val_b, ref_a.number_lower_bound[1])
 
