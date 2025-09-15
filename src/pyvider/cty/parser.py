@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/parser.py
 """
 Contains logic for parsing Terraform's JSON-based type constraint strings
 into the framework's internal CtyType objects.
 """
-
-from __future__ import annotations
 
 from provide.foundation.errors import error_boundary
 from pyvider.cty.config.defaults import (

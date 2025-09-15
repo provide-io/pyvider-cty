@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import csv
 import io
 import json
-from __future__ import annotations
 
 from typing import Any
 
