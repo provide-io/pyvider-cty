@@ -5,6 +5,11 @@ from typing import Any
 # pyvider-cty/src/pyvider/cty/conversion/_utils.py
 """Internal conversion utilities to avoid circular dependencies."""
 
+from pyvider.cty.config.defaults import (
+    ERR_CANNOT_INFER_FROM_CTY_TYPE,
+    ERR_CANNOT_INFER_FROM_CTY_VALUE,
+)
+
 
 def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     """
@@ -16,13 +21,11 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     from pyvider.cty.values import CtyValue
 
     if isinstance(inst, CtyType):
-        raise TypeError(
-            f"Cannot infer data type from a CtyType instance: {type(inst).__name__}"
-        )
+        error_message = ERR_CANNOT_INFER_FROM_CTY_TYPE.format(type_name=type(inst).__name__)
+        raise TypeError(error_message)
     if isinstance(inst, CtyValue):
-        raise TypeError(
-            f"Cannot infer data type from a CtyValue instance: {type(inst).__name__}"
-        )
+        error_message = ERR_CANNOT_INFER_FROM_CTY_VALUE.format(type_name=type(inst).__name__)
+        raise TypeError(error_message)
 
     res = {}
     # Use getattr to safely access __attrs_attrs__ which may not exist.
