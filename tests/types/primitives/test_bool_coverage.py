@@ -6,5 +6,5 @@ def test_validate_unknown_value() -> None:
     bool_type = CtyBool()
     unknown_value = UnknownValue()
     result = bool_type.validate(unknown_value)
-    assert result.is_unknown
-    assert result.type.equal(bool_type)
+    assert result.is_unknown, "Validating unknown value should return unknown CtyValue"
+    assert result.type.equal(bool_type), "Result type should equal the original bool type"
