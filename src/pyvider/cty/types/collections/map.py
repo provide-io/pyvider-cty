@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 import unicodedata
 
 from attrs import define, field
@@ -21,7 +21,7 @@ V = TypeVar("V")
 
 
 @define(frozen=True, slots=True)
-class CtyMap[V](CtyType[dict[str, V]]):
+class CtyMap(CtyType[dict[str, V]], Generic[V]):
     ctype: ClassVar[str] = "map"
     _type_order: ClassVar[int] = 6
     element_type: CtyType[V] = field(kw_only=True)
