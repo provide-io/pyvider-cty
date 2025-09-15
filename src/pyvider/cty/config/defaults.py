@@ -20,6 +20,14 @@ MSGPACK_RAW_FALSE = False
 MSGPACK_STRICT_MAP_KEY_FALSE = False
 MSGPACK_USE_BIN_TYPE_TRUE = True
 
+# Refinement payload field IDs
+REFINEMENT_IS_KNOWN_NULL = 1
+REFINEMENT_STRING_PREFIX = 2
+REFINEMENT_NUMBER_LOWER_BOUND = 3
+REFINEMENT_NUMBER_UPPER_BOUND = 4
+REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND = 5
+REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND = 6
+
 # =================================
 # Function operation constants
 # =================================
@@ -64,3 +72,32 @@ SECONDS_PER_SECOND = 1
 # =================================
 ZERO_VALUE = 0
 POSITIVE_BOUNDARY = 0
+ONE_VALUE = 1
+TWO_VALUE = 2
+
+# =================================
+# Common thresholds and limits
+# =================================
+DEFAULT_MAX_ITERATIONS = 1000
+DEFAULT_TIMEOUT_SECONDS = 30
+MAX_STRING_LENGTH_DISPLAY = 100
+MAX_RECURSION_DEPTH = 100
+MIN_COLLECTION_SIZE = 0
+
+# =================================
+# Exception message templates
+# =================================
+# These are used to avoid raw strings in exceptions
+ERR_DECODE_REFINED_UNKNOWN = "Failed to decode refined unknown payload: {error}"
+ERR_DYNAMIC_MALFORMED = "CtyDynamic value is malformed; its inner value is not a CtyValue instance."
+ERR_DECODE_DYNAMIC_TYPE = "Failed to decode dynamic value type spec from JSON"
+ERR_VALUE_FOR_OBJECT = "Value for CtyObject must be a dict"
+ERR_VALUE_FOR_MAP = "Value for CtyMap must be a dict"
+ERR_VALUE_FOR_LIST_SET = "Value for CtyList or CtySet must be iterable"
+ERR_VALUE_FOR_TUPLE = "Value for CtyTuple must be a tuple"
+ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE = "Object of type {type_name} is not MessagePack serializable"
+ERR_CANNOT_COMPARE = "Cannot compare {type1} with {type2}"
+ERR_ALL_ARGS_SAME_TYPE = "All arguments to {op} must be of the same type (all numbers or all strings)"
+ERR_MIN_ONE_ARG = "{op} requires at least one argument"
+ERR_CANNOT_INFER_FROM_CTY_TYPE = "Cannot infer data type from a CtyType instance: {type_name}"
+ERR_CANNOT_INFER_FROM_CTY_VALUE = "Cannot infer data type from a CtyValue instance: {type_name}"
