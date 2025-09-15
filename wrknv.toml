@@ -9,7 +9,8 @@ uv = "latest"
 
 [siblings]
 patterns = [
-    "pyvider-telemetry",  # Telemetry
+    "provide-foundation", # Foundation telemetry
+    "provide-testkit",    # Testing utilities
     "wrknv",              # Environment manager
 ]
 
