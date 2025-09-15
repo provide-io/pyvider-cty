@@ -2,16 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from provide.foundation.errors import (
-    ValidationError as FoundationValidationError,  # type: ignore[import-untyped]
-)
+from provide.foundation.errors import ValidationError as FoundationValidationError  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
     from pyvider.cty.path import CtyPath
     from pyvider.cty.types import CtyType
 
 
-class CtyValidationError(FoundationValidationError):
+class CtyValidationError(FoundationValidationError):  # type: ignore[misc]
     """Base exception for all validation errors.
 
     Inherits from foundation's ValidationError for enhanced diagnostics

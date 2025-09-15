@@ -48,10 +48,7 @@ class CtyString(CtyType[str]):
                 )
 
             try:
-                if isinstance(raw_value, bytes):
-                    str_value = raw_value.decode("utf-8")
-                else:
-                    str_value = str(raw_value)
+                str_value = raw_value.decode("utf-8") if isinstance(raw_value, bytes) else str(raw_value)
                 normalized_value = unicodedata.normalize("NFC", str_value)
                 return CtyValue(vtype=self, value=normalized_value)
             except Exception as e:

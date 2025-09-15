@@ -180,10 +180,7 @@ class CtyObject(CtyType[dict[str, object]]):
             return False
         if self.attribute_types.keys() != other.attribute_types.keys():
             return False
-        for key in self.attribute_types:
-            if not self.attribute_types[key].equal(other.attribute_types[key]):
-                return False
-        return True
+        return all(self.attribute_types[key].equal(other.attribute_types[key]) for key in self.attribute_types)
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
