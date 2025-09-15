@@ -60,7 +60,7 @@ class CtyFunctionError(CtyError):
         self.input_types = input_types or []
 
         # Add function-specific context
-        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
+        context: dict[str, Any] = kwargs.setdefault("context", {})
         context["cty.error_category"] = "function_execution"
         context["cty.operation"] = "cty_function"
 

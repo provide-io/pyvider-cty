@@ -21,11 +21,13 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 # Context variables for the caches. Using `None` as a default indicates
 # that no cache context is active.
-_structural_key_cache: ContextVar[dict[int, tuple[Any, ...]] | None] = ContextVar[dict[int, tuple[Any, ...]] | None](
-    "_structural_key_cache", default=None
-)
-_container_schema_cache: ContextVar[dict[tuple[Any, ...], CtyType[Any]] | None] = ContextVar[dict[tuple[Any, ...], CtyType[Any]] | None](
-    "_container_schema_cache", default=None
+_structural_key_cache: ContextVar[dict[int, tuple[Any, ...]] | None] = ContextVar[
+    dict[int, tuple[Any, ...]] | None
+]("_structural_key_cache", default=None)
+_container_schema_cache: ContextVar[dict[tuple[Any, ...], CtyType[Any]] | None] = (
+    ContextVar[dict[tuple[Any, ...], CtyType[Any]] | None](
+        "_container_schema_cache", default=None
+    )
 )
 
 
