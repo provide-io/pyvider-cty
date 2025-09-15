@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pyvider.cty import (
     CtyBool,
     CtyList,
@@ -8,6 +10,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 def test_primitive_roundtrip() -> None:
@@ -49,10 +52,6 @@ def test_null_roundtrip() -> None:
     new_value = cty_from_msgpack(msgpack_data, schema)
     assert value == new_value
 
-
-from decimal import Decimal
-
-from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 def test_unknown_roundtrip() -> None:

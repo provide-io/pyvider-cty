@@ -5,9 +5,8 @@ internal inconsistencies and edge cases.
 """
 import pytest
 
-from pyvider.cty import (
-    CtyList, CtyMap, CtyNumber, CtyString, CtyValue
-)
+from pyvider.cty import CtyList, CtyMap, CtyNumber, CtyString, CtyValue
+
 
 class TestCtyValueCoverage:
     """Targeted tests for CtyValue error paths and dunder methods."""

@@ -3,15 +3,19 @@ Final test suite to address all significant remaining coverage gaps, bringing
 the library to a production-ready state of test coverage.
 """
 from decimal import Decimal
+
 import pytest
 
 from pyvider.cty import (
-    CtyDynamic, CtyList, CtyMap, CtyNumber, CtyString, CtyValue, convert
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyString,
+    CtyValue,
+    convert,
 )
-from pyvider.cty.exceptions import CtyConversionError
-from pyvider.cty.functions import (
-    add, greater_than, less_than, multiply, subtract
-)
+from pyvider.cty.functions import add, greater_than, less_than, multiply, subtract
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
@@ -114,5 +118,5 @@ class TestFinalCoveragePush:
         """Covers the runtime_checkable branches of the CtyTypeProtocol."""
         from pyvider.cty.types.base import CtyTypeProtocol
         class IncompleteType:
-            def validate(self, value): pass
+            def validate(self, value) -> None: pass
         assert not isinstance(IncompleteType(), CtyTypeProtocol)

@@ -1,21 +1,19 @@
-import pytest
 from decimal import Decimal
 
 from pyvider.cty import (
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
-    CtyValue,
-    CtyDynamic,
-    CtyNumber,
-    CtyList,
-    CtyObject,
-    CtyBool,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
 
 
-def test_cty_to_native_with_set():
+def test_cty_to_native_with_set() -> None:
     set_type = CtySet(element_type=CtyString())
     cty_val = set_type.validate({"a", "b", "c"})
     native = cty_to_native(cty_val)
@@ -23,7 +21,7 @@ def test_cty_to_native_with_set():
     assert sorted(native) == ["a", "b", "c"]
 
 
-def test_cty_to_native_with_tuple():
+def test_cty_to_native_with_tuple() -> None:
     tuple_type = CtyTuple(element_types=(CtyString(), CtyString()))
     cty_val = tuple_type.validate(("a", "b"))
     native = cty_to_native(cty_val)
@@ -31,13 +29,13 @@ def test_cty_to_native_with_tuple():
     assert native == ("a", "b")
 
 
-def test_cty_to_native_with_non_cty_value():
+def test_cty_to_native_with_non_cty_value() -> None:
     assert cty_to_native("hello") == "hello"
     assert cty_to_native(123) == 123
     assert cty_to_native(None) is None
 
 
-def test_cty_to_native_with_dynamic_value():
+def test_cty_to_native_with_dynamic_value() -> None:
     # Test with a CtyValue wrapping a primitive
     dynamic_type = CtyDynamic()
     cty_val = dynamic_type.validate("hello")
@@ -51,7 +49,7 @@ def test_cty_to_native_with_dynamic_value():
     assert native_list == ["a", "b"]
 
 
-def test_cty_to_native_with_decimal():
+def test_cty_to_native_with_decimal() -> None:
     # Test integer conversion
     cty_val_int = CtyNumber().validate(Decimal("123"))
     native_int = cty_to_native(cty_val_int)

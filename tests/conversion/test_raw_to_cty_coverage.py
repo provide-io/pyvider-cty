@@ -1,4 +1,4 @@
-from pyvider.cty import CtyMap, CtyNumber, CtySet, CtyString, CtyObject
+from pyvider.cty import CtyNumber, CtyObject, CtySet, CtyString
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
 
 
@@ -23,17 +23,18 @@ def test_infer_empty_dict() -> None:
     assert inferred_type.attribute_types == {}
 
 
-def test_infer_from_cty_value():
-    from pyvider.cty import CtyValue, CtyDynamic, CtyString
+def test_infer_from_cty_value() -> None:
+    from pyvider.cty import CtyDynamic, CtyString
 
     val = CtyString().validate("hello")
     inferred = infer_cty_type_from_raw(val)
     assert isinstance(inferred, CtyDynamic)
 
 
-def test_infer_from_attrs_object():
+def test_infer_from_attrs_object() -> None:
     import attrs
-    from pyvider.cty import CtyObject, CtyString, CtyNumber
+
+    from pyvider.cty import CtyNumber, CtyObject, CtyString
 
     @attrs.define
     class MyAttrs:
@@ -47,8 +48,8 @@ def test_infer_from_attrs_object():
     assert inferred.attribute_types["b"].equal(CtyNumber())
 
 
-def test_infer_dict_with_cty_values():
-    from pyvider.cty import CtyValue, CtyObject, CtyString, CtyNumber
+def test_infer_dict_with_cty_values() -> None:
+    from pyvider.cty import CtyNumber, CtyObject, CtyString
 
     val = {
         "a": CtyString().validate("hello"),

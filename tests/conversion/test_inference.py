@@ -7,7 +7,6 @@ from pyvider.cty import (
     CtyBool,
     CtyDynamic,
     CtyList,
-    CtyMap,
     CtyNumber,
     CtyObject,
     CtySet,

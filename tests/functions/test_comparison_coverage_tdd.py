@@ -3,7 +3,6 @@ TDD: This suite adds targeted tests for all unexercised branches in the
 refined unknown propagation logic of comparison functions.
 """
 from decimal import Decimal
-import pytest
 
 from pyvider.cty import CtyNumber, CtyValue
 from pyvider.cty.functions import greater_than, less_than

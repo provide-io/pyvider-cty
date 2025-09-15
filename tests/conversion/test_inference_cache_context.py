@@ -2,7 +2,6 @@
 TDD: Ensures the explicit inference_cache_context manager works correctly
 and can be nested without creating new caches.
 """
-import pytest
 
 from pyvider.cty.conversion._cache import (
     _container_schema_cache,

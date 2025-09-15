@@ -1,4 +1,4 @@
-from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString, CtyMap
+from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
 
 
 class TestDynamicListValidation:

@@ -1,16 +1,15 @@
+
 import msgpack
 import pytest
-from decimal import Decimal
 
 from pyvider.cty import (
+    CtyDynamic,
     CtyList,
     CtyMap,
     CtyObject,
     CtyString,
     CtyTuple,
     CtyValue,
-    CtyDynamic,
-    CtySet,
 )
 from pyvider.cty.codec import (
     _convert_value_to_serializable,
@@ -19,7 +18,7 @@ from pyvider.cty.codec import (
 )
 
 
-def test_serialize_dynamic_with_validated_value():
+def test_serialize_dynamic_with_validated_value() -> None:
     """
     Tests that a CtyDynamic value, correctly created via its validator,
     serializes as expected.
@@ -36,16 +35,16 @@ def test_serialize_dynamic_with_validated_value():
     assert isinstance(unpacked, list)
     assert len(unpacked) == 2
     # A dict with string keys should be inferred as an object.
-    assert b'["object",{"key":"string"}]' == unpacked[0]
+    assert unpacked[0] == b'["object",{"key":"string"}]'
     assert unpacked[1] == {"key": "value"}
 
 
-def test_convert_value_to_serializable_with_raw_value():
+def test_convert_value_to_serializable_with_raw_value() -> None:
     serializable = _convert_value_to_serializable("hello", CtyString())
     assert serializable == "hello"
 
 
-def test_incorrect_container_type_raises_error():
+def test_incorrect_container_type_raises_error() -> None:
     with pytest.raises(TypeError, match="Value for CtyObject must be a dict"):
         _convert_value_to_serializable(
             CtyValue(CtyObject({}), ["not", "a", "dict"]), CtyObject({})
@@ -70,7 +69,7 @@ def test_incorrect_container_type_raises_error():
         )
 
 
-def test_msgpack_default_handler_unsupported_type():
+def test_msgpack_default_handler_unsupported_type() -> None:
     class Unsupported:
         pass
 

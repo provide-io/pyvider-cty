@@ -1,23 +1,21 @@
-import pytest
-from decimal import Decimal
 
 from pyvider.cty import (
+    CtyBool,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
     CtyValue,
-    CtyDynamic,
-    CtyNumber,
-    CtyList,
-    CtyObject,
-    CtyBool,
-    CtyMap,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
 
 
 class TestAdapterCoverage:
-    def test_cty_to_native_unknown_returns_none(self):
+    def test_cty_to_native_unknown_returns_none(self) -> None:
         """
         Verifies that converting an unknown CtyValue to a native type
         gracefully returns None instead of raising an error.
@@ -25,13 +23,13 @@ class TestAdapterCoverage:
         unknown_val = CtyValue.unknown(CtyString())
         assert cty_to_native(unknown_val) is None
 
-    def test_cty_to_native_already_native(self):
+    def test_cty_to_native_already_native(self) -> None:
         assert cty_to_native(123) == 123
         assert cty_to_native("hello") == "hello"
         assert cty_to_native(True) is True
         assert cty_to_native(None) is None
 
-    def test_cty_to_native_nested_collections(self):
+    def test_cty_to_native_nested_collections(self) -> None:
         # GIVEN a complex nested structure
         obj_type = CtyObject(
             {
@@ -55,7 +53,7 @@ class TestAdapterCoverage:
             "b": sorted([("bar", False), ("foo", True)]),
         }
 
-    def test_cty_to_native_with_set_and_tuple(self):
+    def test_cty_to_native_with_set_and_tuple(self) -> None:
         # Test with Set
         set_type = CtySet(element_type=CtyNumber())
         cty_set = set_type.validate({1, 2, 3})
@@ -70,7 +68,7 @@ class TestAdapterCoverage:
         assert isinstance(native_tuple, tuple)
         assert native_tuple == ("a", 1)
 
-    def test_cty_to_native_with_repeated_values(self):
+    def test_cty_to_native_with_repeated_values(self) -> None:
         # GIVEN a structure with repeated CtyValue instances
         inner_val = CtyString().validate("repeated")
         obj_type = CtyObject({"a": CtyString(), "b": CtyString()})
@@ -82,42 +80,42 @@ class TestAdapterCoverage:
         # THEN the conversion handles the repeated value correctly
         assert native == {"a": "repeated", "b": "repeated"}
 
-    def test_cty_to_native_malformed_list(self):
+    def test_cty_to_native_malformed_list(self) -> None:
         list_type = CtyList(element_type=CtyString())
         # Create a CtyValue with a non-iterable internal value
         malformed_value = CtyValue(list_type, 123)
         # Expect it to be converted to an empty list
         assert cty_to_native(malformed_value) == []
 
-    def test_cty_to_native_malformed_set(self):
+    def test_cty_to_native_malformed_set(self) -> None:
         set_type = CtySet(element_type=CtyString())
         # Create a CtyValue with a non-iterable internal value
         malformed_value = CtyValue(set_type, 123)
         # Expect it to be converted to an empty list
         assert cty_to_native(malformed_value) == []
 
-    def test_cty_to_native_malformed_tuple(self):
+    def test_cty_to_native_malformed_tuple(self) -> None:
         tuple_type = CtyTuple(element_types=(CtyString(),))
         # Create a CtyValue with a non-iterable internal value
         malformed_value = CtyValue(tuple_type, 123)
         # Expect it to be converted to an empty tuple
         assert cty_to_native(malformed_value) == ()
 
-    def test_cty_to_native_malformed_object(self):
+    def test_cty_to_native_malformed_object(self) -> None:
         obj_type = CtyObject({"a": CtyString()})
         # Create a CtyValue with a non-iterable internal value
         malformed_value = CtyValue(obj_type, 123)
         # Expect it to be converted to an empty dict
         assert cty_to_native(malformed_value) == {}
 
-    def test_cty_to_native_with_set(self):
+    def test_cty_to_native_with_set(self) -> None:
         set_type = CtySet(element_type=CtyString())
         cty_val = set_type.validate({"a", "b", "c"})
         native = cty_to_native(cty_val)
         assert isinstance(native, list)
         assert sorted(native) == ["a", "b", "c"]
 
-    def test_cty_to_native_with_dynamic_value(self):
+    def test_cty_to_native_with_dynamic_value(self) -> None:
         # Test with a CtyValue wrapping a primitive
         dynamic_type = CtyDynamic()
         cty_val = dynamic_type.validate("hello")
@@ -130,7 +128,7 @@ class TestAdapterCoverage:
         native_list = cty_to_native(cty_val_dynamic_list)
         assert native_list == ["a", "b"]
 
-    def test_cty_to_native_primitive(self):
+    def test_cty_to_native_primitive(self) -> None:
         val = CtyNumber().validate(123)
         native = cty_to_native(val)
         assert native == 123

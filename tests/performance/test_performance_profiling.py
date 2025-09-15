@@ -6,7 +6,6 @@ import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
-from pyvider.cty.conversion import inference_cache_context
 
 # --- Configuration ---
 NESTING_DEPTH = 5  # A reasonable depth for a single complex object

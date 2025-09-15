@@ -6,7 +6,6 @@ This suite defines the required strict behavior for:
 2. The CtyCapsuleWithOps constructor, which must validate function arity.
 3. Hashing rules for CtyValue, aligning with Python idioms.
 """
-import json
 from typing import Any
 
 import msgpack  # type: ignore
@@ -21,7 +20,6 @@ from pyvider.cty import (
     CtySet,
     CtyString,
     CtyTuple,
-    CtyType,
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack

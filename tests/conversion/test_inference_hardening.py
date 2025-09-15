@@ -6,7 +6,6 @@ This suite defines the required strict behavior for:
 2. Correct structural type inference for dictionaries (object vs. map).
 """
 import attrs
-import pytest
 
 from pyvider.cty import (
     CtyBool,
