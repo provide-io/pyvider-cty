@@ -12,7 +12,7 @@ from functools import wraps
 import threading
 from typing import Any, TypeVar
 
-from ..types import CtyType
+from pyvider.cty.types import CtyType
 
 F = TypeVar("F", bound=Callable[..., Any])
 

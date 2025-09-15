@@ -12,12 +12,12 @@ from provide.foundation.errors import error_boundary
 from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
 
-from ._cache import (
+from pyvider.cty.conversion._cache import (
     get_container_schema_cache,
     get_structural_key_cache,
     with_inference_cache,
 )
-from ._utils import _attrs_to_dict_safe
+from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 
 
 def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:

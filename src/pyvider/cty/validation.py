@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .types import CtyType
+from pyvider.cty.types import CtyType
 
 
 def validate_config(schema: CtyType[Any], config: Any) -> None:

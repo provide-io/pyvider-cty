@@ -5,7 +5,7 @@ from __future__ import annotations
 Defines exceptions related to CTY type and value conversions.
 """
 
-from .base import CtyError
+from pyvider.cty.exceptions.base import CtyError
 
 
 class CtyConversionError(CtyError):

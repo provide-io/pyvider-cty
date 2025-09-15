@@ -10,7 +10,7 @@ from typing import (
 
 from attrs import define, evolve, field
 
-from .markers import UNREFINED_UNKNOWN
+from pyvider.cty.values.markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
 

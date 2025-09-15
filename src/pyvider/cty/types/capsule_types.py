@@ -4,7 +4,7 @@ from __future__ import annotations
 Defines standard, built-in capsule types for pyvider.cty.
 """
 
-from .capsule import CtyCapsule
+from pyvider.cty.types.capsule import CtyCapsule
 
 BytesCapsule = CtyCapsule("Bytes", bytes)
 """A capsule type for wrapping raw bytes."""
