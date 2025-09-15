@@ -8,7 +8,7 @@ production IaC requirements including advanced recursion detection,
 performance monitoring, and comprehensive diagnostics.
 """
 
-from .recursion import (
+from pyvider.cty.validation.recursion import (
     RecursionContext,
     RecursionDetector,
     clear_recursion_context,
