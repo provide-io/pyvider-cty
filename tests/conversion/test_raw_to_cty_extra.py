@@ -43,6 +43,7 @@ def test_attrs_to_dict_safe_with_cty_value() -> None:
 def test_infer_from_unsupported_type() -> None:
     class Foo:
         pass
+
     assert isinstance(infer_cty_type_from_raw(Foo()), CtyDynamic)
 
 

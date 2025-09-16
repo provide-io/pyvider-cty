@@ -1,4 +1,3 @@
-
 import msgpack
 import pytest
 

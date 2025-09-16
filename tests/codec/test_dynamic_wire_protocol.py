@@ -73,7 +73,9 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     dynamic_value = schema.validate(raw_data)
     actual_packed = cty_to_msgpack(dynamic_value, schema)
 
-    expected_type_spec = json.dumps(["list", "number"], separators=(",", ":")).encode("utf-8")
+    expected_type_spec = json.dumps(["list", "number"], separators=(",", ":")).encode(
+        "utf-8"
+    )
     serializable_inner = ["10", "20", "30"]
     expected_payload = serializable_inner
     expected_packed = msgpack.packb(

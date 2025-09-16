@@ -22,7 +22,9 @@ def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
 
 def jsondecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(f"jsondecode: argument must be a string, got {val.type.ctype}")
+        raise CtyFunctionError(
+            f"jsondecode: argument must be a string, got {val.type.ctype}"
+        )
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyDynamic())
     try:
@@ -34,7 +36,9 @@ def jsondecode(val: CtyValue[Any]) -> CtyValue[Any]:
 
 def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyString):
-        raise CtyFunctionError(f"csvdecode: argument must be a string, got {val.type.ctype}")
+        raise CtyFunctionError(
+            f"csvdecode: argument must be a string, got {val.type.ctype}"
+        )
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
 

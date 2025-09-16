@@ -2,6 +2,7 @@
 Final test suite to address all significant remaining coverage gaps, bringing
 the library to a production-ready state of test coverage.
 """
+
 from decimal import Decimal
 
 import pytest
@@ -69,7 +70,9 @@ class TestFinalCoveragePush:
             malformed_map.without_key("a")
 
         malformed_list = CtyValue(vtype=CtyList(element_type=CtyString()), value=123)
-        with pytest.raises(TypeError, match="Internal value of CtyList must be a list or tuple"):
+        with pytest.raises(
+            TypeError, match="Internal value of CtyList must be a list or tuple"
+        ):
             malformed_list.with_element_at(0, "a")
 
     # --- Coverage for: src/pyvider/cty/functions/comparison_functions.py ---
@@ -117,6 +120,7 @@ class TestFinalCoveragePush:
         """Covers cty_to_native with a CtySet whose internal value is not iterable."""
         from pyvider.cty import CtySet
         from pyvider.cty.conversion.adapter import cty_to_native
+
         malformed_set = CtyValue(vtype=CtySet(element_type=CtyString()), value=123)
         assert cty_to_native(malformed_set) == []
 
@@ -125,6 +129,9 @@ class TestFinalCoveragePush:
     def test_type_protocol_conformance_check(self) -> None:
         """Covers the runtime_checkable branches of the CtyTypeProtocol."""
         from pyvider.cty.types.base import CtyTypeProtocol
+
         class IncompleteType:
-            def validate(self, value) -> None: pass
+            def validate(self, value) -> None:
+                pass
+
         assert not isinstance(IncompleteType(), CtyTypeProtocol)

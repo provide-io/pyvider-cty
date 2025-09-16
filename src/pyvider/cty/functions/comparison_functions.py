@@ -3,6 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
+from pyvider.cty.config.defaults import (
+    COMPARISON_OPS_MAP,
+    ERR_ALL_ARGS_SAME_TYPE,
+    ERR_CANNOT_COMPARE,
+    ERR_MIN_ONE_ARG,
+)
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
 
@@ -84,26 +90,34 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
 
     # Handle known value comparisons
     if not isinstance(a.type, CtyNumber | CtyString) or not a.type.equal(b.type):
-        raise CtyFunctionError(f"Cannot compare {a.type.ctype} with {b.type.ctype}")
+        error_message = ERR_CANNOT_COMPARE.format(
+            type1=a.type.ctype, type2=b.type.ctype
+        )
+        raise CtyFunctionError(error_message)
 
-    ops = {">": lambda x, y: x > y, ">=": lambda x, y: x >= y, "<": lambda x, y: x < y, "<=": lambda x, y: x <= y}
+    ops = COMPARISON_OPS_MAP
     return CtyBool().validate(ops[op](a.value, b.value))
 
 
 def greater_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, ">")
 
+
 def greater_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, ">=")
 
+
 def less_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, "<")
+
 
 def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, "<=")
 
 
-def _partition_args(*args: CtyValue[Any]) -> tuple[list[CtyValue[Any]], list[CtyValue[Any]]]:
+def _partition_args(
+    *args: CtyValue[Any],
+) -> tuple[list[CtyValue[Any]], list[CtyValue[Any]]]:
     """Separate arguments into known and unknown values."""
     known_args, unknown_args = [], []
     for v in args:
@@ -121,10 +135,13 @@ def _validate_homogeneous_types(known_args: list[CtyValue[Any]], op: str) -> Non
     is_all_numbers = all(isinstance(v.type, CtyNumber) for v in known_args)
     is_all_strings = all(isinstance(v.type, CtyString) for v in known_args)
     if not (is_all_numbers or is_all_strings):
-        raise CtyFunctionError(f"All arguments to {op} must be of the same type (all numbers or all strings)")
+        error_message = ERR_ALL_ARGS_SAME_TYPE.format(op=op)
+        raise CtyFunctionError(error_message)
 
 
-def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[Any] | None:
+def _find_extreme_value(
+    known_args: list[CtyValue[Any]], op: str
+) -> CtyValue[Any] | None:
     """Find the extreme (min/max) value among known arguments."""
     if not known_args:
         return None
@@ -132,16 +149,24 @@ def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[An
     return ops[op](known_args, key=lambda v: v.value)
 
 
-def _filter_dominated_unknowns(unknown_args: list[CtyValue[Any]], extreme_known: CtyValue[Any], op: str) -> list[CtyValue[Any]]:
+def _filter_dominated_unknowns(
+    unknown_args: list[CtyValue[Any]], extreme_known: CtyValue[Any], op: str
+) -> list[CtyValue[Any]]:
     """Remove unknown values that are definitely dominated by the extreme known value."""
     remaining_unknowns = []
     for unk in unknown_args:
         if isinstance(unk.value, RefinedUnknownValue):
             ref = unk.value
             if op == "max":
-                if ref.number_upper_bound and (extreme_known.value >= ref.number_upper_bound[0]):
+                if ref.number_upper_bound and (
+                    extreme_known.value >= ref.number_upper_bound[0]
+                ):
                     continue
-            elif op == "min" and ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
+            elif (
+                op == "min"
+                and ref.number_lower_bound
+                and (extreme_known.value <= ref.number_lower_bound[0])
+            ):
                 continue
         remaining_unknowns.append(unk)
     return remaining_unknowns
@@ -149,7 +174,8 @@ def _filter_dominated_unknowns(unknown_args: list[CtyValue[Any]], extreme_known:
 
 def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
     if not args:
-        raise CtyFunctionError(f"{op} requires at least one argument")
+        error_message = ERR_MIN_ONE_ARG.format(op=op)
+        raise CtyFunctionError(error_message)
 
     known_args, unknown_args = _partition_args(*args)
 
@@ -171,6 +197,7 @@ def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
 
 def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="max")
+
 
 def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="min")

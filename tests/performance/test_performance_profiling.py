@@ -12,6 +12,7 @@ NESTING_DEPTH = 5  # A reasonable depth for a single complex object
 
 # --- Test Data Generation ---
 
+
 def generate_complex_object_data(depth: int) -> dict[str, Any]:
     """Generates a single, representative nested Python dictionary."""
     if depth <= 0:
@@ -53,6 +54,7 @@ def generate_cty_schema_from_data(d: dict) -> CtyObject:
 
 # --- Pytest Fixture for Test Data ---
 
+
 @pytest.fixture(scope="module")
 def complex_data_and_schema() -> tuple[dict[str, Any], CtyObject]:
     """
@@ -65,6 +67,7 @@ def complex_data_and_schema() -> tuple[dict[str, Any], CtyObject]:
 
 
 # --- Benchmark Test ---
+
 
 def core_roundtrip_operation(raw_data: dict, schema: CtyObject) -> None:
     """
