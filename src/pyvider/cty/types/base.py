@@ -46,11 +46,11 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
         pass
 
     @abstractmethod
-    def equal(self, other: CtyType[T]) -> bool:
+    def equal(self, other: Any) -> bool:
         pass
 
     @abstractmethod
-    def usable_as(self, other: CtyType[T]) -> bool:
+    def usable_as(self, other: Any) -> bool:
         pass
 
     @abstractmethod
