@@ -31,7 +31,8 @@
       "Bash(./examples/quality/decorators_demo.py)",
       "Bash(./examples/quality/generate_reports.py)",
       "Bash(coverage run:*)",
-      "Bash(coverage report:*)"
+      "Bash(coverage report:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": [],
