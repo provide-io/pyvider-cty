@@ -33,7 +33,8 @@
       "Bash(coverage run:*)",
       "Bash(coverage report:*)",
       "WebSearch",
-      "Bash(FOUNDATION_SUPPRESS_TESTING_WARNINGS=1 pytest examples/basics/first_test.py::test_my_first_testkit_test -v)"
+      "Bash(FOUNDATION_SUPPRESS_TESTING_WARNINGS=1 pytest examples/basics/first_test.py::test_my_first_testkit_test -v)",
+      "Bash(TESTKIT_SUPPRESS_WARNINGS=1 pytest examples/basics/first_test.py::test_my_first_testkit_test -v)"
     ],
     "deny": [],
     "ask": [],
