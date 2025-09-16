@@ -29,7 +29,9 @@
       "Bash(tree:*)",
       "Bash(./examples/quality/framework_demo.py)",
       "Bash(./examples/quality/decorators_demo.py)",
-      "Bash(./examples/quality/generate_reports.py)"
+      "Bash(./examples/quality/generate_reports.py)",
+      "Bash(coverage run:*)",
+      "Bash(coverage report:*)"
     ],
     "deny": [],
     "ask": [],
