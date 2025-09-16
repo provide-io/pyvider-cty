@@ -1,0 +1,113 @@
+name: CI (New - Using ci-tooling)
+
+on:
+  push:
+    branches: [main, develop, test-ci-tooling]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  # Test using reusable workflow
+  ci-reusable:
+    name: 🔄 CI (Reusable Workflow)
+    uses: provide-io/ci-tooling/workflows/python-ci.yml@v0
+    with:
+      python-version: '3.11'
+      source-paths: 'src/ tests/'
+      test-directory: 'tests/'
+      coverage-threshold: 80
+      run-security: true
+      matrix-testing: true
+      os-matrix: 'ubuntu-latest'
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Test using individual actions for comparison
+  ci-individual:
+    name: 🔧 CI (Individual Actions)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@v0
+        with:
+          python-version: '3.11'
+          uv-version: '0.7.8'
+          install-extras: 'dev'
+
+      - name: 🎨 Code Quality
+        uses: provide-io/ci-tooling/actions/python-quality@v0
+        with:
+          source-paths: 'src/ tests/'
+
+      - name: 🧪 Run Tests
+        uses: provide-io/ci-tooling/actions/python-test@v0
+        with:
+          test-directory: 'tests/'
+          source-directory: 'src/'
+          coverage-threshold: 80
+
+      - name: 🔒 Security Scan
+        uses: provide-io/ci-tooling/actions/python-security@v0
+        with:
+          source-paths: 'src/'
+
+      - name: 🏗️ Build Package
+        uses: provide-io/ci-tooling/actions/python-build@v0
+        with:
+          build-backend: 'uv'
+
+  # Matrix test with new tooling
+  matrix-test:
+    name: 🧪 Matrix (${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@v0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 🧪 Quick Test
+        uses: provide-io/ci-tooling/actions/python-test@v0
+        with:
+          pytest-args: '-xvs'
+          coverage-threshold: 70
+
+  # Summary
+  summary:
+    name: 📊 CI Summary
+    needs: [ci-reusable, ci-individual, matrix-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📊 Generate Summary
+        shell: bash
+        run: |
+          echo "## 🧪 CI Tooling Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Type | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Reusable Workflow | ${{ needs.ci-reusable.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Individual Actions | ${{ needs.ci-individual.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Matrix Testing | ${{ needs.matrix-test.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.ci-reusable.result }}" = "success" ] && \
+             [ "${{ needs.ci-individual.result }}" = "success" ] && \
+             [ "${{ needs.matrix-test.result }}" = "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎉 **All CI tooling tests passed!**" >> $GITHUB_STEP_SUMMARY
+            echo "Ready for migration to shared actions." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Some tests failed - review before migration**" >> $GITHUB_STEP_SUMMARY
+          fi
