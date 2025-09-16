@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
 
 from attrs import define, field
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
@@ -64,12 +64,14 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         validated_elements: list[CtyValue[T]] = []
         for i, item in enumerate(raw_list_to_validate):
-            with error_boundary(context={
-                "operation": "list_element_validation",
-                "list_index": i,
-                "element_type": str(self.element_type),
-                "item_type": type(item).__name__
-            }):
+            with error_boundary(
+                context={
+                    "operation": "list_element_validation",
+                    "list_index": i,
+                    "element_type": str(self.element_type),
+                    "item_type": type(item).__name__,
+                }
+            ):
                 if item is None and not isinstance(self.element_type, CtyDynamic):
                     raise CtyListValidationError(
                         f"List elements cannot be null for element type {self.element_type.ctype}",

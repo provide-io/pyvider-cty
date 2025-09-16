@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from provide.foundation.errors import FoundationError
+from provide.foundation.errors import FoundationError  # type: ignore[import-untyped]
 
 #
 # pyvider/cty/exceptions/base.py
@@ -54,22 +54,22 @@ class CtyFunctionError(CtyError):
         *,
         function_name: str | None = None,
         input_types: list[str] | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self.function_name = function_name
         self.input_types = input_types or []
 
         # Add function-specific context
-        context = kwargs.setdefault('context', {})
-        context['cty.error_category'] = 'function_execution'
-        context['cty.operation'] = 'cty_function'
+        context: dict[str, Any] = kwargs.setdefault("context", {})
+        context["cty.error_category"] = "function_execution"
+        context["cty.operation"] = "cty_function"
 
         if function_name:
-            context['cty.function_name'] = function_name
+            context["cty.function_name"] = function_name
 
         if input_types:
-            context['cty.function_input_types'] = input_types
-            context['cty.function_arity'] = len(input_types)
+            context["cty.function_input_types"] = input_types
+            context["cty.function_arity"] = len(input_types)
 
         # Enhance message if function name available
         if function_name:

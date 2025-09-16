@@ -5,6 +5,7 @@ This suite defines the required strict behavior for:
 1. Correct primitive type inference precedence (bool vs. int).
 2. Correct structural type inference for dictionaries (object vs. map).
 """
+
 import attrs
 
 from pyvider.cty import (
@@ -21,6 +22,7 @@ from pyvider.cty.conversion import infer_cty_type_from_raw
 @attrs.define
 class MyAttrsClass:
     """A simple attrs class for testing."""
+
     name: str
     value: int
 
@@ -34,9 +36,9 @@ class TestInferenceHardening:
         This tests the precedence in the inference logic.
         """
         inferred_type = infer_cty_type_from_raw(True)
-        assert isinstance(
-            inferred_type, CtyBool
-        ), "Boolean value was incorrectly inferred as CtyNumber."
+        assert isinstance(inferred_type, CtyBool), (
+            "Boolean value was incorrectly inferred as CtyNumber."
+        )
 
     def test_string_keyed_dict_inference_logic(self) -> None:
         """
@@ -46,17 +48,17 @@ class TestInferenceHardening:
         # Case 1: Uniform value types (should still be CtyObject)
         uniform_dict = {"key1": "value1", "key2": "value2"}
         inferred_uniform = infer_cty_type_from_raw(uniform_dict)
-        assert isinstance(
-            inferred_uniform, CtyObject
-        ), "String-keyed dict with uniform values was not inferred as an Object."
+        assert isinstance(inferred_uniform, CtyObject), (
+            "String-keyed dict with uniform values was not inferred as an Object."
+        )
         assert inferred_uniform.attribute_types["key1"].equal(CtyString())
 
         # Case 2: Mixed value types (should be CtyObject)
         mixed_dict = {"key1": "value1", "key2": 123}
         inferred_mixed = infer_cty_type_from_raw(mixed_dict)
-        assert isinstance(
-            inferred_mixed, CtyObject
-        ), "String-keyed dict with mixed values was not inferred as an Object."
+        assert isinstance(inferred_mixed, CtyObject), (
+            "String-keyed dict with mixed values was not inferred as an Object."
+        )
         assert inferred_mixed.attribute_types["key1"].equal(CtyString())
         assert inferred_mixed.attribute_types["key2"].equal(CtyNumber())
 
@@ -69,6 +71,6 @@ class TestInferenceHardening:
         mixed_dict = {1: "value1", "key2": 123}
         inferred_mixed = infer_cty_type_from_raw(mixed_dict)
         assert isinstance(inferred_mixed, CtyMap)
-        assert isinstance(
-            inferred_mixed.element_type, CtyDynamic
-        ), "Map with mixed values should have a CtyDynamic element type."
+        assert isinstance(inferred_mixed.element_type, CtyDynamic), (
+            "Map with mixed values should have a CtyDynamic element type."
+        )

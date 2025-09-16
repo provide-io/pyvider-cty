@@ -47,7 +47,7 @@ class TestConversionErrorContext:
 
         # Should have conversion context
         error = exc_info.value
-        assert hasattr(error, 'context') or "conversion" in str(error).lower()
+        assert hasattr(error, "context") or "conversion" in str(error).lower()
 
     def test_conversion_bool_error_context(self) -> None:
         """Test boolean conversion error context."""
@@ -58,6 +58,7 @@ class TestConversionErrorContext:
 
         error = exc_info.value
         assert "bool" in str(error).lower()
+
 
 class TestValidationErrorContext:
     """Test enhanced error context for validation operations."""
@@ -74,7 +75,7 @@ class TestValidationErrorContext:
             string_type.validate(BadValue())
 
         error = exc_info.value
-        assert hasattr(error, 'context') or "BadValue" in str(error)
+        assert hasattr(error, "context") or "BadValue" in str(error)
 
     def test_list_validation_nested_error_context(self) -> None:
         """Test list validation with nested error context."""
@@ -108,18 +109,14 @@ class TestValidationErrorContext:
 
     def test_object_validation_error_context(self) -> None:
         """Test object validation with attribute-specific error context."""
-        obj_type = CtyObject(
-            attribute_types={
-                "name": CtyString(),
-                "age": CtyNumber()
-            }
-        )
+        obj_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
 
         with pytest.raises(CtyAttributeValidationError) as exc_info:
             obj_type.validate({"name": "Alice"})  # Missing required attribute
 
         error = exc_info.value
         assert "age" in str(error) or "Missing" in str(error)
+
 
 class TestFunctionErrorContext:
     """Test error context for CTY standard library functions."""
@@ -155,6 +152,7 @@ class TestFunctionErrorContext:
         error = exc_info.value
         assert "element" in str(error) and "string" in str(error).lower()
 
+
 class TestParserErrorContext:
     """Test error context for Terraform type parsing."""
 
@@ -174,6 +172,7 @@ class TestParserErrorContext:
         error = exc_info.value
         assert "Invalid" in str(error) or "specification" in str(error)
 
+
 class TestCodecErrorContext:
     """Test error context for serialization/deserialization."""
 
@@ -190,6 +189,7 @@ class TestCodecErrorContext:
         with pytest.raises(Exception):
             cty_from_msgpack(b"invalid_msgpack_data", CtyString())
 
+
 class TestCompositeErrorContext:
     """Test error context in complex nested scenarios."""
 
@@ -198,9 +198,7 @@ class TestCompositeErrorContext:
         user_type = CtyObject(
             attribute_types={
                 "profile": CtyObject(
-                    attribute_types={
-                        "settings": CtyMap(element_type=CtyString())
-                    }
+                    attribute_types={"settings": CtyMap(element_type=CtyString())}
                 )
             }
         )
@@ -210,15 +208,13 @@ class TestCompositeErrorContext:
                 raise ValueError("Bad nested value")
 
         with pytest.raises(CtyAttributeValidationError) as exc_info:
-            user_type.validate({
-                "profile": {
-                    "settings": {"theme": BadValue()}
-                }
-            })
+            user_type.validate({"profile": {"settings": {"theme": BadValue()}}})
 
         error = exc_info.value
         # Should show the full path to the error
-        assert "profile" in str(error) or "settings" in str(error) or "theme" in str(error)
+        assert (
+            "profile" in str(error) or "settings" in str(error) or "theme" in str(error)
+        )
 
     def test_function_with_validation_error_chain(self) -> None:
         """Test function error context with underlying validation errors."""
@@ -229,6 +225,7 @@ class TestCompositeErrorContext:
         # This should work - testing error boundary presence
         result = concat(list1, list2)
         assert len(result.raw_value) == 2
+
 
 class TestErrorRecoveryAndBoundaries:
     """Test that error boundaries don't interfere with normal operation."""
@@ -259,6 +256,7 @@ class TestErrorRecoveryAndBoundaries:
 
         with pytest.raises(CtyFunctionError):
             length(CtyNumber().validate(42))  # Should still raise CtyFunctionError
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

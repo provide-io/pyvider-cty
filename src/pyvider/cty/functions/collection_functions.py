@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import product
 from typing import Any
 
-from provide.foundation.errors import error_boundary
+from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty import (
     CtyBool,
@@ -19,6 +19,10 @@ from pyvider.cty import (
     CtyValue,
     unify,
 )
+from pyvider.cty.config.defaults import (
+    ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
+    ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
+)
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
@@ -26,7 +30,10 @@ from pyvider.cty.values.markers import RefinedUnknownValue
 
 def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"distinct: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        error_message = ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE.format(
+            type=input_val.type.ctype
+        )
+        raise CtyFunctionError(error_message)
     if input_val.is_null or input_val.is_unknown:
         return input_val
     seen = set()
@@ -37,15 +44,24 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
                 seen.add(cty_element)
                 result_elements.append(cty_element)
         except TypeError as e:
-            raise CtyFunctionError(f"distinct: element of type {cty_element.type.ctype} is not hashable. Error: {e}") from e
-    element_type = input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
+            error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(
+                type=cty_element.type.ctype, error=e
+            )
+            raise CtyFunctionError(error_message) from e
+    element_type = (
+        input_val.type.element_type
+        if isinstance(input_val.type, CtyList | CtySet)
+        else CtyDynamic()
+    )
     return CtyList(element_type=element_type).validate(result_elements)
+
 
 def _extract_inner_value(outer_element_val: Any) -> Any:
     """Extract the inner value from a potentially dynamic outer element."""
     return (
         outer_element_val.value
-        if isinstance(outer_element_val, CtyValue) and isinstance(outer_element_val.type, CtyDynamic)
+        if isinstance(outer_element_val, CtyValue)
+        and isinstance(outer_element_val.type, CtyDynamic)
         else outer_element_val
     )
 
@@ -53,10 +69,14 @@ def _extract_inner_value(outer_element_val: Any) -> Any:
 def _validate_collection_element(inner_val: Any) -> None:
     """Validate that an inner value is a proper collection for flattening."""
     if not isinstance(inner_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}")
+        raise CtyFunctionError(
+            f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}"
+        )
 
 
-def _determine_unified_element_type(final_element_type: CtyType[Any] | None, new_element_type: CtyType[Any]) -> CtyType[Any]:
+def _determine_unified_element_type(
+    final_element_type: CtyType[Any] | None, new_element_type: CtyType[Any]
+) -> CtyType[Any]:
     """Determine the unified element type for flattened elements."""
     if final_element_type is None:
         return new_element_type
@@ -67,7 +87,9 @@ def _determine_unified_element_type(final_element_type: CtyType[Any] | None, new
 
 def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"flatten: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"flatten: input must be a list, set, or tuple, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
@@ -84,24 +106,35 @@ def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
         _validate_collection_element(inner_val)
 
         for inner_element_val in inner_val.value:
-            final_element_type = _determine_unified_element_type(final_element_type, inner_element_val.type)
+            final_element_type = _determine_unified_element_type(
+                final_element_type, inner_element_val.type
+            )
             result_elements.append(inner_element_val)
 
     if final_element_type is None:
         return CtyList(element_type=CtyDynamic()).validate([])
     return CtyList(element_type=final_element_type).validate(result_elements)
 
+
 def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}"
+        )
 
     # A null list sorts to a null list.
     if input_val.is_null:
         return input_val
 
-    element_type = input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
+    element_type = (
+        input_val.type.element_type
+        if isinstance(input_val.type, CtyList | CtySet)
+        else CtyDynamic()
+    )
     if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
-        raise CtyFunctionError(f"sort: elements must be string, number, or bool. Found: {element_type.ctype}")
+        raise CtyFunctionError(
+            f"sort: elements must be string, number, or bool. Found: {element_type.ctype}"
+        )
 
     # Handle a truly unknown list (where the value is not iterable).
     if not hasattr(input_val.value, "__iter__"):
@@ -113,19 +146,30 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     # unknown element must raise an error.
     for i, cty_element in enumerate(input_val.value):
         if cty_element.is_null or cty_element.is_unknown:
-            raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
+            raise CtyFunctionError(
+                f"sort: cannot sort list with null or unknown elements at index {i}."
+            )
 
-    return CtyList[Any](element_type=element_type).validate(sorted(input_val.value, key=lambda x: x.value))
+    return CtyList[Any](element_type=element_type).validate(
+        sorted(input_val.value, key=lambda x: x.value)
+    )
+
 
 def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(context={
-        "operation": "cty_function_length",
-        "input_type": str(input_val.type),
-        "input_is_null": input_val.is_null,
-        "input_is_unknown": input_val.is_unknown
-    }):
-        if not isinstance(input_val.type, CtyList | CtySet | CtyTuple | CtyMap | CtyString):
-            raise CtyFunctionError(f"length: input must be a collection or string, got {input_val.type.ctype}")
+    with error_boundary(
+        context={
+            "operation": "cty_function_length",
+            "input_type": str(input_val.type),
+            "input_is_null": input_val.is_null,
+            "input_is_unknown": input_val.is_unknown,
+        }
+    ):
+        if not isinstance(
+            input_val.type, CtyList | CtySet | CtyTuple | CtyMap | CtyString
+        ):
+            raise CtyFunctionError(
+                f"length: input must be a collection or string, got {input_val.type.ctype}"
+            )
         if input_val.is_unknown:
             if isinstance(input_val.value, RefinedUnknownValue):
                 lower = input_val.value.collection_length_lower_bound
@@ -137,23 +181,44 @@ def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
             return CtyValue.unknown(CtyNumber())
         return CtyNumber().validate(len(input_val.value))
 
-def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[Any]) -> CtyValue[Any]:
+
+def slice(
+    input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[Any]
+) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtyTuple):
-        raise CtyFunctionError(f"slice: input must be a list or tuple, got {input_val.type.ctype}")
-    if not isinstance(start_val.type, CtyNumber) or not isinstance(end_val.type, CtyNumber):
+        raise CtyFunctionError(
+            f"slice: input must be a list or tuple, got {input_val.type.ctype}"
+        )
+    if not isinstance(start_val.type, CtyNumber) or not isinstance(
+        end_val.type, CtyNumber
+    ):
         raise CtyFunctionError("slice: start and end must be numbers")
-    element_type = input_val.type.element_type if isinstance(input_val.type, CtyList) else CtyDynamic()
-    if input_val.is_null or input_val.is_unknown or start_val.is_null or start_val.is_unknown or end_val.is_null or end_val.is_unknown:
+    element_type = (
+        input_val.type.element_type
+        if isinstance(input_val.type, CtyList)
+        else CtyDynamic()
+    )
+    if (
+        input_val.is_null
+        or input_val.is_unknown
+        or start_val.is_null
+        or start_val.is_unknown
+        or end_val.is_null
+        or end_val.is_unknown
+    ):
         return CtyValue.unknown(CtyList(element_type=element_type))
     start, end = int(start_val.value), int(end_val.value)
     return CtyList(element_type=element_type).validate(input_val.value[start:end])
 
+
 def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(context={
-        "operation": "cty_function_concat",
-        "num_lists": len(lists),
-        "list_types": [str(lst.type) for lst in lists[:3]]  # First 3 for context
-    }):
+    with error_boundary(
+        context={
+            "operation": "cty_function_concat",
+            "num_lists": len(lists),
+            "list_types": [str(lst.type) for lst in lists[:3]],  # First 3 for context
+        }
+    ):
         if not all(isinstance(lst.type, CtyList | CtyTuple) for lst in lists):
             raise CtyFunctionError("concat: all arguments must be lists or tuples")
         result_elements = []
@@ -173,41 +238,61 @@ def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
             return CtyList(element_type=CtyDynamic()).validate([])
         return CtyList(element_type=final_element_type).validate(result_elements)
 
+
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}")
+        raise CtyFunctionError(
+            f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}"
+        )
     if collection.is_null or collection.is_unknown:
         return CtyValue.unknown(CtyBool())
     return CtyBool().validate(value in collection.value)
 
+
 def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(context={
-        "operation": "cty_function_keys",
-        "input_type": str(input_val.type),
-        "input_is_null": input_val.is_null,
-        "input_is_unknown": input_val.is_unknown
-    }):
+    with error_boundary(
+        context={
+            "operation": "cty_function_keys",
+            "input_type": str(input_val.type),
+            "input_is_null": input_val.is_null,
+            "input_is_unknown": input_val.is_unknown,
+        }
+    ):
         if not isinstance(input_val.type, CtyMap | CtyObject):
-            raise CtyFunctionError(f"keys: input must be a map or object, got {input_val.type.ctype}")
+            raise CtyFunctionError(
+                f"keys: input must be a map or object, got {input_val.type.ctype}"
+            )
         if input_val.is_null or input_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyString()))
-        return CtyList(element_type=CtyString()).validate(sorted(list(input_val.value.keys())))
+        return CtyList(element_type=CtyString()).validate(
+            sorted(list(input_val.value.keys()))
+        )
+
 
 def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(context={
-        "operation": "cty_function_values",
-        "input_type": str(input_val.type),
-        "input_is_null": input_val.is_null,
-        "input_is_unknown": input_val.is_unknown
-    }):
+    with error_boundary(
+        context={
+            "operation": "cty_function_values",
+            "input_type": str(input_val.type),
+            "input_is_null": input_val.is_null,
+            "input_is_unknown": input_val.is_unknown,
+        }
+    ):
         if not isinstance(input_val.type, CtyMap | CtyObject):
-            raise CtyFunctionError(f"values: input must be a map or object, got {input_val.type.ctype}")
-        elem_type = input_val.type.element_type if isinstance(input_val.type, CtyMap) else CtyDynamic()
+            raise CtyFunctionError(
+                f"values: input must be a map or object, got {input_val.type.ctype}"
+            )
+        elem_type = (
+            input_val.type.element_type
+            if isinstance(input_val.type, CtyMap)
+            else CtyDynamic()
+        )
         if input_val.is_null or input_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=elem_type))
         if not isinstance(input_val.value, dict):
             raise CtyFunctionError("values: input value is not a map or object")
         return CtyList(element_type=elem_type).validate(list(input_val.value.values()))
+
 
 def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtyTuple):
@@ -215,6 +300,7 @@ def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return input_val
     return input_val.type.validate(list(reversed(input_val.value)))
+
 
 def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     if collection.is_unknown or key.is_unknown:
@@ -230,7 +316,10 @@ def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
         if not isinstance(key.type, CtyString) or key.is_null:
             return CtyBool().validate(False)
         return CtyBool().validate(key.value in collection.value)
-    raise CtyFunctionError(f"hasindex: collection must be a list, tuple, map, or object, got {collection.type.ctype}")
+    raise CtyFunctionError(
+        f"hasindex: collection must be a list, tuple, map, or object, got {collection.type.ctype}"
+    )
+
 
 def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     if not hasindex(collection, key).value:
@@ -242,40 +331,63 @@ def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
 
     return collection[key_val]
 
+
 def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(context={
-        "operation": "cty_function_element",
-        "collection_type": str(collection.type),
-        "index_type": str(idx.type),
-        "collection_is_null": collection.is_null,
-        "collection_is_unknown": collection.is_unknown
-    }):
+    with error_boundary(
+        context={
+            "operation": "cty_function_element",
+            "collection_type": str(collection.type),
+            "index_type": str(idx.type),
+            "collection_is_null": collection.is_null,
+            "collection_is_unknown": collection.is_unknown,
+        }
+    ):
         if not isinstance(collection.type, CtyList | CtyTuple):
             raise CtyFunctionError("element: collection must be a list or tuple")
         if collection.is_null or collection.is_unknown or idx.is_null or idx.is_unknown:
-            elem_type = collection.type.element_type if isinstance(collection.type, CtyList) else CtyDynamic()
+            elem_type = (
+                collection.type.element_type
+                if isinstance(collection.type, CtyList)
+                else CtyDynamic()
+            )
             return CtyValue.unknown(elem_type)
         length = len(collection.value)
         if length == 0:
-            raise CtyFunctionError("element: cannot use element function with an empty list")
+            raise CtyFunctionError(
+                "element: cannot use element function with an empty list"
+            )
         return collection.value[int(idx.value) % length]
+
 
 def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
     for arg in args:
-        if isinstance(arg.type, CtyList | CtyTuple) and not arg.is_null and len(arg.value) > 0:
+        if (
+            isinstance(arg.type, CtyList | CtyTuple)
+            and not arg.is_null
+            and len(arg.value) > 0
+        ):
             return arg
-    raise CtyFunctionError("coalescelist: no non-empty list or tuple found in arguments")
+    raise CtyFunctionError(
+        "coalescelist: no non-empty list or tuple found in arguments"
+    )
+
 
 def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+        raise CtyFunctionError(
+            "compact: argument must be a list, set, or tuple of strings"
+        )
     if isinstance(collection.type, CtyTuple):
         if not all(isinstance(t, CtyString) for t in collection.type.element_types):
-            raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+            raise CtyFunctionError(
+                "compact: argument must be a list, set, or tuple of strings"
+            )
     elif not isinstance(collection.type.element_type, CtyString):
-        raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+        raise CtyFunctionError(
+            "compact: argument must be a list, set, or tuple of strings"
+        )
 
     if collection.is_null or collection.is_unknown:
         return collection
@@ -283,8 +395,11 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
         [v for v in collection.value if v.value]
     )
 
+
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
+    if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(
+        size.type, CtyNumber
+    ):
         raise CtyFunctionError("chunklist: arguments must be a list/tuple and a number")
     if collection.is_null or collection.is_unknown or size.is_null or size.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
@@ -297,7 +412,10 @@ def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
     ]
     return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)
 
-def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]) -> CtyValue[Any]:
+
+def lookup(
+    collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]
+) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyMap | CtyObject):
         raise CtyFunctionError("lookup: collection must be a map or object")
 
@@ -309,23 +427,30 @@ def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]
     if collection.is_unknown or key.is_unknown:
         return CtyValue.unknown(unify([element_type, default.type]))
 
-    if collection.is_null or key.is_null or not isinstance(collection.value, dict) or key.value not in collection.value:
+    if (
+        collection.is_null
+        or key.is_null
+        or not isinstance(collection.value, dict)
+        or key.value not in collection.value
+    ):
         return default
 
     return collection.value[key.value]
+
 
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not all(isinstance(arg.type, CtyMap | CtyObject) for arg in args):
         raise CtyFunctionError("merge: all arguments must be maps or objects")
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
-    result = {}
+    result: dict[str, Any] = {}
     for arg in args:
         if not arg.is_null:
             result.update(arg.value)
 
     inferred_type = infer_cty_type_from_raw(result)
     return inferred_type.validate(result)
+
 
 def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not all(isinstance(arg.type, CtyList | CtySet | CtyTuple) for arg in args):
@@ -340,13 +465,22 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     prod = product(*iterables)
     result_tuples = [tuple(item) for item in prod]
 
-    elem_types = [arg.type.element_type if isinstance(arg.type, CtyList | CtySet) else CtyDynamic() for arg in args if not arg.is_null]
+    elem_types = [
+        arg.type.element_type
+        if isinstance(arg.type, CtyList | CtySet)
+        else CtyDynamic()
+        for arg in args
+        if not arg.is_null
+    ]
     tuple_type = CtyTuple(element_types=tuple(elem_types))
 
     return CtySet(element_type=tuple_type).validate(result_tuples)
 
+
 def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(keys.type, CtyList | CtyTuple) or not isinstance(values.type, CtyList | CtyTuple):
+    if not isinstance(keys.type, CtyList | CtyTuple) or not isinstance(
+        values.type, CtyList | CtyTuple
+    ):
         raise CtyFunctionError("zipmap: arguments must be lists or tuples")
     if keys.is_unknown or values.is_unknown:
         return CtyValue.unknown(CtyMap(element_type=CtyDynamic()))
@@ -356,7 +490,11 @@ def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     key_list = [k.value for k in keys.value]
     val_list = list(values.value)
 
-    result_map = {key_list[i]: val_list[i] for i in range(min(len(key_list), len(val_list)))}
+    result_map = {
+        key_list[i]: val_list[i] for i in range(min(len(key_list), len(val_list)))
+    }
 
-    val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
+    val_elem_type = (
+        values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
+    )
     return CtyMap(element_type=val_elem_type).validate(result_map)

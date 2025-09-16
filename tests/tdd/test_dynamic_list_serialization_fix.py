@@ -4,6 +4,7 @@ TDD tests for fixing serialization of dynamic values containing lists.
 This test suite focuses on the specific issue where CtyDynamic values
 containing lists cause SerializationError during marshaling to protocol buffers.
 """
+
 import pytest
 
 from pyvider.cty import CtyDynamic
@@ -37,9 +38,13 @@ class TestDynamicListSerialization:
             assert serialized is not None
             assert isinstance(serialized, bytes)
         except SerializationError:
-            pytest.fail("CtyDynamic containing list failed to serialize - this is the bug we need to fix")
+            pytest.fail(
+                "CtyDynamic containing list failed to serialize - this is the bug we need to fix"
+            )
 
-    def test_dynamic_containing_nested_object_with_list_serializes_successfully(self) -> None:
+    def test_dynamic_containing_nested_object_with_list_serializes_successfully(
+        self,
+    ) -> None:
         """
         TDD Contract: A CtyDynamic value wrapping an object that contains lists
         must serialize to msgpack without error.
@@ -53,7 +58,7 @@ class TestDynamicListSerialization:
             "app_name": "my_app",
             "replicas": 3,
             "enabled": True,
-            "tags": ["web", "api", "production"]  # This is the problematic list
+            "tags": ["web", "api", "production"],  # This is the problematic list
         }
         validated_dynamic = dynamic_type.validate(config_value)
 
@@ -63,7 +68,9 @@ class TestDynamicListSerialization:
             assert serialized is not None
             assert isinstance(serialized, bytes)
         except SerializationError:
-            pytest.fail("CtyDynamic containing object with list failed to serialize - this is the Terraform provider bug")
+            pytest.fail(
+                "CtyDynamic containing object with list failed to serialize - this is the Terraform provider bug"
+            )
 
     def test_dynamic_roundtrip_with_list_preserves_data(self) -> None:
         """
@@ -85,9 +92,10 @@ class TestDynamicListSerialization:
         assert deserialized.type.equal(dynamic_type)
         # The inner value should be a CtyValue wrapping a list
         inner_value = deserialized.value
-        assert hasattr(inner_value, 'value')
+        assert hasattr(inner_value, "value")
         # Convert back to native Python for comparison
         from pyvider.cty.conversion.adapter import cty_to_native
+
         native_result = cty_to_native(inner_value)
         assert native_result == original_value
 
@@ -137,7 +145,9 @@ class TestDynamicListSerialization:
         assert serialized is not None
         assert isinstance(serialized, bytes)
 
-    def test_dynamic_validation_does_not_hit_recursion_limit_for_simple_list(self) -> None:
+    def test_dynamic_validation_does_not_hit_recursion_limit_for_simple_list(
+        self,
+    ) -> None:
         """
         TDD Contract: Simple lists should not trigger recursion prevention.
         Our recursion fix should only activate for genuine infinite recursion,

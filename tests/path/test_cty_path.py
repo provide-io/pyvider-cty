@@ -65,8 +65,6 @@ class TestGetAttrStep:
             step.apply_type(obj_type)
 
 
-
-
 class TestIndexStep:
     def test_apply_to_list(self) -> None:
         list_type = CtyList(element_type=CtyString())
@@ -124,8 +122,6 @@ class TestIndexStep:
         step = IndexStep(1)
         with pytest.raises(AttributePathError):
             step.apply_type(tuple_type)
-
-
 
 
 class TestKeyStep:
@@ -215,6 +211,7 @@ class TestPath:
     def test_string_representation(self) -> None:
         path = CtyPath.get_attr("users").index_step(1).key_step("name")
         assert str(path) == "users[1]['name']"
+
 
 class TestCtyPathStringRepresentation:
     """

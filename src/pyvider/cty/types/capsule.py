@@ -91,8 +91,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         *,
         equal_fn: Callable[[Any, Any], bool] | None = None,
         hash_fn: Callable[[Any], int] | None = None,
-        convert_fn: Callable[[Any, CtyType[Any]], CtyValue[Any] | None]
-        | None = None,
+        convert_fn: Callable[[Any, CtyType[Any]], CtyValue[Any] | None] | None = None,
     ) -> None:
         """
         Initializes a CtyCapsule with custom operational functions.

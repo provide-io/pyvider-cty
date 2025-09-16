@@ -2,6 +2,7 @@
 This test suite covers the CtyTypeProtocol to ensure its runtime checkability
 works as expected and to achieve 100% coverage on types/base.py.
 """
+
 from typing import Any
 
 from pyvider.cty import CtyString, CtyValue
