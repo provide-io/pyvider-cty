@@ -14,9 +14,7 @@ server_type = CtyObject(
                 "cpu": CtyNumber(),
                 "memory": CtyNumber(),
                 "disks": CtyList(
-                    element_type=CtyObject(
-                        attribute_types={"size": CtyNumber(), "type": CtyString()}
-                    )
+                    element_type=CtyObject(attribute_types={"size": CtyNumber(), "type": CtyString()})
                 ),
             }
         ),

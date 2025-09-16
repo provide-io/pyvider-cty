@@ -20,9 +20,7 @@ try:
 except Exception as e:
     print(f"Object validation failed as expected (missing attribute): {e}")
 try:
-    user_type.validate(
-        {"name": "Charlie", "age": 50, "is_active": False, "extra": "attribute"}
-    )
+    user_type.validate({"name": "Charlie", "age": 50, "is_active": False, "extra": "attribute"})
 except Exception as e:
     print(f"Object validation failed as expected (extra attribute): {e}")
 

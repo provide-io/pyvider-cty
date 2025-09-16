@@ -25,9 +25,7 @@ def print_section(title: str) -> None:
     print("=" * 70)
 
 
-def print_result(
-    script_name: str, success: bool, stdout: str, stderr: str, exit_code: int
-) -> None:
+def print_result(script_name: str, success: bool, stdout: str, stderr: str, exit_code: int) -> None:
     status = "✅ PASSED" if success else "❌ FAILED"
     print(f"\n--- {script_name} --- {status} ---")
     if stdout:
@@ -61,9 +59,7 @@ async def run_script(
             stderr=subprocess.PIPE,
             cwd=str(effective_cwd),
         )
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            process.communicate(), timeout=timeout
-        )
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
         stdout = stdout_bytes.decode().strip()
         stderr = stderr_bytes.decode().strip()
         raw_exit_code = process.returncode
