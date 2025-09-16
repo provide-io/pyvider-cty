@@ -5,8 +5,6 @@ between concurrent operations.
 import threading
 from typing import Any
 
-import pytest
-
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.conversion import infer_cty_type_from_raw
 

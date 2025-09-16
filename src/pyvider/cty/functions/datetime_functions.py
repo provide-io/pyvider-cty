@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import re
+from typing import Any
 
 from pyvider.cty import CtyString, CtyValue
-from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.config.defaults import (
     SECONDS_PER_HOUR,
     SECONDS_PER_MINUTE,
     SECONDS_PER_SECOND,
 )
+from pyvider.cty.exceptions import CtyFunctionError
 
 # A simplified mapping from Go's time layout to Python's strftime format.
 # This is not exhaustive but covers common cases.
@@ -41,7 +42,7 @@ def _parse_duration(duration_str: str) -> timedelta:
     # This regex now ensures the entire string consists only of valid duration parts.
     if not re.fullmatch(r"(\d+\.?\d*[hms])+", duration_str):
         raise ValueError(f"Invalid duration string format: '{duration_str}'")
-    
+
     parts = re.findall(r"(\d+\.?\d*)([hms])", duration_str)
     total_seconds = 0
     for value, unit in parts:

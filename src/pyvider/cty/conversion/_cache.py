@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import wraps
+import threading
+from typing import Any, TypeVar
+
+from pyvider.cty.types import CtyType
+
+F = TypeVar('F', bound=Callable[..., Any])
+
 # pyvider-cty/src/pyvider/cty/conversion/_cache.py
 """
 Provides a thread-safe, context-aware caching mechanism for type inference
 to improve performance and ensure concurrent safety.
 """
-import threading
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
-from contextvars import ContextVar, copy_context
-from functools import wraps
-from typing import Any, TypeVar
-
-from ..types import CtyType
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -37,7 +40,7 @@ def get_container_schema_cache() -> dict[tuple[Any, ...], CtyType[Any]] | None:
 
 
 @contextmanager
-def inference_cache_context() -> Generator[None, None, None]:
+def inference_cache_context() -> Generator[None]:
     """
     A context manager that provides an isolated inference cache for the duration
     of its context. If a cache is already active, it reuses the existing one.

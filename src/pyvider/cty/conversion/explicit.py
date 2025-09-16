@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-"""
-Implementation of the public `convert` and `unify` functions for explicit
-CTY-to-CTY type conversion.
-"""
-
 from collections.abc import Iterable
 from functools import lru_cache
 from typing import Any
 
 from provide.foundation.errors import error_boundary
 
-from ..exceptions import CtyConversionError, CtyValidationError
-from ..types import (
+from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
+from pyvider.cty.types import (
     CtyBool,
     CtyCapsule,
     CtyCapsuleWithOps,
@@ -25,7 +20,12 @@ from ..types import (
     CtyTuple,
     CtyType,
 )
-from ..values import CtyValue
+from pyvider.cty.values import CtyValue
+
+"""
+Implementation of the public `convert` and `unify` functions for explicit
+CTY-to-CTY type conversion.
+"""
 
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901

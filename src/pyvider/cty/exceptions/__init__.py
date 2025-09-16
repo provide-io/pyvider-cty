@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-"""
-Exception hierarchy for the pyvider.cty type system.
-"""
-
 from pyvider.cty.exceptions.base import CtyError, CtyFunctionError
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
@@ -36,6 +32,10 @@ from pyvider.cty.exceptions.validation import (
     CtyTypeValidationError,
     CtyValidationError,
 )
+
+"""
+Exception hierarchy for the pyvider.cty type system.
+"""
 
 __all__ = [
     "AttributePathError",

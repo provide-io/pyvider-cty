@@ -4,22 +4,21 @@ TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
 These tests are designed to fail with the current implementation and define
 the desired, more robust behavior for the MessagePack deserializer.
 """
-import json
 from decimal import Decimal
+import json
 
 import msgpack  # type: ignore
 import pytest
 
 from pyvider.cty import (
     CtyDynamic,
-    CtyList,
     CtyNumber,
     CtyObject,
     CtyString,
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack
-from pyvider.cty.exceptions import CtyValidationError, DeserializationError
+from pyvider.cty.exceptions import CtyValidationError
 
 
 # --- TDD Tests for Issue #7: Dynamic Deserialization Robustness ---

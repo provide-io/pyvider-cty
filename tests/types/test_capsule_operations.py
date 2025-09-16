@@ -9,8 +9,8 @@ custom logic for equality, hashing, and other operations, mirroring the
 from typing import Any
 from unittest.mock import Mock
 
-import pytest
 from attrs import define
+import pytest
 
 from pyvider.cty import (
     CtyCapsule,
@@ -136,7 +136,7 @@ class TestCtyCapsuleWithConversion:
             CtyMark("sensitive")
         )
         target_type = CtyString()
-        
+
         # Configure mock to return an unmarked value
         unmarked_result = CtyValue(target_type, "converted")
         mock_convert_fn.return_value = unmarked_result
