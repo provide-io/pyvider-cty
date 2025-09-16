@@ -89,3 +89,4 @@ The `compatibility/` directory contains Go and Python implementations for testin
 - No hardcoded defaults anywhere in the codebase
 - Follow ruff formatting and linting rules
 - Strict mypy type checking enabled
+- After an updated to a Python file, you will run `ruff format` on it, and `ruff check --fix` and any other pertinent code quality in order to prevent problems up front.
