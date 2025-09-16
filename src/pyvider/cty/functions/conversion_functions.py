@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from typing import Any
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 
 
-def to_string(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def to_string(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyString())
     if isinstance(input_val.type, CtyBool):
@@ -14,7 +16,7 @@ def to_string(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     return CtyString().validate(str(input_val.value))
 
 
-def to_number(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def to_number(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
     try:
@@ -25,7 +27,7 @@ def to_number(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         ) from e
 
 
-def to_bool(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyBool())
     try:

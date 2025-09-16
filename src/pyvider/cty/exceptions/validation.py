@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from provide.foundation.errors import ValidationError as FoundationValidationError
@@ -295,8 +297,8 @@ class CtyTypeMismatchError(CtyValidationError):
     def __init__(
         self,
         message: str,
-        actual_type: "CtyType[Any] | None" = None,
-        expected_type: "CtyType[Any] | None" = None,
+        actual_type: CtyType[Any] | None = None,
+        expected_type: CtyType[Any] | None = None,
         path: "CtyPath | None" = None,
         **kwargs
     ) -> None:

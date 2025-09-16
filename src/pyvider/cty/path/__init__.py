@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #
 # pyvider/cty/path/__init__.py
 #

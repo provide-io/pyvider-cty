@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -19,7 +21,7 @@ class CtyDynamic(CtyType[object]):
     _type_order: ClassVar[int] = 9
 
     @with_recursion_detection
-    def validate(self, value: object) -> "CtyValue[Any]":
+    def validate(self, value: object) -> CtyValue[Any]:
         """
         Validates a raw Python value for a dynamic type. The result is always a
         CtyValue of type CtyDynamic, which wraps the inferred concrete value.
@@ -54,10 +56,10 @@ class CtyDynamic(CtyType[object]):
         concrete_value = inferred_type.validate(value)
         return CtyValue(vtype=self, value=concrete_value)
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyDynamic)
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyDynamic)
 
     def _to_wire_json(self) -> Any:

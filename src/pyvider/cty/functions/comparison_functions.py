@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
@@ -5,19 +7,19 @@ from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-def equal(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
+def equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if a.is_unknown or b.is_unknown:
         return CtyValue.unknown(CtyBool())
     return CtyBool().validate(a == b)
 
 
-def not_equal(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]":
+def not_equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if a.is_unknown or b.is_unknown:
         return CtyValue.unknown(CtyBool())
     return CtyBool().validate(a != b)
 
 
-def _compare(a: "CtyValue[Any]", b: "CtyValue[Any]", op: str) -> "CtyValue[Any]":  # noqa: C901
+def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # noqa: C901
     if a.is_null or b.is_null:
         return CtyValue.unknown(CtyBool())
 
@@ -76,13 +78,13 @@ def _compare(a: "CtyValue[Any]", b: "CtyValue[Any]", op: str) -> "CtyValue[Any]"
     return CtyBool().validate(ops[op](a.value, b.value))
 
 
-def greater_than(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]": return _compare(a, b, ">")
-def greater_than_or_equal_to(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]": return _compare(a, b, ">=")
-def less_than(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]": return _compare(a, b, "<")
-def less_than_or_equal_to(a: "CtyValue[Any]", b: "CtyValue[Any]") -> "CtyValue[Any]": return _compare(a, b, "<=")
+def greater_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, ">")
+def greater_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, ">=")
+def less_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, "<")
+def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]: return _compare(a, b, "<=")
 
 
-def _multi_compare(*args: "CtyValue[Any]", op: str) -> "CtyValue[Any]":
+def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
     if not args:
         raise CtyFunctionError(f"{op} requires at least one argument")
     known_args, unknown_args = [], []
@@ -123,5 +125,5 @@ def _multi_compare(*args: "CtyValue[Any]", op: str) -> "CtyValue[Any]":
     return CtyValue.unknown(args[0].type)
 
 
-def max_fn(*args: "CtyValue[Any]") -> "CtyValue[Any]": return _multi_compare(*args, op="max")
-def min_fn(*args: "CtyValue[Any]") -> "CtyValue[Any]": return _multi_compare(*args, op="min")
+def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]: return _multi_compare(*args, op="max")
+def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]: return _multi_compare(*args, op="min")

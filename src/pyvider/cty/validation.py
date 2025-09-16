@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from typing import Any
 
 from .types import CtyType
 
 
-def validate_config(schema: "CtyType[Any]", config: Any) -> None:
+def validate_config(schema: CtyType[Any], config: Any) -> None:
     """
     Validates a configuration against a CtyType schema.
 
