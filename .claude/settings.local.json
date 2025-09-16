@@ -26,7 +26,10 @@
       "Bash(rye run:*)",
       "Bash(pip install:*)",
       "Bash(/Users/tim/code/gh/provide-io/provide-foundation/.venv/bin/python -c \"\nimport radon.metrics\nprint(''Available in radon.metrics:'', dir(radon.metrics))\n\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(./examples/quality/framework_demo.py)",
+      "Bash(./examples/quality/decorators_demo.py)",
+      "Bash(./examples/quality/generate_reports.py)"
     ],
     "deny": [],
     "ask": [],
