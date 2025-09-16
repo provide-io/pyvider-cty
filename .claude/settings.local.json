@@ -32,7 +32,8 @@
       "Bash(./examples/quality/generate_reports.py)",
       "Bash(coverage run:*)",
       "Bash(coverage report:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(FOUNDATION_SUPPRESS_TESTING_WARNINGS=1 pytest examples/basics/first_test.py::test_my_first_testkit_test -v)"
     ],
     "deny": [],
     "ask": [],
