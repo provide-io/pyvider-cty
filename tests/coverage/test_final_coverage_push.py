@@ -3,15 +3,19 @@ Final test suite to address all significant remaining coverage gaps, bringing
 the library to a production-ready state of test coverage.
 """
 from decimal import Decimal
+
 import pytest
 
 from pyvider.cty import (
-    CtyDynamic, CtyList, CtyMap, CtyNumber, CtyString, CtyValue, convert
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyString,
+    CtyValue,
+    convert,
 )
-from pyvider.cty.exceptions import CtyConversionError
-from pyvider.cty.functions import (
-    add, greater_than, less_than, multiply, subtract
-)
+from pyvider.cty.functions import add, greater_than, less_than, multiply, subtract
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
@@ -37,18 +41,26 @@ class TestFinalCoveragePush:
         malformed_number = CtyValue(vtype=CtyNumber(), value="not-a-decimal")
         n5 = CtyNumber().validate(5)
 
-        with pytest.raises(TypeError): _ = malformed_number < n5
-        with pytest.raises(TypeError): _ = malformed_number <= n5
-        with pytest.raises(TypeError): _ = malformed_number > n5
-        with pytest.raises(TypeError): _ = malformed_number >= n5
+        with pytest.raises(TypeError):
+            _ = malformed_number < n5
+        with pytest.raises(TypeError):
+            _ = malformed_number <= n5
+        with pytest.raises(TypeError):
+            _ = malformed_number > n5
+        with pytest.raises(TypeError):
+            _ = malformed_number >= n5
 
     def test_value_comparison_dunders_on_non_comparable_type(self) -> None:
         """Covers TypeErrors when comparing uncomparable CtyValue types."""
         list_val = CtyList(element_type=CtyString()).validate([])
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val < list_val
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val <= list_val
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val > list_val
-        with pytest.raises(TypeError, match="not comparable"): _ = list_val >= list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val < list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val <= list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val > list_val
+        with pytest.raises(TypeError, match="not comparable"):
+            _ = list_val >= list_val
 
     def test_collection_helpers_on_malformed_value(self) -> None:
         """Covers internal TypeErrors for helper methods on malformed CtyValues."""
@@ -114,5 +126,5 @@ class TestFinalCoveragePush:
         """Covers the runtime_checkable branches of the CtyTypeProtocol."""
         from pyvider.cty.types.base import CtyTypeProtocol
         class IncompleteType:
-            def validate(self, value): pass
+            def validate(self, value) -> None: pass
         assert not isinstance(IncompleteType(), CtyTypeProtocol)

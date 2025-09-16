@@ -1,10 +1,10 @@
 """
 TDD: Ensures that key lookups and comparisons are aware of Unicode normalization.
 """
-import pytest
 
 from pyvider.cty import CtyMap, CtyObject, CtyString
 from pyvider.cty.functions import lookup
+
 
 class TestUnicodeNormalizationConsistency:
     # NFD (e + combining acute) vs NFC (é)

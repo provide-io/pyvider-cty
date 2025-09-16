@@ -9,34 +9,29 @@ These tests ensure the recursion detection system meets production IaC requireme
 - Support monitoring and observability requirements
 """
 
-import pytest
-import time
-from unittest.mock import patch
-import threading
 import queue
+import threading
 
 from pyvider.cty import CtyDynamic
 from pyvider.cty.validation.recursion import (
     RecursionDetector,
-    RecursionContext,
-    get_recursion_context,
     clear_recursion_context,
+    get_recursion_context,
 )
-from pyvider.cty.values import CtyValue
 
 
 class TestAdvancedRecursionDetection:
     """Test suite for advanced recursion detection."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Reset recursion context before each test."""
         clear_recursion_context()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Ensure context is cleared after each test."""
         clear_recursion_context()
 
-    def test_handles_legitimate_deep_nesting(self):
+    def test_handles_legitimate_deep_nesting(self) -> None:
         """
         Verifies that deep, but finite, nesting succeeds when it is below
         the configured limit.
@@ -55,7 +50,7 @@ class TestAdvancedRecursionDetection:
         context = get_recursion_context()
         assert context.max_depth_reached > 350, "Validation did not reach expected depth."
 
-    def test_exceeding_max_depth_returns_unknown(self):
+    def test_exceeding_max_depth_returns_unknown(self) -> None:
         """
         Verifies that exceeding the configured recursion depth limit gracefully
         returns an 'unknown' value instead of raising a RecursionError.
@@ -74,7 +69,7 @@ class TestAdvancedRecursionDetection:
 
         assert result.is_unknown, "Exceeding max depth should result in an unknown value."
 
-    def test_detects_genuine_circular_references(self):
+    def test_detects_genuine_circular_references(self) -> None:
         """
         Verifies that a direct circular reference is detected and handled
         by returning an 'unknown' value.
@@ -88,7 +83,7 @@ class TestAdvancedRecursionDetection:
 
         assert result.is_unknown, "Circular reference should result in an unknown value."
 
-    def test_performance_monitoring_and_metrics_are_populated(self):
+    def test_performance_monitoring_and_metrics_are_populated(self) -> None:
         """
         Verifies that performance metrics are correctly populated after a
         successful validation run.
@@ -108,14 +103,14 @@ class TestAdvancedRecursionDetection:
         assert metrics["total_validations"] > 0
         assert metrics["max_depth_reached"] > 0
 
-    def test_concurrent_validation_is_isolated(self):
+    def test_concurrent_validation_is_isolated(self) -> None:
         """
         Verifies that concurrent validations in separate threads do not
         interfere with each other's recursion contexts.
         """
         results = queue.Queue()
 
-        def validate_in_thread(config_data, thread_id):
+        def validate_in_thread(config_data, thread_id) -> None:
             try:
                 # Each thread gets its own isolated context.
                 clear_recursion_context()

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 import json
+from typing import Any
 
 import msgpack  # type: ignore
 from provide.foundation.errors import error_boundary
+
 from pyvider.cty.config.defaults import (
     MSGPACK_EXT_TYPE_CTY,
     MSGPACK_EXT_TYPE_REFINED_UNKNOWN,
@@ -12,11 +14,14 @@ from pyvider.cty.config.defaults import (
     MSGPACK_STRICT_MAP_KEY_FALSE,
     MSGPACK_USE_BIN_TYPE_TRUE,
 )
-
-from .conversion import encode_cty_type_to_wire_json
-from .exceptions import CtyValidationError, DeserializationError, SerializationError
-from .parser import parse_tf_type_to_ctytype
-from .types import (
+from pyvider.cty.conversion import encode_cty_type_to_wire_json
+from pyvider.cty.exceptions import (
+    CtyValidationError,
+    DeserializationError,
+    SerializationError,
+)
+from pyvider.cty.parser import parse_tf_type_to_ctytype
+from pyvider.cty.types import (
     CtyDynamic,
     CtyList,
     CtyMap,
@@ -25,8 +30,57 @@ from .types import (
     CtyTuple,
     CtyType,
 )
-from .values import CtyValue
-from .values.markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
+from pyvider.cty.values import CtyValue
+from pyvider.cty.values.markers import (
+    UNREFINED_UNKNOWN,
+    RefinedUnknownValue,
+    UnknownValue,
+)
+
+
+def _decode_number_value(val: Any) -> Decimal:
+    """Decode a numeric value from bytes or other format to Decimal."""
+    if isinstance(val, bytes):
+        return Decimal(val.decode("utf-8"))
+    return Decimal(val)
+
+
+def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]:
+    """Extract refinement data from a msgpack payload."""
+    refinements = {}
+
+    if 1 in payload:
+        refinements["is_known_null"] = payload[1]
+    if 2 in payload:
+        refinements["string_prefix"] = payload[2]
+    if 3 in payload:
+        refinements["number_lower_bound"] = (
+            _decode_number_value(payload[3][0]),
+            payload[3][1],
+        )
+    if 4 in payload:
+        refinements["number_upper_bound"] = (
+            _decode_number_value(payload[4][0]),
+            payload[4][1],
+        )
+    if 5 in payload:
+        refinements["collection_length_lower_bound"] = payload[5]
+    if 6 in payload:
+        refinements["collection_length_upper_bound"] = payload[6]
+
+    return refinements
+
+
+def _decode_refined_unknown_payload(data: bytes) -> RefinedUnknownValue:
+    """Decode a refined unknown value from msgpack data."""
+    try:
+        payload = msgpack.unpackb(data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE)
+        refinements = _extract_refinements_from_payload(payload)
+        return RefinedUnknownValue(**refinements)
+    except Exception as e:
+        raise DeserializationError(
+            f"Failed to decode refined unknown payload: {e}"
+        ) from e
 
 
 def _ext_hook(code: int, data: bytes) -> Any:
@@ -34,38 +88,7 @@ def _ext_hook(code: int, data: bytes) -> Any:
         case 0:
             return UNREFINED_UNKNOWN
         case 12:
-            try:
-                payload = msgpack.unpackb(data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE)
-                refinements = {}
-                if 1 in payload:
-                    refinements["is_known_null"] = payload[1]
-                if 2 in payload:
-                    refinements["string_prefix"] = payload[2]
-
-                def _decode_num(val: Any) -> Decimal:
-                    if isinstance(val, bytes):
-                        return Decimal(val.decode("utf-8"))
-                    return Decimal(val)
-
-                if 3 in payload:
-                    refinements["number_lower_bound"] = (
-                        _decode_num(payload[3][0]),
-                        payload[3][1],
-                    )
-                if 4 in payload:
-                    refinements["number_upper_bound"] = (
-                        _decode_num(payload[4][0]),
-                        payload[4][1],
-                    )
-                if 5 in payload:
-                    refinements["collection_length_lower_bound"] = payload[5]
-                if 6 in payload:
-                    refinements["collection_length_upper_bound"] = payload[6]
-                return RefinedUnknownValue(**refinements)
-            except Exception as e:
-                raise DeserializationError(
-                    f"Failed to decode refined unknown payload: {e}"
-                ) from e
+            return _decode_refined_unknown_payload(data)
         case _:
             # Per protocol, any other extension code is an unrefined unknown.
             return UNREFINED_UNKNOWN
@@ -111,6 +134,50 @@ def _serialize_dynamic(value: CtyValue[Any]) -> list[Any]:
     return [type_spec_bytes, serializable_inner]
 
 
+def _serialize_object_value(inner_val: Any, schema: CtyObject) -> dict[str, Any]:
+    """Serialize a CtyObject value."""
+    if not isinstance(inner_val, dict):
+        raise TypeError("Value for CtyObject must be a dict")
+    return {
+        k: _convert_value_to_serializable(v, schema.attribute_types[k])
+        for k, v in sorted(inner_val.items())
+    }
+
+
+def _serialize_map_value(inner_val: Any, schema: CtyMap) -> dict[str, Any]:
+    """Serialize a CtyMap value."""
+    if not isinstance(inner_val, dict):
+        raise TypeError("Value for CtyMap must be a dict")
+    return {
+        k: _convert_value_to_serializable(v, schema.element_type)
+        for k, v in sorted(inner_val.items())
+    }
+
+
+def _serialize_collection_value(inner_val: Any, schema: CtyList | CtySet) -> list[Any]:
+    """Serialize a CtyList or CtySet value."""
+    if not hasattr(inner_val, "__iter__"):
+        raise TypeError("Value for CtyList or CtySet must be iterable")
+    items = (
+        sorted(list(inner_val), key=lambda v: v._canonical_sort_key())
+        if isinstance(schema, CtySet)
+        else inner_val
+    )
+    return [
+        _convert_value_to_serializable(item, schema.element_type) for item in items
+    ]
+
+
+def _serialize_tuple_value(inner_val: Any, schema: CtyTuple) -> list[Any]:
+    """Serialize a CtyTuple value."""
+    if not isinstance(inner_val, tuple):
+        raise TypeError("Value for CtyTuple must be a tuple")
+    return [
+        _convert_value_to_serializable(item, schema.element_types[i])
+        for i, item in enumerate(inner_val)
+    ]
+
+
 def _convert_value_to_serializable(
     value: CtyValue[Any], schema: CtyType[Any]
 ) -> Any:
@@ -125,37 +192,13 @@ def _convert_value_to_serializable(
 
     inner_val = value.value
     if isinstance(schema, CtyObject):
-        if not isinstance(inner_val, dict):
-            raise TypeError("Value for CtyObject must be a dict")
-        return {
-            k: _convert_value_to_serializable(v, schema.attribute_types[k])
-            for k, v in sorted(inner_val.items())
-        }
+        return _serialize_object_value(inner_val, schema)
     if isinstance(schema, CtyMap):
-        if not isinstance(inner_val, dict):
-            raise TypeError("Value for CtyMap must be a dict")
-        return {
-            k: _convert_value_to_serializable(v, schema.element_type)
-            for k, v in sorted(inner_val.items())
-        }
+        return _serialize_map_value(inner_val, schema)
     if isinstance(schema, CtyList | CtySet):
-        if not hasattr(inner_val, "__iter__"):
-            raise TypeError("Value for CtyList or CtySet must be iterable")
-        items = (
-            sorted(list(inner_val), key=lambda v: v._canonical_sort_key())
-            if isinstance(schema, CtySet)
-            else inner_val
-        )
-        return [
-            _convert_value_to_serializable(item, schema.element_type) for item in items
-        ]
+        return _serialize_collection_value(inner_val, schema)
     if isinstance(schema, CtyTuple):
-        if not isinstance(inner_val, tuple):
-            raise TypeError("Value for CtyTuple must be a tuple")
-        return [
-            _convert_value_to_serializable(item, schema.element_types[i])
-            for i, item in enumerate(inner_val)
-        ]
+        return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):
         return str(inner_val)
     return inner_val
@@ -193,7 +236,7 @@ def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:
 
 def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
     with error_boundary(context={
-        "operation": "cty_from_msgpack_deserialization", 
+        "operation": "cty_from_msgpack_deserialization",
         "data_size": len(data),
         "schema_type": str(cty_type),
         "is_dynamic_type": isinstance(cty_type, CtyDynamic)

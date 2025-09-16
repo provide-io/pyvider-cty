@@ -1,7 +1,6 @@
 import pytest
 
 from pyvider.cty import (
-    CtyBool,
     CtyList,
     CtyNumber,
     CtyString,

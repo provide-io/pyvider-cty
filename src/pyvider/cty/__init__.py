@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-"""
-The pyvider.cty package is a pure-Python implementation of the concepts
-from HashiCorp's `cty` library, providing a rich type system for the framework.
-"""
-
 from pyvider.cty._version import __version__
-
-from .conversion import convert, unify
-from .exceptions import (
+from pyvider.cty.conversion import convert, unify
+from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
     CtyConversionError,
     CtyListValidationError,
@@ -19,9 +13,9 @@ from .exceptions import (
     CtyTypeParseError,
     CtyValidationError,
 )
-from .marks import CtyMark
-from .parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
-from .types import (
+from pyvider.cty.marks import CtyMark
+from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
+from pyvider.cty.types import (
     BytesCapsule,
     CtyBool,
     CtyCapsule,
@@ -36,10 +30,14 @@ from .types import (
     CtyTuple,
     CtyType,
 )
-from .values import CtyValue
+from pyvider.cty.values import CtyValue
+
+"""
+The pyvider.cty package is a pure-Python implementation of the concepts
+from HashiCorp's `cty` library, providing a rich type system for the framework.
+"""
 
 __all__ = [
-    "__version__",
     "BytesCapsule",
     "CtyAttributeValidationError",
     "CtyBool",
@@ -64,6 +62,7 @@ __all__ = [
     "CtyTypeParseError",
     "CtyValidationError",
     "CtyValue",
+    "__version__",
     "convert",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",

@@ -1,21 +1,16 @@
 from __future__ import annotations
 
-# pyvider-cty/src/pyvider/cty/parser.py
-"""
-Contains logic for parsing Terraform's JSON-based type constraint strings
-into the framework's internal CtyType objects.
-"""
+from typing import Any
 
 from provide.foundation.errors import error_boundary
+
 from pyvider.cty.config.defaults import (
     TYPE_KIND_LIST,
-    TYPE_KIND_SET,
     TYPE_KIND_MAP,
-    TYPE_KIND_OBJECT,
-    TYPE_KIND_TUPLE,
+    TYPE_KIND_SET,
 )
-from .exceptions import CtyValidationError
-from .types import (
+from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.types import (
     CtyBool,
     CtyDynamic,
     CtyList,
@@ -27,6 +22,12 @@ from .types import (
     CtyTuple,
     CtyType,
 )
+
+# pyvider-cty/src/pyvider/cty/parser.py
+"""
+Contains logic for parsing Terraform's JSON-based type constraint strings
+into the framework's internal CtyType objects.
+"""
 
 
 def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901

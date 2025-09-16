@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+from typing import Any
+
+from pyvider.cty.validation.recursion import (
+    RecursionContext,
+    RecursionDetector,
+    clear_recursion_context,
+    get_recursion_context,
+    with_recursion_detection,
+)
+
 """
 Advanced validation utilities for CTY.
 
@@ -8,16 +18,9 @@ production IaC requirements including advanced recursion detection,
 performance monitoring, and comprehensive diagnostics.
 """
 
-from .recursion import (
-    RecursionDetector,
-    RecursionContext,
-    with_recursion_detection,
-    get_recursion_context,
-    clear_recursion_context,
-)
 
 # Define validate_config here to avoid circular imports
-def validate_config(schema, config):
+def validate_config(schema: Any, config: Any) -> None:
     """
     Validates a configuration against a CtyType schema.
 
@@ -38,10 +41,10 @@ def validate_config(schema, config):
     schema.validate(config)
 
 __all__ = [
+    "RecursionContext",
     "RecursionDetector",
-    "RecursionContext", 
-    "with_recursion_detection",
-    "get_recursion_context",
     "clear_recursion_context",
+    "get_recursion_context",
     "validate_config",
+    "with_recursion_detection",
 ]

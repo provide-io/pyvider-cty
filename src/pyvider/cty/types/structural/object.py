@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import unicodedata
 from typing import Any, ClassVar
+import unicodedata
 
 from attrs import define, field
 from provide.foundation.errors import error_boundary
