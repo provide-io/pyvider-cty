@@ -1,9 +1,17 @@
+from __future__ import annotations
+
 from decimal import Decimal
 import json
-from typing import Any
 
 import msgpack  # type: ignore
 from provide.foundation.errors import error_boundary
+from pyvider.cty.config.defaults import (
+    MSGPACK_EXT_TYPE_CTY,
+    MSGPACK_EXT_TYPE_REFINED_UNKNOWN,
+    MSGPACK_RAW_FALSE,
+    MSGPACK_STRICT_MAP_KEY_FALSE,
+    MSGPACK_USE_BIN_TYPE_TRUE,
+)
 
 from .conversion import encode_cty_type_to_wire_json
 from .exceptions import CtyValidationError, DeserializationError, SerializationError
@@ -22,48 +30,50 @@ from .values.markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
 
 
 def _ext_hook(code: int, data: bytes) -> Any:
-    if code == 0:
-        return UNREFINED_UNKNOWN
-    if code == 12:
-        try:
-            payload = msgpack.unpackb(data, raw=False, strict_map_key=False)
-            refinements = {}
-            if 1 in payload:
-                refinements["is_known_null"] = payload[1]
-            if 2 in payload:
-                refinements["string_prefix"] = payload[2]
+    match code:
+        case 0:
+            return UNREFINED_UNKNOWN
+        case 12:
+            try:
+                payload = msgpack.unpackb(data, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE)
+                refinements = {}
+                if 1 in payload:
+                    refinements["is_known_null"] = payload[1]
+                if 2 in payload:
+                    refinements["string_prefix"] = payload[2]
 
-            def _decode_num(val: Any) -> Decimal:
-                if isinstance(val, bytes):
-                    return Decimal(val.decode("utf-8"))
-                return Decimal(val)
+                def _decode_num(val: Any) -> Decimal:
+                    if isinstance(val, bytes):
+                        return Decimal(val.decode("utf-8"))
+                    return Decimal(val)
 
-            if 3 in payload:
-                refinements["number_lower_bound"] = (
-                    _decode_num(payload[3][0]),
-                    payload[3][1],
-                )
-            if 4 in payload:
-                refinements["number_upper_bound"] = (
-                    _decode_num(payload[4][0]),
-                    payload[4][1],
-                )
-            if 5 in payload:
-                refinements["collection_length_lower_bound"] = payload[5]
-            if 6 in payload:
-                refinements["collection_length_upper_bound"] = payload[6]
-            return RefinedUnknownValue(**refinements)
-        except Exception as e:
-            raise DeserializationError(
-                f"Failed to decode refined unknown payload: {e}"
-            ) from e
-    # Per protocol, any other extension code is an unrefined unknown.
-    return UNREFINED_UNKNOWN
+                if 3 in payload:
+                    refinements["number_lower_bound"] = (
+                        _decode_num(payload[3][0]),
+                        payload[3][1],
+                    )
+                if 4 in payload:
+                    refinements["number_upper_bound"] = (
+                        _decode_num(payload[4][0]),
+                        payload[4][1],
+                    )
+                if 5 in payload:
+                    refinements["collection_length_lower_bound"] = payload[5]
+                if 6 in payload:
+                    refinements["collection_length_upper_bound"] = payload[6]
+                return RefinedUnknownValue(**refinements)
+            except Exception as e:
+                raise DeserializationError(
+                    f"Failed to decode refined unknown payload: {e}"
+                ) from e
+        case _:
+            # Per protocol, any other extension code is an unrefined unknown.
+            return UNREFINED_UNKNOWN
 
 
-def _serialize_unknown(value: "CtyValue[Any]") -> Any:
+def _serialize_unknown(value: CtyValue[Any]) -> Any:
     if not isinstance(value.value, RefinedUnknownValue):
-        return msgpack.ExtType(0, b"")
+        return msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"")
     payload: dict[int, Any] = {}
     if value.value.is_known_null is not None:
         payload[1] = value.value.is_known_null
@@ -80,12 +90,12 @@ def _serialize_unknown(value: "CtyValue[Any]") -> Any:
     if value.value.collection_length_upper_bound is not None:
         payload[6] = value.value.collection_length_upper_bound
     if not payload:
-        return msgpack.ExtType(0, b"")
+        return msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"")
     packed_payload = msgpack.packb(payload)
-    return msgpack.ExtType(12, packed_payload)
+    return msgpack.ExtType(MSGPACK_EXT_TYPE_REFINED_UNKNOWN, packed_payload)
 
 
-def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
+def _serialize_dynamic(value: CtyValue[Any]) -> list[Any]:
     inner_value = value.value
     if not isinstance(inner_value, CtyValue):
         raise SerializationError(
@@ -102,7 +112,7 @@ def _serialize_dynamic(value: "CtyValue[Any]") -> list[Any]:
 
 
 def _convert_value_to_serializable(
-    value: "CtyValue[Any]", schema: "CtyType[Any]"
+    value: CtyValue[Any], schema: CtyType[Any]
 ) -> Any:
     if not isinstance(value, CtyValue):
         value = schema.validate(value)
@@ -159,7 +169,7 @@ def _msgpack_default_handler(obj: Any) -> Any:
     )
 
 
-def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
+def cty_to_msgpack(value: CtyValue[Any], schema: CtyType[Any]) -> bytes:
     with error_boundary(context={
         "operation": "cty_to_msgpack_serialization",
         "value_type": type(value).__name__,
@@ -169,11 +179,11 @@ def cty_to_msgpack(value: "CtyValue[Any]", schema: "CtyType[Any]") -> bytes:
     }):
         serializable_data = _convert_value_to_serializable(value, schema)
         return msgpack.packb(
-            serializable_data, default=_msgpack_default_handler, use_bin_type=True
+            serializable_data, default=_msgpack_default_handler, use_bin_type=MSGPACK_USE_BIN_TYPE_TRUE
         )
 
 
-def _unpacked_to_cty(data: Any, schema: "CtyType[Any]") -> "CtyValue[Any]":
+def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:
     if isinstance(data, UnknownValue):
         return CtyValue.unknown(schema, value=data)
     if data is None:
@@ -181,7 +191,7 @@ def _unpacked_to_cty(data: Any, schema: "CtyType[Any]") -> "CtyValue[Any]":
     return schema.validate(data)
 
 
-def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
+def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
     with error_boundary(context={
         "operation": "cty_from_msgpack_deserialization", 
         "data_size": len(data),
@@ -191,7 +201,7 @@ def cty_from_msgpack(data: bytes, cty_type: "CtyType[Any]") -> "CtyValue[Any]":
         if not data:
             return CtyValue.null(cty_type)
         raw_unpacked = msgpack.unpackb(
-            data, ext_hook=_ext_hook, raw=False, strict_map_key=False
+            data, ext_hook=_ext_hook, raw=MSGPACK_RAW_FALSE, strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE
         )
 
         if (

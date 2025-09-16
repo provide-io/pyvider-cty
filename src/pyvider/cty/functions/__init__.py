@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/functions/__init__.py
 # This file makes the 'functions' module a package.
 

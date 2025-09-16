@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # In a new file: pyvider/cty/context/validation_context.py
 from collections.abc import Generator
 from contextlib import contextmanager

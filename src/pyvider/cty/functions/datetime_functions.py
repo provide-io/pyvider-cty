@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 import re
-from typing import Any
 
 from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.config.defaults import (
+    SECONDS_PER_HOUR,
+    SECONDS_PER_MINUTE,
+    SECONDS_PER_SECOND,
+)
 
 # A simplified mapping from Go's time layout to Python's strftime format.
 # This is not exhaustive but covers common cases.
@@ -19,7 +25,7 @@ def _translate_go_format(go_fmt: str) -> str:
         py_fmt = py_fmt.replace(go, py)
     return py_fmt
 
-def formatdate(spec: "CtyValue[Any]", timestamp: "CtyValue[Any]") -> "CtyValue[Any]":
+def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(spec.type, CtyString) or not isinstance(timestamp.type, CtyString):
         raise CtyFunctionError("formatdate: arguments must be strings")
     if spec.is_unknown or spec.is_null or timestamp.is_unknown or timestamp.is_null:
@@ -40,12 +46,16 @@ def _parse_duration(duration_str: str) -> timedelta:
     total_seconds = 0
     for value, unit in parts:
         val = float(value)
-        if unit == "h": total_seconds += val * 3600
-        elif unit == "m": total_seconds += val * 60
-        elif unit == "s": total_seconds += val
+        match unit:
+            case "h":
+                total_seconds += val * SECONDS_PER_HOUR
+            case "m":
+                total_seconds += val * SECONDS_PER_MINUTE
+            case "s":
+                total_seconds += val * SECONDS_PER_SECOND
     return timedelta(seconds=total_seconds)
 
-def timeadd(timestamp: "CtyValue[Any]", duration: "CtyValue[Any]") -> "CtyValue[Any]":
+def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(timestamp.type, CtyString) or not isinstance(duration.type, CtyString):
         raise CtyFunctionError("timeadd: arguments must be strings")
     if timestamp.is_unknown or timestamp.is_null or duration.is_unknown or duration.is_null:

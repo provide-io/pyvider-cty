@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider/cty/exceptions/conversion.py
 """
 Defines exceptions related to CTY type and value conversions.

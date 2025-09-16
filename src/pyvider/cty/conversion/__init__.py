@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/conversion/__init__.py
 from ._cache import inference_cache_context, with_inference_cache
 from .adapter import cty_to_native

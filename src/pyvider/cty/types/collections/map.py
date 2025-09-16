@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unicodedata
 from typing import Any, ClassVar, Generic, TypeVar
 
@@ -31,7 +33,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             )
 
     @with_recursion_detection
-    def validate(self, value: object) -> "CtyValue[dict[str, V]]":
+    def validate(self, value: object) -> CtyValue[dict[str, V]]:
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
                 return value  # Fast path
@@ -78,10 +80,10 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
 
     def get(
         self,
-        map_value: "CtyValue[dict[str, V]]",
+        map_value: CtyValue[dict[str, V]],
         key: object,
-        default: "CtyValue[V] | None" = None,
-    ) -> "CtyValue[V]":
+        default: CtyValue[V] | None = None,
+    ) -> CtyValue[V]:
         if not isinstance(map_value, CtyValue) or not isinstance(
             map_value.type, CtyMap
         ):
@@ -101,12 +103,12 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             return self.element_type.validate(result)
         return default if default is not None else CtyValue.null(self.element_type)
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyMap):
             return False
         return self.element_type.equal(other.element_type)
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         if isinstance(other, CtyDynamic):
