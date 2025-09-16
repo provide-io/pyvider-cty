@@ -54,23 +54,17 @@ def cty_to_native(value: Any) -> Any:  # noqa: C901
                 inner_id = id(val_to_process.value)
                 results[val_id] = results[inner_id]
             elif isinstance(val_to_process.type, CtyObject | CtyMap):
-                results[val_id] = {
-                    k: results[id(v)] for k, v in val_to_process.value.items()
-                }
+                results[val_id] = {k: results[id(v)] for k, v in val_to_process.value.items()}
             elif isinstance(val_to_process.type, CtyList):
                 results[val_id] = [results[id(item)] for item in val_to_process.value]
             elif isinstance(val_to_process.type, CtySet):
                 # Use _canonical_sort_key for consistent sorting of set elements
                 results[val_id] = sorted(
                     [results[id(item)] for item in val_to_process.value],
-                    key=lambda v: v._canonical_sort_key()
-                    if isinstance(v, CtyValue)
-                    else repr(v),
+                    key=lambda v: v._canonical_sort_key() if isinstance(v, CtyValue) else repr(v),
                 )
             elif isinstance(val_to_process.type, CtyTuple):
-                results[val_id] = tuple(
-                    results[id(item)] for item in val_to_process.value
-                )
+                results[val_id] = tuple(results[id(item)] for item in val_to_process.value)
             continue
 
         if not isinstance(current_item, CtyValue):

@@ -47,9 +47,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             return CtyValue.null(self)
 
         if not isinstance(value, dict):
-            raise CtyMapValidationError(
-                f"Input must be a dictionary, got {type(value).__name__}."
-            )
+            raise CtyMapValidationError(f"Input must be a dictionary, got {type(value).__name__}.")
         validated_map: dict[str, CtyValue[V]] = {}
         for k, v in value.items():
             with error_boundary(
@@ -70,13 +68,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 try:
                     validated_map[normalized_key] = self.element_type.validate(v)
                 except CtyValidationError as e:
-                    new_path = CtyPath(
-                        steps=[KeyStep(normalized_key)]
-                        + (e.path.steps if e.path else [])
-                    )
-                    raise CtyMapValidationError(
-                        e.message, value=v, path=new_path, original_exception=e
-                    ) from e
+                    new_path = CtyPath(steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else []))
+                    raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
 
         is_unknown = any(v.is_unknown for v in validated_map.values())
         return CtyValue(vtype=self, value=validated_map, is_unknown=is_unknown)
@@ -87,9 +80,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         key: object,
         default: CtyValue[V] | None = None,
     ) -> CtyValue[V]:
-        if not isinstance(map_value, CtyValue) or not isinstance(
-            map_value.type, CtyMap
-        ):
+        if not isinstance(map_value, CtyValue) or not isinstance(map_value.type, CtyMap):
             raise CtyTypeMismatchError("get operation called on non-map CtyValue")
         if map_value.is_null or map_value.is_unknown:
             return default if default is not None else CtyValue.null(self.element_type)

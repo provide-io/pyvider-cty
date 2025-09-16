@@ -22,7 +22,7 @@ import threading
 import time
 from typing import Any
 
-from provide.foundation import logger
+from provide.foundation import logger  # type: ignore[import-untyped]
 from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
 from pyvider.cty.config.defaults import (
@@ -105,9 +105,7 @@ class RecursionDetector:
     def __init__(self, context: RecursionContext | None = None) -> None:
         self.context = context or get_recursion_context()
 
-    def should_continue_validation(
-        self, value: Any, current_path: str = ""
-    ) -> tuple[bool, str | None]:
+    def should_continue_validation(self, value: Any, current_path: str = "") -> tuple[bool, str | None]:
         """
         Determine if validation should continue for the given value.
 
@@ -124,7 +122,9 @@ class RecursionDetector:
         # Performance safeguards - prevent pathological cases
         elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
         if elapsed_ms > self.context.max_validation_time_ms:
-            reason = f"Validation timeout after {elapsed_ms:.1f}ms (max: {self.context.max_validation_time_ms}ms)"
+            reason = (
+                f"Validation timeout after {elapsed_ms:.1f}ms (max: {self.context.max_validation_time_ms}ms)"
+            )
             logger.warning(
                 "CTY validation timeout exceeded",
                 elapsed_ms=elapsed_ms,
@@ -137,9 +137,7 @@ class RecursionDetector:
         # Update context
         self.context.total_validations += 1
         current_depth = len(self.context.validation_path)
-        self.context.max_depth_reached = max(
-            self.context.max_depth_reached, current_depth
-        )
+        self.context.max_depth_reached = max(self.context.max_depth_reached, current_depth)
 
         # Depth safeguards - only trigger for truly deep recursion
         if current_depth > self.context.max_depth_allowed:
@@ -230,13 +228,12 @@ class RecursionDetector:
             "max_depth_reached": self.context.max_depth_reached,
             "elapsed_ms": elapsed_ms,
             "objects_in_graph": len(self.context.validation_graph),
-            "avg_validations_per_ms": self.context.total_validations
-            / max(elapsed_ms, 0.001),
+            "avg_validations_per_ms": self.context.total_validations / max(elapsed_ms, 0.001),
             "current_path": self.get_current_path(),
         }
 
 
-def with_recursion_detection(func: Callable) -> Callable:
+def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for advanced recursion detection in validation functions.
     """
