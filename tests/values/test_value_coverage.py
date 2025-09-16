@@ -22,9 +22,7 @@ class TestCtyValueCoverage:
         """Covers the type equality check in _check_comparable."""
         val1 = CtyNumber().validate(1)
         val2 = CtyString().validate("1")
-        with pytest.raises(
-            TypeError, match="Cannot compare CtyValues of different types"
-        ):
+        with pytest.raises(TypeError, match="Cannot compare CtyValues of different types"):
             val1._check_comparable(val2)
 
     def test_check_comparable_raises_on_non_comparable_type(self) -> None:
@@ -33,9 +31,7 @@ class TestCtyValueCoverage:
         # CORRECTED: The error message uses the string representation of the type,
         # which is 'list(string)', not the class name 'CtyList'. The parentheses
         # must be escaped for the regex match.
-        with pytest.raises(
-            TypeError, match="Value of type list\\(string\\) is not comparable"
-        ):
+        with pytest.raises(TypeError, match="Value of type list\\(string\\) is not comparable"):
             val._check_comparable(val)
 
     def test_comparison_dunders_on_malformed_internal_value(self) -> None:
@@ -83,13 +79,9 @@ class TestCtyValueCoverage:
             malformed_map.without_key("a")
 
         malformed_list = CtyValue(vtype=CtyList(element_type=CtyString()), value=123)
-        with pytest.raises(
-            TypeError, match="Internal value of CtyList must be a list or tuple"
-        ):
+        with pytest.raises(TypeError, match="Internal value of CtyList must be a list or tuple"):
             malformed_list.append("a")
-        with pytest.raises(
-            TypeError, match="Internal value of CtyList must be a list or tuple"
-        ):
+        with pytest.raises(TypeError, match="Internal value of CtyList must be a list or tuple"):
             malformed_list.with_element_at(0, "a")
 
     def test_without_key_on_missing_key(self) -> None:

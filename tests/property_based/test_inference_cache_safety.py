@@ -19,9 +19,7 @@ from pyvider.cty.types import (
 # scenario that would break a naive, key-only caching mechanism.
 @st.composite
 def same_keys_different_types(draw):
-    keys = draw(
-        st.lists(st.text(min_size=1, max_size=10), min_size=1, max_size=5, unique=True)
-    )
+    keys = draw(st.lists(st.text(min_size=1, max_size=10), min_size=1, max_size=5, unique=True))
     dict1 = {key: draw(st.text()) for key in keys}
     dict2 = {key: draw(st.lists(st.integers())) for key in keys}
     return (dict1, dict2)

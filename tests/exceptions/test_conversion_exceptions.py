@@ -45,9 +45,7 @@ class TestCtyConversionError:
             pass
 
         target_instance = SimpleClass()
-        error_instance = CtyConversionError(
-            "Conversion failed", target_type=target_instance
-        )
+        error_instance = CtyConversionError("Conversion failed", target_type=target_instance)
         expected_msg_instance = f"Conversion failed (target_type={target_instance!s})"
         assert str(error_instance) == expected_msg_instance
 
@@ -55,12 +53,8 @@ class TestCtyConversionError:
         """Test CtyConversionError with message, source_value, and target_type."""
         source = 456.7
         target = CtyNumber
-        error = CtyConversionError(
-            "Full context conversion error", source_value=source, target_type=target
-        )
-        expected_msg = (
-            "Full context conversion error (source_type=float, target_type=CtyNumber)"
-        )
+        error = CtyConversionError("Full context conversion error", source_value=source, target_type=target)
+        expected_msg = "Full context conversion error (source_type=float, target_type=CtyNumber)"
         assert str(error) == expected_msg
         assert error.source_value == source
         assert error.target_type == target
@@ -85,10 +79,10 @@ class TestCtyTypeConversionError:
     def test_instantiation_with_type_name_and_source_value(self) -> None:
         """Test CtyTypeConversionError with type_name and source_value."""
         source = "test_source"
-        error = CtyTypeConversionError(
-            "Type error with source", type_name="SourceType", source_value=source
+        error = CtyTypeConversionError("Type error with source", type_name="SourceType", source_value=source)
+        expected_msg = (
+            'CTY Type "SourceType" representation conversion failed: Type error with source (source_type=str)'
         )
-        expected_msg = 'CTY Type "SourceType" representation conversion failed: Type error with source (source_type=str)'
         assert str(error) == expected_msg
         assert error.type_name == "SourceType"
         assert error.source_value == source
@@ -97,9 +91,7 @@ class TestCtyTypeConversionError:
     def test_instantiation_with_type_name_and_target_type(self) -> None:
         """Test CtyTypeConversionError with type_name and target_type."""
         target = CtyString
-        error = CtyTypeConversionError(
-            "Type error with target", type_name="TargetingType", target_type=target
-        )
+        error = CtyTypeConversionError("Type error with target", type_name="TargetingType", target_type=target)
         expected_msg = 'CTY Type "TargetingType" representation conversion failed: Type error with target (target_type=CtyString)'
         assert str(error) == expected_msg
         assert error.type_name == "TargetingType"
@@ -110,9 +102,7 @@ class TestCtyTypeConversionError:
         """Test CtyTypeConversionError without type_name but with CtyConversionError params."""
         source = 123
         target = CtyNumber
-        error = CtyTypeConversionError(
-            "Conversion part only", source_value=source, target_type=target
-        )
+        error = CtyTypeConversionError("Conversion part only", source_value=source, target_type=target)
         expected_msg = "Conversion part only (source_type=int, target_type=CtyNumber)"
         assert str(error) == expected_msg
         assert error.type_name is None

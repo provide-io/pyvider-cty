@@ -60,7 +60,5 @@ class TestValidationExceptionStructure:
 
     def test_validation_exception_context_str(self) -> None:
         """Integrates and fixes tests for exception string formatting."""
-        type_mismatch = CtyTypeMismatchError(
-            "mismatch", actual_type=CtyString(), expected_type=CtyNumber()
-        )
+        type_mismatch = CtyTypeMismatchError("mismatch", actual_type=CtyString(), expected_type=CtyNumber())
         assert "Expected number, got string" in str(type_mismatch)

@@ -45,9 +45,7 @@ def test_convert_value_to_serializable_with_raw_value() -> None:
 
 def test_incorrect_container_type_raises_error() -> None:
     with pytest.raises(TypeError, match="Value for CtyObject must be a dict"):
-        _convert_value_to_serializable(
-            CtyValue(CtyObject({}), ["not", "a", "dict"]), CtyObject({})
-        )
+        _convert_value_to_serializable(CtyValue(CtyObject({}), ["not", "a", "dict"]), CtyObject({}))
 
     with pytest.raises(TypeError, match="Value for CtyMap must be a dict"):
         _convert_value_to_serializable(
@@ -72,7 +70,5 @@ def test_msgpack_default_handler_unsupported_type() -> None:
     class Unsupported:
         pass
 
-    with pytest.raises(
-        TypeError, match="Object of type Unsupported is not MessagePack serializable"
-    ):
+    with pytest.raises(TypeError, match="Object of type Unsupported is not MessagePack serializable"):
         msgpack.packb(Unsupported(), default=_msgpack_default_handler)

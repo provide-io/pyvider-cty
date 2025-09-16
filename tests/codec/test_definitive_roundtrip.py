@@ -33,9 +33,7 @@ def deep_unmark(value: CtyValue) -> CtyValue:
     elif isinstance(new_inner_value, list | tuple | frozenset):
         new_inner_value = type(new_inner_value)(deep_unmark(v) for v in new_inner_value)
     elif isinstance(new_inner_value, dict | MappingProxyType):
-        new_inner_value = type(new_inner_value)(
-            {k: deep_unmark(v) for k, v in new_inner_value.items()}
-        )
+        new_inner_value = type(new_inner_value)({k: deep_unmark(v) for k, v in new_inner_value.items()})
     return attrs.evolve(value, value=new_inner_value, marks=frozenset())
 
 
@@ -69,9 +67,7 @@ def assert_value_roundtrip(value: CtyValue) -> None:
         )
 
     except Exception as e:
-        pytest.fail(
-            f"Roundtrip assertion failed with an exception: {e!r}", pytrace=True
-        )
+        pytest.fail(f"Roundtrip assertion failed with an exception: {e!r}", pytrace=True)
 
 
 class TestTddDefinitiveCorrectness:
@@ -86,9 +82,7 @@ class TestTddDefinitiveCorrectness:
         tuple_val_1 = tuple_type.validate([1, "one"])
         tuple_val_2_unmarked = tuple_type.validate([2, "two"])
         marked_inner_string = CtyString().validate("two").mark(CtyMark("secret"))
-        tuple_val_2 = CtyValue(
-            vtype=tuple_type, value=(tuple_val_2_unmarked.value[0], marked_inner_string)
-        )
+        tuple_val_2 = CtyValue(vtype=tuple_type, value=(tuple_val_2_unmarked.value[0], marked_inner_string))
         map_val = map_type.validate({"first": tuple_val_1, "second": tuple_val_2})
         assert_value_roundtrip(map_val)
 

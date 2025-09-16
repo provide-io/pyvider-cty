@@ -20,6 +20,4 @@ def test_object_validation_preserves_marks() -> None:
 
     # Assert that the mark on the inner value was preserved.
     inner_value = validated_object.value["data"]
-    assert inner_value.has_mark(CtyMark("sensitive")), (
-        "Mark was lost during object validation"
-    )
+    assert inner_value.has_mark(CtyMark("sensitive")), "Mark was lost during object validation"

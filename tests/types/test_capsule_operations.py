@@ -130,9 +130,7 @@ class TestCtyCapsuleWithConversion:
         self, capsule_type_with_converter: CtyCapsuleWithOps, mock_convert_fn: Mock
     ) -> None:
         """TDD: Verifies that marks are carried over after a custom conversion."""
-        marked_val = capsule_type_with_converter.validate(OpaqueObject(1, "d")).mark(
-            CtyMark("sensitive")
-        )
+        marked_val = capsule_type_with_converter.validate(OpaqueObject(1, "d")).mark(CtyMark("sensitive"))
         target_type = CtyString()
 
         # Configure mock to return an unmarked value
@@ -156,7 +154,5 @@ class TestCtyCapsuleWithConversion:
         wrong_result = CtyValue(CtyNumber(), 123)
         mock_convert_fn.return_value = wrong_result
 
-        with pytest.raises(
-            CtyConversionError, match="returned a value of the wrong type"
-        ):
+        with pytest.raises(CtyConversionError, match="returned a value of the wrong type"):
             convert(capsule_val, target_type)
