@@ -22,17 +22,11 @@ class TestCtyTupleOperations:
         el0 = tuple_type.element_at(tuple_value, 0)
         assert isinstance(el0, CtyValue) and el0.value == "data"
         el_neg1 = tuple_type.element_at(tuple_value, -1)
-        assert (
-            isinstance(el_neg1, CtyValue)
-            and el_neg1.type.equal(CtyBool())
-            and el_neg1.value is False
-        )
+        assert isinstance(el_neg1, CtyValue) and el_neg1.type.equal(CtyBool()) and el_neg1.value is False
 
     def test_slice_valid(self, tuple_type, tuple_value) -> None:
         slice02_val = tuple_type.slice(tuple_value, 0, 2)
-        assert isinstance(slice02_val, CtyValue) and isinstance(
-            slice02_val.type, CtyTuple
-        )
+        assert isinstance(slice02_val, CtyValue) and isinstance(slice02_val.type, CtyTuple)
         assert len(slice02_val.type.element_types) == 2
         assert slice02_val.value[0].value == "data"
 

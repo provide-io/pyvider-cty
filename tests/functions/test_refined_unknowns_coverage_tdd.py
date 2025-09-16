@@ -23,9 +23,7 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(
-            number_lower_bound=lower_bound, number_upper_bound=upper_bound
-        ),
+        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
     )
 
 

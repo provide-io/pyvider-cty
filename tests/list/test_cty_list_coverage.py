@@ -32,9 +32,7 @@ def test_validate_null_element_in_list() -> None:
 
 def test_element_at_on_non_cty_list_value() -> None:
     list_type = CtyList(element_type=CtyString())
-    with pytest.raises(
-        CtyListValidationError, match="Expected CtyValue with CtyList type"
-    ):
+    with pytest.raises(CtyListValidationError, match="Expected CtyValue with CtyList type"):
         list_type.element_at(CtyValue(CtyNumber(), 1), 0)
 
 

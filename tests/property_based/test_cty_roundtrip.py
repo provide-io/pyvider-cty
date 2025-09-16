@@ -11,13 +11,8 @@ from pyvider.cty.conversion import cty_to_native
 # A hypothesis strategy for generating JSON-like data structures.
 # This covers primitives, lists, and objects (dicts) recursively.
 json_strategy = st.recursive(
-    st.none()
-    | st.booleans()
-    | st.integers()
-    | st.floats(allow_nan=False, allow_infinity=False)
-    | st.text(),
-    lambda children: st.lists(children)
-    | st.dictionaries(st.text().filter(lambda s: s), children),
+    st.none() | st.booleans() | st.integers() | st.floats(allow_nan=False, allow_infinity=False) | st.text(),
+    lambda children: st.lists(children) | st.dictionaries(st.text().filter(lambda s: s), children),
     max_leaves=15,
 )
 
@@ -30,10 +25,7 @@ def deep_prepare_for_comparison(data):
     """
     if isinstance(data, dict):
         # CORRECTED: Normalize keys in addition to values.
-        return {
-            unicodedata.normalize("NFC", k): deep_prepare_for_comparison(v)
-            for k, v in data.items()
-        }
+        return {unicodedata.normalize("NFC", k): deep_prepare_for_comparison(v) for k, v in data.items()}
     if isinstance(data, list):
         return [deep_prepare_for_comparison(v) for v in data]
     if isinstance(data, float):
@@ -73,12 +65,9 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
 
         # 5. Assert that the final native object is equivalent to the original,
         #    after preparing both for a semantic comparison.
-        assert deep_prepare_for_comparison(
-            native_data_roundtripped
-        ) == deep_prepare_for_comparison(native_data)
+        assert deep_prepare_for_comparison(native_data_roundtripped) == deep_prepare_for_comparison(
+            native_data
+        )
 
     except Exception as e:
-        pytest.fail(
-            f"CTY round-trip failed for input:\n{native_data!r}\n"
-            f"Error: {type(e).__name__}: {e}"
-        )
+        pytest.fail(f"CTY round-trip failed for input:\n{native_data!r}\nError: {type(e).__name__}: {e}")

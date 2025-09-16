@@ -26,8 +26,6 @@ class TestTypeUsabilityMatrix:
 
         # Optional vs. Required attributes
         t_req = CtyObject(attribute_types={"a": CtyString()})  # 'a' is required
-        t_opt = CtyObject(
-            attribute_types={"a": CtyString()}, optional_attributes=frozenset(["a"])
-        )
+        t_opt = CtyObject(attribute_types={"a": CtyString()}, optional_attributes=frozenset(["a"]))
         assert t_req.usable_as(t_opt)
         assert not t_opt.usable_as(t_req)

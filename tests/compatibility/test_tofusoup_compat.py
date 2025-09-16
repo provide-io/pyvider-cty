@@ -21,6 +21,7 @@ For more information, see the TofuSoup repository and documentation.
 
 import pytest
 
+
 @pytest.mark.compat
 def test_tofusoup_compatibility_placeholder():
     """
@@ -33,11 +34,19 @@ def test_tofusoup_compatibility_placeholder():
     # This test validates that the Python fixtures can still be deserialized
     # from the existing Go-generated fixtures in compatibility/tests/fixtures/
     from pathlib import Path
+
     from pyvider.cty import CtyString
     from pyvider.cty.codec import cty_from_msgpack
 
     # Test with a simple fixture that should exist
-    fixture_path = Path(__file__).parent.parent.parent / "compatibility" / "tests" / "fixtures" / "go-cty" / "string_simple.msgpack"
+    fixture_path = (
+        Path(__file__).parent.parent.parent
+        / "compatibility"
+        / "tests"
+        / "fixtures"
+        / "go-cty"
+        / "string_simple.msgpack"
+    )
 
     if fixture_path.exists():
         packed_bytes = fixture_path.read_bytes()

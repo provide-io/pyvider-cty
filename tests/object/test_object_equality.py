@@ -190,9 +190,7 @@ async def test_usable_as_required_attributes() -> None:
 
     # Check usability
     assert type1.usable_as(type2) is True  # More required can be used as fewer required
-    assert (
-        type2.usable_as(type1) is False
-    )  # Fewer required cannot be used as more required
+    assert type2.usable_as(type1) is False  # Fewer required cannot be used as more required
 
 
 # 🐍🏗️🧪

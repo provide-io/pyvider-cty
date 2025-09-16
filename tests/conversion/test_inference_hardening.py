@@ -36,9 +36,7 @@ class TestInferenceHardening:
         This tests the precedence in the inference logic.
         """
         inferred_type = infer_cty_type_from_raw(True)
-        assert isinstance(inferred_type, CtyBool), (
-            "Boolean value was incorrectly inferred as CtyNumber."
-        )
+        assert isinstance(inferred_type, CtyBool), "Boolean value was incorrectly inferred as CtyNumber."
 
     def test_string_keyed_dict_inference_logic(self) -> None:
         """

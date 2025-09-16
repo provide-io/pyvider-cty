@@ -26,9 +26,7 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(
-            number_lower_bound=lower_bound, number_upper_bound=upper_bound
-        ),
+        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
     )
 
 
@@ -70,9 +68,7 @@ class TestFinalCoveragePush:
             malformed_map.without_key("a")
 
         malformed_list = CtyValue(vtype=CtyList(element_type=CtyString()), value=123)
-        with pytest.raises(
-            TypeError, match="Internal value of CtyList must be a list or tuple"
-        ):
+        with pytest.raises(TypeError, match="Internal value of CtyList must be a list or tuple"):
             malformed_list.with_element_at(0, "a")
 
     # --- Coverage for: src/pyvider/cty/functions/comparison_functions.py ---

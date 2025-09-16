@@ -13,9 +13,7 @@ valid_data_strategy = st.fixed_dictionaries(
 invalid_data_strategy = st.fixed_dictionaries(
     {
         "name": st.text(max_size=50),
-        "age": st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1
-        ),
+        "age": st.text(alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1),
     }
 )
 
@@ -32,9 +30,7 @@ def test_schema_accepts_valid_data(simple_schema, data) -> None:
     try:
         validate_config(simple_schema, data)
     except CtyValidationError as e:
-        pytest.fail(
-            f"Validation failed unexpectedly for valid data: {data}. Error: {e}"
-        )
+        pytest.fail(f"Validation failed unexpectedly for valid data: {data}. Error: {e}")
 
 
 @given(data=invalid_data_strategy)

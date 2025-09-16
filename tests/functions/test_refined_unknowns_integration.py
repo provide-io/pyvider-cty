@@ -33,16 +33,12 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(
-            number_lower_bound=lower_bound, number_upper_bound=upper_bound
-        ),
+        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
     )
 
 
 # Helper for creating a refined unknown list value
-def refined_unknown_list(
-    lower_bound: int | None = None, upper_bound: int | None = None
-) -> CtyValue:
+def refined_unknown_list(lower_bound: int | None = None, upper_bound: int | None = None) -> CtyValue:
     return CtyValue.unknown(
         CtyList(element_type=CtyString()),
         value=RefinedUnknownValue(

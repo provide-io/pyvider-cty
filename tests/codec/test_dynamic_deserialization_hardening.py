@@ -35,9 +35,7 @@ class TestStrictDynamicDeserialization:
         payload = [type_spec_bytes, ["a", "b"]]
         packed_bytes = msgpack.packb(payload, use_bin_type=True)
 
-        with pytest.raises(
-            CtyValidationError, match="Invalid Terraform type specification"
-        ):
+        with pytest.raises(CtyValidationError, match="Invalid Terraform type specification"):
             cty_from_msgpack(packed_bytes, CtyDynamic())
 
     def test_dynamic_deserialization_with_value_mismatch_raises_error(self) -> None:

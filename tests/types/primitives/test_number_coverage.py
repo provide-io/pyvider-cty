@@ -7,6 +7,4 @@ def test_validate_unknown_value() -> None:
     unknown_value = UnknownValue()
     result = number_type.validate(unknown_value)
     assert result.is_unknown, "Validating unknown value should return unknown CtyValue"
-    assert result.type.equal(number_type), (
-        "Result type should equal the original number type"
-    )
+    assert result.type.equal(number_type), "Result type should equal the original number type"

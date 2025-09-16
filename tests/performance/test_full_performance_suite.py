@@ -19,9 +19,7 @@ def complex_type_list():
     """Generates a list of complex, nested types for the unify benchmark."""
     types = [
         CtyObject({"a": CtyString(), "b": CtyList(element_type=CtyNumber())}),
-        CtyObject(
-            {"a": CtyString(), "b": CtyList(element_type=CtyNumber()), "c": CtyString()}
-        ),
+        CtyObject({"a": CtyString(), "b": CtyList(element_type=CtyNumber()), "c": CtyString()}),
         CtyObject({"a": CtyString(), "b": CtyList(element_type=CtyNumber())}),
         CtyObject({"a": CtyString()}),
     ]
@@ -81,18 +79,14 @@ def test_benchmark_validation_performance(benchmark, complex_raw_data) -> None:
 
 
 @pytest.mark.benchmark
-def test_benchmark_serialization_performance(
-    benchmark, validated_complex_cty_value
-) -> None:
+def test_benchmark_serialization_performance(benchmark, validated_complex_cty_value) -> None:
     """[4/7] Measures serialization (`cty_to_msgpack`) performance."""
     schema = validated_complex_cty_value.type
     benchmark(cty_to_msgpack, validated_complex_cty_value, schema)
 
 
 @pytest.mark.benchmark
-def test_benchmark_deserialization_performance(
-    benchmark, validated_complex_cty_value
-) -> None:
+def test_benchmark_deserialization_performance(benchmark, validated_complex_cty_value) -> None:
     """[5/7] Measures deserialization (`cty_from_msgpack`) performance."""
     schema = validated_complex_cty_value.type
     packed_bytes = cty_to_msgpack(validated_complex_cty_value, schema)
@@ -100,9 +94,7 @@ def test_benchmark_deserialization_performance(
 
 
 @pytest.mark.benchmark
-def test_benchmark_to_native_performance(
-    benchmark, validated_complex_cty_value
-) -> None:
+def test_benchmark_to_native_performance(benchmark, validated_complex_cty_value) -> None:
     """[6/7] Measures `cty_to_native` conversion performance."""
     benchmark(cty_to_native, validated_complex_cty_value)
 

@@ -10,9 +10,7 @@ def test_validate_unknown_value() -> None:
     unknown_value = UnknownValue()
     result = string_type.validate(unknown_value)
     assert result.is_unknown, "Validating unknown value should return unknown CtyValue"
-    assert result.type.equal(string_type), (
-        "Result type should equal the original string type"
-    )
+    assert result.type.equal(string_type), "Result type should equal the original string type"
 
 
 def test_validate_with_bytes() -> None:
@@ -29,7 +27,5 @@ def test_validate_with_exception() -> None:
         def __str__(self) -> str:
             raise ValueError("bad string")
 
-    with pytest.raises(
-        CtyStringValidationError, match="Cannot convert BadString to string."
-    ):
+    with pytest.raises(CtyStringValidationError, match="Cannot convert BadString to string."):
         string_type.validate(BadString())

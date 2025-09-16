@@ -21,8 +21,7 @@ primitives = (
 # with string keys and `json_data` values.
 json_data = st.recursive(
     primitives,
-    lambda children: st.lists(children)
-    | st.dictionaries(st.text().filter(lambda x: x != ""), children),
+    lambda children: st.lists(children) | st.dictionaries(st.text().filter(lambda x: x != ""), children),
     max_leaves=10,
 )
 
@@ -35,10 +34,7 @@ def deep_prepare_for_comparison(data):
     """
     if isinstance(data, dict):
         # CORRECTED: Normalize keys in addition to values.
-        return {
-            unicodedata.normalize("NFC", k): deep_prepare_for_comparison(v)
-            for k, v in data.items()
-        }
+        return {unicodedata.normalize("NFC", k): deep_prepare_for_comparison(v) for k, v in data.items()}
     if isinstance(data, list):
         return [deep_prepare_for_comparison(v) for v in data]
     if isinstance(data, float):
@@ -68,15 +64,10 @@ def test_conversion_roundtrip_is_lossless(native_data) -> None:
 
         # 3. Assert that the result is identical to the original input,
         #    after preparing both for a semantic comparison.
-        assert deep_prepare_for_comparison(
-            roundtrip_native_data
-        ) == deep_prepare_for_comparison(native_data)
+        assert deep_prepare_for_comparison(roundtrip_native_data) == deep_prepare_for_comparison(native_data)
 
     except Exception as e:
-        pytest.fail(
-            f"Conversion roundtrip failed for input:\n{native_data!r}\n"
-            f"Error: {type(e).__name__}: {e}"
-        )
+        pytest.fail(f"Conversion roundtrip failed for input:\n{native_data!r}\nError: {type(e).__name__}: {e}")
 
 
 def test_infer_type_of_list_of_mixed_objects() -> None:

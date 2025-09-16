@@ -32,14 +32,10 @@ class TestInferenceConcurrencySafety:
 
         # Expected inferred types for each data set
         expected_type1 = CtyList(
-            element_type=CtyObject(
-                attribute_types={"id": CtyNumber(), "name": CtyString()}
-            )
+            element_type=CtyObject(attribute_types={"id": CtyNumber(), "name": CtyString()})
         )
         expected_type2 = CtyList(
-            element_type=CtyObject(
-                attribute_types={"value": CtyNumber(), "enabled": CtyBool()}
-            )
+            element_type=CtyObject(attribute_types={"value": CtyNumber(), "enabled": CtyBool()})
         )
 
         results: dict[int, Any] = {}
@@ -59,12 +55,8 @@ class TestInferenceConcurrencySafety:
         type1_result = results.get(thread1.ident)
         type2_result = results.get(thread2.ident)
 
-        assert not isinstance(type1_result, Exception), (
-            f"Thread 1 failed with: {type1_result}"
-        )
-        assert not isinstance(type2_result, Exception), (
-            f"Thread 2 failed with: {type2_result}"
-        )
+        assert not isinstance(type1_result, Exception), f"Thread 1 failed with: {type1_result}"
+        assert not isinstance(type2_result, Exception), f"Thread 2 failed with: {type2_result}"
 
         assert type1_result.equal(expected_type1), "Thread 1 produced an incorrect type"
         assert type2_result.equal(expected_type2), "Thread 2 produced an incorrect type"

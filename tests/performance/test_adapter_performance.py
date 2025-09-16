@@ -60,9 +60,7 @@ def wide_cty_value() -> CtyDynamic:
 
 
 @pytest.mark.benchmark
-def test_benchmark_cty_to_native_deep_structure(
-    benchmark: Any, deep_cty_value: CtyDynamic
-) -> None:
+def test_benchmark_cty_to_native_deep_structure(benchmark: Any, deep_cty_value: CtyDynamic) -> None:
     """
     Measures the performance of `cty_to_native` on a deeply nested object
     to test the efficiency of the iterative, stack-based approach.
@@ -71,9 +69,7 @@ def test_benchmark_cty_to_native_deep_structure(
 
 
 @pytest.mark.benchmark
-def test_benchmark_cty_to_native_wide_structure(
-    benchmark: Any, wide_cty_value: CtyDynamic
-) -> None:
+def test_benchmark_cty_to_native_wide_structure(benchmark: Any, wide_cty_value: CtyDynamic) -> None:
     """
     Measures the performance of `cty_to_native` on a wide list of objects
     to test its efficiency with large collections.

@@ -5,9 +5,7 @@ from pyvider.cty.conversion import cty_to_native
 
 class TestCtyDynamicIntegration:
     def test_dynamic_roundtrip_with_list_of_objects(self) -> None:
-        list_of_objects_type = CtyList(
-            element_type=CtyObject(attribute_types={"name": CtyString()})
-        )
+        list_of_objects_type = CtyList(element_type=CtyObject(attribute_types={"name": CtyString()}))
         cty_val = list_of_objects_type.validate([{"name": "Alice"}, {"name": "Bob"}])
 
         schema = CtyDynamic()

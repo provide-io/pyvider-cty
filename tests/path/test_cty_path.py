@@ -187,9 +187,7 @@ class TestPath:
         assert isinstance(path.steps[2], KeyStep)
 
     def test_apply_path(self) -> None:
-        obj_type = CtyObject(
-            {"users": CtyList(element_type=CtyObject({"name": CtyString()}))}
-        )
+        obj_type = CtyObject({"users": CtyList(element_type=CtyObject({"name": CtyString()}))})
         obj_value = obj_type.validate({"users": [{"name": "Alice"}, {"name": "Bob"}]})
         path = CtyPath.get_attr("users").index_step(1).child("name")
         result = path.apply_path(obj_value)
@@ -201,9 +199,7 @@ class TestPath:
             path.apply_path("not a cty value")
 
     def test_apply_path_type(self) -> None:
-        obj_type = CtyObject(
-            {"users": CtyList(element_type=CtyObject({"name": CtyString()}))}
-        )
+        obj_type = CtyObject({"users": CtyList(element_type=CtyObject({"name": CtyString()}))})
         path = CtyPath.get_attr("users").index_step(1).child("name")
         result = path.apply_path_type(obj_type)
         assert result == CtyString()
@@ -228,13 +224,7 @@ class TestCtyPathStringRepresentation:
         assert str(path) == "user"
 
     def test_complex_mixed_path(self) -> None:
-        path = (
-            CtyPath.get_attr("users")
-            .index_step(0)
-            .child("addresses")
-            .key_step("home")
-            .child("zip")
-        )
+        path = CtyPath.get_attr("users").index_step(0).child("addresses").key_step("home").child("zip")
         assert str(path) == "users[0].addresses['home'].zip"
 
     def test_path_starting_with_index(self) -> None:

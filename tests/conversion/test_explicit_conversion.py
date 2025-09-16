@@ -101,9 +101,7 @@ class TestConvertFunction:
             ),
         ],
     )
-    def test_failed_conversions(
-        self, source_val: CtyValue, target_type: CtyType
-    ) -> None:
+    def test_failed_conversions(self, source_val: CtyValue, target_type: CtyType) -> None:
         with pytest.raises(CtyConversionError):
             convert(source_val, target_type)
 
@@ -234,9 +232,7 @@ class TestUnifyFunction:
             (
                 [
                     CtyObject({"a": CtyString()}),
-                    CtyObject(
-                        {"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}
-                    ),
+                    CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
                 ],
                 CtyDynamic(),
             ),
@@ -263,8 +259,6 @@ class TestUnifyFunction:
             ),
         ],
     )
-    def test_unification_scenarios(
-        self, type_list: Iterable[CtyType], expected_unified_type: CtyType
-    ) -> None:
+    def test_unification_scenarios(self, type_list: Iterable[CtyType], expected_unified_type: CtyType) -> None:
         unified_type = unify(type_list)
         assert unified_type.equal(expected_unified_type)

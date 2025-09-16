@@ -46,13 +46,9 @@ class TestAdvancedRecursionDetection:
         dynamic_type = CtyDynamic()
         result = dynamic_type.validate(deep_config)
 
-        assert not result.is_unknown, (
-            "Legitimate deep nesting should not result in an unknown value."
-        )
+        assert not result.is_unknown, "Legitimate deep nesting should not result in an unknown value."
         context = get_recursion_context()
-        assert context.max_depth_reached > 350, (
-            "Validation did not reach expected depth."
-        )
+        assert context.max_depth_reached > 350, "Validation did not reach expected depth."
 
     def test_exceeding_max_depth_returns_unknown(self) -> None:
         """
@@ -71,9 +67,7 @@ class TestAdvancedRecursionDetection:
         dynamic_type = CtyDynamic()
         result = dynamic_type.validate(deep_config)
 
-        assert result.is_unknown, (
-            "Exceeding max depth should result in an unknown value."
-        )
+        assert result.is_unknown, "Exceeding max depth should result in an unknown value."
 
     def test_detects_genuine_circular_references(self) -> None:
         """
@@ -87,9 +81,7 @@ class TestAdvancedRecursionDetection:
         dynamic_type = CtyDynamic()
         result = dynamic_type.validate(circular_obj)
 
-        assert result.is_unknown, (
-            "Circular reference should result in an unknown value."
-        )
+        assert result.is_unknown, "Circular reference should result in an unknown value."
 
     def test_performance_monitoring_and_metrics_are_populated(self) -> None:
         """
@@ -151,11 +143,7 @@ class TestAdvancedRecursionDetection:
 
         assert len(thread_results) == 2
         for thread_id, result, metrics in thread_results:
-            assert not isinstance(result, Exception), (
-                f"Thread {thread_id} failed: {result}"
-            )
-            assert result is False, (
-                f"Thread {thread_id} validation failed (returned unknown)"
-            )
+            assert not isinstance(result, Exception), f"Thread {thread_id} failed: {result}"
+            assert result is False, f"Thread {thread_id} validation failed (returned unknown)"
             assert metrics["total_validations"] > 0
             assert metrics["max_depth_reached"] > 0

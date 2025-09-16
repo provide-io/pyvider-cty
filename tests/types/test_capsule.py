@@ -32,12 +32,8 @@ def test_capsule_equality() -> None:
     capsule_type1 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type2 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type3 = CtyCapsule("AnotherCustom", AnotherCustomClass)
-    capsule_type4 = CtyCapsule(
-        "MyCustom", AnotherCustomClass
-    )  # Same name, different type
-    capsule_type5 = CtyCapsule(
-        "AnotherCustom", MyCustomClass
-    )  # Different name, same type
+    capsule_type4 = CtyCapsule("MyCustom", AnotherCustomClass)  # Same name, different type
+    capsule_type5 = CtyCapsule("AnotherCustom", MyCustomClass)  # Different name, same type
 
     assert capsule_type1 == capsule_type2
     assert capsule_type1 != capsule_type3
