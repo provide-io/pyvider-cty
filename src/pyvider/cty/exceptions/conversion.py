@@ -54,11 +54,7 @@ class CtyConversionError(CtyError):
                     context["conversion.source_is_unknown"] = source_value.is_unknown
 
         if target_type is not None:
-            target_name = (
-                target_type.__name__
-                if hasattr(target_type, "__name__")
-                else str(target_type)
-            )
+            target_name = target_type.__name__ if hasattr(target_type, "__name__") else str(target_type)
             context_parts.append(f"target_type={target_name}")
             context["conversion.target_type"] = target_name
             context["conversion.target_type_str"] = str(target_type)
@@ -101,13 +97,9 @@ class CtyTypeConversionError(CtyConversionError):
 
         if type_name:
             context["cty.failing_type"] = type_name
-            message = (
-                f'CTY Type "{type_name}" representation conversion failed: {message}'
-            )
+            message = f'CTY Type "{type_name}" representation conversion failed: {message}'
 
-        super().__init__(
-            message, source_value=source_value, target_type=target_type, **kwargs
-        )
+        super().__init__(message, source_value=source_value, target_type=target_type, **kwargs)
 
 
 class CtyTypeParseError(CtyConversionError):

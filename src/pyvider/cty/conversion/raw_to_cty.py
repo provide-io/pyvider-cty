@@ -126,12 +126,8 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         context={
             "operation": "cty_type_inference",
             "value_type": type(value).__name__,
-            "is_attrs_class": attrs.has(type(value))
-            if hasattr(value, "__class__")
-            else False,
-            "value_repr": str(value)[:100]
-            if value is not None
-            else "None",  # Truncated for safety
+            "is_attrs_class": attrs.has(type(value)) if hasattr(value, "__class__") else False,
+            "value_repr": str(value)[:100] if value is not None else "None",  # Truncated for safety
         }
     ):
         from pyvider.cty.types import (
@@ -179,23 +175,12 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
             container_id = id(container)
             processing.remove(container_id)
 
-            if isinstance(container, dict) and all(
-                isinstance(k, str) for k in container
-            ):
-                container = {
-                    unicodedata.normalize("NFC", k): v for k, v in container.items()
-                }
+            if isinstance(container, dict) and all(isinstance(k, str) for k in container):
+                container = {unicodedata.normalize("NFC", k): v for k, v in container.items()}
 
-            child_values = (
-                container.values() if isinstance(container, dict) else container
-            )
+            child_values = container.values() if isinstance(container, dict) else container
             child_types = [
-                (
-                    v.type
-                    if isinstance(v, CtyValue)
-                    else results.get(id(v), CtyDynamic())
-                )
-                for v in child_values
+                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic())) for v in child_values
             ]
 
             inferred_schema: CtyType[Any]
@@ -258,13 +243,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         processing.add(item_id)
         work_stack.extend([current_item, POST_PROCESS])
         work_stack.extend(
-            reversed(
-                list(
-                    current_item.values()
-                    if isinstance(current_item, dict)
-                    else current_item
-                )
-            )
+            reversed(list(current_item.values() if isinstance(current_item, dict) else current_item))
         )
 
     final_type = results.get(id(value), CtyDynamic())

@@ -14,12 +14,8 @@ def _get_refined_components(
     a: CtyValue, b: CtyValue
 ) -> tuple[RefinedUnknownValue, RefinedUnknownValue, Any, Any]:
     """Extract refinement components from two values."""
-    ref_a = (
-        a.value if isinstance(a.value, RefinedUnknownValue) else RefinedUnknownValue()
-    )
-    ref_b = (
-        b.value if isinstance(b.value, RefinedUnknownValue) else RefinedUnknownValue()
-    )
+    ref_a = a.value if isinstance(a.value, RefinedUnknownValue) else RefinedUnknownValue()
+    ref_b = b.value if isinstance(b.value, RefinedUnknownValue) else RefinedUnknownValue()
     val_a = a.value if not a.is_unknown else None
     val_b = b.value if not b.is_unknown else None
     return ref_a, ref_b, val_a, val_b
@@ -139,9 +135,7 @@ def _propagate_multiply_refinements(
     return new_ref
 
 
-def _propagate_divide_refinements(
-    ref_a: RefinedUnknownValue, val_b: Any
-) -> dict[str, Any]:
+def _propagate_divide_refinements(ref_a: RefinedUnknownValue, val_b: Any) -> dict[str, Any]:
     """Handle refinement propagation for division."""
     new_ref: dict[str, Any] = {}
     if val_b is not None:
@@ -172,10 +166,7 @@ def _propagate_divide_refinements(
 
 def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
     """Helper to propagate refinements for binary numeric operations."""
-    if not (
-        isinstance(a.value, RefinedUnknownValue)
-        or isinstance(b.value, RefinedUnknownValue)
-    ):
+    if not (isinstance(a.value, RefinedUnknownValue) or isinstance(b.value, RefinedUnknownValue)):
         return CtyValue.unknown(CtyNumber())
 
     ref_a, ref_b, val_a, val_b = _get_refined_components(a, b)
@@ -219,9 +210,7 @@ def multiply(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("multiply: arguments must be numbers")
     if a.is_null or b.is_null:
         return CtyValue.unknown(CtyNumber())
-    if (not a.is_unknown and a.value == ZERO_VALUE) or (
-        not b.is_unknown and b.value == ZERO_VALUE
-    ):
+    if (not a.is_unknown and a.value == ZERO_VALUE) or (not b.is_unknown and b.value == ZERO_VALUE):
         return CtyNumber().validate(ZERO_VALUE)
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("multiply", a, b)
@@ -280,9 +269,7 @@ def negate(a: CtyValue[Any]) -> CtyValue[Any]:
 
 def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(
-            f"abs: input must be a number, got {input_val.type.ctype}"
-        )
+        raise CtyFunctionError(f"abs: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null:
         return CtyValue.null(CtyNumber())
     if input_val.is_unknown:
@@ -318,9 +305,7 @@ def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
 def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(
-            f"ceil: input must be a number, got {input_val.type.ctype}"
-        )
+        raise CtyFunctionError(f"ceil: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
     return CtyNumber().validate(Decimal(math.ceil(input_val.value)))
@@ -328,18 +313,14 @@ def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
 def floor_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(
-            f"floor: input must be a number, got {input_val.type.ctype}"
-        )
+        raise CtyFunctionError(f"floor: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
     return CtyNumber().validate(Decimal(math.floor(input_val.value)))
 
 
 def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(num_val.type, CtyNumber) or not isinstance(
-        base_val.type, CtyNumber
-    ):
+    if not isinstance(num_val.type, CtyNumber) or not isinstance(base_val.type, CtyNumber):
         raise CtyFunctionError("log: arguments must be numbers")
     if num_val.is_null or num_val.is_unknown or base_val.is_null or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
@@ -358,16 +339,9 @@ def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
 
 
 def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(num_val.type, CtyNumber) or not isinstance(
-        power_val.type, CtyNumber
-    ):
+    if not isinstance(num_val.type, CtyNumber) or not isinstance(power_val.type, CtyNumber):
         raise CtyFunctionError("pow: arguments must be numbers")
-    if (
-        num_val.is_null
-        or num_val.is_unknown
-        or power_val.is_null
-        or power_val.is_unknown
-    ):
+    if num_val.is_null or num_val.is_unknown or power_val.is_null or power_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
     try:
         result = num_val.value**power_val.value
@@ -378,9 +352,7 @@ def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
 
 def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
-        raise CtyFunctionError(
-            f"signum: input must be a number, got {input_val.type.ctype}"
-        )
+        raise CtyFunctionError(f"signum: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
     val = input_val.value
@@ -392,9 +364,7 @@ def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
 
 def parseint_fn(str_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(str_val.type, CtyString) or not isinstance(
-        base_val.type, CtyNumber
-    ):
+    if not isinstance(str_val.type, CtyString) or not isinstance(base_val.type, CtyNumber):
         raise CtyFunctionError("parseint: arguments must be string and number")
     if str_val.is_null or base_val.is_null:
         return CtyValue.null(CtyNumber())
@@ -402,9 +372,7 @@ def parseint_fn(str_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any
         return CtyValue.unknown(CtyNumber())
     s, base = str_val.value, int(base_val.value)
     if not (base == 0 or 2 <= base <= 36):
-        raise CtyFunctionError(
-            f"parseint: base must be 0 or between 2 and 36, got {base}"
-        )
+        raise CtyFunctionError(f"parseint: base must be 0 or between 2 and 36, got {base}")
     try:
         parsed_int = int(s, base)
         return CtyNumber().validate(Decimal(parsed_int))

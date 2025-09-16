@@ -43,15 +43,10 @@ class CtyString(CtyType[str]):
                 return CtyValue.null(self)
 
             if not isinstance(raw_value, str | bytes):
-                raise CtyStringValidationError(
-                    f"Cannot convert {type(raw_value).__name__} to string."
-                )
+                raise CtyStringValidationError(f"Cannot convert {type(raw_value).__name__} to string.")
 
             try:
-                if isinstance(raw_value, bytes):
-                    str_value = raw_value.decode("utf-8")
-                else:
-                    str_value = str(raw_value)
+                str_value = raw_value.decode("utf-8") if isinstance(raw_value, bytes) else str(raw_value)
                 normalized_value = unicodedata.normalize("NFC", str_value)
                 return CtyValue(vtype=self, value=normalized_value)
             except Exception as e:

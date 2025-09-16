@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pyvider.cty.types import CtyType
 
 
-class CtyValidationError(FoundationValidationError):
+class CtyValidationError(FoundationValidationError):  # type: ignore[misc]
     """Base exception for all validation errors.
 
     Inherits from foundation's ValidationError for enhanced diagnostics
@@ -47,9 +47,7 @@ class CtyValidationError(FoundationValidationError):
             # Safe value representation for debugging (truncated to avoid huge objects)
             try:
                 value_repr = repr(value)
-                context["cty.value_repr"] = (
-                    value_repr[:200] + "..." if len(value_repr) > 200 else value_repr
-                )
+                context["cty.value_repr"] = value_repr[:200] + "..." if len(value_repr) > 200 else value_repr
             except Exception:
                 context["cty.value_repr"] = f"<repr failed for {type(value).__name__}>"
 
@@ -72,9 +70,7 @@ class CtyValidationError(FoundationValidationError):
         return core_message
 
 
-def _get_type_name_from_original(
-    original_exc: CtyValidationError | None, default: str
-) -> str:
+def _get_type_name_from_original(original_exc: CtyValidationError | None, default: str) -> str:
     """Helper to safely extract type_name from an original exception."""
     if original_exc and original_exc.type_name:
         return original_exc.type_name
@@ -95,9 +91,7 @@ class CtyBoolValidationError(CtyValidationError):
         context["cty.primitive_type"] = "bool"
         context["cty.validation_stage"] = "bool_validation"
 
-        super().__init__(
-            f"Boolean validation error: {message}", value, "Boolean", path, **kwargs
-        )
+        super().__init__(f"Boolean validation error: {message}", value, "Boolean", path, **kwargs)
 
 
 class CtyNumberValidationError(CtyValidationError):
@@ -118,9 +112,7 @@ class CtyNumberValidationError(CtyValidationError):
             context["cty.numeric_value"] = str(value)
             context["cty.numeric_type"] = type(value).__name__
 
-        super().__init__(
-            f"Number validation error: {message}", value, "Number", path, **kwargs
-        )
+        super().__init__(f"Number validation error: {message}", value, "Number", path, **kwargs)
 
 
 class CtyStringValidationError(CtyValidationError):
@@ -141,9 +133,7 @@ class CtyStringValidationError(CtyValidationError):
             context["cty.string_length"] = len(value)
             context["cty.string_encoding"] = "utf-8"  # Assumed for Python strings
 
-        super().__init__(
-            f"String validation error: {message}", value, "String", path, **kwargs
-        )
+        super().__init__(f"String validation error: {message}", value, "String", path, **kwargs)
 
 
 # --- Collection Validation Errors ---
@@ -315,9 +305,7 @@ class CtyTypeValidationError(CtyValidationError):
         context["cty.validation_stage"] = "type_definition"
         context["cty.type_category"] = "meta"
 
-        super().__init__(
-            message, type_name=type_name or "TypeDefinition", path=path, **kwargs
-        )
+        super().__init__(message, type_name=type_name or "TypeDefinition", path=path, **kwargs)
 
 
 class CtyTypeMismatchError(CtyValidationError):
