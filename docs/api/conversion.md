@@ -1,6 +1,6 @@
 # CTY Conversion
 
-::: pyvider_cty.conversion
+::: pyvider.cty.conversion
     options:
       show_source: true
       show_root_heading: true

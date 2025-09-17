@@ -1,6 +1,6 @@
 # Structural Types
 
-::: pyvider_cty.types.structural
+::: pyvider.cty.types.structural
     options:
       show_source: true
       show_root_heading: true

@@ -1,6 +1,6 @@
 # CTY Validation
 
-::: pyvider_cty.validation
+::: pyvider.cty.validation
     options:
       show_source: true
       show_root_heading: true

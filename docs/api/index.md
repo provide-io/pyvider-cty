@@ -1,6 +1,6 @@
 # PyVider CTY API
 
-::: pyvider_cty
+::: pyvider.cty
     options:
       show_source: true
       show_root_heading: true
