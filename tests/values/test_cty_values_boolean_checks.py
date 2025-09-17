@@ -22,9 +22,7 @@ def test_is_true_and_is_false_with_booleans(bool_type: CtyBool) -> None:
     assert false_val.is_false() is True
 
 
-def test_is_true_and_is_false_with_dynamic_booleans(
-    bool_type: CtyBool, dynamic_type: CtyDynamic
-) -> None:
+def test_is_true_and_is_false_with_dynamic_booleans(bool_type: CtyBool, dynamic_type: CtyDynamic) -> None:
     dyn_true_val = CtyValue(dynamic_type, CtyValue(bool_type, True))
     assert dyn_true_val.is_true() is True
     assert dyn_true_val.is_false() is False

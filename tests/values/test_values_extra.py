@@ -36,10 +36,7 @@ def test_value_len() -> None:
     assert len(CtyValue.null(CtyList(element_type=CtyString()))) == 0
     with pytest.raises(TypeError):
         len(CtyString().validate("a"))
-    assert (
-        len(CtyValue(CtyDynamic(), CtyList(element_type=CtyString()).validate(["a"])))
-        == 1
-    )
+    assert len(CtyValue(CtyDynamic(), CtyList(element_type=CtyString()).validate(["a"]))) == 1
 
 
 def test_value_iter() -> None:
@@ -87,12 +84,8 @@ def test_value_hash() -> None:
 
 
 def test_is_true_false_empty() -> None:
-    assert (
-        CtyBool().validate(True).is_true() and not CtyBool().validate(False).is_true()
-    )
-    assert (
-        not CtyBool().validate(True).is_false() and CtyBool().validate(False).is_false()
-    )
+    assert CtyBool().validate(True).is_true() and not CtyBool().validate(False).is_true()
+    assert not CtyBool().validate(True).is_false() and CtyBool().validate(False).is_false()
     assert CtyValue(CtyDynamic(), CtyBool().validate(True)).is_true()
     assert not CtyValue(CtyDynamic(), CtyBool().validate(False)).is_true()
     assert not CtyValue(CtyDynamic(), CtyBool().validate(True)).is_false()

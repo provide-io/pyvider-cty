@@ -38,9 +38,7 @@ class TestDynamicListSerialization:
             assert serialized is not None
             assert isinstance(serialized, bytes)
         except SerializationError:
-            pytest.fail(
-                "CtyDynamic containing list failed to serialize - this is the bug we need to fix"
-            )
+            pytest.fail("CtyDynamic containing list failed to serialize - this is the bug we need to fix")
 
     def test_dynamic_containing_nested_object_with_list_serializes_successfully(
         self,

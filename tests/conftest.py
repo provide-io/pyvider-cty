@@ -45,12 +45,8 @@ def pytest_configure(config) -> None:
     Adds custom markers and dynamically configures logging paths before
     any tests are run.
     """
-    config.addinivalue_line(
-        "markers", "benchmark: mark test as a performance benchmark"
-    )
-    config.addinivalue_line(
-        "markers", "compat: mark test as a cross-language compatibility test"
-    )
+    config.addinivalue_line("markers", "benchmark: mark test as a performance benchmark")
+    config.addinivalue_line("markers", "compat: mark test as a cross-language compatibility test")
 
     # --- Centralized Logging Setup ---
     project_root = config.rootpath
@@ -87,9 +83,7 @@ def go_fixtures(pytestconfig, log_dir: Path) -> Path:
     fixture_dir = project_root / "tests" / "fixtures" / "go-cty"
 
     if not shutil.which("go"):
-        pytest.skip(
-            "Go runtime not found, skipping cross-language compatibility tests."
-        )
+        pytest.skip("Go runtime not found, skipping cross-language compatibility tests.")
 
     log_file_path = log_dir / "go-generate-debug.log"
 
@@ -139,9 +133,7 @@ def go_fixtures(pytestconfig, log_dir: Path) -> Path:
             red=True,
         )
         pytest.fail(
-            f"Go fixture generator failed to run:\n"
-            f"STDOUT:\n{e.stdout}\n"
-            f"STDERR:\n{e.stderr}",
+            f"Go fixture generator failed to run:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}",
             pytrace=False,
         )
     except FileNotFoundError as e:

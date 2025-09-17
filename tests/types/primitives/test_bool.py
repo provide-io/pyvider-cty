@@ -63,20 +63,10 @@ class TestCtyBool:
         )
 
     def test_equal(self) -> None:
-        assert self.bool_type.equal(CtyBool()), (
-            "CtyBool instances should be equal to each other"
-        )
-        assert not self.bool_type.equal(CtyString()), (
-            "CtyBool should not be equal to CtyString"
-        )
+        assert self.bool_type.equal(CtyBool()), "CtyBool instances should be equal to each other"
+        assert not self.bool_type.equal(CtyString()), "CtyBool should not be equal to CtyString"
 
     def test_usable_as(self) -> None:
-        assert self.bool_type.usable_as(CtyBool()), (
-            "CtyBool should be usable as CtyBool"
-        )
-        assert self.bool_type.usable_as(CtyDynamic()), (
-            "CtyBool should be usable as CtyDynamic"
-        )
-        assert not self.bool_type.usable_as(CtyString()), (
-            "CtyBool should not be usable as CtyString"
-        )
+        assert self.bool_type.usable_as(CtyBool()), "CtyBool should be usable as CtyBool"
+        assert self.bool_type.usable_as(CtyDynamic()), "CtyBool should be usable as CtyDynamic"
+        assert not self.bool_type.usable_as(CtyString()), "CtyBool should not be usable as CtyString"

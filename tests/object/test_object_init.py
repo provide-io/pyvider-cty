@@ -22,9 +22,7 @@ async def test_object_init_empty() -> None:
 
 @pytest.mark.asyncio
 async def test_object_init_with_attributes() -> None:
-    obj = CtyObject(
-        attribute_types={"name": CtyString(), "age": CtyNumber(), "active": CtyBool()}
-    )
+    obj = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber(), "active": CtyBool()})
     assert set(obj.attribute_types.keys()) == {"name", "age", "active"}
     assert isinstance(obj.attribute_types["name"], CtyString)
     assert obj.optional_attributes == frozenset()
@@ -52,9 +50,7 @@ async def test_object_init_invalid_optional_attribute() -> None:
         attribute_types={"name": CtyString(), "age": CtyNumber()},
         optional_attributes=frozenset(["unknown"]),
     )
-    with pytest.raises(
-        CtyValidationError, match="Unknown optional attributes: unknown"
-    ):
+    with pytest.raises(CtyValidationError, match="Unknown optional attributes: unknown"):
         obj.validate({"name": "test", "age": 1})
 
 
@@ -67,31 +63,23 @@ class TestCtyObjectValidation:
 
     def test_validate_missing_required_attribute(self) -> None:
         obj_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
-        with pytest.raises(
-            CtyAttributeValidationError, match="Missing required attribute"
-        ):
+        with pytest.raises(CtyAttributeValidationError, match="Missing required attribute"):
             obj_type.validate({"name": "Alice"})
 
     def test_validate_optional_attribute(self) -> None:
-        obj_type = CtyObject(
-            {"name": CtyString(), "age": CtyNumber()}, optional_attributes={"age"}
-        )
+        obj_type = CtyObject({"name": CtyString(), "age": CtyNumber()}, optional_attributes={"age"})
         value = obj_type.validate({"name": "Alice"})
         assert value.value["name"].value == "Alice"
         assert value.value["age"].is_null
 
     def test_validate_unknown_attribute(self) -> None:
         obj_type = CtyObject({"name": CtyString()})
-        with pytest.raises(
-            CtyAttributeValidationError, match="Unknown attributes: age"
-        ):
+        with pytest.raises(CtyAttributeValidationError, match="Unknown attributes: age"):
             obj_type.validate({"name": "Alice", "age": 30})
 
     def test_validate_null_attribute(self) -> None:
         obj_type = CtyObject({"name": CtyString()})
-        with pytest.raises(
-            CtyAttributeValidationError, match="Attribute cannot be null"
-        ):
+        with pytest.raises(CtyAttributeValidationError, match="Attribute cannot be null"):
             obj_type.validate({"name": None})
 
     def test_validate_attrs_object(self) -> None:
