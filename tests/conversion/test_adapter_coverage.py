@@ -33,9 +33,7 @@ class TestAdapterCoverage:
         obj_type = CtyObject(
             {
                 "a": CtyList(element_type=CtyMap(element_type=CtyNumber())),
-                "b": CtySet(
-                    element_type=CtyTuple(element_types=(CtyString(), CtyBool()))
-                ),
+                "b": CtySet(element_type=CtyTuple(element_types=(CtyString(), CtyBool()))),
             }
         )
         cty_val = obj_type.validate(

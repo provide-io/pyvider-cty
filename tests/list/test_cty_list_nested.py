@@ -23,10 +23,7 @@ class TestCtyListWithNestedTypes:
         result = list_of_lists.validate(data)
         assert isinstance(result, CtyValue) and isinstance(result.type, CtyList)
         assert len(result.value) == 3
-        assert all(
-            isinstance(item, CtyValue) and isinstance(item.type, CtyList)
-            for item in result.value
-        )
+        assert all(isinstance(item, CtyValue) and isinstance(item.type, CtyList) for item in result.value)
         assert [item.value for item in result.value[0].value] == ["a", "b"]
 
     def test_complex_nesting(self) -> None:

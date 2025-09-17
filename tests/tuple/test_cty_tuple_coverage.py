@@ -10,9 +10,7 @@ def test_element_types_validator() -> None:
     with pytest.raises(CtyTupleValidationError, match="element_types must be a tuple"):
         CtyTuple(element_types=[CtyString()])  # type: ignore
 
-    with pytest.raises(
-        CtyTupleValidationError, match="Element type at index 0 must be a CtyType"
-    ):
+    with pytest.raises(CtyTupleValidationError, match="Element type at index 0 must be a CtyType"):
         CtyTuple(element_types=("not a type",))  # type: ignore
 
 

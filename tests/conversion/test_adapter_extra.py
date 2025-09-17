@@ -81,9 +81,7 @@ class TestCtyToNativeCorrectness:
                 CtyNumber().validate(123),
                 CtyBool().validate(True),
                 # A nested object, which will also be wrapped dynamically
-                CtyObject(attribute_types={"key": CtyString()}).validate(
-                    {"key": "value"}
-                ),
+                CtyObject(attribute_types={"key": CtyString()}).validate({"key": "value"}),
             ]
         )
 

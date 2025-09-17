@@ -27,9 +27,7 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(
-            number_lower_bound=lower_bound, number_upper_bound=upper_bound
-        ),
+        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
     )
 
 
@@ -55,14 +53,10 @@ class TestFinalCoverageSuite:
     def test_convert_object_to_object_missing_required_attribute(self) -> None:
         """Covers the error path for a missing required attribute during object conversion."""
         source_type = CtyObject(attribute_types={"name": CtyString()})
-        target_type = CtyObject(
-            attribute_types={"name": CtyString(), "age": CtyNumber()}
-        )
+        target_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
         source_val = source_type.validate({"name": "Alice"})
 
-        with pytest.raises(
-            CtyConversionError, match="Missing required attribute 'age'"
-        ):
+        with pytest.raises(CtyConversionError, match="Missing required attribute 'age'"):
             convert(source_val, target_type)
 
     # --- Coverage for: src/pyvider/cty/values/base.py ---
@@ -87,9 +81,7 @@ class TestFinalCoverageSuite:
             malformed_map.with_key("a", "b")
 
         malformed_list = CtyValue(vtype=CtyList(element_type=CtyString()), value=123)
-        with pytest.raises(
-            TypeError, match="Internal value of CtyList must be a list or tuple"
-        ):
+        with pytest.raises(TypeError, match="Internal value of CtyList must be a list or tuple"):
             malformed_list.append("a")
 
     # --- Coverage for: src/pyvider/cty/codec.py ---

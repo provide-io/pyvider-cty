@@ -44,18 +44,14 @@ class TestTransformationError:
             pass
 
         target_instance = SimpleClass()
-        error_instance = TransformationError(
-            "Target type error", target_type=target_instance
-        )
+        error_instance = TransformationError("Target type error", target_type=target_instance)
         expected_msg_instance = f"Target type error (target_type={target_instance!s})"
         assert str(error_instance) == expected_msg_instance
 
     def test_instantiation_with_all_params(self) -> None:
         schema_obj = {"type": "number"}
         target = CtyString
-        error = TransformationError(
-            "Full transform error", schema=schema_obj, target_type=target
-        )
+        error = TransformationError("Full transform error", schema=schema_obj, target_type=target)
         expected_msg = "Full transform error (schema_type=dict, target_type=CtyString)"
         assert str(error) == expected_msg
         assert error.schema == schema_obj
@@ -70,9 +66,7 @@ class TestSerializationError:
         assert error.encoding is None
 
     def test_instantiation_all_params(self) -> None:
-        error = SerializationError(
-            "Cannot serialize", value="testval", format_name="testformat"
-        )
+        error = SerializationError("Cannot serialize", value="testval", format_name="testformat")
         expected_msg = "TESTFORMAT encoding error: Cannot serialize"
         assert str(error) == expected_msg
         assert error.value == "testval"
@@ -87,9 +81,7 @@ class TestDeserializationError:
         assert error.encoding is None
 
     def test_instantiation_all_params(self) -> None:
-        error = DeserializationError(
-            "Cannot deserialize", data="testdata", format_name="testformat"
-        )
+        error = DeserializationError("Cannot deserialize", data="testdata", format_name="testformat")
         expected_msg = "TESTFORMAT encoding error: Cannot deserialize"
         assert str(error) == expected_msg
         assert error.data == "testdata"
@@ -115,9 +107,7 @@ class TestJsonEncodingError:
         assert error.encoding == "json"
 
     def test_instantiation_all_params(self) -> None:
-        error = JsonEncodingError(
-            "Specific JSON problem", data="testdata", operation="testop"
-        )
+        error = JsonEncodingError("Specific JSON problem", data="testdata", operation="testop")
         expected_msg = "JSON testop error: Specific JSON problem"
         assert str(error) == expected_msg
         assert error.data == "testdata"
@@ -134,9 +124,7 @@ class TestMsgPackEncodingError:
         assert error.encoding == "msgpack"
 
     def test_instantiation_all_params(self) -> None:
-        error = MsgPackEncodingError(
-            "Specific MsgPack problem", data="testdata", operation="testop"
-        )
+        error = MsgPackEncodingError("Specific MsgPack problem", data="testdata", operation="testop")
         expected_msg = "MSGPACK testop error: Specific MsgPack problem"
         assert str(error) == expected_msg
         assert error.data == "testdata"
@@ -163,9 +151,7 @@ class TestWireFormatError:
         assert error.operation == "test_op"
 
     def test_instantiation_with_all_params(self) -> None:
-        error = WireFormatError(
-            "Full wire issue", format_type="test_ft", operation="test_op"
-        )
+        error = WireFormatError("Full wire issue", format_type="test_ft", operation="test_op")
         expected_msg = "Full wire issue during test_op using test_ft"
         assert str(error) == expected_msg
         assert error.format_type == "test_ft"

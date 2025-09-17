@@ -25,9 +25,7 @@ def test_list_of_numbers_validation(value: list[int | float]) -> None:
     list_type = CtyList(element_type=CtyNumber())
     validated_value = list_type.validate(value)
     # Compare using float to avoid floating point precision issues
-    assert [float(v.value) for v in validated_value.value] == pytest.approx(
-        [float(v) for v in value]
-    )
+    assert [float(v.value) for v in validated_value.value] == pytest.approx([float(v) for v in value])
 
 
 @given(st.lists(st.booleans()))

@@ -37,9 +37,7 @@ def test_infer_primitive_types(raw_value: Any, expected_type_cls: type) -> None:
 
 def test_infer_list_of_primitives() -> None:
     inferred_type = infer_cty_type_from_raw([1, 2, 3])
-    assert isinstance(inferred_type, CtyList), (
-        f"Expected CtyList, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyList), f"Expected CtyList, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_type, CtyNumber), (
         f"Expected element type CtyNumber, but got {type(inferred_type.element_type).__name__}"
     )
@@ -47,9 +45,7 @@ def test_infer_list_of_primitives() -> None:
 
 def test_infer_set_of_primitives() -> None:
     inferred_type = infer_cty_type_from_raw({True, False})
-    assert isinstance(inferred_type, CtySet), (
-        f"Expected CtySet, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtySet), f"Expected CtySet, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_type, CtyBool), (
         f"Expected element type CtyBool, but got {type(inferred_type.element_type).__name__}"
     )
@@ -57,9 +53,7 @@ def test_infer_set_of_primitives() -> None:
 
 def test_infer_tuple_of_primitives() -> None:
     inferred_type = infer_cty_type_from_raw(("a", 1))
-    assert isinstance(inferred_type, CtyTuple), (
-        f"Expected CtyTuple, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyTuple), f"Expected CtyTuple, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_types[0], CtyString), (
         f"Expected first element type CtyString, but got {type(inferred_type.element_types[0]).__name__}"
     )
@@ -70,9 +64,7 @@ def test_infer_tuple_of_primitives() -> None:
 
 def test_infer_object_of_primitives() -> None:
     inferred_type = infer_cty_type_from_raw({"a": 1, "c": 2})
-    assert isinstance(inferred_type, CtyObject), (
-        f"Expected CtyObject, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyObject), f"Expected CtyObject, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber), (
         f"Expected attribute 'a' type CtyNumber, but got {type(inferred_type.attribute_types['a']).__name__}"
     )
@@ -83,9 +75,7 @@ def test_infer_object_of_primitives() -> None:
 
 def test_infer_object_of_primitives_mixed() -> None:
     inferred_type = infer_cty_type_from_raw({"a": 1, "b": "c"})
-    assert isinstance(inferred_type, CtyObject), (
-        f"Expected CtyObject, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyObject), f"Expected CtyObject, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber), (
         f"Expected attribute 'a' type CtyNumber, but got {type(inferred_type.attribute_types['a']).__name__}"
     )
@@ -96,27 +86,19 @@ def test_infer_object_of_primitives_mixed() -> None:
 
 def test_infer_nested_object() -> None:
     inferred_type = infer_cty_type_from_raw({"user": {"name": "Alice", "age": 30}})
-    assert isinstance(inferred_type, CtyObject), (
-        f"Expected CtyObject, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyObject), f"Expected CtyObject, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.attribute_types["user"], CtyObject)
-    assert isinstance(
-        inferred_type.attribute_types["user"].attribute_types["name"], CtyString
-    ), (
+    assert isinstance(inferred_type.attribute_types["user"].attribute_types["name"], CtyString), (
         f"Expected nested attribute 'name' type CtyString, but got {type(inferred_type.attribute_types['user'].attribute_types['name']).__name__}"
     )
-    assert isinstance(
-        inferred_type.attribute_types["user"].attribute_types["age"], CtyNumber
-    ), (
+    assert isinstance(inferred_type.attribute_types["user"].attribute_types["age"], CtyNumber), (
         f"Expected nested attribute 'age' type CtyNumber, but got {type(inferred_type.attribute_types['user'].attribute_types['age']).__name__}"
     )
 
 
 def test_infer_list_of_objects() -> None:
     inferred_type = infer_cty_type_from_raw([{"name": "Alice"}, {"name": "Bob"}])
-    assert isinstance(inferred_type, CtyList), (
-        f"Expected CtyList, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyList), f"Expected CtyList, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_type, CtyObject)
     assert isinstance(inferred_type.element_type.attribute_types["name"], CtyString), (
         f"Expected list element attribute 'name' type CtyString, but got {type(inferred_type.element_type.attribute_types['name']).__name__}"
@@ -125,9 +107,7 @@ def test_infer_list_of_objects() -> None:
 
 def test_infer_mixed_list() -> None:
     inferred_type = infer_cty_type_from_raw([1, "a"])
-    assert isinstance(inferred_type, CtyList), (
-        f"Expected CtyList, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyList), f"Expected CtyList, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_type, CtyDynamic), (
         f"Expected element type CtyDynamic for mixed list, but got {type(inferred_type.element_type).__name__}"
     )
@@ -135,9 +115,7 @@ def test_infer_mixed_list() -> None:
 
 def test_infer_empty_list() -> None:
     inferred_type = infer_cty_type_from_raw([])
-    assert isinstance(inferred_type, CtyList), (
-        f"Expected CtyList, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyList), f"Expected CtyList, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.element_type, CtyDynamic), (
         f"Expected element type CtyDynamic for mixed list, but got {type(inferred_type.element_type).__name__}"
     )
@@ -145,9 +123,7 @@ def test_infer_empty_list() -> None:
 
 def test_infer_map_with_mixed_types() -> None:
     inferred_type = infer_cty_type_from_raw({"a": 1, "b": "c"})
-    assert isinstance(inferred_type, CtyObject), (
-        f"Expected CtyObject, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyObject), f"Expected CtyObject, but got {type(inferred_type).__name__}"
 
 
 def test_infer_from_attrs_object() -> None:
@@ -160,9 +136,7 @@ def test_infer_from_attrs_object() -> None:
 
     instance = MyClass(a=1, b="c")
     inferred_type = infer_cty_type_from_raw(instance)
-    assert isinstance(inferred_type, CtyObject), (
-        f"Expected CtyObject, but got {type(inferred_type).__name__}"
-    )
+    assert isinstance(inferred_type, CtyObject), f"Expected CtyObject, but got {type(inferred_type).__name__}"
     assert isinstance(inferred_type.attribute_types["a"], CtyNumber), (
         f"Expected attribute 'a' type CtyNumber, but got {type(inferred_type.attribute_types['a']).__name__}"
     )

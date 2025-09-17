@@ -197,9 +197,7 @@ class TestCompositeErrorContext:
         """Test error context propagation through complex nested structures."""
         user_type = CtyObject(
             attribute_types={
-                "profile": CtyObject(
-                    attribute_types={"settings": CtyMap(element_type=CtyString())}
-                )
+                "profile": CtyObject(attribute_types={"settings": CtyMap(element_type=CtyString())})
             }
         )
 
@@ -212,9 +210,7 @@ class TestCompositeErrorContext:
 
         error = exc_info.value
         # Should show the full path to the error
-        assert (
-            "profile" in str(error) or "settings" in str(error) or "theme" in str(error)
-        )
+        assert "profile" in str(error) or "settings" in str(error) or "theme" in str(error)
 
     def test_function_with_validation_error_chain(self) -> None:
         """Test function error context with underlying validation errors."""

@@ -191,9 +191,7 @@ class TestNumericFunctions:
     def test_subtract_numbers(self) -> None:
         assert subtract(CtyNumber().validate(3), CtyNumber().validate(2)).value == 1
         assert subtract(CtyNumber().validate(-1), CtyNumber().validate(2)).value == -3
-        assert (
-            subtract(CtyNumber().validate(2.5), CtyNumber().validate(1.5)).value == 1.0
-        )
+        assert subtract(CtyNumber().validate(2.5), CtyNumber().validate(1.5)).value == 1.0
 
     def test_multiply_numbers(self) -> None:
         assert multiply(CtyNumber().validate(3), CtyNumber().validate(2)).value == 6
@@ -266,22 +264,14 @@ class TestNumericFunctions:
             floor_fn(CtyString().validate("not a number"))
 
     def test_log_fn(self) -> None:
-        assert log_fn(
-            CtyNumber().validate(100), CtyNumber().validate(10)
-        ).value == Decimal("2")
-        assert log_fn(
-            CtyNumber().validate(8), CtyNumber().validate(2)
-        ).value == Decimal("3")
+        assert log_fn(CtyNumber().validate(100), CtyNumber().validate(10)).value == Decimal("2")
+        assert log_fn(CtyNumber().validate(8), CtyNumber().validate(2)).value == Decimal("3")
 
     def test_log_fn_null_unknown(self) -> None:
         assert log_fn(CtyValue.null(CtyNumber()), CtyNumber().validate(10)).is_unknown
         assert log_fn(CtyNumber().validate(100), CtyValue.null(CtyNumber())).is_unknown
-        assert log_fn(
-            CtyValue.unknown(CtyNumber()), CtyNumber().validate(10)
-        ).is_unknown
-        assert log_fn(
-            CtyNumber().validate(100), CtyValue.unknown(CtyNumber())
-        ).is_unknown
+        assert log_fn(CtyValue.unknown(CtyNumber()), CtyNumber().validate(10)).is_unknown
+        assert log_fn(CtyNumber().validate(100), CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_log_fn_invalid_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -327,33 +317,18 @@ class TestNumericFunctions:
             signum_fn(CtyString().validate("a"))
 
     def test_parseint_fn(self) -> None:
-        assert (
-            parseint_fn(CtyString().validate("10"), CtyNumber().validate(10)).value
-            == 10
-        )
-        assert (
-            parseint_fn(CtyString().validate("FF"), CtyNumber().validate(16)).value
-            == 255
-        )
-        assert (
-            parseint_fn(CtyString().validate("0xFF"), CtyNumber().validate(0)).value
-            == 255
-        )
+        assert parseint_fn(CtyString().validate("10"), CtyNumber().validate(10)).value == 10
+        assert parseint_fn(CtyString().validate("FF"), CtyNumber().validate(16)).value == 255
+        assert parseint_fn(CtyString().validate("0xFF"), CtyNumber().validate(0)).value == 255
 
     def test_parseint_fn_null_result(self) -> None:
         assert parseint_fn(CtyString().validate("z"), CtyNumber().validate(10)).is_null
 
     def test_parseint_fn_null_unknown(self) -> None:
         assert parseint_fn(CtyValue.null(CtyString()), CtyNumber().validate(10)).is_null
-        assert parseint_fn(
-            CtyString().validate("10"), CtyValue.null(CtyNumber())
-        ).is_null
-        assert parseint_fn(
-            CtyValue.unknown(CtyString()), CtyNumber().validate(10)
-        ).is_unknown
-        assert parseint_fn(
-            CtyString().validate("10"), CtyValue.unknown(CtyNumber())
-        ).is_unknown
+        assert parseint_fn(CtyString().validate("10"), CtyValue.null(CtyNumber())).is_null
+        assert parseint_fn(CtyValue.unknown(CtyString()), CtyNumber().validate(10)).is_unknown
+        assert parseint_fn(CtyString().validate("10"), CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_parseint_fn_invalid_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -837,9 +812,7 @@ class TestStringFunctions:
         assert join(CtyValue.null(CtyString()), L(CtyString(), ["a"])).is_unknown
         assert join(S(","), CtyValue.null(CtyList(element_type=CtyString()))).is_unknown
         assert join(CtyValue.unknown(CtyString()), L(CtyString(), ["a"])).is_unknown
-        assert join(
-            S(","), CtyValue.unknown(CtyList(element_type=CtyString()))
-        ).is_unknown
+        assert join(S(","), CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_split_null_unknown(self) -> None:
         assert split(CtyValue.null(CtyString()), S("a,b")).is_unknown
@@ -1015,18 +988,10 @@ class TestBytesFunctions:
     def test_bytesslice_null_unknown(self) -> None:
         assert bytesslice(CtyValue.null(BytesCapsule), N(0), N(1)).is_unknown
         assert bytesslice(CtyValue.unknown(BytesCapsule), N(0), N(1)).is_unknown
-        assert bytesslice(
-            BytesCapsule.validate(b"hello"), CtyValue.null(CtyNumber()), N(1)
-        ).is_unknown
-        assert bytesslice(
-            BytesCapsule.validate(b"hello"), CtyValue.unknown(CtyNumber()), N(1)
-        ).is_unknown
-        assert bytesslice(
-            BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber())
-        ).is_unknown
-        assert bytesslice(
-            BytesCapsule.validate(b"hello"), N(0), CtyValue.unknown(CtyNumber())
-        ).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), CtyValue.null(CtyNumber()), N(1)).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), CtyValue.unknown(CtyNumber()), N(1)).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber())).is_unknown
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.unknown(CtyNumber())).is_unknown
 
 
 class TestStructuralFunctions:

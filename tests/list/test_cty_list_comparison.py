@@ -27,9 +27,7 @@ class TestCtyListTypeComparison:
         )
 
     def test_equal_non_list_type(self, string_list_type: CtyList[str]) -> None:
-        assert not string_list_type.equal(CtyString()), (
-            "List type should not equal non-list type"
-        )
+        assert not string_list_type.equal(CtyString()), "List type should not equal non-list type"
 
     def test_usable_as_same_type(self, string_list_type: CtyList[str]) -> None:
         other_string_list = CtyList(element_type=CtyString())
@@ -44,6 +42,4 @@ class TestCtyListTypeComparison:
         )
 
     def test_usable_as_dynamic(self, string_list_type: CtyList[str]) -> None:
-        assert string_list_type.usable_as(CtyDynamic()), (
-            "String list type should be usable as dynamic type"
-        )
+        assert string_list_type.usable_as(CtyDynamic()), "String list type should be usable as dynamic type"

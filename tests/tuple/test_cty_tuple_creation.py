@@ -19,13 +19,9 @@ class TestCtyTupleCreation:
         assert len(empty_tuple.element_types) == 0
 
     def test_tuple_type_init_invalid_element_types(self) -> None:
-        with pytest.raises(
-            CtyTupleValidationError, match="element_types must be a tuple"
-        ):
+        with pytest.raises(CtyTupleValidationError, match="element_types must be a tuple"):
             CtyTuple(element_types=[CtyString()])
-        with pytest.raises(
-            CtyTupleValidationError, match="Element type at index 1 must be a CtyType"
-        ):
+        with pytest.raises(CtyTupleValidationError, match="Element type at index 1 must be a CtyType"):
             CtyTuple(element_types=(CtyString(), "not-a-type"))
 
     def test_tuple_type_string_representation(self) -> None:
