@@ -108,7 +108,7 @@ def verify_header(file_path: Path) -> tuple[bool, str]:
     except:
         return False, f"Could not read file: {file_path}"
 
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     # Skip empty files
     if not lines:
@@ -124,7 +124,7 @@ def verify_header(file_path: Path) -> tuple[bool, str]:
         src_dir = file_path.parent
 
     expected_header = get_expected_header(file_path, src_dir)
-    actual_header = '\n'.join(lines[:3]) + '\n' if len(lines) >= 3 else ''
+    actual_header = "\n".join(lines[:3]) + "\n" if len(lines) >= 3 else ""
 
     if not actual_header.startswith(expected_header):
         return False, f"Invalid header. Expected:\n{expected_header}\nGot:\n{actual_header}"
@@ -145,7 +145,7 @@ def verify_footer(file_path: Path) -> tuple[bool, str]:
     expected_pattern = f"# {project1}{project2}{file_emoji}🪄"
 
     # Look for the magic footer at the end
-    lines = content.strip().split('\n')
+    lines = content.strip().split("\n")
     if not lines:
         return False, "File is empty"
 
