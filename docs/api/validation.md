@@ -1,15 +1,11 @@
-# Validation API
+# CTY Validation
 
-Auto-generated API documentation for `pyvider.cty.validation`.
-
-::: pyvider.cty.validation
+::: pyvider_cty.validation
     options:
-      show_root_heading: false
+      show_source: true
+      show_root_heading: true
       members_order: source
-      show_signature_annotations: true
-      show_category_heading: true
-      show_bases: true
-      merge_init_into_class: true
-      separate_signature: true
-      show_if_no_docstring: true
-      heading_level: 2
+      show_if_no_docstring: false
+      filters:
+        - "!^_"
+        - "^__init__$"
