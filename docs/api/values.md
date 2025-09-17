@@ -1,6 +1,6 @@
 # CTY Values
 
-::: pyvider_cty.values
+::: pyvider.cty.values
     options:
       show_source: true
       show_root_heading: true

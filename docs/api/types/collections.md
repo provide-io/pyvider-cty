@@ -1,6 +1,6 @@
 # Collection Types
 
-::: pyvider_cty.types.collections
+::: pyvider.cty.types.collections
     options:
       show_source: true
       show_root_heading: true

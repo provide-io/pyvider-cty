@@ -1,6 +1,6 @@
 # CTY Path
 
-::: pyvider_cty.path
+::: pyvider.cty.path
     options:
       show_source: true
       show_root_heading: true

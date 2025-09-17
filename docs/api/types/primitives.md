@@ -1,6 +1,6 @@
 # Primitive Types
 
-::: pyvider_cty.types.primitives
+::: pyvider.cty.types.primitives
     options:
       show_source: true
       show_root_heading: true

@@ -1,6 +1,6 @@
 # CTY Context
 
-::: pyvider_cty.context
+::: pyvider.cty.context
     options:
       show_source: true
       show_root_heading: true
