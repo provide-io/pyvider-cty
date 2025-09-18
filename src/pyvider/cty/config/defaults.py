@@ -5,6 +5,11 @@ All defaults are defined here instead of inline in field definitions.
 """
 
 # =================================
+# Performance and caching defaults
+# =================================
+ENABLE_TYPE_INFERENCE_CACHE = True  # Enable caching for type inference performance
+
+# =================================
 # Validation defaults
 # =================================
 MAX_VALIDATION_DEPTH = 500  # Safer default, well below Python's typical limit

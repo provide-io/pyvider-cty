@@ -32,19 +32,48 @@ def _extract_container_children(container: Any) -> list[Any]:
 def _generate_container_cache_key(
     container: Any, structural_cache: dict[int, tuple[Any, ...]]
 ) -> tuple[Any, ...]:
-    """Generate a cache key for a container based on its type and contents."""
+    """Generate a cache key for a container based on its type and contents.
+
+    Uses value-based keys for small containers with primitives to avoid
+    race conditions from Python's object interning.
+    """
     if isinstance(container, dict):
-        # Sort items by key's string representation for deterministic order.
+        # For small dicts containing only primitives, use value-based keys
+        # to avoid race conditions from interned objects sharing IDs
+        if len(container) <= 5 and all(
+            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container.values()
+        ):
+            sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
+            return (dict, frozenset((k, v) for k, v in sorted_items))
+
+        # For larger or complex dicts, use existing structural cache approach
         sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
         return (
             dict,
             frozenset((k, structural_cache[id(v)]) for k, v in sorted_items),
         )
     elif isinstance(container, list):
+        # For small lists containing only primitives, use value-based keys
+        if len(container) <= 10 and all(
+            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container
+        ):
+            return (list, tuple(container))
         return (list, tuple(structural_cache[id(v)] for v in container))
     elif isinstance(container, tuple):
+        # For small tuples containing only primitives, use value-based keys
+        if len(container) <= 10 and all(
+            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container
+        ):
+            return (tuple, container)
         return (tuple, tuple(structural_cache[id(v)] for v in container))
     elif isinstance(container, set | frozenset):
+        # For small sets containing only primitives, use value-based keys
+        if len(container) <= 10 and all(
+            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container
+        ):
+            sorted_items = sorted(list(container), key=repr)
+            return (frozenset, frozenset(sorted_items))
+
         # Sort elements by their string representation for deterministic order.
         sorted_items = sorted(list(container), key=repr)
         return (frozenset, frozenset(structural_cache[id(v)] for v in sorted_items))
