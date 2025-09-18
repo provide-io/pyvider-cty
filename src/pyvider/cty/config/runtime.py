@@ -2,24 +2,25 @@ from __future__ import annotations
 
 from typing import Self
 
-from provide.foundation.config import RuntimeConfig, env_field
+from provide.foundation.config import BaseConfig, field
 
 from pyvider.cty.config.defaults import ENABLE_TYPE_INFERENCE_CACHE
 
 """Runtime configuration for pyvider-cty using Foundation config patterns."""
 
 
-class CtyConfig(RuntimeConfig):
+class CtyConfig(BaseConfig):
     """Runtime configuration for pyvider-cty.
 
-    Uses Foundation's RuntimeConfig for consistent environment variable loading
-    and validation patterns.
+    Uses Foundation's BaseConfig for consistent configuration management.
     """
 
-    enable_type_inference_cache: bool = env_field(
-        env_var="PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE",
+    enable_type_inference_cache: bool = field(
         default=ENABLE_TYPE_INFERENCE_CACHE,
-        metadata={"description": "Enable caching for type inference performance optimization"},
+        metadata={
+            "env_var": "PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE",
+            "description": "Enable caching for type inference performance optimization",
+        },
     )
 
     @classmethod
@@ -29,4 +30,14 @@ class CtyConfig(RuntimeConfig):
         Returns:
             Current CtyConfig instance loaded from environment
         """
-        return cls.from_env(prefix="PYVIDER_CTY")
+        import os
+
+        # Check environment variable for cache setting
+        cache_enabled = os.environ.get("PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE")
+        if cache_enabled is not None:
+            cache_enabled = cache_enabled.lower() in ("true", "1", "yes", "on")
+        else:
+            cache_enabled = ENABLE_TYPE_INFERENCE_CACHE
+
+        # Create from dict with proper field name
+        return cls.from_dict({"enable_type_inference_cache": cache_enabled})
