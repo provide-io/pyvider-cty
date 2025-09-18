@@ -30,7 +30,6 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    "pygit2>=1.18.2",
     "provide-foundation>=0.0.0",
 ]
 
