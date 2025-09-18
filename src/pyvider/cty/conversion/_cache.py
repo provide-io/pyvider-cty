@@ -62,19 +62,14 @@ def with_inference_cache(func: F) -> F:
     """
     A decorator that provides an isolated inference cache for the duration
     of the decorated function's execution by using the context manager.
-    Ensures thread safety by running in a fresh context for each thread.
+    Ensures thread safety by providing each thread with its own cache context.
     """
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # For thread safety, check if we're in the main thread
-        if threading.current_thread() == threading.main_thread():
-            # Main thread can use caching normally
-            with inference_cache_context():
-                return func(*args, **kwargs)
-        else:
-            # For worker threads, disable caching to ensure isolation
-            # This ensures thread safety at the cost of some performance
+        # Always use inference cache context for proper thread isolation
+        # ContextVar provides thread-local storage automatically
+        with inference_cache_context():
             return func(*args, **kwargs)
 
     return wrapper  # type: ignore
