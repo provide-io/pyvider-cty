@@ -98,7 +98,12 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
             continue
 
         if not isinstance(current_item, dict | list | tuple | set | frozenset):
-            structural_cache[item_id] = (type(current_item),)
+            # For primitive values, use value-based cache keys to avoid race conditions
+            # from shared object IDs (e.g., interned integers, strings)
+            if isinstance(current_item, (bool, int, float, str, bytes, type(None))):
+                structural_cache[item_id] = (type(current_item).__name__, current_item)
+            else:
+                structural_cache[item_id] = (type(current_item),)
             continue
 
         _process_container_children(
