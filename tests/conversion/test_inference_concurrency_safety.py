@@ -10,13 +10,13 @@ from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.conversion import infer_cty_type_from_raw
 
 
-def inference_task(data: Any, results: dict[int, Any]) -> None:
+def inference_task(data: Any, result_container: list[Any]) -> None:
     """A simple task to be run in a thread."""
     try:
         inferred_type = infer_cty_type_from_raw(data)
-        results[threading.get_ident()] = inferred_type
+        result_container.append(inferred_type)
     except Exception as e:
-        results[threading.get_ident()] = e
+        result_container.append(e)
 
 
 class TestInferenceConcurrencySafety:
@@ -30,6 +30,11 @@ class TestInferenceConcurrencySafety:
         """
         # Disable caching for this test to ensure pure thread isolation testing
         monkeypatch.setenv("PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE", "false")
+
+        # Also patch the config directly to ensure it's disabled in threaded contexts
+        from pyvider.cty.config.runtime import CtyConfig
+        mock_config = CtyConfig(enable_type_inference_cache=False)
+        monkeypatch.setattr(CtyConfig, "get_current", lambda: mock_config)
         # Define two structurally different data sets
         data1 = [{"id": i, "name": f"name-{i}"} for i in range(50)]
         data2 = [{"value": i, "enabled": i % 2 == 0} for i in range(50)]
@@ -42,9 +47,12 @@ class TestInferenceConcurrencySafety:
             element_type=CtyObject(attribute_types={"value": CtyNumber(), "enabled": CtyBool()})
         )
 
-        results: dict[int, Any] = {}
-        thread1 = threading.Thread(target=inference_task, args=(data1, results))
-        thread2 = threading.Thread(target=inference_task, args=(data2, results))
+        # Use separate result containers to avoid shared key collisions
+        result1: list[Any] = []
+        result2: list[Any] = []
+
+        thread1 = threading.Thread(target=inference_task, args=(data1, result1))
+        thread2 = threading.Thread(target=inference_task, args=(data2, result2))
 
         thread1.start()
         thread2.start()
@@ -55,9 +63,12 @@ class TestInferenceConcurrencySafety:
         assert not thread1.is_alive(), "Thread 1 timed out"
         assert not thread2.is_alive(), "Thread 2 timed out"
 
-        # Verify that each thread produced the correct result for its data
-        type1_result = results.get(thread1.ident)
-        type2_result = results.get(thread2.ident)
+        # Verify that each thread produced exactly one result
+        assert len(result1) == 1, f"Thread 1 should produce exactly one result, got {len(result1)}"
+        assert len(result2) == 1, f"Thread 2 should produce exactly one result, got {len(result2)}"
+
+        type1_result = result1[0]
+        type2_result = result2[0]
 
         assert not isinstance(type1_result, Exception), f"Thread 1 failed with: {type1_result}"
         assert not isinstance(type2_result, Exception), f"Thread 2 failed with: {type2_result}"
