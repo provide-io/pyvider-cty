@@ -4,7 +4,6 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-import threading
 from typing import Any, TypeVar
 
 from pyvider.cty.types import CtyType
@@ -44,7 +43,17 @@ def inference_cache_context() -> Generator[None]:
     """
     A context manager that provides an isolated inference cache for the duration
     of its context. If a cache is already active, it reuses the existing one.
+    Respects the configuration setting for enabling/disabling caches.
     """
+    # Import here to avoid circular dependencies
+    from pyvider.cty.config.runtime import CtyConfig
+
+    config = CtyConfig.get_current()
+    if not config.enable_type_inference_cache:
+        # Caching is disabled - just yield without setting up caches
+        yield
+        return
+
     if _structural_key_cache.get() is None:
         token_struct = _structural_key_cache.set({})
         token_container = _container_schema_cache.set({})
