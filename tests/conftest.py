@@ -155,3 +155,20 @@ def clean_recursion_context_fixture():
     clear_recursion_context()
     yield
     clear_recursion_context()
+
+
+@pytest.fixture(autouse=True)
+def clear_inference_cache():
+    """
+    Clear inference cache before and after each test to ensure test isolation.
+    This prevents race conditions and cache pollution between tests.
+    """
+    from pyvider.cty.conversion._cache import _container_schema_cache, _structural_key_cache
+
+    # Clear cache before test
+    _structural_key_cache.set(None)
+    _container_schema_cache.set(None)
+    yield
+    # Clear cache after test
+    _structural_key_cache.set(None)
+    _container_schema_cache.set(None)
