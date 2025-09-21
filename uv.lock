@@ -2046,7 +2046,9 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mypy" },
     { name = "provide-testkit", extra = ["advanced-testing", "build", "quality", "standard", "typecheck"] },
+    { name = "ruff" },
 ]
 docs = [
     { name = "provide-testkit", extra = ["docs"] },
@@ -2060,7 +2062,11 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build", "quality"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" }]
+dev = [
+    { name = "mypy", specifier = ">=1.17.1" },
+    { name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build", "quality"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" },
+    { name = "ruff", specifier = ">=0.11.8" },
+]
 docs = [{ name = "provide-testkit", extras = ["docs"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" }]
 
 [[package]]
