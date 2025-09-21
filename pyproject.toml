@@ -30,17 +30,17 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    "provide-foundation>=0.0.0.dev4",
+    "provide-foundation>=0.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "provide-testkit[standard,advanced-testing,typecheck,build,quality]>=0.0.0.dev6",
+    "provide-testkit[standard,advanced-testing,typecheck,build,quality]>=0.0.0",
     "ruff>=0.11.8",
     "mypy>=1.17.1",
 ]
 docs = [
-    "provide-testkit[docs]>=0.0.0.dev6",
+    "provide-testkit[docs]>=0.0.0",
 ]
 
 [build-system]
