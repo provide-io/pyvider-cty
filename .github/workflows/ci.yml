@@ -17,18 +17,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐍 Setup Python Environment
-        uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.0
+        uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.1
         with:
           python-version: '3.11'
           install-extras: 'dev'
 
       - name: 🎨 Code Quality
-        uses: provide-io/ci-tooling/actions/python-quality@v0.2.0
+        uses: provide-io/ci-tooling/actions/python-quality@v0.2.1
         with:
           source-paths: 'src/ tests/'
 
       - name: 🧪 Run Tests
-        uses: provide-io/ci-tooling/actions/python-test@v0.2.0
+        uses: provide-io/ci-tooling/actions/python-test@v0.2.1
         with:
           test-directory: 'tests/'
           source-directory: 'src/'
@@ -45,11 +45,11 @@ jobs:
           fail_ci_if_error: false
 
       - name: 🔒 Security Scan
-        uses: provide-io/ci-tooling/actions/python-security@v0.2.0
+        uses: provide-io/ci-tooling/actions/python-security@v0.2.1
         with:
           source-paths: 'src/'
         continue-on-error: true
 
       - name: 📦 Build Package
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.0
+        uses: provide-io/ci-tooling/actions/python-build@v0.2.1
         continue-on-error: true
