@@ -59,21 +59,19 @@ jobs:
           echo "dev-version=${DEV_VERSION}" >> $GITHUB_OUTPUT
           echo "base-version=${BASE_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: 📦 Build Package
-        id: build
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
-
-      - name: 📤 Deploy to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: 📦 Build & Deploy to TestPyPI
+        id: build-release
+        uses: provide-io/ci-tooling/actions/python-build-release@main
         with:
-          repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TESTPYPI_API_TOKEN }}
-          skip-existing: true
+          deploy-testpypi: true
+          deploy-pypi: false
+          testpypi-token: ${{ secrets.TESTPYPI_API_TOKEN }}
 
       - name: 📋 Deployment Summary
         run: |
           echo "🎉 Continuous deployment completed!"
           echo "📦 Dev version: ${{ steps.dev-version.outputs.dev-version }}"
           echo "📦 Base version: ${{ steps.dev-version.outputs.base-version }}"
-          echo "🧪 Deployed to TestPyPI: https://test.pypi.org/project/pyvider-cty/"
+          echo "📦 Package version: ${{ steps.build-release.outputs.package-version }}"
+          echo "🧪 TestPyPI URL: ${{ steps.build-release.outputs.testpypi-url }}"
           echo "✅ Ready for manual release to production PyPI"
