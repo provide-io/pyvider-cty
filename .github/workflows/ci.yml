@@ -22,7 +22,7 @@ jobs:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
       - name: 🔐 Setup GitHub Auth
-        uses: provide-io/provide-foundation/.github/actions/setup-auth@main
+        uses: livingstaccato/provide-foundation/.github/actions/setup-auth@main
         with:
           helpers-json: ${{ secrets.GH_ORG_HELPERS }}
 
