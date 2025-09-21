@@ -55,19 +55,10 @@ jobs:
       - name: 🔒 Security Scan (Skipped)
         run: echo "Security scan skipped - focusing on deployment"
 
-      - name: 📦 Build Package
-        id: build
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
-
-      - name: 📋 Prepare Release Artifacts
-        run: |
-          echo "📦 Package built successfully:"
-          echo "  - Version: ${{ steps.build.outputs.package-version }}"
-          echo "  - Wheel: ${{ steps.build.outputs.wheel-file }}"
-          echo "  - Source: ${{ steps.build.outputs.sdist-file }}"
-          echo ""
-          echo "🎯 Artifacts are ready for:"
-          echo "  - Manual release via release workflow"
-          echo "  - Continuous deployment (if configured)"
-          echo ""
-          echo "✅ CI/CD pipeline completed successfully"
+      - name: 📦 Build & Release
+        id: build-release
+        uses: provide-io/ci-tooling/actions/python-build-release@main
+        with:
+          deploy-testpypi: false
+          deploy-pypi: false
+          dry-run: false
