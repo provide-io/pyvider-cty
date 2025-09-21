@@ -33,7 +33,7 @@ dependencies = [
     "provide-foundation @ git+https://github.com/livingstaccato/provide-foundation.git@main",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "provide-testkit[standard,advanced-testing,typecheck,build,quality] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
     "ruff>=0.11.8",

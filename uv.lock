@@ -2044,7 +2044,7 @@ dependencies = [
     { name = "provide-foundation" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
     { name = "mypy" },
     { name = "provide-testkit", extra = ["advanced-testing", "build", "quality", "standard", "typecheck"] },
@@ -2058,16 +2058,13 @@ docs = [
 requires-dist = [
     { name = "attrs", specifier = ">=25.1.0" },
     { name = "msgpack", specifier = ">=1.1.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.17.1" },
     { name = "provide-foundation", git = "https://github.com/livingstaccato/provide-foundation.git?rev=main" },
+    { name = "provide-testkit", extras = ["advanced-testing", "build", "quality", "standard", "typecheck"], marker = "extra == 'dev'", git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" },
+    { name = "provide-testkit", extras = ["docs"], marker = "extra == 'docs'", git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.8" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.17.1" },
-    { name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build", "quality"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" },
-    { name = "ruff", specifier = ">=0.11.8" },
-]
-docs = [{ name = "provide-testkit", extras = ["docs"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" }]
+provides-extras = ["dev", "docs"]
 
 [[package]]
 name = "pywin32-ctypes"
