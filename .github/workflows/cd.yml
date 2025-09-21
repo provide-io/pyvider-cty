@@ -59,18 +59,17 @@ jobs:
           echo "dev-version=${DEV_VERSION}" >> $GITHUB_OUTPUT
           echo "base-version=${BASE_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: 📦 Build Package
-        id: build
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
-
-      - name: 📤 Deploy to TestPyPI with Twine
+      - name: 📦 Build Package with UV
         run: |
           source ./workenv/bin/activate
-          pip install twine
-          twine upload --repository-url https://test.pypi.org/legacy/ \
-            --username __token__ \
-            --password "${{ secrets.TESTPYPI_API_TOKEN }}" \
-            --skip-existing \
+          uv build
+
+      - name: 📤 Deploy to TestPyPI with UV
+        run: |
+          source ./workenv/bin/activate
+          uv publish \
+            --publish-url https://test.pypi.org/legacy/ \
+            --token "${{ secrets.TESTPYPI_API_TOKEN }}" \
             dist/*
 
       - name: 📋 Deployment Summary
@@ -78,6 +77,5 @@ jobs:
           echo "🎉 Continuous deployment completed!"
           echo "📦 Dev version: ${{ steps.dev-version.outputs.dev-version }}"
           echo "📦 Base version: ${{ steps.dev-version.outputs.base-version }}"
-          echo "📦 Package version: ${{ steps.build.outputs.package-version }}"
           echo "🧪 Deployed to TestPyPI: https://test.pypi.org/project/pyvider-cty/"
           echo "✅ Ready for manual release to production PyPI"
