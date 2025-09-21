@@ -11,7 +11,7 @@ jobs:
   # Use the shared ci-tooling reusable workflow
   ci:
     name: 🔄 CI Pipeline
-    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@v0.0.1
+    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@v0.0.0
     with:
       python-version: '3.11'
       source-paths: 'src/ tests/'
@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐍 Setup Python Environment
-        uses: provide-io/ci-tooling/actions/setup-python-env@v0.0.1
+        uses: provide-io/ci-tooling/actions/setup-python-env@v0.0.0
         with:
           python-version: '3.11'
           install-extras: 'dev'
@@ -43,4 +43,4 @@ jobs:
           pytest tests/ -m integration -v || true
 
       - name: 📦 Build Package
-        uses: provide-io/ci-tooling/actions/python-build@v0.0.1
+        uses: provide-io/ci-tooling/actions/python-build@v0.0.0
