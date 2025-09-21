@@ -1,0 +1,62 @@
+name: 🚀 Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-testpypi:
+    name: 🧪 Deploy to TestPyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pyvider-cty
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔐 Parse Organization Helpers
+        uses: provide-io/ci-tooling/actions/parse-org-helpers@main
+        env:
+          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
+
+      - name: 🔐 Setup GitHub Auth
+        env:
+          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
+        run: python3 scripts/setup_github_auth.py
+
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
+        with:
+          python-version: '3.11'
+          install-extras: 'dev'
+
+      - name: 🧪 Run Quick Tests
+        uses: provide-io/ci-tooling/actions/python-test@v0.2.3
+        with:
+          test-directory: 'tests/'
+          source-directory: 'src/'
+          coverage-threshold: 75
+
+      - name: 📦 Build Package
+        id: build
+        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
+
+      - name: 📤 Deploy to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: 📋 Deployment Summary
+        run: |
+          echo "🎉 Continuous deployment completed!"
+          echo "📦 Package version: ${{ steps.build.outputs.package-version }}"
+          echo "🧪 Deployed to TestPyPI: https://test.pypi.org/project/pyvider-cty/"
+          echo "✅ Ready for manual release to production PyPI"
