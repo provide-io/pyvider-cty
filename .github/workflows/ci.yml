@@ -22,9 +22,9 @@ jobs:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
       - name: 🔐 Setup GitHub Auth
-        uses: livingstaccato/provide-foundation/.github/actions/setup-auth@main
-        with:
-          helpers-json: ${{ secrets.GH_ORG_HELPERS }}
+        env:
+          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
+        run: python3 scripts/setup_github_auth.py
 
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
