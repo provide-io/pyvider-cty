@@ -16,6 +16,11 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
+      - name: 🔐 Parse Organization Helpers
+        uses: provide-io/ci-tooling/actions/parse-org-helpers@main
+        env:
+          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
+
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
         with:
