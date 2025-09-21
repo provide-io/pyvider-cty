@@ -35,10 +35,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "provide-testkit[standard,advanced-testing,typecheck,build]",
+    "provide-testkit[standard,advanced-testing,typecheck,build] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
 ]
 docs = [
-    "provide-testkit[docs]",
+    "provide-testkit[docs] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
 ]
 
 [build-system]
@@ -56,7 +56,6 @@ version = {file = "VERSION"}
 
 [tool.uv.sources]
 provide-foundation = { workspace = true }
-provide-testkit = { workspace = true }
 
 
 ################################################################################
