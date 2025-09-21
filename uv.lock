@@ -1725,6 +1725,14 @@ docs = [
     { name = "pyyaml" },
     { name = "watchdog" },
 ]
+quality = [
+    { name = "bandit" },
+    { name = "coverage", extra = ["toml"] },
+    { name = "interrogate" },
+    { name = "mypy" },
+    { name = "radon" },
+    { name = "ruff" },
+]
 standard = [
     { name = "bandit" },
     { name = "coverage", extra = ["toml"] },
@@ -2038,7 +2046,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "provide-testkit", extra = ["advanced-testing", "build", "standard", "typecheck"] },
+    { name = "provide-testkit", extra = ["advanced-testing", "build", "quality", "standard", "typecheck"] },
 ]
 docs = [
     { name = "provide-testkit", extra = ["docs"] },
@@ -2052,7 +2060,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" }]
+dev = [{ name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build", "quality"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" }]
 docs = [{ name = "provide-testkit", extras = ["docs"], git = "https://github.com/livingstaccato/provide-testkit.git?rev=main" }]
 
 [[package]]
