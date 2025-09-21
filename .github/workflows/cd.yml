@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  deploy-testpypi:
-    name: 🧪 Deploy to TestPyPI
+  continuous-deployment:
+    name: 🧪 Continuous Deployment
     runs-on: ubuntu-latest
 
     steps:
