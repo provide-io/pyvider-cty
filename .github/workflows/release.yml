@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   build:
@@ -54,11 +53,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/pyvider-cty
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
       - name: 📥 Download artifacts
@@ -71,6 +65,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           skip-existing: true
 
   release:
@@ -78,11 +73,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    environment:
-      name: pypi
-      url: https://pypi.org/p/pyvider-cty
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
       - name: 📥 Download artifacts
@@ -93,6 +83,8 @@ jobs:
 
       - name: 📤 Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
   github-release:
     name: 📝 Create GitHub Release

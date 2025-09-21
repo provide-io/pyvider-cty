@@ -7,15 +7,11 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   deploy-testpypi:
     name: 🧪 Deploy to TestPyPI
     runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/pyvider-cty
 
     steps:
       - name: 📥 Checkout
@@ -44,6 +40,25 @@ jobs:
           source-directory: 'src/'
           coverage-threshold: 75
 
+      - name: 🔖 Generate Dev Version
+        id: dev-version
+        run: |
+          # Read base version from VERSION file
+          BASE_VERSION=$(cat VERSION)
+          # Generate timestamp for unique dev version
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          DEV_VERSION="${BASE_VERSION}.dev${TIMESTAMP}"
+
+          echo "Base version: $BASE_VERSION"
+          echo "Dev version: $DEV_VERSION"
+
+          # Update VERSION file temporarily for build
+          echo "${DEV_VERSION}" > VERSION
+
+          # Set outputs for later steps
+          echo "dev-version=${DEV_VERSION}" >> $GITHUB_OUTPUT
+          echo "base-version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+
       - name: 📦 Build Package
         id: build
         uses: provide-io/ci-tooling/actions/python-build@v0.2.3
@@ -52,11 +67,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           skip-existing: true
 
       - name: 📋 Deployment Summary
         run: |
           echo "🎉 Continuous deployment completed!"
-          echo "📦 Package version: ${{ steps.build.outputs.package-version }}"
+          echo "📦 Dev version: ${{ steps.dev-version.outputs.dev-version }}"
+          echo "📦 Base version: ${{ steps.dev-version.outputs.base-version }}"
           echo "🧪 Deployed to TestPyPI: https://test.pypi.org/project/pyvider-cty/"
           echo "✅ Ready for manual release to production PyPI"
