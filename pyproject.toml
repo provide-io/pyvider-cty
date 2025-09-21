@@ -35,12 +35,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "provide-testkit[standard,advanced-testing,typecheck,build,quality] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
+    "provide-testkit[standard,advanced-testing,typecheck,build,quality]>=0.0.0.dev6",
     "ruff>=0.11.8",
     "mypy>=1.17.1",
 ]
 docs = [
-    "provide-testkit[docs] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
+    "provide-testkit[docs]>=0.0.0.dev6",
 ]
 
 [build-system]
