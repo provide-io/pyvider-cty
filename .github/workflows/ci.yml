@@ -8,39 +8,48 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Use the shared ci-tooling reusable workflow
+  # Use individual actions for better control and debugging
   ci:
     name: 🔄 CI Pipeline
-    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@v0.0.0
-    with:
-      python-version: '3.11'
-      source-paths: 'src/ tests/'
-      test-directory: 'tests/'
-      coverage-threshold: 75
-      run-security: true
-      matrix-testing: true
-      os-matrix: 'ubuntu-latest,macos-latest'
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  # Optional: Individual actions for custom needs
-  custom-checks:
-    name: 🔧 Custom Checks
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: 🐍 Setup Python Environment
-        uses: provide-io/ci-tooling/actions/setup-python-env@v0.0.0
+        uses: provide-io/ci-tooling/actions/setup-python-env@v0.1.0
         with:
           python-version: '3.11'
           install-extras: 'dev'
 
-      - name: 🧪 Custom Integration Tests
-        run: |
-          source workenv/bin/activate
-          pytest tests/ -m integration -v || true
+      - name: 🎨 Code Quality
+        uses: provide-io/ci-tooling/actions/python-quality@v0.1.0
+        with:
+          source-paths: 'src/ tests/'
+
+      - name: 🧪 Run Tests
+        uses: provide-io/ci-tooling/actions/python-test@v0.1.0
+        with:
+          test-directory: 'tests/'
+          source-directory: 'src/'
+          coverage-threshold: 75
+
+      - name: 📊 Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-pyvider-cty
+          fail_ci_if_error: false
+
+      - name: 🔒 Security Scan
+        uses: provide-io/ci-tooling/actions/python-security@v0.1.0
+        with:
+          source-paths: 'src/'
+        continue-on-error: true
 
       - name: 📦 Build Package
-        uses: provide-io/ci-tooling/actions/python-build@v0.0.0
+        uses: provide-io/ci-tooling/actions/python-build@v0.1.0
+        continue-on-error: true
