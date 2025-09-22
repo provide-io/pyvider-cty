@@ -17,6 +17,10 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
+      - name: 🔖 Generate Post Version
+        uses: provide-io/ci-tooling/actions/generate-post-version@af82cf34aa21d8a2c0cb9f79254923d443c40d87
+        id: post-version
+
       - name: 🔐 Parse Organization Helpers
         uses: provide-io/ci-tooling/actions/parse-org-helpers@main
         env:
@@ -26,10 +30,6 @@ jobs:
         env:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
         run: python3 scripts/setup_github_auth.py
-
-      - name: 🔖 Generate Post Version
-        uses: provide-io/ci-tooling/actions/generate-post-version@af82cf34aa21d8a2c0cb9f79254923d443c40d87
-        id: post-version
 
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
