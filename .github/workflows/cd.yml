@@ -17,39 +17,11 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔖 Generate Version for TestPyPI
+      - name: 🔖 Generate TestPyPI Version
+        uses: provide-io/ci-tooling/actions/generate-testpypi-version@main
         id: post-version
-        run: |
-          # Read base version from file
-          BASE_VERSION=$(cat VERSION)
-          PACKAGE_NAME="pyvider-cty"
-
-          echo "📦 Base version: $BASE_VERSION"
-
-          # Check if version exists on TestPyPI
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://test.pypi.org/pypi/${PACKAGE_NAME}/${BASE_VERSION}/json" || echo "000")
-
-          if [ "$HTTP_CODE" = "404" ]; then
-            # Version doesn't exist, use base version
-            DEPLOY_VERSION="$BASE_VERSION"
-            echo "✅ Version $BASE_VERSION not found on TestPyPI - using base version"
-          else
-            # Version exists, create post-release
-            TIMESTAMP=$(date +%Y%m%d%H%M%S)
-            DEPLOY_VERSION="${BASE_VERSION}.post${TIMESTAMP}"
-            echo "🔄 Version $BASE_VERSION exists on TestPyPI - using post-release: $DEPLOY_VERSION"
-          fi
-
-          echo "🚀 Deploy version: $DEPLOY_VERSION"
-
-          # Update version file
-          echo "${DEPLOY_VERSION}" > VERSION
-
-          # Set outputs
-          echo "base-version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "post-version=${DEPLOY_VERSION}" >> $GITHUB_OUTPUT
-          echo "timestamp=${TIMESTAMP:-none}" >> $GITHUB_OUTPUT
+        with:
+          package-name: 'pyvider-cty'
 
       - name: 🔐 Parse Organization Helpers
         uses: provide-io/ci-tooling/actions/parse-org-helpers@main
@@ -90,7 +62,8 @@ jobs:
       - name: 📋 Deployment Summary
         run: |
           echo "🎉 Continuous deployment completed!"
-          echo "📦 Post version: ${{ steps.post-version.outputs.post-version }}"
+          echo "📦 Deploy version: ${{ steps.post-version.outputs.deploy-version }}"
           echo "📦 Base version: ${{ steps.post-version.outputs.base-version }}"
+          echo "🔄 Post-release: ${{ steps.post-version.outputs.is-post-release }}"
           echo "🧪 Deployed to TestPyPI: https://test.pypi.org/project/pyvider-cty/"
           echo "✅ Ready for manual release to production PyPI"
