@@ -6,13 +6,8 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to build from'
-        required: false
-        default: 'main'
-        type: string
-      version:
-        description: 'Version to release (e.g., 0.0.114) - leave empty for auto-post versioning'
+      run_id:
+        description: 'Workflow run ID with artifacts to release (leave empty to use latest CI)'
         required: false
         type: string
       publish_testpypi:
@@ -31,51 +26,44 @@ permissions:
   id-token: write  # Required for trusted publishing
 
 jobs:
-  build:
-    name: 📦 Build Distribution
+  download-artifacts:
+    name: 📥 Download Artifacts
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.download.outputs.artifact-name }}
 
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch || github.ref }}
-
-      - name: 🔖 Generate TestPyPI Version
-        if: inputs.publish_testpypi && !inputs.version
-        uses: provide-io/ci-tooling/actions/generate-testpypi-version@main
-        id: post-version
-        with:
-          package-name: 'pyvider-cty'
-
-      - name: 🔐 Parse Organization Helpers
-        uses: provide-io/ci-tooling/actions/parse-org-helpers@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
-
-      - name: 🔐 Setup GitHub Auth
-        uses: provide-io/ci-tooling/actions/setup-github-auth@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
-
-      - name: 🐍 Setup Python Environment
-        uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
-        with:
-          python-version: '3.11'
-          install-extras: 'dev'
-
-      - name: 📝 Update version in pyproject.toml
-        if: inputs.version || steps.post-version.outputs.deploy-version
+      - name: 🔍 Find artifact source
+        id: find-artifact
         run: |
-          VERSION="${{ inputs.version || steps.post-version.outputs.deploy-version }}"
-          echo "📝 Setting version to: $VERSION"
-          sed -i.bak "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
-          cat pyproject.toml | grep "^version ="
+          if [ -n "${{ inputs.run_id }}" ]; then
+            echo "📦 Using artifacts from run: ${{ inputs.run_id }}"
+            echo "run-id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          else
+            # Get the latest successful CI run
+            echo "🔍 Finding latest CI artifacts..."
+            LATEST_RUN=$(gh run list --workflow=ci.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId' || echo "")
+            if [ -z "$LATEST_RUN" ]; then
+              echo "❌ No successful CI runs found"
+              exit 1
+            fi
+            echo "📦 Using artifacts from latest CI run: $LATEST_RUN"
+            echo "run-id=$LATEST_RUN" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
-      - name: 🔨 Build package
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
-      
-      - name: 📤 Upload artifacts
+      - name: 📥 Download artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: python-packages
+          path: dist/
+          run-id: ${{ steps.find-artifact.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📤 Upload artifacts for release
         uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -83,7 +71,7 @@ jobs:
 
   test-release:
     name: 🧪 Test Release (TestPyPI)
-    needs: build
+    needs: download-artifacts
     runs-on: ubuntu-latest
     if: inputs.publish_testpypi || github.event_name == 'push'
     permissions:
@@ -104,9 +92,13 @@ jobs:
 
   release:
     name: 🚀 Release to PyPI
-    needs: build
+    needs: [download-artifacts, test-release]
     runs-on: ubuntu-latest
-    if: inputs.publish_pypi || startsWith(github.ref, 'refs/tags/')
+    if: |
+      always() &&
+      needs.download-artifacts.result == 'success' &&
+      (inputs.publish_pypi || startsWith(github.ref, 'refs/tags/')) &&
+      (!inputs.publish_testpypi || needs.test-release.result == 'success')
 
     steps:
       - name: 📥 Download artifacts
