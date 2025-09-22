@@ -30,15 +30,15 @@ classifiers = [
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    "provide-foundation>=0.0.0",
+    "provide-foundation @ git+https://github.com/provide-io/provide-foundation.git@main",
 ]
 
 [dependency-groups]
 dev = [
-    "provide-testkit[standard,advanced-testing,typecheck,build]",
+    "provide-testkit[standard,advanced-testing,typecheck,build] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
 ]
 docs = [
-    "provide-testkit[docs]",
+    "provide-testkit[docs] @ git+https://github.com/livingstaccato/provide-testkit.git@main",
 ]
 
 [build-system]
@@ -54,9 +54,8 @@ where = ["src"]
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
 
-[tool.uv.sources]
-provide-foundation = { workspace = true }
-provide-testkit = { workspace = true }
+# [tool.uv.sources]
+# provide-foundation = { workspace = true }
 
 
 ################################################################################
