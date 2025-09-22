@@ -17,29 +17,39 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔖 Generate Post Version
+      - name: 🔖 Generate Version for TestPyPI
         id: post-version
         run: |
           # Read base version from file
           BASE_VERSION=$(cat VERSION)
-
-          # Generate timestamp
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-
-          # Create post-release version
-          POST_VERSION="${BASE_VERSION}.post${TIMESTAMP}"
+          PACKAGE_NAME="pyvider-cty"
 
           echo "📦 Base version: $BASE_VERSION"
-          echo "🕒 Timestamp: $TIMESTAMP"
-          echo "🚀 Post version: $POST_VERSION"
+
+          # Check if version exists on TestPyPI
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://test.pypi.org/pypi/${PACKAGE_NAME}/${BASE_VERSION}/json" || echo "000")
+
+          if [ "$HTTP_CODE" = "404" ]; then
+            # Version doesn't exist, use base version
+            DEPLOY_VERSION="$BASE_VERSION"
+            echo "✅ Version $BASE_VERSION not found on TestPyPI - using base version"
+          else
+            # Version exists, create post-release
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            DEPLOY_VERSION="${BASE_VERSION}.post${TIMESTAMP}"
+            echo "🔄 Version $BASE_VERSION exists on TestPyPI - using post-release: $DEPLOY_VERSION"
+          fi
+
+          echo "🚀 Deploy version: $DEPLOY_VERSION"
 
           # Update version file
-          echo "${POST_VERSION}" > VERSION
+          echo "${DEPLOY_VERSION}" > VERSION
 
           # Set outputs
           echo "base-version=${BASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "post-version=${POST_VERSION}" >> $GITHUB_OUTPUT
-          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "post-version=${DEPLOY_VERSION}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP:-none}" >> $GITHUB_OUTPUT
 
       - name: 🔐 Parse Organization Helpers
         uses: provide-io/ci-tooling/actions/parse-org-helpers@main
