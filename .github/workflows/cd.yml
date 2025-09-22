@@ -27,6 +27,10 @@ jobs:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
         run: python3 scripts/setup_github_auth.py
 
+      - name: 🔖 Generate Post Version
+        uses: provide-io/ci-tooling/actions/generate-post-version@main
+        id: post-version
+
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
         with:
@@ -39,10 +43,6 @@ jobs:
           test-directory: 'tests/'
           source-directory: 'src/'
           coverage-threshold: 75
-
-      - name: 🔖 Generate Post Version
-        uses: provide-io/ci-tooling/actions/generate-post-version@main
-        id: post-version
 
       - name: 📦 Build Package with UV
         run: |
