@@ -12,8 +12,8 @@ on:
         default: 'main'
         type: string
       version:
-        description: 'Version to release (e.g., 0.0.114)'
-        required: true
+        description: 'Version to release (e.g., 0.0.114) - leave empty for auto-post versioning'
+        required: false
         type: string
       publish_testpypi:
         description: 'Publish to TestPyPI'
@@ -41,6 +41,13 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
 
+      - name: 🔖 Generate TestPyPI Version
+        if: inputs.publish_testpypi && !inputs.version
+        uses: provide-io/ci-tooling/actions/generate-testpypi-version@main
+        id: post-version
+        with:
+          package-name: 'pyvider-cty'
+
       - name: 🔐 Parse Organization Helpers
         uses: provide-io/ci-tooling/actions/parse-org-helpers@main
         env:
@@ -56,6 +63,14 @@ jobs:
         with:
           python-version: '3.11'
           install-extras: 'dev'
+
+      - name: 📝 Update version in pyproject.toml
+        if: inputs.version || steps.post-version.outputs.deploy-version
+        run: |
+          VERSION="${{ inputs.version || steps.post-version.outputs.deploy-version }}"
+          echo "📝 Setting version to: $VERSION"
+          sed -i.bak "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
+          cat pyproject.toml | grep "^version ="
 
       - name: 🔨 Build package
         uses: provide-io/ci-tooling/actions/python-build@v0.2.3
