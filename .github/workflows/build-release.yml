@@ -1,0 +1,101 @@
+name: 📦 Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment-target:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - 'build-only'
+          - 'testpypi'
+          - 'pypi'
+          - 'both'
+          - 'dry-run'
+        default: 'build-only'
+
+      custom-options:
+        description: 'Use custom deployment options (overrides target choice)'
+        type: boolean
+        default: false
+
+      deploy-testpypi:
+        description: 'Deploy to TestPyPI (only used if custom-options is true)'
+        type: boolean
+        default: false
+
+      deploy-pypi:
+        description: 'Deploy to PyPI (only used if custom-options is true)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-release:
+    name: 📦 Build & Conditional Release
+    runs-on: ubuntu-latest
+    environment: ${{
+      (github.event.inputs.custom-options == 'true' && github.event.inputs.deploy-pypi == 'true') ||
+      (github.event.inputs.custom-options != 'true' && contains(github.event.inputs.deployment-target, 'pypi'))
+      ? 'pypi' : 'testpypi' }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔐 Parse Organization Helpers
+        uses: provide-io/ci-tooling/actions/parse-org-helpers@main
+        env:
+          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
+
+      - name: 🔐 Setup GitHub Auth
+        env:
+          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
+        run: python3 scripts/setup_github_auth.py
+
+      - name: 🧪 Run Tests
+        uses: provide-io/ci-tooling/actions/python-test@v0.2.3
+        with:
+          test-directory: 'tests/'
+          source-directory: 'src/'
+          coverage-threshold: 75
+
+      - name: 📦 Build & Release with Custom Options
+        if: github.event.inputs.custom-options == 'true'
+        uses: provide-io/ci-tooling/actions/python-build-release@main
+        with:
+          deploy-testpypi: ${{ github.event.inputs.deploy-testpypi }}
+          deploy-pypi: ${{ github.event.inputs.deploy-pypi }}
+          dry-run: false
+
+      - name: 📦 Build & Release with Preset Target
+        if: github.event.inputs.custom-options != 'true'
+        uses: provide-io/ci-tooling/actions/python-build-release@main
+        with:
+          deploy-testpypi: ${{
+            github.event.inputs.deployment-target == 'testpypi' ||
+            github.event.inputs.deployment-target == 'both' ||
+            github.event.inputs.deployment-target == 'dry-run'
+          }}
+          deploy-pypi: ${{
+            github.event.inputs.deployment-target == 'pypi' ||
+            github.event.inputs.deployment-target == 'both' ||
+            github.event.inputs.deployment-target == 'dry-run'
+          }}
+          dry-run: ${{ github.event.inputs.deployment-target == 'dry-run' }}
+
+      - name: 📋 Deployment Summary
+        run: |
+          echo "🎯 **Deployment Configuration**"
+          echo "Target: ${{ github.event.inputs.deployment-target }}"
+          echo "Custom options: ${{ github.event.inputs.custom-options }}"
+          if [ "${{ github.event.inputs.custom-options }}" = "true" ]; then
+            echo "TestPyPI: ${{ github.event.inputs.deploy-testpypi }}"
+            echo "PyPI: ${{ github.event.inputs.deploy-pypi }}"
+          fi
+          echo ""
+          echo "✅ Build and release completed successfully!"

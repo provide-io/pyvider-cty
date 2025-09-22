@@ -55,12 +55,10 @@ jobs:
       - name: 🔒 Security Scan (Skipped)
         run: echo "Security scan skipped - focusing on deployment"
 
-      - name: 📦 Build Package
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
-
-      - name: 🚀 Deploy (No-Op)
-        run: |
-          echo "🎉 Deployment would happen here!"
-          echo "✅ CI/CD pipeline completed successfully"
-          echo "📦 Package built and ready for deployment"
-          echo "🏁 End-to-end pipeline working!"
+      - name: 📦 Build & Release
+        id: build-release
+        uses: provide-io/ci-tooling/actions/python-build-release@main
+        with:
+          deploy-testpypi: false
+          deploy-pypi: false
+          dry-run: false
