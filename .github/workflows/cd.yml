@@ -28,7 +28,7 @@ jobs:
         run: python3 scripts/setup_github_auth.py
 
       - name: 🔖 Generate Post Version
-        uses: provide-io/ci-tooling/actions/generate-post-version@main
+        uses: provide-io/ci-tooling/actions/generate-post-version@af82cf34aa21d8a2c0cb9f79254923d443c40d87
         id: post-version
 
       - name: 🐍 Setup Python Environment
