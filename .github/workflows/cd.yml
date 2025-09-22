@@ -18,8 +18,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🔖 Generate Post Version
-        uses: provide-io/ci-tooling/actions/generate-post-version@main
         id: post-version
+        run: |
+          # Read base version from file
+          BASE_VERSION=$(cat VERSION)
+
+          # Generate timestamp
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+
+          # Create post-release version
+          POST_VERSION="${BASE_VERSION}.post${TIMESTAMP}"
+
+          echo "📦 Base version: $BASE_VERSION"
+          echo "🕒 Timestamp: $TIMESTAMP"
+          echo "🚀 Post version: $POST_VERSION"
+
+          # Update version file
+          echo "${POST_VERSION}" > VERSION
+
+          # Set outputs
+          echo "base-version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "post-version=${POST_VERSION}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
 
       - name: 🔐 Parse Organization Helpers
         uses: provide-io/ci-tooling/actions/parse-org-helpers@main
