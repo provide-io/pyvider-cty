@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🔖 Generate Post Version
-        uses: provide-io/ci-tooling/actions/generate-post-version@af82cf34aa21d8a2c0cb9f79254923d443c40d87
+        uses: provide-io/ci-tooling/actions/generate-post-version@main
         id: post-version
 
       - name: 🔐 Parse Organization Helpers
