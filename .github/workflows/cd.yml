@@ -1,69 +1,44 @@
 name: 🚀 Continuous Deployment
 
 on:
-  push:
+  workflow_run:
+    workflows: ["🧪 CI - Tests & Quality"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+  id-token: write  # Required for trusted publishing
 
 jobs:
-  continuous-deployment:
-    name: 🧪 Continuous Deployment
+  deploy-testpypi:
+    name: 🧪 Deploy to TestPyPI
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
 
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 🔖 Generate TestPyPI Version
-        uses: provide-io/ci-tooling/actions/generate-testpypi-version@main
-        id: post-version
+      - name: 📥 Download CI Artifacts
+        uses: actions/download-artifact@v4
         with:
-          package-name: 'pyvider-cty'
+          name: python-packages
+          path: dist/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🔐 Parse Organization Helpers
-        uses: provide-io/ci-tooling/actions/parse-org-helpers@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
-
-      - name: 🔐 Setup GitHub Auth
-        uses: provide-io/ci-tooling/actions/setup-github-auth@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
-
-      - name: 🐍 Setup Python Environment
-        uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
+      - name: 📤 Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          python-version: '3.11'
-          install-extras: 'dev'
-
-      - name: 🧪 Run Quick Tests
-        uses: provide-io/ci-tooling/actions/python-test@v0.2.3
-        with:
-          test-directory: 'tests/'
-          source-directory: 'src/'
-          coverage-threshold: 75
-
-      - name: 📦 Build Package with UV
-        run: |
-          source ./workenv/bin/activate
-          uv build
-
-      - name: 📤 Deploy to TestPyPI with UV
-        run: |
-          source ./workenv/bin/activate
-          uv publish \
-            --publish-url https://test.pypi.org/legacy/ \
-            --token "${{ secrets.TESTPYPI_API_TOKEN }}" \
-            dist/*
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
       - name: 📋 Deployment Summary
         run: |
           echo "🎉 Continuous deployment completed!"
-          echo "📦 Deploy version: ${{ steps.post-version.outputs.deploy-version }}"
-          echo "📦 Base version: ${{ steps.post-version.outputs.base-version }}"
-          echo "🔄 Post-release: ${{ steps.post-version.outputs.is-post-release }}"
           echo "🧪 Deployed to TestPyPI: https://test.pypi.org/project/pyvider-cty/"
           echo "✅ Ready for manual release to production PyPI"
+
+          # List what was deployed
+          echo ""
+          echo "📦 Deployed packages:"
+          ls -la dist/ || echo "No artifacts found"
