@@ -7,40 +7,35 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write  # For trusted publishing
+
 jobs:
-  # Use individual actions for better control and debugging
   ci:
     name: 🔄 CI Pipeline
     runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      - name: 🔐 Parse Organization Helpers
-        uses: provide-io/ci-tooling/actions/parse-org-helpers@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
       - name: 🔐 Setup GitHub Auth
         uses: provide-io/ci-tooling/actions/setup-github-auth@main
         env:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
-      - name: 🐍 Setup Python Environment
-        uses: provide-io/ci-tooling/actions/setup-python-env@v0.2.3
+      - name: 🐍 Python CI Pipeline
+        uses: provide-io/ci-tooling/actions/python-ci@main
         with:
           python-version: '3.11'
-          install-extras: 'dev'
-
-      - name: 🎨 Code Quality (Skipped)
-        run: echo "Code quality checks skipped - focusing on deployment"
-
-      - name: 🧪 Run Tests
-        uses: provide-io/ci-tooling/actions/python-test@v0.2.3
-        with:
+          mode: 'full'
           test-directory: 'tests/'
           source-directory: 'src/'
           coverage-threshold: 75
+          run-quality-checks: true
+          run-security-scan: false
+          dependency-groups: 'dev'
 
       - name: 📊 Upload coverage to Codecov
         if: always()
@@ -51,23 +46,3 @@ jobs:
           flags: unittests
           name: codecov-pyvider-cty
           fail_ci_if_error: false
-
-      - name: 🔒 Security Scan (Skipped)
-        run: echo "Security scan skipped - focusing on deployment"
-
-      - name: 📦 Build Package
-        id: build
-        uses: provide-io/ci-tooling/actions/python-build@v0.2.3
-
-      - name: 📋 Prepare Release Artifacts
-        run: |
-          echo "📦 Package built successfully:"
-          echo "  - Version: ${{ steps.build.outputs.package-version }}"
-          echo "  - Wheel: ${{ steps.build.outputs.wheel-file }}"
-          echo "  - Source: ${{ steps.build.outputs.sdist-file }}"
-          echo ""
-          echo "🎯 Artifacts are ready for:"
-          echo "  - Manual release via release workflow"
-          echo "  - Continuous deployment (if configured)"
-          echo ""
-          echo "✅ CI/CD pipeline completed successfully"
