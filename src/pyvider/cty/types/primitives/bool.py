@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define
+from provide.foundation.config.parsers.primitives import parse_bool_strict
 
 from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
@@ -16,7 +17,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     _type_order: ClassVar[int] = 2  # Correct go-cty order
 
-    def validate(self, value: object) -> CtyValue[bool]:  # noqa: C901
+    def validate(self, value: object) -> CtyValue[bool]:
         from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
@@ -36,16 +37,22 @@ class CtyBool(CtyType[bool]):
 
         if isinstance(raw_value, bool):
             return CtyValue(vtype=self, value=raw_value)
-        if isinstance(raw_value, str):
-            if raw_value.lower() == "true":
-                return CtyValue(vtype=self, value=True)
-            if raw_value.lower() == "false":
-                return CtyValue(vtype=self, value=False)
+
+        # Handle numeric values (int/float) - only 0 and 1 are valid
         if isinstance(raw_value, int | float):
-            if raw_value == 1:
+            if raw_value == 1 or raw_value == 1.0:
                 return CtyValue(vtype=self, value=True)
-            if raw_value == 0:
+            if raw_value == 0 or raw_value == 0.0:
                 return CtyValue(vtype=self, value=False)
+            # Fall through to error for other numbers
+
+        # Use foundation's parse_bool_strict for string parsing
+        if isinstance(raw_value, str):
+            try:
+                parsed = parse_bool_strict(raw_value)
+                return CtyValue(vtype=self, value=parsed)
+            except (ValueError, TypeError) as e:
+                raise CtyBoolValidationError(f"Cannot convert {type(raw_value).__name__} to bool: {e}") from e
 
         raise CtyBoolValidationError(f"Cannot convert {type(raw_value).__name__} to bool.")
 
