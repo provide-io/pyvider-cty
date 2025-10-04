@@ -40,7 +40,9 @@
       "Bash(ruff check:*)",
       "Bash(pytest:*)",
       "Bash(python:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(source env.sh)",
+      "Bash(source:*)"
     ],
     "deny": [],
     "ask": [],
