@@ -33,6 +33,7 @@ class TestInferenceConcurrencySafety:
 
         # Also patch the config directly to ensure it's disabled in threaded contexts
         from pyvider.cty.config.runtime import CtyConfig
+
         mock_config = CtyConfig(enable_type_inference_cache=False)
         monkeypatch.setattr(CtyConfig, "get_current", lambda: mock_config)
         # Define two structurally different data sets

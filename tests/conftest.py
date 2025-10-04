@@ -163,12 +163,12 @@ def clear_inference_cache():
     Clear inference cache before and after each test to ensure test isolation.
     This prevents race conditions and cache pollution between tests.
     """
-    from pyvider.cty.conversion._cache import _container_schema_cache, _structural_key_cache
+    from pyvider.cty.conversion.inference_cache import _container_schema_cache, _structural_key_cache
 
-    # Clear cache before test
-    _structural_key_cache.set(None)
-    _container_schema_cache.set(None)
+    # Reset ContextVar tokens before test
+    _structural_key_cache._context_var.set(None)
+    _container_schema_cache._context_var.set(None)
     yield
-    # Clear cache after test
-    _structural_key_cache.set(None)
-    _container_schema_cache.set(None)
+    # Reset ContextVar tokens after test
+    _structural_key_cache._context_var.set(None)
+    _container_schema_cache._context_var.set(None)
