@@ -38,7 +38,8 @@
       "Bash(TESTKIT_SUPPRESS_WARNINGS=1 pytest simple_testkit_test.py -v)",
       "Bash(ruff format:*)",
       "Bash(ruff check:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],
