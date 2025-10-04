@@ -38,16 +38,8 @@ class CtyBool(CtyType[bool]):
         if isinstance(raw_value, bool):
             return CtyValue(vtype=self, value=raw_value)
 
-        # Handle numeric values (int/float) - only 0 and 1 are valid
-        if isinstance(raw_value, int | float):
-            if raw_value == 1 or raw_value == 1.0:
-                return CtyValue(vtype=self, value=True)
-            if raw_value == 0 or raw_value == 0.0:
-                return CtyValue(vtype=self, value=False)
-            # Fall through to error for other numbers
-
-        # Use foundation's parse_bool_strict for string parsing
-        if isinstance(raw_value, str):
+        # Delegate to foundation's parse_bool_strict for all other types
+        if isinstance(raw_value, str | int | float):
             try:
                 parsed = parse_bool_strict(raw_value)
                 return CtyValue(vtype=self, value=parsed)

@@ -32,7 +32,7 @@ class TestTupleDiagnostics:
             schema_type=schema,
             invalid_config=config,
             expected_error_type=CtyTupleValidationError,
-            expected_error_message="At [2]: Boolean validation error: Cannot convert str to bool.",
+            expected_error_message="At [2]: Boolean validation error: Cannot convert str to bool",
         )
 
     def test_error_in_collection_within_tuple(self) -> None:
