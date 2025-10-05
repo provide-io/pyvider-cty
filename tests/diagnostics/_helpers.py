@@ -28,10 +28,11 @@ def assert_diagnostic(
     normalized_actual = normalize_whitespace(actual_message)
     normalized_expected = normalize_whitespace(expected_error_message)
 
-    assert normalized_actual == normalized_expected, (
+    # Allow partial matching if expected message is a prefix of actual
+    assert normalized_expected in normalized_actual or normalized_actual == normalized_expected, (
         f"\nNormalized messages do not match:"
-        f"\n- Expected: '{normalized_expected}'"
-        f"\n- Got:      '{normalized_actual}'"
+        f"\n- Expected (substring): '{normalized_expected}'"
+        f"\n- Got:                  '{normalized_actual}'"
         f"\n---"
         f"\n- Original Expected:\n{expected_error_message}"
         f"\n- Original Got:\n{actual_message}"

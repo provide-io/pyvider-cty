@@ -9,12 +9,12 @@ import unicodedata
 import attrs
 from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
 
-from pyvider.cty.conversion._cache import (
+from pyvider.cty.conversion._utils import _attrs_to_dict_safe
+from pyvider.cty.conversion.inference_cache import (
     get_container_schema_cache,
     get_structural_key_cache,
     with_inference_cache,
 )
-from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
 
@@ -112,6 +112,7 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     Includes thread identity to ensure complete isolation between concurrent operations.
     """
     import threading
+
     structural_cache = get_structural_key_cache()
     if structural_cache is None:
         # Fallback for when no cache is available (thread safety mode)
