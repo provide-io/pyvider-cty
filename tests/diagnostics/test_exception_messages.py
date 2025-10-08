@@ -45,7 +45,7 @@ class TestValidationExceptionStructure:
             schema_type=schema,
             invalid_config={"a": True, "b": "not-a-bool"},
             expected_error_type=CtyMapValidationError,
-            expected_error_message="At ['b']: Boolean validation error: Cannot convert str to bool: Invalid boolean 'not-a-bool'. Valid options: true, false, yes, no, 1, 0, on, off, enabled, disabled Use parse_bool_extended() for lenient parsing that defaults to False",
+            expected_error_message="At ['b']: Boolean validation error: Cannot convert str to bool.",
         )
 
     def test_tuple_validation_error_structure(self) -> None:
