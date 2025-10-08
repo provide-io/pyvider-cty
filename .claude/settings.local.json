@@ -42,7 +42,8 @@
       "Bash(python:*)",
       "Bash(git mv:*)",
       "Bash(source env.sh)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(mypy:*)"
     ],
     "deny": [],
     "ask": [],
