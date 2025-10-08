@@ -22,8 +22,8 @@ import threading
 import time
 from typing import Any
 
-from provide.foundation import logger  # type: ignore[import-untyped]
-from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
+from provide.foundation import logger
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
     MAX_OBJECT_REVISITS,

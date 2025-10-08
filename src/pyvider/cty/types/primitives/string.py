@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import unicodedata
 
 from attrs import define
-from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.exceptions import CtyStringValidationError
 from pyvider.cty.types.base import CtyType

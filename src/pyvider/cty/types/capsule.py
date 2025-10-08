@@ -35,7 +35,7 @@ class CtyCapsule(CtyType[Any]):
 
     def validate(self, value: object) -> CtyValue[Any]:
         val_to_check: object | None
-        original_marks = frozenset()
+        original_marks: frozenset[Any] = frozenset()
 
         if isinstance(value, CtyValue):
             if value.is_null:

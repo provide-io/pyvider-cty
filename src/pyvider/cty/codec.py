@@ -5,7 +5,7 @@ import json
 from typing import Any, cast
 
 import msgpack  # type: ignore
-from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
     ERR_DECODE_DYNAMIC_TYPE,
@@ -157,14 +157,14 @@ def _serialize_object_value(inner_val: Any, schema: CtyObject) -> dict[str, Any]
     }
 
 
-def _serialize_map_value(inner_val: Any, schema: CtyMap) -> dict[str, Any]:
+def _serialize_map_value(inner_val: Any, schema: CtyMap[Any]) -> dict[str, Any]:
     """Serialize a CtyMap value."""
     if not isinstance(inner_val, dict):
         raise TypeError(ERR_VALUE_FOR_MAP)
     return {k: _convert_value_to_serializable(v, schema.element_type) for k, v in sorted(inner_val.items())}
 
 
-def _serialize_collection_value(inner_val: Any, schema: CtyList | CtySet) -> list[Any]:
+def _serialize_collection_value(inner_val: Any, schema: CtyList[Any] | CtySet[Any]) -> list[Any]:
     """Serialize a CtyList or CtySet value."""
     if not hasattr(inner_val, "__iter__"):
         raise TypeError(ERR_VALUE_FOR_LIST_SET)
@@ -199,7 +199,7 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -
     if isinstance(schema, CtyMap):
         return _serialize_map_value(inner_val, schema)
     if isinstance(schema, CtyList | CtySet):
-        return _serialize_collection_value(inner_val, cast(CtyList | CtySet, schema))
+        return _serialize_collection_value(inner_val, cast(CtyList[Any] | CtySet[Any], schema))
     if isinstance(schema, CtyTuple):
         return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):

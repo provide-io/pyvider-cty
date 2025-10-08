@@ -7,7 +7,7 @@ from typing import Any
 import unicodedata
 
 import attrs
-from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.conversion.inference_cache import (
@@ -21,7 +21,7 @@ from pyvider.cty.values import CtyValue
 
 def _extract_container_children(container: Any) -> list[Any]:
     """Extract child elements from a container for cache key generation."""
-    children = []
+    children: list[Any] = []
     if isinstance(container, dict):
         children.extend(container.values())
     elif isinstance(container, list | tuple | set | frozenset):

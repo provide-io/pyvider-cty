@@ -11,7 +11,7 @@ from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 def _get_refined_components(
-    a: CtyValue, b: CtyValue
+    a: CtyValue[Any], b: CtyValue[Any]
 ) -> tuple[RefinedUnknownValue, RefinedUnknownValue, Any, Any]:
     """Extract refinement components from two values."""
     ref_a = a.value if isinstance(a.value, RefinedUnknownValue) else RefinedUnknownValue()
@@ -164,7 +164,7 @@ def _propagate_divide_refinements(ref_a: RefinedUnknownValue, val_b: Any) -> dic
     return new_ref
 
 
-def _propagate_refined_unknowns(op: str, a: CtyValue, b: CtyValue) -> CtyValue:
+def _propagate_refined_unknowns(op: str, a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """Helper to propagate refinements for binary numeric operations."""
     if not (isinstance(a.value, RefinedUnknownValue) or isinstance(b.value, RefinedUnknownValue)):
         return CtyValue.unknown(CtyNumber())
