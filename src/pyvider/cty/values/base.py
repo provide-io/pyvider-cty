@@ -325,7 +325,7 @@ class CtyValue(Generic[T]):
         new_dict = self.value.copy()
         del new_dict[key]
         # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_dict)  # type: ignore[return-value]
+        return self.vtype.validate(new_dict)  # type: ignore[no-any-return]
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
@@ -337,7 +337,7 @@ class CtyValue(Generic[T]):
         new_list = list(self.value)
         new_list.append(value)
         # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_list)  # type: ignore[return-value]
+        return self.vtype.validate(new_list)  # type: ignore[no-any-return]
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
@@ -351,7 +351,7 @@ class CtyValue(Generic[T]):
             raise IndexError("list index out of range")
         new_list[index] = value
         # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_list)  # type: ignore[return-value]
+        return self.vtype.validate(new_list)  # type: ignore[no-any-return]
 
     @classmethod
     def unknown(cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN) -> CtyValue[Any]:
