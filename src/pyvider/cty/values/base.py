@@ -310,7 +310,8 @@ class CtyValue(Generic[T]):
             raise TypeError("Internal value of CtyMap must be a dict.")
         new_dict = self.value.copy()
         new_dict[key] = value
-        return self.vtype.validate(new_dict)  # type: ignore[return-value]
+        # validate() returns CtyValue[Any] due to .value: object limitation
+        return self.vtype.validate(new_dict)  # type: ignore[no-any-return]
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
