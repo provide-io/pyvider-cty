@@ -324,6 +324,7 @@ class CtyValue(Generic[T]):
             return self
         new_dict = self.value.copy()
         del new_dict[key]
+        # validate() returns CtyValue[Any] due to .value: object limitation
         return self.vtype.validate(new_dict)  # type: ignore[return-value]
 
     def append(self, value: Any) -> Self:
@@ -335,6 +336,7 @@ class CtyValue(Generic[T]):
             raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
         new_list.append(value)
+        # validate() returns CtyValue[Any] due to .value: object limitation
         return self.vtype.validate(new_list)  # type: ignore[return-value]
 
     def with_element_at(self, index: int, value: Any) -> Self:
@@ -348,6 +350,7 @@ class CtyValue(Generic[T]):
         if not (-len(new_list) <= index < len(new_list)):
             raise IndexError("list index out of range")
         new_list[index] = value
+        # validate() returns CtyValue[Any] due to .value: object limitation
         return self.vtype.validate(new_list)  # type: ignore[return-value]
 
     @classmethod
