@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from provide.foundation.errors import FoundationError  # type: ignore[import-untyped]
+from provide.foundation.errors import FoundationError
 
 #
 # pyvider/cty/exceptions/base.py
@@ -12,7 +12,7 @@ Defines the base exception for the CTY type system.
 """
 
 
-class CtyError(FoundationError):  # type: ignore[misc]
+class CtyError(FoundationError):
     """
     Base exception for all pyvider.cty errors.
 

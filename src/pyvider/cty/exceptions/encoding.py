@@ -51,6 +51,7 @@ class TransformationError(CtyError):
         self.target_type = target_type
 
         # Add rich transformation context
+        # kwargs.setdefault returns object, but we know it's dict[str, Any]
         context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
         context["cty.operation"] = "schema_transformation"
         context["cty.error_category"] = "transformation"
@@ -101,7 +102,7 @@ class InvalidTypeError(CtyError):
         self.invalid_type = invalid_type
 
         # Add type validation context
-        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
+        context: dict[str, Any] = kwargs.setdefault("context", {})
         context["cty.error_category"] = "invalid_type"
         context["cty.validation_stage"] = "type_definition"
 
@@ -140,7 +141,7 @@ class AttributePathError(CtyError):
         self.value = value
 
         # Add path operation context
-        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
+        context: dict[str, Any] = kwargs.setdefault("context", {})
         context["cty.error_category"] = "path_operation"
         context["cty.operation"] = "attribute_path_access"
 
@@ -196,7 +197,7 @@ class EncodingError(CtyError):
         self._original_message = message
 
         # Add encoding context
-        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
+        context: dict[str, Any] = kwargs.setdefault("context", {})
         context["cty.error_category"] = "encoding"
         context["cty.operation"] = "serialization"
 
@@ -255,7 +256,7 @@ class SerializationError(EncodingError):
         self.value = value
 
         # Add serialization-specific context
-        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
+        context: dict[str, Any] = kwargs.setdefault("context", {})
         context["cty.serialization_direction"] = "serialize"
 
         if value is not None and hasattr(value, "type"):
@@ -295,7 +296,7 @@ class DeserializationError(EncodingError):
             format_name: The name of the deserialization format.
         """
         # Add deserialization-specific context
-        context: dict[str, Any] = kwargs.setdefault("context", {})  # type: ignore[assignment]
+        context: dict[str, Any] = kwargs.setdefault("context", {})
         context["cty.serialization_direction"] = "deserialize"
 
         if data is not None:
@@ -360,7 +361,7 @@ class JsonEncodingError(EncodingError):
             # Remove the "JSON encoding error: " part, add op, then re-add prefix
             base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
             formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
-            self.args = (formatted_message, *self.args[1:])  # type: ignore[misc]
+            self.args = (formatted_message, *self.args[1:])
 
 
 class MsgPackEncodingError(EncodingError):
@@ -391,7 +392,7 @@ class MsgPackEncodingError(EncodingError):
             current_message = str(self.args[0]) if self.args else ""
             base_message = current_message.replace(f"{self.encoding.upper()} encoding error: ", "", 1)
             formatted_message = f"{self.encoding.upper()} {operation} error: {base_message}"
-            self.args = (formatted_message, *self.args[1:])  # type: ignore[misc]
+            self.args = (formatted_message, *self.args[1:])
 
 
 class WireFormatError(TransformationError):
@@ -442,7 +443,7 @@ class WireFormatError(TransformationError):
         elif operation:  # Only operation is present, no format_type
             current_message = f"{current_message} during {operation}"
 
-        self.args = (current_message, *self.args[1:])  # type: ignore[misc]
+        self.args = (current_message, *self.args[1:])
 
 
 # 🐍🏗️🐣

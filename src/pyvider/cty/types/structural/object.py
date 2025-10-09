@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 import unicodedata
 
 from attrs import define, field
-from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.exceptions import (
