@@ -310,7 +310,8 @@ class CtyValue(Generic[T]):
             raise TypeError("Internal value of CtyMap must be a dict.")
         new_dict = self.value.copy()
         new_dict[key] = value
-        return self.vtype.validate(new_dict)  # type: ignore[return-value]
+        # validate() returns CtyValue[Any] due to .value: object limitation
+        return self.vtype.validate(new_dict)  # type: ignore[no-any-return]
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
@@ -323,7 +324,8 @@ class CtyValue(Generic[T]):
             return self
         new_dict = self.value.copy()
         del new_dict[key]
-        return self.vtype.validate(new_dict)  # type: ignore[return-value]
+        # validate() returns CtyValue[Any] due to .value: object limitation
+        return self.vtype.validate(new_dict)  # type: ignore[no-any-return]
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
@@ -334,7 +336,8 @@ class CtyValue(Generic[T]):
             raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
         new_list.append(value)
-        return self.vtype.validate(new_list)  # type: ignore[return-value]
+        # validate() returns CtyValue[Any] due to .value: object limitation
+        return self.vtype.validate(new_list)  # type: ignore[no-any-return]
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
@@ -347,7 +350,8 @@ class CtyValue(Generic[T]):
         if not (-len(new_list) <= index < len(new_list)):
             raise IndexError("list index out of range")
         new_list[index] = value
-        return self.vtype.validate(new_list)  # type: ignore[return-value]
+        # validate() returns CtyValue[Any] due to .value: object limitation
+        return self.vtype.validate(new_list)  # type: ignore[no-any-return]
 
     @classmethod
     def unknown(cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN) -> CtyValue[Any]:

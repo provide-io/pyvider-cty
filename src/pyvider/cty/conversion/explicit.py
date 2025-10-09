@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from functools import lru_cache
 from typing import Any, TypeVar, overload
 
-from provide.foundation.errors import error_boundary  # type: ignore[import-untyped]
+from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
     ERR_CANNOT_CONVERT_GENERAL,
@@ -43,6 +43,10 @@ T = TypeVar("T")
 
 @overload
 def convert(value: CtyValue[Any], target_type: CtyType[T]) -> CtyValue[T]: ...
+
+
+@overload
+def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]: ...
 
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
