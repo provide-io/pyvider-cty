@@ -42,4 +42,5 @@ def test_max_validation_depth_constant() -> None:
     assert isinstance(MAX_VALIDATION_DEPTH, int)
     assert MAX_VALIDATION_DEPTH > 0
 
+
 # 🐍⛓️🏷️🪄

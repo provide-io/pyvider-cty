@@ -141,4 +141,5 @@ class TestCtyTypeParseError:
         assert error.type_string == type_string
         assert error.source_value == type_string
 
+
 # 🐍⛓️🐛🪄

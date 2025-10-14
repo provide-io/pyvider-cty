@@ -87,4 +87,5 @@ def test_usable_as_different_lengths() -> None:
     type2 = CtyTuple((CtyString(), CtyNumber()))
     assert type1.usable_as(type2) is False
 
+
 # 🐍⛓️🖇️🪄

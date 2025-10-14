@@ -26,4 +26,5 @@ def test_parser_failures(invalid_str: str) -> None:
     with pytest.raises(CtyValidationError):
         parse_type_string_to_ctytype(invalid_str)
 
+
 # 🐍⛓️🧩🪄

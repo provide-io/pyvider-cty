@@ -10,4 +10,5 @@ def test_empty_value_for_collections() -> None:
     assert CtyMap(element_type=CtyNumber()).validate({}).is_empty() is True
     assert CtySet(element_type=CtyBool()).validate(set()).is_empty() is True
 
+
 # 🐍⛓️🧱🪄

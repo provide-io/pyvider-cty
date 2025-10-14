@@ -57,4 +57,5 @@ def test_serialize_refined_unknown_with_no_payload() -> None:
     serialized = _serialize_unknown(val)
     assert serialized.code == 0
 
+
 # 🐍⛓️🔢🪄

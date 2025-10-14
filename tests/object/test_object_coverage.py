@@ -76,4 +76,5 @@ def test_usable_as_not_subset_required() -> None:
         "Object type with fewer attributes should not be usable as type with more attributes"
     )
 
+
 # 🐍⛓️📦🪄

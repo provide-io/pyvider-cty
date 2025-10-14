@@ -28,4 +28,5 @@ def test_validate_with_cty_value_different_set_type() -> None:
     with pytest.raises(CtySetValidationError):
         set_type.validate(value)
 
+
 # 🐍⛓️🗃️🪄

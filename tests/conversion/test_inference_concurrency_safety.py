@@ -81,4 +81,5 @@ class TestInferenceConcurrencySafety:
         assert type1_result.equal(expected_type1), "Thread 1 produced an incorrect type"
         assert type2_result.equal(expected_type2), "Thread 2 produced an incorrect type"
 
+
 # 🐍⛓️↔️🪄

@@ -56,4 +56,5 @@ class TestCtyBoolType:
         result = self.bool_type.validate(True)
         assert result.value is True
 
+
 # 🐍⛓️🧱🪄

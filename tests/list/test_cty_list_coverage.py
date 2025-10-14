@@ -50,4 +50,5 @@ def test_element_at_on_non_list_internal_value() -> None:
     ):
         list_type.element_at(inconsistent_value, 0)
 
+
 # 🐍⛓️🧾🪄

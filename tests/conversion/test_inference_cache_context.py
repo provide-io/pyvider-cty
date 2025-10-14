@@ -58,4 +58,5 @@ class TestInferenceCacheContext:
             # Exiting the inner context should not clear the cache
             assert _structural_key_cache._context_var.get() is outer_struct_cache
 
+
 # 🐍⛓️↔️🪄

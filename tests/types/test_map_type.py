@@ -72,4 +72,5 @@ class TestCtyMap:
         with pytest.raises(InvalidTypeError):
             CtyMap(element_type="not a cty type")
 
+
 # 🐍⛓️🧱🪄

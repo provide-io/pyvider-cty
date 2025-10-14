@@ -49,4 +49,5 @@ def test_map_constructor_with_value_type_keyword() -> None:
     val = map_type.validate({"a": 123})
     assert val["a"].value == 123
 
+
 # 🐍⛓️🗺️🪄

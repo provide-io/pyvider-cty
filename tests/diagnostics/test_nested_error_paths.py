@@ -49,4 +49,5 @@ class TestNestedErrorPaths:
         expected_path = "config[1]['retries']"
         assert expected_path in str(exc_info.value)
 
+
 # 🐍⛓️🩺🪄

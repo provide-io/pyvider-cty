@@ -28,4 +28,5 @@ class TestCtyListValueOperations:
             f"Expected ['b', 'c', 'd'] from slice [1:4], but got {[item.value for item in sliced.value]}"
         )
 
+
 # 🐍⛓️🧾🪄

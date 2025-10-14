@@ -57,4 +57,5 @@ def test_invalid_type_parsing_raises_error(type_spec) -> None:
     with pytest.raises(CtyValidationError):
         parse_tf_type_to_ctytype(type_spec)
 
+
 # 🐍⛓️🤔🪄

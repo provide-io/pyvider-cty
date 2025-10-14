@@ -123,4 +123,5 @@ def test_benchmark_full_round_trip(benchmark, complex_raw_data) -> None:
 
     benchmark(round_trip_operation)
 
+
 # 🐍⛓️⏱️🪄

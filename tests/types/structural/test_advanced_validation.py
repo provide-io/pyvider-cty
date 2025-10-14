@@ -27,4 +27,5 @@ class TestAdvancedCtyValidation:
         # The unpacked value is a CtyDynamic wrapper. Compare its inner value.
         assert dynamic_val.value == unpacked_val.value
 
+
 # 🐍⛓️🧱🪄

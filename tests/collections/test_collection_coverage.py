@@ -29,4 +29,5 @@ def test_map_constructor_validation() -> None:
     with pytest.raises(InvalidTypeError):
         CtyMap(element_type="not a type")
 
+
 # 🐍⛓️📚🪄

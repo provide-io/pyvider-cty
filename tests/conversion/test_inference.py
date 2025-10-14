@@ -148,4 +148,5 @@ def test_infer_from_attrs_object() -> None:
         f"Expected attribute 'b' type CtyString, but got {type(inferred_type.attribute_types['b']).__name__}"
     )
 
+
 # 🐍⛓️↔️🪄

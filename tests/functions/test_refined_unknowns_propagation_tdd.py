@@ -75,4 +75,5 @@ class TestRefinedUnknownPropagation:
         assert result.value.number_lower_bound == (Decimal("10"), True)
         assert result.value.number_upper_bound == (Decimal("20"), True)
 
+
 # 🐍⛓️🔣🪄

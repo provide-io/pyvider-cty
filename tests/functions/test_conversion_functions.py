@@ -26,4 +26,5 @@ def test_to_bool() -> None:
     with pytest.raises(CtyFunctionError):
         to_bool(CtyString().validate("abc"))
 
+
 # 🐍⛓️🔣🪄

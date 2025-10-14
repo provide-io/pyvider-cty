@@ -665,4 +665,5 @@ class TestConcat:
         assert isinstance(result.type.element_type, CtyDynamic)
         assert result.raw_value == ["a", 1]
 
+
 # 🐍⛓️🔣🪄

@@ -62,4 +62,5 @@ def test_inference_is_correct_for_same_keys_different_types(data) -> None:
         actual_attr_type = type2.attribute_types[normalized_key]
         assert actual_attr_type.equal(expected_attr_type)
 
+
 # 🐍⛓️🧪🪄

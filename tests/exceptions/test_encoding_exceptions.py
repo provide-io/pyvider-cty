@@ -197,4 +197,5 @@ class TestInvalidTypeError:
         assert str(error) == "Invalid type used"
         assert error.invalid_type == invalid_type_obj
 
+
 # 🐍⛓️🐛🪄

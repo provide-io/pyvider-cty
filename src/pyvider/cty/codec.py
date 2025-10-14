@@ -229,8 +229,8 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
         # Check if the original string has float artifacts (very long precision)
         # Float64 has ~15-17 significant decimal digits. If we see more than 20 digits after
         # the decimal point, it's likely float representation artifacts.
-        if '.' in original_str:
-            decimal_part = original_str.split('.')[1]
+        if "." in original_str:
+            decimal_part = original_str.split(".")[1]
             if len(decimal_part) > 20:
                 # This looks like float artifacts - just use the float
                 return float_val
@@ -342,5 +342,6 @@ def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
                 raise e
 
         return _unpacked_to_cty(raw_unpacked, cty_type)
+
 
 # 🐍⛓️🤔🪄

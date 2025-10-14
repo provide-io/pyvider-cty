@@ -107,4 +107,5 @@ class TestFinalCoverageSuite:
         # prevent the real value from being found.
         assert coalesce(null_val, unknown_val, real_val) == real_val
 
+
 # 🐍⛓️🎯🪄

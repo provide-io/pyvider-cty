@@ -21,4 +21,5 @@ def encode_cty_type_to_wire_json(cty_type: CtyType[Any]) -> Any:
         raise TypeError(error_message)
     return cty_type._to_wire_json()
 
+
 # 🐍⛓️↔️🪄

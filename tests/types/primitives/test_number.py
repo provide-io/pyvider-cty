@@ -51,4 +51,5 @@ class TestCtyNumber:
         assert self.number_type.usable_as(CtyDynamic()), "CtyNumber should be usable as CtyDynamic"
         assert not self.number_type.usable_as(CtyString()), "CtyNumber should not be usable as CtyString"
 
+
 # 🐍⛓️🧱🪄

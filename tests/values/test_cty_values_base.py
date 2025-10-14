@@ -115,4 +115,5 @@ class TestCtyValueOtherMethods:
         )
         assert not CtyString().validate("a").is_empty(), "Non-empty string should not be empty"
 
+
 # 🐍⛓️💰🪄

@@ -46,4 +46,5 @@ class TestEncodingFunctionsCoverage:
         with pytest.raises(CtyFunctionError):
             csvdecode(CtyString().validate("a,b\n1,2"))
 
+
 # 🐍⛓️🔣🪄

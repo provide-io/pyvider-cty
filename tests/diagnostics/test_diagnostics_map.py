@@ -39,4 +39,5 @@ class TestMapDiagnostics:
         ):
             schema.validate(config)
 
+
 # 🐍⛓️🩺🪄
