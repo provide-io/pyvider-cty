@@ -209,19 +209,40 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
         # For non-integers, check if converting to float would lose precision
         # This matches go-cty's behavior of preserving exact decimal values
         float_val = float(decimal_val)
-        # Compare against a normalized Decimal created from the string representation of the float
-        # This accounts for cases where the original Decimal was created from a float and already
-        # has float precision artifacts
-        normalized_decimal = Decimal(str(float_val))
-        # Create a Decimal directly from the float to compare with full precision
-        original_as_float_decimal = Decimal(float_val)
 
-        # If the normalized decimal (round-trip through float) equals the original when both
-        # are considered as float-precision values, then no additional precision is being lost
-        if normalized_decimal == Decimal(str(decimal_val)):
-            # The decimal can be represented exactly as a float
+        # Strategy: Detect if the Decimal has float artifacts (from being created via Decimal(float))
+        # vs being created from a clean source like Decimal("123.456789012345678901234567890").
+        #
+        # Float artifacts look like very long decimal expansions (e.g., ...28421709430404...)
+        # that come from binary floating point representation.
+        #
+        # Key insight: If the decimal's string representation has many digits (>16 significant figures
+        # after decimal point) and differs from the float's string representation, it's likely artifacts.
+
+        original_str = str(decimal_val)
+        float_str = str(float_val)
+
+        # Check if the original string has float artifacts (very long precision)
+        # Float64 has ~15-17 significant decimal digits. If we see more than 20 digits after
+        # the decimal point, it's likely float representation artifacts.
+        if '.' in original_str:
+            decimal_part = original_str.split('.')[1]
+            if len(decimal_part) > 20:
+                # This looks like float artifacts - just use the float
+                return float_val
+
+        # Convert float back to Decimal via its string representation to check precision loss
+        roundtrip_decimal = Decimal(float_str)
+
+        # If round-trip through float preserves the value, no precision loss
+        if decimal_val == roundtrip_decimal:
             return float_val
-        # Otherwise, preserve as string to maintain precision
+
+        # If the string representations are equal, use float (they're equivalent)
+        if original_str == float_str:
+            return float_val
+
+        # Otherwise, preserve as string to maintain precision beyond float64
         return str(decimal_val)
 
 
