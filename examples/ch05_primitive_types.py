@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-#!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyBool, CtyNumber, CtyString
 

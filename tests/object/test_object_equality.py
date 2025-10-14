@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-#
-# tests/object/test_object_equality.py
-#
-
 """
 Tests for CtyObject type implementation.
 """

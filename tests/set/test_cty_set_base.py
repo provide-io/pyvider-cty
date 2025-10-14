@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-#
-# tests/set/test_cty_set_base.py
-#
-
 """
 Test module for CtySet implementation.
 

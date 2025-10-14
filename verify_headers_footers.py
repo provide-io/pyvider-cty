@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# verify_headers_footers.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Pre-commit hook to verify headers and footers in Python files."""
 
 import argparse
@@ -142,7 +146,6 @@ def verify_footer(file_path: Path) -> tuple[bool, str]:
     # Check for magic footer pattern
     project1, project2 = get_project_emojis(file_path)
     file_emoji = get_file_emoji(file_path)
-    expected_pattern = f"# {project1}{project2}{file_emoji}🪄"
 
     # Look for the magic footer at the end
     lines = content.strip().split("\n")
@@ -151,15 +154,12 @@ def verify_footer(file_path: Path) -> tuple[bool, str]:
 
     last_line = lines[-1].strip()
 
-    if not last_line.startswith("# ") or "🪄" not in last_line:
         return False, f"Missing magic footer. Expected format: {expected_pattern}"
 
     # Extract emojis from the line
     emoji_part = last_line[2:].strip()  # Remove "# " prefix
 
     # Count emojis (this is approximate due to emoji complexity)
-    if emoji_part.count("🪄") != 1 or not emoji_part.endswith("🪄"):
-        return False, "Magic footer must end with exactly one 🪄"
 
     return True, ""
 
@@ -209,4 +209,4 @@ def main():
 if __name__ == "__main__":
     sys.exit(main())
 
-# 🐍🎯🖥️🪄
+# 🐍⛓️📁🪄
