@@ -183,10 +183,11 @@ def _serialize_tuple_value(inner_val: Any, schema: CtyTuple) -> list[Any]:
     return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
 
 
-def _serialize_decimal_value(decimal_val: Decimal) -> int | float | bytes:
+def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
     """Serialize a Decimal value for MessagePack encoding.
 
-    Returns int for integers in int64 range, bytes for large integers, or float for non-integers.
+    Returns int for integers in int64 range, str for large integers, or float for non-integers.
+    For non-integers, checks if float conversion would lose precision and encodes as string if so.
     """
     try:
         # Check if it's a whole number
@@ -203,9 +204,16 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | bytes:
         if -(2**63) <= int_val < 2**63:
             return int_val
         else:
-            return str(int_val).encode("utf-8")
+            return str(int_val)
     else:
-        return float(decimal_val)
+        # For non-integers, check if converting to float would lose precision
+        # This matches go-cty's behavior of preserving exact decimal values
+        float_val = float(decimal_val)
+        # Convert back to Decimal to check if precision was lost
+        if Decimal(str(float_val)) != decimal_val:
+            # Precision would be lost - encode as string to preserve it
+            return str(decimal_val)
+        return float_val
 
 
 def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -> Any:
