@@ -183,6 +183,31 @@ def _serialize_tuple_value(inner_val: Any, schema: CtyTuple) -> list[Any]:
     return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
 
 
+def _serialize_decimal_value(decimal_val: Decimal) -> int | float | bytes:
+    """Serialize a Decimal value for MessagePack encoding.
+
+    Returns int for integers in int64 range, bytes for large integers, or float for non-integers.
+    """
+    try:
+        # Check if it's a whole number
+        is_integer = decimal_val % 1 == 0
+    except Exception:
+        # For extremely large numbers, check using as_tuple()
+        _sign, _digits, exponent = decimal_val.as_tuple()
+        is_integer = isinstance(exponent, int) and exponent >= 0
+
+    if is_integer:
+        int_val = int(decimal_val)
+        # MessagePack only supports int64 range natively (-2^63 to 2^63-1)
+        # For values outside this range, encode as string (matches go-cty behavior)
+        if -(2**63) <= int_val < 2**63:
+            return int_val
+        else:
+            return str(int_val).encode("utf-8")
+    else:
+        return float(decimal_val)
+
+
 def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -> Any:
     if not isinstance(value, CtyValue):
         value = schema.validate(value)
@@ -203,22 +228,13 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -
     if isinstance(schema, CtyTuple):
         return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):
-        # Encode as native msgpack number for Terraform wire protocol compatibility
-        # For integers, use int. For non-integers, use float representation.
-        if inner_val % 1 == 0:
-            return int(inner_val)
-        else:
-            return float(inner_val)
+        return _serialize_decimal_value(inner_val)
     return inner_val
 
 
 def _msgpack_default_handler(obj: Any) -> Any:
     if isinstance(obj, Decimal):
-        # Encode as native msgpack number for Terraform wire protocol compatibility
-        if obj % 1 == 0:
-            return int(obj)
-        else:
-            return float(obj)
+        return _serialize_decimal_value(obj)
     error_message = ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE.format(type_name=type(obj).__name__)
     raise TypeError(error_message)
 
