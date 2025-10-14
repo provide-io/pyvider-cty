@@ -181,4 +181,5 @@ def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         raise CtyFunctionError("values: input value is not a map or object")
     return CtyList(element_type=input_val.type.element_type).validate(list(input_val.value.values()))
 
+
 # 🐍⛓️🔣🪄

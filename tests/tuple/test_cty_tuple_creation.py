@@ -36,4 +36,5 @@ class TestCtyTupleCreation:
         empty_tuple = CtyTuple(element_types=())
         assert str(empty_tuple) == "tuple([])"
 
+
 # 🐍⛓️🖇️🪄

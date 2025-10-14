@@ -37,4 +37,5 @@ def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
     except Exception as e:
         raise CtyFunctionError(f"tobool: cannot convert {input_val.type.ctype} to bool") from e
 
+
 # 🐍⛓️🔣🪄

@@ -42,4 +42,5 @@ def test_infer_list_of_objects_with_optional_and_mismatched_types() -> None:
     except CtyValidationError as e:
         pytest.fail(f"Validation with the inferred type failed: {e}")
 
+
 # 🐍⛓️↔️🪄

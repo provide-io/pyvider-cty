@@ -21,4 +21,5 @@ def test_unify_types_all_same() -> None:
 def test_unify_types_different() -> None:
     assert _unify_types({CtyString(), CtyNumber()}) == CtyDynamic()
 
+
 # 🐍⛓️↔️🪄

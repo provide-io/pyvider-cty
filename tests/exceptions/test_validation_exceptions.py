@@ -86,4 +86,5 @@ class TestExceptionSubclasses:
             f"Expected error message to contain 'Expected number, got string', but got {err!s}"
         )
 
+
 # 🐍⛓️🐛🪄

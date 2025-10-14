@@ -80,4 +80,5 @@ def test_benchmark_cty_to_native_wide_structure(benchmark: Any, wide_cty_value: 
     """
     benchmark(cty_to_native, wide_cty_value)
 
+
 # 🐍⛓️⏱️🪄

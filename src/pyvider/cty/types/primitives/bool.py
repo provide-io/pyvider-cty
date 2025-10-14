@@ -70,4 +70,5 @@ class CtyBool(CtyType[bool]):
     def is_primitive_type(self) -> bool:
         return True
 
+
 # 🐍⛓️🧱🪄

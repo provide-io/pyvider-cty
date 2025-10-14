@@ -87,4 +87,5 @@ def test_refined_unknown_roundtrip() -> None:
             f"Refinement {key}: expected {val}, but got {getattr(new_value.value, key)}"
         )
 
+
 # 🐍⛓️🔢🪄

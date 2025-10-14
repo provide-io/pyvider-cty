@@ -61,4 +61,5 @@ def test_tofusoup_compatibility_placeholder():
     else:
         pytest.skip("Go-generated fixtures not available. Use TofuSoup for cross-language testing.")
 
+
 # 🐍⛓️🤝🪄
