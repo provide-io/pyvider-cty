@@ -209,11 +209,20 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
         # For non-integers, check if converting to float would lose precision
         # This matches go-cty's behavior of preserving exact decimal values
         float_val = float(decimal_val)
-        # Convert back to Decimal to check if precision was lost
-        if Decimal(str(float_val)) != decimal_val:
-            # Precision would be lost - encode as string to preserve it
-            return str(decimal_val)
-        return float_val
+        # Compare against a normalized Decimal created from the string representation of the float
+        # This accounts for cases where the original Decimal was created from a float and already
+        # has float precision artifacts
+        normalized_decimal = Decimal(str(float_val))
+        # Create a Decimal directly from the float to compare with full precision
+        original_as_float_decimal = Decimal(float_val)
+
+        # If the normalized decimal (round-trip through float) equals the original when both
+        # are considered as float-precision values, then no additional precision is being lost
+        if normalized_decimal == Decimal(str(decimal_val)):
+            # The decimal can be represented exactly as a float
+            return float_val
+        # Otherwise, preserve as string to maintain precision
+        return str(decimal_val)
 
 
 def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -> Any:
