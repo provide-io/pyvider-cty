@@ -190,7 +190,8 @@ class CtyObject(CtyType[dict[str, object]]):
         )
 
     def _to_wire_json(self) -> Any:
-        attrs_json = {name: attr_type._to_wire_json() for name, attr_type in self.attribute_types.items()}
+        # Sort attributes alphabetically to match go-cty behavior for consistent wire format
+        attrs_json = {name: attr_type._to_wire_json() for name, attr_type in sorted(self.attribute_types.items())}
         return [self.ctype, attrs_json]
 
     def is_primitive_type(self) -> bool:
