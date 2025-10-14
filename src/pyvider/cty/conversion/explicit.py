@@ -1,3 +1,7 @@
+# src/pyvider/cty/conversion/explicit.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -239,3 +243,5 @@ def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any]:
     This is a wrapper that enables caching by converting input to a frozenset.
     """
     return _unify_frozen(frozenset(types))
+
+# 🐍⛓️↔️🪄

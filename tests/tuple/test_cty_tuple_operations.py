@@ -1,3 +1,7 @@
+# tests/tuple/test_cty_tuple_operations.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -32,3 +36,5 @@ class TestCtyTupleOperations:
 
     def test_value_length(self, tuple_value) -> None:
         assert len(tuple_value) == 3
+
+# 🐍⛓️🖇️🪄

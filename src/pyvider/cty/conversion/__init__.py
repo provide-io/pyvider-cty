@@ -1,3 +1,7 @@
+# src/pyvider/cty/conversion/__init__.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from pyvider.cty.conversion.adapter import cty_to_native
@@ -17,3 +21,5 @@ __all__ = [
     "unify",
     "with_inference_cache",
 ]
+
+# 🐍⛓️↔️🪄

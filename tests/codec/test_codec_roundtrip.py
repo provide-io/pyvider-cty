@@ -1,3 +1,7 @@
+# tests/codec/test_codec_roundtrip.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from decimal import Decimal
 
 from pyvider.cty import (
@@ -82,3 +86,5 @@ def test_refined_unknown_roundtrip() -> None:
         assert getattr(new_value.value, key) == val, (
             f"Refinement {key}: expected {val}, but got {getattr(new_value.value, key)}"
         )
+
+# 🐍⛓️🔢🪄

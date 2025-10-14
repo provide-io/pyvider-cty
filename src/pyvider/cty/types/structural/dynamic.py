@@ -1,3 +1,7 @@
+# src/pyvider/cty/types/structural/dynamic.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import json
@@ -69,3 +73,5 @@ class CtyDynamic(CtyType[object]):
 
     def __str__(self) -> str:
         return "dynamic"
+
+# 🐍⛓️🧱🪄

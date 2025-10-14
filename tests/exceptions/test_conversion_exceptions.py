@@ -1,3 +1,7 @@
+# tests/exceptions/test_conversion_exceptions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
     CtyTypeConversionError,
@@ -136,3 +140,5 @@ class TestCtyTypeParseError:
         assert str(error) == expected_msg
         assert error.type_string == type_string
         assert error.source_value == type_string
+
+# 🐍⛓️🐛🪄

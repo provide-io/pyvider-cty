@@ -1,3 +1,7 @@
+# tests/collections/test_collection_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyList, CtyMap, CtyNumber, CtyString
@@ -24,3 +28,5 @@ def test_map_validate_non_dict_input() -> None:
 def test_map_constructor_validation() -> None:
     with pytest.raises(InvalidTypeError):
         CtyMap(element_type="not a type")
+
+# 🐍⛓️📚🪄

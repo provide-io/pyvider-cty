@@ -1,3 +1,7 @@
+# examples/ch13_path_navigation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyList, CtyNumber, CtyObject, CtyString
@@ -50,3 +54,5 @@ print(f"CPU cores: {cpu.raw_value}")
 # `first_disk` is a CtyValue(CtyObject), so we can index it.
 print(f"First disk size: {first_disk['size'].raw_value} GB")
 print(f"First disk type: {disk_type.raw_value}")
+
+# 🐍⛓️📁🪄

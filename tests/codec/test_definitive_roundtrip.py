@@ -1,3 +1,7 @@
+# tests/codec/test_definitive_roundtrip.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from types import MappingProxyType
 from typing import Any
 
@@ -99,3 +103,5 @@ class TestTddDefinitiveCorrectness:
         marked_bool = CtyBool().validate(True).mark(CtyMark("sensitive"))
         list_val = list_type.validate([marked_num, marked_bool, "unmarked"])
         assert_value_roundtrip(list_val)
+
+# 🐍⛓️🔢🪄

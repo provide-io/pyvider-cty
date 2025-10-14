@@ -1,3 +1,7 @@
+# src/pyvider/cty/path/base.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -211,3 +215,5 @@ class CtyPath:
 
     def __str__(self) -> str:
         return self.string()
+
+# 🐍⛓️➡️🪄

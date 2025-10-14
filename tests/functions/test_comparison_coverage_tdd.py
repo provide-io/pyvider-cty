@@ -1,3 +1,7 @@
+# tests/functions/test_comparison_coverage_tdd.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD: This suite adds targeted tests for all unexercised branches in the
 refined unknown propagation logic of comparison functions.
@@ -59,3 +63,5 @@ class TestRefinedUnknownComparisonCoverage:
         known_20 = CtyNumber().validate(20)
         result = greater_than(unknown_lt_10, known_20)
         assert not result.is_unknown and result.value is False
+
+# 🐍⛓️🔣🪄

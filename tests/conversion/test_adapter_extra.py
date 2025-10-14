@@ -1,3 +1,7 @@
+# tests/conversion/test_adapter_extra.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from decimal import Decimal
 
 from pyvider.cty import (
@@ -118,3 +122,5 @@ class TestCtyToNativeCorrectness:
         assert native_result["id"] == 1
         assert isinstance(native_result["data"], list)
         assert native_result["data"] == ["x", "y", "z"]
+
+# 🐍⛓️↔️🪄

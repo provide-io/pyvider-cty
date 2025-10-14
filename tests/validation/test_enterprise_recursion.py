@@ -1,3 +1,7 @@
+# tests/validation/test_enterprise_recursion.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Comprehensive tests for recursion detection in CTY validation.
 
@@ -147,3 +151,5 @@ class TestAdvancedRecursionDetection:
             assert result is False, f"Thread {thread_id} validation failed (returned unknown)"
             assert metrics["total_validations"] > 0
             assert metrics["max_depth_reached"] > 0
+
+# 🐍⛓️✅🪄
