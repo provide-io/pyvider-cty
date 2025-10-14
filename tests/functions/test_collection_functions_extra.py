@@ -1,3 +1,7 @@
+# tests/functions/test_collection_functions_extra.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -660,3 +664,5 @@ class TestConcat:
         assert isinstance(result.type, CtyList)
         assert isinstance(result.type.element_type, CtyDynamic)
         assert result.raw_value == ["a", 1]
+
+# 🐍⛓️🔣🪄

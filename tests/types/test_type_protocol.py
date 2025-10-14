@@ -1,3 +1,7 @@
+# tests/types/test_type_protocol.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 This test suite covers the CtyTypeProtocol to ensure its runtime checkability
 works as expected and to achieve 100% coverage on types/base.py.
@@ -46,3 +50,5 @@ class TestCtyTypeProtocol:
             pass
 
         assert not isinstance(NotACtyType(), CtyTypeProtocol)
+
+# 🐍⛓️🧱🪄

@@ -1,3 +1,7 @@
+# tests/codec/test_deserialization_robustness.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
 
@@ -104,3 +108,5 @@ class TestGoCtyCompatibility:
         assert "age" in deserialized_val.value
         assert deserialized_val["age"].is_null is True
         assert deserialized_val["name"].value == "Alice"
+
+# 🐍⛓️🔢🪄

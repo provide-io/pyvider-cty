@@ -1,3 +1,7 @@
+# src/pyvider/cty/marks.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Any
@@ -33,3 +37,5 @@ class CtyMark:
 
     def __str__(self) -> str:
         return self.name
+
+# 🐍⛓️🤔🪄

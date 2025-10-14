@@ -1,3 +1,7 @@
+# tests/conversion/test_adapter_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty import (
     CtyBool,
     CtyDynamic,
@@ -131,3 +135,5 @@ class TestAdapterCoverage:
         val = CtyNumber().validate(123)
         native = cty_to_native(val)
         assert native == 123
+
+# 🐍⛓️↔️🪄

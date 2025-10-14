@@ -1,3 +1,7 @@
+# tests/conversion/test_infer_cty_type_from_raw_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Never
 
 import attrs
@@ -86,3 +90,5 @@ def test_infer_from_other_types() -> None:
 
     inferred_type = infer_cty_type_from_raw(Other())
     assert inferred_type == CtyDynamic()
+
+# 🐍⛓️↔️🪄

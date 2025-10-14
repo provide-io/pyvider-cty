@@ -1,3 +1,7 @@
+# tests/types/primitives/test_string_normalization.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import unicodedata
 
 import pytest
@@ -29,3 +33,5 @@ def test_string_normalization_on_validate(input_str: str, expected_normalized_st
     assert validated_value.value == unicodedata.normalize("NFC", expected_normalized_str), (
         f"Expected normalized string {unicodedata.normalize('NFC', expected_normalized_str)!r}, but got {validated_value.value!r}"
     )
+
+# 🐍⛓️🧱🪄

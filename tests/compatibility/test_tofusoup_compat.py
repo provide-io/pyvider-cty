@@ -1,3 +1,7 @@
+# tests/compatibility/test_tofusoup_compat.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Cross-language compatibility tests using TofuSoup.
 
@@ -56,3 +60,5 @@ def test_tofusoup_compatibility_placeholder():
         assert not deserialized_val.is_unknown
     else:
         pytest.skip("Go-generated fixtures not available. Use TofuSoup for cross-language testing.")
+
+# 🐍⛓️🤝🪄

@@ -1,3 +1,7 @@
+# tests/types/test_capsule_ops_contract.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD: Strengthens the CtyCapsuleWithOps contract by validating function arity
 in the constructor.
@@ -51,3 +55,5 @@ class TestCapsuleWithOpsContract:
         """TDD: `convert_fn` must accept exactly 2 arguments."""
         with pytest.raises(TypeError, match="`convert_fn` must be a callable that accepts 2 arguments"):
             CtyCapsuleWithOps("Opaque", self.Opaque, convert_fn=bad_func)
+
+# 🐍⛓️🧱🪄

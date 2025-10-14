@@ -1,3 +1,7 @@
+# src/pyvider/cty/validation/recursion.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Advanced recursion detection for CTY validation.
 
@@ -285,3 +289,5 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                     pass
 
     return wrapper
+
+# 🐍⛓️✅🪄

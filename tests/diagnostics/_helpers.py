@@ -1,3 +1,7 @@
+# tests/diagnostics/_helpers.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyType, CtyValidationError
@@ -37,3 +41,5 @@ def assert_diagnostic(
         f"\n- Original Expected:\n{expected_error_message}"
         f"\n- Original Got:\n{actual_message}"
     )
+
+# 🐍⛓️🩺🪄

@@ -1,3 +1,7 @@
+# tests/error_context_integration_test.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 """
 Comprehensive test suite for error context integration with provide-foundation.
@@ -256,3 +260,5 @@ class TestErrorRecoveryAndBoundaries:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+# 🐍⛓️🤔🪄

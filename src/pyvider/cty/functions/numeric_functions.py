@@ -1,3 +1,7 @@
+# src/pyvider/cty/functions/numeric_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -386,3 +390,5 @@ def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     if val.is_null or val.is_unknown:
         return val
     return CtyNumber().validate(Decimal(int(val.value)))
+
+# 🐍⛓️🔣🪄

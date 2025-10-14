@@ -1,3 +1,7 @@
+# tests/types/structural/test_dynamic_list_validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
 
 
@@ -25,3 +29,5 @@ class TestDynamicListValidation:
         # Corrected: This is an object because the value types are not uniform.
         assert isinstance(element_2.type, CtyObject)
         assert element_2.type.attribute_types["role"].equal(CtyNumber())
+
+# 🐍⛓️🧱🪄

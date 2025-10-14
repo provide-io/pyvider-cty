@@ -1,3 +1,7 @@
+# src/pyvider/cty/functions/encoding_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import csv
@@ -46,3 +50,5 @@ def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
         return CtyList(element_type=CtyDynamic()).validate(rows)
     except Exception as e:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
+
+# 🐍⛓️🔣🪄

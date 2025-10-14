@@ -1,3 +1,7 @@
+# tests/values/test_cty_values_boolean_checks.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyBool, CtyDynamic, CtyString, CtyValue
@@ -45,3 +49,5 @@ def test_is_true_and_is_false_with_null_and_unknown(bool_type: CtyBool) -> None:
     unknown_val = CtyValue.unknown(bool_type)
     assert unknown_val.is_true() is False
     assert unknown_val.is_false() is False
+
+# 🐍⛓️💰🪄

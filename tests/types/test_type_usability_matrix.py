@@ -1,3 +1,7 @@
+# tests/types/test_type_usability_matrix.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
 
 
@@ -29,3 +33,5 @@ class TestTypeUsabilityMatrix:
         t_opt = CtyObject(attribute_types={"a": CtyString()}, optional_attributes=frozenset(["a"]))
         assert t_req.usable_as(t_opt)
         assert not t_opt.usable_as(t_req)
+
+# 🐍⛓️🧱🪄

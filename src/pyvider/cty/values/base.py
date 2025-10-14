@@ -1,3 +1,7 @@
+# src/pyvider/cty/values/base.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -360,3 +364,5 @@ class CtyValue(Generic[T]):
     @classmethod
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
+
+# 🐍⛓️💰🪄

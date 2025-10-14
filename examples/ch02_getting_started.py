@@ -1,3 +1,7 @@
+# examples/ch02_getting_started.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyNumber, CtyObject, CtyString
@@ -22,3 +26,5 @@ try:
     print(f"cty_user: {cty_user}")
 except Exception as e:
     print(f"Validation failed: {e}")
+
+# 🐍⛓️📁🪄

@@ -1,3 +1,7 @@
+# tests/values/test_values_extra.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -105,3 +109,5 @@ def test_post_init() -> None:
 def test_raw_value_unknown() -> None:
     with pytest.raises(ValueError):
         _ = CtyValue.unknown(CtyString()).raw_value
+
+# 🐍⛓️💰🪄

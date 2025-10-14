@@ -1,3 +1,7 @@
+# examples/ch12_serialization.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyNumber, CtyObject, CtyString
@@ -18,3 +22,5 @@ print(f"Serialized Msgpack (bytes): {msgpack_bytes!r}")
 reconstructed_value = cty_from_msgpack(msgpack_bytes, user_type)
 assert reconstructed_value == user_value
 print("\nSuccessfully reconstructed value from Msgpack.")
+
+# 🐍⛓️📁🪄

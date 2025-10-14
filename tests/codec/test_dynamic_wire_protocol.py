@@ -1,3 +1,7 @@
+# tests/codec/test_dynamic_wire_protocol.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 
 import msgpack
@@ -80,3 +84,5 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     deserialized = cty_from_msgpack(actual_packed, schema)
     assert isinstance(deserialized.type, CtyDynamic)
     assert deserialized.value == concrete_value
+
+# 🐍⛓️🔢🪄

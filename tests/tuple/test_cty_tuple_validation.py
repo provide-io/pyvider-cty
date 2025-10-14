@@ -1,3 +1,7 @@
+# tests/tuple/test_cty_tuple_validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyTuple
@@ -56,3 +60,5 @@ class TestCtyTupleValidation:
         schema = CtyTuple((CtyString(),))
         with pytest.raises(CtyTupleValidationError):
             schema.validate("not a tuple")
+
+# 🐍⛓️🖇️🪄

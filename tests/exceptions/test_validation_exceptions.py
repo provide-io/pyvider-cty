@@ -1,3 +1,7 @@
+# tests/exceptions/test_validation_exceptions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty.exceptions.validation import (
     CtyAttributeValidationError,
     CtyListValidationError,
@@ -81,3 +85,5 @@ class TestExceptionSubclasses:
         assert "Expected number, got string" in str(err), (
             f"Expected error message to contain 'Expected number, got string', but got {err!s}"
         )
+
+# 🐍⛓️🐛🪄

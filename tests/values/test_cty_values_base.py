@@ -1,3 +1,7 @@
+# tests/values/test_cty_values_base.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyMap, CtyNumber, CtyString, CtyValue
@@ -110,3 +114,5 @@ class TestCtyValueOtherMethods:
             "Non-empty list should not be empty"
         )
         assert not CtyString().validate("a").is_empty(), "Non-empty string should not be empty"
+
+# 🐍⛓️💰🪄

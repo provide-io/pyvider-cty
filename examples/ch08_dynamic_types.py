@@ -1,3 +1,7 @@
+# examples/ch08_dynamic_types.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyString
@@ -17,3 +21,5 @@ dynamic_list_type = CtyList(element_type=CtyDynamic())
 cty_list = dynamic_list_type.validate(["hello", 123, True])
 
 print("Dynamic type examples ran successfully.")
+
+# 🐍⛓️📁🪄

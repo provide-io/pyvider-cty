@@ -1,3 +1,7 @@
+# tests/test_marks.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty.marks import CtyMark
 
 
@@ -57,3 +61,5 @@ class TestCtyMark:
         # Test with a single value
         mark_single = CtyMark("test", "a")
         assert mark_single.details == frozenset(["a"])
+
+# 🐍⛓️🤔🪄

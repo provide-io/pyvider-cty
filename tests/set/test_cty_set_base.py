@@ -1,3 +1,7 @@
+# tests/set/test_cty_set_base.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #
 # tests/set/test_cty_set_base.py
 #
@@ -172,3 +176,5 @@ class TestCtySetType:
         set_obj = self.string_set.validate({"apple", "banana", "cherry"})
         values = {item.value for item in set_obj.value}
         assert values == {"apple", "banana", "cherry"}
+
+# 🐍⛓️🗃️🪄

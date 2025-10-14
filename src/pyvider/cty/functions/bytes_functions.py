@@ -1,3 +1,7 @@
+# src/pyvider/cty/functions/bytes_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Any
@@ -40,3 +44,5 @@ def bytesslice(buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]) 
 
     start_idx, end_idx = int(start.value), int(end.value)  # type: ignore[call-overload]
     return BytesCapsule.validate(buffer.value[start_idx:end_idx])  # type: ignore[index]
+
+# 🐍⛓️🔣🪄

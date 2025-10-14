@@ -1,3 +1,7 @@
+# tests/conversion/test_raw_to_cty_extra.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -52,3 +56,5 @@ def test_infer_from_list_of_lists() -> None:
     assert isinstance(inferred, CtyList)
     assert isinstance(inferred.element_type, CtyList)
     assert isinstance(inferred.element_type.element_type, CtyNumber)
+
+# 🐍⛓️↔️🪄

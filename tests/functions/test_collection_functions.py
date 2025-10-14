@@ -1,3 +1,7 @@
+# tests/functions/test_collection_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any
 
 from pyvider.cty import (
@@ -176,3 +180,5 @@ def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.value, dict):
         raise CtyFunctionError("values: input value is not a map or object")
     return CtyList(element_type=input_val.type.element_type).validate(list(input_val.value.values()))
+
+# 🐍⛓️🔣🪄

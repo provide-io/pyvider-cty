@@ -1,3 +1,7 @@
+# tests/object/test_object_attributes.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any
 
 import pytest
@@ -49,3 +53,5 @@ class TestCtyObjectAttributes:
         value = CtyValue(person_type, "not a dict")
         with pytest.raises(CtyTypeMismatchError):
             person_type.get_attribute(value, "name")
+
+# 🐍⛓️📦🪄

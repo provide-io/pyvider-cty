@@ -1,3 +1,7 @@
+# tests/values/test_cty_value_marks.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.marks import CtyMark
 
@@ -21,3 +25,5 @@ def test_object_validation_preserves_marks() -> None:
     # Assert that the mark on the inner value was preserved.
     inner_value = validated_object.value["data"]
     assert inner_value.has_mark(CtyMark("sensitive")), "Mark was lost during object validation"
+
+# 🐍⛓️💰🪄

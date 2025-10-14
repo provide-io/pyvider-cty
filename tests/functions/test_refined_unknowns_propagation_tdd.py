@@ -1,3 +1,7 @@
+# tests/functions/test_refined_unknowns_propagation_tdd.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD: Verifies that numeric functions consistently propagate or resolve
 refined unknown value constraints.
@@ -70,3 +74,5 @@ class TestRefinedUnknownPropagation:
         assert isinstance(result.value, RefinedUnknownValue)
         assert result.value.number_lower_bound == (Decimal("10"), True)
         assert result.value.number_upper_bound == (Decimal("20"), True)
+
+# 🐍⛓️🔣🪄

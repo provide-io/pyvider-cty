@@ -1,3 +1,7 @@
+# tests/set/test_cty_set_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import CtySetValidationError
@@ -23,3 +27,5 @@ def test_validate_with_cty_value_different_set_type() -> None:
     value = other_set_type.validate({1, 2, 3})
     with pytest.raises(CtySetValidationError):
         set_type.validate(value)
+
+# 🐍⛓️🗃️🪄

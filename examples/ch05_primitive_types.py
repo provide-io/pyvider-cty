@@ -1,3 +1,7 @@
+# examples/ch05_primitive_types.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyBool, CtyNumber, CtyString
@@ -34,3 +38,5 @@ except Exception as e:
     print(f"Bool validation failed as expected: {e}")
 
 print("Primitive type examples ran successfully.")
+
+# 🐍⛓️📁🪄

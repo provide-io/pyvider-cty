@@ -1,3 +1,7 @@
+# src/pyvider/cty/functions/comparison_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Any
@@ -191,3 +195,5 @@ def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
 
 def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="min")
+
+# 🐍⛓️🔣🪄

@@ -1,3 +1,7 @@
+# examples/example_utils.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 """
 Utility functions for pyvider-cty examples.
@@ -42,3 +46,5 @@ def configure_for_example() -> None:
         format="%(asctime)s [%(levelname)-7s] %(name)s: 🐍 %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+# 🐍⛓️📁🪄

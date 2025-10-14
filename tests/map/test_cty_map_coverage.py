@@ -1,3 +1,7 @@
+# tests/map/test_cty_map_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import CtyMapValidationError, InvalidTypeError
@@ -44,3 +48,5 @@ def test_map_constructor_with_value_type_keyword() -> None:
     map_type = CtyMap(element_type=CtyNumber())
     val = map_type.validate({"a": 123})
     assert val["a"].value == 123
+
+# 🐍⛓️🗺️🪄

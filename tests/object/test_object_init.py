@@ -1,3 +1,7 @@
+# tests/object/test_object_init.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -127,3 +131,5 @@ class TestCtyObjectMethods:
         obj_type3 = CtyObject({"name": CtyString(), "age": CtyString()})
         assert self.obj_type.usable_as(obj_type2)
         assert not self.obj_type.usable_as(obj_type3)
+
+# 🐍⛓️📦🪄

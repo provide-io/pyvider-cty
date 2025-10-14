@@ -1,3 +1,7 @@
+# tests/values/test_value_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 This test suite specifically targets the remaining coverage gaps in
 src/pyvider/cty/values/base.py to harden the CtyValue object against
@@ -90,3 +94,5 @@ class TestCtyValueCoverage:
         # This should be a no-op and return the same value.
         new_val = map_val.without_key("non-existent-key")
         assert new_val is map_val
+
+# 🐍⛓️💰🪄

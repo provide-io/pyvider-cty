@@ -1,3 +1,7 @@
+# tests/property_based/test_schema_validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from hypothesis import given, strategies as st
 import pytest
 
@@ -41,3 +45,5 @@ def test_schema_rejects_invalid_data(simple_schema, data) -> None:
     """
     with pytest.raises(CtyValidationError):
         validate_config(simple_schema, data)
+
+# 🐍⛓️🧪🪄

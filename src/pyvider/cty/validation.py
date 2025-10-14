@@ -1,3 +1,7 @@
+# src/pyvider/cty/validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Any
@@ -24,3 +28,5 @@ def validate_config(schema: CtyType[Any], config: Any) -> None:
     # The schema (a CtyType instance) has the validation logic.
     # We simply call it and let it raise its exception on failure.
     schema.validate(config)
+
+# 🐍⛓️🤔🪄

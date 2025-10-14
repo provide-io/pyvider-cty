@@ -1,3 +1,7 @@
+# examples/ch07_structural_types.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyBool, CtyNumber, CtyObject, CtyString, CtyTuple
@@ -39,3 +43,5 @@ except Exception as e:
     print(f"Tuple validation failed as expected (wrong element type): {e}")
 
 print("Structural type examples ran successfully.")
+
+# 🐍⛓️📁🪄
