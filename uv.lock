@@ -1786,14 +1786,6 @@ docs = [
     { name = "pyyaml" },
     { name = "watchdog" },
 ]
-quality = [
-    { name = "bandit" },
-    { name = "coverage", extra = ["toml"] },
-    { name = "interrogate" },
-    { name = "mypy" },
-    { name = "radon" },
-    { name = "ruff" },
-]
 standard = [
     { name = "bandit" },
     { name = "coverage", extra = ["toml"] },
@@ -2109,9 +2101,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "mypy" },
-    { name = "provide-testkit", extra = ["advanced-testing", "build", "quality", "standard", "typecheck"] },
-    { name = "ruff" },
+    { name = "provide-testkit", extra = ["advanced-testing", "build", "standard", "typecheck"] },
 ]
 docs = [
     { name = "provide-testkit", extra = ["docs"] },
@@ -2125,12 +2115,8 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.17.1" },
-    { name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build", "quality"], specifier = ">=0.0.0" },
-    { name = "ruff", specifier = ">=0.11.8" },
-]
-docs = [{ name = "provide-testkit", extras = ["docs"], specifier = ">=0.0.0" }]
+dev = [{ name = "provide-testkit", extras = ["standard", "advanced-testing", "typecheck", "build"] }]
+docs = [{ name = "provide-testkit", extras = ["docs"] }]
 
 [[package]]
 name = "pywin32-ctypes"
