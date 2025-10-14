@@ -2,11 +2,6 @@
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-#
-# tests/types/test_capsule.py
-#
-
-
 from pyvider.cty.types.capsule import CtyCapsule
 
 

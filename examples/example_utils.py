@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-#!/usr/bin/env python3
 """
 Utility functions for pyvider-cty examples.
 Provides consistent path resolution and environment setup.
