@@ -203,13 +203,22 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -
     if isinstance(schema, CtyTuple):
         return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):
-        return str(inner_val)
+        # Encode as native msgpack number for Terraform wire protocol compatibility
+        # For integers, use int. For non-integers, use float representation.
+        if inner_val % 1 == 0:
+            return int(inner_val)
+        else:
+            return float(inner_val)
     return inner_val
 
 
 def _msgpack_default_handler(obj: Any) -> Any:
     if isinstance(obj, Decimal):
-        return str(obj)
+        # Encode as native msgpack number for Terraform wire protocol compatibility
+        if obj % 1 == 0:
+            return int(obj)
+        else:
+            return float(obj)
     error_message = ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE.format(type_name=type(obj).__name__)
     raise TypeError(error_message)
 
