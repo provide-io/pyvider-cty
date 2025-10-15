@@ -1,3 +1,7 @@
+# src/pyvider/cty/config/runtime.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Self
@@ -31,3 +35,5 @@ class CtyConfig(RuntimeConfig):
             Current CtyConfig instance loaded from environment
         """
         return cls.from_env(prefix="PYVIDER_CTY")
+
+# 🐍⛓️⚙️🪄

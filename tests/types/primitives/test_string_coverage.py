@@ -1,3 +1,7 @@
+# tests/types/primitives/test_string_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import CtyStringValidationError
@@ -29,3 +33,5 @@ def test_validate_with_exception() -> None:
 
     with pytest.raises(CtyStringValidationError, match="Cannot convert BadString to string."):
         string_type.validate(BadString())
+
+# 🐍⛓️🧱🪄

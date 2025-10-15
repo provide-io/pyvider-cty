@@ -1,3 +1,7 @@
+# tests/conftest.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Pytest configuration file for the entire test suite.
 Includes automated setup for the cross-language compatibility suite.
@@ -172,3 +176,5 @@ def clear_inference_cache():
     # Reset ContextVar tokens after test
     _structural_key_cache._context_var.set(None)
     _container_schema_cache._context_var.set(None)
+
+# 🐍⛓️🤔🪄

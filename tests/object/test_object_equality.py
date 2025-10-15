@@ -1,3 +1,7 @@
+# tests/object/test_object_equality.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #
 # tests/object/test_object_equality.py
 #
@@ -194,3 +198,5 @@ async def test_usable_as_required_attributes() -> None:
 
 
 # 🐍🏗️🧪
+
+# 🐍⛓️📦🪄

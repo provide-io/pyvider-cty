@@ -1,3 +1,7 @@
+# src/pyvider/cty/conversion/adapter.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -110,3 +114,5 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
                 results[item_id] = inner_val
 
     return results.get(id(value))
+
+# 🐍⛓️↔️🪄

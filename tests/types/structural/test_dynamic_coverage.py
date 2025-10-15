@@ -1,3 +1,7 @@
+# tests/types/structural/test_dynamic_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import DeserializationError
@@ -14,3 +18,5 @@ def test_validate_with_wire_format_invalid_json() -> None:
         match="Failed to decode dynamic value type spec from JSON during validation",
     ):
         dynamic_type.validate(value)
+
+# 🐍⛓️🧱🪄

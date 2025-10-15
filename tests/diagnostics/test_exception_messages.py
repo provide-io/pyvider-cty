@@ -1,3 +1,7 @@
+# tests/diagnostics/test_exception_messages.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty import (
     CtyBool,
     CtyList,
@@ -62,3 +66,5 @@ class TestValidationExceptionStructure:
         """Integrates and fixes tests for exception string formatting."""
         type_mismatch = CtyTypeMismatchError("mismatch", actual_type=CtyString(), expected_type=CtyNumber())
         assert "Expected number, got string" in str(type_mismatch)
+
+# 🐍⛓️🩺🪄

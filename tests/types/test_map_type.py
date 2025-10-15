@@ -1,3 +1,7 @@
+# tests/types/test_map_type.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import (
@@ -67,3 +71,5 @@ class TestCtyMap:
         """Ensures the constructor raises an error for invalid element types."""
         with pytest.raises(InvalidTypeError):
             CtyMap(element_type="not a cty type")
+
+# 🐍⛓️🧱🪄

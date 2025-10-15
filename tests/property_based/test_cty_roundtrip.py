@@ -1,3 +1,7 @@
+# tests/property_based/test_cty_roundtrip.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from decimal import Decimal
 import unicodedata
 
@@ -71,3 +75,5 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
 
     except Exception as e:
         pytest.fail(f"CTY round-trip failed for input:\n{native_data!r}\nError: {type(e).__name__}: {e}")
+
+# 🐍⛓️🧪🪄

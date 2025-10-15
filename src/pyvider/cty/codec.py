@@ -1,3 +1,7 @@
+# src/pyvider/cty/codec.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -338,3 +342,5 @@ def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
                 raise e
 
         return _unpacked_to_cty(raw_unpacked, cty_type)
+
+# 🐍⛓️🤔🪄

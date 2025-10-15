@@ -1,3 +1,7 @@
+# tests/conversion/test_explicit_conversion.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD Test Suite for the explicit conversion and unification functions.
 
@@ -262,3 +266,5 @@ class TestUnifyFunction:
     def test_unification_scenarios(self, type_list: Iterable[CtyType], expected_unified_type: CtyType) -> None:
         unified_type = unify(type_list)
         assert unified_type.equal(expected_unified_type)
+
+# 🐍⛓️↔️🪄

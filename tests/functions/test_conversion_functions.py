@@ -1,3 +1,7 @@
+# tests/functions/test_conversion_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString
@@ -21,3 +25,5 @@ def test_to_bool() -> None:
     assert to_bool(CtyString().validate("false")).value is False
     with pytest.raises(CtyFunctionError):
         to_bool(CtyString().validate("abc"))
+
+# 🐍⛓️🔣🪄

@@ -1,3 +1,7 @@
+# tests/object/test_object_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import (
@@ -71,3 +75,5 @@ def test_usable_as_not_subset_required() -> None:
     assert type1.usable_as(type2) is False, (
         "Object type with fewer attributes should not be usable as type with more attributes"
     )
+
+# 🐍⛓️📦🪄

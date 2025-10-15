@@ -1,3 +1,7 @@
+# src/pyvider/cty/types/structural/object.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Any, ClassVar
@@ -196,3 +200,5 @@ class CtyObject(CtyType[dict[str, object]]):
 
     def is_primitive_type(self) -> bool:
         return False
+
+# 🐍⛓️🧱🪄

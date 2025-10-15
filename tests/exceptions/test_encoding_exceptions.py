@@ -1,3 +1,7 @@
+# tests/exceptions/test_encoding_exceptions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyvider.cty.exceptions.encoding import (
     AttributePathError,
     DeserializationError,
@@ -192,3 +196,5 @@ class TestInvalidTypeError:
         error = InvalidTypeError("Invalid type used", invalid_type=invalid_type_obj)
         assert str(error) == "Invalid type used"
         assert error.invalid_type == invalid_type_obj
+
+# 🐍⛓️🐛🪄

@@ -1,3 +1,7 @@
+# examples/ch10_marks.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyString
@@ -16,3 +20,5 @@ assert sensitive_string.has_mark("private") is False
 assert sensitive_string.marks == {"sensitive"}
 
 print("Marks examples ran successfully.")
+
+# 🐍⛓️📁🪄

@@ -1,3 +1,7 @@
+# tests/tuple/test_cty_tuple_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty.exceptions import CtyTupleValidationError, CtyTypeMismatchError
@@ -82,3 +86,5 @@ def test_usable_as_different_lengths() -> None:
     type1 = CtyTuple((CtyString(),))
     type2 = CtyTuple((CtyString(), CtyNumber()))
     assert type1.usable_as(type2) is False
+
+# 🐍⛓️🖇️🪄

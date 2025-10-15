@@ -1,3 +1,7 @@
+# tests/functions/test_encoding_functions_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
@@ -41,3 +45,5 @@ class TestEncodingFunctionsCoverage:
         mocker.patch("csv.DictReader", side_effect=Exception("test error"))
         with pytest.raises(CtyFunctionError):
             csvdecode(CtyString().validate("a,b\n1,2"))
+
+# 🐍⛓️🔣🪄

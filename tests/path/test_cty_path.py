@@ -1,3 +1,7 @@
+# tests/path/test_cty_path.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -234,3 +238,5 @@ class TestCtyPathStringRepresentation:
     def test_path_with_only_key(self) -> None:
         path = CtyPath.key("config-key")
         assert str(path) == "['config-key']"
+
+# 🐍⛓️➡️🪄

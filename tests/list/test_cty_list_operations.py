@@ -1,3 +1,7 @@
+# tests/list/test_cty_list_operations.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyList, CtyString, CtyValue
@@ -23,3 +27,5 @@ class TestCtyListValueOperations:
         assert [item.value for item in sliced.value] == ["b", "c", "d"], (
             f"Expected ['b', 'c', 'd'] from slice [1:4], but got {[item.value for item in sliced.value]}"
         )
+
+# 🐍⛓️🧾🪄

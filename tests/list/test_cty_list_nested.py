@@ -1,3 +1,7 @@
+# tests/list/test_cty_list_nested.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -40,3 +44,5 @@ class TestCtyListWithNestedTypes:
         data = [[1, 2], [3, "four", 5]]
         with pytest.raises(CtyListValidationError):
             nested_list_type.validate(data)
+
+# 🐍⛓️🧾🪄

@@ -1,3 +1,7 @@
+# tests/codec/test_codec_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import msgpack
 import pytest
 
@@ -52,3 +56,5 @@ def test_serialize_refined_unknown_with_no_payload() -> None:
     val = CtyValue.unknown(CtyString(), value=RefinedUnknownValue())
     serialized = _serialize_unknown(val)
     assert serialized.code == 0
+
+# 🐍⛓️🔢🪄
