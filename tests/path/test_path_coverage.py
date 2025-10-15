@@ -103,4 +103,5 @@ def test_path_edge_cases_from_z_file() -> None:
     with pytest.raises(AttributePathError):
         CtyPath.key(1).apply_path_type(CtyMap(element_type=CtyString()))
 
+
 # 🐍⛓️➡️🪄

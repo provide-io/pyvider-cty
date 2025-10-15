@@ -59,4 +59,5 @@ class TestTupleDiagnostics:
             expected_error_message="At [1][1]: Number validation error: Cannot represent str value 'two' as Decimal",
         )
 
+
 # 🐍⛓️🩺🪄

@@ -108,4 +108,5 @@ class TestCtyValueListOperations:
         with pytest.raises(CtyValidationError):
             list_val.with_element_at(0, 456)
 
+
 # 🐍⛓️💰🪄

@@ -244,4 +244,5 @@ def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any]:
     """
     return _unify_frozen(frozenset(types))
 
+
 # 🐍⛓️↔️🪄

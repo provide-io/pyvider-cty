@@ -64,4 +64,5 @@ def test_infer_dict_with_cty_values() -> None:
     assert inferred.attribute_types["a"].equal(CtyString())
     assert inferred.attribute_types["b"].equal(CtyNumber())
 
+
 # 🐍⛓️↔️🪄

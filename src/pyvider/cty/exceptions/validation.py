@@ -336,4 +336,5 @@ class CtyTypeMismatchError(CtyValidationError):
         full_message = f"{message} ({type_info})"
         super().__init__(full_message, path=path, **kwargs)
 
+
 # 🐍⛓️🐛🪄

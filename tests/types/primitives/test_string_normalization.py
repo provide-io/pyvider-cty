@@ -34,4 +34,5 @@ def test_string_normalization_on_validate(input_str: str, expected_normalized_st
         f"Expected normalized string {unicodedata.normalize('NFC', expected_normalized_str)!r}, but got {validated_value.value!r}"
     )
 
+
 # 🐍⛓️🧱🪄

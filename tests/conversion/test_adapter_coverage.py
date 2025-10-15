@@ -136,4 +136,5 @@ class TestAdapterCoverage:
         native = cty_to_native(val)
         assert native == 123
 
+
 # 🐍⛓️↔️🪄

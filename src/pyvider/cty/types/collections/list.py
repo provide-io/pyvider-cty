@@ -137,4 +137,5 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
     def __repr__(self) -> str:
         return f"CtyList(element_type={self.element_type!r})"
 
+
 # 🐍⛓️🧱🪄

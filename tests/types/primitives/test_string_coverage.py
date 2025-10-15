@@ -34,4 +34,5 @@ def test_validate_with_exception() -> None:
     with pytest.raises(CtyStringValidationError, match="Cannot convert BadString to string."):
         string_type.validate(BadString())
 
+
 # 🐍⛓️🧱🪄

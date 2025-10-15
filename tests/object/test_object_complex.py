@@ -17,4 +17,5 @@ async def test_attribute_access_error_handling() -> None:
     with pytest.raises(CtyTypeMismatchError):
         person_type.get_attribute("not a cty value", "name")
 
+
 # 🐍⛓️📦🪄

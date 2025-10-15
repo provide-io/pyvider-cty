@@ -64,4 +64,5 @@ class TestRefinedUnknownComparisonCoverage:
         result = greater_than(unknown_lt_10, known_20)
         assert not result.is_unknown and result.value is False
 
+
 # 🐍⛓️🔣🪄
