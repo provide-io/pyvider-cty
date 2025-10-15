@@ -38,4 +38,5 @@ def test_validate_raw_attrs_object_with_ctydynamic() -> None:
     assert inner_value["name"].value == "test"
     assert inner_value["count"].value == 123
 
+
 # 🐍⛓️↔️🪄

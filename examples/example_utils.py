@@ -46,4 +46,5 @@ def configure_for_example() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+
 # 🐍⛓️📁🪄

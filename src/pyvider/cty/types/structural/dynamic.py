@@ -74,4 +74,5 @@ class CtyDynamic(CtyType[object]):
     def __str__(self) -> str:
         return "dynamic"
 
+
 # 🐍⛓️🧱🪄

@@ -132,4 +132,5 @@ class CtyCapsuleWithOps(CtyCapsule):
     def __hash__(self) -> int:
         return hash((self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn))
 
+
 # 🐍⛓️🧱🪄

@@ -46,4 +46,5 @@ def test_schema_rejects_invalid_data(simple_schema, data) -> None:
     with pytest.raises(CtyValidationError):
         validate_config(simple_schema, data)
 
+
 # 🐍⛓️🧪🪄

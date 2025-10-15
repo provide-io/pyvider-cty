@@ -104,4 +104,5 @@ def with_inference_cache(func: F) -> F:
 
     return wrapper  # type: ignore[return-value]
 
+
 # 🐍⛓️↔️🪄

@@ -75,4 +75,5 @@ class TestCtyBool:
         assert self.bool_type.usable_as(CtyDynamic()), "CtyBool should be usable as CtyDynamic"
         assert not self.bool_type.usable_as(CtyString()), "CtyBool should not be usable as CtyString"
 
+
 # 🐍⛓️🧱🪄

@@ -92,4 +92,5 @@ def test_infer_type_of_list_of_mixed_objects() -> None:
 
     assert native_result == mixed_list
 
+
 # 🐍⛓️↔️🪄

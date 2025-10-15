@@ -28,4 +28,5 @@ def test_to_wire_json() -> None:
     capsule_type = CtyCapsule("MyObject", MyObject)
     assert capsule_type._to_wire_json() is None
 
+
 # 🐍⛓️🧱🪄

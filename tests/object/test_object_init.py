@@ -132,4 +132,5 @@ class TestCtyObjectMethods:
         assert self.obj_type.usable_as(obj_type2)
         assert not self.obj_type.usable_as(obj_type3)
 
+
 # 🐍⛓️📦🪄

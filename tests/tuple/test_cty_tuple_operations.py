@@ -37,4 +37,5 @@ class TestCtyTupleOperations:
     def test_value_length(self, tuple_value) -> None:
         assert len(tuple_value) == 3
 
+
 # 🐍⛓️🖇️🪄

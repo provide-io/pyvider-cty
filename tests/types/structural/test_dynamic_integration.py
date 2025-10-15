@@ -22,4 +22,5 @@ class TestCtyDynamicIntegration:
         assert dynamic_val.value == unpacked_val.value
         assert cty_to_native(unpacked_val) == [{"name": "Alice"}, {"name": "Bob"}]
 
+
 # 🐍⛓️🧱🪄

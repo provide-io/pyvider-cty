@@ -239,4 +239,5 @@ class TestCtyPathStringRepresentation:
         path = CtyPath.key("config-key")
         assert str(path) == "['config-key']"
 
+
 # 🐍⛓️➡️🪄

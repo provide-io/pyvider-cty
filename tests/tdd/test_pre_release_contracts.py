@@ -149,4 +149,5 @@ class TestValueHashingContract:
         with pytest.raises(TypeError, match="unhashable type"):
             hash(unhashable_val)
 
+
 # 🐍⛓️💡🪄

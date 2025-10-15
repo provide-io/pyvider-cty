@@ -19,4 +19,5 @@ def test_validate_with_wire_format_invalid_json() -> None:
     ):
         dynamic_type.validate(value)
 
+
 # 🐍⛓️🧱🪄

@@ -56,4 +56,5 @@ class TestCapsuleWithOpsContract:
         with pytest.raises(TypeError, match="`convert_fn` must be a callable that accepts 2 arguments"):
             CtyCapsuleWithOps("Opaque", self.Opaque, convert_fn=bad_func)
 
+
 # 🐍⛓️🧱🪄

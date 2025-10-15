@@ -80,4 +80,5 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
 
+
 # 🐍⛓️🧱🪄
