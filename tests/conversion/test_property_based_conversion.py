@@ -1,3 +1,7 @@
+# tests/conversion/test_property_based_conversion.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import unicodedata
 
 from hypothesis import given, settings, strategies as st
@@ -87,3 +91,5 @@ def test_infer_type_of_list_of_mixed_objects() -> None:
     native_result = cty_to_native(cty_value)
 
     assert native_result == mixed_list
+
+# 🐍⛓️↔️🪄

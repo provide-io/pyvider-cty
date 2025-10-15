@@ -1,3 +1,7 @@
+# src/pyvider/cty/exceptions/validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -331,3 +335,5 @@ class CtyTypeMismatchError(CtyValidationError):
         type_info = f"Expected {expected_type}, got {actual_type}"
         full_message = f"{message} ({type_info})"
         super().__init__(full_message, path=path, **kwargs)
+
+# 🐍⛓️🐛🪄

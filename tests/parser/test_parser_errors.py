@@ -1,3 +1,7 @@
+# tests/parser/test_parser_errors.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -21,3 +25,5 @@ def test_parser_failures(invalid_str: str) -> None:
     """Tests that the parser raises a validation error for malformed strings."""
     with pytest.raises(CtyValidationError):
         parse_type_string_to_ctytype(invalid_str)
+
+# 🐍⛓️🧩🪄

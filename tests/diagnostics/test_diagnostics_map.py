@@ -1,3 +1,7 @@
+# tests/diagnostics/test_diagnostics_map.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import CtyMap, CtyMapValidationError, CtyNumber
@@ -34,3 +38,5 @@ class TestMapDiagnostics:
             match="Map keys must be strings, but got key of type int",
         ):
             schema.validate(config)
+
+# 🐍⛓️🩺🪄

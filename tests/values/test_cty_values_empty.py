@@ -1,3 +1,7 @@
+# tests/values/test_cty_values_empty.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -24,3 +28,5 @@ def test_empty_value_for_collections(list_of_string_type) -> None:
     assert CtyList(element_type=CtyString()).validate([]).is_empty() is True
     assert CtyMap(element_type=CtyNumber()).validate({}).is_empty() is True
     assert CtySet(element_type=CtyBool()).validate(set()).is_empty() is True
+
+# 🐍⛓️💰🪄

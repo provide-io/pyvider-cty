@@ -1,3 +1,7 @@
+# tests/codec/test_dynamic_deserialization_hardening.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD: Enforces strict deserialization for CtyDynamic values, failing on any
 malformed payload as go-cty does.
@@ -46,3 +50,5 @@ class TestStrictDynamicDeserialization:
 
         with pytest.raises(CtyValidationError, match="Cannot represent str"):
             cty_from_msgpack(packed_bytes, CtyDynamic())
+
+# 🐍⛓️🔢🪄

@@ -1,3 +1,7 @@
+# tests/types/test_capsule_operations.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 TDD Test Suite for CtyCapsule with custom operations.
 
@@ -156,3 +160,5 @@ class TestCtyCapsuleWithConversion:
 
         with pytest.raises(CtyConversionError, match="returned a value of the wrong type"):
             convert(capsule_val, target_type)
+
+# 🐍⛓️🧱🪄

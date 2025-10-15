@@ -1,3 +1,7 @@
+# tests/conversion/test_inference_tdd.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from pyvider.cty import (
@@ -37,3 +41,5 @@ def test_infer_list_of_objects_with_optional_and_mismatched_types() -> None:
         assert "status" not in element_1.type.attribute_types
     except CtyValidationError as e:
         pytest.fail(f"Validation with the inferred type failed: {e}")
+
+# 🐍⛓️↔️🪄

@@ -1,3 +1,7 @@
+# tests/context/test_validation_context.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Never
 
 import pytest
@@ -37,3 +41,5 @@ def test_max_validation_depth_constant() -> None:
     """Checks that the MAX_VALIDATION_DEPTH constant is accessible and an integer."""
     assert isinstance(MAX_VALIDATION_DEPTH, int)
     assert MAX_VALIDATION_DEPTH > 0
+
+# 🐍⛓️🏷️🪄

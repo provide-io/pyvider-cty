@@ -1,3 +1,7 @@
+# src/pyvider/cty/validation/__init__.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import Any
@@ -49,3 +53,5 @@ __all__ = [
     "validate_config",
     "with_recursion_detection",
 ]
+
+# 🐍⛓️✅🪄

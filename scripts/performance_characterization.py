@@ -1,3 +1,7 @@
+# scripts/performance_characterization.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Performance Characterization Tool for pyvider.cty
 
@@ -121,3 +125,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# 🐍⛓️📁🪄

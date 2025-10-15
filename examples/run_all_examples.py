@@ -1,3 +1,7 @@
+# examples/run_all_examples.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 # examples/run_all_examples.py
 """
@@ -136,3 +140,5 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+# 🐍⛓️📁🪄

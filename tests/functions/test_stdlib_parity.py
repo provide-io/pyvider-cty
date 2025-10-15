@@ -1,3 +1,7 @@
+# tests/functions/test_stdlib_parity.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Comprehensive test suite for all standard library functions to ensure
 parity with go-cty.
@@ -1002,3 +1006,5 @@ class TestStructuralFunctions:
         assert coalesce(val1, val2).value == "a"
         assert coalesce(null_val, val2).value == "b"
         assert coalesce(null_val, null_val, val1).value == "a"
+
+# 🐍⛓️🔣🪄

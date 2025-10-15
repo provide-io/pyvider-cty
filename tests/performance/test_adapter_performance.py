@@ -1,3 +1,7 @@
+# tests/performance/test_adapter_performance.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Dedicated performance benchmark for the `cty_to_native` function.
 
@@ -75,3 +79,5 @@ def test_benchmark_cty_to_native_wide_structure(benchmark: Any, wide_cty_value: 
     to test its efficiency with large collections.
     """
     benchmark(cty_to_native, wide_cty_value)
+
+# 🐍⛓️⏱️🪄

@@ -1,3 +1,7 @@
+# examples/ch06_collection_types.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyBool, CtyList, CtyMap, CtyNumber, CtySet, CtyString
@@ -34,3 +38,5 @@ except Exception as e:
     print(f"Map validation failed as expected: {e}")
 
 print("Collection type examples ran successfully.")
+
+# 🐍⛓️📁🪄

@@ -1,3 +1,7 @@
+# tests/conversion/test_inference.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from decimal import Decimal
 from typing import Any
 
@@ -143,3 +147,5 @@ def test_infer_from_attrs_object() -> None:
     assert isinstance(inferred_type.attribute_types["b"], CtyString), (
         f"Expected attribute 'b' type CtyString, but got {type(inferred_type.attribute_types['b']).__name__}"
     )
+
+# 🐍⛓️↔️🪄

@@ -1,3 +1,7 @@
+# src/pyvider/cty/types/primitives/bool.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -65,3 +69,5 @@ class CtyBool(CtyType[bool]):
 
     def is_primitive_type(self) -> bool:
         return True
+
+# 🐍⛓️🧱🪄

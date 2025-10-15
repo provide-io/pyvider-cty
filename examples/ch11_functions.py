@@ -1,3 +1,7 @@
+# examples/ch11_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python3
 from examples.example_utils import configure_for_example
 from pyvider.cty import CtyNumber
@@ -17,3 +21,5 @@ abs_result = abs_fn(num1)
 assert abs_result.raw_value == 10
 
 print("Functions examples ran successfully.")
+
+# 🐍⛓️📁🪄
