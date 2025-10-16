@@ -147,7 +147,8 @@ def regexall(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[A
         input_str = cast(str, input_val.value)
         pattern_str = cast(str, pattern_val.value)
         matches = re.findall(pattern_str, input_str)
-        return CtyList(element_type=CtyString()).validate(matches)
+        result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(matches)
+        return result
     except re.error as e:
         raise CtyFunctionError(f"regexall: invalid regular expression: {e}") from e
 
@@ -157,7 +158,8 @@ def upper(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"upper: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.upper())
+    input_str = cast(str, input_val.value)
+    return CtyString().validate(input_str.upper())
 
 
 def lower(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -165,7 +167,8 @@ def lower(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"lower: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.lower())
+    input_str = cast(str, input_val.value)
+    return CtyString().validate(input_str.lower())
 
 
 def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
@@ -189,7 +192,8 @@ def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
     sep_str = cast(str, separator.value)
     text_str = cast(str, text.value)
     parts = text_str.split(sep_str)
-    return CtyList(element_type=CtyString()).validate(parts)
+    result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(parts)
+    return result
 
 
 def replace(string: CtyValue[Any], substring: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:

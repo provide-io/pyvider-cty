@@ -135,7 +135,10 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
         if cty_element.is_null or cty_element.is_unknown:
             raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
 
-    return CtyList[Any](element_type=element_type).validate(sorted(input_val.value, key=lambda x: x.value))
+    result: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
+        sorted(input_val.value, key=lambda x: x.value)
+    )
+    return result
 
 
 def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -231,9 +234,10 @@ def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
             raise CtyFunctionError(f"keys: input must be a map or object, got {input_val.type.ctype}")
         if input_val.is_null or input_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyString()))
-        return CtyList(element_type=CtyString()).validate(
+        result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
             sorted(list(input_val.value.keys()))  # type: ignore[attr-defined]
         )
+        return result
 
 
 def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -336,9 +340,10 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
 
     if collection.is_null or collection.is_unknown:
         return collection
-    return CtyList(element_type=CtyString()).validate(
+    result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
         [v for v in collection.value if v.value]  # type: ignore[attr-defined]
     )
+    return result
 
 
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
