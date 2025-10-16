@@ -174,8 +174,10 @@ def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
     if separator.is_null or separator.is_unknown or elements.is_null or elements.is_unknown:
         return CtyValue.unknown(CtyString())
 
-    str_elements = [str(el.value) for el in elements.value]
-    return CtyString().validate(separator.value.join(str_elements))
+    sep_str = cast(str, separator.value)
+    elements_list = cast(list[Any] | tuple[Any, ...], elements.value)
+    str_elements = [str(el.value) for el in elements_list]
+    return CtyString().validate(sep_str.join(str_elements))
 
 
 def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
@@ -184,7 +186,9 @@ def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
     if separator.is_null or separator.is_unknown or text.is_null or text.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyString()))
 
-    parts = text.value.split(separator.value)
+    sep_str = cast(str, separator.value)
+    text_str = cast(str, text.value)
+    parts = text_str.split(sep_str)
     return CtyList(element_type=CtyString()).validate(parts)
 
 
@@ -205,7 +209,10 @@ def replace(string: CtyValue[Any], substring: CtyValue[Any], replacement: CtyVal
     ):
         return CtyValue.unknown(CtyString())
 
-    result = string.value.replace(substring.value, replacement.value)
+    string_str = cast(str, string.value)
+    substring_str = cast(str, substring.value)
+    replacement_str = cast(str, replacement.value)
+    result = string_str.replace(substring_str, replacement_str)
     return CtyString().validate(result)
 
 
@@ -227,7 +234,10 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
         return CtyValue.unknown(CtyString())
 
     try:
-        result = re.sub(pattern.value, replacement.value, string.value)
+        string_str = cast(str, string.value)
+        pattern_str = cast(str, pattern.value)
+        replacement_str = cast(str, replacement.value)
+        result = re.sub(pattern_str, replacement_str, string_str)
         return CtyString().validate(result)
     except re.error as e:
         raise CtyFunctionError(f"regexreplace: invalid regular expression: {e}") from e
