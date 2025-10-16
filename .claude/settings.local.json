@@ -43,7 +43,9 @@
       "Bash(git mv:*)",
       "Bash(source env.sh)",
       "Bash(source:*)",
-      "Bash(mypy:*)"
+      "Bash(mypy:*)",
+      "Bash(PYTHONPATH=src python3:*)",
+      "Bash(PYTHONPATH=src:. python3:*)"
     ],
     "deny": [],
     "ask": [],
