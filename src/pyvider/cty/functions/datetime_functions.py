@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import re
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.config.defaults import (
@@ -49,8 +49,10 @@ def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
     if spec.is_unknown or spec.is_null or timestamp.is_unknown or timestamp.is_null:
         return CtyValue.unknown(CtyString())
     try:
-        dt = datetime.fromisoformat(timestamp.value.replace("Z", "+00:00"))
-        py_format_spec = _translate_go_format(spec.value)
+        timestamp_str = cast(str, timestamp.value)
+        spec_str = cast(str, spec.value)
+        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        py_format_spec = _translate_go_format(spec_str)
         return CtyString().validate(dt.strftime(py_format_spec))
     except ValueError as e:
         raise CtyFunctionError(f"formatdate: invalid timestamp format: {e}") from e
@@ -62,7 +64,7 @@ def _parse_duration(duration_str: str) -> timedelta:
         raise ValueError(f"Invalid duration string format: '{duration_str}'")
 
     parts = re.findall(r"(\d+\.?\d*)([hms])", duration_str)
-    total_seconds = 0
+    total_seconds: float = 0.0
     for value, unit in parts:
         val = float(value)
         match unit:
@@ -81,8 +83,10 @@ def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     if timestamp.is_unknown or timestamp.is_null or duration.is_unknown or duration.is_null:
         return CtyValue.unknown(CtyString())
     try:
-        dt = datetime.fromisoformat(timestamp.value.replace("Z", "+00:00"))
-        td = _parse_duration(duration.value)
+        timestamp_str = cast(str, timestamp.value)
+        duration_str = cast(str, duration.value)
+        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        td = _parse_duration(duration_str)
         new_dt = dt + td
         return CtyString().validate(new_dt.isoformat())
     except ValueError as e:

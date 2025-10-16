@@ -7,7 +7,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyDynamic, CtyList, CtyObject, CtyString, CtyValue
 from pyvider.cty.conversion import cty_to_native
@@ -30,8 +30,10 @@ def jsondecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyDynamic())
     try:
-        native_val = json.loads(val.value)
-        return CtyDynamic().validate(native_val)
+        val_str = cast(str, val.value)
+        native_val = json.loads(val_str)
+        result: CtyValue[Any] = CtyDynamic().validate(native_val)
+        return result
     except json.JSONDecodeError as e:
         raise CtyFunctionError(f"jsondecode: failed to decode JSON: {e}") from e
 
@@ -42,12 +44,14 @@ def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if val.is_unknown or val.is_null:
         return CtyValue.unknown(CtyList(element_type=CtyObject({})))
 
-    f = io.StringIO(val.value)
+    val_str = cast(str, val.value)
+    f = io.StringIO(val_str)
     try:
         # The csv module can raise csv.Error for malformed data
         reader = csv.DictReader(f)
         rows = list(reader)
-        return CtyList(element_type=CtyDynamic()).validate(rows)
+        result: CtyValue[Any] = CtyList(element_type=CtyDynamic()).validate(rows)
+        return result
     except Exception as e:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
 
