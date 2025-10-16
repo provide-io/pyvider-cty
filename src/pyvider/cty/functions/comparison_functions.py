@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from decimal import Decimal
+from typing import Any, cast
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
 from pyvider.cty.config.defaults import (
@@ -40,7 +41,7 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
 
         # Case 1: One is known, one is refined unknown
         if a.is_unknown and not b.is_unknown and ref_a:
-            b_val = b.value
+            b_val = cast(Decimal, b.value)
             if ref_a.number_upper_bound:
                 upper, inclusive = ref_a.number_upper_bound
                 if b_val > upper or (b_val == upper and not inclusive):
@@ -56,7 +57,7 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
                     if op in (">", ">="):
                         return CtyBool().validate(True)
         elif b.is_unknown and not a.is_unknown and ref_b:
-            a_val = a.value
+            a_val = cast(Decimal, a.value)
             if ref_b.number_upper_bound:
                 upper, inclusive = ref_b.number_upper_bound
                 if a_val > upper or (a_val == upper and not inclusive):
@@ -145,8 +146,12 @@ def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[An
     """Find the extreme (min/max) value among known arguments."""
     if not known_args:
         return None
-    ops = {"max": __builtins__["max"], "min": __builtins__["min"]}
-    return ops[op](known_args, key=lambda v: v.value)
+    if op == "max":
+        result: CtyValue[Any] = max(known_args, key=lambda v: v.value)
+        return result
+    else:
+        result = min(known_args, key=lambda v: v.value)
+        return result
 
 
 def _filter_dominated_unknowns(
@@ -154,13 +159,14 @@ def _filter_dominated_unknowns(
 ) -> list[CtyValue[Any]]:
     """Remove unknown values that are definitely dominated by the extreme known value."""
     remaining_unknowns = []
+    extreme_val = cast(Decimal, extreme_known.value)
     for unk in unknown_args:
         if isinstance(unk.value, RefinedUnknownValue):
             ref = unk.value
             if op == "max":
-                if ref.number_upper_bound and (extreme_known.value >= ref.number_upper_bound[0]):
+                if ref.number_upper_bound and (extreme_val >= ref.number_upper_bound[0]):
                     continue
-            elif op == "min" and ref.number_lower_bound and (extreme_known.value <= ref.number_lower_bound[0]):
+            elif op == "min" and ref.number_lower_bound and (extreme_val <= ref.number_lower_bound[0]):
                 continue
         remaining_unknowns.append(unk)
     return remaining_unknowns
