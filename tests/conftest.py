@@ -7,7 +7,7 @@ Pytest configuration file for the entire test suite.
 Includes automated setup for the cross-language compatibility suite.
 """
 
-import os
+from collections.abc import Generator
 from pathlib import Path
 import shutil
 import subprocess
@@ -18,7 +18,7 @@ import pytest
 from pyvider.cty.validation.recursion import clear_recursion_context
 
 
-def pytest_addoption(parser) -> None:
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Adds custom command-line options to pytest."""
     parser.addoption(
         "--run-benchmarks",
@@ -35,7 +35,7 @@ def pytest_addoption(parser) -> None:
 
 
 @pytest.fixture(scope="session")
-def log_dir(pytestconfig) -> Path:
+def log_dir(pytestconfig: pytest.Config) -> Path:
     """
     Provides the session-scoped, timestamped log directory path that was
     created during the pytest_configure hook.
@@ -44,7 +44,7 @@ def log_dir(pytestconfig) -> Path:
     return pytestconfig._log_dir
 
 
-def pytest_configure(config) -> None:
+def pytest_configure(config: pytest.Config) -> None:
     """
     Adds custom markers and dynamically configures logging paths before
     any tests are run.
@@ -56,13 +56,13 @@ def pytest_configure(config) -> None:
     project_root = config.rootpath
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     log_dir_path = project_root / "logs" / f"test-run-{timestamp}"
-    os.makedirs(log_dir_path, exist_ok=True)
+    log_dir_path.mkdir(parents=True, exist_ok=True)
 
     config._log_dir = log_dir_path
     config.option.log_file = str(log_dir_path / "pytest_debug.log")
 
 
-def pytest_collection_modifyitems(config, items) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Skips tests based on command-line options."""
     if not config.getoption("--run-benchmarks"):
         skip_benchmark = pytest.mark.skip(reason="need --run-benchmarks option to run")
@@ -78,7 +78,7 @@ def pytest_collection_modifyitems(config, items) -> None:
 
 
 @pytest.fixture(scope="session")
-def go_fixtures(pytestconfig, log_dir: Path) -> Path:
+def go_fixtures(pytestconfig: pytest.Config, log_dir: Path) -> Path:
     """
     A session-scoped fixture that automatically runs the Go fixture generator.
     """
@@ -116,7 +116,7 @@ def go_fixtures(pytestconfig, log_dir: Path) -> Path:
         ]
 
         reporter.write_line(
-            f"\n\nℹ️  Go compatibility tool logs will be saved to: {log_file_path}",
+            f"\n\nInfo: Go compatibility tool logs will be saved to: {log_file_path}",
             bold=True,
         )
 
@@ -151,7 +151,7 @@ def go_fixtures(pytestconfig, log_dir: Path) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def clean_recursion_context_fixture():
+def clean_recursion_context_fixture() -> Generator[None, None, None]:
     """
     An autouse fixture that ensures the thread-local recursion context is
     cleared before and after every test function runs.
@@ -162,7 +162,7 @@ def clean_recursion_context_fixture():
 
 
 @pytest.fixture(autouse=True)
-def clear_inference_cache():
+def clear_inference_cache() -> Generator[None, None, None]:
     """
     Clear inference cache before and after each test to ensure test isolation.
     This prevents race conditions and cache pollution between tests.

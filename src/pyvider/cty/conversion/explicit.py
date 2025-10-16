@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any, TypeVar, cast, overload
+from typing import Any, TypeVar, overload
 
 from provide.foundation.errors import error_boundary
 
