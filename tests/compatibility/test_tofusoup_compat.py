@@ -27,7 +27,7 @@ import pytest
 
 
 @pytest.mark.compat
-def test_tofusoup_compatibility_placeholder():
+def test_tofusoup_compatibility_placeholder() -> None:
     """
     Placeholder test to maintain the @pytest.mark.compat marker.
 
