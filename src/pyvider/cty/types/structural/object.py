@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 import unicodedata
 
 from attrs import define, field
@@ -42,7 +42,8 @@ class CtyObject(CtyType[dict[str, object]]):
         def safe_hash_type(cty_type: CtyType[Any]) -> int:
             if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
                 # For nested objects, use a simpler hash to avoid recursion
-                return hash((cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys()))))
+                obj_type = cast(CtyObject, cty_type)
+                return hash((obj_type.ctype, tuple(sorted(obj_type.attribute_types.keys()))))
             return hash(cty_type)
 
         attr_hashes = tuple(

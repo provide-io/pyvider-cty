@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 import re
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyList, CtyNumber, CtyString, CtyTuple, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
@@ -68,12 +69,13 @@ def substr(input_val: CtyValue[Any], offset_val: CtyValue[Any], length_val: CtyV
         or length_val.is_unknown
     ):
         return CtyValue.unknown(CtyString())
-    offset, length = int(offset_val.value), int(length_val.value)
+    offset = int(cast(Decimal, offset_val.value))
+    length = int(cast(Decimal, length_val.value))
     if offset < 0:
         raise CtyFunctionError("substr: offset must be a non-negative integer")
     if length < -1:
         raise CtyFunctionError("substr: length must be non-negative or -1")
-    s = input_val.value
+    s = cast(str, input_val.value)
     if length == -1:
         return CtyString().validate(s[offset:])
     return CtyString().validate(s[offset : offset + length])
@@ -84,7 +86,9 @@ def trim(input_val: CtyValue[Any], cutset_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("trim: both arguments must be strings")
     if input_val.is_null or input_val.is_unknown or cutset_val.is_null or cutset_val.is_unknown:
         return CtyValue.unknown(CtyString())
-    return CtyString().validate(input_val.value.strip(cutset_val.value))
+    input_str = cast(str, input_val.value)
+    cutset_str = cast(str, cutset_val.value)
+    return CtyString().validate(input_str.strip(cutset_str))
 
 
 def title(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -92,7 +96,8 @@ def title(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"title: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value.title())
+    input_str = cast(str, input_val.value)
+    return CtyString().validate(input_str.title())
 
 
 def trimprefix(input_val: CtyValue[Any], prefix_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -100,8 +105,10 @@ def trimprefix(input_val: CtyValue[Any], prefix_val: CtyValue[Any]) -> CtyValue[
         raise CtyFunctionError("trimprefix: both arguments must be strings")
     if input_val.is_null or input_val.is_unknown or prefix_val.is_null or prefix_val.is_unknown:
         return CtyValue.unknown(CtyString())
-    if input_val.value.startswith(prefix_val.value):
-        return CtyString().validate(input_val.value[len(prefix_val.value) :])
+    input_str = cast(str, input_val.value)
+    prefix_str = cast(str, prefix_val.value)
+    if input_str.startswith(prefix_str):
+        return CtyString().validate(input_str[len(prefix_str) :])
     return input_val
 
 
@@ -110,8 +117,10 @@ def trimsuffix(input_val: CtyValue[Any], suffix_val: CtyValue[Any]) -> CtyValue[
         raise CtyFunctionError("trimsuffix: both arguments must be strings")
     if input_val.is_null or input_val.is_unknown or suffix_val.is_null or suffix_val.is_unknown:
         return CtyValue.unknown(CtyString())
-    if input_val.value.endswith(suffix_val.value):
-        return CtyString().validate(input_val.value[: -len(suffix_val.value)])
+    input_str = cast(str, input_val.value)
+    suffix_str = cast(str, suffix_val.value)
+    if input_str.endswith(suffix_str):
+        return CtyString().validate(input_str[: -len(suffix_str)])
     return input_val
 
 
@@ -121,7 +130,9 @@ def regex(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[Any]
     if input_val.is_null or input_val.is_unknown or pattern_val.is_null or pattern_val.is_unknown:
         return CtyValue.unknown(CtyString())
     try:
-        match = re.search(pattern_val.value, input_val.value)
+        input_str = cast(str, input_val.value)
+        pattern_str = cast(str, pattern_val.value)
+        match = re.search(pattern_str, input_str)
         return CtyString().validate(match.group(0) if match else "")
     except re.error as e:
         raise CtyFunctionError(f"regex: invalid regular expression: {e}") from e
@@ -133,7 +144,9 @@ def regexall(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[A
     if input_val.is_null or input_val.is_unknown or pattern_val.is_null or pattern_val.is_unknown:
         return CtyValue.unknown(CtyList(element_type=CtyString()))
     try:
-        matches = re.findall(pattern_val.value, input_val.value)
+        input_str = cast(str, input_val.value)
+        pattern_str = cast(str, pattern_val.value)
+        matches = re.findall(pattern_str, input_str)
         return CtyList(element_type=CtyString()).validate(matches)
     except re.error as e:
         raise CtyFunctionError(f"regexall: invalid regular expression: {e}") from e

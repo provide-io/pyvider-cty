@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any, TypeVar, overload
+from typing import Any, TypeVar, cast, overload
 
 from provide.foundation.errors import error_boundary
 
@@ -153,16 +153,19 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
 
         # Collection conversions
         if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
-            return target_type.validate(value.value).with_marks(set(value.marks))
+            result: CtyValue[Any] = target_type.validate(value.value).with_marks(set(value.marks))
+            return result
 
         if isinstance(target_type, CtyList) and isinstance(value.type, CtySet | CtyTuple):
-            return target_type.validate(value.value).with_marks(set(value.marks))
+            result = target_type.validate(value.value).with_marks(set(value.marks))
+            return result
 
         if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
             if target_type.element_type.equal(value.type.element_type):
                 return value
             if isinstance(target_type.element_type, CtyDynamic):
-                return target_type.validate(value.value).with_marks(set(value.marks))
+                result = target_type.validate(value.value).with_marks(set(value.marks))
+                return result
 
         # Object conversion
         if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
@@ -179,7 +182,8 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                 else:
                     error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
                     raise CtyConversionError(error_message)
-            return target_type.validate(new_attrs).with_marks(set(value.marks))
+            result = target_type.validate(new_attrs).with_marks(set(value.marks))
+            return result
 
         # Fallback - no conversion available
         error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
