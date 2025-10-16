@@ -45,7 +45,8 @@
       "Bash(source:*)",
       "Bash(mypy:*)",
       "Bash(PYTHONPATH=src python3:*)",
-      "Bash(PYTHONPATH=src:. python3:*)"
+      "Bash(PYTHONPATH=src:. python3:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": [],
