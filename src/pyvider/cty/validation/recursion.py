@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from functools import wraps
 import threading
 import time
-from typing import Any
+from typing import Any, cast
 
 from provide.foundation import logger
 from provide.foundation.errors import error_boundary
@@ -87,7 +87,7 @@ def get_recursion_context() -> RecursionContext:
     """Get or create thread-local recursion context."""
     if not hasattr(_thread_local, "recursion_context"):
         _thread_local.recursion_context = RecursionContext()
-    return _thread_local.recursion_context
+    return cast(RecursionContext, _thread_local.recursion_context)
 
 
 def clear_recursion_context() -> None:
