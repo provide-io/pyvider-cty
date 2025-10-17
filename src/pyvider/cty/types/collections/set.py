@@ -50,8 +50,9 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}"
             )
 
+        value_iterable = cast(list[Any] | tuple[Any, ...] | set[Any] | frozenset[Any], value)  # type: ignore[redundant-cast]
         unique_items: OrderedDict[tuple[Any, ...], CtyValue[Any]] = OrderedDict()
-        for raw_item in value:
+        for raw_item in value_iterable:
             try:
                 validated_item = self.element_type.validate(raw_item)
                 key = validated_item._canonical_sort_key()
