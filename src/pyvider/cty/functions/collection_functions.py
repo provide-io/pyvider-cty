@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import Any
+from typing import Any, cast
 
 from provide.foundation.errors import error_boundary
 
@@ -48,9 +48,11 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
         except TypeError as e:
             error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(type=cty_element.type.ctype, error=e)
             raise CtyFunctionError(error_message) from e
-    element_type = (
-        input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
-    )
+    if isinstance(input_val.type, CtyList | CtySet):
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
+        element_type = collection_type.element_type
+    else:
+        element_type = CtyDynamic()
     return CtyList(element_type=element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
@@ -117,9 +119,11 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null:
         return input_val
 
-    element_type = (
-        input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
-    )
+    if isinstance(input_val.type, CtyList | CtySet):
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
+        element_type = collection_type.element_type
+    else:
+        element_type = CtyDynamic()
     if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
         raise CtyFunctionError(f"sort: elements must be string, number, or bool. Found: {element_type.ctype}")
 
@@ -131,11 +135,15 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
     # Now, iterate through the elements. A known list containing a null or
     # unknown element must raise an error.
-    for i, cty_element in enumerate(input_val.value):
+    value_iterable = cast(list[CtyValue[Any]] | tuple[CtyValue[Any], ...], input_val.value)
+    for i, cty_element in enumerate(value_iterable):
         if cty_element.is_null or cty_element.is_unknown:
             raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
 
-    return CtyList[Any](element_type=element_type).validate(sorted(input_val.value, key=lambda x: x.value))
+    result: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
+        sorted(value_iterable, key=lambda x: x.value)
+    )
+    return result
 
 
 def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -231,9 +239,10 @@ def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
             raise CtyFunctionError(f"keys: input must be a map or object, got {input_val.type.ctype}")
         if input_val.is_null or input_val.is_unknown:
             return CtyValue.unknown(CtyList(element_type=CtyString()))
-        return CtyList(element_type=CtyString()).validate(
+        result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
             sorted(list(input_val.value.keys()))  # type: ignore[attr-defined]
         )
+        return result
 
 
 def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -331,14 +340,17 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     if isinstance(collection.type, CtyTuple):
         if not all(isinstance(t, CtyString) for t in collection.type.element_types):
             raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
-    elif not isinstance(collection.type.element_type, CtyString):
-        raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+    else:
+        collection_type = cast(CtyList[Any] | CtySet[Any], collection.type)  # type: ignore[redundant-cast]
+        if not isinstance(collection_type.element_type, CtyString):
+            raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
 
     if collection.is_null or collection.is_unknown:
         return collection
-    return CtyList(element_type=CtyString()).validate(
+    result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
         [v for v in collection.value if v.value]  # type: ignore[attr-defined]
     )
+    return result
 
 
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
@@ -403,11 +415,14 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     prod = product(*iterables)
     result_tuples = [tuple(item) for item in prod]
 
-    elem_types = [
-        arg.type.element_type if isinstance(arg.type, CtyList | CtySet) else CtyDynamic()
-        for arg in args
-        if not arg.is_null
-    ]
+    elem_types = []
+    for arg in args:
+        if not arg.is_null:
+            if isinstance(arg.type, CtyList | CtySet):
+                arg_type_cast = cast(CtyList[Any] | CtySet[Any], arg.type)  # type: ignore[redundant-cast]
+                elem_types.append(arg_type_cast.element_type)
+            else:
+                elem_types.append(CtyDynamic())
     tuple_type = CtyTuple(element_types=tuple(elem_types))
 
     return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[no-any-return]

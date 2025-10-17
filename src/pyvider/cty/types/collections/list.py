@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, final
 
 from attrs import define, field
 from provide.foundation.errors import error_boundary
@@ -42,7 +41,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, tuple):
-                return value  # Fast path for already-validated values
+                return cast(CtyValue[tuple[T, ...]], value)  # Fast path for already-validated values
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
@@ -52,10 +51,9 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if value is None:
             return CtyValue.null(self)
 
-        raw_list_to_validate: Sequence[object] | None = None
-
         if isinstance(value, list | tuple | set | frozenset):
-            raw_list_to_validate = list(value)
+            value_collection = cast(list[object] | tuple[object, ...] | set[object] | frozenset[object], value)
+            raw_list_to_validate: list[object] = list(value_collection)
         else:
             raise CtyListValidationError(f"Expected list, tuple, or CtyValue list, got {type(value).__name__}")
 
@@ -108,7 +106,8 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                     f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}"
                 )
             try:
-                return self.element_type.validate(container.value[index])
+                container_value_seq = cast(list[Any] | tuple[Any, ...], container.value)  # type: ignore[redundant-cast]
+                return self.element_type.validate(container_value_seq[index])
             except TypeError as e:
                 raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
 

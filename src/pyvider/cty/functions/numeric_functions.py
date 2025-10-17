@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 import math
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.config.defaults import POSITIVE_BOUNDARY, ZERO_VALUE
@@ -196,7 +196,9 @@ def add(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
         return CtyValue.unknown(CtyNumber())
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("add", a, b)
-    return CtyNumber().validate(a.value + b.value)
+    a_val = cast(Decimal, a.value)
+    b_val = cast(Decimal, b.value)
+    return CtyNumber().validate(a_val + b_val)
 
 
 def subtract(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
@@ -206,7 +208,9 @@ def subtract(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
         return CtyValue.unknown(CtyNumber())
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("subtract", a, b)
-    return CtyNumber().validate(a.value - b.value)
+    a_val = cast(Decimal, a.value)
+    b_val = cast(Decimal, b.value)
+    return CtyNumber().validate(a_val - b_val)
 
 
 def multiply(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
@@ -218,7 +222,9 @@ def multiply(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
         return CtyNumber().validate(ZERO_VALUE)
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("multiply", a, b)
-    return CtyNumber().validate(a.value * b.value)
+    a_val = cast(Decimal, a.value)
+    b_val = cast(Decimal, b.value)
+    return CtyNumber().validate(a_val * b_val)
 
 
 def divide(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
@@ -230,7 +236,9 @@ def divide(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("divide by zero")
     if a.is_unknown or b.is_unknown:
         return _propagate_refined_unknowns("divide", a, b)
-    return CtyNumber().validate(a.value / b.value)
+    a_val = cast(Decimal, a.value)
+    b_val = cast(Decimal, b.value)
+    return CtyNumber().validate(a_val / b_val)
 
 
 def modulo(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
@@ -240,7 +248,9 @@ def modulo(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
         return CtyValue.unknown(CtyNumber())
     if b.value == ZERO_VALUE:
         raise CtyFunctionError("modulo by zero")
-    return CtyNumber().validate(math.fmod(a.value, b.value))
+    a_val = cast(Decimal, a.value)
+    b_val = cast(Decimal, b.value)
+    return CtyNumber().validate(Decimal(str(math.fmod(float(a_val), float(b_val)))))
 
 
 def negate(a: CtyValue[Any]) -> CtyValue[Any]:
@@ -263,12 +273,13 @@ def negate(a: CtyValue[Any]) -> CtyValue[Any]:
                     ref.number_lower_bound[1],
                 )
             return (
-                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
+                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))  # type: ignore[arg-type]
                 if new_ref
                 else CtyValue.unknown(CtyNumber())
             )
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(-a.value)
+    a_val = cast(Decimal, a.value)
+    return CtyNumber().validate(-a_val)
 
 
 def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -299,12 +310,13 @@ def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
             elif upper and upper[0] <= 0:
                 new_ref["number_lower_bound"] = (-upper[0], upper[1])
             return (
-                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
+                CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))  # type: ignore[arg-type]
                 if new_ref
                 else CtyValue.unknown(CtyNumber())
             )
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(abs(input_val.value))
+    val = cast(Decimal, input_val.value)
+    return CtyNumber().validate(abs(val))
 
 
 def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -312,7 +324,8 @@ def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"ceil: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyNumber().validate(Decimal(math.ceil(input_val.value)))
+    val = cast(Decimal, input_val.value)
+    return CtyNumber().validate(Decimal(math.ceil(val)))
 
 
 def floor_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -320,7 +333,8 @@ def floor_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"floor: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyNumber().validate(Decimal(math.floor(input_val.value)))
+    val = cast(Decimal, input_val.value)
+    return CtyNumber().validate(Decimal(math.floor(val)))
 
 
 def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
@@ -328,7 +342,8 @@ def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("log: arguments must be numbers")
     if num_val.is_null or num_val.is_unknown or base_val.is_null or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    num, base = num_val.value, base_val.value
+    num = cast(Decimal, num_val.value)
+    base = cast(Decimal, base_val.value)
     if num <= 0:
         raise CtyFunctionError(f"log: number must be positive, got {num}")
     if base <= 0:
@@ -348,7 +363,9 @@ def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
     if num_val.is_null or num_val.is_unknown or power_val.is_null or power_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
     try:
-        result = num_val.value**power_val.value
+        num = cast(Decimal, num_val.value)
+        power = cast(Decimal, power_val.value)
+        result = num**power
         return CtyNumber().validate(result)
     except InvalidOperation as e:
         raise CtyFunctionError(f"pow: invalid operation: {e}") from e
@@ -359,7 +376,7 @@ def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"signum: input must be a number, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    val = input_val.value
+    val = cast(Decimal, input_val.value)
     if val < 0:
         return CtyNumber().validate(Decimal("-1"))
     if val > 0:
@@ -374,7 +391,8 @@ def parseint_fn(str_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any
         return CtyValue.null(CtyNumber())
     if str_val.is_unknown or base_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
-    s, base = str_val.value, int(base_val.value)
+    s = cast(str, str_val.value)
+    base = int(cast(Decimal, base_val.value))
     if not (base == 0 or 2 <= base <= 36):
         raise CtyFunctionError(f"parseint: base must be 0 or between 2 and 36, got {base}")
     try:
@@ -389,7 +407,8 @@ def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"int: argument must be a number, got {val.type.ctype}")
     if val.is_null or val.is_unknown:
         return val
-    return CtyNumber().validate(Decimal(int(val.value)))
+    val_decimal = cast(Decimal, val.value)
+    return CtyNumber().validate(Decimal(int(val_decimal)))
 
 
 # 🐍⛓️🔣🪄

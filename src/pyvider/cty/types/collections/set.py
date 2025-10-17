@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Any, ClassVar, Generic, TypeVar, final
+from typing import Any, ClassVar, Generic, TypeVar, cast, final
 
 from attrs import define, field
 
@@ -42,7 +42,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 and value.type.equal(self)
                 and isinstance(value.value, frozenset)
             ):
-                return value
+                return cast(CtyValue[tuple[T, ...]], value)
             value = value.value
 
         if not isinstance(value, list | tuple | set | frozenset):
@@ -50,8 +50,9 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}"
             )
 
+        value_iterable = cast(list[Any] | tuple[Any, ...] | set[Any] | frozenset[Any], value)  # type: ignore[redundant-cast]
         unique_items: OrderedDict[tuple[Any, ...], CtyValue[Any]] = OrderedDict()
-        for raw_item in value:
+        for raw_item in value_iterable:
             try:
                 validated_item = self.element_type.validate(raw_item)
                 key = validated_item._canonical_sort_key()

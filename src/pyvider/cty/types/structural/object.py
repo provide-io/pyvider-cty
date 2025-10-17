@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 import unicodedata
 
 from attrs import define, field
@@ -42,7 +42,8 @@ class CtyObject(CtyType[dict[str, object]]):
         def safe_hash_type(cty_type: CtyType[Any]) -> int:
             if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
                 # For nested objects, use a simpler hash to avoid recursion
-                return hash((cty_type.ctype, tuple(sorted(cty_type.attribute_types.keys()))))
+                obj_type = cast(CtyObject, cty_type)
+                return hash((obj_type.ctype, tuple(sorted(obj_type.attribute_types.keys()))))
             return hash(cty_type)
 
         attr_hashes = tuple(
@@ -67,7 +68,7 @@ class CtyObject(CtyType[dict[str, object]]):
     def validate(self, value: object) -> CtyValue[dict[str, Any]]:  # noqa: C901
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
-                return value  # Fast path
+                return cast(CtyValue[dict[str, Any]], value)  # Fast path
             if value.is_unknown:
                 return CtyValue.unknown(self)
             if value.is_null:
@@ -92,7 +93,8 @@ class CtyObject(CtyType[dict[str, object]]):
             )
 
         # Normalize keys to NFC before validation to ensure consistency.
-        value = {unicodedata.normalize("NFC", k): v for k, v in value.items()}
+        value_dict = cast(dict[str, Any], value)
+        value = {unicodedata.normalize("NFC", str(k)): v for k, v in value_dict.items()}
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
         all_expected_attrs = set(self.attribute_types.keys())

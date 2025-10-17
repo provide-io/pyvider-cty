@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any, TypeVar, overload
+from typing import Any, cast
 
 from provide.foundation.errors import error_boundary
 
@@ -41,16 +41,6 @@ from pyvider.cty.values import CtyValue
 Implementation of the public `convert` and `unify` functions for explicit
 CTY-to-CTY type conversion.
 """
-
-T = TypeVar("T")
-
-
-@overload
-def convert(value: CtyValue[Any], target_type: CtyType[T]) -> CtyValue[T]: ...
-
-
-@overload
-def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]: ...
 
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
@@ -153,16 +143,19 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
 
         # Collection conversions
         if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
-            return target_type.validate(value.value).with_marks(set(value.marks))
+            converted: CtyValue[Any] = target_type.validate(value.value).with_marks(set(value.marks))
+            return converted
 
         if isinstance(target_type, CtyList) and isinstance(value.type, CtySet | CtyTuple):
-            return target_type.validate(value.value).with_marks(set(value.marks))
+            converted = target_type.validate(value.value).with_marks(set(value.marks))
+            return converted
 
         if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
             if target_type.element_type.equal(value.type.element_type):
                 return value
             if isinstance(target_type.element_type, CtyDynamic):
-                return target_type.validate(value.value).with_marks(set(value.marks))
+                converted = target_type.validate(value.value).with_marks(set(value.marks))
+                return converted
 
         # Object conversion
         if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
@@ -171,15 +164,17 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             if not isinstance(source_attrs, dict):
                 error_message = ERR_SOURCE_OBJECT_NOT_DICT
                 raise CtyConversionError(error_message)
+            source_attrs_dict = cast(dict[str, CtyValue[Any]], source_attrs)
             for name, target_attr_type in target_type.attribute_types.items():
-                if name in source_attrs:
-                    new_attrs[name] = convert(source_attrs[name], target_attr_type)
+                if name in source_attrs_dict:
+                    new_attrs[name] = convert(source_attrs_dict[name], target_attr_type)
                 elif name in target_type.optional_attributes:
                     new_attrs[name] = CtyValue.null(target_attr_type)
                 else:
                     error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
                     raise CtyConversionError(error_message)
-            return target_type.validate(new_attrs).with_marks(set(value.marks))
+            converted = target_type.validate(new_attrs).with_marks(set(value.marks))
+            return converted
 
         # Fallback - no conversion available
         error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
