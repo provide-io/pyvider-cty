@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from attrs import define, field
 
@@ -79,7 +79,8 @@ class IndexStep(PathStep):
         from pyvider.cty.types.structural import CtyDynamic, CtyTuple
 
         if isinstance(value.type, CtyList | CtyTuple):
-            return value.type.element_at(value, self.index)
+            list_or_tuple_type = cast(CtyList[Any] | CtyTuple, value.type)  # type: ignore[redundant-cast]
+            return list_or_tuple_type.element_at(value, self.index)
         if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
             result = self.apply(value.value)
             return CtyValue(result.type, result.value)

@@ -49,7 +49,7 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
             error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(type=cty_element.type.ctype, error=e)
             raise CtyFunctionError(error_message) from e
     if isinstance(input_val.type, CtyList | CtySet):
-        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
         element_type = collection_type.element_type
     else:
         element_type = CtyDynamic()
@@ -120,7 +120,7 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return input_val
 
     if isinstance(input_val.type, CtyList | CtySet):
-        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
         element_type = collection_type.element_type
     else:
         element_type = CtyDynamic()
@@ -340,8 +340,10 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     if isinstance(collection.type, CtyTuple):
         if not all(isinstance(t, CtyString) for t in collection.type.element_types):
             raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
-    elif not isinstance(collection.type.element_type, CtyString):
-        raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+    else:
+        collection_type = cast(CtyList[Any] | CtySet[Any], collection.type)  # type: ignore[redundant-cast]
+        if not isinstance(collection_type.element_type, CtyString):
+            raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
 
     if collection.is_null or collection.is_unknown:
         return collection
@@ -413,11 +415,14 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     prod = product(*iterables)
     result_tuples = [tuple(item) for item in prod]
 
-    elem_types = [
-        arg.type.element_type if isinstance(arg.type, CtyList | CtySet) else CtyDynamic()
-        for arg in args
-        if not arg.is_null
-    ]
+    elem_types = []
+    for arg in args:
+        if not arg.is_null:
+            if isinstance(arg.type, CtyList | CtySet):
+                arg_type_cast = cast(CtyList[Any] | CtySet[Any], arg.type)  # type: ignore[redundant-cast]
+                elem_types.append(arg_type_cast.element_type)
+            else:
+                elem_types.append(CtyDynamic())
     tuple_type = CtyTuple(element_types=tuple(elem_types))
 
     return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[no-any-return]

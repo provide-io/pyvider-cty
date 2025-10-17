@@ -95,7 +95,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             )
 
         normalized_key = unicodedata.normalize("NFC", str(key))
-        result = internal_dict.get(normalized_key)
+        internal_dict_cast = cast(dict[str, CtyValue[V]], internal_dict)
+        result = internal_dict_cast.get(normalized_key)
 
         if result is not None:
             return self.element_type.validate(result)
