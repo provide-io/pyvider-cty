@@ -22,7 +22,6 @@ import pytest
 from pyvider.cty import CtyNumber
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
-
 NUMERIC_ATTACK_SETTINGS = settings(
     deadline=5000,
     max_examples=1000,
@@ -79,7 +78,7 @@ def test_subnormal_floats(exponent: int) -> None:
     Tests very small numbers near the float precision limit.
     """
     # Create subnormal number
-    number = 10.0 ** exponent
+    number = 10.0**exponent
     assume(number > 0)  # Avoid actual zero
 
     number_type = CtyNumber()
@@ -93,7 +92,10 @@ def test_subnormal_floats(exponent: int) -> None:
 
 
 @NUMERIC_ATTACK_SETTINGS
-@given(numerator=st.floats(min_value=1.0, max_value=1e10), denominator=st.floats(min_value=1e-100, max_value=1e-10))
+@given(
+    numerator=st.floats(min_value=1.0, max_value=1e10),
+    denominator=st.floats(min_value=1e-100, max_value=1e-10),
+)
 def test_division_by_very_small_numbers(numerator: float, denominator: float) -> None:
     """
     Numeric attack: Division by very small numbers.
@@ -104,7 +106,7 @@ def test_division_by_very_small_numbers(numerator: float, denominator: float) ->
     result = numerator / denominator
 
     # Skip if result is infinity
-    assume(not (result == float('inf') or result == float('-inf')))
+    assume(not (result == float("inf") or result == float("-inf")))
 
     number_type = CtyNumber()
 
@@ -170,7 +172,7 @@ def test_extreme_exponents(base: float, exponent: int) -> None:
     Tests very large numbers created by exponentiation.
     """
     try:
-        number = base ** exponent
+        number = base**exponent
         assume(number < sys.float_info.max)  # Avoid actual infinity
 
         number_type = CtyNumber()
@@ -183,7 +185,10 @@ def test_extreme_exponents(base: float, exponent: int) -> None:
 
 
 @NUMERIC_ATTACK_SETTINGS
-@given(significant_digits=st.integers(min_value=1, max_value=50), exponent=st.integers(min_value=-50, max_value=50))
+@given(
+    significant_digits=st.integers(min_value=1, max_value=50),
+    exponent=st.integers(min_value=-50, max_value=50),
+)
 def test_precision_across_magnitude_ranges(significant_digits: int, exponent: int) -> None:
     """
     Numeric attack: Precision across different magnitude ranges.

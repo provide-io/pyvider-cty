@@ -24,18 +24,14 @@ from pyvider.cty import (
     CtyBool,
     CtyDynamic,
     CtyList,
-    CtyMap,
     CtyNumber,
     CtyObject,
-    CtySet,
     CtyString,
-    CtyTuple,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
-from pyvider.cty.exceptions import DeserializationError, SerializationError
+from pyvider.cty.exceptions import DeserializationError
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.values import CtyValue
-
 
 # Aggressive settings for adversarial testing
 ADVERSARIAL_SETTINGS = settings(
@@ -48,13 +44,17 @@ ADVERSARIAL_SETTINGS = settings(
 @st.composite
 def malicious_msgpack_strategy(draw):
     """Generate potentially malicious msgpack payloads."""
-    attack_type = draw(st.sampled_from([
-        "truncated",
-        "corrupted_header",
-        "invalid_extension",
-        "nested_bomb",
-        "type_confusion",
-    ]))
+    attack_type = draw(
+        st.sampled_from(
+            [
+                "truncated",
+                "corrupted_header",
+                "invalid_extension",
+                "nested_bomb",
+                "type_confusion",
+            ]
+        )
+    )
 
     if attack_type == "truncated":
         # Create valid data then truncate it
@@ -113,7 +113,14 @@ def test_codec_handles_malicious_payloads_gracefully(payload: bytes) -> None:
         result = cty_from_msgpack(payload, schema)
         # If it succeeds, the result should at least be a valid CtyValue
         assert isinstance(result, CtyValue)
-    except (DeserializationError, msgpack.exceptions.ExtraData, msgpack.exceptions.UnpackException, ValueError, TypeError, struct.error):
+    except (
+        DeserializationError,
+        msgpack.exceptions.ExtraData,
+        msgpack.exceptions.UnpackException,
+        ValueError,
+        TypeError,
+        struct.error,
+    ):
         # These are acceptable - the codec correctly rejected bad data
         pass
     except Exception as e:
@@ -196,10 +203,7 @@ def test_very_large_collections_are_handled(size: int) -> None:
 
 
 @ADVERSARIAL_SETTINGS
-@given(
-    num_marks=st.integers(min_value=100, max_value=1000),
-    data=st.integers() | st.text(max_size=100)
-)
+@given(num_marks=st.integers(min_value=100, max_value=1000), data=st.integers() | st.text(max_size=100))
 def test_many_marks_on_value_are_handled(num_marks: int, data) -> None:
     """
     Adversarial test: Values with many marks should be handled efficiently.
@@ -268,17 +272,23 @@ def test_unicode_edge_cases_are_handled(data) -> None:
     - Emoji with modifiers
     """
     # Generate problematic Unicode strings
-    unicode_category = data.draw(st.sampled_from([
-        "surrogate_pairs",
-        "combining_chars",
-        "rtl_markers",
-        "zero_width",
-        "emoji",
-    ]))
+    unicode_category = data.draw(
+        st.sampled_from(
+            [
+                "surrogate_pairs",
+                "combining_chars",
+                "rtl_markers",
+                "zero_width",
+                "emoji",
+            ]
+        )
+    )
 
     if unicode_category == "surrogate_pairs":
         # Valid surrogate pairs in Python strings
-        text = data.draw(st.text(alphabet=st.characters(min_codepoint=0x10000, max_codepoint=0x10FFFF), max_size=1000))
+        text = data.draw(
+            st.text(alphabet=st.characters(min_codepoint=0x10000, max_codepoint=0x10FFFF), max_size=1000)
+        )
     elif unicode_category == "combining_chars":
         # Characters with combining diacriticals
         base = data.draw(st.text(alphabet="aeiou", min_size=1, max_size=100))
@@ -286,14 +296,18 @@ def test_unicode_edge_cases_are_handled(data) -> None:
         text = "".join(c + combining for c in base)
     elif unicode_category == "rtl_markers":
         # Right-to-left markers
-        text = "\u202E" + data.draw(st.text(max_size=100)) + "\u202D"  # RTL override
+        text = "\u202e" + data.draw(st.text(max_size=100)) + "\u202d"  # RTL override
     elif unicode_category == "zero_width":
         # Zero-width characters
-        text = data.draw(st.text(max_size=100)) + "\u200B\u200C\u200D\uFEFF"
+        text = data.draw(st.text(max_size=100)) + "\u200b\u200c\u200d\ufeff"
     else:  # emoji
         # Emoji with skin tone modifiers
-        emoji_base = data.draw(st.sampled_from(["\U0001F44D", "\U0001F44B", "\U0001F91D"]))  # Thumbs up, wave, handshake
-        modifier = data.draw(st.sampled_from(["\U0001F3FB", "\U0001F3FC", "\U0001F3FD", "\U0001F3FE", "\U0001F3FF"]))  # Skin tones
+        emoji_base = data.draw(
+            st.sampled_from(["\U0001f44d", "\U0001f44b", "\U0001f91d"])
+        )  # Thumbs up, wave, handshake
+        modifier = data.draw(
+            st.sampled_from(["\U0001f3fb", "\U0001f3fc", "\U0001f3fd", "\U0001f3fe", "\U0001f3ff"])
+        )  # Skin tones
         text = emoji_base + modifier
 
     string_type = CtyString()
@@ -348,20 +362,28 @@ def test_schema_mismatch_detected(schema_mismatch) -> None:
     are detected and handled gracefully.
     """
     # Serialize as one type
-    original_type = schema_mismatch.draw(st.sampled_from([
-        CtyString(),
-        CtyNumber(),
-        CtyBool(),
-        CtyList(element_type=CtyNumber()),
-    ]))
+    original_type = schema_mismatch.draw(
+        st.sampled_from(
+            [
+                CtyString(),
+                CtyNumber(),
+                CtyBool(),
+                CtyList(element_type=CtyNumber()),
+            ]
+        )
+    )
 
     # Different type for deserialization
-    target_type = schema_mismatch.draw(st.sampled_from([
-        CtyString(),
-        CtyNumber(),
-        CtyBool(),
-        CtyList(element_type=CtyString()),
-    ]))
+    target_type = schema_mismatch.draw(
+        st.sampled_from(
+            [
+                CtyString(),
+                CtyNumber(),
+                CtyBool(),
+                CtyList(element_type=CtyString()),
+            ]
+        )
+    )
 
     # Only test mismatches
     assume(type(original_type) != type(target_type))
@@ -400,7 +422,14 @@ def test_random_binary_data_rejected(data: bytes) -> None:
 
     try:
         cty_from_msgpack(data, schema)
-    except (DeserializationError, msgpack.exceptions.ExtraData, msgpack.exceptions.UnpackException, ValueError, TypeError, struct.error):
+    except (
+        DeserializationError,
+        msgpack.exceptions.ExtraData,
+        msgpack.exceptions.UnpackException,
+        ValueError,
+        TypeError,
+        struct.error,
+    ):
         # Expected - random data is invalid
         pass
 
