@@ -50,7 +50,8 @@
       "Bash(uv build:*)",
       "Bash(ty check:*)",
       "Bash(bandit:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": [],

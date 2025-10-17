@@ -70,6 +70,7 @@ python_files = ["test_*.py"]
 markers = [
     "benchmark: mark test as a performance benchmark",
     "compat: mark test as a cross-language compatibility test",
+    "slow: mark test as slow-running (extreme scale, memory pressure, etc.)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

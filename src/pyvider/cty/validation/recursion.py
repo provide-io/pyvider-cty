@@ -70,6 +70,9 @@ class RecursionContext:
     max_object_revisits: int = MAX_OBJECT_REVISITS
     max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
 
+    # Flag to indicate validation was stopped due to recursion detection
+    validation_stopped: bool = False
+
     def reset(self) -> None:
         """Reset context for new validation session."""
         self.validation_graph.clear()
@@ -77,6 +80,7 @@ class RecursionContext:
         self.max_depth_reached = 0
         self.total_validations = 0
         self.validation_start_time = time.time()
+        self.validation_stopped = False
 
 
 # Thread-local storage for recursion contexts
@@ -265,11 +269,20 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
             detector.enter_validation_scope(scope_name)
 
             try:
+                # Check if validation was already stopped by a nested call
+                if context.validation_stopped:
+                    from pyvider.cty.values import CtyValue
+
+                    return CtyValue.unknown(self)
+
                 should_continue, reason = detector.should_continue_validation(
                     value, detector.get_current_path()
                 )
                 if not should_continue:
                     from pyvider.cty.values import CtyValue
+
+                    # Set flag to stop all parent validations
+                    context.validation_stopped = True
 
                     logger.warning(
                         "CTY validation stopped due to recursion detection",
@@ -280,7 +293,15 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                     return CtyValue.unknown(self)
 
                 # The decorator no longer passes the internal flag down.
-                return func(self, value, *args, **kwargs)
+                result = func(self, value, *args, **kwargs)
+
+                # Check again after validation in case a nested call stopped validation
+                if context.validation_stopped:
+                    from pyvider.cty.values import CtyValue
+
+                    return CtyValue.unknown(self)
+
+                return result
             finally:
                 detector.exit_validation_scope()
                 # The context is now only cleared by the top-level caller (e.g., test setup),
