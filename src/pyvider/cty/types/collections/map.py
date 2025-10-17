@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar, cast
 import unicodedata
 
 from attrs import define, field
@@ -40,7 +40,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def validate(self, value: object) -> CtyValue[dict[str, V]]:
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
-                return value  # Fast path
+                return cast(CtyValue[dict[str, V]], value)  # Fast path
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
@@ -95,7 +95,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             )
 
         normalized_key = unicodedata.normalize("NFC", str(key))
-        result = internal_dict.get(normalized_key)
+        internal_dict_cast = cast(dict[str, CtyValue[V]], internal_dict)
+        result = internal_dict_cast.get(normalized_key)
 
         if result is not None:
             return self.element_type.validate(result)

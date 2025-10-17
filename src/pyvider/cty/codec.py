@@ -266,7 +266,8 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -
     if isinstance(schema, CtyMap):
         return _serialize_map_value(inner_val, schema)
     if isinstance(schema, CtyList | CtySet):
-        return _serialize_collection_value(inner_val, cast(CtyList[Any] | CtySet[Any], schema))
+        schema_narrowed = cast(CtyList[Any] | CtySet[Any], schema)  # type: ignore[redundant-cast]
+        return _serialize_collection_value(inner_val, schema_narrowed)
     if isinstance(schema, CtyTuple):
         return _serialize_tuple_value(inner_val, schema)
     if isinstance(inner_val, Decimal):
@@ -292,11 +293,12 @@ def cty_to_msgpack(value: CtyValue[Any], schema: CtyType[Any]) -> bytes:
         }
     ):
         serializable_data = _convert_value_to_serializable(value, schema)
-        return msgpack.packb(
+        result: bytes = msgpack.packb(
             serializable_data,
             default=_msgpack_default_handler,
             use_bin_type=MSGPACK_USE_BIN_TYPE_TRUE,
         )
+        return result
 
 
 def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:

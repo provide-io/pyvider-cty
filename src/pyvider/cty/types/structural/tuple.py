@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import builtins
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from attrs import define, field
 
@@ -40,7 +40,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
     def validate(self, value: object) -> CtyValue[tuple[Any, ...]]:
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyTuple) and value.type.equal(self) and isinstance(value.value, tuple):
-                return value
+                return cast(CtyValue[tuple[Any, ...]], value)
             if value.is_unknown:
                 return CtyValue.unknown(self)
             if value.is_null:
@@ -48,11 +48,12 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             value = value.value
         if not isinstance(value, list | tuple):
             raise CtyTupleValidationError(f"Expected tuple or list, got {type(value).__name__}")
-        if len(value) != len(self.element_types):
-            raise CtyTupleValidationError(f"Expected {len(self.element_types)} elements, got {len(value)}")
+        value_seq = cast(list[Any] | tuple[Any, ...], value)  # type: ignore[redundant-cast]
+        if len(value_seq) != len(self.element_types):
+            raise CtyTupleValidationError(f"Expected {len(self.element_types)} elements, got {len(value_seq)}")
 
         validated_elements = []
-        for i, (raw_element, element_type) in enumerate(zip(value, self.element_types, strict=False)):
+        for i, (raw_element, element_type) in enumerate(zip(value_seq, self.element_types, strict=False)):
             try:
                 validated_element = element_type.validate(raw_element)
                 validated_elements.append(validated_element)
