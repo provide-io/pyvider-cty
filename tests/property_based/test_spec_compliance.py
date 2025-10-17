@@ -54,7 +54,9 @@ def test_string_values_use_nfc_normalization(text: str) -> None:
 
 
 @settings(deadline=1000, max_examples=200)
-@given(number=st.integers(min_value=-2**53, max_value=2**53) | st.floats(allow_nan=False, allow_infinity=False))
+@given(
+    number=st.integers(min_value=-(2**53), max_value=2**53) | st.floats(allow_nan=False, allow_infinity=False)
+)
 def test_number_values_preserve_numeric_precision(number: int | float) -> None:
     """
     Spec compliance: Number values should preserve precision within safe range.
@@ -111,13 +113,17 @@ def test_null_values_have_type_information(data) -> None:
     critical for cross-language compatibility.
     """
     # Generate a random type
-    value_type = data.draw(st.sampled_from([
-        CtyString(),
-        CtyNumber(),
-        CtyBool(),
-        CtyList(element_type=CtyString()),
-        CtyObject(attribute_types={"name": CtyString()})
-    ]))
+    value_type = data.draw(
+        st.sampled_from(
+            [
+                CtyString(),
+                CtyNumber(),
+                CtyBool(),
+                CtyList(element_type=CtyString()),
+                CtyObject(attribute_types={"name": CtyString()}),
+            ]
+        )
+    )
 
     # Create null value
     null_value = CtyValue.null(value_type)
@@ -143,12 +149,16 @@ def test_unknown_values_have_type_information(data) -> None:
     planning in Terraform). They must maintain type information.
     """
     # Generate a random type
-    value_type = data.draw(st.sampled_from([
-        CtyString(),
-        CtyNumber(),
-        CtyBool(),
-        CtyList(element_type=CtyNumber()),
-    ]))
+    value_type = data.draw(
+        st.sampled_from(
+            [
+                CtyString(),
+                CtyNumber(),
+                CtyBool(),
+                CtyList(element_type=CtyNumber()),
+            ]
+        )
+    )
 
     # Create unknown value
     unknown_value = CtyValue.unknown(value_type)
@@ -196,12 +206,14 @@ def test_object_attribute_order_is_stable(data) -> None:
     helps with debugging and comparison across implementations.
     """
     # Generate attribute names
-    attr_names = data.draw(st.lists(
-        st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
-        min_size=1,
-        max_size=5,
-        unique=True
-    ))
+    attr_names = data.draw(
+        st.lists(
+            st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
+            min_size=1,
+            max_size=5,
+            unique=True,
+        )
+    )
 
     if not attr_names:
         attr_names = ["default"]
@@ -232,35 +244,39 @@ def test_object_attribute_order_is_stable(data) -> None:
 
 
 @settings(deadline=1000, max_examples=100)
-@given(marks_data=st.lists(
-    st.tuples(
-        st.text(min_size=1, max_size=20),
-        st.none() | st.integers() | st.text(max_size=50)
-    ),
-    max_size=5
-))
-def test_marks_serialization_is_consistent(marks_data: list[tuple[str, int | str | None]]) -> None:
+@given(
+    marks_data=st.lists(
+        st.tuples(st.text(min_size=1, max_size=20), st.none() | st.integers() | st.text(max_size=50)),
+        max_size=5,
+    )
+)
+def test_marks_hashability_and_creation(marks_data: list[tuple[str, int | str | None]]) -> None:
     """
-    Spec compliance: Marks should serialize consistently.
+    Spec compliance: Marks should be hashable and properly created.
 
-    Marks are a CTY-specific feature for attaching metadata. Their
-    serialization must be consistent across implementations.
+    Marks are a CTY-specific feature for attaching metadata. They must
+    be hashable so they can be stored in sets.
+
+    Note: Marks are NOT serialized to msgpack - they are transient metadata.
     """
     # Create marks
     marks = {CtyMark(name, details) for name, details in marks_data}
 
-    # Create a value with marks
+    # All marks should be hashable
+    marks_frozenset = frozenset(marks)
+
+    # Should be able to recreate
+    marks_list = list(marks_frozenset)
+    recreated = frozenset(marks_list)
+
+    assert marks_frozenset == recreated
+
+    # Apply to a value
     string_value = CtyString().validate("test")
     marked_value = string_value.with_marks(marks)
 
-    # Serialize
-    msgpack_bytes = cty_to_msgpack(marked_value, CtyString())
-
-    # Deserialize
-    decoded = cty_from_msgpack(msgpack_bytes, CtyString())
-
-    # Marks should be preserved
-    assert decoded.marks == marked_value.marks
+    # Marks should be attached
+    assert marked_value.marks == marks_frozenset
 
 
 @settings(deadline=2000, max_examples=100)
@@ -273,12 +289,21 @@ def test_dynamic_type_inference_is_deterministic(data) -> None:
     result, which is critical for cross-language consistency.
     """
     # Generate test data
-    primitives = st.none() | st.booleans() | st.integers() | st.floats(allow_nan=False, allow_infinity=False) | st.text()
-    nested_data = data.draw(st.recursive(
-        primitives,
-        lambda children: st.lists(children, max_size=5) | st.dictionaries(st.text(min_size=1), children, max_size=5),
-        max_leaves=10
-    ))
+    primitives = (
+        st.none()
+        | st.booleans()
+        | st.integers()
+        | st.floats(allow_nan=False, allow_infinity=False)
+        | st.text()
+    )
+    nested_data = data.draw(
+        st.recursive(
+            primitives,
+            lambda children: st.lists(children, max_size=5)
+            | st.dictionaries(st.text(min_size=1), children, max_size=5),
+            max_leaves=10,
+        )
+    )
 
     schema = CtyDynamic()
 
@@ -348,7 +373,9 @@ def test_msgpack_encoding_is_compact(data) -> None:
 
     # For very small values, the overhead can be proportionally large
     if raw_size > 100:
-        assert encoded_size < raw_size * 10, f"Encoding too large: {encoded_size} bytes for {raw_size} bytes of data"
+        assert encoded_size < raw_size * 10, (
+            f"Encoding too large: {encoded_size} bytes for {raw_size} bytes of data"
+        )
 
 
 @settings(deadline=1000, max_examples=100)
@@ -404,13 +431,9 @@ def test_deeply_nested_structures_have_consistent_types(data) -> None:
     outer_list = CtyList(element_type=middle_list)
 
     # Generate nested data
-    nested_data = data.draw(st.lists(
-        st.lists(
-            st.lists(st.text(max_size=10), max_size=3),
-            max_size=3
-        ),
-        max_size=3
-    ))
+    nested_data = data.draw(
+        st.lists(st.lists(st.lists(st.text(max_size=10), max_size=3), max_size=3), max_size=3)
+    )
 
     # Validate
     cty_value = outer_list.validate(nested_data)

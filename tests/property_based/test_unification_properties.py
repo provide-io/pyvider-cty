@@ -8,13 +8,14 @@ from pyvider.cty import CtyBool, CtyDynamic, CtyList, CtyNumber, CtyObject, CtyS
 from pyvider.cty.conversion.explicit import convert, unify
 from pyvider.cty.types import CtyType
 
-
 # Strategy for generating simple types
-simple_types = st.sampled_from([
-    CtyString(),
-    CtyNumber(),
-    CtyBool(),
-])
+simple_types = st.sampled_from(
+    [
+        CtyString(),
+        CtyNumber(),
+        CtyBool(),
+    ]
+)
 
 
 # Strategy for generating list types
@@ -30,14 +31,18 @@ def list_types_strategy(draw):
 def object_types_strategy(draw):
     """Generate CtyObject types with various attribute configurations."""
     num_attrs = draw(st.integers(min_value=1, max_value=5))
-    attr_names = draw(st.lists(
-        st.text(min_size=1, max_size=10, alphabet=st.characters(
-            whitelist_categories=("L", "N"), blacklist_characters="_"
-        )),
-        min_size=num_attrs,
-        max_size=num_attrs,
-        unique=True
-    ))
+    attr_names = draw(
+        st.lists(
+            st.text(
+                min_size=1,
+                max_size=10,
+                alphabet=st.characters(whitelist_categories=("L", "N"), blacklist_characters="_"),
+            ),
+            min_size=num_attrs,
+            max_size=num_attrs,
+            unique=True,
+        )
+    )
 
     # Ensure at least one attribute
     if not attr_names:
@@ -47,12 +52,9 @@ def object_types_strategy(draw):
 
     # Randomly make some attributes optional
     num_optional = draw(st.integers(min_value=0, max_value=len(attr_names)))
-    optional_attrs = frozenset(draw(st.lists(
-        st.sampled_from(attr_names),
-        min_size=num_optional,
-        max_size=num_optional,
-        unique=True
-    )))
+    optional_attrs = frozenset(
+        draw(st.lists(st.sampled_from(attr_names), min_size=num_optional, max_size=num_optional, unique=True))
+    )
 
     return CtyObject(attribute_types=attr_types, optional_attributes=optional_attrs)
 
@@ -130,14 +132,18 @@ def test_unify_objects_with_same_keys_unifies_attribute_types(data) -> None:
     unifying each attribute type.
     """
     # Generate a set of attribute names
-    attr_names = data.draw(st.lists(
-        st.text(min_size=1, max_size=10, alphabet=st.characters(
-            whitelist_categories=("L",), blacklist_characters="_"
-        )),
-        min_size=1,
-        max_size=3,
-        unique=True
-    ))
+    attr_names = data.draw(
+        st.lists(
+            st.text(
+                min_size=1,
+                max_size=10,
+                alphabet=st.characters(whitelist_categories=("L",), blacklist_characters="_"),
+            ),
+            min_size=1,
+            max_size=3,
+            unique=True,
+        )
+    )
 
     if not attr_names:
         attr_names = ["default"]
@@ -174,18 +180,22 @@ def test_unify_objects_with_different_keys_returns_dynamic(data) -> None:
     Tests that objects with incompatible structures cannot be unified.
     """
     # Generate two object types with different keys
-    keys1 = data.draw(st.lists(
-        st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
-        min_size=1,
-        max_size=3,
-        unique=True
-    ))
-    keys2 = data.draw(st.lists(
-        st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
-        min_size=1,
-        max_size=3,
-        unique=True
-    ))
+    keys1 = data.draw(
+        st.lists(
+            st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
+            min_size=1,
+            max_size=3,
+            unique=True,
+        )
+    )
+    keys2 = data.draw(
+        st.lists(
+            st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
+            min_size=1,
+            max_size=3,
+            unique=True,
+        )
+    )
 
     # Ensure keys are different
     assume(set(keys1) != set(keys2))
@@ -222,8 +232,6 @@ def test_unify_different_primitive_types_returns_dynamic(types: list[CtyType]) -
     assert isinstance(unified, CtyDynamic)
 
 
-@settings(deadline=1000, max_examples=100)
-@given(types=st.lists(all_types, min_size=1, max_size=5))
 def test_unify_empty_list_returns_dynamic() -> None:
     """
     Property test: Unifying an empty list returns CtyDynamic.
