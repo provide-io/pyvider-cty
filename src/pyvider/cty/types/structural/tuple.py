@@ -48,11 +48,12 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             value = value.value
         if not isinstance(value, list | tuple):
             raise CtyTupleValidationError(f"Expected tuple or list, got {type(value).__name__}")
-        if len(value) != len(self.element_types):
-            raise CtyTupleValidationError(f"Expected {len(self.element_types)} elements, got {len(value)}")
+        value_seq = cast(list[Any] | tuple[Any, ...], value)
+        if len(value_seq) != len(self.element_types):
+            raise CtyTupleValidationError(f"Expected {len(self.element_types)} elements, got {len(value_seq)}")
 
         validated_elements = []
-        for i, (raw_element, element_type) in enumerate(zip(value, self.element_types, strict=False)):
+        for i, (raw_element, element_type) in enumerate(zip(value_seq, self.element_types, strict=False)):
             try:
                 validated_element = element_type.validate(raw_element)
                 validated_elements.append(validated_element)

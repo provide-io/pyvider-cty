@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
 from provide.foundation.errors import error_boundary
 
@@ -164,9 +164,10 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             if not isinstance(source_attrs, dict):
                 error_message = ERR_SOURCE_OBJECT_NOT_DICT
                 raise CtyConversionError(error_message)
+            source_attrs_dict = cast(dict[str, CtyValue[Any]], source_attrs)
             for name, target_attr_type in target_type.attribute_types.items():
-                if name in source_attrs:
-                    new_attrs[name] = convert(source_attrs[name], target_attr_type)
+                if name in source_attrs_dict:
+                    new_attrs[name] = convert(source_attrs_dict[name], target_attr_type)
                 elif name in target_type.optional_attributes:
                     new_attrs[name] = CtyValue.null(target_attr_type)
                 else:
