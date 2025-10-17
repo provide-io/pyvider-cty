@@ -147,10 +147,10 @@ def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[An
     if not known_args:
         return None
     if op == "max":
-        result: CtyValue[Any] = max(known_args, key=lambda v: v.value)
+        result: CtyValue[Any] = max(known_args, key=lambda v: v.value)  # type: ignore[arg-type,return-value]
         return result
     else:
-        result = min(known_args, key=lambda v: v.value)
+        result = min(known_args, key=lambda v: v.value)  # type: ignore[arg-type,return-value]
         return result
 
 
