@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from attrs import define
 
@@ -36,7 +36,7 @@ class CtyDynamic(CtyType[object]):
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyDynamic):
-                return value
+                return cast(CtyValue[Any], value)
             return CtyValue(vtype=self, value=value)
 
         if value is None:

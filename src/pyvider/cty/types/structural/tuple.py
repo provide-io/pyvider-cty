@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import builtins
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from attrs import define, field
 
@@ -40,7 +40,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
     def validate(self, value: object) -> CtyValue[tuple[Any, ...]]:
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyTuple) and value.type.equal(self) and isinstance(value.value, tuple):
-                return value
+                return cast(CtyValue[tuple[Any, ...]], value)
             if value.is_unknown:
                 return CtyValue.unknown(self)
             if value.is_null:
