@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 import json
-from typing import Any
+from typing import Any, cast
 
 import msgpack  # type: ignore
 from provide.foundation.errors import error_boundary
