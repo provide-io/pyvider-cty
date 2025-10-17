@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import Any
+from typing import Any, cast
 
 from provide.foundation.errors import error_boundary
 
@@ -48,9 +48,11 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
         except TypeError as e:
             error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(type=cty_element.type.ctype, error=e)
             raise CtyFunctionError(error_message) from e
-    element_type = (
-        input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
-    )
+    if isinstance(input_val.type, CtyList | CtySet):
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)
+        element_type = collection_type.element_type
+    else:
+        element_type = CtyDynamic()
     return CtyList(element_type=element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
@@ -117,9 +119,11 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null:
         return input_val
 
-    element_type = (
-        input_val.type.element_type if isinstance(input_val.type, CtyList | CtySet) else CtyDynamic()
-    )
+    if isinstance(input_val.type, CtyList | CtySet):
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)
+        element_type = collection_type.element_type
+    else:
+        element_type = CtyDynamic()
     if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
         raise CtyFunctionError(f"sort: elements must be string, number, or bool. Found: {element_type.ctype}")
 
@@ -131,12 +135,13 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
     # Now, iterate through the elements. A known list containing a null or
     # unknown element must raise an error.
-    for i, cty_element in enumerate(input_val.value):
+    value_iterable = cast(list[CtyValue[Any]] | tuple[CtyValue[Any], ...], input_val.value)
+    for i, cty_element in enumerate(value_iterable):
         if cty_element.is_null or cty_element.is_unknown:
             raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
 
     result: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
-        sorted(input_val.value, key=lambda x: x.value)
+        sorted(value_iterable, key=lambda x: x.value)
     )
     return result
 
