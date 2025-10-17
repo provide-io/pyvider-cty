@@ -93,7 +93,8 @@ class CtyObject(CtyType[dict[str, object]]):
             )
 
         # Normalize keys to NFC before validation to ensure consistency.
-        value = {unicodedata.normalize("NFC", k): v for k, v in value.items()}
+        value_dict = cast(dict[str, Any], value)
+        value = {unicodedata.normalize("NFC", str(k)): v for k, v in value_dict.items()}
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
         all_expected_attrs = set(self.attribute_types.keys())
