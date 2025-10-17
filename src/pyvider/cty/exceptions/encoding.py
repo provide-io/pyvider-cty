@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pyvider.cty.exceptions.base import CtyError
 
@@ -152,7 +152,8 @@ class AttributePathError(CtyError):
         if path is not None:
             context["cty.path"] = str(path)
             if hasattr(path, "steps"):
-                context["cty.path_depth"] = len(path.steps)
+                steps = cast(list[Any], path.steps)
+                context["cty.path_depth"] = len(steps)
 
         if value is not None:
             context["cty.value_type"] = type(value).__name__
@@ -304,7 +305,11 @@ class DeserializationError(EncodingError):
         context["cty.serialization_direction"] = "deserialize"
 
         if data is not None:
-            context["cty.deserialized_data_size"] = len(data) if hasattr(data, "__len__") else "unknown"
+            if hasattr(data, "__len__"):
+                data_with_len = cast(list[Any] | dict[Any, Any] | str | bytes, data)
+                context["cty.deserialized_data_size"] = len(data_with_len)
+            else:
+                context["cty.deserialized_data_size"] = "unknown"
 
         super().__init__(message, data, format_name, **kwargs)
 
