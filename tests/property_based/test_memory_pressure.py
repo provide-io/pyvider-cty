@@ -199,7 +199,6 @@ def test_large_object_attribute_memory(size: int) -> None:
 
 
 @pytest.mark.slow
-@MEMORY_SETTINGS
 def test_cyclic_reference_handling() -> None:
     """
     Memory pressure: System should handle potential cycles gracefully.
