@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any, TypeVar, overload
+from typing import Any
 
 from provide.foundation.errors import error_boundary
 
@@ -41,16 +41,6 @@ from pyvider.cty.values import CtyValue
 Implementation of the public `convert` and `unify` functions for explicit
 CTY-to-CTY type conversion.
 """
-
-T = TypeVar("T")
-
-
-@overload
-def convert(value: CtyValue[Any], target_type: CtyType[T]) -> CtyValue[T]: ...
-
-
-@overload
-def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]: ...
 
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
