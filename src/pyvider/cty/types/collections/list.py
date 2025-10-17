@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, final
 
 from attrs import define, field
 from provide.foundation.errors import error_boundary
@@ -42,7 +42,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, tuple):
-                return value  # Fast path for already-validated values
+                return cast(CtyValue[tuple[T, ...]], value)  # Fast path for already-validated values
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:

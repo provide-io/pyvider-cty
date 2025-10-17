@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Any, ClassVar, Generic, TypeVar, final
+from typing import Any, ClassVar, Generic, TypeVar, cast, final
 
 from attrs import define, field
 
@@ -42,7 +42,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 and value.type.equal(self)
                 and isinstance(value.value, frozenset)
             ):
-                return value
+                return cast(CtyValue[tuple[T, ...]], value)
             value = value.value
 
         if not isinstance(value, list | tuple | set | frozenset):
