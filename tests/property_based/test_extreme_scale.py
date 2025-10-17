@@ -19,7 +19,6 @@ import pytest
 from pyvider.cty import CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
-
 # Extreme scale settings
 EXTREME_SETTINGS = settings(
     deadline=30000,  # 30 seconds for large data
@@ -142,7 +141,10 @@ def test_extreme_string_length(length: int) -> None:
 
 @pytest.mark.slow
 @EXTREME_SETTINGS
-@given(num_lists=st.integers(min_value=100, max_value=500), items_per_list=st.integers(min_value=100, max_value=1000))
+@given(
+    num_lists=st.integers(min_value=100, max_value=500),
+    items_per_list=st.integers(min_value=100, max_value=1000),
+)
 def test_extreme_nested_collection_count(num_lists: int, items_per_list: int) -> None:
     """
     Extreme scale: Many nested collections.
@@ -169,6 +171,7 @@ def test_extreme_wide_and_deep(width: int, depth: int) -> None:
 
     Tests structures that are both wide and deep.
     """
+
     # Build structure with both width and depth
     def build_level(current_depth):
         if current_depth >= depth:
