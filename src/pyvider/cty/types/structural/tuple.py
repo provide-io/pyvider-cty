@@ -48,7 +48,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             value = value.value
         if not isinstance(value, list | tuple):
             raise CtyTupleValidationError(f"Expected tuple or list, got {type(value).__name__}")
-        value_seq = cast(list[Any] | tuple[Any, ...], value)
+        value_seq = cast(list[Any] | tuple[Any, ...], value)  # type: ignore[redundant-cast]
         if len(value_seq) != len(self.element_types):
             raise CtyTupleValidationError(f"Expected {len(self.element_types)} elements, got {len(value_seq)}")
 

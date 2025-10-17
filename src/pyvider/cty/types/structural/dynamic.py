@@ -36,7 +36,7 @@ class CtyDynamic(CtyType[object]):
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyDynamic):
-                return cast(CtyValue[Any], value)
+                return cast(CtyValue[Any], value)  # type: ignore[redundant-cast]
             return CtyValue(vtype=self, value=value)
 
         if value is None:
