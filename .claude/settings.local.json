@@ -48,7 +48,8 @@
       "Bash(PYTHONPATH=src:. python3:*)",
       "Bash(bash:*)",
       "Bash(uv build:*)",
-      "Bash(ty check:*)"
+      "Bash(ty check:*)",
+      "Bash(bandit:*)"
     ],
     "deny": [],
     "ask": [],
