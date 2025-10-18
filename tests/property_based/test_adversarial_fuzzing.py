@@ -29,7 +29,7 @@ from pyvider.cty import (
     CtyString,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
-from pyvider.cty.exceptions import DeserializationError
+from pyvider.cty.exceptions import CtyValidationError, DeserializationError
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.values import CtyValue
 
@@ -441,6 +441,7 @@ def test_random_binary_data_rejected(data: bytes) -> None:
         cty_from_msgpack(data, schema)
     except (
         DeserializationError,
+        CtyValidationError,  # Random data might deserialize but fail validation
         msgpack.exceptions.ExtraData,
         msgpack.exceptions.UnpackException,
         ValueError,
