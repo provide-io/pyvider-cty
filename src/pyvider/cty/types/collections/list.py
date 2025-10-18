@@ -51,6 +51,19 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if value is None:
             return CtyValue.null(self)
 
+        # Check for UnrefinedUnknownValue which can slip through if a CtyValue wrapper is removed
+        from pyvider.cty.values.markers import UnrefinedUnknownValue
+        if isinstance(value, UnrefinedUnknownValue):
+            raise CtyListValidationError(
+                "Cannot use unknown/computed value for list parameter. "
+                "This value won't be known until apply time, but is needed during validation. "
+                "Possible causes:\n"
+                "  - Circular reference (e.g., data source referencing itself)\n"
+                "  - Using output from another resource/data source that hasn't been created yet\n"
+                "  - Dynamic values in function calls during validation\n"
+                "Hint: Check for self-references or values that depend on resources not yet created."
+            )
+
         if isinstance(value, list | tuple | set | frozenset):
             value_collection = cast(list[object] | tuple[object, ...] | set[object] | frozenset[object], value)
             raw_list_to_validate: list[object] = list(value_collection)

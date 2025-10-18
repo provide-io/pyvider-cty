@@ -147,8 +147,10 @@ class CtyObject(CtyType[dict[str, object]]):
 
                 validated_attrs[name] = validated_attr
 
-        is_unknown = any(v.is_unknown for v in validated_attrs.values())
-        return CtyValue(vtype=self, value=validated_attrs, is_unknown=is_unknown)
+        # Don't mark the entire object as unknown just because some fields are unknown
+        # Terraform expects field-level unknown tracking, not object-level
+        # The object itself is only unknown if explicitly passed as unknown
+        return CtyValue(vtype=self, value=validated_attrs, is_unknown=False)
 
     def get_attribute(self, obj_value: CtyValue[Any], name: str) -> CtyValue[Any]:
         if not isinstance(obj_value, CtyValue):

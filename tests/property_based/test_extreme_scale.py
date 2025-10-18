@@ -169,13 +169,16 @@ def test_extreme_nested_collection_count(num_lists: int, items_per_list: int) ->
 
 @pytest.mark.slow
 @EXTREME_SETTINGS
-@given(width=st.integers(min_value=10, max_value=50), depth=st.integers(min_value=10, max_value=50))
+@given(width=st.integers(min_value=2, max_value=4), depth=st.integers(min_value=5, max_value=8))
 def test_extreme_wide_and_deep(width: int, depth: int) -> None:
     """
     Extreme scale: Both wide (many siblings) and deep (many levels).
 
     Tests structures that are both wide and deep.
-    Note: Reduced from 200x200 to 50x50 to avoid timeout during parallel execution.
+    CRITICAL: This creates width^depth total nodes!
+    - 4^8 = 65,536 nodes (max)
+    - 2^5 = 32 nodes (min)
+    Previous limits caused exponential memory explosion (50^50 = astronomical!).
     """
 
     # Build structure with both width and depth
