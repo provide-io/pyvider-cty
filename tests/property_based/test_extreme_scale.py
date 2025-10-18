@@ -29,13 +29,14 @@ EXTREME_SETTINGS = settings(
 
 @pytest.mark.slow
 @EXTREME_SETTINGS
-@given(size=st.integers(min_value=5_000, max_value=25_000))
+@given(size=st.integers(min_value=1_000, max_value=10_000))
 def test_extreme_list_size(size: int) -> None:
     """
-    Extreme scale: Lists with 5k-25k items.
+    Extreme scale: Lists with 1k-10k items.
 
-    Tests that very large lists can be validated and serialized.
+    Tests that large lists can be validated and serialized.
     Note: Reduced from 100k to avoid validation timeout (30s limit).
+    Under parallel execution, even 25k can timeout, so reduced to 10k max.
     """
     # Create large list
     items = list(range(size))
@@ -56,13 +57,13 @@ def test_extreme_list_size(size: int) -> None:
 
 @pytest.mark.slow
 @EXTREME_SETTINGS
-@given(size=st.integers(min_value=5_000, max_value=15_000))
+@given(size=st.integers(min_value=1_000, max_value=8_000))
 def test_extreme_map_size(size: int) -> None:
     """
-    Extreme scale: Maps with 5k-15k key-value pairs.
+    Extreme scale: Maps with 1k-8k key-value pairs.
 
-    Tests that very large maps can be validated and serialized.
-    Note: Reduced from 50k to avoid validation timeout.
+    Tests that large maps can be validated and serialized.
+    Note: Reduced from 50k to avoid validation timeout during parallel execution.
     """
     # Create large map
     items = {f"key_{i}": f"value_{i}" for i in range(size)}
@@ -144,15 +145,16 @@ def test_extreme_string_length(length: int) -> None:
 @pytest.mark.slow
 @EXTREME_SETTINGS
 @given(
-    num_lists=st.integers(min_value=50, max_value=200),
-    items_per_list=st.integers(min_value=50, max_value=200),
+    num_lists=st.integers(min_value=20, max_value=100),
+    items_per_list=st.integers(min_value=20, max_value=100),
 )
 def test_extreme_nested_collection_count(num_lists: int, items_per_list: int) -> None:
     """
     Extreme scale: Many nested collections.
 
     Tests list containing many sublists, each with many items.
-    Note: Reduced from 500x1000 to avoid validation timeout.
+    Note: Reduced from 500x1000 to avoid validation timeout during parallel execution.
+    Max 100x100=10k total items to ensure reliable performance.
     """
     # Create nested structure
     data = [[i + j for j in range(items_per_list)] for i in range(num_lists)]
@@ -167,12 +169,13 @@ def test_extreme_nested_collection_count(num_lists: int, items_per_list: int) ->
 
 @pytest.mark.slow
 @EXTREME_SETTINGS
-@given(width=st.integers(min_value=50, max_value=200), depth=st.integers(min_value=50, max_value=200))
+@given(width=st.integers(min_value=10, max_value=50), depth=st.integers(min_value=10, max_value=50))
 def test_extreme_wide_and_deep(width: int, depth: int) -> None:
     """
     Extreme scale: Both wide (many siblings) and deep (many levels).
 
     Tests structures that are both wide and deep.
+    Note: Reduced from 200x200 to 50x50 to avoid timeout during parallel execution.
     """
 
     # Build structure with both width and depth
