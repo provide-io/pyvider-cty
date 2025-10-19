@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/structural/dynamic.py
+# pyvider/cty/types/structural/dynamic.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -74,5 +75,4 @@ class CtyDynamic(CtyType[object]):
     def __str__(self) -> str:
         return "dynamic"
 
-
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

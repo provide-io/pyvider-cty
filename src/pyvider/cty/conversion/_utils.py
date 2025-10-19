@@ -1,4 +1,5 @@
-# src/pyvider/cty/conversion/_utils.py
+# pyvider/cty/conversion/_utils.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -37,5 +38,4 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
         res[a.name] = getattr(inst, a.name)
     return res
 
-
-# 🐍⛓️↔️🪄
+# 🌊🪢↔️🪄

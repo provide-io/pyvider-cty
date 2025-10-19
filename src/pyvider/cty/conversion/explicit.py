@@ -1,4 +1,5 @@
-# src/pyvider/cty/conversion/explicit.py
+# pyvider/cty/conversion/explicit.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -239,5 +240,4 @@ def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any]:
     """
     return _unify_frozen(frozenset(types))
 
-
-# 🐍⛓️↔️🪄
+# 🌊🪢↔️🪄
