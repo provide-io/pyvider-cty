@@ -1,4 +1,5 @@
-# src/pyvider/cty/validation/__init__.py
+# pyvider/cty/validation/__init__.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -53,5 +54,4 @@ __all__ = [
     "validate_config",
     "with_recursion_detection",
 ]
-
-# 🐍⛓️✅🪄
+# 🌊🪢📦🪄

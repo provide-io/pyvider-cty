@@ -1,4 +1,5 @@
-# src/pyvider/cty/functions/collection_functions.py
+# pyvider/cty/functions/collection_functions.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -444,5 +445,4 @@ def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
     return CtyMap(element_type=val_elem_type).validate(result_map)  # type: ignore[no-any-return]
 
-
-# 🐍⛓️🔣🪄
+# 🌊🪢🔣🪄

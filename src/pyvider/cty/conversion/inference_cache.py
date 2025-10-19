@@ -1,4 +1,5 @@
-# src/pyvider/cty/conversion/inference_cache.py
+# pyvider/cty/conversion/inference_cache.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -104,5 +105,4 @@ def with_inference_cache(func: F) -> F:
 
     return wrapper  # type: ignore[return-value]
 
-
-# 🐍⛓️↔️🪄
+# 🌊🪢↔️🪄

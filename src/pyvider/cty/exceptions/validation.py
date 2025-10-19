@@ -1,4 +1,5 @@
-# src/pyvider/cty/exceptions/validation.py
+# pyvider/cty/exceptions/validation.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -336,5 +337,4 @@ class CtyTypeMismatchError(CtyValidationError):
         full_message = f"{message} ({type_info})"
         super().__init__(full_message, path=path, **kwargs)
 
-
-# 🐍⛓️🐛🪄
+# 🌊🪢🐛🪄

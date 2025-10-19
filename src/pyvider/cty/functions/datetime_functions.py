@@ -1,4 +1,5 @@
-# src/pyvider/cty/functions/datetime_functions.py
+# pyvider/cty/functions/datetime_functions.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -92,5 +93,4 @@ def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     except ValueError as e:
         raise CtyFunctionError(f"timeadd: invalid argument format: {e}") from e
 
-
-# 🐍⛓️🔣🪄
+# 🌊🪢🔣🪄

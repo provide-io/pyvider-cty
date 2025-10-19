@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/collections/set.py
+# pyvider/cty/types/collections/set.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -85,5 +86,4 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
     def __str__(self) -> str:
         return f"set({self.element_type})"
 
-
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

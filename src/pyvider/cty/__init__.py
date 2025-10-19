@@ -1,4 +1,5 @@
-# src/pyvider/cty/__init__.py
+# pyvider/cty/__init__.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -72,5 +73,4 @@ __all__ = [
     "parse_type_string_to_ctytype",
     "unify",
 ]
-
-# 🐍⛓️🤔🪄
+# 🌊🪢📦🪄
