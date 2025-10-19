@@ -366,4 +366,5 @@ class CtyValue(Generic[T]):
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
 
+
 # 🌊🪢🏗️🪄

@@ -247,4 +247,5 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
     except re.error as e:
         raise CtyFunctionError(f"regexreplace: invalid regular expression: {e}") from e
 
+
 # 🌊🪢🔣🪄

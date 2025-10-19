@@ -203,4 +203,5 @@ def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
 def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="min")
 
+
 # 🌊🪢🔣🪄

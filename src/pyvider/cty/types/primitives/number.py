@@ -70,4 +70,5 @@ class CtyNumber(CtyType[Decimal]):
     def is_primitive_type(self) -> bool:
         return True
 
+
 # 🌊🪢🧱🪄

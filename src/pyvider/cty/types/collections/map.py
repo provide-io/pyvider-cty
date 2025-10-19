@@ -123,4 +123,5 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
     def __str__(self) -> str:
         return f"map({self.element_type})"
 
+
 # 🌊🪢🧱🪄

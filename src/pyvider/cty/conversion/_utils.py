@@ -38,4 +38,5 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
         res[a.name] = getattr(inst, a.name)
     return res
 
+
 # 🌊🪢↔️🪄
