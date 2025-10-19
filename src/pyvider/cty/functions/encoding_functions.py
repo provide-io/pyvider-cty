@@ -56,4 +56,5 @@ def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
     except Exception as e:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
 
+
 # 🌊🪢🔣🪄

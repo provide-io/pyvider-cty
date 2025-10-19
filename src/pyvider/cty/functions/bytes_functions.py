@@ -46,4 +46,5 @@ def bytesslice(buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]) 
     start_idx, end_idx = int(start.value), int(end.value)  # type: ignore[call-overload]
     return BytesCapsule.validate(buffer.value[start_idx:end_idx])  # type: ignore[index]
 
+
 # 🌊🪢🔣🪄

@@ -411,4 +411,5 @@ def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     val_decimal = cast(Decimal, val.value)
     return CtyNumber().validate(Decimal(int(val_decimal)))
 
+
 # 🌊🪢🔣🪄

@@ -30,4 +30,5 @@ def validate_config(schema: CtyType[Any], config: Any) -> None:
     # We simply call it and let it raise its exception on failure.
     schema.validate(config)
 
+
 # 🌊🪢✅🪄

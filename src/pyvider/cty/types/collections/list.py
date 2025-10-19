@@ -54,6 +54,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         # Check for UnrefinedUnknownValue which can slip through if a CtyValue wrapper is removed
         from pyvider.cty.values.markers import UnrefinedUnknownValue
+
         if isinstance(value, UnrefinedUnknownValue):
             raise CtyListValidationError(
                 "Cannot use unknown/computed value for list parameter. "
@@ -149,5 +150,6 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
     def __repr__(self) -> str:
         return f"CtyList(element_type={self.element_type!r})"
+
 
 # 🌊🪢🧱🪄

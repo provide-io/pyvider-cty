@@ -86,4 +86,5 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
     def __str__(self) -> str:
         return f"set({self.element_type})"
 
+
 # 🌊🪢🧱🪄

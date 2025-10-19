@@ -93,4 +93,5 @@ def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     except ValueError as e:
         raise CtyFunctionError(f"timeadd: invalid argument format: {e}") from e
 
+
 # 🌊🪢🔣🪄
