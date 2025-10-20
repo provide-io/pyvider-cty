@@ -59,7 +59,9 @@
       "Bash(mutmut run:*)",
       "Bash(.venv/bin/pytest:*)",
       "Bash(.venv/bin/ruff format:*)",
-      "Bash(.venv/bin/ruff check:*)"
+      "Bash(.venv/bin/ruff check:*)",
+      "Bash(PYTHONPATH=src .venv/bin/mutmut run:*)",
+      "Bash(PYTHONPATH=src mutmut run:*)"
     ],
     "deny": [],
     "ask": [],
