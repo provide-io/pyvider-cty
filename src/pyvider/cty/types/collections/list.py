@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/collections/list.py
+# pyvider/cty/types/collections/list.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -53,6 +54,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         # Check for UnrefinedUnknownValue which can slip through if a CtyValue wrapper is removed
         from pyvider.cty.values.markers import UnrefinedUnknownValue
+
         if isinstance(value, UnrefinedUnknownValue):
             raise CtyListValidationError(
                 "Cannot use unknown/computed value for list parameter. "
@@ -150,4 +152,4 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         return f"CtyList(element_type={self.element_type!r})"
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

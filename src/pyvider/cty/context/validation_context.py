@@ -1,4 +1,5 @@
-# src/pyvider/cty/context/validation_context.py
+# pyvider/cty/context/validation_context.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -29,4 +30,4 @@ def get_validation_depth() -> int:
     return _validation_depth.get()
 
 
-# 🐍⛓️🏷️🪄
+# 🌊🪢✅🪄

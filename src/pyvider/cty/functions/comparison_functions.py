@@ -1,4 +1,5 @@
-# src/pyvider/cty/functions/comparison_functions.py
+# pyvider/cty/functions/comparison_functions.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -203,4 +204,4 @@ def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="min")
 
 
-# 🐍⛓️🔣🪄
+# 🌊🪢🔣🪄

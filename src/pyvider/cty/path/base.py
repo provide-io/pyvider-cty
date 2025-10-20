@@ -1,4 +1,5 @@
-# src/pyvider/cty/path/base.py
+# pyvider/cty/path/base.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -218,4 +219,4 @@ class CtyPath:
         return self.string()
 
 
-# 🐍⛓️➡️🪄
+# 🌊🪢🏗️🪄

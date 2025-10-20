@@ -1,4 +1,5 @@
-# src/pyvider/cty/marks.py
+# pyvider/cty/marks.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -39,4 +40,4 @@ class CtyMark:
         return self.name
 
 
-# 🐍⛓️🤔🪄
+# 🌊🪢🏷️🪄

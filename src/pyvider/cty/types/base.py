@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/base.py
+# pyvider/cty/types/base.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -81,4 +82,4 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
         return f"{self.__class__.__name__}()"
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🏗️🪄

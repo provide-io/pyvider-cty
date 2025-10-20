@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/primitives/number.py
+# pyvider/cty/types/primitives/number.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -70,4 +71,4 @@ class CtyNumber(CtyType[Decimal]):
         return True
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

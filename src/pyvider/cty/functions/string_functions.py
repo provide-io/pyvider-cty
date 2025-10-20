@@ -1,4 +1,5 @@
-# src/pyvider/cty/functions/string_functions.py
+# pyvider/cty/functions/string_functions.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -247,4 +248,4 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
         raise CtyFunctionError(f"regexreplace: invalid regular expression: {e}") from e
 
 
-# 🐍⛓️🔣🪄
+# 🌊🪢🔣🪄

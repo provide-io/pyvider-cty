@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/primitives/string.py
+# pyvider/cty/types/primitives/string.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -76,4 +77,4 @@ class CtyString(CtyType[str]):
         return True
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

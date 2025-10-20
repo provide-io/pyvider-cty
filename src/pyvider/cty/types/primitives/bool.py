@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/primitives/bool.py
+# pyvider/cty/types/primitives/bool.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -71,4 +72,4 @@ class CtyBool(CtyType[bool]):
         return True
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

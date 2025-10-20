@@ -1,4 +1,5 @@
-# src/pyvider/cty/values/markers.py
+# pyvider/cty/values/markers.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -41,5 +42,4 @@ class RefinedUnknownValue(UnknownValue):
 
 # This singleton represents an unknown value with no refinements.
 UNREFINED_UNKNOWN = UnrefinedUnknownValue()
-
-# 🐍⛓️💰🪄
+# 🌊🪢🏷️🪄
