@@ -254,7 +254,8 @@ def test_validation_error_on_heterogeneous_list(values: list) -> None:
     # Filter out any strings that can be parsed as Decimal (including Inf/NaN variants)
     list_type = CtyList(element_type=CtyNumber())
 
-    with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError, Exception)):
+    # This should raise an error - if it doesn't, the test fails
+    with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError)):
         list_type.validate(values)
 
 
