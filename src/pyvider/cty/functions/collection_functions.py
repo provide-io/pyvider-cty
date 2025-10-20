@@ -314,7 +314,7 @@ def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
         }
     ):
         if not isinstance(collection.type, CtyList | CtyTuple):
-            raise CtyFunctionError("element: collection must be a list or tuple")
+            raise CtyFunctionError(f"element: collection must be a list or tuple, got {collection.type}")
         if collection.is_null or collection.is_unknown or idx.is_null or idx.is_unknown:
             elem_type = collection.type.element_type if isinstance(collection.type, CtyList) else CtyDynamic()
             return CtyValue.unknown(elem_type)
