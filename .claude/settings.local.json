@@ -68,7 +68,8 @@
       "Bash(PYTHONPATH=src timeout 30 mutmut run:*)",
       "Bash(PYTHONPATH=src timeout 30 bash:*)",
       "Bash(PYTHONPATH=src timeout 10 pytest:*)",
-      "Bash(PYTHONPATH=src bash -c \"pytest tests/property_based/test_exception_coverage.py tests/property_based/test_collections_properties.py --tb=line -q\")"
+      "Bash(PYTHONPATH=src bash -c \"pytest tests/property_based/test_exception_coverage.py tests/property_based/test_collections_properties.py --tb=line -q\")",
+      "Bash(uv pip list:*)"
     ],
     "deny": [],
     "ask": [],
