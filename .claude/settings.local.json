@@ -56,7 +56,8 @@
       "Bash(do echo \"=== $file ===\")",
       "Bash(head:*)",
       "Bash(done)",
-      "Bash(mutmut run:*)"
+      "Bash(mutmut run:*)",
+      "Bash(.venv/bin/pytest:*)"
     ],
     "deny": [],
     "ask": [],
