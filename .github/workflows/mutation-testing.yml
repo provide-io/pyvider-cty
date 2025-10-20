@@ -40,8 +40,7 @@ jobs:
       - name: Run mutation tests on core modules
         run: |
           # Test critical modules only (not entire codebase)
-          # Using 20 parallel workers for faster execution
-          PYTHONPATH=src mutmut run --max-children=20
+          PYTHONPATH=src mutmut run --max-children=4
         continue-on-error: true  # Don't fail the workflow if mutations survive
 
       - name: Generate mutation report

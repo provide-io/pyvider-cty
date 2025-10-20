@@ -8,6 +8,7 @@ Includes automated setup for the cross-language compatibility suite.
 """
 
 from collections.abc import Generator
+import logging
 from pathlib import Path
 import shutil
 import subprocess
@@ -176,6 +177,40 @@ def clear_inference_cache() -> Generator[None, None, None]:
     # Reset ContextVar tokens after test
     _structural_key_cache._context_var.set(None)
     _container_schema_cache._context_var.set(None)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
+    """
+    Configure Foundation logger to use stdout for test safety.
+
+    TEMPORARY FIX: This should be moved to provide-foundation/testmode or testkit.
+    See: https://github.com/provide-io/provide-foundation/issues/XXX
+
+    Prevents "I/O operation on closed file" errors when running tests in parallel
+    or with mutation testing tools (mutmut). File handles don't survive process
+    forking, but stdout is safe for multiprocessing.
+    """
+    import sys
+
+    import structlog
+
+    # Configure structlog to use stdout (safe for multiprocessing)
+    structlog.configure(
+        processors=[
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.dev.ConsoleRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),  # type: ignore[attr-defined]
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
+        cache_logger_on_first_use=False,  # Disable caching for test isolation
+    )
+
+    yield
+
+    # Reset structlog configuration after tests
+    structlog.reset_defaults()
 
 
 # 🐍⛓️🤔🪄
