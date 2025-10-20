@@ -64,7 +64,9 @@
       "Bash(PYTHONPATH=src mutmut run:*)",
       "Bash(rm:*)",
       "Bash(PYTHONPATH=src mutmut:*)",
-      "Bash(PYTHONPATH=src pytest:*)"
+      "Bash(PYTHONPATH=src pytest:*)",
+      "Bash(PYTHONPATH=src timeout 30 mutmut run:*)",
+      "Bash(PYTHONPATH=src timeout 30 bash:*)"
     ],
     "deny": [],
     "ask": [],

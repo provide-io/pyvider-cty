@@ -40,10 +40,8 @@ jobs:
       - name: Run mutation tests on core modules
         run: |
           # Test critical modules only (not entire codebase)
-          mutmut run --paths-to-mutate=src/pyvider/cty/functions/numeric_functions.py --max-children=4
-          mutmut run --paths-to-mutate=src/pyvider/cty/functions/comparison_functions.py --max-children=4
-          mutmut run --paths-to-mutate=src/pyvider/cty/types/capsule.py --max-children=4
-          mutmut run --paths-to-mutate=src/pyvider/cty/types/collections/map.py --max-children=4
+          # Using 20 parallel workers for faster execution
+          PYTHONPATH=src mutmut run --max-children=20
         continue-on-error: true  # Don't fail the workflow if mutations survive
 
       - name: Generate mutation report
