@@ -54,9 +54,8 @@ def test_string_validation_error_triggered(invalid_data) -> None:
     """Test CtyStringValidationError can be triggered."""
     string_type = CtyString()
 
-    # Only test non-string data
-    if isinstance(invalid_data, str):
-        return
+    # Only test non-string data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, str))
 
     with pytest.raises((CtyStringValidationError, CtyValidationError, CtyTypeValidationError)):
         string_type.validate(invalid_data)
@@ -105,9 +104,8 @@ def test_map_validation_error_triggered(invalid_data) -> None:
     """Test CtyMapValidationError can be triggered."""
     map_type = CtyMap(element_type=CtyString())
 
-    # Only test non-dict data
-    if isinstance(invalid_data, dict):
-        return
+    # Only test non-dict data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, dict))
 
     with pytest.raises((CtyMapValidationError, CtyValidationError, CtyTypeValidationError)):
         map_type.validate(invalid_data)
@@ -119,9 +117,8 @@ def test_set_validation_error_triggered(invalid_data) -> None:
     """Test CtySetValidationError can be triggered."""
     set_type = CtySet(element_type=CtyNumber())
 
-    # Only test non-set data
-    if isinstance(invalid_data, (set, frozenset, list, tuple)):
-        return
+    # Only test non-set data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, (set, frozenset, list, tuple)))
 
     with pytest.raises((CtySetValidationError, CtyValidationError, CtyTypeValidationError)):
         set_type.validate(invalid_data)
@@ -134,9 +131,8 @@ def test_tuple_validation_error_triggered(data: list) -> None:
     # Create tuple type expecting different number of elements
     tuple_type = CtyTuple(element_types=(CtyNumber(), CtyNumber()))
 
-    # Only test lists with wrong element count
-    if len(data) == 2:
-        return
+    # Only test lists with wrong element count - use assume() for proper Hypothesis filtering
+    assume(len(data) != 2)
 
     with pytest.raises((CtyTupleValidationError, CtyValidationError)):
         tuple_type.validate(data)
