@@ -9,7 +9,6 @@ Ensures that every exception class can be raised, caught, and provides
 useful error messages without leaking sensitive information.
 """
 
-from decimal import Decimal
 
 from hypothesis import given, settings, strategies as st
 import msgpack
@@ -230,11 +229,29 @@ def test_type_mismatch_error_context(source, target) -> None:
         assert "0x" not in error_msg
 
 
+def _can_be_decimal(s: str) -> bool:
+    """Check if a string can be parsed as a Decimal."""
+    try:
+        Decimal(s)
+        return True
+    except Exception:
+        return False
+
+
 @settings(deadline=5000, max_examples=500)
-@given(values=st.lists(st.text(min_size=1, alphabet=st.characters(blacklist_categories=("N",))), min_size=2, max_size=5))
+@given(
+    values=st.lists(
+        st.text(min_size=1, alphabet=st.characters(blacklist_categories=("N",))).filter(
+            lambda x: not _can_be_decimal(x)
+        ),
+        min_size=2,
+        max_size=5,
+    )
+)
 def test_validation_error_on_heterogeneous_list(values: list) -> None:
     """Test validation error on heterogeneous data in typed list."""
     # Try to validate non-numeric text list as number list (should fail)
+    # Filter out any strings that can be parsed as Decimal (including Inf/NaN variants)
     list_type = CtyList(element_type=CtyNumber())
 
     with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError, Exception)):
