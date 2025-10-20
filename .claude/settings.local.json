@@ -71,7 +71,8 @@
       "Bash(PYTHONPATH=src bash -c \"pytest tests/property_based/test_exception_coverage.py tests/property_based/test_collections_properties.py --tb=line -q\")",
       "Bash(uv pip list:*)",
       "Bash(chmod:*)",
-      "Bash(PYTHONPATH=src timeout 120 pytest:*)"
+      "Bash(PYTHONPATH=src timeout 120 pytest:*)",
+      "Bash(PYTHONPATH=src timeout 240 pytest:*)"
     ],
     "deny": [],
     "ask": [],
