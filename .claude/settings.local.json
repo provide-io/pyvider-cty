@@ -55,7 +55,8 @@
       "Bash(for file in tests/functions/test_stdlib_parity.py tests/functions/test_collection_functions_extra.py tests/property_based/test_spec_compliance.py tests/property_based/test_codec_fuzzing.py tests/property_based/test_adversarial_fuzzing.py tests/conversion/test_explicit_conversion.py)",
       "Bash(do echo \"=== $file ===\")",
       "Bash(head:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(mutmut run:*)"
     ],
     "deny": [],
     "ask": [],
