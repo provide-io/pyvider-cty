@@ -72,7 +72,8 @@
       "Bash(uv pip list:*)",
       "Bash(chmod:*)",
       "Bash(PYTHONPATH=src timeout 120 pytest:*)",
-      "Bash(PYTHONPATH=src timeout 240 pytest:*)"
+      "Bash(PYTHONPATH=src timeout 240 pytest:*)",
+      "Bash(PYTHONPATH=src timeout 180 pytest:*)"
     ],
     "deny": [],
     "ask": [],
