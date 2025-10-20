@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/structural/tuple.py
+# pyvider/cty/types/structural/tuple.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -149,4 +150,4 @@ class CtyTuple(CtyType[tuple[object, ...]]):
         return self.element_at(container_value, slice_obj)
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

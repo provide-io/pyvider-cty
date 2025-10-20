@@ -1,4 +1,5 @@
-# src/pyvider/cty/types/capsule.py
+# pyvider/cty/types/capsule.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -133,4 +134,4 @@ class CtyCapsuleWithOps(CtyCapsule):
         return hash((self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn))
 
 
-# 🐍⛓️🧱🪄
+# 🌊🪢🧱🪄

@@ -1,4 +1,5 @@
-# src/pyvider/cty/functions/encoding_functions.py
+# pyvider/cty/functions/encoding_functions.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -56,4 +57,4 @@ def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
 
 
-# 🐍⛓️🔣🪄
+# 🌊🪢🔣🪄

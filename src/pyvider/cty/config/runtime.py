@@ -1,4 +1,5 @@
-# src/pyvider/cty/config/runtime.py
+# pyvider/cty/config/runtime.py
+#
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -37,4 +38,4 @@ class CtyConfig(RuntimeConfig):
         return cls.from_env(prefix="PYVIDER_CTY")
 
 
-# 🐍⛓️⚙️🪄
+# 🌊🪢⚙️🪄
