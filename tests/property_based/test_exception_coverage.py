@@ -11,7 +11,7 @@ useful error messages without leaking sensitive information.
 
 from decimal import Decimal
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import assume, given, settings, strategies as st
 import msgpack
 import pytest
 
@@ -92,9 +92,8 @@ def test_list_validation_error_triggered(invalid_data) -> None:
     """Test CtyListValidationError can be triggered."""
     list_type = CtyList(element_type=CtyNumber())
 
-    # Only test non-list data
-    if isinstance(invalid_data, (list, tuple)):
-        return
+    # Only test non-list data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, (list, tuple)))
 
     with pytest.raises((CtyListValidationError, CtyValidationError, CtyTypeValidationError)):
         list_type.validate(invalid_data)
@@ -150,9 +149,8 @@ def test_attribute_validation_error_triggered(data: dict) -> None:
     # Create object type expecting specific attributes
     obj_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
 
-    # Only test dicts with different keys
-    if set(data.keys()) == {"name", "age"}:
-        return
+    # Only test dicts with different keys - use assume() for proper Hypothesis filtering
+    assume(set(data.keys()) != {"name", "age"})
 
     with pytest.raises((CtyAttributeValidationError, CtyValidationError)):
         obj_type.validate(data)
