@@ -15,7 +15,7 @@ from decimal import Decimal
 
 import pytest
 
-from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
+from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions import (
     equal,

@@ -57,7 +57,9 @@
       "Bash(head:*)",
       "Bash(done)",
       "Bash(mutmut run:*)",
-      "Bash(.venv/bin/pytest:*)"
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(.venv/bin/ruff format:*)",
+      "Bash(.venv/bin/ruff check:*)"
     ],
     "deny": [],
     "ask": [],
