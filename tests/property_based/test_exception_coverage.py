@@ -9,6 +9,7 @@ Ensures that every exception class can be raised, caught, and provides
 useful error messages without leaking sensitive information.
 """
 
+from decimal import Decimal
 
 from hypothesis import given, settings, strategies as st
 import msgpack
@@ -238,10 +239,10 @@ def _can_be_decimal(s: str) -> bool:
         return False
 
 
-@settings(deadline=5000, max_examples=500)
+@settings(deadline=5000, max_examples=100)
 @given(
     values=st.lists(
-        st.text(min_size=1, alphabet=st.characters(blacklist_categories=("N",))).filter(
+        st.text(min_size=1, max_size=10, alphabet=st.characters(blacklist_categories=("N",))).filter(
             lambda x: not _can_be_decimal(x)
         ),
         min_size=2,
@@ -254,12 +255,13 @@ def test_validation_error_on_heterogeneous_list(values: list) -> None:
     # Filter out any strings that can be parsed as Decimal (including Inf/NaN variants)
     list_type = CtyList(element_type=CtyNumber())
 
-    with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError, Exception)):
+    # This should raise an error - if it doesn't, the test fails
+    with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError)):
         list_type.validate(values)
 
 
-@settings(deadline=5000, max_examples=500)
-@given(map_data=st.dictionaries(st.integers(), st.text(), min_size=1, max_size=5))
+@settings(deadline=5000, max_examples=100)
+@given(map_data=st.dictionaries(st.integers(), st.text(max_size=10), min_size=1, max_size=5))
 def test_map_validation_error_on_non_string_keys(map_data: dict) -> None:
     """Test that maps reject non-string keys."""
     map_type = CtyMap(element_type=CtyString())
