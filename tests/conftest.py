@@ -214,4 +214,23 @@ def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
     structlog.reset_defaults()
 
 
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """
+    Reset terminal state after test session to prevent output corruption.
+
+    This ensures ANSI escape codes and terminal state are properly reset,
+    preventing garbled output in the terminal after tests complete.
+    """
+    import sys
+
+    # Reset terminal: clear all formatting and return cursor to normal
+    # ANSI escape codes:
+    # \033[0m  - Reset all attributes
+    # \033[?25h - Show cursor
+    sys.stdout.write("\033[0m\033[?25h")
+    sys.stdout.flush()
+    sys.stderr.write("\033[0m\033[?25h")
+    sys.stderr.flush()
+
+
 # 🐍⛓️🤔🪄
