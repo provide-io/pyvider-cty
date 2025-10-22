@@ -73,7 +73,12 @@ markers = [
     "slow: mark test as slow-running (extreme scale, memory pressure, etc.)",
 ]
 filterwarnings = [
-    "ignore::DeprecationWarning",
+    # Ignore deprecation warnings from dependencies (not our code)
+    "ignore::DeprecationWarning:provide.foundation.*",
+    "ignore::DeprecationWarning:opentelemetry.*",
+    # Keep deprecation warnings from our own code
+    "default::DeprecationWarning:pyvider.*",
+    # Pytest warnings
     "ignore:cannot collect test class.*:pytest.PytestCollectionWarning",
 ]
 norecursedirs = [
