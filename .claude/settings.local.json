@@ -78,7 +78,8 @@
       "Bash(uv pip install:*)",
       "Bash(uv pip uninstall:*)",
       "Bash(time pytest:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": [],
