@@ -77,7 +77,8 @@
       "Bash(git ls-tree:*)",
       "Bash(uv pip install:*)",
       "Bash(uv pip uninstall:*)",
-      "Bash(time pytest:*)"
+      "Bash(time pytest:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": [],
