@@ -305,9 +305,6 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                 return result
             finally:
                 detector.exit_validation_scope()
-                # Clear context after top-level validation to prevent accumulation
-                if is_top_level_call:
-                    context.reset()
 
     return wrapper
 

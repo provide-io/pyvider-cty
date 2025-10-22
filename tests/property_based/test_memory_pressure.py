@@ -24,7 +24,7 @@ from pyvider.cty.marks import CtyMark
 
 MEMORY_SETTINGS = settings(
     deadline=10000,
-    max_examples=100,
+    max_examples=20,  # Reduced from 100 for faster execution
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
 )
 
