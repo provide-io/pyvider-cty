@@ -81,7 +81,8 @@
       "Bash(git pull:*)",
       "Bash(git push)",
       "Bash(env)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(uv run ruff:*)"
     ],
     "deny": [],
     "ask": [],
