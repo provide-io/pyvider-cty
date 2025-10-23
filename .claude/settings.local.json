@@ -80,7 +80,8 @@
       "Bash(time pytest:*)",
       "Bash(git pull:*)",
       "Bash(git push)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": [],
