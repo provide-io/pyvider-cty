@@ -17,6 +17,9 @@ import pytest
 
 from pyvider.cty.validation.recursion import clear_recursion_context
 
+# Note: setproctitle is automatically disabled by provide-testkit's conftest.py
+# to prevent pytest-xdist performance issues
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Adds custom command-line options to pytest."""
@@ -186,14 +189,26 @@ def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
     Uses provide-foundation's testmode.configure_structlog_for_test_safety()
     to prevent "I/O operation on closed file" errors when running tests in
     parallel or with mutation testing tools (mutmut).
+
+    Only runs on the main process when using pytest-xdist to avoid
+    worker process conflicts and hanging issues.
     """
+    import os
+
+    # Skip Foundation logger configuration on xdist worker processes
+    # Workers inherit the logging configuration from the main process
+    # Running this in every worker causes process spawning issues and hangs
+    if os.getenv("PYTEST_XDIST_WORKER"):
+        yield
+        return
+
     from provide.foundation.testmode import configure_structlog_for_test_safety
 
     configure_structlog_for_test_safety()
 
     yield
 
-    # Reset structlog configuration after tests
+    # Only reset on main process
     import structlog
 
     structlog.reset_defaults()
