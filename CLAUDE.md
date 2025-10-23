@@ -4,27 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment Setup
 
-Always use `source env.sh` to activate the development environment. This uses `uv` for virtual environment management and creates environments in `workenv/` (not `.venv`). The environment setup is platform-aware and handles Python version compatibility automatically.
+Always use `uv sync` to activate the development environment. This uses `uv` for virtual environment management and creates environments in `workenv/` (not `.venv`). The environment setup is platform-aware and handles Python version compatibility automatically.
 
 ## Common Commands
 
 ### Environment and Dependencies
-- `source env.sh` - Setup development environment (required first step)
+- `uv sync` - Setup development environment (required first step)
 - `uv sync --all-groups` - Install/update all dependencies including dev tools
 
 ### Testing
-- `pytest tests/` - Run all tests
-- `pytest tests/ -x --tb=short` - Run tests with early exit and short traceback
-- `pytest --run-benchmarks` - Run performance benchmark tests
-- `pytest --run-compat` - Run Go/Python cross-language compatibility tests
-- `pytest tests/path/to/specific_test.py::test_function` - Run specific test
+- `uv run pytest tests/` - Run all tests
+- `uv run pytest tests/ -x --tb=short` - Run tests with early exit and short traceback
+- `uv run pytest --run-benchmarks` - Run performance benchmark tests
+- `uv run pytest --run-compat` - Run Go/Python cross-language compatibility tests
+- `uv run pytest tests/path/to/specific_test.py::test_function` - Run specific test
 
 ### Code Quality
-- `ruff format src/ tests/` - Auto-format code
-- `ruff check src/ tests/` - Lint code
-- `ruff check src/ tests/ --fix` - Auto-fix linting issues
-- `mypy src/` - Type checking
-- `bandit -ll -r src/` - Security analysis
+- `uv run ruff format src/ tests/` - Auto-format code
+- `uv run ruff check src/ tests/` - Lint code
+- `uv run ruff check src/ tests/ --fix` - Auto-fix linting issues
+- `uv run mypy src/` - Type checking
+- `uv run bandit -ll -r src/` - Security analysis
 
 ### Build and Validation
 - `uv build` - Build package (creates wheel in `dist/`)
@@ -89,4 +89,4 @@ The `compatibility/` directory contains Go and Python implementations for testin
 - No hardcoded defaults anywhere in the codebase
 - Follow ruff formatting and linting rules
 - Strict mypy type checking enabled
-- After an updated to a Python file, you will run `ruff format` on it, and `ruff check --fix` and any other pertinent code quality in order to prevent problems up front.
+- After an update to a Python file, you will run `uv run ruff format` on it, and `uv run ruff check --fix` and any other pertinent code quality tools in order to prevent problems up front.

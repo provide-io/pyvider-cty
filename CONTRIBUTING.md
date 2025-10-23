@@ -26,7 +26,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 
 2. **Set up development environment**
    ```bash
-   source env.sh
+   uv sync
    ```
 
    This automatically:
