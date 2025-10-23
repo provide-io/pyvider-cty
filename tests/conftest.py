@@ -214,4 +214,7 @@ def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
     structlog.reset_defaults()
 
 
+# Terminal reset hook (pytest_sessionfinish) lives in provide-testkit
+# See: provide.testkit.conftest.pytest_sessionfinish
+
 # 🐍⛓️🤔🪄
