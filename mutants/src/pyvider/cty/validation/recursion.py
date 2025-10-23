@@ -12558,10 +12558,6 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                 return result
             finally:
                 detector.exit_validation_scope()
-                # The context is now only cleared by the top-level caller (e.g., test setup),
-                # not by the decorator.
-                if is_top_level_call:
-                    pass
 
     return wrapper
 

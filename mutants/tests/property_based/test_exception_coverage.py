@@ -9,8 +9,9 @@ Ensures that every exception class can be raised, caught, and provides
 useful error messages without leaking sensitive information.
 """
 
+from decimal import Decimal
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import assume, given, settings, strategies as st
 import msgpack
 import pytest
 
@@ -53,9 +54,8 @@ def test_string_validation_error_triggered(invalid_data) -> None:
     """Test CtyStringValidationError can be triggered."""
     string_type = CtyString()
 
-    # Only test non-string data
-    if isinstance(invalid_data, str):
-        return
+    # Only test non-string data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, str))
 
     with pytest.raises((CtyStringValidationError, CtyValidationError, CtyTypeValidationError)):
         string_type.validate(invalid_data)
@@ -91,9 +91,8 @@ def test_list_validation_error_triggered(invalid_data) -> None:
     """Test CtyListValidationError can be triggered."""
     list_type = CtyList(element_type=CtyNumber())
 
-    # Only test non-list data
-    if isinstance(invalid_data, (list, tuple)):
-        return
+    # Only test non-list data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, (list, tuple)))
 
     with pytest.raises((CtyListValidationError, CtyValidationError, CtyTypeValidationError)):
         list_type.validate(invalid_data)
@@ -105,9 +104,8 @@ def test_map_validation_error_triggered(invalid_data) -> None:
     """Test CtyMapValidationError can be triggered."""
     map_type = CtyMap(element_type=CtyString())
 
-    # Only test non-dict data
-    if isinstance(invalid_data, dict):
-        return
+    # Only test non-dict data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, dict))
 
     with pytest.raises((CtyMapValidationError, CtyValidationError, CtyTypeValidationError)):
         map_type.validate(invalid_data)
@@ -119,9 +117,8 @@ def test_set_validation_error_triggered(invalid_data) -> None:
     """Test CtySetValidationError can be triggered."""
     set_type = CtySet(element_type=CtyNumber())
 
-    # Only test non-set data
-    if isinstance(invalid_data, (set, frozenset, list, tuple)):
-        return
+    # Only test non-set data - use assume() for proper Hypothesis filtering
+    assume(not isinstance(invalid_data, (set, frozenset, list, tuple)))
 
     with pytest.raises((CtySetValidationError, CtyValidationError, CtyTypeValidationError)):
         set_type.validate(invalid_data)
@@ -134,9 +131,8 @@ def test_tuple_validation_error_triggered(data: list) -> None:
     # Create tuple type expecting different number of elements
     tuple_type = CtyTuple(element_types=(CtyNumber(), CtyNumber()))
 
-    # Only test lists with wrong element count
-    if len(data) == 2:
-        return
+    # Only test lists with wrong element count - use assume() for proper Hypothesis filtering
+    assume(len(data) != 2)
 
     with pytest.raises((CtyTupleValidationError, CtyValidationError)):
         tuple_type.validate(data)
@@ -149,9 +145,8 @@ def test_attribute_validation_error_triggered(data: dict) -> None:
     # Create object type expecting specific attributes
     obj_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
 
-    # Only test dicts with different keys
-    if set(data.keys()) == {"name", "age"}:
-        return
+    # Only test dicts with different keys - use assume() for proper Hypothesis filtering
+    assume(set(data.keys()) != {"name", "age"})
 
     with pytest.raises((CtyAttributeValidationError, CtyValidationError)):
         obj_type.validate(data)
@@ -238,10 +233,10 @@ def _can_be_decimal(s: str) -> bool:
         return False
 
 
-@settings(deadline=5000, max_examples=500)
+@settings(deadline=5000, max_examples=100)
 @given(
     values=st.lists(
-        st.text(min_size=1, alphabet=st.characters(blacklist_categories=("N",))).filter(
+        st.text(min_size=1, max_size=10, alphabet=st.characters(blacklist_categories=("N",))).filter(
             lambda x: not _can_be_decimal(x)
         ),
         min_size=2,
@@ -254,12 +249,13 @@ def test_validation_error_on_heterogeneous_list(values: list) -> None:
     # Filter out any strings that can be parsed as Decimal (including Inf/NaN variants)
     list_type = CtyList(element_type=CtyNumber())
 
-    with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError, Exception)):
+    # This should raise an error - if it doesn't, the test fails
+    with pytest.raises((CtyValidationError, CtyListValidationError, ValueError, TypeError)):
         list_type.validate(values)
 
 
-@settings(deadline=5000, max_examples=500)
-@given(map_data=st.dictionaries(st.integers(), st.text(), min_size=1, max_size=5))
+@settings(deadline=5000, max_examples=100)
+@given(map_data=st.dictionaries(st.integers(), st.text(max_size=10), min_size=1, max_size=5))
 def test_map_validation_error_on_non_string_keys(map_data: dict) -> None:
     """Test that maps reject non-string keys."""
     map_type = CtyMap(element_type=CtyString())

@@ -8,7 +8,6 @@ Includes automated setup for the cross-language compatibility suite.
 """
 
 from collections.abc import Generator
-import logging
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,6 +16,9 @@ import time
 import pytest
 
 from pyvider.cty.validation.recursion import clear_recursion_context
+
+# Note: setproctitle is automatically disabled by provide-testkit's conftest.py
+# to prevent pytest-xdist performance issues
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -184,33 +186,35 @@ def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
     """
     Configure Foundation logger to use stdout for test safety.
 
-    TEMPORARY FIX: This should be moved to provide-foundation/testmode or testkit.
-    See: https://github.com/provide-io/provide-foundation/issues/XXX
+    Uses provide-foundation's testmode.configure_structlog_for_test_safety()
+    to prevent "I/O operation on closed file" errors when running tests in
+    parallel or with mutation testing tools (mutmut).
 
-    Prevents "I/O operation on closed file" errors when running tests in parallel
-    or with mutation testing tools (mutmut). File handles don't survive process
-    forking, but stdout is safe for multiprocessing.
+    Only runs on the main process when using pytest-xdist to avoid
+    worker process conflicts and hanging issues.
     """
-    import sys
+    import os
 
-    import structlog
+    # Skip Foundation logger configuration on xdist worker processes
+    # Workers inherit the logging configuration from the main process
+    # Running this in every worker causes process spawning issues and hangs
+    if os.getenv("PYTEST_XDIST_WORKER"):
+        yield
+        return
 
-    # Configure structlog to use stdout (safe for multiprocessing)
-    structlog.configure(
-        processors=[
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ],
-        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),  # type: ignore[attr-defined]
-        context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
-        cache_logger_on_first_use=False,  # Disable caching for test isolation
-    )
+    from provide.foundation.testmode import configure_structlog_for_test_safety
+
+    configure_structlog_for_test_safety()
 
     yield
 
-    # Reset structlog configuration after tests
+    # Only reset on main process
+    import structlog
+
     structlog.reset_defaults()
 
+
+# Terminal reset hook (pytest_sessionfinish) lives in provide-testkit
+# See: provide.testkit.conftest.pytest_sessionfinish
 
 # 🐍⛓️🤔🪄
