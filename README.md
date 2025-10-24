@@ -1,6 +1,6 @@
-# 🐍🏗️ pyvider.cty
+# pyvider.cty
 
-⚠️ **PREVIEW RELEASE** ⚠️
+**PREVIEW RELEASE**
 
 This is a preview release of pyvider.cty. While the core functionality is complete and well-tested, this release is intended for early adopters and feedback gathering. Please report any issues or suggestions.
 
@@ -10,12 +10,12 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 
 ## Features
 
-- 🎯 **Complete Type System**: Primitives, collections, and structural types.
-- 🔄 **Cross-Language Compatibility**: Interoperates with go-cty via JSON and MessagePack.
-- 🛡️ **Type Safety**: Strong validation at value creation.
-- 🏷️ **Marks System**: Attach metadata without modifying values.
-- 🗺️ **Path Navigation**: Type-safe access to nested data.
-- ⚡ **Full Standard Library**: A comprehensive suite of functions for data manipulation.
+- **Complete Type System**: Primitives, collections, and structural types.
+- **Cross-Language Compatibility**: Interoperates with go-cty via JSON and MessagePack.
+- **Type Safety**: Strong validation at value creation.
+- **Marks System**: Attach metadata without modifying values.
+- **Path Navigation**: Type-safe access to nested data.
+- **Full Standard Library**: A comprehensive suite of functions for data manipulation.
 
 ## Installation
 
@@ -49,7 +49,7 @@ user_data = {
 # 3. Validate the data. This returns an immutable CtyValue.
 try:
     user_val = user_type.validate(user_data)
-    print("✅ Validation successful!")
+    print("Validation successful!")
 
     # 4. Access data from the CtyValue.
     # Accessing attributes returns another CtyValue. Use .raw_value to get the Python type.
@@ -63,7 +63,7 @@ try:
         print(f"- {hobby_val.raw_value}")
 
 except CtyValidationError as e:
-    print(f"❌ Validation failed: {e}")
+    print(f"Validation failed: {e}")
 ```
 
 ## Documentation

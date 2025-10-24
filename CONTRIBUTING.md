@@ -284,4 +284,4 @@ By contributing, you agree that your contributions will be licensed under the Ap
 
 ---
 
-Thank you for contributing to pyvider-cty! 🎉
+Thank you for contributing to pyvider-cty!
