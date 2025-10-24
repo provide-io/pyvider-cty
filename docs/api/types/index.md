@@ -8,7 +8,7 @@ For detailed information about each type category, see:
 - **[Primitive Types](primitives.md)** - String, Number, Bool
 - **[Collection Types](collections.md)** - List, Map, Set
 - **[Structural Types](structural.md)** - Object, Tuple, Dynamic
-- **[Capsule Types](../types/capsule.md)** - Opaque data containers
+- **[Capsule Types](capsule.md)** - Opaque data containers
 
 ---
 

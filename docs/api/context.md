@@ -1,18 +1,19 @@
 # CTY Context
 
-The `pyvider.cty.context` module provides context managers and utilities for tracking state during type operations, particularly validation.
+The `pyvider.cty.context` module provides utilities for tracking validation depth during type operations.
 
 Key components:
-- **`ValidationContext`** - Manages validation state and prevents infinite recursion
-- **Thread-local state** - Validation context is stored per-thread for thread safety
-- **Depth tracking** - Monitors nesting depth to prevent stack overflow
+- **`deeper_validation()`** - Context manager to safely increment and decrement validation depth
+- **`get_validation_depth()`** - Returns the current validation depth
+- **`MAX_VALIDATION_DEPTH`** - Configurable maximum depth limit (default: 500 levels)
+- **Context-local state** - Validation depth is stored per-context using `contextvars` for thread and async safety
 
-The context system is used internally by the validation system. You typically won't interact with it directly unless you're:
-- Implementing custom types that need to participate in recursion detection
+The context system is used internally by the validation system to track nesting depth. You typically won't interact with it directly unless you're:
+- Implementing custom types that need to participate in depth tracking
 - Adjusting validation depth limits for extremely deep structures
 - Debugging validation behavior
 
-The validation context automatically tracks how deep the validation has recursed into nested structures and raises an error if the maximum depth is exceeded, protecting against malicious or malformed data that could cause stack overflow.
+The context automatically tracks how deep the validation has recursed into nested structures and raises an error if the maximum depth is exceeded, protecting against malicious or malformed data that could cause stack overflow.
 
 ---
 

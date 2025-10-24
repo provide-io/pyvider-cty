@@ -1,13 +1,16 @@
 # CTY Validation
 
-The `pyvider.cty.validation` module provides utilities for managing validation context and preventing infinite recursion during validation of deeply nested or circular data structures.
+The `pyvider.cty.validation` module provides utilities for preventing infinite recursion during validation of deeply nested or circular data structures.
 
 Key components:
-- **`ValidationContext`** - Context manager that tracks validation depth to prevent stack overflow
-- **`MAX_VALIDATION_DEPTH`** - Configurable maximum depth limit (default: 1000 levels)
-- **Recursion protection** - Automatically enforced depth limits that raise errors before stack overflow occurs
+- **`RecursionContext`** - Tracks visited objects during validation to detect cycles
+- **`RecursionDetector`** - Manages recursion detection state
+- **`with_recursion_detection`** - Decorator that adds recursion detection to validation methods
+- **`get_recursion_context()`** - Returns the current recursion context
+- **`clear_recursion_context()`** - Clears the recursion detection state
+- **`validate_config()`** - High-level function for validating configurations against schemas
 
-The validation context is used internally by all types during the validation process. You typically won't need to interact with it directly unless you're implementing custom types or need to adjust depth limits for extremely deep data structures.
+The recursion detection system is used internally by all types during the validation process. You typically won't need to interact with it directly unless you're implementing custom types that need to participate in cycle detection.
 
 For comprehensive validation documentation, see: **[User Guide: Validation](../user-guide/core-concepts/validation.md)**
 
