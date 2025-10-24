@@ -1,4 +1,4 @@
-# Chapter 7: Structural Types
+# Structural Types
 
 Structural types represent more complex, structured data. They allow you to define the shape and layout of your data with a high degree of precision.
 
@@ -84,3 +84,11 @@ try:
 except Exception as e:
     print(f"Validation failed as expected: {e}")
 ```
+
+## See Also
+
+- **[Understanding Types](../core-concepts/types.md)** - Core type system concepts
+- **[Collection Types](collections.md)** - List, Map, and Set types
+- **[Dynamic Types](dynamic.md)** - Using dynamic types within structures
+- **[Path Navigation](../advanced/path-navigation.md)** - Navigating nested structures
+- **[Terraform Interoperability](../advanced/terraform-interop.md)** - Working with Terraform object types

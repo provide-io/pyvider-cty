@@ -1,4 +1,4 @@
-# Chapter 9: Capsule Types
+# Capsule Types
 
 The `CtyCapsule` type is a special type in `pyvider.cty` that allows you to encapsulate and protect foreign data types within the `cty` system. This is useful when you need to work with data that cannot be represented by the standard `cty` types, such as file handles, database connections, or other external resources.
 
@@ -50,3 +50,10 @@ except Exception as e:
 ```
 
 This type safety ensures that you can't accidentally mix up different types of encapsulated data.
+
+## See Also
+
+- **[Understanding Types](../core-concepts/types.md)** - Core type system concepts
+- **[Create Custom Types](../../how-to/create-custom-types.md)** - Building custom type wrappers
+- **[Serialization](../advanced/serialization.md)** - Capsule serialization considerations
+- **[API Reference: Capsule Types](../../api/types/capsule.md)** - Complete capsule API documentation

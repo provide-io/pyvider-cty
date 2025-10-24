@@ -1,4 +1,4 @@
-# Chapter 10: Marks
+# Marks System
 
 Marks are a powerful feature in `pyvider.cty` that allow you to attach metadata to `cty` values. This metadata can then be used to add extra information to the values, such as sensitivity, or to control how the values are processed in a data pipeline.
 
@@ -53,3 +53,9 @@ Marks are a flexible feature that can be used in a variety of ways. Here are a f
 *   **Data Lineage**: You can use marks to track the lineage of data as it flows through a data pipeline. This can be useful for debugging and for understanding how a particular value was derived.
 
 *   **Controlling Behavior**: You can use marks to control the behavior of functions and other operations. For example, you could create a function that only operates on values that have a specific mark.
+
+## See Also
+
+- **[Terraform Interoperability](terraform-interop.md)** - Using marks with Terraform sensitive values
+- **[Working with Values](../core-concepts/values.md)** - Understanding CtyValue properties
+- **[go-cty Comparison](../../reference/go-cty-comparison.md)** - Marks API differences between go-cty and pyvider.cty

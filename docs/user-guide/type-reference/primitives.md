@@ -1,4 +1,4 @@
-# Chapter 5: Primitive Types
+# Primitive Types
 
 Primitive types are the most basic building blocks of the `pyvider.cty` type system. They represent simple, single values.
 
@@ -71,3 +71,11 @@ try:
 except Exception as e:
     print(f"Validation failed: {e}")
 ```
+
+## See Also
+
+- **[Understanding Types](../core-concepts/types.md)** - Core type system concepts
+- **[Collection Types](collections.md)** - List, Map, and Set types
+- **[Structural Types](structural.md)** - Object and Tuple types
+- **[String Functions](../advanced/functions.md)** - Built-in string manipulation functions
+- **[Numeric Functions](../advanced/functions.md)** - Built-in numeric operations

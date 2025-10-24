@@ -55,7 +55,15 @@ The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 
 ## Recent Updates
 
-### Version 0.0.1000 (2025-10-17)
+### Version 0.0.1000 - Documentation Enhancements (2025-10-24)
+
+**Documentation Improvements:**
+- **Expanded Terraform Interoperability Guide** - Comprehensive 700+ line guide covering provider development, state management, MessagePack serialization, and real-world patterns
+- **Enhanced API Navigation** - Added subcategories for API types (primitives, collections, structural, capsule) in documentation navigation
+- **Improved Cross-References** - Added "Further Reading" sections linking related documentation topics
+- **Consistent Formatting** - Refreshed documentation style across all sections
+
+**Previously Released (2025-10-17):**
 - Restructured documentation to align with provide.io ecosystem patterns
 - Enhanced documentation navigation with complete how-to guide listings
 - Added dedicated Codec API documentation

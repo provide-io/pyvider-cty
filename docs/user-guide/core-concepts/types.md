@@ -45,3 +45,11 @@ If the validation is successful, `validate` returns a new `cty` value. If the va
     *   `CtyTuple`: Represents a sequence of elements with a fixed length, where each element can have a different type.
 
 In the following chapters, we will explore each of these categories in more detail.
+
+## See Also
+
+- **[Type Reference: Primitives](../type-reference/primitives.md)** - Detailed guide to String, Number, and Bool types
+- **[Type Reference: Collections](../type-reference/collections.md)** - Working with List, Map, and Set
+- **[Type Reference: Structural](../type-reference/structural.md)** - Object and Tuple types
+- **[Working with Values](values.md)** - Understanding CtyValue objects
+- **[Validation](validation.md)** - How type validation works

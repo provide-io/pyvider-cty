@@ -149,7 +149,12 @@ nav:
 
   - API Reference:
     - api/index.md
-    - Types: api/types/index.md
+    - Types:
+      - api/types/index.md
+      - Primitives: api/types/primitives.md
+      - Collections: api/types/collections.md
+      - Structural: api/types/structural.md
+      - Capsule: api/types/capsule.md
     - Values: api/values.md
     - Conversion: api/conversion.md
     - Codec: api/codec.md
