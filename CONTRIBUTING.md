@@ -30,7 +30,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
    ```
 
    This automatically:
-   - Creates a virtual environment in `workenv/`
+   - Creates a virtual environment in `.venv/`
    - Installs all dependencies including dev tools
    - Activates the environment
 
@@ -150,7 +150,7 @@ uv run pytest tests/ -m compat     # Cross-language compatibility
 ### Documentation
 
 - Add docstrings to all public APIs
-- Update relevant guide chapters in `docs/guide/`
+- Update relevant guide chapters in `docs/user-guide/`
 - Add examples to `examples/` for new features
 - Keep README.md current
 
