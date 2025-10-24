@@ -4,27 +4,41 @@ Practical, task-oriented guides for common use cases with pyvider.cty.
 
 ## Available Guides
 
-These guides are currently in development. Check back soon!
-
 ### Data Validation
-- **Validate Complex Data Structures** - Coming soon
-- **Handle Validation Errors** - Coming soon
-- **Work with Optional Fields** - Coming soon
+- **[Validate Complex Data Structures](validate-data.md)** - Comprehensive guide to validating nested structures, collections, and complex data
+  - Basic validation patterns
+  - Nested structures
+  - Optional fields
+  - Collections (lists, maps, sets)
+  - Error handling and recovery
 
 ### Serialization
-- **Serialize and Deserialize Values** - Coming soon
-- **Handle MessagePack Data** - Coming soon
-- **Work with Large Data Sets** - Coming soon
+- **[Serialize and Deserialize Values](serialize-values.md)** - Work with MessagePack format for storage and transmission
+  - Basic serialization
+  - Complex structures
+  - File storage
+  - Cross-language compatibility
+  - Compression and optimization
 
 ### Terraform Integration
-- **Work with Terraform Types** - Coming soon
-- **Parse Terraform Configurations** - Coming soon
-- **Build Terraform Providers** - Coming soon
+- **[Work with Terraform Types](work-with-terraform.md)** - Parse and work with Terraform type systems
+  - Parse Terraform type strings
+  - Validate Terraform configurations
+  - Module input/output handling
+  - Provider development patterns
 
 ### Advanced Usage
-- **Create Custom Types** - Coming soon
-- **Migrate from go-cty** - Coming soon
-- **Performance Optimization** - Coming soon
+- **[Create Custom Types](create-custom-types.md)** - Extend the type system with custom validation
+  - Type composition and factories
+  - Validation wrappers
+  - Domain-specific types
+  - Type registries
+
+- **[Migrate from go-cty](migrate-from-go-cty.md)** - Port Go code to Python
+  - API differences
+  - Serialization compatibility
+  - Common patterns translation
+  - Migration checklist
 
 ## Contributing
 
