@@ -63,16 +63,16 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 3. **Run quality checks**
    ```bash
    # Format code
-   ruff format src/ tests/
+   uv run ruff format src/ tests/
 
    # Check linting
-   ruff check src/ tests/ --fix
+   uv run ruff check src/ tests/ --fix
 
    # Run type checking
-   mypy src/
+   uv run mypy src/
 
    # Run tests
-   pytest tests/
+   uv run pytest tests/
 
    # Or use the validation script
    ./validate-pipeline.sh
@@ -124,20 +124,20 @@ def test_feature_name() -> None:
 
 ```bash
 # Run all tests
-pytest tests/
+uv run pytest tests/
 
 # Run specific test file
-pytest tests/types/test_primitives.py
+uv run pytest tests/types/test_primitives.py
 
 # Run with coverage
-pytest tests/ --cov=src/pyvider/cty --cov-report=html
+uv run pytest tests/ --cov=src/pyvider/cty --cov-report=html
 
 # Run with verbose output
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific markers
-pytest tests/ -m benchmark  # Performance tests
-pytest tests/ -m compat     # Cross-language compatibility
+uv run pytest tests/ -m benchmark  # Performance tests
+uv run pytest tests/ -m compat     # Cross-language compatibility
 ```
 
 #### Test Coverage Requirements

@@ -68,7 +68,7 @@ Always use `uv sync` to activate the development environment. This uses `uv` for
 ### Configuration Details
 - **Python Version**: Requires Python 3.11+ (uses modern type hints)
 - **Build System**: setuptools with `src/` layout
-- **Dependencies**: attrs, msgpack, pyvider-telemetry
+- **Dependencies**: attrs, msgpack, provide-foundation
 - **Dev Tools**: pytest, ruff, mypy, hypothesis, bandit
 
 ### Cross-Language Compatibility
