@@ -25,7 +25,7 @@ The following versions of pyvider-cty are currently supported with security upda
 - Python ≥ 3.11 (modern, maintained versions)
 
 ✅ **Code Quality**
-- 92% test coverage
+- 94% test coverage
 - Immutable value semantics
 - Comprehensive error handling with error boundaries
 
