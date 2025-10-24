@@ -199,4 +199,4 @@ For general questions, please use GitHub Issues or Discussions.
 
 ---
 
-Last Updated: 2025-10-17
+Last Updated: 2025-10-24

@@ -330,5 +330,5 @@ For API stability questions:
 ---
 
 **Status**: Alpha (0.0.x) - API may change
-**Last Updated**: 2025-10-17
+**Last Updated**: 2025-10-24
 **Next Review**: Before Beta (0.1.0)

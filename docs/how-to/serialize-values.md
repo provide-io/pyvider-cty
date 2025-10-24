@@ -246,13 +246,11 @@ send_cty_value(person_value, person_type, "https://api.example.com/person")
 Handle serialization/deserialization errors:
 
 ```python
-from pyvider.cty.exceptions import SerializationError, DeserializationError
-
 def safe_serialize(value, schema):
     """Safely serialize with error handling."""
     try:
         return cty_to_msgpack(value, schema)
-    except SerializationError as e:
+    except Exception as e:
         print(f"Serialization failed: {e}")
         return None
 
@@ -260,7 +258,7 @@ def safe_deserialize(msgpack_bytes, schema):
     """Safely deserialize with error handling."""
     try:
         return cty_from_msgpack(msgpack_bytes, schema)
-    except DeserializationError as e:
+    except Exception as e:
         print(f"Deserialization failed: {e}")
         return None
 ```
