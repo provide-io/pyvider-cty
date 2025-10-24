@@ -28,7 +28,7 @@ These guides are currently in development. Check back soon!
 
 ## Contributing
 
-Want to contribute a how-to guide? Check out our [Contributing Guidelines](../../CONTRIBUTING.md)!
+Want to contribute a how-to guide? Check out our [Contributing Guidelines](https://github.com/provide-io/pyvider-cty/blob/main/CONTRIBUTING.md)!
 
 ## Other Resources
 

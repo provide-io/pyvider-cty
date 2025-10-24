@@ -91,7 +91,8 @@
       "Bash(fi)",
       "Bash(for dir in /Users/tim/code/gh/provide-io/{tofusoup,provide-foundation,terraform-provider-pyvider,pyvider,pyvider-components,pyvider-hcl,pyvider-rpcplugin,flavorpack,messometer,supsrc,wrknv}/)",
       "Bash(for dir in /Users/tim/code/gh/provide-io/{tofusoup,provide-foundation,pyvider,pyvider-components,pyvider-hcl,pyvider-rpcplugin,flavorpack,messometer,supsrc}/)",
-      "Bash(uv run mypy:*)"
+      "Bash(uv run mypy:*)",
+      "Bash(uv run mkdocs build:*)"
     ],
     "deny": [],
     "ask": [],

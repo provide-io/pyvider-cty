@@ -22,23 +22,23 @@ python examples/run_all_examples.py
 
 ### Getting Started
 
-- **[quick-start.py](../../examples/getting-started/quick-start.py)** - The 5-minute quick start example
+- **quick-start.py** - The 5-minute quick start example
 
 ### Type Examples
 
-- **[primitives.py](../../examples/types/primitives.py)** - String, Number, and Bool types
-- **[collections.py](../../examples/types/collections.py)** - List, Map, and Set types
-- **[structural.py](../../examples/types/structural.py)** - Object and Tuple types
-- **[dynamic.py](../../examples/types/dynamic.py)** - Dynamic type usage
-- **[capsule.py](../../examples/types/capsule.py)** - Capsule types for opaque data
+- **primitives.py** - String, Number, and Bool types
+- **collections.py** - List, Map, and Set types
+- **structural.py** - Object and Tuple types
+- **dynamic.py** - Dynamic type usage
+- **capsule.py** - Capsule types for opaque data
 
 ### Advanced Examples
 
-- **[marks.py](../../examples/advanced/marks.py)** - Attaching metadata to values
-- **[functions.py](../../examples/advanced/functions.py)** - Using built-in functions
-- **[serialization.py](../../examples/advanced/serialization.py)** - MessagePack serialization
-- **[path-navigation.py](../../examples/advanced/path-navigation.py)** - Navigating nested structures
-- **[terraform-interop.py](../../examples/advanced/terraform-interop.py)** - Working with Terraform types
+- **marks.py** - Attaching metadata to values
+- **functions.py** - Using built-in functions
+- **serialization.py** - MessagePack serialization
+- **path-navigation.py** - Navigating nested structures
+- **terraform-interop.py** - Working with Terraform types
 
 ## Next Steps
 

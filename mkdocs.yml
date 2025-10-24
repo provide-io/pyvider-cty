@@ -154,5 +154,3 @@ nav:
     - Glossary: reference/glossary.md
     - go-cty Comparison: reference/go-cty-comparison.md
     - Release Notes: reference/release-notes.md
-
-  - Contributing: CONTRIBUTING.md

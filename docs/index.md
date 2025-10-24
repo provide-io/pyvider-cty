@@ -115,7 +115,7 @@ pip install pyvider-cty
 
 - **GitHub**: [provide-io/pyvider-cty](https://github.com/provide-io/pyvider-cty)
 - **Issues**: [Report bugs or request features](https://github.com/provide-io/pyvider-cty/issues)
-- **Contributing**: See our [Contributing Guidelines](CONTRIBUTING.md)
+- **Contributing**: See our [Contributing Guidelines](https://github.com/provide-io/pyvider-cty/blob/main/CONTRIBUTING.md)
 
 ---
 
