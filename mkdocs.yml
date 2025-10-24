@@ -111,5 +111,48 @@ extra_javascript:
 
 nav:
   - Home: index.md
+
+  - Getting Started:
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - Quick Start (5 min): getting-started/quick-start.md
+    - Your First Type System: getting-started/first-type-system.md
+    - Examples: getting-started/examples.md
+
+  - User Guide:
+    - user-guide/index.md
+    - Core Concepts:
+      - Understanding Types: user-guide/core-concepts/types.md
+      - Working with Values: user-guide/core-concepts/values.md
+    - Type Reference:
+      - Primitive Types: user-guide/type-reference/primitives.md
+      - Collection Types: user-guide/type-reference/collections.md
+      - Structural Types: user-guide/type-reference/structural.md
+      - Dynamic Types: user-guide/type-reference/dynamic.md
+      - Capsule Types: user-guide/type-reference/capsule.md
+    - Advanced Topics:
+      - Marks System: user-guide/advanced/marks.md
+      - Built-in Functions: user-guide/advanced/functions.md
+      - Serialization: user-guide/advanced/serialization.md
+      - Path Navigation: user-guide/advanced/path-navigation.md
+      - Terraform Interop: user-guide/advanced/terraform-interop.md
+
+  - How-To Guides:
+    - how-to/index.md
+
   - API Reference:
     - api/index.md
+    - Types: api/types/index.md
+    - Values: api/values.md
+    - Conversion: api/conversion.md
+    - Functions: api/functions.md
+    - Path Navigation: api/path.md
+    - Validation: api/validation.md
+
+  - Reference:
+    - Troubleshooting: reference/troubleshooting.md
+    - Glossary: reference/glossary.md
+    - go-cty Comparison: reference/go-cty-comparison.md
+    - Release Notes: reference/release-notes.md
+
+  - Contributing: CONTRIBUTING.md
