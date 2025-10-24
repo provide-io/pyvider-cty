@@ -5,7 +5,8 @@
       "Bash(test:*)",
       "Bash(cat:*)",
       "Bash(python3:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": [],
