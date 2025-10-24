@@ -82,7 +82,8 @@
       "Bash(git push)",
       "Bash(env)",
       "Bash(git log:*)",
-      "Bash(uv run ruff:*)"
+      "Bash(uv run ruff:*)",
+      "Bash(uv run pytest:*)"
     ],
     "deny": [],
     "ask": [],
