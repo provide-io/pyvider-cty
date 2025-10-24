@@ -124,6 +124,8 @@ nav:
     - Core Concepts:
       - Understanding Types: user-guide/core-concepts/types.md
       - Working with Values: user-guide/core-concepts/values.md
+      - Validation: user-guide/core-concepts/validation.md
+      - Type Conversion: user-guide/core-concepts/conversion.md
     - Type Reference:
       - Primitive Types: user-guide/type-reference/primitives.md
       - Collection Types: user-guide/type-reference/collections.md

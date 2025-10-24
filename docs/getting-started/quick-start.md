@@ -18,12 +18,14 @@ from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 Define what a valid user profile looks like:
 
 ```python
-person_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber(),
-    "active": CtyBool(),
-    "tags": CtyList(element_type=CtyString())
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+        "active": CtyBool(),
+        "tags": CtyList(element_type=CtyString()),
+    }
+)
 ```
 
 This schema says: "A person must have a name (string), age (number), active status (boolean), and a list of tags (strings)."
@@ -100,12 +102,14 @@ from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyList, CtyObject
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
 # 1. Define schema
-person_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber(),
-    "active": CtyBool(),
-    "tags": CtyList(element_type=CtyString())
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+        "active": CtyBool(),
+        "tags": CtyList(element_type=CtyString()),
+    }
+)
 
 # 2. Validate data
 user_data = {

@@ -51,10 +51,12 @@ from pyvider.cty import CtyString, CtyNumber, CtyObject, CtyList
 string_type = CtyString()
 
 # Object type
-person_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+    }
+)
 
 # List type
 list_type = CtyList(element_type=CtyString())
@@ -93,7 +95,9 @@ str_val = CtyString().validate("hello")
 num_val = CtyNumber().validate(42)
 
 # Object value
-person_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+person_type = CtyObject(
+    attribute_types={"name": CtyString(), "age": CtyNumber()}
+)
 person = person_type.validate({"name": "Alice", "age": 30})
 
 # Null value
@@ -398,10 +402,12 @@ func ValidateConfig(raw map[string]interface{}) (cty.Value, error) {
 **Python:**
 ```python
 def validate_config(raw: dict) -> CtyValue:
-    config_type = CtyObject({
-        "host": CtyString(),
-        "port": CtyNumber()
-    })
+    config_type = CtyObject(
+        attribute_types={
+            "host": CtyString(),
+            "port": CtyNumber(),
+        }
+    )
 
     try:
         return config_type.validate(raw)

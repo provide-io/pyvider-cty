@@ -11,7 +11,7 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 ## Features
 
 - **Complete Type System**: Primitives, collections, and structural types.
-- **Cross-Language Compatibility**: Interoperates with go-cty via JSON and MessagePack.
+- **Cross-Language Compatibility**: Interoperates with go-cty via MessagePack.
 - **Type Safety**: Strong validation at value creation.
 - **Marks System**: Attach metadata without modifying values.
 - **Path Navigation**: Type-safe access to nested data.
@@ -35,9 +35,9 @@ user_type = CtyObject(
     attribute_types={
         "name": CtyString(),
         "age": CtyNumber(),
-        "hobbies": CtyList(element_type=CtyString())
+        "hobbies": CtyList(element_type=CtyString()),
     },
-    optional_attributes={"age"}
+    optional_attributes={"age"},
 )
 
 # 2. Create raw Python data that matches the schema.
