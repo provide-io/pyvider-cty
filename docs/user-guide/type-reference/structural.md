@@ -11,6 +11,23 @@ There are two structural types in `pyvider.cty`:
 
 The `CtyObject` type represents an object with a fixed set of named attributes. Each attribute has its own type, which you must specify when creating the `CtyObject` type.
 
+### Syntax Options
+
+`CtyObject` supports two equivalent syntaxes for defining attribute types:
+
+```python
+# Explicit syntax (recommended when using optional_attributes)
+user_type = CtyObject(
+    attribute_types={"name": CtyString(), "age": CtyNumber()},
+    optional_attributes={"age"}
+)
+
+# Shorthand syntax (concise for simple cases)
+user_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+```
+
+Both syntaxes are valid. Use the explicit `attribute_types=` parameter when you need to specify `optional_attributes` to keep the code clear. The shorthand syntax is more concise for simple cases.
+
 ### Optional Attributes
 
 You can also define certain attributes as optional. If an optional attribute is missing from the input data during validation, it will be present in the resulting `CtyValue` as a `null` value of the correct type.
