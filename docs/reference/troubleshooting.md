@@ -2,19 +2,19 @@
 
 This chapter provides guidance on common issues you might encounter while using `pyvider.cty`.
 
-## `ValidationError`
+## `CtyValidationError`
 
-The most common issue you will encounter is the `ValidationError`. This exception is raised when you try to validate a raw Python value that does not conform to the given `cty` type.
+The most common issue you will encounter is the `CtyValidationError`. This exception is raised when you try to validate a raw Python value that does not conform to the given `cty` type.
 
-When a `ValidationError` is raised, it will include a detailed message that explains what went wrong. The message will typically include the path to the invalid value, the expected type, and the actual value that was received.
+When a `CtyValidationError` is raised, it will include a detailed message that explains what went wrong. The message will typically include the path to the invalid value, the expected type, and the actual value that was received.
 
 For example, if you try to validate an object with a missing attribute, you might see an error message like this:
 
 ```
-ValidationError: at path.to.object: missing required attribute "attribute_name"
+CtyValidationError: at path.to.object: missing required attribute "attribute_name"
 ```
 
-To troubleshoot a `ValidationError`, carefully read the error message and inspect the raw Python value that you are trying to validate. Make sure that the value has the correct structure and that all the values have the correct types.
+To troubleshoot a `CtyValidationError`, carefully read the error message and inspect the raw Python value that you are trying to validate. Make sure that the value has the correct structure and that all the values have the correct types.
 
 ## `TypeError`
 

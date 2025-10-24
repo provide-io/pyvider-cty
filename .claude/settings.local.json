@@ -4,7 +4,8 @@
       "Bash(uv run:*)",
       "Bash(test:*)",
       "Bash(cat:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [],

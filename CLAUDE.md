@@ -85,7 +85,7 @@ The `compatibility/` directory contains Go and Python implementations for testin
 ## Code Style Requirements
 - Modern Python 3.11+ typing: use `dict`, `list`, `set` (lowercase native types)
 - Use union operator `|` for type unions
-- No `__future__` imports
+- Use `from __future__ import annotations` for forward reference support and unquoted types (enables cleaner type hints without string quotes); avoid other `__future__` imports
 - No hardcoded defaults anywhere in the codebase
 - Follow ruff formatting and linting rules
 - Strict mypy type checking enabled
