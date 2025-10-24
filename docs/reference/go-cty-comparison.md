@@ -377,7 +377,7 @@ When migrating from go-cty to pyvider.cty:
 | **Type Conversion** | ✅ | ✅ | Full parity |
 | **Type Unification** | ✅ | ✅ | Full parity |
 | **MessagePack Serialization** | ✅ | ✅ | Cross-compatible |
-| **JSON Serialization** | ✅ | ⚠️  | MessagePack preferred |
+| **JSON Encoding Functions** | ✅ | ✅ | Via `jsonencode`/`jsondecode` functions |
 | **Standard Library Functions** | ✅ | ✅ | Comparable coverage |
 | **Path Navigation** | ✅ | ✅ | Full parity |
 | **Terraform Type Parsing** | ✅ | ✅ | Full parity |

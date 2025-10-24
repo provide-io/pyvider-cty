@@ -8,9 +8,25 @@ Key components:
 - **`with_recursion_detection`** - Decorator that adds recursion detection to validation methods
 - **`get_recursion_context()`** - Returns the current recursion context
 - **`clear_recursion_context()`** - Clears the recursion detection state
-- **`validate_config()`** - High-level function for validating configurations against schemas
+- **`validate_config(schema, config)`** - Convenience function for validating configurations against schemas (raises `CtyValidationError` on failure)
 
 The recursion detection system is used internally by all types during the validation process. You typically won't need to interact with it directly unless you're implementing custom types that need to participate in cycle detection.
+
+**Usage Example:**
+
+```python
+from pyvider.cty import CtyObject, CtyString
+from pyvider.cty.validation import validate_config
+
+schema = CtyObject({"name": CtyString()})
+config = {"name": "Alice"}
+
+# This validates and raises on error, but doesn't return the CtyValue
+validate_config(schema, config)
+
+# For most use cases, prefer calling validate() directly on the type:
+validated_value = schema.validate(config)  # Returns CtyValue
+```
 
 For comprehensive validation documentation, see: **[User Guide: Validation](../user-guide/core-concepts/validation.md)**
 
