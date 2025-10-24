@@ -8,14 +8,7 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 
 `pyvider.cty` is a pure-Python implementation of the [go-cty](https://github.com/zclconf/go-cty) type system, providing strong type validation and serialization capabilities for configuration data. It's designed to work seamlessly with Terraform providers and other HashiCorp ecosystem tools.
 
-## Features
-
-- **Complete Type System**: Primitives, collections, and structural types.
-- **Cross-Language Compatibility**: Interoperates with go-cty via MessagePack.
-- **Type Safety**: Strong validation at value creation.
-- **Marks System**: Attach metadata without modifying values.
-- **Path Navigation**: Type-safe access to nested data.
-- **Full Standard Library**: A comprehensive suite of functions for data manipulation.
+**Key Features**: Complete type system, cross-language compatibility via MessagePack, type-safe validation, marks system, path navigation, and comprehensive standard library.
 
 ## Installation
 
@@ -23,14 +16,12 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 uv add pyvider-cty
 ```
 
-## Quick Start
+## Quick Example
 
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList
-from pyvider.cty.exceptions import CtyValidationError
 
-# 1. Define a type schema for a user profile.
-# 'age' is an optional attribute.
+# Define a type schema
 user_type = CtyObject(
     attribute_types={
         "name": CtyString(),
@@ -40,30 +31,12 @@ user_type = CtyObject(
     optional_attributes={"age"},
 )
 
-# 2. Create raw Python data that matches the schema.
-user_data = {
-    "name": "Alice",
-    "hobbies": ["reading", "hiking"]
-}
+# Validate data
+user_data = {"name": "Alice", "hobbies": ["reading", "hiking"]}
+user_val = user_type.validate(user_data)
 
-# 3. Validate the data. This returns an immutable CtyValue.
-try:
-    user_val = user_type.validate(user_data)
-    print("Validation successful!")
-
-    # 4. Access data from the CtyValue.
-    # Accessing attributes returns another CtyValue. Use .raw_value to get the Python type.
-    print(f"Name: {user_val['name'].raw_value}")
-
-    # The optional 'age' attribute is present but is a null CtyValue.
-    print(f"Age: {user_val['age'].raw_value} (Is Null: {user_val['age'].is_null})")
-
-    print("Hobbies:")
-    for hobby_val in user_val['hobbies']:
-        print(f"- {hobby_val.raw_value}")
-
-except CtyValidationError as e:
-    print(f"Validation failed: {e}")
+# Access validated data
+print(f"Name: {user_val['name'].raw_value}")  # Output: Alice
 ```
 
 ## Documentation

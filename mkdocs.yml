@@ -156,6 +156,7 @@ nav:
     - Functions: api/functions.md
     - Path Navigation: api/path.md
     - Validation: api/validation.md
+    - Context: api/context.md
 
   - Reference:
     - Troubleshooting: reference/troubleshooting.md

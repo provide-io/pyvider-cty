@@ -83,7 +83,7 @@ python examples/run_all_examples.py
 
 For more information and comprehensive documentation:
 
-- **[Getting Started Guide](../docs/getting-started/index.md)** - Learn the basics
-- **[User Guide](../docs/user-guide/index.md)** - Comprehensive documentation
-- **[How-To Guides](../docs/how-to/index.md)** - Task-oriented guides
-- **[API Reference](../docs/api/index.md)** - Complete API documentation
+- **[Getting Started Guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md)** - Learn the basics
+- **[User Guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/user-guide/index.md)** - Comprehensive documentation
+- **[How-To Guides](https://github.com/provide-io/pyvider-cty/blob/main/docs/how-to/index.md)** - Task-oriented guides
+- **[API Reference](https://github.com/provide-io/pyvider-cty/blob/main/docs/api/index.md)** - Complete API documentation
