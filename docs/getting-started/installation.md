@@ -69,7 +69,7 @@ pyvider.cty has minimal dependencies:
 
 - **attrs** - For clean class definitions
 - **msgpack** - For MessagePack serialization (go-cty compatibility)
-- **provide-foundation** - For error handling and utilities
+- **provide-foundation** - Foundation utilities and error handling
 
 These will be installed automatically when you install pyvider.cty.
 
