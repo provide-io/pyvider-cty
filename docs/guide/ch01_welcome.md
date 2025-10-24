@@ -14,7 +14,7 @@ This guide will walk you through from initial setup and basic usage to advanced 
 -   **Capsule Types**: Encapsulate and protect foreign data types within the `cty` system.
 
 ##### 🛠️ **Developer Experience**
--   **Modern Python**: Leverages Python 3.13+ features with complete type annotations.
+-   **Modern Python**: Leverages Python 3.11+ features with complete type annotations.
 -   **Clear and Concise API**: A simple and intuitive API for defining types, validating data, and working with values.
 -   **Detailed Diagnostics**: Get detailed error messages and validation diagnostics to quickly identify and fix issues.
 

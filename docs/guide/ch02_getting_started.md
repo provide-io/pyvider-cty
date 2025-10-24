@@ -43,7 +43,7 @@ from pyvider.cty import (
     CtyString, CtyNumber, CtyBool, CtyList, CtyObject, CtyDynamic,
     CtyValue
 )
-from pyvider.cty.conversion import to_json, from_json
+from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 ```
 
 **2. Define a Type Schema**
@@ -81,36 +81,36 @@ except Exception as e:
 
 **4. Access Data from the `CtyValue`**
 
-You can access attributes and elements of a `CtyValue` using standard Python square-bracket notation `[]`. The returned items are also `CtyValue`s. To get the raw Python value, use the `.value` property.
+You can access attributes and elements of a `CtyValue` using standard Python square-bracket notation `[]`. The returned items are also `CtyValue`s. To get the raw Python value, use the `.raw_value` property.
 
 ```python
 # Access attributes of the object
-print(f"Name: {person_value['name'].value}")  # Output: Alice
-print(f"Age: {person_value['age'].value}")    # Output: 30
+print(f"Name: {person_value['name'].raw_value}")  # Output: Alice
+print(f"Age: {person_value['age'].raw_value}")    # Output: 30
 
 # Iterate over the list
 print("Tags:")
 for tag_value in person_value['tags']:
-    print(f"- {tag_value.value}")
+    print(f"- {tag_value.raw_value}")
 ```
 
-**5. Serialize to JSON**
+**5. Serialize to MessagePack**
 
-`pyvider.cty` can serialize values to JSON for storage or transmission.
+`pyvider.cty` can serialize values to MessagePack binary format for storage or transmission. This format is compatible with go-cty for cross-language interoperability.
 
 ```python
-json_representation = to_json(person_value)
-print(f"\nJSON representation:\n{json_representation}")
+msgpack_bytes = cty_to_msgpack(person_value, person_type)
+print(f"\nSerialized to {len(msgpack_bytes)} bytes of MessagePack data")
 ```
 
-**6. Deserialize from JSON**
+**6. Deserialize from MessagePack**
 
-To reconstruct a `CtyValue` from JSON, you must provide the `target_type` to guide the process.
+To reconstruct a `CtyValue` from MessagePack, you must provide the `cty_type` to guide the process.
 
 ```python
-reconstructed_value = from_json(json_representation, person_type)
-assert reconstructed_value['name'].value == "Alice"
-print("\nSuccessfully reconstructed value from JSON.")
+reconstructed_value = cty_from_msgpack(msgpack_bytes, person_type)
+assert reconstructed_value['name'].raw_value == "Alice"
+print("\nSuccessfully reconstructed value from MessagePack.")
 ```
 
 This fundamental pattern—Define, Validate, Access, Serialize—is the core workflow you will use repeatedly with `pyvider.cty`.
