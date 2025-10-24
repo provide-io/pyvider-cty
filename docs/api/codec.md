@@ -5,12 +5,12 @@ The `pyvider.cty.codec` module provides serialization and deserialization capabi
 Key functions:
 - **`cty_to_msgpack(value, type)`** - Serialize a `CtyValue` to MessagePack binary format
 - **`cty_from_msgpack(data, type)`** - Deserialize MessagePack binary data back to a `CtyValue`
-- **`cty_to_json(value, type)`** - Serialize a `CtyValue` to JSON format
-- **`cty_from_json(data, type)`** - Deserialize JSON data back to a `CtyValue`
 
 **MessagePack Format**: The MessagePack serialization format is **fully compatible** with HashiCorp's go-cty library, enabling true cross-language data exchange. This is the recommended format for interoperability with Terraform providers and other Go-based tools.
 
-**Type Preservation**: Both serialization formats preserve type information, null values, unknown values, and marks, ensuring complete fidelity when round-tripping data.
+**JSON Support**: For JSON encoding/decoding, use the `jsonencode()` and `jsondecode()` functions from `pyvider.cty.functions`. These operate on `CtyValue` objects and return `CtyValue` objects containing JSON strings, rather than providing direct serialization/deserialization.
+
+**Type Preservation**: MessagePack serialization preserves type information, null values, unknown values, and marks, ensuring complete fidelity when round-tripping data.
 
 For detailed serialization documentation, see: **[User Guide: Serialization](../user-guide/advanced/serialization.md)**
 
