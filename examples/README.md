@@ -44,12 +44,6 @@ Examples are organized by topic in the following directories:
 - **path-navigation.py** - Navigating nested structures
 - **terraform-interop.py** - Working with Terraform types
 
-### Core Concepts
-
-**Location**: `examples/core-concepts/`
-
-Additional examples demonstrating core concepts of the type system.
-
 ## Running Examples
 
 ### Prerequisites
