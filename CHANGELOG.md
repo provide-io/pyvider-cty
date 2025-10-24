@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Property-based testing with Hypothesis
 - Performance benchmarking infrastructure
 - CI/CD pipeline with GitHub Actions
-- Comprehensive documentation (17-chapter guide)
+- Comprehensive documentation with getting started guides, user guide, how-to guides, and complete API reference
 - 14 working examples covering all major features
 
 ### Changed

@@ -4,7 +4,7 @@
 
 [project]
 name = "pyvider-cty"
-description = "Pyvider Cty Package - Core data types and serialization."
+description = "Pure-Python implementation of the go-cty type system with strong validation, serialization, and Terraform interoperability"
 dynamic = ["version"]
 requires-python = ">=3.11"
 readme = "README.md"
