@@ -53,8 +53,17 @@ The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 - All critical functionality is implemented and tested
 - Examples demonstrate all features with working code
 
-## Recent Updates (2025-01-24)
+## Recent Updates
 
+### 2025-10-24
+- Enhanced documentation navigation with complete how-to guide listings
+- Added dedicated Codec API documentation
+- Removed obsolete chapter numbering from documentation
+- Improved README.md with structured documentation links
+- Cleaned up stale tracking documents and empty directories
+- Updated site description to accurately reflect general-purpose nature
+
+### 2025-01-24
 - Restructured documentation to align with provide.io ecosystem patterns
 - Fixed Python version requirements (now correctly documented as 3.11+)
 - Updated all documentation to use correct `.raw_value` property

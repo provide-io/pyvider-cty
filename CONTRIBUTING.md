@@ -70,7 +70,6 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 
    # Run type checking
    mypy src/
-   ty check src/
 
    # Run tests
    pytest tests/
@@ -95,7 +94,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
   - Use `dict`, `list`, `set` (not `Dict`, `List`, `Set`)
   - Use `|` for unions (not `Union`)
   - Use `Any` only when truly necessary
-- Both mypy and ty checkers must pass with zero errors
+- Mypy must pass with zero errors in strict mode
 
 ### Testing
 
@@ -232,7 +231,7 @@ test(functions): add property-based tests for numeric functions
 4. **PR Requirements**
    - All tests must pass
    - Coverage must meet threshold (75%+)
-   - Type checking must pass (mypy + ty)
+   - Type checking must pass (mypy strict mode)
    - Linting must pass (ruff)
    - Security scan must pass (bandit)
    - Documentation must be updated

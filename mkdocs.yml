@@ -1,5 +1,5 @@
 site_name: PyVider CTY Documentation
-site_description: CTY (Cloud Type Ystem) - Type system for Terraform data types in Python
+site_description: Cty - A powerful type system for configuration data in Python
 site_author: provide.io
 site_url: https://foundry.provide.io/pyvider-cty/
 repo_url: https://github.com/provide-io/pyvider-cty
@@ -139,12 +139,18 @@ nav:
 
   - How-To Guides:
     - how-to/index.md
+    - Validate Data: how-to/validate-data.md
+    - Serialize Values: how-to/serialize-values.md
+    - Work with Terraform: how-to/work-with-terraform.md
+    - Create Custom Types: how-to/create-custom-types.md
+    - Migrate from go-cty: how-to/migrate-from-go-cty.md
 
   - API Reference:
     - api/index.md
     - Types: api/types/index.md
     - Values: api/values.md
     - Conversion: api/conversion.md
+    - Codec: api/codec.md
     - Functions: api/functions.md
     - Path Navigation: api/path.md
     - Validation: api/validation.md

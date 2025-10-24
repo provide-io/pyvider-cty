@@ -68,7 +68,14 @@ except CtyValidationError as e:
 
 ## Documentation
 
-The complete user guide can be found in the `docs/` directory, starting with the [index](docs/index.md).
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[Getting Started](docs/getting-started/index.md)** - Quick start and installation guide
+- **[User Guide](docs/user-guide/index.md)** - Complete guide to all features
+- **[How-To Guides](docs/how-to/index.md)** - Practical task-oriented guides
+- **[API Reference](docs/api/index.md)** - Complete API documentation
+
+Or start with the **[documentation index](docs/index.md)**.
 
 ## Known Limitations
 

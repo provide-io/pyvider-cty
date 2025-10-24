@@ -1,4 +1,4 @@
-# Chapter 18: Comparison with Go-Cty
+# Comparison with Go-Cty
 
 `pyvider.cty` is a Python implementation of the `cty` type system, which was originally developed in Go as `go-cty` for use in HashiCorp's Terraform. While `pyvider.cty` aims to be a faithful implementation of the `cty` specification, there are some differences between the two libraries due to the differences between Python and Go.
 
