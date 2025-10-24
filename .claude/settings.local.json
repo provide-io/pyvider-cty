@@ -92,7 +92,17 @@
       "Bash(for dir in /Users/tim/code/gh/provide-io/{tofusoup,provide-foundation,terraform-provider-pyvider,pyvider,pyvider-components,pyvider-hcl,pyvider-rpcplugin,flavorpack,messometer,supsrc,wrknv}/)",
       "Bash(for dir in /Users/tim/code/gh/provide-io/{tofusoup,provide-foundation,pyvider,pyvider-components,pyvider-hcl,pyvider-rpcplugin,flavorpack,messometer,supsrc}/)",
       "Bash(uv run mypy:*)",
-      "Bash(uv run mkdocs build:*)"
+      "Bash(uv run mkdocs build:*)",
+      "Bash(uv run python:*)",
+      "Bash(for file in examples/types/*.py examples/advanced/*.py)",
+      "Bash(do)",
+      "Bash(if [ -f \"$file\" ])",
+      "Bash(then)",
+      "Bash(for file in examples/getting-started/*.py examples/types/*.py examples/advanced/*.py)",
+      "Bash(if [[ \"$file\" == *\"__init__\"* ]])",
+      "Bash([[ \"$file\" == *\"example_utils\"* ]])",
+      "Bash([[ \"$file\" == *\"run_all\"* ]])",
+      "Bash(continue)"
     ],
     "deny": [],
     "ask": [],
