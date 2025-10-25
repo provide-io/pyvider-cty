@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation**: Corrected marks API documentation across all docs to use `CtyMark` objects instead of strings
+  - Updated `docs/user-guide/advanced/marks.md` to show correct `CtyMark` usage with `.mark()` and `.with_marks()`
+  - Fixed `docs/reference/go-cty-comparison.md` marks section to use `unmark()` instead of non-existent methods
+  - Corrected `docs/how-to/migrate-from-go-cty.md` and `docs/user-guide/advanced/terraform-interop.md`
+  - Updated `examples/advanced/marks.py` to demonstrate correct API
+- **Documentation**: Added explanatory note about `CtyList.raw_value` returning tuples for immutability
+- **Documentation**: Updated CONTRIBUTING.md emoji policy to reflect actual practice (decorative emojis acceptable)
+- **Documentation**: Updated coverage target language to show 94% achievement
+
 ### Changed
 - Updated CHANGELOG.md to accurately reflect implemented functions
 - Fixed function naming to match actual exports (e.g., `min_fn` instead of `min`)
