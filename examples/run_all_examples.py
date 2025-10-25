@@ -84,17 +84,17 @@ async def main() -> None:
     results: list[tuple[str, bool, str, str, int]] = []
 
     scripts_to_run: list[dict[str, Any]] = [
-        {"file": "ch02_getting_started.py"},
-        {"file": "ch05_primitive_types.py"},
-        {"file": "ch06_collection_types.py"},
-        {"file": "ch07_structural_types.py"},
-        {"file": "ch08_dynamic_types.py"},
-        {"file": "ch09_capsule_types.py"},
-        {"file": "ch10_marks.py"},
-        {"file": "ch11_functions.py"},
-        {"file": "ch12_serialization.py"},
-        {"file": "ch13_path_navigation.py"},
-        {"file": "ch14_terraform_interop.py"},
+        {"file": "getting-started/quick-start.py"},
+        {"file": "types/primitives.py"},
+        {"file": "types/collections.py"},
+        {"file": "types/structural.py"},
+        {"file": "types/dynamic.py"},
+        {"file": "types/capsule.py"},
+        {"file": "advanced/marks.py"},
+        {"file": "advanced/functions.py"},
+        {"file": "advanced/serialization.py"},
+        {"file": "advanced/path-navigation.py"},
+        {"file": "advanced/terraform-interop.py"},
     ]
 
     print_section("Running All Examples")
