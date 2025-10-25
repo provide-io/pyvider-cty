@@ -1,4 +1,4 @@
-# Chapter 4: Working with Values
+# Working with Values
 
 In `pyvider.cty`, a "value" is an instance of a `cty` type. Values are the lifeblood of the `cty` system, as they hold the actual data that you work with.
 

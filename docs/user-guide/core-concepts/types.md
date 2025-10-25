@@ -1,4 +1,4 @@
-# Chapter 3: Understanding Types
+# Understanding Types
 
 In `pyvider.cty`, types are the cornerstone of the entire system. They define the structure, constraints, and expectations for your data. By creating precise type definitions, you can ensure that your data is valid and consistent.
 

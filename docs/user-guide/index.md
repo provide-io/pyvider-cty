@@ -12,8 +12,8 @@ Fundamental concepts you need to understand:
 
 - **[Understanding Types](core-concepts/types.md)** - The type system architecture
 - **[Working with Values](core-concepts/values.md)** - Value objects and immutability
-- **Validation** - How validation works (coming soon)
-- **Type Conversion** - Converting between types (coming soon)
+- **[Validation](core-concepts/validation.md)** - How validation works
+- **[Type Conversion](core-concepts/conversion.md)** - Converting between types
 
 ### Type Reference
 
