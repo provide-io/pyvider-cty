@@ -10,7 +10,6 @@ handling during Terraform plan/apply cycles where computed fields are unknown
 during planning but the object structure itself is known.
 """
 
-import pytest
 
 from pyvider.cty import CtyObject, CtyString, CtyValue
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
