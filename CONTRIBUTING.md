@@ -143,7 +143,7 @@ uv run pytest tests/ -m compat     # Cross-language compatibility
 #### Test Coverage Requirements
 
 - Minimum coverage: 75% (enforced in CI)
-- Target coverage: 90%+
+- Target coverage: 90%+ (currently at 94%)
 - All new features must include tests
 - Bug fixes should include regression tests
 
