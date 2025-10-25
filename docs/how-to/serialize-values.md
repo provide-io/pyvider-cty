@@ -17,10 +17,12 @@ from pyvider.cty import CtyObject, CtyString, CtyNumber
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
 # 1. Create a type and value
-person_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 
 person_value = person_type.validate({
     "name": "Alice",
@@ -47,13 +49,19 @@ assert reconstructed['age'].raw_value == 30
 from pyvider.cty import CtyObject, CtyString, CtyList
 
 # Complex nested type
-company_type = CtyObject({
-    "name": CtyString(),
-    "employees": CtyList(element_type=CtyObject({
+company_type = CtyObject(
+    attribute_types={
         "name": CtyString(),
-        "title": CtyString()
-    }))
-})
+        "employees": CtyList(
+            element_type=CtyObject(
+                attribute_types={
+                    "name": CtyString(),
+                    "title": CtyString()
+                }
+            )
+        )
+    }
+)
 
 company_data = {
     "name": "Acme Corp",
