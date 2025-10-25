@@ -72,7 +72,7 @@ The complete user guide can be found in the `docs/` directory, starting with the
 
 ## Known Limitations
 
-- **Python 3.13+ Required**: Due to advanced type features used.
+- **Python 3.11+ Required**: Due to modern type features and syntax used.
 - **Performance**: The library is not yet optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
 
 ## Contributing
@@ -82,4 +82,3 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) for details.
-# CI Test
