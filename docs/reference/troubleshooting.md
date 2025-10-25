@@ -4,6 +4,102 @@ This guide helps you diagnose and resolve common issues when using `pyvider.cty`
 
 ---
 
+## Quick Lookup Index
+
+**Errors:**
+- [CtyValidationError](#ctyvalidationerror) - Data doesn't match schema
+- [CtyAttributeValidationError](#ctyattributevalidationerror) - Object attribute validation failed
+- [CtyListValidationError](#ctylistvalidationerror) - List validation failed
+- [CtyMapValidationError](#ctymapvalidationerror) - Map validation failed
+- [CtySetValidationError](#ctysetvalidationerror) - Set validation failed
+- [CtyTupleValidationError](#ctytuplevalidationerror) - Tuple validation failed
+- [CtyTypeMismatchError](#ctytypemismatcherror) - Wrong data type
+- [CtyConversionError](#ctyconversionerror) - Type conversion failed
+- [CtyTypeParseError](#ctytypeparseerror) - Type string parsing failed
+- [SerializationError](#serializationerror) - MessagePack serialization failed
+- [DeserializationError](#deserializationerror) - MessagePack deserialization failed
+- [CtyFunctionError](#ctyfunctionerror) - Built-in function error
+
+**Common Scenarios:**
+- [Missing Required Attributes](#scenario-1-missing-required-attributes)
+- [Type Conversion Issues](#scenario-2-type-conversion-issues)
+- [Null vs Missing Attributes](#scenario-3-null-vs-missing-attributes)
+- [Accessing Null Values](#scenario-4-accessing-null-values)
+- [Recursion Depth Exceeded](#scenario-5-recursion-depth-exceeded)
+
+**Resources:**
+- [Debugging Tips](#debugging-tips)
+- [Performance Troubleshooting](#performance-troubleshooting)
+- [Getting Help](#getting-help)
+
+---
+
+## Exception Hierarchy
+
+Understanding the exception hierarchy helps you catch and handle errors appropriately:
+
+```
+CtyError (base exception)
+│
+├── CtyValidationError
+│   ├── CtyTypeMismatchError
+│   ├── CtyTypeValidationError
+│   ├── CtyAttributeValidationError
+│   ├── CtyListValidationError
+│   ├── CtyMapValidationError
+│   ├── CtySetValidationError
+│   ├── CtyTupleValidationError
+│   ├── CtyStringValidationError
+│   ├── CtyNumberValidationError
+│   ├── CtyBoolValidationError
+│   └── CtyCollectionValidationError
+│
+├── CtyConversionError
+│   ├── CtyTypeConversionError
+│   └── CtyTypeParseError
+│
+├── CtyFunctionError
+│
+└── EncodingError
+    ├── SerializationError
+    │   ├── JsonEncodingError
+    │   └── MsgPackEncodingError
+    ├── DeserializationError
+    ├── WireFormatError
+    ├── DynamicValueError
+    ├── InvalidTypeError
+    ├── AttributePathError
+    └── TransformationError
+```
+
+**Import Path:** All exceptions can be imported from `pyvider.cty.exceptions`
+
+```python
+from pyvider.cty.exceptions import (
+    CtyValidationError,
+    CtyConversionError,
+    SerializationError,
+    # ... and others
+)
+```
+
+**Catching Exceptions:**
+
+```python
+from pyvider.cty.exceptions import CtyValidationError, CtyTypeMismatchError
+
+try:
+    value = schema.validate(data)
+except CtyTypeMismatchError as e:
+    # Handle specific type mismatch
+    print(f"Type mismatch: {e}")
+except CtyValidationError as e:
+    # Handle all other validation errors
+    print(f"Validation error: {e}")
+```
+
+---
+
 ## Exception Reference
 
 ### Validation Errors

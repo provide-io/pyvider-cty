@@ -37,7 +37,7 @@ The `apply_path` method of a `CtyPath` object is used to navigate to a specific 
 from pyvider.cty import CtyObject, CtyString
 
 # Create a CtyValue
-user_type = CtyObject({"name": CtyString()})
+user_type = CtyObject(attribute_types={"name": CtyString()})
 user_val = user_type.validate({"name": "Alice"})
 
 # Create a path
@@ -57,7 +57,7 @@ The `apply_path_type` method of a `CtyPath` object is used to determine the type
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.path import CtyPath
 
-user_type = CtyObject({"name": CtyString()})
+user_type = CtyObject(attribute_types={"name": CtyString()})
 name_path = CtyPath.get_attr("name")
 
 # Apply the path to the type

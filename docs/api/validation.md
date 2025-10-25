@@ -18,7 +18,7 @@ The recursion detection system is used internally by all types during the valida
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.validation import validate_config
 
-schema = CtyObject({"name": CtyString()})
+schema = CtyObject(attribute_types={"name": CtyString()})
 config = {"name": "Alice"}
 
 # This validates and raises on error, but doesn't return the CtyValue

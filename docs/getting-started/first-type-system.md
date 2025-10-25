@@ -41,21 +41,25 @@ from pyvider.cty import (
 )
 
 # Define a comment type
-comment_type = CtyObject({
-    "author": CtyString(),
-    "text": CtyString(),
-    "likes": CtyNumber()
-})
+comment_type = CtyObject(
+    attribute_types={
+        "author": CtyString(),
+        "text": CtyString(),
+        "likes": CtyNumber()
+    }
+)
 
 # Define a blog post type
-post_type = CtyObject({
-    "title": CtyString(),
-    "content": CtyString(),
-    "author": CtyString(),
-    "published": CtyBool(),
-    "comments": CtyList(element_type=comment_type),
-    "tags": CtyList(element_type=CtyString())
-})
+post_type = CtyObject(
+    attribute_types={
+        "title": CtyString(),
+        "content": CtyString(),
+        "author": CtyString(),
+        "published": CtyBool(),
+        "comments": CtyList(element_type=comment_type),
+        "tags": CtyList(element_type=CtyString())
+    }
+)
 ```
 
 Notice how we can nest types - the `comments` field is a list of `comment_type` objects.

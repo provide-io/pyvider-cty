@@ -16,17 +16,17 @@ The `CtyObject` type represents an object with a fixed set of named attributes. 
 `CtyObject` supports two equivalent syntaxes for defining attribute types:
 
 ```python
-# Explicit syntax (recommended when using optional_attributes)
+# Explicit syntax (recommended for clarity and consistency)
 user_type = CtyObject(
     attribute_types={"name": CtyString(), "age": CtyNumber()},
     optional_attributes={"age"}
 )
 
-# Shorthand syntax (concise for simple cases)
+# Shorthand syntax (also supported)
 user_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
 ```
 
-Both syntaxes are valid. Use the explicit `attribute_types=` parameter when you need to specify `optional_attributes` to keep the code clear. The shorthand syntax is more concise for simple cases.
+Both syntaxes are valid, but the explicit `attribute_types=` parameter is recommended for consistency and clarity across your codebase. Use the shorthand syntax only when appropriate for your team's coding standards.
 
 ### Optional Attributes
 
