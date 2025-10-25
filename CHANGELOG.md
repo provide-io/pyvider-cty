@@ -7,26 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Comprehensive type checking with mypy (strict mode) and ty checker
-- Full test suite with 922 passing tests
-- Cross-language compatibility with go-cty via MessagePack serialization
-- TofuSoup integration for cross-language testing
-- Property-based testing with Hypothesis
-- Performance benchmarking infrastructure
-- CI/CD pipeline with GitHub Actions
-- Comprehensive documentation with getting started guides, user guide, how-to guides, and complete API reference
-- 14 working examples covering all major features
-
 ### Changed
-- Improved type safety with explicit casts for mypy/ty compatibility
-- Enhanced error messages with structured context
-- Standardized file headers and SPDX license identifiers
-
-### Fixed
-- All type checker errors (0 mypy errors, 0 ty errors in 56 files)
-- All linting issues (ruff passing)
-- All security issues (bandit clean scan)
+- Updated CHANGELOG.md to accurately reflect implemented functions
+- Fixed function naming to match actual exports (e.g., `min_fn` instead of `min`)
+- Removed non-existent base64 encoding functions from documentation
 
 ## [0.0.1000] - 2025-10-17
 
@@ -57,11 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type preservation in serialization
 
 #### Functions
-- **Collection**: `distinct`, `flatten`, `sort`, `concat`, `contains`, `keys`, `values`, `length`, `slice`, `reverse`, `compact`, `chunklist`, `merge`, `lookup`, `setproduct`, `zipmap`
-- **String**: `upper`, `lower`, `trim`, `trimprefix`, `trimsuffix`, `split`, `join`, `replace`, `substr`, `regex`, `regexall`
-- **Numeric**: `abs`, `ceil`, `floor`, `log`, `pow`, `signum`, `min`, `max`, `parseint`
+- **Collection**: `distinct`, `flatten`, `sort`, `concat`, `contains`, `keys`, `values`, `length`, `slice`, `reverse`, `compact`, `chunklist`, `merge`, `lookup`, `setproduct`, `zipmap`, `element`, `hasindex`, `index`, `coalesce`, `coalescelist`
+- **String**: `upper`, `lower`, `trim`, `trimprefix`, `trimsuffix`, `trimspace`, `split`, `join`, `replace`, `substr`, `regex`, `regexall`, `regexreplace`, `chomp`, `indent`, `title`, `strrev`
+- **Bytes**: `byteslen`, `bytesslice`
+- **Numeric**: `abs_fn`, `ceil_fn`, `floor_fn`, `log_fn`, `pow_fn`, `signum_fn`, `min_fn`, `max_fn`, `parseint_fn`, `add`, `subtract`, `multiply`, `divide`, `modulo`, `negate`, `int_fn`
 - **Comparison**: `equal`, `not_equal`, `greater_than`, `less_than`, `greater_than_or_equal_to`, `less_than_or_equal_to`
-- **Conversion**: `tobool`, `tostring`, `tonumber`, `tolist`, `toset`, `tomap`
+- **Conversion**: `to_bool`, `to_string`, `to_number`
 - **Datetime**: `formatdate`, `timeadd`
 - **Encoding**: `jsonencode`, `jsondecode`, `csvdecode`
 
