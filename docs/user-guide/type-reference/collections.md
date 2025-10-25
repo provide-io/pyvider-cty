@@ -1,4 +1,4 @@
-# Chapter 6: Collection Types
+# Collection Types
 
 Collection types represent collections of other types. They allow you to group multiple values together into a single, cohesive unit.
 
@@ -75,3 +75,11 @@ try:
 except Exception as e:
     print(f"Validation failed: {e}")
 ```
+
+## See Also
+
+- **[Understanding Types](../core-concepts/types.md)** - Core type system concepts
+- **[Primitive Types](primitives.md)** - String, Number, and Bool types
+- **[Structural Types](structural.md)** - Object and Tuple types
+- **[Collection Functions](../advanced/functions.md)** - Built-in functions for working with collections
+- **[Validation](../core-concepts/validation.md)** - Understanding validation behavior

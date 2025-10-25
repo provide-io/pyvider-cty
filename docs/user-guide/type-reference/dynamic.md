@@ -1,4 +1,4 @@
-# Chapter 8: Dynamic Types
+# Dynamic Types
 
 The `CtyDynamic` type is a special type in `pyvider.cty` that can represent any type of value. It is useful when you are working with data that has an unknown or varying structure.
 
@@ -50,3 +50,10 @@ print(f"Metadata Type (inferred): {metadata_val.value.type}")
 print(f"Metadata is an object: {isinstance(metadata_val.value.type, CtyObject)}")
 print(f"Metadata accuracy: {metadata_val.value['accuracy'].raw_value}")
 ```
+
+## See Also
+
+- **[Understanding Types](../core-concepts/types.md)** - Core type system concepts
+- **[Structural Types](structural.md)** - Object and Tuple types that can contain dynamic elements
+- **[Type Conversion](../core-concepts/conversion.md)** - Understanding type inference and conversion
+- **[Validation](../core-concepts/validation.md)** - How dynamic validation works

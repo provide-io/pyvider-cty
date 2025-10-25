@@ -2,6 +2,8 @@
 
 `pyvider.cty` is a Python implementation of the `cty` type system, which was originally developed in Go as `go-cty` for use in HashiCorp's Terraform. While `pyvider.cty` aims to be a faithful implementation of the `cty` specification, there are some differences between the two libraries due to language differences and Python idioms.
 
+> **Looking to migrate from go-cty?** See the **[How-To: Migrate from go-cty](../how-to/migrate-from-go-cty.md)** guide for step-by-step migration instructions and a complete checklist. This document focuses on feature comparison and API differences.
+
 ## Overview
 
 Both libraries implement the same conceptual type system with:
@@ -51,10 +53,12 @@ from pyvider.cty import CtyString, CtyNumber, CtyObject, CtyList
 string_type = CtyString()
 
 # Object type
-person_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+    }
+)
 
 # List type
 list_type = CtyList(element_type=CtyString())
@@ -93,7 +97,9 @@ str_val = CtyString().validate("hello")
 num_val = CtyNumber().validate(42)
 
 # Object value
-person_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+person_type = CtyObject(
+    attribute_types={"name": CtyString(), "age": CtyNumber()}
+)
 person = person_type.validate({"name": "Alice", "age": 30})
 
 # Null value
@@ -373,7 +379,7 @@ When migrating from go-cty to pyvider.cty:
 | **Type Conversion** | ✅ | ✅ | Full parity |
 | **Type Unification** | ✅ | ✅ | Full parity |
 | **MessagePack Serialization** | ✅ | ✅ | Cross-compatible |
-| **JSON Serialization** | ✅ | ⚠️  | MessagePack preferred |
+| **JSON Encoding Functions** | ✅ | ✅ | Via `jsonencode`/`jsondecode` functions |
 | **Standard Library Functions** | ✅ | ✅ | Comparable coverage |
 | **Path Navigation** | ✅ | ✅ | Full parity |
 | **Terraform Type Parsing** | ✅ | ✅ | Full parity |
@@ -398,10 +404,12 @@ func ValidateConfig(raw map[string]interface{}) (cty.Value, error) {
 **Python:**
 ```python
 def validate_config(raw: dict) -> CtyValue:
-    config_type = CtyObject({
-        "host": CtyString(),
-        "port": CtyNumber()
-    })
+    config_type = CtyObject(
+        attribute_types={
+            "host": CtyString(),
+            "port": CtyNumber(),
+        }
+    )
 
     try:
         return config_type.validate(raw)

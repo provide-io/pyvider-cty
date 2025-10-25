@@ -36,7 +36,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 
 3. **Verify setup**
    ```bash
-   pytest tests/
+   uv run pytest tests/
    ```
 
 ## Development Workflow

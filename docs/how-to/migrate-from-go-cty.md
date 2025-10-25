@@ -1,6 +1,8 @@
 # How to Migrate from go-cty
 
-This guide helps you migrate from HashiCorp's go-cty (Go) to pyvider.cty (Python).
+This guide helps you migrate from HashiCorp's go-cty (Go) to pyvider.cty (Python) with step-by-step instructions and practical examples.
+
+> **Want a detailed feature comparison?** See the **[go-cty Comparison](../reference/go-cty-comparison.md)** reference for comprehensive API differences, feature parity matrix, and performance considerations. This guide focuses on the practical migration process.
 
 ## Key Differences
 
