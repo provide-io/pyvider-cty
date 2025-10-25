@@ -22,7 +22,8 @@
       "Bash(head:*)",
       "Bash(for file in docs/api/*.md)",
       "Bash(awk:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(for file in docs/user-guide/advanced/terraform-interop.md docs/reference/go-cty-comparison.md docs/api/codec.md docs/how-to/work-with-terraform.md docs/how-to/migrate-from-go-cty.md)"
     ],
     "deny": [],
     "ask": [],
