@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comparison**: `equal`, `not_equal`, `greater_than`, `less_than`, `greater_than_or_equal_to`, `less_than_or_equal_to`
 - **Conversion**: `tobool`, `tostring`, `tonumber`, `tolist`, `toset`, `tomap`
 - **Datetime**: `formatdate`, `timeadd`
-- **Encoding**: `base64encode`, `base64decode`, `jsonencode`, `jsondecode`
+- **Encoding**: `jsonencode`, `jsondecode`, `csvdecode`
 
 #### Path Navigation
 - Type-safe path navigation with `CtyPath`
