@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment Setup
 
-Always use `uv sync` to activate the development environment. This uses `uv` for virtual environment management and creates environments in `workenv/` (not `.venv`). The environment setup is platform-aware and handles Python version compatibility automatically.
+Always use `uv sync` to activate the development environment. This uses `uv` for virtual environment management and creates environments in `.venv/`. The environment setup is platform-aware and handles Python version compatibility automatically.
 
 ## Common Commands
 
@@ -68,7 +68,7 @@ Always use `uv sync` to activate the development environment. This uses `uv` for
 ### Configuration Details
 - **Python Version**: Requires Python 3.11+ (uses modern type hints)
 - **Build System**: setuptools with `src/` layout
-- **Dependencies**: attrs, msgpack, pyvider-telemetry
+- **Dependencies**: attrs, msgpack, provide-foundation
 - **Dev Tools**: pytest, ruff, mypy, hypothesis, bandit
 
 ### Cross-Language Compatibility

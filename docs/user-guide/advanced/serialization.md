@@ -1,4 +1,4 @@
-# Chapter 12: Serialization (Msgpack)
+# Serialization
 
 Serialization is the process of converting your in-memory `CtyValue` into a format (like a byte sequence) that can be easily stored or transmitted. Deserialization is the reverse: taking that stored format and faithfully reconstructing the original `CtyValue`.
 

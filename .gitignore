@@ -399,3 +399,12 @@ result.json
 
 # Synced theme files (source: provide-foundry/shared-theme/)
 docs/.shared-theme/
+
+# Mutation testing artifacts
+mutants/
+
+# Virtual environment (legacy)
+workenv/
+
+# Benchmark results
+benchmarks/

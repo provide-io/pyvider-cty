@@ -30,7 +30,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
    ```
 
    This automatically:
-   - Creates a virtual environment in `workenv/`
+   - Creates a virtual environment in `.venv/`
    - Installs all dependencies including dev tools
    - Activates the environment
 
@@ -63,17 +63,16 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 3. **Run quality checks**
    ```bash
    # Format code
-   ruff format src/ tests/
+   uv run ruff format src/ tests/
 
    # Check linting
-   ruff check src/ tests/ --fix
+   uv run ruff check src/ tests/ --fix
 
    # Run type checking
-   mypy src/
-   ty check src/
+   uv run mypy src/
 
    # Run tests
-   pytest tests/
+   uv run pytest tests/
 
    # Or use the validation script
    ./validate-pipeline.sh
@@ -95,7 +94,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
   - Use `dict`, `list`, `set` (not `Dict`, `List`, `Set`)
   - Use `|` for unions (not `Union`)
   - Use `Any` only when truly necessary
-- Both mypy and ty checkers must pass with zero errors
+- Mypy must pass with zero errors in strict mode
 
 ### Testing
 
@@ -125,20 +124,20 @@ def test_feature_name() -> None:
 
 ```bash
 # Run all tests
-pytest tests/
+uv run pytest tests/
 
 # Run specific test file
-pytest tests/types/test_primitives.py
+uv run pytest tests/types/test_primitives.py
 
 # Run with coverage
-pytest tests/ --cov=src/pyvider/cty --cov-report=html
+uv run pytest tests/ --cov=src/pyvider/cty --cov-report=html
 
 # Run with verbose output
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific markers
-pytest tests/ -m benchmark  # Performance tests
-pytest tests/ -m compat     # Cross-language compatibility
+uv run pytest tests/ -m benchmark  # Performance tests
+uv run pytest tests/ -m compat     # Cross-language compatibility
 ```
 
 #### Test Coverage Requirements
@@ -151,7 +150,7 @@ pytest tests/ -m compat     # Cross-language compatibility
 ### Documentation
 
 - Add docstrings to all public APIs
-- Update relevant guide chapters in `docs/guide/`
+- Update relevant guide chapters in `docs/user-guide/`
 - Add examples to `examples/` for new features
 - Keep README.md current
 
@@ -232,7 +231,7 @@ test(functions): add property-based tests for numeric functions
 4. **PR Requirements**
    - All tests must pass
    - Coverage must meet threshold (75%+)
-   - Type checking must pass (mypy + ty)
+   - Type checking must pass (mypy strict mode)
    - Linting must pass (ruff)
    - Security scan must pass (bandit)
    - Documentation must be updated
@@ -285,4 +284,4 @@ By contributing, you agree that your contributions will be licensed under the Ap
 
 ---
 
-Thank you for contributing to pyvider-cty! 🎉
+Thank you for contributing to pyvider-cty!
