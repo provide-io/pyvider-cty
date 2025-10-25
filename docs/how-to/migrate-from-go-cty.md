@@ -260,8 +260,8 @@ marked = val.with_marks({sensitive_mark})
 if sensitive_mark in val.marks:
     # handle sensitive data
 
-# Remove mark
-unmarked = val.without_marks({sensitive_mark})
+# Remove all marks (returns tuple)
+unmarked, removed_marks = val.unmark()
 ```
 
 ## Migration Checklist

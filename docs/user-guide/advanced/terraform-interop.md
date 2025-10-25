@@ -551,8 +551,8 @@ marked_password = password.with_marks({sensitive})
 if sensitive in marked_password.marks:
     print("This value is sensitive - do not log!")
 
-# Remove sensitive mark (when safe)
-unmarked = marked_password.without_marks({sensitive})
+# Remove all marks (when safe, returns tuple)
+unmarked, removed_marks = marked_password.unmark()
 ```
 
 ### Provider Mark Handling
