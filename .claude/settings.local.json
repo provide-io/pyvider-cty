@@ -19,7 +19,10 @@
       "Bash(for file in docs/getting-started/*.md docs/user-guide/index.md docs/how-to/index.md docs/api/index.md)",
       "Bash(do if [ -f \"$file\" ])",
       "Bash(then echo \"=== $file ===\")",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(for file in docs/api/*.md)",
+      "Bash(awk:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],

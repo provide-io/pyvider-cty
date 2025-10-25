@@ -85,7 +85,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 - **Type Hints**: Required for all functions (mypy strict mode)
 - **Line Length**: 111 characters maximum
 - **Import Organization**: Automatic sorting with isort via ruff
-- **No Emojis**: Avoid emojis in code unless explicitly requested
+- **Emojis**: Decorative emoji comments are acceptable in source files
 
 ### Type Annotations
 

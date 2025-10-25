@@ -21,7 +21,10 @@ string_list_type = CtyList(element_type=CtyString())
 
 # Validate a valid list of strings
 cty_list = string_list_type.validate(["a", "b", "c"])
+
+# Note: raw_value returns a tuple for immutability
 assert cty_list.raw_value == ("a", "b", "c")
+assert isinstance(cty_list.raw_value, tuple)
 
 # Validate a list with an invalid element (will raise a ValidationError)
 try:
