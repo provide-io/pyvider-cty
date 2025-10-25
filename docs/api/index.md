@@ -35,6 +35,10 @@ The pyvider.cty API is organized into the following modules:
 - **[Path Navigation](path.md)** - Navigate nested structures with `CtyPath`
   - `GetAttrStep`, `IndexStep`, `KeyStep`
 
+- **[Parser](parser.md)** - Terraform type string parsing
+  - `parse_tf_type_to_ctytype()` - Parse Terraform type specifications
+  - `parse_type_string_to_ctytype()` - Alias for backward compatibility
+
 - **[Validation](validation.md)** - Recursion detection and validation utilities
   - Recursion context management
   - Cycle detection decorators

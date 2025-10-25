@@ -120,6 +120,7 @@ async def main():
 ## Related Documentation
 
 - **[User Guide: Validation](../user-guide/core-concepts/validation.md)** - Comprehensive validation documentation
+- **[Configuration](../reference/configuration.md)** - Configuration options including validation depth limits
 - **[Troubleshooting: Recursion Depth](../reference/troubleshooting.md#scenario-5-recursion-depth-exceeded)** - Handling depth limit errors
 
 ---
