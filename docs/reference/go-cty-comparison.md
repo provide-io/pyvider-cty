@@ -334,19 +334,25 @@ This enables true cross-language interoperability for:
 **Performance tips for pyvider.cty:**
 ```python
 # Cache schemas - don't recreate them
-config_schema = CtyObject({...})  # Create once
+config_schema = CtyObject(
+    attribute_types={...}
+)  # Create once
 
 # Reuse validated values
 config = config_schema.validate(raw_data)  # Validate once
 for _ in range(1000):
     process(config)  # Reuse many times
 
-# Use type inference caching for repeated inference
-from pyvider.cty.conversion import InferenceCacheContext
+# Avoid repeated type construction in loops
+# Bad: Creates new type each iteration
+for data in large_dataset:
+    schema = CtyObject(attribute_types={"field": CtyString()})
+    value = schema.validate(data)
 
-with InferenceCacheContext():
-    for data in large_dataset:
-        schema = infer_cty_type_from_raw(data)
+# Good: Create schema once
+schema = CtyObject(attribute_types={"field": CtyString()})
+for data in large_dataset:
+    value = schema.validate(data)
 ```
 
 ## Migration Checklist

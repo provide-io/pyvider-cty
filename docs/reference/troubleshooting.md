@@ -118,7 +118,9 @@ except CtyValidationError as e:
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
-user_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+user_type = CtyObject(
+    attribute_types={"name": CtyString(), "age": CtyNumber()}
+)
 
 # This will raise CtyValidationError - missing 'age' attribute
 try:
@@ -149,7 +151,7 @@ except CtyValidationError as e:
 ```python
 from pyvider.cty import CtyObject, CtyString
 
-person_type = CtyObject({"name": CtyString()})
+person_type = CtyObject(attribute_types={"name": CtyString()})
 
 # This will raise CtyAttributeValidationError - 'age' not in schema
 try:
@@ -384,8 +386,9 @@ except CtyTypeParseError as e:
 ```python
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack
+from pyvider.cty.exceptions import SerializationError
 
-schema = CtyObject({"key": CtyString()})
+schema = CtyObject(attribute_types={"key": CtyString()})
 value = schema.validate({"key": "value"})
 
 # Normally this works, but can fail with incompatible data
@@ -415,8 +418,9 @@ except SerializationError as e:
 ```python
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack
+from pyvider.cty.exceptions import DeserializationError
 
-schema = CtyObject({"key": CtyString()})
+schema = CtyObject(attribute_types={"key": CtyString()})
 
 # This will raise DeserializationError - invalid data
 try:
@@ -447,6 +451,7 @@ except DeserializationError as e:
 ```python
 from pyvider.cty import CtyString
 from pyvider.cty.functions import upper
+from pyvider.cty.exceptions import CtyFunctionError
 
 # This will raise CtyFunctionError - null value
 try:
@@ -471,10 +476,12 @@ except CtyFunctionError as e:
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
-schema = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber(),
-})
+schema = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+    }
+)
 
 # Error: missing 'age'
 data = {"name": "Alice"}
@@ -626,7 +633,7 @@ When debugging, inspect the raw Python values:
 ```python
 from pyvider.cty import CtyObject, CtyString
 
-schema = CtyObject({"name": CtyString()})
+schema = CtyObject(attribute_types={"name": CtyString()})
 data = {"name": "Alice"}
 
 print(f"Raw data: {repr(data)}")
@@ -713,11 +720,11 @@ full_value = full_schema.validate({"database": db_value, "api": api_value})
 ```python
 # Bad: Creating schema inside loop
 for item in large_dataset:
-    schema = CtyObject({"field": CtyString()})  # Recreated every time!
+    schema = CtyObject(attribute_types={"field": CtyString()})  # Recreated every time!
     value = schema.validate(item)
 
 # Good: Create schema once
-schema = CtyObject({"field": CtyString()})
+schema = CtyObject(attribute_types={"field": CtyString()})
 for item in large_dataset:
     value = schema.validate(item)
 ```
