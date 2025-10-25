@@ -135,14 +135,14 @@ company = company_type.validate(company_data)
 pyvider.cty tracks validation depth to prevent infinite recursion:
 
 ```python
-from pyvider.cty.context import ValidationContext, MAX_VALIDATION_DEPTH
+from pyvider.cty.context import deeper_validation, MAX_VALIDATION_DEPTH
 
 # Context tracks current validation depth
-with ValidationContext.deeper_validation():
+with deeper_validation():
     # Validation depth increased by 1
     pass
 
-# Maximum depth: 1000 (configurable via MAX_VALIDATION_DEPTH)
+# Maximum depth: 500 (configurable via MAX_VALIDATION_DEPTH)
 ```
 
 This protection prevents stack overflow with:
