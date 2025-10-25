@@ -165,7 +165,8 @@ from pyvider.cty.marks import CtyMark
 
 # Create marked value
 sensitive = CtyMark("sensitive")
-marked = val.mark(sensitive)  # or val.with_marks({sensitive})
+marked = val.mark(sensitive)  # Single mark
+# Or: marked = val.with_marks({sensitive})  # Set of marks
 
 # Check for marks
 if sensitive in marked.marks:
