@@ -1,4 +1,4 @@
-# Chapter 7: Structural Types
+# Structural Types
 
 Structural types represent more complex, structured data. They allow you to define the shape and layout of your data with a high degree of precision.
 
@@ -10,6 +10,23 @@ There are two structural types in `pyvider.cty`:
 ## `CtyObject`
 
 The `CtyObject` type represents an object with a fixed set of named attributes. Each attribute has its own type, which you must specify when creating the `CtyObject` type.
+
+### Syntax Options
+
+`CtyObject` supports two equivalent syntaxes for defining attribute types:
+
+```python
+# Explicit syntax (recommended when using optional_attributes)
+user_type = CtyObject(
+    attribute_types={"name": CtyString(), "age": CtyNumber()},
+    optional_attributes={"age"}
+)
+
+# Shorthand syntax (concise for simple cases)
+user_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+```
+
+Both syntaxes are valid. Use the explicit `attribute_types=` parameter when you need to specify `optional_attributes` to keep the code clear. The shorthand syntax is more concise for simple cases.
 
 ### Optional Attributes
 
@@ -67,3 +84,11 @@ try:
 except Exception as e:
     print(f"Validation failed as expected: {e}")
 ```
+
+## See Also
+
+- **[Understanding Types](../core-concepts/types.md)** - Core type system concepts
+- **[Collection Types](collections.md)** - List, Map, and Set types
+- **[Dynamic Types](dynamic.md)** - Using dynamic types within structures
+- **[Path Navigation](../advanced/path-navigation.md)** - Navigating nested structures
+- **[Terraform Interoperability](../advanced/terraform-interop.md)** - Working with Terraform object types
