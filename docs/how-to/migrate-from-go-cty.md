@@ -260,8 +260,8 @@ marked = val.with_marks({sensitive_mark})
 if sensitive_mark in val.marks:
     # handle sensitive data
 
-# Remove mark
-unmarked = val.without_marks({sensitive_mark})
+# Remove all marks (returns tuple)
+unmarked, removed_marks = val.unmark()
 ```
 
 ## Migration Checklist
@@ -397,7 +397,7 @@ if val.is_null: ...
 
 ```python
 # pyvider.cty
-from pyvider.cty.values.markers import UnknownValue
+from pyvider.cty.values import UnknownValue
 
 unknown_val = UnknownValue(CtyString())
 ```

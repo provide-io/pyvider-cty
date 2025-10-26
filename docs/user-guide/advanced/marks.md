@@ -4,44 +4,76 @@ Marks are a powerful feature in `pyvider.cty` that allow you to attach metadata 
 
 ## What are Marks?
 
-A mark is a piece of metadata that is attached to a `cty` value. Marks are represented as strings, and a single value can have multiple marks.
+A mark is a piece of metadata that is attached to a `cty` value. Marks are represented as `CtyMark` objects, and a single value can have multiple marks.
 
 Marks are "sticky". This means that when you perform an operation on a marked value, the marks are automatically transferred to the resulting value.
 
 ## Marking a Value
 
-You can mark a value using the `with_marks` method of a `cty` value:
+You can mark a value using the `mark` method (for a single mark) or `with_marks` method (for multiple marks) of a `cty` value:
 
 ```python
 from pyvider.cty import CtyString
+from pyvider.cty.marks import CtyMark
 
 # Create a string value
 cty_string = CtyString().validate("hello")
 
-# Mark the value as "sensitive"
-sensitive_string = cty_string.with_marks("sensitive")
+# Create a mark
+sensitive_mark = CtyMark("sensitive")
+
+# Mark the value as "sensitive" using the mark() method
+sensitive_string = cty_string.mark(sensitive_mark)
 ```
 
-You can also add multiple marks at once:
+You can also add multiple marks at once using `with_marks`, which accepts a set of marks:
 
 ```python
-# Mark the value as "sensitive" and "private"
-private_sensitive_string = cty_string.with_marks("sensitive", "private")
+# Create multiple marks
+sensitive_mark = CtyMark("sensitive")
+private_mark = CtyMark("private")
+
+# Mark the value with both marks
+private_sensitive_string = cty_string.with_marks({sensitive_mark, private_mark})
+```
+
+Marks can optionally include additional details:
+
+```python
+# Create a mark with details
+pii_mark = CtyMark("pii", details={"category": "email", "source": "user_input"})
+marked_value = cty_string.mark(pii_mark)
 ```
 
 ## Checking for Marks
 
-You can check if a value has a specific mark using the `has_mark` method:
+You can check if a value has a specific mark by checking if it's in the `marks` property:
 
 ```python
-assert sensitive_string.has_mark("sensitive") is True
-assert sensitive_string.has_mark("private") is False
+sensitive_mark = CtyMark("sensitive")
+sensitive_string = cty_string.mark(sensitive_mark)
+
+# Check using 'in' operator
+assert sensitive_mark in sensitive_string.marks
+
+# Or use the has_mark() method
+assert sensitive_string.has_mark(sensitive_mark)
 ```
 
-You can also get a set of all the marks on a value using the `marks` property:
+You can also get a frozenset of all the marks on a value using the `marks` property:
 
 ```python
-assert sensitive_string.marks == {"sensitive"}
+assert len(sensitive_string.marks) == 1
+```
+
+## Removing Marks
+
+To remove all marks from a value, use the `unmark` method, which returns both the unmarked value and the marks that were removed:
+
+```python
+unmarked_value, removed_marks = sensitive_string.unmark()
+assert len(unmarked_value.marks) == 0
+assert sensitive_mark in removed_marks
 ```
 
 ## Use Cases for Marks

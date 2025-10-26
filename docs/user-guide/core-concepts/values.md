@@ -66,6 +66,39 @@ except TypeError as e:
     print(f"Attempting to access null value property failed as expected: {e}")
 ```
 
+### Refined Unknown Values
+
+`pyvider.cty` supports **refined unknowns**, which are unknown values that carry additional refinement information. This feature is particularly useful in scenarios like Terraform planning, where you know that a value will be computed later but can provide constraints about what that value will be.
+
+Refined unknowns allow you to specify partial information about an unknown value, such as:
+- Range constraints for numbers
+- String prefix/suffix constraints
+- Collection length constraints
+
+```python
+from pyvider.cty.values import UnknownValue, RefinedUnknownValue
+from pyvider.cty import CtyNumber, CtyString
+
+# Create a basic unknown value
+basic_unknown = UnknownValue(CtyNumber())
+print(f"Basic unknown: {basic_unknown.is_unknown}")  # True
+
+# Create a refined unknown value (advanced usage)
+# Note: RefinedUnknownValue is typically used internally by the type system
+# or in advanced scenarios like Terraform provider development
+refined_unknown = RefinedUnknownValue(
+    vtype=CtyNumber(),
+    refinement=None  # Refinement constraints (implementation-specific)
+)
+```
+
+**When to use refined unknowns:**
+- **Terraform providers**: During the plan phase when values will be known during apply
+- **Validation**: When you need to validate that constraints will be satisfied even though the actual value is unknown
+- **Type propagation**: In function implementations where unknowns need to propagate with refinements
+
+**Note**: Most users will work with regular unknown values via `CtyValue.unknown()`. Refined unknowns are an advanced feature primarily used in infrastructure-as-code scenarios and by library implementers.
+
 ## Immutable Updates with Helper Methods
 
 Since `CtyValue` objects are immutable, you create modified versions instead of changing them in-place. `pyvider.cty` provides convenient helper methods on collection values for this purpose.
