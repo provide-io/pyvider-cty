@@ -46,4 +46,4 @@ Advanced features and use cases:
 - **[Getting Started](../getting-started/index.md)** - Quick introduction
 - **[How-To Guides](../how-to/index.md)** - Task-oriented guides
 - **[API Reference](../api/index.md)** - Complete API documentation
-- **[Reference](../reference/troubleshooting.md)** - Troubleshooting and glossary
+- **[Reference](../reference/troubleshooting.md)** - Troubleshooting, configuration, and glossary

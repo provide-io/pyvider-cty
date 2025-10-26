@@ -12,19 +12,31 @@ if str(project_root) not in sys.path:
 
 from examples.example_utils import configure_for_example  # noqa: E402
 from pyvider.cty import CtyString  # noqa: E402
+from pyvider.cty.marks import CtyMark  # noqa: E402
 
 configure_for_example()
 
 cty_string = CtyString().validate("hello")
 
-sensitive_string = cty_string.with_marks(("sensitive",))
+# Create marks
+sensitive_mark = CtyMark("sensitive")
+private_mark = CtyMark("private")
 
-private_sensitive_string = cty_string.with_marks(("sensitive", "private"))
+# Mark with single mark
+sensitive_string = cty_string.mark(sensitive_mark)
 
-assert sensitive_string.has_mark("sensitive") is True
-assert sensitive_string.has_mark("private") is False
+# Mark with multiple marks
+private_sensitive_string = cty_string.with_marks({sensitive_mark, private_mark})
 
-assert sensitive_string.marks == {"sensitive"}
+# Check for marks
+assert sensitive_mark in sensitive_string.marks
+assert sensitive_string.has_mark(sensitive_mark)
+assert private_mark not in sensitive_string.marks
+
+# Unmark
+unmarked_value, removed_marks = sensitive_string.unmark()
+assert len(unmarked_value.marks) == 0
+assert sensitive_mark in removed_marks
 
 print("Marks examples ran successfully.")
 

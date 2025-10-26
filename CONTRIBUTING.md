@@ -85,7 +85,7 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 - **Type Hints**: Required for all functions (mypy strict mode)
 - **Line Length**: 111 characters maximum
 - **Import Organization**: Automatic sorting with isort via ruff
-- **No Emojis**: Avoid emojis in code unless explicitly requested
+- **Emojis**: Decorative emoji comments are acceptable in source files
 
 ### Type Annotations
 
@@ -143,7 +143,7 @@ uv run pytest tests/ -m compat     # Cross-language compatibility
 #### Test Coverage Requirements
 
 - Minimum coverage: 75% (enforced in CI)
-- Target coverage: 90%+
+- Target coverage: 90%+ (currently at 94%)
 - All new features must include tests
 - Bug fixes should include regression tests
 

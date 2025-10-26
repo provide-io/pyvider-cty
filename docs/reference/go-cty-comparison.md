@@ -165,16 +165,15 @@ from pyvider.cty.marks import CtyMark
 
 # Create marked value
 sensitive = CtyMark("sensitive")
-marked = val.with_marks({sensitive})
+marked = val.mark(sensitive)  # Single mark
+# Or: marked = val.with_marks({sensitive})  # Set of marks
 
 # Check for marks
 if sensitive in marked.marks:
     # handle sensitive data
 
-# Remove marks
-unmarked = marked.without_marks({sensitive})
-# Or remove all marks
-unmarked_all = marked.without_all_marks()
+# Remove all marks (returns tuple of unmarked value and marks)
+unmarked_val, removed_marks = marked.unmark()
 ```
 
 ### Type Conversion
