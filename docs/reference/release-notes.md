@@ -1,6 +1,8 @@
-# Release Notes
+# Project Status
 
 This document provides current status and release readiness information for the `pyvider.cty` library.
+
+> **Version History**: For a complete changelog of all releases, see [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md).
 
 ## Documentation
 
@@ -43,7 +45,26 @@ The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 | **Path Navigation** | Yes | Yes | |
 | **Terraform Interoperability** | Yes | Yes | `pyvider.cty` can parse Terraform type strings. |
 
-## Release Status
+## Current Release
+
+**Version**: 0.0.1000 (Released: 2025-10-17)
+**Status**: Alpha - Production Ready
+**Development Status**: Active
+
+### Release Highlights
+
+- **Type System**: Complete implementation of primitives, collections, structural, dynamic, and capsule types
+- **Cross-Language Compatibility**: Full MessagePack serialization compatible with go-cty
+- **Comprehensive Functions**: 60+ built-in functions for string, numeric, collection, and data manipulation
+- **Strong Type Safety**: 100% type coverage with mypy strict mode
+- **Test Coverage**: 94% code coverage with 922+ passing tests
+- **Documentation**: Complete user guide, API reference, and how-to guides
+
+### Next Release
+
+See [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) for upcoming changes in the next release.
+
+## Production Readiness
 
 ✅ **The `pyvider.cty` library is production-ready**
 
@@ -52,28 +73,3 @@ The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 - Feature set is comparable to go-cty with full cross-language compatibility
 - All critical functionality is implemented and tested
 - Examples demonstrate all features with working code
-
-## Recent Updates
-
-### Version 0.0.1000 - Documentation Enhancements (2025-10-24)
-
-**Documentation Improvements:**
-- **Expanded Terraform Interoperability Guide** - Comprehensive 700+ line guide covering provider development, state management, MessagePack serialization, and real-world patterns
-- **Enhanced API Navigation** - Added subcategories for API types (primitives, collections, structural, capsule) in documentation navigation
-- **Improved Cross-References** - Added "Further Reading" sections linking related documentation topics
-- **Consistent Formatting** - Refreshed documentation style across all sections
-
-**Previously Released (2025-10-17):**
-- Restructured documentation to align with provide.io ecosystem patterns
-- Enhanced documentation navigation with complete how-to guide listings
-- Added dedicated Codec API documentation
-- Removed obsolete chapter numbering from documentation
-- Improved README.md with structured documentation links
-- Cleaned up stale tracking documents and empty directories
-- Fixed Python version requirements (now correctly documented as 3.11+)
-- Updated all documentation to use correct `.raw_value` property
-- Clarified MessagePack serialization as primary format
-- Removed duplicate files and inconsistencies
-- Created comprehensive getting started guides
-- Organized examples by topic and feature
-- Updated site description to accurately reflect general-purpose nature

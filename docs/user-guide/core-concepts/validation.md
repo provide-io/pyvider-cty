@@ -102,13 +102,19 @@ Validation works recursively through nested structures:
 from pyvider.cty import CtyObject, CtyList, CtyString, CtyNumber
 
 # Nested schema
-company_type = CtyObject({
-    "name": CtyString(),
-    "employees": CtyList(element_type=CtyObject({
+company_type = CtyObject(
+    attribute_types={
         "name": CtyString(),
-        "salary": CtyNumber()
-    }))
-})
+        "employees": CtyList(
+            element_type=CtyObject(
+                attribute_types={
+                    "name": CtyString(),
+                    "salary": CtyNumber()
+                }
+            )
+        )
+    }
+)
 
 # Validation descends through the structure
 company_data = {
@@ -129,14 +135,14 @@ company = company_type.validate(company_data)
 pyvider.cty tracks validation depth to prevent infinite recursion:
 
 ```python
-from pyvider.cty.context import ValidationContext, MAX_VALIDATION_DEPTH
+from pyvider.cty.context import deeper_validation, MAX_VALIDATION_DEPTH
 
 # Context tracks current validation depth
-with ValidationContext.deeper_validation():
+with deeper_validation():
     # Validation depth increased by 1
     pass
 
-# Maximum depth: 1000 (configurable via MAX_VALIDATION_DEPTH)
+# Maximum depth: 500 (configurable via MAX_VALIDATION_DEPTH)
 ```
 
 This protection prevents stack overflow with:
@@ -152,10 +158,12 @@ Validation errors provide detailed context:
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 from pyvider.cty.exceptions import CtyAttributeValidationError
 
-user_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+user_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 
 try:
     user_type.validate({
@@ -231,17 +239,21 @@ Define sub-schemas and compose them:
 
 ```python
 # Define reusable schemas
-address_type = CtyObject({
-    "street": CtyString(),
-    "city": CtyString(),
-    "zip": CtyString()
-})
+address_type = CtyObject(
+    attribute_types={
+        "street": CtyString(),
+        "city": CtyString(),
+        "zip": CtyString()
+    }
+)
 
 # Compose into larger schemas
-person_type = CtyObject({
-    "name": CtyString(),
-    "address": address_type  # Reuse
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "address": address_type  # Reuse
+    }
+)
 ```
 
 ### 4. Document Optional Fields

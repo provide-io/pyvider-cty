@@ -44,10 +44,12 @@ number_type = CtyNumber()
 bool_type = CtyBool()
 
 list_type = CtyList(element_type=CtyString())
-object_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+object_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 ```
 
 #### Creating Values
@@ -67,10 +69,12 @@ objVal := cty.ObjectVal(map[string]cty.Value{
 **pyvider.cty (Python):**
 ```python
 # pyvider.cty validates raw Python data
-object_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+object_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 
 obj_val = object_type.validate({
     "name": "Alice",
@@ -281,10 +285,12 @@ Replace Go type definitions:
 # After (Python):
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
-my_type = CtyObject({
-    "field1": CtyString(),
-    "field2": CtyNumber()
-})
+my_type = CtyObject(
+    attribute_types={
+        "field1": CtyString(),
+        "field2": CtyNumber()
+    }
+)
 ```
 
 ### Step 3: Update Value Creation
@@ -431,10 +437,12 @@ from pyvider.cty import CtyObject, CtyString, CtyNumber
 from pyvider.cty.exceptions import CtyValidationError
 
 def validate_user(data):
-    user_type = CtyObject({
-        "name": CtyString(),
-        "age": CtyNumber()
-    })
+    user_type = CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "age": CtyNumber()
+        }
+    )
 
     try:
         return user_type.validate(data)

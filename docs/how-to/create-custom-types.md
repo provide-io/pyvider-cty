@@ -31,12 +31,14 @@ def PositiveNumberType():
     return CtyNumber()  # In practice, add validation
 
 # Use them in schemas
-user_type = CtyObject({
-    "name": CtyString(),
-    "email": EmailType(),
-    "website": URLType(),
-    "age": PositiveNumberType()
-})
+user_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "email": EmailType(),
+        "website": URLType(),
+        "age": PositiveNumberType()
+    }
+)
 ```
 
 ## Factory Functions
@@ -58,11 +60,13 @@ def EnumType(*allowed_values):
     return CtyString()
 
 # Usage
-resource_type = CtyObject({
-    "id": IDType(),
-    "status": EnumType("active", "inactive", "pending"),
-    "created_at": TimestampType()
-})
+resource_type = CtyObject(
+    attribute_types={
+        "id": IDType(),
+        "status": EnumType("active", "inactive", "pending"),
+        "created_at": TimestampType()
+    }
+)
 ```
 
 ## Validation Wrappers
@@ -127,10 +131,12 @@ class RangeNumber:
 age_type = RangeNumber(min_value=0, max_value=150)
 port_type = RangeNumber(min_value=1, max_value=65535)
 
-person = CtyObject({
-    "name": CtyString(),
-    "age": age_type
-})
+person = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": age_type
+    }
+)
 ```
 
 ## Pattern-Validated Strings
@@ -163,10 +169,12 @@ zip_code_type = PatternString(
     "Must be a valid US ZIP code"
 )
 
-contact = CtyObject({
-    "phone": phone_type,
-    "zip": zip_code_type
-})
+contact = CtyObject(
+    attribute_types={
+        "phone": phone_type,
+        "zip": zip_code_type
+    }
+)
 ```
 
 ## Length-Constrained Collections
@@ -229,11 +237,14 @@ class ConditionalObject:
         return cty_value
 
 # Usage
-payment_schema = CtyObject({
-    "method": CtyString(),
-    "credit_card": CtyString(),
-    "bank_account": CtyString()
-}, optional_attributes={"credit_card", "bank_account"})
+payment_schema = CtyObject(
+    attribute_types={
+        "method": CtyString(),
+        "credit_card": CtyString(),
+        "bank_account": CtyString()
+    },
+    optional_attributes={"credit_card", "bank_account"}
+)
 
 conditionals = [
     (lambda v: v["method"] == "card", ["credit_card"]),
@@ -323,19 +334,23 @@ class ResourceARNType:
 ```python
 def UserSchemaV1():
     """User schema version 1."""
-    return CtyObject({
-        "name": CtyString(),
-        "email": EmailString()
-    })
+    return CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "email": EmailString()
+        }
+    )
 
 def UserSchemaV2():
     """User schema version 2 with additional fields."""
-    return CtyObject({
-        "name": CtyString(),
-        "email": EmailString(),
-        "phone": PatternString(r'^\+?1?\d{10,14}$'),
-        "created_at": TimestampType()
-    })
+    return CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "email": EmailString(),
+            "phone": PatternString(r'^\+?1?\d{10,14}$'),
+            "created_at": TimestampType()
+        }
+    )
 
 # Select schema based on version
 def get_user_schema(version):

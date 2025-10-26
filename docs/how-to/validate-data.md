@@ -15,10 +15,12 @@ The fundamental pattern for validation is:
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
 # 1. Define schema
-user_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+user_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 
 # 2. Validate
 try:
@@ -38,25 +40,31 @@ For complex nested data, build your schema from the inside out:
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyBool
 
 # Define nested types
-address_type = CtyObject({
-    "street": CtyString(),
-    "city": CtyString(),
-    "zip": CtyString()
-})
+address_type = CtyObject(
+    attribute_types={
+        "street": CtyString(),
+        "city": CtyString(),
+        "zip": CtyString()
+    }
+)
 
-contact_type = CtyObject({
-    "email": CtyString(),
-    "phone": CtyString()
-})
+contact_type = CtyObject(
+    attribute_types={
+        "email": CtyString(),
+        "phone": CtyString()
+    }
+)
 
 # Use nested types in main schema
-person_type = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber(),
-    "address": address_type,
-    "contact": contact_type,
-    "active": CtyBool()
-})
+person_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+        "address": address_type,
+        "contact": contact_type,
+        "active": CtyBool()
+    }
+)
 
 # Validate nested data
 person_data = {
@@ -124,10 +132,14 @@ for tag in tags_value:
 
 ```python
 # List of user objects
-users_type = CtyList(element_type=CtyObject({
-    "name": CtyString(),
-    "email": CtyString()
-}))
+users_type = CtyList(
+    element_type=CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "email": CtyString()
+        }
+    )
+)
 
 users_data = [
     {"name": "Alice", "email": "alice@example.com"},
@@ -214,9 +226,11 @@ Use `CtyDynamic` when you don't know the type ahead of time:
 ```python
 from pyvider.cty import CtyDynamic, CtyObject
 
-flexible_type = CtyObject({
-    "name": CtyString(),
-    "data": CtyDynamic()  # Can be any type
+flexible_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "data": CtyDynamic()  # Can be any type
+    }
 })
 
 # The 'data' field can hold any type
@@ -251,8 +265,12 @@ def try_validate(data, schemas):
     raise ValueError("Data doesn't match any schema")
 
 # Define alternative schemas
-schema_v1 = CtyObject({"name": CtyString(), "value": CtyNumber()})
-schema_v2 = CtyObject({"name": CtyString(), "count": CtyNumber()})
+schema_v1 = CtyObject(
+    attribute_types={"name": CtyString(), "value": CtyNumber()}
+)
+schema_v2 = CtyObject(
+    attribute_types={"name": CtyString(), "count": CtyNumber()}
+)
 
 schemas = [schema_v1, schema_v2]
 
@@ -297,11 +315,14 @@ def load_config(config_dict):
 ### API Response Validation
 
 ```python
-api_response_type = CtyObject({
-    "status": CtyString(),
-    "data": CtyDynamic(),
-    "error": CtyString()
-}, optional_attributes={"error"})
+api_response_type = CtyObject(
+    attribute_types={
+        "status": CtyString(),
+        "data": CtyDynamic(),
+        "error": CtyString()
+    },
+    optional_attributes={"error"}
+)
 
 def validate_api_response(response_data):
     """Validate API response structure."""
