@@ -26,7 +26,7 @@ from pyvider.cty import CtyString, CtyObject
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
 # 1. Define a type and a CtyValue
-user_type = CtyObject({"name": CtyString()})
+user_type = CtyObject(attribute_types={"name": CtyString()})
 user_value = user_type.validate({"name": "Alice"})
 
 # 2. Serialize to MessagePack
@@ -48,17 +48,23 @@ from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyList, CtyBool
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
 # Define a complex nested type
-config_type = CtyObject({
-    "database": CtyObject({
-        "host": CtyString(),
-        "port": CtyNumber(),
-        "replicas": CtyList(element_type=CtyString()),
-    }),
-    "features": CtyObject({
-        "enabled": CtyBool(),
-        "flags": CtyList(element_type=CtyString()),
-    }),
-})
+config_type = CtyObject(
+    attribute_types={
+        "database": CtyObject(
+            attribute_types={
+                "host": CtyString(),
+                "port": CtyNumber(),
+                "replicas": CtyList(element_type=CtyString()),
+            }
+        ),
+        "features": CtyObject(
+            attribute_types={
+                "enabled": CtyBool(),
+                "flags": CtyList(element_type=CtyString()),
+            }
+        ),
+    }
+)
 
 # Create and validate data
 config_data = {
@@ -144,7 +150,9 @@ from pyvider.cty import CtyObject, CtyString, CtyNumber
 from pyvider.cty.functions import jsonencode, jsondecode
 
 # Create a value
-user_type = CtyObject({"name": CtyString(), "age": CtyNumber()})
+user_type = CtyObject(
+    attribute_types={"name": CtyString(), "age": CtyNumber()}
+)
 user_value = user_type.validate({"name": "Alice", "age": 30})
 
 # Encode to JSON string (returns CtyValue containing a JSON string)
@@ -172,7 +180,7 @@ The MessagePack format is **fully compatible** with go-cty, enabling seamless da
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack
 
-schema = CtyObject({"message": CtyString()})
+schema = CtyObject(attribute_types={"message": CtyString()})
 value = schema.validate({"message": "Hello from Python"})
 msgpack_data = cty_to_msgpack(value, schema)
 
@@ -190,7 +198,7 @@ msgpack_data = cty_to_msgpack(value, schema)
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
-config_type = CtyObject({"setting": CtyString()})
+config_type = CtyObject(attribute_types={"setting": CtyString()})
 config_value = config_type.validate({"setting": "production"})
 
 # Serialize and save
@@ -213,7 +221,7 @@ import socket
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
-data_type = CtyObject({"payload": CtyString()})
+data_type = CtyObject(attribute_types={"payload": CtyString()})
 
 # Serialize for transmission
 data = data_type.validate({"payload": "important data"})
@@ -262,7 +270,7 @@ from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 from pyvider.cty.exceptions import SerializationError, DeserializationError
 
-schema = CtyObject({"key": CtyString()})
+schema = CtyObject(attribute_types={"key": CtyString()})
 
 try:
     value = schema.validate({"key": "value"})

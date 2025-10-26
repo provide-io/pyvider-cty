@@ -90,10 +90,12 @@ from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
 # Define schema
-schema = CtyObject({
-    "name": CtyString(),
-    "age": CtyNumber()
-})
+schema = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 
 # Create value
 value = schema.validate({"name": "Alice", "age": 30})
@@ -143,27 +145,35 @@ def create_resource(config):
 from pyvider.cty import CtyObject, CtyString, CtyNumber, CtyBool, CtyMap
 
 # Define provider configuration schema
-provider_config_schema = CtyObject({
-    "api_token": CtyString(),
-    "endpoint": CtyString(),
-    "timeout": CtyNumber()
-}, optional_attributes={"timeout"})
+provider_config_schema = CtyObject(
+    attribute_types={
+        "api_token": CtyString(),
+        "endpoint": CtyString(),
+        "timeout": CtyNumber()
+    },
+    optional_attributes={"timeout"}
+)
 
 # Define resource schemas
 resource_schemas = {
-    "example_server": CtyObject({
-        "name": CtyString(),
-        "instance_type": CtyString(),
-        "region": CtyString(),
-        "enabled": CtyBool(),
-        "tags": CtyMap(element_type=CtyString())
-    }, optional_attributes={"enabled", "tags"}),
+    "example_server": CtyObject(
+        attribute_types={
+            "name": CtyString(),
+            "instance_type": CtyString(),
+            "region": CtyString(),
+            "enabled": CtyBool(),
+            "tags": CtyMap(element_type=CtyString())
+        },
+        optional_attributes={"enabled", "tags"}
+    ),
 
-    "example_network": CtyObject({
-        "cidr": CtyString(),
-        "name": CtyString(),
-        "subnet_count": CtyNumber()
-    })
+    "example_network": CtyObject(
+        attribute_types={
+            "cidr": CtyString(),
+            "name": CtyString(),
+            "subnet_count": CtyNumber()
+        }
+    )
 }
 ```
 
@@ -361,11 +371,14 @@ print(vpc_value['cidr'].raw_value)  # "10.0.0.0/16"
 
 ```python
 # Variable with optional attributes
-config_type = CtyObject({
-    "required_field": CtyString(),
-    "optional_field": CtyString(),
-    "with_default": CtyNumber()
-}, optional_attributes={"optional_field", "with_default"})
+config_type = CtyObject(
+    attribute_types={
+        "required_field": CtyString(),
+        "optional_field": CtyString(),
+        "with_default": CtyNumber()
+    },
+    optional_attributes={"optional_field", "with_default"}
+)
 
 # Minimal config
 minimal = config_type.validate({"required_field": "value"})
@@ -478,18 +491,22 @@ config_with_unknown = {
 }
 
 # Create schema allowing unknowns
-schema = CtyObject({
-    "name": CtyString(),
-    "ip_address": CtyString()
-})
+schema = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "ip_address": CtyString()
+    }
+)
 
 # For unknowns, use CtyValue.unknown
 from pyvider.cty import CtyObject, CtyString
 
-validated = CtyObject({
-    "name": CtyString(),
-    "ip_address": CtyString()
-}).validate({
+validated = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "ip_address": CtyString()
+    }
+).validate({
     "name": "server-1",
     "ip_address": None  # Becomes null
 })

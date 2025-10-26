@@ -291,10 +291,12 @@ Use `convert()` for known conversions, not as a substitute for proper schemas:
 
 ```python
 # ✅ GOOD: Define explicit schema
-config_schema = CtyObject({
-    "timeout": CtyNumber(),
-    "retries": CtyNumber()
-})
+config_schema = CtyObject(
+    attribute_types={
+        "timeout": CtyNumber(),
+        "retries": CtyNumber()
+    }
+)
 config = config_schema.validate(raw_data)
 
 # ❌ AVOID: Over-reliance on conversion
