@@ -1,8 +1,10 @@
-# tests/conversion/test_inference_cache_correctness.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""TDD: Ensures the structural cache correctly distinguishes between list-like
+and dict-like containers, even when they contain identical values."""
 TDD: Ensures the structural cache correctly distinguishes between list-like
 and dict-like containers, even when they contain identical values.
 """
@@ -35,3 +37,5 @@ class TestInferenceCacheCorrectness:
 
 
 # 🐍⛓️↔️🪄
+
+# 🌊🪢🔚

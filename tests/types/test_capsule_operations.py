@@ -1,8 +1,13 @@
-# tests/types/test_capsule_operations.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""TDD Test Suite for CtyCapsule with custom operations.
+
+These tests define the behavior for a capsule type that can be equipped with
+custom logic for equality, hashing, and other operations, mirroring the
+`CapsuleWithOps` feature from go-cty."""
 TDD Test Suite for CtyCapsule with custom operations.
 
 These tests define the behavior for a capsule type that can be equipped with
@@ -163,3 +168,5 @@ class TestCtyCapsuleWithConversion:
 
 
 # 🐍⛓️🧱🪄
+
+# 🌊🪢🔚

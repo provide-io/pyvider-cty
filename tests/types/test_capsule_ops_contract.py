@@ -1,8 +1,10 @@
-# tests/types/test_capsule_ops_contract.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""TDD: Strengthens the CtyCapsuleWithOps contract by validating function arity
+in the constructor."""
 TDD: Strengthens the CtyCapsuleWithOps contract by validating function arity
 in the constructor.
 """
@@ -58,3 +60,5 @@ class TestCapsuleWithOpsContract:
 
 
 # 🐍⛓️🧱🪄
+
+# 🌊🪢🔚

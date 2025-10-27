@@ -1,9 +1,9 @@
-# tests/functions/test_bytes_stdlib_functions.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for bytes functions (byteslen, bytesslice)."""
-
 import pytest
 
 from pyvider.cty import BytesCapsule, CtyNumber, CtyString, CtyValue
@@ -53,3 +53,5 @@ class TestBytesFunctions:
 
 
 # 🐍⛓️🔣🪄
+
+# 🌊🪢🔚

@@ -1,7 +1,9 @@
-# tests/types/structural/test_dynamic_coverage.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
+"""TODO: Add module docstring."""
 import pytest
 
 from pyvider.cty.exceptions import DeserializationError
@@ -21,3 +23,5 @@ def test_validate_with_wire_format_invalid_json() -> None:
 
 
 # 🐍⛓️🧱🪄
+
+# 🌊🪢🔚

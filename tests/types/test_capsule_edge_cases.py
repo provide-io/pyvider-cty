@@ -1,9 +1,15 @@
-# tests/types/test_capsule_edge_cases.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for CtyCapsule and CtyCapsuleWithOps edge cases.
 
+This test suite focuses on achieving 100% coverage of capsule.py, particularly:
+- Lines 47, 49, 56 (null/unknown handling in validate)
+- Lines 70-72 (usable_as with CtyDynamic)
+- Lines 134 (hash for CtyCapsuleWithOps)
+- Edge cases with custom equality/hash/convert functions"""
 This test suite focuses on achieving 100% coverage of capsule.py, particularly:
 - Lines 47, 49, 56 (null/unknown handling in validate)
 - Lines 70-72 (usable_as with CtyDynamic)
@@ -298,3 +304,5 @@ class TestCtyCapsuleHashing:
 
 
 # 🧬🔬🪄
+
+# 🌊🪢🔚

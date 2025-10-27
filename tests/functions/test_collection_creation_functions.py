@@ -1,9 +1,9 @@
-# tests/functions/test_collection_creation_functions.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for collection creation/manipulation functions (element, coalescelist, compact, chunklist, lookup, merge, zipmap, concat, slice, length)."""
-
 import pytest
 
 from pyvider.cty import (
@@ -398,3 +398,5 @@ class TestLength:
 
 
 # 🐍⛓️🔣🪄
+
+# 🌊🪢🔚

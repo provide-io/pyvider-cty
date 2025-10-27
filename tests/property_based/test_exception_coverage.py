@@ -1,8 +1,12 @@
-# tests/property_based/test_exception_coverage.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""Exception coverage tests to systematically trigger all exception types.
+
+Ensures that every exception class can be raised, caught, and provides
+useful error messages without leaking sensitive information."""
 Exception coverage tests to systematically trigger all exception types.
 
 Ensures that every exception class can be raised, caught, and provides
@@ -310,3 +314,5 @@ def test_exception_messages_dont_leak_sensitive_info(null_value) -> None:
 
 
 # 🐍⛓️🐛🧪🪄
+
+# 🌊🪢🔚
