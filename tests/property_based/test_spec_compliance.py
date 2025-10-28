@@ -1,8 +1,20 @@
-# tests/property_based/test_spec_compliance.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""Property-based tests for CTY spec compliance.
+
+These tests validate that the Python implementation correctly implements
+the CTY specification, focusing on:
+
+- Canonical serialization formats
+- Type constraint adherence
+- Edge case handling
+- Spec-mandated behavior (e.g., NFC normalization, typed nulls)
+
+Note: Cross-language compatibility testing is handled separately by TofuSoup.
+Run `soup cty test` for cross-language compatibility validation."""
 Property-based tests for CTY spec compliance.
 
 These tests validate that the Python implementation correctly implements
@@ -460,3 +472,5 @@ def test_deeply_nested_structures_have_consistent_types(data) -> None:
 
 
 # 🐍⛓️🌐🧪🪄
+
+# 🌊🪢🔚

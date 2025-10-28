@@ -1,7 +1,9 @@
-# tests/object/test_object_complex.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
+"""TODO: Add module docstring."""
 import pytest
 
 from pyvider.cty import CtyNumber, CtyObject, CtyString
@@ -19,3 +21,5 @@ async def test_attribute_access_error_handling() -> None:
 
 
 # 🐍⛓️📦🪄
+
+# 🌊🪢🔚

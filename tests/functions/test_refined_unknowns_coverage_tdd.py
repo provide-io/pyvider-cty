@@ -1,8 +1,10 @@
-# tests/functions/test_refined_unknowns_coverage_tdd.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""TDD: This suite adds targeted tests for all unexercised branches in the
+refined unknown propagation logic of numeric and comparison functions."""
 TDD: This suite adds targeted tests for all unexercised branches in the
 refined unknown propagation logic of numeric and comparison functions.
 """
@@ -119,3 +121,5 @@ class TestRefinedUnknownsCoverage:
 
 
 # 🐍⛓️🔣🪄
+
+# 🌊🪢🔚

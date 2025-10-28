@@ -1,8 +1,9 @@
-# pyvider/cty/functions/string_functions.py
 #
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
+"""TODO: Add module docstring."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -247,5 +248,4 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
     except re.error as e:
         raise CtyFunctionError(f"regexreplace: invalid regular expression: {e}") from e
 
-
-# 🌊🪢🔣🪄
+# 🌊🪢🔚

@@ -1,7 +1,9 @@
-# tests/list/test_cty_list_coverage.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
+"""TODO: Add module docstring."""
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
@@ -52,3 +54,5 @@ def test_element_at_on_non_list_internal_value() -> None:
 
 
 # 🐍⛓️🧾🪄
+
+# 🌊🪢🔚

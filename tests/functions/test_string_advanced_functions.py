@@ -1,9 +1,9 @@
-# tests/functions/test_string_advanced_functions.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for advanced string functions (regex, trim, substr, indent, chomp, strrev, etc.)."""
-
 import pytest
 
 from pyvider.cty import CtyList, CtyNumber, CtyString, CtyValue
@@ -417,3 +417,5 @@ class TestStringAdvancedFunctions:
 
 
 # 🐍⛓️🔣🪄
+
+# 🌊🪢🔚

@@ -1,7 +1,9 @@
-# tests/conversion/test_raw_to_cty_coverage.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
+"""TODO: Add module docstring."""
 from pyvider.cty import CtyNumber, CtyObject, CtySet, CtyString
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
 
@@ -66,3 +68,5 @@ def test_infer_dict_with_cty_values() -> None:
 
 
 # 🐍⛓️↔️🪄
+
+# 🌊🪢🔚
