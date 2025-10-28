@@ -1,6 +1,7 @@
-# tests/conftest.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """
 Pytest configuration file for the entire test suite.
@@ -218,3 +219,5 @@ def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
 # See: provide.testkit.conftest.pytest_sessionfinish
 
 # 🐍⛓️🤔🪄
+
+# 🐍🏗️🔚
