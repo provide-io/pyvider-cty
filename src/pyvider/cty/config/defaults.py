@@ -1,7 +1,9 @@
-# pyvider/cty/config/defaults.py
 #
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from __future__ import annotations
 
@@ -352,3 +354,5 @@ ERR_EXPECTED_CTYVALUE_CTYLIST = "Expected CtyValue with CtyList type, got CtyVal
 ERR_EXPECTED_CTYVALUE_LIST = "Expected CtyValue[CtyList], got {type_name}"
 ERR_EXPECTED_LIST_TUPLE_CTYVALUE_LIST = "Expected list, tuple, or CtyValue list, got {type_name}"
 # 🌊🪢⚙️🪄
+
+# 🌊➰🔚

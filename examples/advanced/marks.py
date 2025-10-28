@@ -1,6 +1,9 @@
-# examples/ch10_marks.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from pathlib import Path
 import sys
@@ -41,3 +44,5 @@ assert sensitive_mark in removed_marks
 print("Marks examples ran successfully.")
 
 # 🐍⛓️📁🪄
+
+# 🐍🏗️🔚

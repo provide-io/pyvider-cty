@@ -1,12 +1,5 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""This script conforms all Python files in the repository to a specific header and footer protocol."""
 
 import ast
-import os
 import re
 import sys
 
@@ -18,27 +11,6 @@ SPDX_BLOCK = """# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All
 #"""
 PLACEHOLDER_DOCSTRING = '"""TODO: Add module docstring."""'
 FOOTER = "# 🐍🏗️🔚"
-
-# Exclude files that are not part of the source code, are vendored, or are this script itself.
-EXCLUDE_FILES = [
-    "conform.py",
-    "build_provider.py",
-    "runtime-hook.py",
-    "tfplugin6_pb2.py",
-    "tfplugin6_pb2_grpc.py",
-    ".mutmut-config.py",
-]
-
-
-def get_python_files():
-    """Returns a list of all Python files in the current directory and subdirectories, excluding specified files."""
-    files = []
-    for dirpath, _, filenames in os.walk("."):
-        for filename in filenames:
-            if filename.endswith(".py") and filename not in EXCLUDE_FILES:
-                files.append(os.path.join(dirpath, filename))
-    return files
-
 
 def get_module_docstring_and_body(content):
     """
@@ -117,7 +89,7 @@ def conform_file(filepath) -> None:
     new_header = "\n".join(header_parts)
 
     # Strip old footers and trailing whitespace from body
-    body = re.sub(r"# 🐍🏗️.*", "", body).strip()
+    body = re.sub(r"(?m)^# 🐍🏗️.*$", "", body).strip()
 
     # Construct the final content
     final_content = f"{new_header}\n\n{body}\n\n{FOOTER}\n"
@@ -132,14 +104,12 @@ def conform_file(filepath) -> None:
 
 def main() -> None:
     """Main function to find all Python files and conform them."""
-    files = sys.argv[1:] if len(sys.argv) > 1 else get_python_files()
+    files = sys.argv[1:] if len(sys.argv) > 1 else []
 
     for file in files:
-        if file.endswith(".py") and os.path.basename(file) not in EXCLUDE_FILES:
+        if file.endswith(".py"):
             conform_file(file)
 
 
 if __name__ == "__main__":
     main()
-
-# 🐍🏗️🔚

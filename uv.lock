@@ -1746,41 +1746,18 @@ wheels = [
 
 [[package]]
 name = "provide-foundation"
-source = { editable = "../provide-foundation" }
+version = "0.0.1026"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
     { name = "attrs" },
     { name = "structlog" },
     { name = "tomli-w" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiofiles", specifier = ">=23.2.1" },
-    { name = "attrs", specifier = ">=23.1.0" },
-    { name = "click", marker = "extra == 'cli'", specifier = ">=8.1.7" },
-    { name = "cryptography", marker = "extra == 'crypto'", specifier = ">=45.0.7" },
-    { name = "httpx", marker = "extra == 'transport'", specifier = ">=0.27.0" },
-    { name = "opentelemetry-api", marker = "extra == 'opentelemetry'", specifier = ">=1.22.0" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'opentelemetry'", specifier = ">=1.22.0" },
-    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'opentelemetry'", specifier = ">=1.22.0" },
-    { name = "opentelemetry-sdk", marker = "extra == 'opentelemetry'", specifier = ">=1.22.0" },
-    { name = "provide-foundation", extras = ["cli", "compression", "crypto", "extended", "opentelemetry", "transport"], marker = "extra == 'all'" },
-    { name = "provide-foundation", extras = ["platform", "process"], marker = "extra == 'extended'" },
-    { name = "psutil", marker = "extra == 'platform'", specifier = ">=3.3.11" },
-    { name = "psutil", marker = "extra == 'process'", specifier = ">=3.3.11" },
-    { name = "py-cpuinfo", marker = "extra == 'platform'", specifier = ">=9.0.0" },
-    { name = "setproctitle", marker = "extra == 'process'", specifier = ">=1.3.3" },
-    { name = "structlog", specifier = ">=25.3.0" },
-    { name = "tomli-w", specifier = ">=1.0.0" },
-    { name = "zstandard", marker = "extra == 'compression'", specifier = ">=0.22.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/c1/66/25d912f271c19df2fe1afa31b05d55aea7db70b3d1b3cb3039f3110a1b6d/provide_foundation-0.0.1026.tar.gz", hash = "sha256:209034c7e039aa5da06df5fde665873b3faa855c38ef93d1f22a0a90a6f0a1b0", size = 410986, upload-time = "2025-10-27T01:34:35.953Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/fa/d1adcf5e66fca1751b68675503e5c0cf6a60918ac8ba3941bf6551059e32/provide_foundation-0.0.1026-py3-none-any.whl", hash = "sha256:b40949afd0707b26a914bd1a721e7f189a056029d7cf90263b575bf95caf266f", size = 615246, upload-time = "2025-10-27T01:34:34.177Z" },
 ]
-provides-extras = ["cli", "compression", "crypto", "transport", "opentelemetry", "platform", "process", "extended", "all"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "provide-testkit", extras = ["advanced-testing", "build", "standard", "typecheck", "utils"] }]
-docs = [{ name = "provide-testkit", extras = ["docs"] }]
-protobuf = [{ name = "protobuf", specifier = ">=6.32.0" }]
 
 [[package]]
 name = "provide-testkit"
@@ -2152,7 +2129,6 @@ source = { editable = "." }
 dependencies = [
     { name = "attrs" },
     { name = "msgpack" },
-    { name = "provide-foundation" },
 ]
 
 [package.dev-dependencies]
@@ -2167,7 +2143,6 @@ docs = [
 requires-dist = [
     { name = "attrs", specifier = ">=25.1.0" },
     { name = "msgpack", specifier = ">=1.1.0" },
-    { name = "provide-foundation", editable = "../provide-foundation" },
 ]
 
 [package.metadata.requires-dev]

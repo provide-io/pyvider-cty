@@ -1,6 +1,9 @@
-# examples/ch14_terraform_interop.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from pathlib import Path
 import sys
@@ -24,3 +27,5 @@ assert cty_type == CtyList(element_type=CtyString())
 print("Terraform interop examples ran successfully.")
 
 # 🐍⛓️📁🪄
+
+# 🐍🏗️🔚

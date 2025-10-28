@@ -4,7 +4,7 @@
 
 """Test suite for encoding functions (jsonencode, jsondecode, csvdecode)."""
 
-from pyvider.cty import CtyDynamic, CtyList, CtyMap, CtyString
+from pyvider.cty import CtyDynamic, CtyMap, CtyString
 
 
 # Helper functions for creating CtyValues to improve test readability
