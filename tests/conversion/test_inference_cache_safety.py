@@ -1,6 +1,7 @@
-# tests/conversion/test_inference_cache_safety.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """
 TDD: Ensures the type inference cache is safe and does not cause correctness
@@ -64,3 +65,5 @@ class TestInferenceCacheSafety:
 
 
 # 🐍⛓️↔️🪄
+
+# 🐍🏗️🔚

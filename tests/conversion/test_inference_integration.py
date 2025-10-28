@@ -1,6 +1,9 @@
-# tests/conversion/test_inference_integration.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 import attrs
 import msgpack
@@ -40,3 +43,5 @@ def test_validate_raw_attrs_object_with_ctydynamic() -> None:
 
 
 # 🐍⛓️↔️🪄
+
+# 🐍🏗️🔚
