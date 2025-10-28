@@ -1,6 +1,7 @@
-# tests/property_based/test_inference_cache_safety.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """
 Property-based test to ensure any future caching in the type inference
@@ -64,3 +65,5 @@ def test_inference_is_correct_for_same_keys_different_types(data) -> None:
 
 
 # 🐍⛓️🧪🪄
+
+# 🐍🏗️🔚
