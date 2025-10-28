@@ -1,6 +1,9 @@
-# tests/property_based/test_cty_roundtrip.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from decimal import Decimal
 import unicodedata
@@ -78,3 +81,5 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
 
 
 # 🐍⛓️🧪🪄
+
+# 🐍🏗️🔚

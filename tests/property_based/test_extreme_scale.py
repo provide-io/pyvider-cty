@@ -1,6 +1,7 @@
-# tests/property_based/test_extreme_scale.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """
 Extreme scale property-based tests for massive data structures.
@@ -199,3 +200,5 @@ def test_extreme_wide_and_deep(width: int, depth: int) -> None:
 
 
 # 🐍⛓️📏🧪🪄
+
+# 🐍🏗️🔚

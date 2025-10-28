@@ -1,6 +1,7 @@
-# tests/property_based/test_special_value_attacks.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """
 Property-based tests for special value attack vectors.
@@ -271,3 +272,5 @@ def test_extremely_large_numbers_dont_crash(large_decimal: int) -> None:
 
 
 # 🐍⛓️🔒🧪🪄
+
+# 🐍🏗️🔚
