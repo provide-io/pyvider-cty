@@ -1,6 +1,9 @@
-# tests/list/test_cty_collections_list.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from pyvider.cty import (
     CtyList,
@@ -58,6 +61,8 @@ def test_cty_list_dynamic_schema() -> None:
     assert validated.value[1].value[0].value == "three"
 
 
-# 🐍🏗️🧪
+
 
 # 🐍⛓️🧾🪄
+
+# 🐍🏗️🔚
