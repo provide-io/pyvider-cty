@@ -42,4 +42,4 @@ print("Capsule type examples ran successfully.")
 
 # 🐍⛓️📁🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

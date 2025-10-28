@@ -48,4 +48,4 @@ def test_infer_list_of_objects_with_optional_and_mismatched_types() -> None:
 
 # 🐍⛓️↔️🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

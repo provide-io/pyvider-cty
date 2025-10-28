@@ -40,4 +40,4 @@ def test_validate_with_exception() -> None:
 
 # 🐍⛓️🧱🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

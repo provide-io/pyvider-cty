@@ -82,4 +82,4 @@ class CtyDynamic(CtyType[object]):
 
 # 🌊➰🔚
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

@@ -31,4 +31,4 @@ def test_infer_cty_type_from_raw_complex(value) -> None:
 
 # 🐍⛓️🧪🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

@@ -51,4 +51,4 @@ print("Collection type examples ran successfully.")
 
 # 🐍⛓️📁🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

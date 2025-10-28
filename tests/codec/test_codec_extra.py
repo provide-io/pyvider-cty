@@ -83,4 +83,4 @@ def test_msgpack_default_handler_unsupported_type() -> None:
 
 # 🐍⛓️🔢🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

@@ -91,4 +91,4 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
 
 # 🐍⛓️🔢🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

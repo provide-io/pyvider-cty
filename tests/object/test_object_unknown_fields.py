@@ -148,4 +148,4 @@ def test_explicitly_unknown_object() -> None:
     validated = obj_type.validate(unknown_obj)
     assert validated.is_unknown, "Explicitly unknown object should remain unknown after validation"
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

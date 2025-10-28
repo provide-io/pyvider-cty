@@ -50,4 +50,4 @@ def test_attrs_to_dict_safe_with_cty_value_raises_error() -> None:
 
 # 🐍⛓️↔️🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

@@ -344,4 +344,4 @@ class CtyTypeMismatchError(CtyValidationError):
 
 # 🌊➰🔚
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

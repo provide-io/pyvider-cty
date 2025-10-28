@@ -88,4 +88,4 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
 
 # 🌊➰🔚
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

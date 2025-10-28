@@ -77,4 +77,4 @@ class CtyNumber(CtyType[Decimal]):
 
 # 🌊➰🔚
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

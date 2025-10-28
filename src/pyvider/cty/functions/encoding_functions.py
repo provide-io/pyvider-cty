@@ -63,4 +63,4 @@ def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
 
 # 🌊➰🔚
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

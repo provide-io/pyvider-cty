@@ -82,4 +82,4 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
 
 # 🐍⛓️🧪🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

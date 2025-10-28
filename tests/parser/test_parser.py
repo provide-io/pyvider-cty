@@ -63,4 +63,4 @@ def test_invalid_type_parsing_raises_error(type_spec) -> None:
 
 # 🐍⛓️🧩🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚

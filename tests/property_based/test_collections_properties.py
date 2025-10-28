@@ -62,4 +62,4 @@ def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
 
 # 🐍⛓️🧪🪄
 
-# 🐍🏗️🔚
+# 🌊🪢🔚
