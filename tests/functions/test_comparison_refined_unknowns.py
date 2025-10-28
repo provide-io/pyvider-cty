@@ -1,6 +1,7 @@
-# tests/functions/test_comparison_refined_unknowns.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for comparison functions with refined unknown values.
 
@@ -390,3 +391,5 @@ class TestEdgeCasesAndBoundaries:
 
 
 # 🧬🔬🪄
+
+# 🐍🏗️🔚

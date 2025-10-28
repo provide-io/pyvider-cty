@@ -1,6 +1,7 @@
-# tests/functions/test_comparison_coverage_tdd.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """
 TDD: This suite adds targeted tests for all unexercised branches in the
@@ -66,3 +67,5 @@ class TestRefinedUnknownComparisonCoverage:
 
 
 # 🐍⛓️🔣🪄
+
+# 🐍🏗️🔚
