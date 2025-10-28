@@ -1,6 +1,9 @@
-# tests/types/primitives/test_number_coverage.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from pyvider.cty.types.primitives.number import CtyNumber
 from pyvider.cty.values import UnknownValue
@@ -15,3 +18,5 @@ def test_validate_unknown_value() -> None:
 
 
 # 🐍⛓️🧱🪄
+
+# 🐍🏗️🔚

@@ -1,6 +1,9 @@
-# tests/types/primitives/test_string_normalization.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 import unicodedata
 
@@ -36,3 +39,5 @@ def test_string_normalization_on_validate(input_str: str, expected_normalized_st
 
 
 # 🐍⛓️🧱🪄
+
+# 🐍🏗️🔚

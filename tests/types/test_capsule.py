@@ -1,6 +1,9 @@
-# tests/types/test_capsule.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
 
 from pyvider.cty.types.capsule import CtyCapsule
 
@@ -55,6 +58,8 @@ def test_capsule_hash() -> None:
     assert my_dict[capsule_type2] == "value1"
 
 
-# 🐍🏗️🐣
+
 
 # 🐍⛓️🧱🪄
+
+# 🐍🏗️🔚
