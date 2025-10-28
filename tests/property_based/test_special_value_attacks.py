@@ -1,8 +1,14 @@
-# tests/property_based/test_special_value_attacks.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""Property-based tests for special value attack vectors.
+
+Tests edge cases that could cause crashes or unexpected behavior:
+- NaN/Infinity arithmetic and comparison operations
+- Zero-width and confusable Unicode characters
+- RTL override and other Unicode direction attacks"""
 Property-based tests for special value attack vectors.
 
 Tests edge cases that could cause crashes or unexpected behavior:
@@ -271,3 +277,5 @@ def test_extremely_large_numbers_dont_crash(large_decimal: int) -> None:
 
 
 # 🐍⛓️🔒🧪🪄
+
+# 🌊🪢🔚

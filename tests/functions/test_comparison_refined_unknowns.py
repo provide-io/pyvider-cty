@@ -1,9 +1,15 @@
-# tests/functions/test_comparison_refined_unknowns.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for comparison functions with refined unknown values.
 
+This test suite focuses on achieving 100% coverage of refined unknown comparison
+logic in comparison_functions.py, particularly:
+- Lines 66, 84-85, 92-93 (refined unknown comparison logic)
+- Lines 138, 149, 172, 194-196 (min/max with refined unknowns)
+- Edge cases with bounds, inclusive/exclusive flags, overlapping ranges"""
 This test suite focuses on achieving 100% coverage of refined unknown comparison
 logic in comparison_functions.py, particularly:
 - Lines 66, 84-85, 92-93 (refined unknown comparison logic)
@@ -390,3 +396,5 @@ class TestEdgeCasesAndBoundaries:
 
 
 # 🧬🔬🪄
+
+# 🌊🪢🔚

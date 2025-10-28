@@ -1,8 +1,11 @@
-# tests/values/test_value_coverage.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""This test suite specifically targets the remaining coverage gaps in
+src/pyvider/cty/values/base.py to harden the CtyValue object against
+internal inconsistencies and edge cases."""
 This test suite specifically targets the remaining coverage gaps in
 src/pyvider/cty/values/base.py to harden the CtyValue object against
 internal inconsistencies and edge cases.
@@ -97,3 +100,5 @@ class TestCtyValueCoverage:
 
 
 # 🐍⛓️💰🪄
+
+# 🌊🪢🔚

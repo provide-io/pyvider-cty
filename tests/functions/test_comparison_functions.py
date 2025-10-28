@@ -1,9 +1,9 @@
-# tests/functions/test_comparison_functions.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for comparison functions (equal, not_equal, less_than, greater_than, etc.)."""
-
 import pytest
 
 from pyvider.cty import CtyNumber, CtyString, CtyValue
@@ -81,3 +81,5 @@ class TestComparisonFunctions:
 
 
 # 🐍⛓️🔣🪄
+
+# 🌊🪢🔚

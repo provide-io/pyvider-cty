@@ -1,9 +1,15 @@
-# tests/functions/test_numeric_refined_unknowns.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
 """Test suite for numeric functions with refined unknown values.
 
+This test suite focuses on achieving 100% coverage of refined unknown arithmetic
+operations in numeric_functions.py, particularly:
+- Lines 35-41, 46-52, 63, 98-104 (addition refinement propagation)
+- Lines in subtraction, multiplication, division refinement logic
+- Edge cases with bounds, inclusive/exclusive flags, and special values"""
 This test suite focuses on achieving 100% coverage of refined unknown arithmetic
 operations in numeric_functions.py, particularly:
 - Lines 35-41, 46-52, 63, 98-104 (addition refinement propagation)
@@ -471,3 +477,5 @@ class TestEdgeCases:
 
 
 # 🧬🔬🪄
+
+# 🌊🪢🔚

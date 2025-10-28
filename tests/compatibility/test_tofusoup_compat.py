@@ -1,8 +1,26 @@
-# tests/compatibility/test_tofusoup_compat.py
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
 
-"""
+"""Cross-language compatibility tests using TofuSoup.
+
+The Go compatibility infrastructure has been replaced by TofuSoup, which provides
+comprehensive cross-language conformance testing for CTY implementations.
+
+To run cross-language compatibility tests:
+
+1. Install TofuSoup from the tofusoup repository
+2. Run: `soup cty test`
+3. Run: `soup cty benchmark` for performance validation
+
+TofuSoup provides:
+- Go harnesses for CTY serialization/deserialization
+- Bidirectional testing (Go ↔ Python)
+- Rich CLI tools for debugging and validation
+- Performance benchmarking
+
+For more information, see the TofuSoup repository and documentation."""
 Cross-language compatibility tests using TofuSoup.
 
 The Go compatibility infrastructure has been replaced by TofuSoup, which provides
@@ -63,3 +81,5 @@ def test_tofusoup_compatibility_placeholder() -> None:
 
 
 # 🐍⛓️🤝🪄
+
+# 🌊🪢🔚
