@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/set/test_set_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 import pytest
 
 from pyvider.cty import (
@@ -52,5 +50,3 @@ def test_to_wire_json(string_set_type) -> None:
 #     assert len(validated_types) == 3
 
 # 🐍⛓️🗃️🪄
-
-# 🌊🪢🔚

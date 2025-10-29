@@ -1,9 +1,8 @@
+# pyvider/cty/types/structural/dynamic.py
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from __future__ import annotations
 
 import json
@@ -76,4 +75,5 @@ class CtyDynamic(CtyType[object]):
     def __str__(self) -> str:
         return "dynamic"
 
-# 🌊🪢🔚
+
+# 🌊🪢🧱🪄

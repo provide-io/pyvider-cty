@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/conversion/test_inference.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from decimal import Decimal
 from typing import Any
 
@@ -152,5 +150,3 @@ def test_infer_from_attrs_object() -> None:
 
 
 # 🐍⛓️↔️🪄
-
-# 🌊🪢🔚

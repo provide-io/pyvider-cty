@@ -1,9 +1,8 @@
+# pyvider/cty/functions/numeric_functions.py
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -412,4 +411,5 @@ def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     val_decimal = cast(Decimal, val.value)
     return CtyNumber().validate(Decimal(int(val_decimal)))
 
-# 🌊🪢🔚
+
+# 🌊🪢🔣🪄

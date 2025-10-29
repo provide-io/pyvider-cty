@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/conversion/test_utils.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 import attrs
 import pytest
 
@@ -48,5 +46,3 @@ def test_attrs_to_dict_safe_with_cty_value_raises_error() -> None:
 
 
 # 🐍⛓️↔️🪄
-
-# 🌊🪢🔚

@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/types/structural/test_advanced_validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from pyvider.cty import (
     CtyDynamic,
 )
@@ -31,5 +29,3 @@ class TestAdvancedCtyValidation:
 
 
 # 🐍⛓️🧱🪄
-
-# 🌊🪢🔚

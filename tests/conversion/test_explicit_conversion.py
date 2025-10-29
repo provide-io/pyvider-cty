@@ -1,14 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/conversion/test_explicit_conversion.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TDD Test Suite for the explicit conversion and unification functions.
-
-These tests define the required behavior for the `convert` and `unify`
-functions, which are intended to mirror the functionality of the `go-cty/convert`
-package. These tests will fail until the functions are implemented in the
-`pyvider.cty.conversion.explicit` module."""
+"""
 TDD Test Suite for the explicit conversion and unification functions.
 
 These tests define the required behavior for the `convert` and `unify`
@@ -275,5 +269,3 @@ class TestUnifyFunction:
 
 
 # 🐍⛓️↔️🪄
-
-# 🌊🪢🔚

@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/values/test_cty_value_marks.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.marks import CtyMark
 
@@ -30,5 +28,3 @@ def test_object_validation_preserves_marks() -> None:
 
 
 # 🐍⛓️💰🪄
-
-# 🌊🪢🔚

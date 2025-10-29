@@ -1,12 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/codec/test_deserialization_robustness.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
-
-These tests are designed to fail with the current implementation and define
-the desired, more robust behavior for the MessagePack deserializer."""
+"""
 TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
 
 These tests are designed to fail with the current implementation and define
@@ -115,5 +111,3 @@ class TestGoCtyCompatibility:
 
 
 # 🐍⛓️🔢🪄
-
-# 🌊🪢🔚

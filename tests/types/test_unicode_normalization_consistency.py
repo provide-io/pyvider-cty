@@ -1,9 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/types/test_unicode_normalization_consistency.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TDD: Ensures that key lookups and comparisons are aware of Unicode normalization."""
+"""
 TDD: Ensures that key lookups and comparisons are aware of Unicode normalization.
 """
 
@@ -46,5 +45,3 @@ class TestUnicodeNormalizationConsistency:
 
 
 # 🐍⛓️🧱🪄
-
-# 🌊🪢🔚

@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/types/structural/test_dynamic_integration.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from pyvider.cty import CtyDynamic, CtyList, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 from pyvider.cty.conversion import cty_to_native
@@ -26,5 +24,3 @@ class TestCtyDynamicIntegration:
 
 
 # 🐍⛓️🧱🪄
-
-# 🌊🪢🔚

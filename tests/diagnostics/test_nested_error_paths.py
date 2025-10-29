@@ -1,10 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/diagnostics/test_nested_error_paths.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TDD: Verifies that validation error messages for deeply nested structures
-have correctly formatted and complete paths."""
+"""
 TDD: Verifies that validation error messages for deeply nested structures
 have correctly formatted and complete paths.
 """
@@ -53,5 +51,3 @@ class TestNestedErrorPaths:
 
 
 # 🐍⛓️🩺🪄
-
-# 🌊🪢🔚

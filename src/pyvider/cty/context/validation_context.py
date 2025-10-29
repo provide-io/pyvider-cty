@@ -1,9 +1,8 @@
+# pyvider/cty/context/validation_context.py
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from __future__ import annotations
 
 # In a new file: pyvider/cty/context/validation_context.py
@@ -30,4 +29,5 @@ def get_validation_depth() -> int:
     """Returns the current validation depth."""
     return _validation_depth.get()
 
-# 🌊🪢🔚
+
+# 🌊🪢✅🪄

@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/context/test_validation_context.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from typing import Never
 
 import pytest
@@ -46,5 +44,3 @@ def test_max_validation_depth_constant() -> None:
 
 
 # 🐍⛓️🏷️🪄
-
-# 🌊🪢🔚

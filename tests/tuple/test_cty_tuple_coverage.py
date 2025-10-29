@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/tuple/test_cty_tuple_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 import pytest
 
 from pyvider.cty.exceptions import CtyTupleValidationError, CtyTypeMismatchError
@@ -91,5 +89,3 @@ def test_usable_as_different_lengths() -> None:
 
 
 # 🐍⛓️🖇️🪄
-
-# 🌊🪢🔚

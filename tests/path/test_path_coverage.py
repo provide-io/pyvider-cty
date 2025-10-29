@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/path/test_path_coverage.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 import pytest
 
 from pyvider.cty.exceptions import AttributePathError
@@ -107,5 +105,3 @@ def test_path_edge_cases_from_z_file() -> None:
 
 
 # 🐍⛓️➡️🪄
-
-# 🌊🪢🔚
