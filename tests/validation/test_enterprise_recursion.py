@@ -1,16 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/validation/test_enterprise_recursion.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""Comprehensive tests for recursion detection in CTY validation.
-
-These tests ensure the recursion detection system meets production IaC requirements:
-- Handle complex real-world configurations with deep nesting
-- Detect genuine circular references quickly and accurately
-- Provide detailed diagnostics for troubleshooting
-- Maintain predictable performance characteristics
-- Support monitoring and observability requirements"""
+"""
 Comprehensive tests for recursion detection in CTY validation.
 
 These tests ensure the recursion detection system meets production IaC requirements:
@@ -162,5 +154,3 @@ class TestAdvancedRecursionDetection:
 
 
 # 🐍⛓️✅🪄
-
-# 🌊🪢🔚

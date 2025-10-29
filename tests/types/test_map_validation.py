@@ -1,14 +1,9 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/types/test_map_validation.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 """Test suite for CtyMap validation edge cases.
 
-This test suite focuses on achieving 100% coverage of map.py, particularly:
-- Lines 46, 48, 52 (null/unknown handling in validate)
-- Lines 94, 108, 116-118 (error paths in get and validation)
-- Edge cases with non-dict inputs, non-string keys, value type mismatches"""
 This test suite focuses on achieving 100% coverage of map.py, particularly:
 - Lines 46, 48, 52 (null/unknown handling in validate)
 - Lines 94, 108, 116-118 (error paths in get and validation)
@@ -262,5 +257,3 @@ class TestCtyMapInitialization:
 
 
 # 🧬🔬🪄
-
-# 🌊🪢🔚

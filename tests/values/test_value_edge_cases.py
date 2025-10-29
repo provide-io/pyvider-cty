@@ -1,12 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/values/test_value_edge_cases.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""Comprehensive edge case tests for CtyValue to achieve 100% coverage.
-
-Focuses on error paths, null/unknown handling, and comparison operations
-that are not covered by existing tests."""
+"""
 Comprehensive edge case tests for CtyValue to achieve 100% coverage.
 
 Focuses on error paths, null/unknown handling, and comparison operations
@@ -236,5 +232,3 @@ class TestValueSortingAndOrdering:
 
 
 # 🐍⛓️✨🪄
-
-# 🌊🪢🔚

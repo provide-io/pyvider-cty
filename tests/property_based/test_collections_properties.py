@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/property_based/test_collections_properties.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 import unicodedata
 
 from hypothesis import given, settings, strategies as st
@@ -60,5 +58,3 @@ def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
 
 
 # 🐍⛓️🧪🪄
-
-# 🌊🪢🔚

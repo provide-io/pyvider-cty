@@ -1,9 +1,8 @@
+# pyvider/cty/conversion/type_encoder.py
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from __future__ import annotations
 
 # pyvider-cty/src/pyvider/cty/conversion/type_encoder.py
@@ -23,4 +22,5 @@ def encode_cty_type_to_wire_json(cty_type: CtyType[Any]) -> Any:
         raise TypeError(error_message)
     return cty_type._to_wire_json()
 
-# 🌊🪢🔚
+
+# 🌊🪢🧱🪄

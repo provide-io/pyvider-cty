@@ -1,9 +1,9 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/functions/test_collection_stdlib_functions.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 """Test suite for collection functions (reverse, hasindex, index, element, etc.) from stdlib_parity."""
+
 import pytest
 
 from pyvider.cty import CtyList, CtyMap, CtyNumber, CtySet, CtyString, CtyTuple
@@ -99,5 +99,3 @@ class TestCollectionFunctions:
 
 
 # 🐍⛓️🔣🪄
-
-# 🌊🪢🔚

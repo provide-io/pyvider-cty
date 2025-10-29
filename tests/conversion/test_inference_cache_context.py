@@ -1,10 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/conversion/test_inference_cache_context.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TDD: Ensures the explicit inference_cache_context manager works correctly
-and can be nested without creating new caches."""
+"""
 TDD: Ensures the explicit inference_cache_context manager works correctly
 and can be nested without creating new caches.
 """
@@ -62,5 +60,3 @@ class TestInferenceCacheContext:
 
 
 # 🐍⛓️↔️🪄
-
-# 🌊🪢🔚

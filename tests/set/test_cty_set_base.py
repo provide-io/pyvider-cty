@@ -1,12 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/set/test_cty_set_base.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""Test module for CtySet implementation.
-
-This module contains tests for the CtySet type, ensuring proper validation,
-equality checking, and other operations."""
+"""
 Test module for CtySet implementation.
 
 This module contains tests for the CtySet type, ensuring proper validation,
@@ -179,5 +175,3 @@ class TestCtySetType:
 
 
 # 🐍⛓️🗃️🪄
-
-# 🌊🪢🔚

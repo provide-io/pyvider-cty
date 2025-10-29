@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/property_based/test_unification_properties.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from hypothesis import assume, given, settings, strategies as st
 
 from pyvider.cty import CtyBool, CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
@@ -285,5 +283,3 @@ def test_conversion_respects_unified_type(data) -> None:
 
 
 # 🐍⛓️🔀🧪🪄
-
-# 🌊🪢🔚

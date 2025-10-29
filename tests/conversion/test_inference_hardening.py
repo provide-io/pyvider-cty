@@ -1,13 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/conversion/test_inference_hardening.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TDD Test Suite for Hardening Type Inference Logic.
-
-This suite defines the required strict behavior for:
-1. Correct primitive type inference precedence (bool vs. int).
-2. Correct structural type inference for dictionaries (object vs. map)."""
+"""
 TDD Test Suite for Hardening Type Inference Logic.
 
 This suite defines the required strict behavior for:
@@ -84,5 +79,3 @@ class TestInferenceHardening:
 
 
 # 🐍⛓️↔️🪄
-
-# 🌊🪢🔚

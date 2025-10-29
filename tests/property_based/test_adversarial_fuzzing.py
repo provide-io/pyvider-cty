@@ -1,16 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/property_based/test_adversarial_fuzzing.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""Adversarial property-based tests to abuse the system and find security issues.
-
-These tests intentionally try to break the system with:
-- Malicious payloads
-- Resource exhaustion
-- Type confusion
-- Boundary attacks
-- Unicode exploits"""
+"""
 Adversarial property-based tests to abuse the system and find security issues.
 
 These tests intentionally try to break the system with:
@@ -461,5 +453,3 @@ def test_random_binary_data_rejected(data: bytes) -> None:
 
 
 # 🐍⛓️💣🧪🪄
-
-# 🌊🪢🔚

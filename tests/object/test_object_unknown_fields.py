@@ -1,14 +1,9 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/object/test_object_unknown_fields.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 """Regression tests for CtyObject handling of unknown field values.
 
-These tests ensure that CtyObject with mixed known/unknown fields maintains
-correct is_unknown status at the object level. This is critical for proper
-handling during Terraform plan/apply cycles where computed fields are unknown
-during planning but the object structure itself is known."""
 These tests ensure that CtyObject with mixed known/unknown fields maintains
 correct is_unknown status at the object level. This is critical for proper
 handling during Terraform plan/apply cycles where computed fields are unknown
@@ -152,5 +147,3 @@ def test_explicitly_unknown_object() -> None:
     # Validating an explicitly unknown object should preserve unknown status
     validated = obj_type.validate(unknown_obj)
     assert validated.is_unknown, "Explicitly unknown object should remain unknown after validation"
-
-# 🌊🪢🔚

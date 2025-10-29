@@ -1,9 +1,8 @@
+# pyvider/cty/config/runtime.py
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from __future__ import annotations
 
 from typing import Self
@@ -38,4 +37,5 @@ class CtyConfig(RuntimeConfig):
         """
         return cls.from_env(prefix="PYVIDER_CTY")
 
-# 🌊🪢🔚
+
+# 🌊🪢⚙️🪄

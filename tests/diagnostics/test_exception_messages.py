@@ -1,9 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# tests/diagnostics/test_exception_messages.py
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
-"""TODO: Add module docstring."""
 from pyvider.cty import (
     CtyBool,
     CtyList,
@@ -71,5 +69,3 @@ class TestValidationExceptionStructure:
 
 
 # 🐍⛓️🩺🪄
-
-# 🌊🪢🔚
