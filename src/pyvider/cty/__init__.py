@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
-from pyvider.cty._version import __version__
+from provide.foundation.utils import get_version
+
+__version__ = get_version("flavorpack", caller_file=__file__)
+
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
@@ -75,8 +78,5 @@ __all__ = [
     "parse_type_string_to_ctytype",
     "unify",
 ]
-# 🌊🪢📦🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚
