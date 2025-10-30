@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -24,8 +24,5 @@ class TestStructuralFunctions:
         assert coalesce(val1, val2).value == "a"
         assert coalesce(null_val, val2).value == "b"
         assert coalesce(null_val, null_val, val1).value == "a"
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

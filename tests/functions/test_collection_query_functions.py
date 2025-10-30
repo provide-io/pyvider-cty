@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -129,8 +129,5 @@ class TestHasIndexIndex:
         l = CtyList(element_type=CtyString()).validate(["a"])
         with pytest.raises(CtyFunctionError, match="key does not exist"):
             index(l, CtyNumber().validate(1))
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

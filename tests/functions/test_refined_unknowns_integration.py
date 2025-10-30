@@ -1,15 +1,13 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD Test Suite for Standard Library Functions with Refined Unknowns.
+"""TDD Test Suite for Standard Library Functions with Refined Unknowns.
 
 This suite defines the expected behavior for functions when they operate on
 refined unknown values. The goal is for functions to leverage the refinement
-constraints to produce a more precise result (i.e., a known value) where possible.
-"""
+constraints to produce a more precise result (i.e., a known value) where possible."""
 
 from decimal import Decimal
 
@@ -171,8 +169,5 @@ class TestRefinedUnknownsComparisonCoverage:
 
         result = less_than(unknown_10_20, known_15)
         assert result.is_unknown is True
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

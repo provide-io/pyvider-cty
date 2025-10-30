@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -59,10 +59,5 @@ def test_cty_list_dynamic_schema() -> None:
     assert isinstance(validated.value[1].value[0], CtyValue)
     assert isinstance(validated.value[1].value[0].type, CtyString)
     assert validated.value[1].value[0].value == "three"
-
-
-
-
-# 🐍⛓️🧾🪄
 
 # 🌊🪢🔚

@@ -1,16 +1,14 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD Test Suite for the explicit conversion and unification functions.
+"""TDD Test Suite for the explicit conversion and unification functions.
 
 These tests define the required behavior for the `convert` and `unify`
 functions, which are intended to mirror the functionality of the `go-cty/convert`
 package. These tests will fail until the functions are implemented in the
-`pyvider.cty.conversion.explicit` module.
-"""
+`pyvider.cty.conversion.explicit` module."""
 
 from collections.abc import Iterable
 
@@ -267,8 +265,5 @@ class TestUnifyFunction:
     def test_unification_scenarios(self, type_list: Iterable[CtyType], expected_unified_type: CtyType) -> None:
         unified_type = unify(type_list)
         assert unified_type.equal(expected_unified_type)
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

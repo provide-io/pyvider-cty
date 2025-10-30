@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -112,8 +112,5 @@ def test_post_init() -> None:
 def test_raw_value_unknown() -> None:
     with pytest.raises(ValueError):
         _ = CtyValue.unknown(CtyString()).raw_value
-
-
-# 🐍⛓️💰🪄
 
 # 🌊🪢🔚

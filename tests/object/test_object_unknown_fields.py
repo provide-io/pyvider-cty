@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,8 +8,7 @@
 These tests ensure that CtyObject with mixed known/unknown fields maintains
 correct is_unknown status at the object level. This is critical for proper
 handling during Terraform plan/apply cycles where computed fields are unknown
-during planning but the object structure itself is known.
-"""
+during planning but the object structure itself is known."""
 
 from pyvider.cty import CtyObject, CtyString, CtyValue
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack

@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Property-based test to ensure any future caching in the type inference
-logic is safe and does not cause correctness regressions.
-"""
+"""Property-based test to ensure any future caching in the type inference
+logic is safe and does not cause correctness regressions."""
 
 import unicodedata
 
@@ -62,8 +60,5 @@ def test_inference_is_correct_for_same_keys_different_types(data) -> None:
         normalized_key = unicodedata.normalize("NFC", key)
         actual_attr_type = type2.attribute_types[normalized_key]
         assert actual_attr_type.equal(expected_attr_type)
-
-
-# 🐍⛓️🧪🪄
 
 # 🌊🪢🔚

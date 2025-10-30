@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Final hardening test suite to address all remaining coverage gaps, bringing
-the library to a production-ready state of test coverage.
-"""
+"""Final hardening test suite to address all remaining coverage gaps, bringing
+the library to a production-ready state of test coverage."""
 
 from decimal import Decimal
 
@@ -107,8 +105,5 @@ class TestFinalCoverageSuite:
         # The presence of an unknown value before the real value should not
         # prevent the real value from being found.
         assert coalesce(null_val, unknown_val, real_val) == real_val
-
-
-# 🐍⛓️🎯🪄
 
 # 🌊🪢🔚

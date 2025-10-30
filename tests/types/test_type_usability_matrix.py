@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -36,8 +36,5 @@ class TestTypeUsabilityMatrix:
         t_opt = CtyObject(attribute_types={"a": CtyString()}, optional_attributes=frozenset(["a"]))
         assert t_req.usable_as(t_opt)
         assert not t_opt.usable_as(t_req)
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

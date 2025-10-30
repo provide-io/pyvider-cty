@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -39,8 +39,5 @@ class TestCtyTupleOperations:
 
     def test_value_length(self, tuple_value) -> None:
         assert len(tuple_value) == 3
-
-
-# 🐍⛓️🖇️🪄
 
 # 🌊🪢🔚

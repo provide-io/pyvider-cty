@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -44,8 +44,5 @@ def assert_diagnostic(
         f"\n- Original Expected:\n{expected_error_message}"
         f"\n- Original Got:\n{actual_message}"
     )
-
-
-# 🐍⛓️🩺🪄
 
 # 🌊🪢🔚

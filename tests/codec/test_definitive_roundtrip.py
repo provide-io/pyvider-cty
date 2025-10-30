@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -106,8 +106,5 @@ class TestTddDefinitiveCorrectness:
         marked_bool = CtyBool().validate(True).mark(CtyMark("sensitive"))
         list_val = list_type.validate([marked_num, marked_bool, "unmarked"])
         assert_value_roundtrip(list_val)
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

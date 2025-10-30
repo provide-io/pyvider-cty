@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -105,8 +105,5 @@ def test_benchmark_full_conversion_roundtrip(
     # by the benchmark fixture itself via the `with_inference_cache` decorator
     # on the underlying functions.
     benchmark(core_roundtrip_operation, test_data, cty_schema)
-
-
-# 🐍⛓️⏱️🪄
 
 # 🌊🪢🔚

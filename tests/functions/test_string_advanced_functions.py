@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -415,8 +415,5 @@ class TestStringAdvancedFunctions:
         assert regexreplace(CtyValue.unknown(CtyString()), S("a"), S("b")).is_unknown
         assert regexreplace(S("a"), CtyValue.unknown(CtyString()), S("b")).is_unknown
         assert regexreplace(S("a"), S("b"), CtyValue.unknown(CtyString())).is_unknown
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

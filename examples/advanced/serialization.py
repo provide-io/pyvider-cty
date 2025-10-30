@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -32,7 +32,5 @@ print(f"Serialized Msgpack (bytes): {msgpack_bytes!r}")
 reconstructed_value = cty_from_msgpack(msgpack_bytes, user_type)
 assert reconstructed_value == user_value
 print("\nSuccessfully reconstructed value from Msgpack.")
-
-# 🐍⛓️📁🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -241,8 +241,5 @@ class TestCtyPathStringRepresentation:
     def test_path_with_only_key(self) -> None:
         path = CtyPath.key("config-key")
         assert str(path) == "['config-key']"
-
-
-# 🐍⛓️➡️🪄
 
 # 🌊🪢🔚

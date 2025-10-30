@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -38,8 +38,5 @@ class TestEncodingFunctions:
         val = S("a,b\n1,2\n3,4")
         decoded = csvdecode(val)
         assert decoded.raw_value == [{"a": "1", "b": "2"}, {"a": "3", "b": "4"}]
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

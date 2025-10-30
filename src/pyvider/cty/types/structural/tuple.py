@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -150,10 +150,5 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             )
         slice_obj = slice(start, end, step)
         return self.element_at(container_value, slice_obj)
-
-
-# 🌊🪢🧱🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

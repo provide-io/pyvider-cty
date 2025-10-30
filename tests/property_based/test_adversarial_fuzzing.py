@@ -1,18 +1,16 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Adversarial property-based tests to abuse the system and find security issues.
+"""Adversarial property-based tests to abuse the system and find security issues.
 
 These tests intentionally try to break the system with:
 - Malicious payloads
 - Resource exhaustion
 - Type confusion
 - Boundary attacks
-- Unicode exploits
-"""
+- Unicode exploits"""
 
 import struct
 import unicodedata
@@ -451,8 +449,5 @@ def test_random_binary_data_rejected(data: bytes) -> None:
     ):
         # Expected - random data is invalid
         pass
-
-
-# 🐍⛓️💣🧪🪄
 
 # 🌊🪢🔚

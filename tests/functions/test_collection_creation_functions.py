@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -396,8 +396,5 @@ class TestLength:
     def test_length_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
             length(CtyNumber().validate(123))
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

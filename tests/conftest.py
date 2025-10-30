@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Pytest configuration file for the entire test suite.
-Includes automated setup for the cross-language compatibility suite.
-"""
+"""Pytest configuration file for the entire test suite.
+Includes automated setup for the cross-language compatibility suite."""
 
 from collections.abc import Generator
 from pathlib import Path
@@ -217,7 +215,5 @@ def configure_foundation_logger_for_tests() -> Generator[None, None, None]:
 
 # Terminal reset hook (pytest_sessionfinish) lives in provide-testkit
 # See: provide.testkit.conftest.pytest_sessionfinish
-
-# 🐍⛓️🤔🪄
 
 # 🌊🪢🔚

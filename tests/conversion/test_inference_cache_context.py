@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD: Ensures the explicit inference_cache_context manager works correctly
-and can be nested without creating new caches.
-"""
+"""TDD: Ensures the explicit inference_cache_context manager works correctly
+and can be nested without creating new caches."""
 
 from pyvider.cty.conversion.inference_cache import (
     _container_schema_cache,
@@ -58,8 +56,5 @@ class TestInferenceCacheContext:
 
             # Exiting the inner context should not clear the cache
             assert _structural_key_cache._context_var.get() is outer_struct_cache
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

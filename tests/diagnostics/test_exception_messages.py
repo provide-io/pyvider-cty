@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -69,8 +69,5 @@ class TestValidationExceptionStructure:
         """Integrates and fixes tests for exception string formatting."""
         type_mismatch = CtyTypeMismatchError("mismatch", actual_type=CtyString(), expected_type=CtyNumber())
         assert "Expected number, got string" in str(type_mismatch)
-
-
-# 🐍⛓️🩺🪄
 
 # 🌊🪢🔚

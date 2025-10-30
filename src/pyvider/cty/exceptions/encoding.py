@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -456,10 +456,5 @@ class WireFormatError(TransformationError):
             current_message = f"{current_message} during {operation}"
 
         self.args = (current_message, *self.args[1:])
-
-
-# 🌊🪢🐛🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

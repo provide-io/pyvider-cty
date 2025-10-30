@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -168,8 +168,5 @@ class TestSort:
         l = CtyList(element_type=CtyList(element_type=CtyString())).validate([["a"]])
         with pytest.raises(CtyFunctionError, match="elements must be string, number, or bool"):
             sort(l)
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

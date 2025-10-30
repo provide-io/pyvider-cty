@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -183,8 +183,5 @@ def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.value, dict):
         raise CtyFunctionError("values: input value is not a map or object")
     return CtyList(element_type=input_val.type.element_type).validate(list(input_val.value.values()))
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

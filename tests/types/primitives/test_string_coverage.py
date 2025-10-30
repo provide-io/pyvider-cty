@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -36,8 +36,5 @@ def test_validate_with_exception() -> None:
 
     with pytest.raises(CtyStringValidationError, match="Cannot convert BadString to string."):
         string_type.validate(BadString())
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

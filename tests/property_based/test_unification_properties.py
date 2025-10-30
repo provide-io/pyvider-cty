@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -283,8 +283,5 @@ def test_conversion_respects_unified_type(data) -> None:
         # Conversion might fail for incompatible types, which is expected
         # when element types are incompatible primitives
         assert isinstance(unified_type.element_type, CtyDynamic)
-
-
-# 🐍⛓️🔀🧪🪄
 
 # 🌊🪢🔚

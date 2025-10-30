@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -309,10 +309,5 @@ def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
     from pyvider.cty.conversion.explicit import unify
 
     return unify(types)
-
-
-# 🌊🪢↔️🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

@@ -1,14 +1,12 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Comprehensive test suite for error context integration with provide-foundation.
+"""Comprehensive test suite for error context integration with provide-foundation.
 
 This test suite validates that all error boundaries and enhanced error contexts
-are working correctly across the pyvider-cty codebase.
-"""
+are working correctly across the pyvider-cty codebase."""
 
 import pytest
 
@@ -260,7 +258,5 @@ class TestErrorRecoveryAndBoundaries:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# 🐍⛓️🤔🪄
 
 # 🌊🪢🔚

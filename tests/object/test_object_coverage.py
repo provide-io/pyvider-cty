@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -78,8 +78,5 @@ def test_usable_as_not_subset_required() -> None:
     assert type1.usable_as(type2) is False, (
         "Object type with fewer attributes should not be usable as type with more attributes"
     )
-
-
-# 🐍⛓️📦🪄
 
 # 🌊🪢🔚

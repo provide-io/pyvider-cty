@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -66,8 +66,5 @@ def test_infer_dict_with_cty_values() -> None:
     assert isinstance(inferred, CtyObject)
     assert inferred.attribute_types["a"].equal(CtyString())
     assert inferred.attribute_types["b"].equal(CtyNumber())
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

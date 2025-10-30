@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -30,8 +30,5 @@ class TestCtyListValueOperations:
         assert [item.value for item in sliced.value] == ["b", "c", "d"], (
             f"Expected ['b', 'c', 'd'] from slice [1:4], but got {[item.value for item in sliced.value]}"
         )
-
-
-# 🐍⛓️🧾🪄
 
 # 🌊🪢🔚

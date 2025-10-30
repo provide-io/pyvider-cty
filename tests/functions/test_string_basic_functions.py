@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -118,8 +118,5 @@ class TestStringBasicFunctions:
         assert replace(CtyValue.unknown(CtyString()), S("a"), S("b")).is_unknown
         assert replace(S("a"), CtyValue.unknown(CtyString()), S("b")).is_unknown
         assert replace(S("a"), S("b"), CtyValue.unknown(CtyString())).is_unknown
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

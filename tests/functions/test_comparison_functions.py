@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -79,8 +79,5 @@ class TestComparisonFunctions:
         assert less_than_or_equal_to(N(1), N(2)).is_true()
         assert less_than_or_equal_to(N(1), N(1)).is_true()
         assert less_than_or_equal_to(N(2), N(1)).is_false()
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

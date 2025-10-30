@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -9,8 +9,7 @@ This test suite focuses on achieving 100% coverage of refined unknown arithmetic
 operations in numeric_functions.py, particularly:
 - Lines 35-41, 46-52, 63, 98-104 (addition refinement propagation)
 - Lines in subtraction, multiplication, division refinement logic
-- Edge cases with bounds, inclusive/exclusive flags, and special values
-"""
+- Edge cases with bounds, inclusive/exclusive flags, and special values"""
 
 from decimal import Decimal
 
@@ -469,8 +468,5 @@ class TestEdgeCases:
 
         assert result.is_unknown
         # Null + refined = plain unknown (not refined)
-
-
-# 🧬🔬🪄
 
 # 🌊🪢🔚

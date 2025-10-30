@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -22,10 +22,5 @@ def coalesce(*args: CtyValue[Any]) -> CtyValue[Any]:
             return arg
 
     return CtyValue.null(args[-1].type)
-
-
-# 🌊🪢🔣🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

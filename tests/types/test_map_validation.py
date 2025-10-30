@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,8 +8,7 @@
 This test suite focuses on achieving 100% coverage of map.py, particularly:
 - Lines 46, 48, 52 (null/unknown handling in validate)
 - Lines 94, 108, 116-118 (error paths in get and validation)
-- Edge cases with non-dict inputs, non-string keys, value type mismatches
-"""
+- Edge cases with non-dict inputs, non-string keys, value type mismatches"""
 
 import pytest
 
@@ -255,8 +254,5 @@ class TestCtyMapInitialization:
         map_type = CtyMap(element_type=CtyNumber())
 
         assert isinstance(map_type.element_type, CtyNumber)
-
-
-# 🧬🔬🪄
 
 # 🌊🪢🔚

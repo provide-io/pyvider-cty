@@ -1,14 +1,12 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Exception coverage tests to systematically trigger all exception types.
+"""Exception coverage tests to systematically trigger all exception types.
 
 Ensures that every exception class can be raised, caught, and provides
-useful error messages without leaking sensitive information.
-"""
+useful error messages without leaking sensitive information."""
 
 from decimal import Decimal
 
@@ -308,8 +306,5 @@ def test_exception_messages_dont_leak_sensitive_info(null_value) -> None:
         assert "0x" not in error_msg.lower()
         # Should not contain internal variable names that aren't part of public API
         assert "__" not in error_msg
-
-
-# 🐍⛓️🐛🧪🪄
 
 # 🌊🪢🔚

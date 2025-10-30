@@ -1,10 +1,9 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Property-based tests for CTY spec compliance.
+"""Property-based tests for CTY spec compliance.
 
 These tests validate that the Python implementation correctly implements
 the CTY specification, focusing on:
@@ -15,8 +14,7 @@ the CTY specification, focusing on:
 - Spec-mandated behavior (e.g., NFC normalization, typed nulls)
 
 Note: Cross-language compatibility testing is handled separately by TofuSoup.
-Run `soup cty test` for cross-language compatibility validation.
-"""
+Run `soup cty test` for cross-language compatibility validation."""
 
 import unicodedata
 
@@ -458,8 +456,5 @@ def test_deeply_nested_structures_have_consistent_types(data) -> None:
         return data
 
     assert normalize_nested(result) == normalize_nested(nested_data)
-
-
-# 🐍⛓️🌐🧪🪄
 
 # 🌊🪢🔚

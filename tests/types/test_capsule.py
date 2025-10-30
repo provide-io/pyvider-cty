@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -56,10 +56,5 @@ def test_capsule_hash() -> None:
     # Test that it can be used as a dictionary key
     my_dict = {capsule_type1: "value1"}
     assert my_dict[capsule_type2] == "value1"
-
-
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -338,10 +338,5 @@ class CtyTypeMismatchError(CtyValidationError):
         type_info = f"Expected {expected_type}, got {actual_type}"
         full_message = f"{message} ({type_info})"
         super().__init__(full_message, path=path, **kwargs)
-
-
-# 🌊🪢🐛🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -48,8 +48,5 @@ class TestEncodingFunctionsCoverage:
         mocker.patch("csv.DictReader", side_effect=Exception("test error"))
         with pytest.raises(CtyFunctionError):
             csvdecode(CtyString().validate("a,b\n1,2"))
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

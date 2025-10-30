@@ -1,15 +1,13 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD Test Suite for CtyCapsule with custom operations.
+"""TDD Test Suite for CtyCapsule with custom operations.
 
 These tests define the behavior for a capsule type that can be equipped with
 custom logic for equality, hashing, and other operations, mirroring the
-`CapsuleWithOps` feature from go-cty.
-"""
+`CapsuleWithOps` feature from go-cty."""
 
 from typing import Any
 from unittest.mock import Mock
@@ -161,8 +159,5 @@ class TestCtyCapsuleWithConversion:
 
         with pytest.raises(CtyConversionError, match="returned a value of the wrong type"):
             convert(capsule_val, target_type)
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

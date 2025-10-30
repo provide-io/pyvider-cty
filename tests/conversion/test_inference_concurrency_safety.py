@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD: Ensures the type inference cache is thread-safe and does not leak state
-between concurrent operations.
-"""
+"""TDD: Ensures the type inference cache is thread-safe and does not leak state
+between concurrent operations."""
 
 import threading
 from typing import Any
@@ -81,8 +79,5 @@ class TestInferenceConcurrencySafety:
 
         assert type1_result.equal(expected_type1), "Thread 1 produced an incorrect type"
         assert type2_result.equal(expected_type2), "Thread 2 produced an incorrect type"
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

@@ -1,14 +1,12 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Comprehensive performance benchmark suite for pyvider.cty.
+"""Comprehensive performance benchmark suite for pyvider.cty.
 
 This suite includes 7 tests to measure the performance of key functions
-before and after caching optimizations, including a full round-trip test.
-"""
+before and after caching optimizations, including a full round-trip test."""
 
 import pytest
 
@@ -123,8 +121,5 @@ def test_benchmark_full_round_trip(benchmark, complex_raw_data) -> None:
         _ = cty_to_native(unpacked_val)
 
     benchmark(round_trip_operation)
-
-
-# 🐍⛓️⏱️🪄
 
 # 🌊🪢🔚

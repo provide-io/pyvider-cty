@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -38,10 +38,5 @@ class CtyConfig(RuntimeConfig):
             Current CtyConfig instance loaded from environment
         """
         return cls.from_env(prefix="PYVIDER_CTY")
-
-
-# 🌊🪢⚙️🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

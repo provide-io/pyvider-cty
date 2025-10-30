@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -44,8 +44,5 @@ def test_infer_list_of_objects_with_optional_and_mismatched_types() -> None:
         assert "status" not in element_1.type.attribute_types
     except CtyValidationError as e:
         pytest.fail(f"Validation with the inferred type failed: {e}")
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

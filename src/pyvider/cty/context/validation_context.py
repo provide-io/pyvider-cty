@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -30,10 +30,5 @@ def deeper_validation() -> Generator[None]:
 def get_validation_depth() -> int:
     """Returns the current validation depth."""
     return _validation_depth.get()
-
-
-# 🌊🪢✅🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

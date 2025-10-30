@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -59,8 +59,5 @@ def test_serialize_refined_unknown_with_no_payload() -> None:
     val = CtyValue.unknown(CtyString(), value=RefinedUnknownValue())
     serialized = _serialize_unknown(val)
     assert serialized.code == 0
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

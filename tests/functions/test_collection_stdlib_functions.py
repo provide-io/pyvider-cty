@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -97,8 +97,5 @@ class TestCollectionFunctions:
         keys = L(CtyString(), ["a", "b"])
         vals = L(CtyNumber(), [1, 2])
         assert zipmap(keys, vals).raw_value == {"a": 1, "b": 2}
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

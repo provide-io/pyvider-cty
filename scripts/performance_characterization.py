@@ -1,10 +1,9 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Performance Characterization Tool for pyvider.cty
+"""Performance Characterization Tool for pyvider.cty
 
 This script provides a stable, repeatable way to measure the performance of
 the core data conversion pipeline, independent of the pytest-benchmark framework.
@@ -13,8 +12,7 @@ It now utilizes multiprocessing to leverage all available CPU cores, providing
 a more accurate measure of maximum throughput and system resource utilization.
 
 Usage:
-    python scripts/performance_characterization.py
-"""
+    python scripts/performance_characterization.py"""
 
 import functools
 import multiprocessing
@@ -126,7 +124,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-# 🐍⛓️📁🪄
 
 # 🌊🪢🔚

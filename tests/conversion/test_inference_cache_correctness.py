@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD: Ensures the structural cache correctly distinguishes between list-like
-and dict-like containers, even when they contain identical values.
-"""
+"""TDD: Ensures the structural cache correctly distinguishes between list-like
+and dict-like containers, even when they contain identical values."""
 
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.types import CtyList, CtyObject
@@ -33,8 +31,5 @@ class TestInferenceCacheCorrectness:
 
         assert isinstance(dict_type, CtyObject)
         assert isinstance(dict_type.attribute_types["k1"], CtyObject)
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD: Ensures the type inference cache is safe and does not cause correctness
-regressions by mis-identifying types based on insufficient cache keys.
-"""
+"""TDD: Ensures the type inference cache is safe and does not cause correctness
+regressions by mis-identifying types based on insufficient cache keys."""
 
 from typing import Any
 
@@ -62,8 +60,5 @@ class TestInferenceCacheSafety:
 
         assert isinstance(type2, CtyObject)
         assert all(v.equal(CtyNumber()) for v in type2.attribute_types.values())
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

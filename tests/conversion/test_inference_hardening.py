@@ -1,15 +1,13 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD Test Suite for Hardening Type Inference Logic.
+"""TDD Test Suite for Hardening Type Inference Logic.
 
 This suite defines the required strict behavior for:
 1. Correct primitive type inference precedence (bool vs. int).
-2. Correct structural type inference for dictionaries (object vs. map).
-"""
+2. Correct structural type inference for dictionaries (object vs. map)."""
 
 import attrs
 
@@ -77,8 +75,5 @@ class TestInferenceHardening:
         assert isinstance(inferred_mixed.element_type, CtyDynamic), (
             "Map with mixed values should have a CtyDynamic element type."
         )
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -39,10 +39,5 @@ def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     for a in getattr(type(inst), "__attrs_attrs__", []):
         res[a.name] = getattr(inst, a.name)
     return res
-
-
-# 🌊🪢↔️🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

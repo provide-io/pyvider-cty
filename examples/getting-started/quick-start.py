@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -36,7 +36,5 @@ try:
     print(f"cty_user: {cty_user}")
 except Exception as e:
     print(f"Validation failed: {e}")
-
-# 🐍⛓️📁🪄
 
 # 🌊🪢🔚

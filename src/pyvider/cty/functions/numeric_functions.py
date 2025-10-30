@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -412,10 +412,5 @@ def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
         return val
     val_decimal = cast(Decimal, val.value)
     return CtyNumber().validate(Decimal(int(val_decimal)))
-
-
-# 🌊🪢🔣🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

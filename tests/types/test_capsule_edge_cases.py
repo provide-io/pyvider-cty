@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -9,8 +9,7 @@ This test suite focuses on achieving 100% coverage of capsule.py, particularly:
 - Lines 47, 49, 56 (null/unknown handling in validate)
 - Lines 70-72 (usable_as with CtyDynamic)
 - Lines 134 (hash for CtyCapsuleWithOps)
-- Edge cases with custom equality/hash/convert functions
-"""
+- Edge cases with custom equality/hash/convert functions"""
 
 import pytest
 
@@ -296,8 +295,5 @@ class TestCtyCapsuleHashing:
 
         # Different equal_fn should produce different hash
         assert hash(cap1) != hash(cap2)
-
-
-# 🧬🔬🪄
 
 # 🌊🪢🔚

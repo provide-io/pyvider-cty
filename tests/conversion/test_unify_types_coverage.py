@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -23,8 +23,5 @@ def test_unify_types_all_same() -> None:
 
 def test_unify_types_different() -> None:
     assert _unify_types({CtyString(), CtyNumber()}) == CtyDynamic()
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

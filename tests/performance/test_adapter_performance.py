@@ -1,15 +1,13 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Dedicated performance benchmark for the `cty_to_native` function.
+"""Dedicated performance benchmark for the `cty_to_native` function.
 
 This suite tests the adapter's performance against both deeply nested and
 wide (many-element) data structures to ensure it is efficient under
-different kinds of load.
-"""
+different kinds of load."""
 
 import random
 from typing import Any
@@ -80,8 +78,5 @@ def test_benchmark_cty_to_native_wide_structure(benchmark: Any, wide_cty_value: 
     to test its efficiency with large collections.
     """
     benchmark(cty_to_native, wide_cty_value)
-
-
-# 🐍⛓️⏱️🪄
 
 # 🌊🪢🔚
