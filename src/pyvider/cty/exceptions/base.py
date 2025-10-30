@@ -86,7 +86,6 @@ class CtyFunctionError(CtyError):
         return "CTY_FUNCTION_ERROR"
 
 
-
 # 🌊🪢🏗️🪄
 
 # 🌊➰🔚
