@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -204,10 +204,5 @@ def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
 
 def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="min")
-
-
-# 🌊🪢🔣🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

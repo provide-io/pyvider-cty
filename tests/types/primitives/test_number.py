@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -53,8 +53,5 @@ class TestCtyNumber:
         assert self.number_type.usable_as(CtyNumber()), "CtyNumber should be usable as CtyNumber"
         assert self.number_type.usable_as(CtyDynamic()), "CtyNumber should be usable as CtyDynamic"
         assert not self.number_type.usable_as(CtyString()), "CtyNumber should not be usable as CtyString"
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

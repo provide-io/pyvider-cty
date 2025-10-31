@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -143,8 +143,5 @@ class TestCtyTypeParseError:
         assert str(error) == expected_msg
         assert error.type_string == type_string
         assert error.source_value == type_string
-
-
-# 🐍⛓️🐛🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -47,10 +47,5 @@ def bytesslice(buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]) 
 
     start_idx, end_idx = int(start.value), int(end.value)  # type: ignore[call-overload]
     return BytesCapsule.validate(buffer.value[start_idx:end_idx])  # type: ignore[index]
-
-
-# 🌊🪢🔣🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -152,10 +152,5 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
     def __repr__(self) -> str:
         return f"CtyList(element_type={self.element_type!r})"
-
-
-# 🌊🪢🧱🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

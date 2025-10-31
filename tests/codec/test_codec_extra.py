@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -79,8 +79,5 @@ def test_msgpack_default_handler_unsupported_type() -> None:
 
     with pytest.raises(TypeError, match="Object of type Unsupported is not MessagePack serializable"):
         msgpack.packb(Unsupported(), default=_msgpack_default_handler)
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

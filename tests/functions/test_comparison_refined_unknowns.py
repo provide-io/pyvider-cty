@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -9,8 +9,7 @@ This test suite focuses on achieving 100% coverage of refined unknown comparison
 logic in comparison_functions.py, particularly:
 - Lines 66, 84-85, 92-93 (refined unknown comparison logic)
 - Lines 138, 149, 172, 194-196 (min/max with refined unknowns)
-- Edge cases with bounds, inclusive/exclusive flags, overlapping ranges
-"""
+- Edge cases with bounds, inclusive/exclusive flags, overlapping ranges"""
 
 from decimal import Decimal
 
@@ -388,8 +387,5 @@ class TestEdgeCasesAndBoundaries:
         """Test: max/min type validation for mixed types (line 138-143)."""
         with pytest.raises(CtyFunctionError, match="same type"):
             max_fn(N(10), S("string"))
-
-
-# 🧬🔬🪄
 
 # 🌊🪢🔚

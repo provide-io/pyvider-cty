@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -58,8 +58,5 @@ def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
     else:
         # This branch is for hypothesis to have valid cases as well
         list_type.validate(value)
-
-
-# 🐍⛓️🧪🪄
 
 # 🌊🪢🔚

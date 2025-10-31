@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -88,8 +88,5 @@ class TestExceptionSubclasses:
         assert "Expected number, got string" in str(err), (
             f"Expected error message to contain 'Expected number, got string', but got {err!s}"
         )
-
-
-# 🐍⛓️🐛🪄
 
 # 🌊🪢🔚

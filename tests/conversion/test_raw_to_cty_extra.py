@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -59,8 +59,5 @@ def test_infer_from_list_of_lists() -> None:
     assert isinstance(inferred, CtyList)
     assert isinstance(inferred.element_type, CtyList)
     assert isinstance(inferred.element_type.element_type, CtyNumber)
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

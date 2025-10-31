@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -40,8 +40,5 @@ def test_validate_raw_attrs_object_with_ctydynamic() -> None:
     assert "count" in inner_value.type.attribute_types
     assert inner_value["name"].value == "test"
     assert inner_value["count"].value == 123
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

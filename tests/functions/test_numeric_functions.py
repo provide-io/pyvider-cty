@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -251,8 +251,5 @@ class TestNumericFunctions:
             add(CtyString().validate("a"), CtyNumber().validate(1))
         with pytest.raises(CtyFunctionError):
             add(CtyNumber().validate(1), CtyString().validate("a"))
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

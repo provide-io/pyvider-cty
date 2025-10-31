@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -42,7 +42,5 @@ assert len(unmarked_value.marks) == 0
 assert sensitive_mark in removed_marks
 
 print("Marks examples ran successfully.")
-
-# 🐍⛓️📁🪄
 
 # 🌊🪢🔚

@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Final test suite to address all significant remaining coverage gaps, bringing
-the library to a production-ready state of test coverage.
-"""
+"""Final test suite to address all significant remaining coverage gaps, bringing
+the library to a production-ready state of test coverage."""
 
 from decimal import Decimal
 
@@ -136,8 +134,5 @@ class TestFinalCoveragePush:
                 pass
 
         assert not isinstance(IncompleteType(), CtyTypeProtocol)
-
-
-# 🐍⛓️🎯🪄
 
 # 🌊🪢🔚

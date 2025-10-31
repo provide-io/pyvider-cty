@@ -1,16 +1,14 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Property-based tests for special value attack vectors.
+"""Property-based tests for special value attack vectors.
 
 Tests edge cases that could cause crashes or unexpected behavior:
 - NaN/Infinity arithmetic and comparison operations
 - Zero-width and confusable Unicode characters
-- RTL override and other Unicode direction attacks
-"""
+- RTL override and other Unicode direction attacks"""
 
 from decimal import Decimal, InvalidOperation
 
@@ -269,8 +267,5 @@ def test_extremely_large_numbers_dont_crash(large_decimal: int) -> None:
     # Should be stored as Decimal with correct value
     assert isinstance(cty_val.value, Decimal)
     assert str(cty_val.value) == str(large_decimal)
-
-
-# 🐍⛓️🔒🧪🪄
 
 # 🌊🪢🔚

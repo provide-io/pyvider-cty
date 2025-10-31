@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -86,8 +86,5 @@ def test_serialize_refined_unknown_value() -> None:
 
     payload = msgpack.unpackb(unpacked.data, raw=False, strict_map_key=False)
     assert payload == {3: [b"0", True]}
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

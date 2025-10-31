@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -199,8 +199,5 @@ class TestInvalidTypeError:
         error = InvalidTypeError("Invalid type used", invalid_type=invalid_type_obj)
         assert str(error) == "Invalid type used"
         assert error.invalid_type == invalid_type_obj
-
-
-# 🐍⛓️🐛🪄
 
 # 🌊🪢🔚

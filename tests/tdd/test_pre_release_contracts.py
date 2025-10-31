@@ -1,16 +1,14 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD Test Suite for Pre-Release Hardening Recommendations.
+"""TDD Test Suite for Pre-Release Hardening Recommendations.
 
 This suite defines the required strict behavior for:
 1. Deserialization of CtyDynamic values, which must fail on malformed payloads.
 2. The CtyCapsuleWithOps constructor, which must validate function arity.
-3. Hashing rules for CtyValue, aligning with Python idioms.
-"""
+3. Hashing rules for CtyValue, aligning with Python idioms."""
 
 from typing import Any
 
@@ -149,8 +147,5 @@ class TestValueHashingContract:
         """TDD: CtyValues wrapping lists, sets, maps, and objects MUST be unhashable."""
         with pytest.raises(TypeError, match="unhashable type"):
             hash(unhashable_val)
-
-
-# 🐍⛓️💡🪄
 
 # 🌊🪢🔚

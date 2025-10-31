@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -44,8 +44,5 @@ def test_max_validation_depth_constant() -> None:
     """Checks that the MAX_VALIDATION_DEPTH constant is accessible and an integer."""
     assert isinstance(MAX_VALIDATION_DEPTH, int)
     assert MAX_VALIDATION_DEPTH > 0
-
-
-# 🐍⛓️🏷️🪄
 
 # 🌊🪢🔚

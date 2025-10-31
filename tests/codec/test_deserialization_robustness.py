@@ -1,14 +1,12 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
+"""TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
 
 These tests are designed to fail with the current implementation and define
-the desired, more robust behavior for the MessagePack deserializer.
-"""
+the desired, more robust behavior for the MessagePack deserializer."""
 
 from decimal import Decimal
 import json
@@ -109,8 +107,5 @@ class TestGoCtyCompatibility:
         assert "age" in deserialized_val.value
         assert deserialized_val["age"].is_null is True
         assert deserialized_val["name"].value == "Alice"
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

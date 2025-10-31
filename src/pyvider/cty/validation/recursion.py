@@ -1,10 +1,9 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Advanced recursion detection for CTY validation.
+"""Advanced recursion detection for CTY validation.
 
 This module provides sophisticated recursion detection that can distinguish between:
 1. Genuine circular references that would cause infinite loops
@@ -15,8 +14,7 @@ The implementation is designed for production IaC requirements where:
 - Complex configurations with deep nesting must be supported
 - Genuine circular references must be prevented
 - Performance must be predictable and measurable
-- Debugging and monitoring capabilities are essential
-"""
+- Debugging and monitoring capabilities are essential"""
 
 from __future__ import annotations
 
@@ -307,10 +305,5 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                 detector.exit_validation_scope()
 
     return wrapper
-
-
-# 🌊🪢✅🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

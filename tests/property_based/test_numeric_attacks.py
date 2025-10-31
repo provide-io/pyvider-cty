@@ -1,18 +1,16 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Numeric attack property-based tests for precision and overflow scenarios.
+"""Numeric attack property-based tests for precision and overflow scenarios.
 
 Tests edge cases in numeric handling:
 - Integer overflow/underflow
 - Floating point precision loss
 - Subnormal numbers
 - Very large exponents
-- Division by near-zero
-"""
+- Division by near-zero"""
 
 from decimal import Decimal
 import sys
@@ -211,8 +209,5 @@ def test_precision_across_magnitude_ranges(significant_digits: int, exponent: in
         assert decoded.value is not None
     except (ValueError, OverflowError):
         pass
-
-
-# 🐍⛓️🔢🧪🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -28,8 +28,5 @@ def test_to_bool() -> None:
     assert to_bool(CtyString().validate("false")).value is False
     with pytest.raises(CtyFunctionError):
         to_bool(CtyString().validate("abc"))
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

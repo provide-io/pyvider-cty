@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -94,8 +94,5 @@ def test_infer_type_of_list_of_mixed_objects() -> None:
     native_result = cty_to_native(cty_value)
 
     assert native_result == mixed_list
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

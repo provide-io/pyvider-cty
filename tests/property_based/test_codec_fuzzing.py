@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -453,8 +453,5 @@ def test_codec_stress_test_large_collections(data) -> None:
         decoded = cty_from_msgpack(msgpack_bytes, obj_type)
 
         assert len(decoded.value) == len(obj_value)
-
-
-# 🐍⛓️📦🧪🪄
 
 # 🌊🪢🔚
