@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD: Verifies that validation error messages for deeply nested structures
-have correctly formatted and complete paths.
-"""
+"""TDD: Verifies that validation error messages for deeply nested structures
+have correctly formatted and complete paths."""
 
 import pytest
 
@@ -49,8 +47,5 @@ class TestNestedErrorPaths:
 
         expected_path = "config[1]['retries']"
         assert expected_path in str(exc_info.value)
-
-
-# 🐍⛓️🩺🪄
 
 # 🌊🪢🔚

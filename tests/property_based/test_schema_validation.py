@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -50,8 +50,5 @@ def test_schema_rejects_invalid_data(simple_schema, data) -> None:
     """
     with pytest.raises(CtyValidationError):
         validate_config(simple_schema, data)
-
-
-# 🐍⛓️🧪🪄
 
 # 🌊🪢🔚

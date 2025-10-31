@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -31,7 +31,5 @@ dynamic_list_type = CtyList(element_type=CtyDynamic())
 cty_list = dynamic_list_type.validate(["hello", 123, True])
 
 print("Dynamic type examples ran successfully.")
-
-# 🐍⛓️📁🪄
 
 # 🌊🪢🔚

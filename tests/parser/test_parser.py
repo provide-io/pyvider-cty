@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -59,8 +59,5 @@ def test_valid_type_parsing(type_spec, expected_type) -> None:
 def test_invalid_type_parsing_raises_error(type_spec) -> None:
     with pytest.raises(CtyValidationError):
         parse_tf_type_to_ctytype(type_spec)
-
-
-# 🐍⛓️🧩🪄
 
 # 🌊🪢🔚

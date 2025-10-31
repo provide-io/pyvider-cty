@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -93,8 +93,5 @@ def test_infer_from_other_types() -> None:
 
     inferred_type = infer_cty_type_from_raw(Other())
     assert inferred_type == CtyDynamic()
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

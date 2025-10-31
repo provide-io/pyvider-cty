@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -241,10 +241,5 @@ def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any]:
     This is a wrapper that enables caching by converting input to a frozenset.
     """
     return _unify_frozen(frozenset(types))
-
-
-# 🌊🪢↔️🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

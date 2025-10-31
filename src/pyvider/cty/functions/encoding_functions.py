@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -57,10 +57,5 @@ def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
         return result
     except Exception as e:
         raise CtyFunctionError(f"csvdecode: failed to decode CSV: {e}") from e
-
-
-# 🌊🪢🔣🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

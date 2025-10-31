@@ -1,10 +1,9 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Cross-language compatibility tests using TofuSoup.
+"""Cross-language compatibility tests using TofuSoup.
 
 The Go compatibility infrastructure has been replaced by TofuSoup, which provides
 comprehensive cross-language conformance testing for CTY implementations.
@@ -21,8 +20,7 @@ TofuSoup provides:
 - Rich CLI tools for debugging and validation
 - Performance benchmarking
 
-For more information, see the TofuSoup repository and documentation.
-"""
+For more information, see the TofuSoup repository and documentation."""
 
 import pytest
 
@@ -61,8 +59,5 @@ def test_tofusoup_compatibility_placeholder() -> None:
         assert not deserialized_val.is_unknown
     else:
         pytest.skip("Go-generated fixtures not available. Use TofuSoup for cross-language testing.")
-
-
-# 🐍⛓️🤝🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -27,8 +27,5 @@ def test_infer_cty_type_from_raw_complex(value) -> None:
     """
     inferred_type = infer_cty_type_from_raw(value)
     assert inferred_type is not None
-
-
-# 🐍⛓️🧪🪄
 
 # 🌊🪢🔚

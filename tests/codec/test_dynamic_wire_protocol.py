@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -87,8 +87,5 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     deserialized = cty_from_msgpack(actual_packed, schema)
     assert isinstance(deserialized.type, CtyDynamic)
     assert deserialized.value == concrete_value
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

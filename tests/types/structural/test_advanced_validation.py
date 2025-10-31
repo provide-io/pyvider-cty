@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -29,8 +29,5 @@ class TestAdvancedCtyValidation:
 
         # The unpacked value is a CtyDynamic wrapper. Compare its inner value.
         assert dynamic_val.value == unpacked_val.value
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

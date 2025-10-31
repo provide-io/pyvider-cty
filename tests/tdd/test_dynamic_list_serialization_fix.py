@@ -1,14 +1,12 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD tests for fixing serialization of dynamic values containing lists.
+"""TDD tests for fixing serialization of dynamic values containing lists.
 
 This test suite focuses on the specific issue where CtyDynamic values
-containing lists cause SerializationError during marshaling to protocol buffers.
-"""
+containing lists cause SerializationError during marshaling to protocol buffers."""
 
 import pytest
 
@@ -170,8 +168,5 @@ class TestDynamicListSerialization:
         # And it should serialize successfully
         serialized = cty_to_msgpack(validated_dynamic, dynamic_type)
         assert serialized is not None
-
-
-# 🐍⛓️💡🪄
 
 # 🌊🪢🔚

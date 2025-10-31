@@ -1,17 +1,15 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-Memory pressure tests for resource usage tracking.
+"""Memory pressure tests for resource usage tracking.
 
 Tests that verify:
 - No memory leaks in long-running operations
 - Reasonable memory usage for large structures
 - Proper cleanup of resources
-- GC behavior with complex object graphs
-"""
+- GC behavior with complex object graphs"""
 
 import gc
 import sys
@@ -238,8 +236,5 @@ def test_cyclic_reference_handling() -> None:
     # Account for test infrastructure overhead
     overhead = 2500  # Higher overhead for this test due to DynamicList complexity
     assert final_count < initial_count + overhead
-
-
-# 🐍⛓️💾🧪🪄
 
 # 🌊🪢🔚

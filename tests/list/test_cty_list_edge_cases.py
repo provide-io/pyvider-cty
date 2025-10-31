@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -29,8 +29,5 @@ def test_list_validation_with_unrefined_unknown_value():
 
     # Ensure the old unhelpful message is NOT present
     assert "UnrefinedUnknownValue" not in error_message
-
-
-# 🐍⛓️🧾🪄
 
 # 🌊🪢🔚

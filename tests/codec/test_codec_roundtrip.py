@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -89,8 +89,5 @@ def test_refined_unknown_roundtrip() -> None:
         assert getattr(new_value.value, key) == val, (
             f"Refinement {key}: expected {val}, but got {getattr(new_value.value, key)}"
         )
-
-
-# 🐍⛓️🔢🪄
 
 # 🌊🪢🔚

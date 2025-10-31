@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -21,8 +21,5 @@ def test_validate_with_wire_format_invalid_json() -> None:
         match="Failed to decode dynamic value type spec from JSON during validation",
     ):
         dynamic_type.validate(value)
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

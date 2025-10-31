@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -28,8 +28,5 @@ def test_object_validation_preserves_marks() -> None:
     # Assert that the mark on the inner value was preserved.
     inner_value = validated_object.value["data"]
     assert inner_value.has_mark(CtyMark("sensitive")), "Mark was lost during object validation"
-
-
-# 🐍⛓️💰🪄
 
 # 🌊🪢🔚

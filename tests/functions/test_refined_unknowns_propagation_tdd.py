@@ -1,12 +1,10 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""
-TDD: Verifies that numeric functions consistently propagate or resolve
-refined unknown value constraints.
-"""
+"""TDD: Verifies that numeric functions consistently propagate or resolve
+refined unknown value constraints."""
 
 from decimal import Decimal
 
@@ -75,8 +73,5 @@ class TestRefinedUnknownPropagation:
         assert isinstance(result.value, RefinedUnknownValue)
         assert result.value.number_lower_bound == (Decimal("10"), True)
         assert result.value.number_upper_bound == (Decimal("20"), True)
-
-
-# 🐍⛓️🔣🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -17,8 +17,5 @@ This module uses the shared versioning utility from provide-foundation.
 __version__ = get_version("pyvider-cty", caller_file=__file__)
 
 __all__ = ["__version__"]
-# 🌊🪢🔢🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚

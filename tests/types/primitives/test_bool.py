@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -77,8 +77,5 @@ class TestCtyBool:
         assert self.bool_type.usable_as(CtyBool()), "CtyBool should be usable as CtyBool"
         assert self.bool_type.usable_as(CtyDynamic()), "CtyBool should be usable as CtyDynamic"
         assert not self.bool_type.usable_as(CtyString()), "CtyBool should not be usable as CtyString"
-
-
-# 🐍⛓️🧱🪄
 
 # 🌊🪢🔚

@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -138,8 +138,5 @@ class TestAdapterCoverage:
         val = CtyNumber().validate(123)
         native = cty_to_native(val)
         assert native == 123
-
-
-# 🐍⛓️↔️🪄
 
 # 🌊🪢🔚

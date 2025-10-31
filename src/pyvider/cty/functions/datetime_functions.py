@@ -1,4 +1,4 @@
-#
+# 
 # SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -94,10 +94,5 @@ def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
         return CtyString().validate(new_dt.isoformat())
     except ValueError as e:
         raise CtyFunctionError(f"timeadd: invalid argument format: {e}") from e
-
-
-# 🌊🪢🔣🪄
-
-# 🌊➰🔚
 
 # 🌊🪢🔚
