@@ -417,3 +417,4 @@ logs/
 
 # Provide tooling artifacts
 .provide/foundry/
+.archive/
