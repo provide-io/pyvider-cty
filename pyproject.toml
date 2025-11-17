@@ -15,6 +15,13 @@ authors = [
 maintainers = [
     { name = "provide.io", email = "code@provide.io" },
 ]
+
+[project.urls]
+Homepage = "https://foundry.provide.io/pyvider-cty/"
+Documentation = "https://foundry.provide.io/pyvider-cty/"
+Repository = "https://foundry.provide.io/pyvider-cty/repo"
+Issues = "https://foundry.provide.io/pyvider-cty/issues"
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
