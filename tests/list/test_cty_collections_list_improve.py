@@ -80,4 +80,5 @@ class TestCtyListAdvanced:
         with pytest.raises(CtyListValidationError):
             self.string_list.element_at("not a cty value", 0)
 
+
 # 🌊🪢🔚

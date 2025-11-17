@@ -172,4 +172,5 @@ class TestCtySetType:
         values = {item.value for item in set_obj.value}
         assert values == {"apple", "banana", "cherry"}
 
+
 # 🌊🪢🔚

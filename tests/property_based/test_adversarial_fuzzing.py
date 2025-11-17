@@ -12,6 +12,7 @@ These tests intentionally try to break the system with:
 - Boundary attacks
 - Unicode exploits"""
 
+import contextlib
 import struct
 import unicodedata
 
@@ -225,10 +226,7 @@ def test_many_marks_on_value_are_handled(num_marks: int, data) -> None:
     performance issues or memory problems.
     """
     # Create value
-    if isinstance(data, int):
-        value = CtyNumber().validate(data)
-    else:
-        value = CtyString().validate(data)
+    value = CtyNumber().validate(data) if isinstance(data, int) else CtyString().validate(data)
 
     # Apply many marks
     marks = {CtyMark(f"mark_{i}", {"id": i}) for i in range(num_marks)}
@@ -436,9 +434,7 @@ def test_random_binary_data_rejected(data: bytes) -> None:
     """
     schema = CtyDynamic()
 
-    try:
-        cty_from_msgpack(data, schema)
-    except (
+    with contextlib.suppress(
         DeserializationError,
         CtyValidationError,  # Random data might deserialize but fail validation
         msgpack.exceptions.ExtraData,
@@ -447,7 +443,7 @@ def test_random_binary_data_rejected(data: bytes) -> None:
         TypeError,
         struct.error,
     ):
-        # Expected - random data is invalid
-        pass
+        cty_from_msgpack(data, schema)
+
 
 # 🌊🪢🔚

@@ -5,7 +5,10 @@
 
 """TODO: Add module docstring."""
 
-def pre_mutation(context):
+from typing import Any
+
+
+def pre_mutation(context: Any) -> None:
     """
     Called before each mutation is tested.
     Can be used to skip certain mutations.

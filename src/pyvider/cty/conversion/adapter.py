@@ -123,4 +123,5 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
 
     return results.get(id(value))
 
+
 # 🌊🪢🔚

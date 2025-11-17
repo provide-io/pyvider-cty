@@ -70,4 +70,5 @@ class TestDateTimeFunctions:
                 S("not a duration"),
             )
 
+
 # 🌊🪢🔚

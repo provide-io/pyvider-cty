@@ -105,7 +105,7 @@ def test_memory_usage_scales_linearly(size: int) -> None:
     gc.collect()
     before_mem = len(gc.get_objects())
 
-    cty_value = list_type.validate(items)
+    list_type.validate(items)
 
     gc.collect()
     after_mem = len(gc.get_objects())
@@ -195,7 +195,7 @@ def test_large_object_attribute_memory(size: int) -> None:
     obj_type = CtyObject(attribute_types=attr_types)
 
     gc.collect()
-    before_size = get_object_size(obj_type)
+    get_object_size(obj_type)
 
     # Create value
     obj_value = {f"attr_{i}": i for i in range(min(size, 100))}
@@ -236,5 +236,6 @@ def test_cyclic_reference_handling() -> None:
     # Account for test infrastructure overhead
     overhead = 2500  # Higher overhead for this test due to DynamicList complexity
     assert final_count < initial_count + overhead
+
 
 # 🌊🪢🔚

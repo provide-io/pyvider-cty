@@ -348,4 +348,5 @@ def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
 
         return _unpacked_to_cty(raw_unpacked, cty_type)
 
+
 # 🌊🪢🔚

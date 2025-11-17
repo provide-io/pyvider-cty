@@ -65,4 +65,5 @@ class TestCtyMark:
         mark_single = CtyMark("test", "a")
         assert mark_single.details == frozenset(["a"])
 
+
 # 🌊🪢🔚

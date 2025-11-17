@@ -39,4 +39,5 @@ class CtyConfig(RuntimeConfig):
         """
         return cls.from_env(prefix="PYVIDER_CTY")
 
+
 # 🌊🪢🔚

@@ -70,8 +70,8 @@ class TestCollectionFunctions:
         assert compact(L(CtyString(), ["a", "", "b"])).raw_value == ["a", "b"]
 
     def test_chunklist(self) -> None:
-        l = L(CtyString(), ["a", "b", "c", "d", "e"])
-        assert chunklist(l, N(2)).raw_value == [["a", "b"], ["c", "d"], ["e"]]
+        lst = L(CtyString(), ["a", "b", "c", "d", "e"])
+        assert chunklist(lst, N(2)).raw_value == [["a", "b"], ["c", "d"], ["e"]]
 
     def test_lookup(self) -> None:
         m = M(CtyString(), {"a": "b"})
@@ -97,5 +97,6 @@ class TestCollectionFunctions:
         keys = L(CtyString(), ["a", "b"])
         vals = L(CtyNumber(), [1, 2])
         assert zipmap(keys, vals).raw_value == {"a": 1, "b": 2}
+
 
 # 🌊🪢🔚

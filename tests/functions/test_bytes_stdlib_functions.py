@@ -52,4 +52,5 @@ class TestBytesFunctions:
         assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber())).is_unknown
         assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.unknown(CtyNumber())).is_unknown
 
+
 # 🌊🪢🔚

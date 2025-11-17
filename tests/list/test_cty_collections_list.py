@@ -60,4 +60,5 @@ def test_cty_list_dynamic_schema() -> None:
     assert isinstance(validated.value[1].value[0].type, CtyString)
     assert validated.value[1].value[0].value == "three"
 
+
 # 🌊🪢🔚

@@ -80,7 +80,7 @@ def get_test_cases() -> dict[str, CtyValue]:
     }
 
 
-def cty_to_manifest_native(value: CtyValue) -> Any:
+def cty_to_manifest_native(value: CtyValue) -> Any:  # noqa: C901
     """Converts a CtyValue to a native Python type suitable for the JSON manifest."""
     if value.is_unknown:
         if isinstance(value.value, RefinedUnknownValue):
@@ -120,7 +120,7 @@ def cty_to_manifest_native(value: CtyValue) -> Any:
     return val
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Generate pyvider.cty test fixtures.")
     parser.add_argument(
         "-d", "--directory", required=True, type=Path, help="Directory to write fixtures and manifest."

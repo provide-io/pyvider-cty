@@ -61,4 +61,5 @@ class TestInferenceCacheSafety:
         assert isinstance(type2, CtyObject)
         assert all(v.equal(CtyNumber()) for v in type2.attribute_types.values())
 
+
 # 🌊🪢🔚

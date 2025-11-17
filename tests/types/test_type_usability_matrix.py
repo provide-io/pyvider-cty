@@ -37,4 +37,5 @@ class TestTypeUsabilityMatrix:
         assert t_req.usable_as(t_opt)
         assert not t_opt.usable_as(t_req)
 
+
 # 🌊🪢🔚

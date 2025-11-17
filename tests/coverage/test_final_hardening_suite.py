@@ -73,7 +73,7 @@ class TestFinalCoverageSuite:
         # because it cannot compare a string to a Decimal.
         with pytest.raises(
             TypeError,
-            match="'<' not supported between instances of 'str' and 'decimal.Decimal'",
+            match=r"'<' not supported between instances of 'str' and 'decimal\.Decimal'",
         ):
             _ = malformed_number < n5
 
@@ -105,5 +105,6 @@ class TestFinalCoverageSuite:
         # The presence of an unknown value before the real value should not
         # prevent the real value from being found.
         assert coalesce(null_val, unknown_val, real_val) == real_val
+
 
 # 🌊🪢🔚

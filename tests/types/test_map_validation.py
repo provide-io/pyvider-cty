@@ -55,7 +55,7 @@ class TestCtyMapValidation:
         """Test: validate non-dict input raises CtyMapValidationError (line 54-55)."""
         map_type = CtyMap(element_type=CtyString())
 
-        with pytest.raises(CtyMapValidationError, match="Input must be a dictionary, got list."):
+        with pytest.raises(CtyMapValidationError, match=r"Input must be a dictionary, got list\."):
             map_type.validate(["not", "a", "dict"])
 
     def test_validate_non_string_key_raises_error(self) -> None:
@@ -254,5 +254,6 @@ class TestCtyMapInitialization:
         map_type = CtyMap(element_type=CtyNumber())
 
         assert isinstance(map_type.element_type, CtyNumber)
+
 
 # 🌊🪢🔚

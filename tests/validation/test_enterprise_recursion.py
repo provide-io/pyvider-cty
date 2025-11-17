@@ -151,4 +151,5 @@ class TestAdvancedRecursionDetection:
             assert metrics["total_validations"] > 0
             assert metrics["max_depth_reached"] > 0
 
+
 # 🌊🪢🔚

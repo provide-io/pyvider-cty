@@ -210,4 +210,5 @@ class CtyObject(CtyType[dict[str, object]]):
     def is_primitive_type(self) -> bool:
         return False
 
+
 # 🌊🪢🔚
