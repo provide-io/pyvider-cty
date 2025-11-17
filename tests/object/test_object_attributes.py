@@ -57,4 +57,5 @@ class TestCtyObjectAttributes:
         with pytest.raises(CtyTypeMismatchError):
             person_type.get_attribute(value, "name")
 
+
 # 🌊🪢🔚

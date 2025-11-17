@@ -457,4 +457,5 @@ def test_deeply_nested_structures_have_consistent_types(data) -> None:
 
     assert normalize_nested(result) == normalize_nested(nested_data)
 
+
 # 🌊🪢🔚

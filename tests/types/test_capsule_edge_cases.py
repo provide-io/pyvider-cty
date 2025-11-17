@@ -78,7 +78,7 @@ class TestCtyCapsuleValidation:
 
         with pytest.raises(
             CtyValidationError,
-            match="Value is not an instance of CustomObject. Got AnotherCustomObject.",
+            match=r"Value is not an instance of CustomObject\. Got AnotherCustomObject\.",
         ):
             capsule.validate(wrong_obj)
 
@@ -295,5 +295,6 @@ class TestCtyCapsuleHashing:
 
         # Different equal_fn should produce different hash
         assert hash(cap1) != hash(cap2)
+
 
 # 🌊🪢🔚

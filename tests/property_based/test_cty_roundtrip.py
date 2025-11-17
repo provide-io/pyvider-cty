@@ -79,4 +79,5 @@ def test_cty_wire_format_roundtrip(native_data) -> None:
     except Exception as e:
         pytest.fail(f"CTY round-trip failed for input:\n{native_data!r}\nError: {type(e).__name__}: {e}")
 
+
 # 🌊🪢🔚

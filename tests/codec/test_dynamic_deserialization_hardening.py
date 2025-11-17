@@ -50,4 +50,5 @@ class TestStrictDynamicDeserialization:
         with pytest.raises(CtyValidationError, match="Cannot represent str"):
             cty_from_msgpack(packed_bytes, CtyDynamic())
 
+
 # 🌊🪢🔚

@@ -30,4 +30,5 @@ def test_list_validation_with_unrefined_unknown_value():
     # Ensure the old unhelpful message is NOT present
     assert "UnrefinedUnknownValue" not in error_message
 
+
 # 🌊🪢🔚

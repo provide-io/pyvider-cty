@@ -310,4 +310,5 @@ def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
 
     return unify(types)
 
+
 # 🌊🪢🔚

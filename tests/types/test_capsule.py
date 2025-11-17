@@ -57,4 +57,5 @@ def test_capsule_hash() -> None:
     my_dict = {capsule_type1: "value1"}
     assert my_dict[capsule_type2] == "value1"
 
+
 # 🌊🪢🔚

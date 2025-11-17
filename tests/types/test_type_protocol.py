@@ -50,4 +50,5 @@ class TestCtyTypeProtocol:
 
         assert not isinstance(NotACtyType(), CtyTypeProtocol)
 
+
 # 🌊🪢🔚

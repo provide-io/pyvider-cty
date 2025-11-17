@@ -78,4 +78,5 @@ class CtyString(CtyType[str]):
     def is_primitive_type(self) -> bool:
         return True
 
+
 # 🌊🪢🔚

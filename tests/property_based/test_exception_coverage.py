@@ -8,6 +8,7 @@
 Ensures that every exception class can be raised, caught, and provides
 useful error messages without leaking sensitive information."""
 
+import contextlib
 from decimal import Decimal
 
 from hypothesis import assume, given, settings, strategies as st
@@ -174,9 +175,7 @@ def test_deserialization_error_triggered(corrupted_bytes: bytes) -> None:
     schema = CtyDynamic()
 
     # Most random bytes should fail to deserialize
-    try:
-        cty_from_msgpack(corrupted_bytes, schema)
-    except (
+    with contextlib.suppress(
         DeserializationError,
         msgpack.exceptions.ExtraData,
         msgpack.exceptions.UnpackException,
@@ -184,8 +183,7 @@ def test_deserialization_error_triggered(corrupted_bytes: bytes) -> None:
         TypeError,
         Exception,
     ):
-        # Expected - any of these exceptions are acceptable
-        pass
+        cty_from_msgpack(corrupted_bytes, schema)
 
 
 @settings(deadline=5000, max_examples=100)
@@ -207,10 +205,7 @@ def test_type_validation_error_triggered(invalid_type) -> None:
 def test_type_mismatch_error_context(source, target) -> None:
     """Test that type mismatch errors provide useful context."""
     # Create value
-    if isinstance(source, CtyString):
-        value = source.validate("test")
-    else:
-        value = source.validate(42)
+    value = source.validate("test") if isinstance(source, CtyString) else source.validate(42)
 
     # Try impossible conversion
     try:
@@ -306,5 +301,6 @@ def test_exception_messages_dont_leak_sensitive_info(null_value) -> None:
         assert "0x" not in error_msg.lower()
         # Should not contain internal variable names that aren't part of public API
         assert "__" not in error_msg
+
 
 # 🌊🪢🔚

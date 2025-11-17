@@ -31,4 +31,5 @@ def get_validation_depth() -> int:
     """Returns the current validation depth."""
     return _validation_depth.get()
 
+
 # 🌊🪢🔚

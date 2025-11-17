@@ -252,4 +252,5 @@ class TestNumericFunctions:
         with pytest.raises(CtyFunctionError):
             add(CtyNumber().validate(1), CtyString().validate("a"))
 
+
 # 🌊🪢🔚

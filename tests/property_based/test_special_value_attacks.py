@@ -268,4 +268,5 @@ def test_extremely_large_numbers_dont_crash(large_decimal: int) -> None:
     assert isinstance(cty_val.value, Decimal)
     assert str(cty_val.value) == str(large_decimal)
 
+
 # 🌊🪢🔚

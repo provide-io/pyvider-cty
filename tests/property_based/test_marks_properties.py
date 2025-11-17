@@ -58,7 +58,7 @@ def simple_cty_value_strategy(draw):
         raw_value = draw(st.dictionaries(st.text(min_size=1, max_size=10), st.integers(), max_size=3))
         if not raw_value:
             raw_value = {"default": 0}
-        attr_types = {k: CtyNumber() for k in raw_value.keys()}
+        attr_types = {k: CtyNumber() for k in raw_value}
         return CtyObject(attribute_types=attr_types).validate(raw_value)
 
 
@@ -213,5 +213,6 @@ def test_marks_details_hashability(marks: set[CtyMark]) -> None:
     # Should be able to compare marks
     for mark in marks:
         assert mark in frozen_marks
+
 
 # 🌊🪢🔚

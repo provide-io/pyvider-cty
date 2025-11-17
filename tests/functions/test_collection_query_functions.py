@@ -23,9 +23,9 @@ from pyvider.cty.functions import contains, hasindex, index, keys, values
 
 class TestContains:
     def test_contains_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert contains(l, CtyString().validate("a")).raw_value is True
-        assert contains(l, CtyString().validate("c")).raw_value is False
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
+        assert contains(lst, CtyString().validate("a")).raw_value is True
+        assert contains(lst, CtyString().validate("c")).raw_value is False
 
     def test_contains_set(self) -> None:
         s = CtySet(element_type=CtyString()).validate({"a", "b"})
@@ -86,10 +86,10 @@ class TestKeysValues:
 
 class TestHasIndexIndex:
     def test_hasindex_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert hasindex(l, CtyNumber().validate(0)).raw_value is True
-        assert hasindex(l, CtyNumber().validate(2)).raw_value is False
-        assert hasindex(l, CtyString().validate("a")).raw_value is False
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
+        assert hasindex(lst, CtyNumber().validate(0)).raw_value is True
+        assert hasindex(lst, CtyNumber().validate(2)).raw_value is False
+        assert hasindex(lst, CtyString().validate("a")).raw_value is False
 
     def test_hasindex_map(self) -> None:
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
@@ -98,7 +98,7 @@ class TestHasIndexIndex:
         assert hasindex(m, CtyNumber().validate(0)).raw_value is False
 
     def test_hasindex_null_unknown(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a"])
+        lst = CtyList(element_type=CtyString()).validate(["a"])
         assert (
             hasindex(
                 CtyValue.null(CtyList(element_type=CtyString())),
@@ -110,24 +110,25 @@ class TestHasIndexIndex:
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyNumber().validate(0),
         ).is_unknown
-        assert hasindex(l, CtyValue.null(CtyNumber())).raw_value is False
-        assert hasindex(l, CtyValue.unknown(CtyNumber())).is_unknown
+        assert hasindex(lst, CtyValue.null(CtyNumber())).raw_value is False
+        assert hasindex(lst, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_hasindex_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
             hasindex(CtyString().validate("a"), CtyNumber().validate(0))
 
     def test_index_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert index(l, CtyNumber().validate(1)).raw_value == "b"
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
+        assert index(lst, CtyNumber().validate(1)).raw_value == "b"
 
     def test_index_map(self) -> None:
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
         assert index(m, CtyString().validate("a")).raw_value == "x"
 
     def test_index_not_found(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a"])
+        lst = CtyList(element_type=CtyString()).validate(["a"])
         with pytest.raises(CtyFunctionError, match="key does not exist"):
-            index(l, CtyNumber().validate(1))
+            index(lst, CtyNumber().validate(1))
+
 
 # 🌊🪢🔚

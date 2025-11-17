@@ -100,7 +100,7 @@ def test_unify_with_dynamic_returns_dynamic(types: list[CtyType]) -> None:
 
     Tests that CtyDynamic is the absorbing element for unification.
     """
-    types_with_dynamic = types + [CtyDynamic()]
+    types_with_dynamic = [*types, CtyDynamic()]
     result = unify(types_with_dynamic)
 
     assert isinstance(result, CtyDynamic)
@@ -283,5 +283,6 @@ def test_conversion_respects_unified_type(data) -> None:
         # Conversion might fail for incompatible types, which is expected
         # when element types are incompatible primitives
         assert isinstance(unified_type.element_type, CtyDynamic)
+
 
 # 🌊🪢🔚

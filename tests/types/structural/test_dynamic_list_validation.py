@@ -33,4 +33,5 @@ class TestDynamicListValidation:
         assert isinstance(element_2.type, CtyObject)
         assert element_2.type.attribute_types["role"].equal(CtyNumber())
 
+
 # 🌊🪢🔚

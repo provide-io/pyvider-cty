@@ -27,6 +27,7 @@ def print_section(title: str) -> None:
 
 
 def print_result(script_name: str, success: bool, stdout: str, stderr: str, exit_code: int) -> None:
+    status = "✅ PASS" if success else "❌ FAIL"
     print(f"\n--- {script_name} --- {status} ---")
     if stdout:
         print("--- STDOUT ---")
@@ -120,7 +121,7 @@ async def main() -> None:
 
     print_section("Summary")
     all_passed_count = 0
-    for name, success, _, _, _ in results:
+    for _name, success, _, _, _ in results:
         if success:
             all_passed_count += 1
 

@@ -135,4 +135,5 @@ class TestFinalCoveragePush:
 
         assert not isinstance(IncompleteType(), CtyTypeProtocol)
 
+
 # 🌊🪢🔚

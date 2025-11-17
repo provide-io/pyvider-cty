@@ -35,9 +35,9 @@ from pyvider.cty.functions import (
 
 class TestElement:
     def test_element_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
-        assert element(l, CtyNumber().validate(1)).raw_value == "b"
-        assert element(l, CtyNumber().validate(3)).raw_value == "a"
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
+        assert element(lst, CtyNumber().validate(1)).raw_value == "b"
+        assert element(lst, CtyNumber().validate(3)).raw_value == "a"
 
     def test_element_tuple(self) -> None:
         t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(("a", "b", "c"))
@@ -45,23 +45,23 @@ class TestElement:
         assert element(t, CtyNumber().validate(3)).raw_value == "a"
 
     def test_element_null_unknown(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
         assert element(CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(0)).is_unknown
         assert element(
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyNumber().validate(0),
         ).is_unknown
-        assert element(l, CtyValue.null(CtyNumber())).is_unknown
-        assert element(l, CtyValue.unknown(CtyNumber())).is_unknown
+        assert element(lst, CtyValue.null(CtyNumber())).is_unknown
+        assert element(lst, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_element_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
             element(CtyString().validate("a"), CtyNumber().validate(0))
 
     def test_element_empty_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate([])
+        lst = CtyList(element_type=CtyString()).validate([])
         with pytest.raises(CtyFunctionError, match="cannot use element function with an empty list"):
-            element(l, CtyNumber().validate(0))
+            element(lst, CtyNumber().validate(0))
 
 
 class TestCoalesceList:
@@ -94,8 +94,8 @@ class TestCoalesceList:
 
 class TestCompact:
     def test_compact_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "", "b"])
-        assert compact(l).raw_value == ["a", "b"]
+        lst = CtyList(element_type=CtyString()).validate(["a", "", "b"])
+        assert compact(lst).raw_value == ["a", "b"]
 
     def test_compact_set(self) -> None:
         s = CtySet(element_type=CtyString()).validate({"a", "", "b"})
@@ -114,15 +114,15 @@ class TestCompact:
             compact(CtyString().validate("a"))
 
     def test_compact_wrong_element_type(self) -> None:
-        l = CtyList(element_type=CtyNumber()).validate([1, 2])
+        lst = CtyList(element_type=CtyNumber()).validate([1, 2])
         with pytest.raises(CtyFunctionError):
-            compact(l)
+            compact(lst)
 
 
 class TestChunklist:
     def test_chunklist_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
-        assert chunklist(l, CtyNumber().validate(2)).raw_value == [
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
+        assert chunklist(lst, CtyNumber().validate(2)).raw_value == [
             ["a", "b"],
             ["c", "d"],
             ["e"],
@@ -152,14 +152,14 @@ class TestChunklist:
         ]
 
     def test_chunklist_null_unknown(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
         assert chunklist(CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(2)).is_unknown
         assert chunklist(
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyNumber().validate(2),
         ).is_unknown
-        assert chunklist(l, CtyValue.null(CtyNumber())).is_unknown
-        assert chunklist(l, CtyValue.unknown(CtyNumber())).is_unknown
+        assert chunklist(lst, CtyValue.null(CtyNumber())).is_unknown
+        assert chunklist(lst, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_chunklist_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -171,9 +171,9 @@ class TestChunklist:
             )
 
     def test_chunklist_invalid_size(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
         with pytest.raises(CtyFunctionError, match="size must be a positive number"):
-            chunklist(l, CtyNumber().validate(0))
+            chunklist(lst, CtyNumber().validate(0))
 
 
 class TestLookup:
@@ -276,8 +276,8 @@ class TestZipmap:
 
 class TestSliceConcat:
     def test_slice_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
-        assert slice(l, CtyNumber().validate(1), CtyNumber().validate(3)).raw_value == [
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
+        assert slice(lst, CtyNumber().validate(1), CtyNumber().validate(3)).raw_value == [
             "b",
             "c",
         ]
@@ -290,7 +290,7 @@ class TestSliceConcat:
         ]
 
     def test_slice_null_unknown(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
+        lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
         assert slice(
             CtyValue.null(CtyList(element_type=CtyString())),
             CtyNumber().validate(0),
@@ -301,10 +301,10 @@ class TestSliceConcat:
             CtyNumber().validate(0),
             CtyNumber().validate(1),
         ).is_unknown
-        assert slice(l, CtyValue.null(CtyNumber()), CtyNumber().validate(1)).is_unknown
-        assert slice(l, CtyValue.unknown(CtyNumber()), CtyNumber().validate(1)).is_unknown
-        assert slice(l, CtyNumber().validate(0), CtyValue.null(CtyNumber())).is_unknown
-        assert slice(l, CtyNumber().validate(0), CtyValue.unknown(CtyNumber())).is_unknown
+        assert slice(lst, CtyValue.null(CtyNumber()), CtyNumber().validate(1)).is_unknown
+        assert slice(lst, CtyValue.unknown(CtyNumber()), CtyNumber().validate(1)).is_unknown
+        assert slice(lst, CtyNumber().validate(0), CtyValue.null(CtyNumber())).is_unknown
+        assert slice(lst, CtyNumber().validate(0), CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_slice_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -337,17 +337,17 @@ class TestSliceConcat:
         assert concat(t1, t2).raw_value == ["a", "b", "c", "d"]
 
     def test_concat_mixed(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b"])
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
         t = CtyTuple(element_types=(CtyString(), CtyString())).validate(("c", "d"))
-        assert concat(l, t).raw_value == ["a", "b", "c", "d"]
+        assert concat(lst, t).raw_value == ["a", "b", "c", "d"]
 
     def test_concat_with_null_unknown(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert concat(l, CtyValue.null(CtyList(element_type=CtyString()))).raw_value == [
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
+        assert concat(lst, CtyValue.null(CtyList(element_type=CtyString()))).raw_value == [
             "a",
             "b",
         ]
-        assert concat(l, CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
+        assert concat(lst, CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_concat_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -370,8 +370,8 @@ class TestSliceConcat:
 
 class TestLength:
     def test_length_list(self) -> None:
-        l = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert length(l).raw_value == 2
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
+        assert length(lst).raw_value == 2
 
     def test_length_set(self) -> None:
         s = CtySet(element_type=CtyString()).validate({"a", "b"})
@@ -396,5 +396,6 @@ class TestLength:
     def test_length_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
             length(CtyNumber().validate(123))
+
 
 # 🌊🪢🔚

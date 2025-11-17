@@ -416,4 +416,5 @@ class TestStringAdvancedFunctions:
         assert regexreplace(S("a"), CtyValue.unknown(CtyString()), S("b")).is_unknown
         assert regexreplace(S("a"), S("b"), CtyValue.unknown(CtyString())).is_unknown
 
+
 # 🌊🪢🔚

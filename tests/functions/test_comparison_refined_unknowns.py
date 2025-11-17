@@ -388,4 +388,5 @@ class TestEdgeCasesAndBoundaries:
         with pytest.raises(CtyFunctionError, match="same type"):
             max_fn(N(10), S("string"))
 
+
 # 🌊🪢🔚

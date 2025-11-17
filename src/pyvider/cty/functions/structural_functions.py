@@ -23,4 +23,5 @@ def coalesce(*args: CtyValue[Any]) -> CtyValue[Any]:
 
     return CtyValue.null(args[-1].type)
 
+
 # 🌊🪢🔚

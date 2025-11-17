@@ -85,4 +85,5 @@ class CtyFunctionError(CtyError):
     def _default_code(self) -> str:
         return "CTY_FUNCTION_ERROR"
 
+
 # 🌊🪢🔚

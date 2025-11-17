@@ -457,4 +457,5 @@ class WireFormatError(TransformationError):
 
         self.args = (current_message, *self.args[1:])
 
+
 # 🌊🪢🔚

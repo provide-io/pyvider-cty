@@ -119,4 +119,5 @@ class TestStringBasicFunctions:
         assert replace(S("a"), CtyValue.unknown(CtyString()), S("b")).is_unknown
         assert replace(S("a"), S("b"), CtyValue.unknown(CtyString())).is_unknown
 
+
 # 🌊🪢🔚

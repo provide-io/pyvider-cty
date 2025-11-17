@@ -45,4 +45,5 @@ def assert_diagnostic(
         f"\n- Original Got:\n{actual_message}"
     )
 
+
 # 🌊🪢🔚

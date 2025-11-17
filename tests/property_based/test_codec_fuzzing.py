@@ -349,7 +349,7 @@ def test_codec_handles_tuples_with_varied_types(data) -> None:
     decoded = cty_from_msgpack(msgpack_bytes, tuple_type)
 
     # Verify each element
-    for i, (original, decoded_val) in enumerate(zip(element_values, decoded.value)):
+    for _i, (original, decoded_val) in enumerate(zip(element_values, decoded.value, strict=False)):
         if isinstance(original, str):
             assert decoded_val.value == unicodedata.normalize("NFC", original)
         elif isinstance(original, float):
@@ -453,5 +453,6 @@ def test_codec_stress_test_large_collections(data) -> None:
         decoded = cty_from_msgpack(msgpack_bytes, obj_type)
 
         assert len(decoded.value) == len(obj_value)
+
 
 # 🌊🪢🔚

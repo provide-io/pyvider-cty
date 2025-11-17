@@ -28,6 +28,7 @@ from pyvider.cty.exceptions import (
     CtyMapValidationError,
     CtyStringValidationError,
 )
+from pyvider.cty.exceptions.encoding import DeserializationError
 from pyvider.cty.functions.collection_functions import (
     concat,
     element,
@@ -188,7 +189,7 @@ class TestCodecErrorContext:
 
     def test_deserialization_invalid_data(self) -> None:
         """Test deserialization with invalid data."""
-        with pytest.raises(Exception):
+        with pytest.raises((DeserializationError, ValueError)):
             cty_from_msgpack(b"invalid_msgpack_data", CtyString())
 
 

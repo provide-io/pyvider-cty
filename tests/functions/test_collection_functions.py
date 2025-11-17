@@ -114,10 +114,7 @@ def slice(input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyV
         raise CtyFunctionError("slice: start and end must be numbers")
 
     element_type: CtyType[Any]
-    if isinstance(input_val.type, CtyList):
-        element_type = input_val.type.element_type
-    else:
-        element_type = CtyDynamic()
+    element_type = input_val.type.element_type if isinstance(input_val.type, CtyList) else CtyDynamic()
 
     if (
         input_val.is_null
@@ -183,5 +180,6 @@ def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.value, dict):
         raise CtyFunctionError("values: input value is not a map or object")
     return CtyList(element_type=input_val.type.element_type).validate(list(input_val.value.values()))
+
 
 # 🌊🪢🔚

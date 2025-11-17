@@ -88,4 +88,5 @@ def test_dynamic_list_of_primitives_wire_format() -> None:
     assert isinstance(deserialized.type, CtyDynamic)
     assert deserialized.value == concrete_value
 
+
 # 🌊🪢🔚
