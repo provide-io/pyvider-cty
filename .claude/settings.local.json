@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(test:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(for file in docs/api/types/index.md docs/api/values.md docs/api/conversion.md docs/api/codec.md docs/api/functions.md docs/api/path.md docs/api/validation.md)",
+      "Bash(do if [ -f \"/Users/tim/code/gh/provide-io/pyvider-cty/$file\" ])",
+      "Bash(then echo \"✓ $file\")",
+      "Bash(else echo \"✗ MISSING: $file\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(for file in docs/getting-started/index.md docs/getting-started/installation.md docs/getting-started/quick-start.md docs/getting-started/first-type-system.md docs/getting-started/examples.md)",
+      "Bash(for file in \"docs/user-guide/advanced/path-navigation.md\" \"docs/how-to/migrate-from-go-cty.md\" \"docs/reference/go-cty-comparison.md\" \"docs/user-guide/advanced/terraform-interop.md\" \"docs/reference/troubleshooting.md\" \"docs/api/validation.md\" \"docs/user-guide/advanced/serialization.md\" \"docs/how-to/serialize-values.md\" \"docs/user-guide/core-concepts/conversion.md\" \"docs/how-to/create-custom-types.md\")",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(for file in docs/getting-started/*.md docs/user-guide/index.md docs/how-to/index.md docs/api/index.md)",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(then echo \"=== $file ===\")",
+      "Bash(head:*)",
+      "Bash(for file in docs/api/*.md)",
+      "Bash(awk:*)",
+      "Bash(grep:*)",
+      "Bash(for file in docs/user-guide/advanced/terraform-interop.md docs/reference/go-cty-comparison.md docs/api/codec.md docs/how-to/work-with-terraform.md docs/how-to/migrate-from-go-cty.md)",
+      "Bash(ruff check:*)",
+      "Bash(bash updateem:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/tim/code/gh/provide-io"
+    ]
+  }
+}
