@@ -37,7 +37,7 @@ The examples are named with a `chXX_` prefix corresponding to the main documenta
 ## 🏃‍♂️ Running Examples
 
 ### **Prerequisites**
-- Python 3.12+
+- Python 3.11+
 - `pyvider.cty` installed or source available (i.e., run from the project root).
 
 ### **Environment Setup**
