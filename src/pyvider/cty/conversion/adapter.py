@@ -1,14 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any
 
 from pyvider.cty.types import (
     CtyDynamic,
@@ -23,7 +16,7 @@ from pyvider.cty.types import (
 from pyvider.cty.values import CtyValue
 
 
-def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
+def cty_to_native(value: Any) -> Any:  # noqa: C901
     """
     Converts a CtyValue to its raw Python representation using an iterative
     approach to avoid recursion limits. This is safe for deeply nested structures.
@@ -61,21 +54,21 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
                 inner_id = id(val_to_process.value)
                 results[val_id] = results[inner_id]
             elif isinstance(val_to_process.type, CtyObject | CtyMap):
-                dict_val = cast(dict[str, Any], val_to_process.value)
-                results[val_id] = {k: results[id(v)] for k, v in dict_val.items()}
+                results[val_id] = {
+                    k: results[id(v)] for k, v in val_to_process.value.items()
+                }
             elif isinstance(val_to_process.type, CtyList):
-                list_val = cast(list[Any], val_to_process.value)
-                results[val_id] = [results[id(item)] for item in list_val]
+                results[val_id] = [results[id(item)] for item in val_to_process.value]
             elif isinstance(val_to_process.type, CtySet):
                 # Use _canonical_sort_key for consistent sorting of set elements
-                set_val = cast(set[Any], val_to_process.value)
                 results[val_id] = sorted(
-                    [results[id(item)] for item in set_val],
-                    key=lambda v: v._canonical_sort_key() if isinstance(v, CtyValue) else repr(v),
+                    [results[id(item)] for item in val_to_process.value],
+                    key=lambda v: v._canonical_sort_key() if isinstance(v, CtyValue) else repr(v)
                 )
             elif isinstance(val_to_process.type, CtyTuple):
-                tuple_val = cast(tuple[Any, ...], val_to_process.value)
-                results[val_id] = tuple(results[id(item)] for item in tuple_val)
+                results[val_id] = tuple(
+                    results[id(item)] for item in val_to_process.value
+                )
             continue
 
         if not isinstance(current_item, CtyValue):
@@ -103,12 +96,11 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
             if isinstance(current_item.type, CtyDynamic):
                 work_stack.append(current_item.value)
             elif hasattr(current_item.value, "__iter__"):  # Robustness check
-                if isinstance(current_item.value, dict):
-                    dict_val = cast(dict[str, Any], current_item.value)
-                    child_values = list(dict_val.values())
-                else:
-                    iterable_val = cast(list[Any] | set[Any] | tuple[Any, ...], current_item.value)
-                    child_values = list(iterable_val)
+                child_values = (
+                    list(current_item.value.values())
+                    if isinstance(current_item.value, dict)
+                    else list(current_item.value)
+                )
                 work_stack.extend(reversed(child_values))
         else:
             inner_val = current_item.value
@@ -122,6 +114,3 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
                 results[item_id] = inner_val
 
     return results.get(id(value))
-
-
-# 🌊🪢🔚

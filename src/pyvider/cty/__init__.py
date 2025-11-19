@@ -1,18 +1,10 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
+"""
+The pyvider.cty package is a pure-Python implementation of the concepts
+from HashiCorp's `cty` library, providing a rich type system for the framework.
+"""
 
-"""TODO: Add module docstring."""
-
-from __future__ import annotations
-
-from provide.foundation.utils import get_version
-
-__version__ = get_version("flavorpack", caller_file=__file__)
-
-from pyvider.cty.conversion import convert, unify
-from pyvider.cty.exceptions import (
+from .conversion import convert, unify
+from .exceptions import (
     CtyAttributeValidationError,
     CtyConversionError,
     CtyListValidationError,
@@ -23,9 +15,9 @@ from pyvider.cty.exceptions import (
     CtyTypeParseError,
     CtyValidationError,
 )
-from pyvider.cty.marks import CtyMark
-from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
-from pyvider.cty.types import (
+from .marks import CtyMark
+from .parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
+from .types import (
     BytesCapsule,
     CtyBool,
     CtyCapsule,
@@ -40,12 +32,7 @@ from pyvider.cty.types import (
     CtyTuple,
     CtyType,
 )
-from pyvider.cty.values import CtyValue
-
-"""
-The pyvider.cty package is a pure-Python implementation of the concepts
-from HashiCorp's `cty` library, providing a rich type system for the framework.
-"""
+from .values import CtyValue
 
 __all__ = [
     "BytesCapsule",
@@ -72,11 +59,8 @@ __all__ = [
     "CtyTypeParseError",
     "CtyValidationError",
     "CtyValue",
-    "__version__",
     "convert",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
     "unify",
 ]
-
-# 🌊🪢🔚

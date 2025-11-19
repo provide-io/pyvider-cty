@@ -1,47 +1,51 @@
-# Pyvider Cty Examples
+# 📖 Pyvider Cty Examples
 
-This directory contains executable examples demonstrating the features and usage patterns of `pyvider.cty`.
+This directory contains a collection of executable examples demonstrating the features and usage patterns of `pyvider.cty`. Each example is designed to be run independently and showcases specific aspects of the type system.
 
-> **📚 For complete documentation**, see [docs/getting-started/examples.md](../docs/getting-started/examples.md) which provides detailed explanations and is the canonical reference for examples.
+## 🚀 Quick Start
 
-## Quick Start
+To run the quick start example:
 
-Run any example from the project root:
+1.  **Navigate to the project root directory** (if not already there).
+2.  **Run the client script**:
+    ```bash
+    python examples/ch02_getting_started.py
+    ```
+    This script will demonstrate basic type validation.
 
-```bash
-python examples/getting-started/quick-start.py
-python examples/types/primitives.py
-python examples/advanced/serialization.py
-```
+Each example script automatically configures the Python path to find the `pyvider` modules from the project's `src` directory via `example_utils.py`.
 
-Or run all examples:
+## 📋 Example Files
 
+The examples are named with a `chXX_` prefix corresponding to the main documentation chapter they illustrate.
+
+| File | Description | Relevant Chapter(s) |
+|---|---|---|
+| **`ch02_getting_started.py`** | 🚀 Basic type validation. | Ch02 |
+| **`ch05_primitive_types.py`** | ⚙️ Demonstrates the primitive types. | Ch05 |
+| **`ch06_collection_types.py`** | 🚚 Demonstrates the collection types. | Ch06 |
+| **`ch07_structural_types.py`** | 📢 Demonstrates the structural types. | Ch07 |
+| **`ch08_dynamic_types.py`** | 💻 Demonstrates the dynamic type. | Ch08 |
+| **`ch09_capsule_types.py`** | 🔌 Demonstrates the capsule type. | Ch09 |
+| **`ch10_marks.py`** | 🔒 Demonstrates marks. | Ch10 |
+| **`ch11_functions.py`** | ⚡ Demonstrates functions. | Ch11 |
+| **`ch12_serialization.py`** | 📦 Demonstrates serialization. | Ch12 |
+| **`ch13_path_navigation.py`**| 🗺️ Demonstrates path navigation. | Ch13 |
+| **`ch14_context_management.py`**| 🧰 Demonstrates context management. | Ch14 |
+| **`ch15_terraform_interop.py`**| terraform Demonstrates Terraform interop. | Ch15 |
+
+## 🏃‍♂️ Running Examples
+
+### **Prerequisites**
+- Python 3.12+
+- `pyvider.cty` installed or source available (i.e., run from the project root).
+
+### **Environment Setup**
+
+Each example script includes a utility function that automatically adjusts `sys.path` to ensure that the `pyvider.cty` library from the `src/` directory is correctly imported.
+
+### **Running All Examples**
+To run all the examples at once and check for failures, you can use the `run_all_examples.py` script:
 ```bash
 python examples/run_all_examples.py
 ```
-
-## Available Examples
-
-### Getting Started
-- `getting-started/quick-start.py` - Basic type validation
-
-### Type Examples
-- `types/primitives.py` - String, Number, Bool types
-- `types/collections.py` - List, Map, Set types
-- `types/structural.py` - Object and Tuple types
-- `types/dynamic.py` - Dynamic type usage
-- `types/capsule.py` - Capsule types for opaque data
-
-### Advanced Examples
-- `advanced/marks.py` - Attaching metadata to values
-- `advanced/functions.py` - Using built-in functions
-- `advanced/serialization.py` - MessagePack serialization
-- `advanced/path-navigation.py` - Navigating nested structures
-- `advanced/terraform-interop.py` - Working with Terraform types
-
-## Documentation
-
-See the main documentation for comprehensive guides:
-- **[Examples Guide](../docs/getting-started/examples.md)** - Detailed example documentation
-- **[Getting Started](../docs/getting-started/index.md)** - Learn the basics
-- **[User Guide](../docs/user-guide/index.md)** - Complete feature documentation

@@ -1,17 +1,4 @@
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
-from __future__ import annotations
-
-from pyvider.cty.types.collections.list import CtyList
-from pyvider.cty.types.collections.map import CtyMap
-from pyvider.cty.types.collections.set import CtySet
-
-#
 # pyvider/cty/types/collections/__init__.py
 #
 """
@@ -22,10 +9,14 @@ including List, Map, and Set types. These types manage collections
 of CTY values with specific constraints (e.g., element types, uniqueness).
 """
 
+from pyvider.cty.types.collections.list import CtyList
+from pyvider.cty.types.collections.map import CtyMap
+from pyvider.cty.types.collections.set import CtySet
+
 __all__ = [
     "CtyList",
     "CtyMap",
     "CtySet",
 ]
 
-# 🌊🪢🔚
+# 🐍🏗️🐣

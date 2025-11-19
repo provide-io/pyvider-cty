@@ -1,12 +1,13 @@
 #
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
+# tests/set/test_cty_set_base.py
 #
 
-"""Test module for CtySet implementation.
+"""
+Test module for CtySet implementation.
 
 This module contains tests for the CtySet type, ensuring proper validation,
-equality checking, and other operations."""
+equality checking, and other operations.
+"""
 
 import pytest
 
@@ -16,8 +17,8 @@ from pyvider.cty import (
     CtyNumber,
     CtySet,
     CtyString,
-    CtyTuple,
     CtyValue,
+    CtyTuple,
 )
 from pyvider.cty.exceptions import CtySetValidationError
 
@@ -171,6 +172,3 @@ class TestCtySetType:
         set_obj = self.string_set.validate({"apple", "banana", "cherry"})
         values = {item.value for item in set_obj.value}
         assert values == {"apple", "banana", "cherry"}
-
-
-# 🌊🪢🔚

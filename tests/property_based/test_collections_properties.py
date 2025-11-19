@@ -1,13 +1,6 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import unicodedata
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, strategies as st
 import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyValidationError
@@ -45,8 +38,7 @@ def test_list_of_booleans_validation(value: list[bool]) -> None:
     assert [v.value for v in validated_value.value] == value
 
 
-@given(st.lists(st.none() | st.integers(), max_size=20))
-@settings(deadline=500)  # Increase deadline to 500ms for validation-heavy test
+@given(st.lists(st.none() | st.integers()))
 def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
     """
     Tests that a CtyList(element_type=CtyString) raises a validation error for lists containing non-strings.
@@ -58,6 +50,3 @@ def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
     else:
         # This branch is for hypothesis to have valid cases as well
         list_type.validate(value)
-
-
-# 🌊🪢🔚

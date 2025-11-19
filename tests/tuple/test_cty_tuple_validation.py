@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyTuple
@@ -50,7 +43,7 @@ class TestCtyTupleValidation:
         data = ("outer", (123, "not-a-bool"))
         with pytest.raises(
             CtyTupleValidationError,
-            match=r"At \[1\]\[1\]: Boolean validation error: Cannot convert str to bool\.",
+            match="At \\[1\\]\\[1\\]: Boolean validation error: Cannot convert str to bool.",
         ):
             nested_tuple_type.validate(data)
 
@@ -63,6 +56,3 @@ class TestCtyTupleValidation:
         schema = CtyTuple((CtyString(),))
         with pytest.raises(CtyTupleValidationError):
             schema.validate("not a tuple")
-
-
-# 🌊🪢🔚

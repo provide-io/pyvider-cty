@@ -1,25 +1,17 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""Final test suite to address all significant remaining coverage gaps, bringing
-the library to a production-ready state of test coverage."""
-
+"""
+Final test suite to address all significant remaining coverage gaps, bringing
+the library to a production-ready state of test coverage.
+"""
 from decimal import Decimal
-
 import pytest
 
 from pyvider.cty import (
-    CtyDynamic,
-    CtyList,
-    CtyMap,
-    CtyNumber,
-    CtyString,
-    CtyValue,
-    convert,
+    CtyDynamic, CtyList, CtyMap, CtyNumber, CtyString, CtyValue, convert
 )
-from pyvider.cty.functions import add, greater_than, less_than, multiply, subtract
+from pyvider.cty.exceptions import CtyConversionError
+from pyvider.cty.functions import (
+    add, greater_than, less_than, multiply, subtract
+)
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
@@ -29,7 +21,9 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
+        value=RefinedUnknownValue(
+            number_lower_bound=lower_bound, number_upper_bound=upper_bound
+        ),
     )
 
 
@@ -43,26 +37,18 @@ class TestFinalCoveragePush:
         malformed_number = CtyValue(vtype=CtyNumber(), value="not-a-decimal")
         n5 = CtyNumber().validate(5)
 
-        with pytest.raises(TypeError):
-            _ = malformed_number < n5
-        with pytest.raises(TypeError):
-            _ = malformed_number <= n5
-        with pytest.raises(TypeError):
-            _ = malformed_number > n5
-        with pytest.raises(TypeError):
-            _ = malformed_number >= n5
+        with pytest.raises(TypeError): _ = malformed_number < n5
+        with pytest.raises(TypeError): _ = malformed_number <= n5
+        with pytest.raises(TypeError): _ = malformed_number > n5
+        with pytest.raises(TypeError): _ = malformed_number >= n5
 
     def test_value_comparison_dunders_on_non_comparable_type(self) -> None:
         """Covers TypeErrors when comparing uncomparable CtyValue types."""
         list_val = CtyList(element_type=CtyString()).validate([])
-        with pytest.raises(TypeError, match="not comparable"):
-            _ = list_val < list_val
-        with pytest.raises(TypeError, match="not comparable"):
-            _ = list_val <= list_val
-        with pytest.raises(TypeError, match="not comparable"):
-            _ = list_val > list_val
-        with pytest.raises(TypeError, match="not comparable"):
-            _ = list_val >= list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val < list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val <= list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val > list_val
+        with pytest.raises(TypeError, match="not comparable"): _ = list_val >= list_val
 
     def test_collection_helpers_on_malformed_value(self) -> None:
         """Covers internal TypeErrors for helper methods on malformed CtyValues."""
@@ -119,7 +105,6 @@ class TestFinalCoveragePush:
         """Covers cty_to_native with a CtySet whose internal value is not iterable."""
         from pyvider.cty import CtySet
         from pyvider.cty.conversion.adapter import cty_to_native
-
         malformed_set = CtyValue(vtype=CtySet(element_type=CtyString()), value=123)
         assert cty_to_native(malformed_set) == []
 
@@ -128,12 +113,6 @@ class TestFinalCoveragePush:
     def test_type_protocol_conformance_check(self) -> None:
         """Covers the runtime_checkable branches of the CtyTypeProtocol."""
         from pyvider.cty.types.base import CtyTypeProtocol
-
         class IncompleteType:
-            def validate(self, value) -> None:
-                pass
-
+            def validate(self, value): pass
         assert not isinstance(IncompleteType(), CtyTypeProtocol)
-
-
-# 🌊🪢🔚

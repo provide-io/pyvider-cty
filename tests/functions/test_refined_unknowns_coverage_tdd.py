@@ -1,24 +1,15 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TDD: This suite adds targeted tests for all unexercised branches in the
-refined unknown propagation logic of numeric and comparison functions."""
-
+"""
+TDD: This suite adds targeted tests for all unexercised branches in the
+refined unknown propagation logic of numeric and comparison functions.
+"""
 from decimal import Decimal
+import pytest
 
-from pyvider.cty import CtyNumber, CtyValue
+from pyvider.cty import CtyBool, CtyNumber, CtyValue
 from pyvider.cty.functions import (
-    abs_fn,
-    divide,
-    greater_than,
-    less_than,
-    multiply,
-    negate,
+    abs_fn, divide, greater_than, less_than, multiply, negate
 )
 from pyvider.cty.values.markers import RefinedUnknownValue
-
 
 def refined_unknown_num(
     lower_bound: tuple[Decimal, bool] | None = None,
@@ -26,9 +17,10 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
+        value=RefinedUnknownValue(
+            number_lower_bound=lower_bound, number_upper_bound=upper_bound
+        ),
     )
-
 
 class TestRefinedUnknownsCoverage:
     def test_multiply_by_zero_is_zero(self) -> None:
@@ -78,7 +70,7 @@ class TestRefinedUnknownsCoverage:
         assert result.is_unknown
         assert result.value.number_lower_bound == (Decimal("0"), True)
         assert result.value.number_upper_bound == (Decimal("20"), True)
-
+        
     def test_abs_with_only_lower_bound_positive(self) -> None:
         """TDD: abs(unknown > 10) should be unchanged."""
         unknown_gt_10 = refined_unknown_num(lower_bound=(Decimal("10"), True))
@@ -115,6 +107,3 @@ class TestRefinedUnknownsCoverage:
         unknown_lt_50 = refined_unknown_num(upper_bound=(Decimal("50"), False))
         result = greater_than(unknown_gt_100, unknown_lt_50)
         assert result.value is True
-
-
-# 🌊🪢🔚

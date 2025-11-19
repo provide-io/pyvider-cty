@@ -1,20 +1,11 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
-from __future__ import annotations
-
-from decimal import Decimal
-
-from attrs import define
-
 # pyvider/cty/values/markers.py
 """
 This module contains simple marker classes to break import cycles.
 """
+
+from decimal import Decimal
+
+from attrs import define
 
 
 class UnknownValue:
@@ -44,5 +35,3 @@ class RefinedUnknownValue(UnknownValue):
 
 # This singleton represents an unknown value with no refinements.
 UNREFINED_UNKNOWN = UnrefinedUnknownValue()
-
-# 🌊🪢🔚

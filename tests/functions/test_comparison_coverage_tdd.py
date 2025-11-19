@@ -1,12 +1,9 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TDD: This suite adds targeted tests for all unexercised branches in the
-refined unknown propagation logic of comparison functions."""
-
+"""
+TDD: This suite adds targeted tests for all unexercised branches in the
+refined unknown propagation logic of comparison functions.
+"""
 from decimal import Decimal
+import pytest
 
 from pyvider.cty import CtyNumber, CtyValue
 from pyvider.cty.functions import greater_than, less_than
@@ -19,7 +16,9 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
+        value=RefinedUnknownValue(
+            number_lower_bound=lower_bound, number_upper_bound=upper_bound
+        ),
     )
 
 
@@ -62,6 +61,3 @@ class TestRefinedUnknownComparisonCoverage:
         known_20 = CtyNumber().validate(20)
         result = greater_than(unknown_lt_10, known_20)
         assert not result.is_unknown and result.value is False
-
-
-# 🌊🪢🔚

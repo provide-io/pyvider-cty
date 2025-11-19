@@ -1,12 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
-from __future__ import annotations
-
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -24,7 +15,7 @@ class CtyNumber(CtyType[Decimal]):
     ctype: ClassVar[str] = "number"
     _type_order: ClassVar[int] = 0
 
-    def validate(self, value: object) -> CtyValue[Decimal]:
+    def validate(self, value: object) -> "CtyValue[Decimal]":
         from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
@@ -55,10 +46,10 @@ class CtyNumber(CtyType[Decimal]):
                 f"Cannot represent {type(raw_value).__name__} value '{raw_value}' as Decimal"
             ) from e
 
-    def equal(self, other: CtyType[Any]) -> bool:
+    def equal(self, other: "CtyType[Any]") -> bool:
         return isinstance(other, CtyNumber)
 
-    def usable_as(self, other: CtyType[Any]) -> bool:
+    def usable_as(self, other: "CtyType[Any]") -> bool:
         from pyvider.cty.types.structural import CtyDynamic
 
         return isinstance(other, CtyNumber | CtyDynamic)
@@ -71,6 +62,3 @@ class CtyNumber(CtyType[Decimal]):
 
     def is_primitive_type(self) -> bool:
         return True
-
-
-# 🌊🪢🔚

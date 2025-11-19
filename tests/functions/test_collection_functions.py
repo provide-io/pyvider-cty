@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 from typing import Any
 
 from pyvider.cty import (
@@ -24,7 +17,9 @@ from pyvider.cty.exceptions import CtyFunctionError
 
 def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"distinct: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"distinct: input must be a list, set, or tuple, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
     seen = set()
@@ -50,7 +45,9 @@ def distinct(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
     if not isinstance(input_val.type, CtyList | CtyTuple):
-        raise CtyFunctionError(f"flatten: input must be a list or tuple, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"flatten: input must be a list or tuple, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
     result_elements = []
@@ -77,7 +74,9 @@ def flatten(input_val: "CtyValue[Any]") -> "CtyValue[Any]":  # noqa: C901
 
 def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
@@ -88,33 +87,50 @@ def sort(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
         element_type = CtyDynamic()
 
     if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
-        raise CtyFunctionError(f"sort: elements must be string, number, or bool. Found: {element_type.ctype}")
+        raise CtyFunctionError(
+            f"sort: elements must be string, number, or bool. Found: {element_type.ctype}"
+        )
     if not hasattr(input_val.value, "__iter__"):
         raise CtyFunctionError("sort: input value is not iterable")
 
     for i, cty_element in enumerate(input_val.value):
         if cty_element.is_null or cty_element.is_unknown:
-            raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
+            raise CtyFunctionError(
+                f"sort: cannot sort list with null or unknown elements at index {i}."
+            )
 
-    return CtyList[Any](element_type=element_type).validate(sorted(input_val.value, key=lambda x: x.value))
+    return CtyList[Any](element_type=element_type).validate(
+        sorted(input_val.value, key=lambda x: x.value)
+    )
 
 
 def length(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple | CtyMap):
-        raise CtyFunctionError(f"length: input must be a list, set, tuple, or map, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"length: input must be a list, set, tuple, or map, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
     return CtyNumber().validate(len(input_val.value))  # type: ignore
 
 
-def slice(input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyValue[Any]") -> "CtyValue[Any]":
+def slice(
+    input_val: "CtyValue[Any]", start_val: "CtyValue[Any]", end_val: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyList | CtyTuple):
-        raise CtyFunctionError(f"slice: input must be a list or tuple, got {input_val.type.ctype}")
-    if not isinstance(start_val.type, CtyNumber) or not isinstance(end_val.type, CtyNumber):
+        raise CtyFunctionError(
+            f"slice: input must be a list or tuple, got {input_val.type.ctype}"
+        )
+    if not isinstance(start_val.type, CtyNumber) or not isinstance(
+        end_val.type, CtyNumber
+    ):
         raise CtyFunctionError("slice: start and end must be numbers")
 
     element_type: CtyType[Any]
-    element_type = input_val.type.element_type if isinstance(input_val.type, CtyList) else CtyDynamic()
+    if isinstance(input_val.type, CtyList):
+        element_type = input_val.type.element_type
+    else:
+        element_type = CtyDynamic()
 
     if (
         input_val.is_null
@@ -174,12 +190,13 @@ def keys(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
 
 def values(input_val: "CtyValue[Any]") -> "CtyValue[Any]":
     if not isinstance(input_val.type, CtyMap):
-        raise CtyFunctionError(f"values: input must be a map, got {input_val.type.ctype}")
+        raise CtyFunctionError(
+            f"values: input must be a map, got {input_val.type.ctype}"
+        )
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyList(element_type=input_val.type.element_type))
     if not isinstance(input_val.value, dict):
         raise CtyFunctionError("values: input value is not a map or object")
-    return CtyList(element_type=input_val.type.element_type).validate(list(input_val.value.values()))
-
-
-# 🌊🪢🔚
+    return CtyList(element_type=input_val.type.element_type).validate(
+        list(input_val.value.values())
+    )

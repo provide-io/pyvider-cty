@@ -1,40 +1,31 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
-from __future__ import annotations
-
 from typing import Any
 
 from pyvider.cty import CtyNumber, CtyValue
-from pyvider.cty.config.defaults import (
-    ERR_BYTESLEN_ARG_MUST_BE_BYTES_CAPSULE,
-    ERR_BYTESSLICE_ARGS_MUST_BE_BYTES_NUMBER_NUMBER,
-)
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.types import BytesCapsule
 
 
-def byteslen(buffer: CtyValue[Any]) -> CtyValue[Any]:
+def byteslen(buffer: "CtyValue[Any]") -> "CtyValue[Any]":
     if not buffer.type.equal(BytesCapsule):
-        error_message = ERR_BYTESLEN_ARG_MUST_BE_BYTES_CAPSULE.format(type=buffer.type.ctype)
-        raise CtyFunctionError(error_message)
+        raise CtyFunctionError(
+            f"byteslen: argument must be a Bytes capsule, got {buffer.type.ctype}"
+        )
     if buffer.is_unknown or buffer.is_null:
         return CtyValue.unknown(CtyNumber())
-    return CtyNumber().validate(len(buffer.value))  # type: ignore[arg-type]
+    return CtyNumber().validate(len(buffer.value))
 
 
-def bytesslice(buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]) -> CtyValue[Any]:
+def bytesslice(
+    buffer: "CtyValue[Any]", start: "CtyValue[Any]", end: "CtyValue[Any]"
+) -> "CtyValue[Any]":
     if (
         not buffer.type.equal(BytesCapsule)
         or not isinstance(start.type, CtyNumber)
         or not isinstance(end.type, CtyNumber)
     ):
-        error_message = ERR_BYTESSLICE_ARGS_MUST_BE_BYTES_NUMBER_NUMBER
-        raise CtyFunctionError(error_message)
+        raise CtyFunctionError(
+            "bytesslice: arguments must be Bytes capsule, number, number"
+        )
     if (
         buffer.is_unknown
         or buffer.is_null
@@ -45,8 +36,5 @@ def bytesslice(buffer: CtyValue[Any], start: CtyValue[Any], end: CtyValue[Any]) 
     ):
         return CtyValue.unknown(BytesCapsule)
 
-    start_idx, end_idx = int(start.value), int(end.value)  # type: ignore[call-overload]
-    return BytesCapsule.validate(buffer.value[start_idx:end_idx])  # type: ignore[index]
-
-
-# 🌊🪢🔚
+    start_idx, end_idx = int(start.value), int(end.value)
+    return BytesCapsule.validate(buffer.value[start_idx:end_idx])

@@ -1,14 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty.exceptions import CtySetValidationError
-from pyvider.cty.types import CtyNumber, CtyString, CtyTuple
+from pyvider.cty.types import CtyDynamic, CtyNumber, CtyString, CtyTuple
 from pyvider.cty.types.collections.set import CtySet
 
 
@@ -30,6 +23,3 @@ def test_validate_with_cty_value_different_set_type() -> None:
     value = other_set_type.validate({1, 2, 3})
     with pytest.raises(CtySetValidationError):
         set_type.validate(value)
-
-
-# 🌊🪢🔚
