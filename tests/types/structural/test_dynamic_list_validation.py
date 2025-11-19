@@ -1,11 +1,4 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
-from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
+from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString, CtyMap
 
 
 class TestDynamicListValidation:
@@ -32,6 +25,3 @@ class TestDynamicListValidation:
         # Corrected: This is an object because the value types are not uniform.
         assert isinstance(element_2.type, CtyObject)
         assert element_2.type.attribute_types["role"].equal(CtyNumber())
-
-
-# 🌊🪢🔚

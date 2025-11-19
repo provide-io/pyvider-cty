@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 from pyvider.cty import CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
 
 
@@ -33,9 +26,8 @@ class TestTypeUsabilityMatrix:
 
         # Optional vs. Required attributes
         t_req = CtyObject(attribute_types={"a": CtyString()})  # 'a' is required
-        t_opt = CtyObject(attribute_types={"a": CtyString()}, optional_attributes=frozenset(["a"]))
+        t_opt = CtyObject(
+            attribute_types={"a": CtyString()}, optional_attributes=frozenset(["a"])
+        )
         assert t_req.usable_as(t_opt)
         assert not t_opt.usable_as(t_req)
-
-
-# 🌊🪢🔚

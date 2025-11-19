@@ -1,15 +1,12 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TDD Test Suite for Pre-Release Hardening Recommendations.
+"""
+TDD Test Suite for Pre-Release Hardening Recommendations.
 
 This suite defines the required strict behavior for:
 1. Deserialization of CtyDynamic values, which must fail on malformed payloads.
 2. The CtyCapsuleWithOps constructor, which must validate function arity.
-3. Hashing rules for CtyValue, aligning with Python idioms."""
-
+3. Hashing rules for CtyValue, aligning with Python idioms.
+"""
+import json
 from typing import Any
 
 import msgpack  # type: ignore
@@ -24,6 +21,7 @@ from pyvider.cty import (
     CtySet,
     CtyString,
     CtyTuple,
+    CtyType,
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack
@@ -38,9 +36,7 @@ class TestStrictDynamicDeserialization:
     payloads, mirroring go-cty's strict behavior.
     """
 
-    def test_dynamic_deserialization_with_malformed_type_json_raises_error(
-        self,
-    ) -> None:
+    def test_dynamic_deserialization_with_malformed_type_json_raises_error(self) -> None:
         """
         TDD: A malformed type spec in a dynamic value payload must always
         raise a DeserializationError. There is no fallback.
@@ -50,8 +46,7 @@ class TestStrictDynamicDeserialization:
         packed_bytes = msgpack.packb(payload, use_bin_type=True)
 
         with pytest.raises(
-            DeserializationError,
-            match="Failed to decode dynamic value type spec from JSON",
+            DeserializationError, match="Failed to decode dynamic value type spec from JSON"
         ):
             cty_from_msgpack(packed_bytes, CtyDynamic())
 
@@ -76,7 +71,9 @@ class TestCapsuleWithOpsContract:
     )
     def test_constructor_rejects_equal_fn_with_wrong_arity(self, bad_func: Any) -> None:
         """TDD: `equal_fn` must accept exactly 2 arguments."""
-        with pytest.raises(TypeError, match="`equal_fn` must be a callable that accepts 2 arguments"):
+        with pytest.raises(
+            TypeError, match="`equal_fn` must be a callable that accepts 2 arguments"
+        ):
             CtyCapsuleWithOps("Opaque", self.Opaque, equal_fn=bad_func)
 
     @pytest.mark.parametrize(
@@ -88,7 +85,9 @@ class TestCapsuleWithOpsContract:
     )
     def test_constructor_rejects_hash_fn_with_wrong_arity(self, bad_func: Any) -> None:
         """TDD: `hash_fn` must accept exactly 1 argument."""
-        with pytest.raises(TypeError, match="`hash_fn` must be a callable that accepts 1 argument"):
+        with pytest.raises(
+            TypeError, match="`hash_fn` must be a callable that accepts 1 argument"
+        ):
             CtyCapsuleWithOps("Opaque", self.Opaque, hash_fn=bad_func)
 
     @pytest.mark.parametrize(
@@ -99,9 +98,13 @@ class TestCapsuleWithOpsContract:
             lambda a, b, c: None,  # 3 args
         ],
     )
-    def test_constructor_rejects_convert_fn_with_wrong_arity(self, bad_func: Any) -> None:
+    def test_constructor_rejects_convert_fn_with_wrong_arity(
+        self, bad_func: Any
+    ) -> None:
         """TDD: `convert_fn` must accept exactly 2 arguments."""
-        with pytest.raises(TypeError, match="`convert_fn` must be a callable that accepts 2 arguments"):
+        with pytest.raises(
+            TypeError, match="`convert_fn` must be a callable that accepts 2 arguments"
+        ):
             CtyCapsuleWithOps("Opaque", self.Opaque, convert_fn=bad_func)
 
     def test_constructor_accepts_correctly_defined_fns(self) -> None:
@@ -147,6 +150,3 @@ class TestValueHashingContract:
         """TDD: CtyValues wrapping lists, sets, maps, and objects MUST be unhashable."""
         with pytest.raises(TypeError, match="unhashable type"):
             hash(unhashable_val)
-
-
-# 🌊🪢🔚

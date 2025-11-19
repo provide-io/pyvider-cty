@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty import CtyBool, CtyDynamic, CtyString, CtyValue
@@ -29,7 +22,9 @@ def test_is_true_and_is_false_with_booleans(bool_type: CtyBool) -> None:
     assert false_val.is_false() is True
 
 
-def test_is_true_and_is_false_with_dynamic_booleans(bool_type: CtyBool, dynamic_type: CtyDynamic) -> None:
+def test_is_true_and_is_false_with_dynamic_booleans(
+    bool_type: CtyBool, dynamic_type: CtyDynamic
+) -> None:
     dyn_true_val = CtyValue(dynamic_type, CtyValue(bool_type, True))
     assert dyn_true_val.is_true() is True
     assert dyn_true_val.is_false() is False
@@ -52,6 +47,3 @@ def test_is_true_and_is_false_with_null_and_unknown(bool_type: CtyBool) -> None:
     unknown_val = CtyValue.unknown(bool_type)
     assert unknown_val.is_true() is False
     assert unknown_val.is_false() is False
-
-
-# 🌊🪢🔚

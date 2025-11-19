@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty.exceptions import CtyListValidationError
@@ -39,7 +32,9 @@ def test_validate_null_element_in_list() -> None:
 
 def test_element_at_on_non_cty_list_value() -> None:
     list_type = CtyList(element_type=CtyString())
-    with pytest.raises(CtyListValidationError, match="Expected CtyValue with CtyList type"):
+    with pytest.raises(
+        CtyListValidationError, match="Expected CtyValue with CtyList type"
+    ):
         list_type.element_at(CtyValue(CtyNumber(), 1), 0)
 
 
@@ -52,6 +47,3 @@ def test_element_at_on_non_list_internal_value() -> None:
         match="Internal error: CtyValue of CtyList type does not wrap a list/tuple",
     ):
         list_type.element_at(inconsistent_value, 0)
-
-
-# 🌊🪢🔚

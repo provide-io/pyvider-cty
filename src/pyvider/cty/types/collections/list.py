@@ -1,16 +1,9 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, final
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar, final
 
 from attrs import define, field
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
@@ -27,7 +20,7 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtyList(CtyType[tuple[T, ...]], Generic[T]):
+class CtyList[T](CtyType[tuple[T, ...]]):
     ctype: ClassVar[str] = "list"
     _type_order: ClassVar[int] = 5
     element_type: CtyType[T] = field(kw_only=True)
@@ -44,7 +37,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, tuple):
-                return cast(CtyValue[tuple[T, ...]], value)  # Fast path for already-validated values
+                return value  # Fast path for already-validated values
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
@@ -54,25 +47,14 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if value is None:
             return CtyValue.null(self)
 
-        # Check for UnrefinedUnknownValue which can slip through if a CtyValue wrapper is removed
-        from pyvider.cty.values.markers import UnrefinedUnknownValue
-
-        if isinstance(value, UnrefinedUnknownValue):
-            raise CtyListValidationError(
-                "Cannot use unknown/computed value for list parameter. "
-                "This value won't be known until apply time, but is needed during validation. "
-                "Possible causes:\n"
-                "  - Circular reference (e.g., data source referencing itself)\n"
-                "  - Using output from another resource/data source that hasn't been created yet\n"
-                "  - Dynamic values in function calls during validation\n"
-                "Hint: Check for self-references or values that depend on resources not yet created."
-            )
+        raw_list_to_validate: Sequence[object] | None = None
 
         if isinstance(value, list | tuple | set | frozenset):
-            value_collection = cast(list[object] | tuple[object, ...] | set[object] | frozenset[object], value)
-            raw_list_to_validate: list[object] = list(value_collection)
+            raw_list_to_validate = list(value)
         else:
-            raise CtyListValidationError(f"Expected list, tuple, or CtyValue list, got {type(value).__name__}")
+            raise CtyListValidationError(
+                f"Expected list, tuple, or CtyValue list, got {type(value).__name__}"
+            )
 
         if not isinstance(raw_list_to_validate, list | tuple):
             raise CtyListValidationError(
@@ -81,30 +63,26 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         validated_elements: list[CtyValue[T]] = []
         for i, item in enumerate(raw_list_to_validate):
-            with error_boundary(
-                context={
-                    "operation": "list_element_validation",
-                    "list_index": i,
-                    "element_type": str(self.element_type),
-                    "item_type": type(item).__name__,
-                }
-            ):
-                if item is None and not isinstance(self.element_type, CtyDynamic):
-                    raise CtyListValidationError(
-                        f"List elements cannot be null for element type {self.element_type.ctype}",
-                        path=CtyPath(steps=[IndexStep(i)]),
-                    )
-                try:
-                    validated_item = self.element_type.validate(item)
-                    validated_elements.append(validated_item)
-                except CtyValidationError as e:
-                    new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
-                    raise CtyListValidationError(
-                        e.message, value=item, path=new_path, original_exception=e
-                    ) from e
+            if item is None and not isinstance(self.element_type, CtyDynamic):
+                raise CtyListValidationError(
+                    f"List elements cannot be null for element type {self.element_type.ctype}",
+                    path=CtyPath(steps=[IndexStep(i)]),
+                )
+            try:
+                validated_item = self.element_type.validate(item)
+                validated_elements.append(validated_item)
+            except CtyValidationError as e:
+                new_path = CtyPath(
+                    steps=[IndexStep(i)] + (e.path.steps if e.path else [])
+                )
+                raise CtyListValidationError(
+                    e.message, value=item, path=new_path, original_exception=e
+                ) from e
 
         is_unknown = any(v.is_unknown for v in validated_elements)
-        return CtyValue(vtype=self, value=tuple(validated_elements), is_unknown=is_unknown)
+        return CtyValue(
+            vtype=self, value=tuple(validated_elements), is_unknown=is_unknown
+        )
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
         from pyvider.cty.values import CtyValue
@@ -115,7 +93,9 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                     f"Expected CtyValue with CtyList type, got CtyValue with {type(container.type).__name__}"
                 )
             if container.is_null:
-                raise IndexError(f"Cannot access element at index {index} in a null list.")
+                raise IndexError(
+                    f"Cannot access element at index {index} in a null list."
+                )
             if container.is_unknown:
                 return CtyValue.unknown(self.element_type)
             if not isinstance(container.value, list | tuple):
@@ -123,12 +103,15 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                     f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}"
                 )
             try:
-                container_value_seq = cast(list[Any] | tuple[Any, ...], container.value)  # type: ignore[redundant-cast]
-                return self.element_type.validate(container_value_seq[index])
+                return self.element_type.validate(container.value[index])
             except TypeError as e:
-                raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
+                raise TypeError(
+                    f"list indices must be integers or slices, not {type(index).__name__}"
+                ) from e
 
-        raise CtyListValidationError(f"Expected CtyValue[CtyList], got {type(container).__name__}")
+        raise CtyListValidationError(
+            f"Expected CtyValue[CtyList], got {type(container).__name__}"
+        )
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyList):
@@ -152,6 +135,3 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
     def __repr__(self) -> str:
         return f"CtyList(element_type={self.element_type!r})"
-
-
-# 🌊🪢🔚

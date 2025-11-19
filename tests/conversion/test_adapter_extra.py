@@ -1,26 +1,21 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
+import pytest
 from decimal import Decimal
 
 from pyvider.cty import (
-    CtyBool,
-    CtyDynamic,
-    CtyList,
-    CtyNumber,
-    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
+    CtyValue,
+    CtyDynamic,
+    CtyNumber,
+    CtyList,
+    CtyObject,
+    CtyBool,
 )
 from pyvider.cty.conversion.adapter import cty_to_native
 
 
-def test_cty_to_native_with_set() -> None:
+def test_cty_to_native_with_set():
     set_type = CtySet(element_type=CtyString())
     cty_val = set_type.validate({"a", "b", "c"})
     native = cty_to_native(cty_val)
@@ -28,7 +23,7 @@ def test_cty_to_native_with_set() -> None:
     assert sorted(native) == ["a", "b", "c"]
 
 
-def test_cty_to_native_with_tuple() -> None:
+def test_cty_to_native_with_tuple():
     tuple_type = CtyTuple(element_types=(CtyString(), CtyString()))
     cty_val = tuple_type.validate(("a", "b"))
     native = cty_to_native(cty_val)
@@ -36,13 +31,13 @@ def test_cty_to_native_with_tuple() -> None:
     assert native == ("a", "b")
 
 
-def test_cty_to_native_with_non_cty_value() -> None:
+def test_cty_to_native_with_non_cty_value():
     assert cty_to_native("hello") == "hello"
     assert cty_to_native(123) == 123
     assert cty_to_native(None) is None
 
 
-def test_cty_to_native_with_dynamic_value() -> None:
+def test_cty_to_native_with_dynamic_value():
     # Test with a CtyValue wrapping a primitive
     dynamic_type = CtyDynamic()
     cty_val = dynamic_type.validate("hello")
@@ -56,7 +51,7 @@ def test_cty_to_native_with_dynamic_value() -> None:
     assert native_list == ["a", "b"]
 
 
-def test_cty_to_native_with_decimal() -> None:
+def test_cty_to_native_with_decimal():
     # Test integer conversion
     cty_val_int = CtyNumber().validate(Decimal("123"))
     native_int = cty_to_native(cty_val_int)
@@ -68,7 +63,6 @@ def test_cty_to_native_with_decimal() -> None:
     native_float = cty_to_native(cty_val_float)
     assert isinstance(native_float, float)
     assert native_float == 123.45
-
 
 class TestCtyToNativeCorrectness:
     """
@@ -88,7 +82,9 @@ class TestCtyToNativeCorrectness:
                 CtyNumber().validate(123),
                 CtyBool().validate(True),
                 # A nested object, which will also be wrapped dynamically
-                CtyObject(attribute_types={"key": CtyString()}).validate({"key": "value"}),
+                CtyObject(attribute_types={"key": CtyString()}).validate(
+                    {"key": "value"}
+                ),
             ]
         )
 
@@ -125,6 +121,3 @@ class TestCtyToNativeCorrectness:
         assert native_result["id"] == 1
         assert isinstance(native_result["data"], list)
         assert native_result["data"] == ["x", "y", "z"]
-
-
-# 🌊🪢🔚

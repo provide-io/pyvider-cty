@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty.exceptions import CtyValidationError
@@ -30,6 +23,3 @@ def test_validate_with_cty_value_different_capsule_type() -> None:
 def test_to_wire_json() -> None:
     capsule_type = CtyCapsule("MyObject", MyObject)
     assert capsule_type._to_wire_json() is None
-
-
-# 🌊🪢🔚

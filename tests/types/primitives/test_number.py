@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 from decimal import Decimal
 
 import pytest
@@ -21,38 +14,35 @@ class TestCtyNumber:
     def test_validate_cty_value(self) -> None:
         cty_val = CtyValue(CtyNumber(), Decimal("123"))
         result = self.number_type.validate(cty_val)
-        assert result.value == Decimal("123"), f"Expected Decimal('123'), but got {result.value}"
+        assert result.value == Decimal("123")
 
     def test_validate_cty_value_null(self) -> None:
         cty_val = CtyValue.null(CtyNumber())
         result = self.number_type.validate(cty_val)
-        assert result.is_null, "Validating null CtyValue should remain null"
+        assert result.is_null
 
     def test_validate_cty_value_unknown(self) -> None:
         cty_val = CtyValue.unknown(CtyNumber())
         result = self.number_type.validate(cty_val)
-        assert result.is_unknown, "Validating unknown CtyValue should remain unknown"
+        assert result.is_unknown
 
     def test_validate_unknown_value(self) -> None:
         from pyvider.cty.values import CtyValue
 
         result = self.number_type.validate(CtyValue.unknown(self.number_type))
-        assert result.is_unknown, "Validating unknown value should return unknown CtyValue"
+        assert result.is_unknown
 
     def test_validate_bool(self) -> None:
         result = self.number_type.validate(True)
-        assert result.value == 1, f"Expected 1 for True validation, but got {result.value}"
+        assert result.value == 1
         result = self.number_type.validate(False)
-        assert result.value == 0, f"Expected 0 for False validation, but got {result.value}"
+        assert result.value == 0
 
     def test_validate_invalid_value_raises_exception(self) -> None:
         with pytest.raises(CtyNumberValidationError):
             self.number_type.validate("not a number")
 
     def test_usable_as(self) -> None:
-        assert self.number_type.usable_as(CtyNumber()), "CtyNumber should be usable as CtyNumber"
-        assert self.number_type.usable_as(CtyDynamic()), "CtyNumber should be usable as CtyDynamic"
-        assert not self.number_type.usable_as(CtyString()), "CtyNumber should not be usable as CtyString"
-
-
-# 🌊🪢🔚
+        assert self.number_type.usable_as(CtyNumber())
+        assert self.number_type.usable_as(CtyDynamic())
+        assert not self.number_type.usable_as(CtyString())

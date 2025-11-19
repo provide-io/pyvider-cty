@@ -1,13 +1,7 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty import (
+    CtyBool,
     CtyList,
     CtyNumber,
     CtyString,
@@ -47,6 +41,3 @@ class TestCtyListWithNestedTypes:
         data = [[1, 2], [3, "four", 5]]
         with pytest.raises(CtyListValidationError):
             nested_list_type.validate(data)
-
-
-# 🌊🪢🔚

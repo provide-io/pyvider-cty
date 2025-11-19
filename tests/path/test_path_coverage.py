@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty.exceptions import AttributePathError
@@ -92,7 +85,6 @@ def test_key_step_with_invalid_key_type() -> None:
     with pytest.raises(AttributePathError):
         step.apply_type(CtyMap(element_type=CtyString()))
 
-
 def test_path_edge_cases_from_z_file() -> None:
     """Integrates and fixes tests from the old z_high_coverage_final file."""
     obj_type = CtyObject(attribute_types={"name": CtyString()})
@@ -105,6 +97,3 @@ def test_path_edge_cases_from_z_file() -> None:
         CtyPath.key("k").apply_path_type(CtyString())
     with pytest.raises(AttributePathError):
         CtyPath.key(1).apply_path_type(CtyMap(element_type=CtyString()))
-
-
-# 🌊🪢🔚

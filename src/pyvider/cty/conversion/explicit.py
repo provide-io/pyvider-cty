@@ -1,31 +1,14 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
-from __future__ import annotations
+"""
+Implementation of the public `convert` and `unify` functions for explicit
+CTY-to-CTY type conversion.
+"""
 
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any, cast
+from typing import Any
 
-from provide.foundation.errors import error_boundary
-
-from pyvider.cty.config.defaults import (
-    ERR_CANNOT_CONVERT_GENERAL,
-    ERR_CANNOT_CONVERT_TO_BOOL,
-    ERR_CANNOT_CONVERT_VALIDATION,
-    ERR_CAPSULE_CANNOT_CONVERT,
-    ERR_CUSTOM_CONVERTER_NON_CTYVALUE,
-    ERR_CUSTOM_CONVERTER_WRONG_TYPE,
-    ERR_DYNAMIC_VALUE_NOT_CTYVALUE,
-    ERR_MISSING_REQUIRED_ATTRIBUTE,
-    ERR_SOURCE_OBJECT_NOT_DICT,
-)
-from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
-from pyvider.cty.types import (
+from ..exceptions import CtyConversionError, CtyValidationError
+from ..types import (
     CtyBool,
     CtyCapsule,
     CtyCapsuleWithOps,
@@ -38,158 +21,123 @@ from pyvider.cty.types import (
     CtyTuple,
     CtyType,
 )
-from pyvider.cty.values import CtyValue
-
-"""
-Implementation of the public `convert` and `unify` functions for explicit
-CTY-to-CTY type conversion.
-"""
+from ..values import CtyValue
 
 
-def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
+def convert(value: "CtyValue[Any]", target_type: "CtyType[Any]") -> "CtyValue[Any]":  # noqa: C901
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """
-    with error_boundary(
-        context={
-            "operation": "cty_value_conversion",
-            "source_type": str(value.type),
-            "target_type": str(target_type),
-            "value_is_null": value.is_null,
-            "value_is_unknown": value.is_unknown,
-        }
-    ):
-        # Early exit cases
-        if value.type.equal(target_type):
-            return value
+    if value.type.equal(target_type):
+        return value
 
-        if value.is_null:
-            return CtyValue.null(target_type)
-        if value.is_unknown:
-            return CtyValue.unknown(target_type)
+    if value.is_null:
+        return CtyValue.null(target_type)
+    if value.is_unknown:
+        return CtyValue.unknown(target_type)
 
-        # Capsule conversion with operations
-        if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
-            result = value.type.convert_fn(value.value, target_type)
-            if result is None:
-                error_message = ERR_CAPSULE_CANNOT_CONVERT.format(
-                    value_type=value.type, target_type=target_type
-                )
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                )
-            if not isinstance(result, CtyValue):
-                error_message = ERR_CUSTOM_CONVERTER_NON_CTYVALUE
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                )
-            if not result.type.equal(target_type):
-                error_message = ERR_CUSTOM_CONVERTER_WRONG_TYPE.format(
-                    result_type=result.type, target_type=target_type
-                )
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                )
-            return result.with_marks(set(value.marks))
-
-        # Dynamic type handling
-        if isinstance(value.type, CtyDynamic):
-            if not isinstance(value.value, CtyValue):
-                error_message = ERR_DYNAMIC_VALUE_NOT_CTYVALUE
-                raise CtyConversionError(error_message, source_value=value)
-            return convert(value.value, target_type)
-
-        if isinstance(target_type, CtyDynamic):
-            return value.with_marks(set(value.marks))
-
-        # String conversion
-        if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
-            raw = value.value
-            new_val = ("true" if raw else "false") if isinstance(raw, bool) else str(raw)
-            return CtyValue(target_type, new_val).with_marks(set(value.marks))
-
-        # Number conversion
-        if isinstance(target_type, CtyNumber):
-            try:
-                validated = target_type.validate(value.value)
-                return validated.with_marks(set(value.marks))
-            except CtyValidationError as e:
-                error_message = ERR_CANNOT_CONVERT_VALIDATION.format(
-                    value_type=value.type, target_type=target_type, message=e.message
-                )
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                ) from e
-
-        # Boolean conversion
-        if isinstance(target_type, CtyBool):
-            if isinstance(value.type, CtyString):
-                s = str(value.value).lower()
-                if s == "true":
-                    return CtyValue(target_type, True).with_marks(set(value.marks))
-                if s == "false":
-                    return CtyValue(target_type, False).with_marks(set(value.marks))
-            error_message = ERR_CANNOT_CONVERT_TO_BOOL.format(value_type=value.type)
+    if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
+        result = value.type.convert_fn(value.value, target_type)
+        if result is None:
             raise CtyConversionError(
-                error_message,
+                f"Capsule type {value.type} cannot be converted to {target_type}",
                 source_value=value,
                 target_type=target_type,
             )
+        if not isinstance(result, CtyValue):
+            raise CtyConversionError(
+                "Custom capsule converter returned a non-CtyValue object",
+                source_value=value,
+                target_type=target_type,
+            )
+        if not result.type.equal(target_type):
+            raise CtyConversionError(
+                f"Custom capsule converter returned a value of the wrong type "
+                f"(got {result.type}, want {target_type})",
+                source_value=value,
+                target_type=target_type,
+            )
+        return result.with_marks(set(value.marks))
 
-        # Collection conversions
-        if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
-            converted: CtyValue[Any] = target_type.validate(value.value).with_marks(set(value.marks))
-            return converted
+    if isinstance(value.type, CtyDynamic):
+        if not isinstance(value.value, CtyValue):
+            raise CtyConversionError(
+                "Dynamic value does not contain a CtyValue", source_value=value
+            )
+        return convert(value.value, target_type)
 
-        if isinstance(target_type, CtyList) and isinstance(value.type, CtySet | CtyTuple):
-            converted = target_type.validate(value.value).with_marks(set(value.marks))
-            return converted
+    if isinstance(target_type, CtyDynamic):
+        return value.with_marks(set(value.marks))
 
-        if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
-            if target_type.element_type.equal(value.type.element_type):
-                return value
-            if isinstance(target_type.element_type, CtyDynamic):
-                converted = target_type.validate(value.value).with_marks(set(value.marks))
-                return converted
+    if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
+        raw = value.value
+        if isinstance(raw, bool):
+            new_val = "true" if raw else "false"
+        else:
+            new_val = str(raw)
+        return CtyValue(target_type, new_val).with_marks(set(value.marks))
 
-        # Object conversion
-        if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
-            new_attrs = {}
-            source_attrs = value.value
-            if not isinstance(source_attrs, dict):
-                error_message = ERR_SOURCE_OBJECT_NOT_DICT
-                raise CtyConversionError(error_message)
-            source_attrs_dict = cast(dict[str, CtyValue[Any]], source_attrs)
-            for name, target_attr_type in target_type.attribute_types.items():
-                if name in source_attrs_dict:
-                    new_attrs[name] = convert(source_attrs_dict[name], target_attr_type)
-                elif name in target_type.optional_attributes:
-                    new_attrs[name] = CtyValue.null(target_attr_type)
-                else:
-                    error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
-                    raise CtyConversionError(error_message)
-            converted = target_type.validate(new_attrs).with_marks(set(value.marks))
-            return converted
+    if isinstance(target_type, CtyNumber):
+        try:
+            validated = target_type.validate(value.value)
+            return validated.with_marks(set(value.marks))
+        except CtyValidationError as e:
+            raise CtyConversionError(
+                f"Cannot convert {value.type} to {target_type}: {e.message}",
+                source_value=value,
+                target_type=target_type,
+            ) from e
 
-        # Fallback - no conversion available
-        error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
+    if isinstance(target_type, CtyBool):
+        if isinstance(value.type, CtyString):
+            s = str(value.value).lower()
+            if s == "true":
+                return CtyValue(target_type, True).with_marks(set(value.marks))
+            if s == "false":
+                return CtyValue(target_type, False).with_marks(set(value.marks))
         raise CtyConversionError(
-            error_message,
+            f"Cannot convert {value.type} to bool",
             source_value=value,
             target_type=target_type,
         )
 
+    if isinstance(target_type, CtySet) and isinstance(value.type, CtyList | CtyTuple):
+        return target_type.validate(value.value).with_marks(set(value.marks))
+
+    if isinstance(target_type, CtyList) and isinstance(value.type, CtySet | CtyTuple):
+        return target_type.validate(value.value).with_marks(set(value.marks))
+
+    if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
+        if target_type.element_type.equal(value.type.element_type):
+            return value
+        if isinstance(target_type.element_type, CtyDynamic):
+            return target_type.validate(value.value).with_marks(set(value.marks))
+
+    if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
+        new_attrs = {}
+        source_attrs = value.value
+        if not isinstance(source_attrs, dict):
+            raise CtyConversionError("Source object is not a dictionary")
+        for name, target_attr_type in target_type.attribute_types.items():
+            if name in source_attrs:
+                new_attrs[name] = convert(source_attrs[name], target_attr_type)
+            elif name in target_type.optional_attributes:
+                new_attrs[name] = CtyValue.null(target_attr_type)
+            else:
+                raise CtyConversionError(
+                    f"Missing required attribute '{name}' for conversion"
+                )
+        return target_type.validate(new_attrs).with_marks(set(value.marks))
+
+    raise CtyConversionError(
+        f"Cannot convert from {value.type} to {target_type}",
+        source_value=value,
+        target_type=target_type,
+    )
+
 
 @lru_cache(maxsize=1024)
-def _unify_frozen(types: frozenset[CtyType[Any]]) -> CtyType[Any]:
+def _unify_frozen(types: frozenset["CtyType[Any]"]) -> "CtyType[Any]":
     """
     Memoized implementation of unify; operates on a hashable frozenset.
     """
@@ -235,12 +183,9 @@ def _unify_frozen(types: frozenset[CtyType[Any]]) -> CtyType[Any]:
     return CtyDynamic()
 
 
-def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any]:
+def unify(types: Iterable["CtyType[Any]"]) -> "CtyType[Any]":
     """
     Finds a single common CtyType that all of the given types can convert to.
     This is a wrapper that enables caching by converting input to a frozenset.
     """
     return _unify_frozen(frozenset(types))
-
-
-# 🌊🪢🔚

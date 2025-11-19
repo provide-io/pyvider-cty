@@ -1,13 +1,10 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TDD: Ensures that key lookups and comparisons are aware of Unicode normalization."""
+"""
+TDD: Ensures that key lookups and comparisons are aware of Unicode normalization.
+"""
+import pytest
 
 from pyvider.cty import CtyMap, CtyObject, CtyString
 from pyvider.cty.functions import lookup
-
 
 class TestUnicodeNormalizationConsistency:
     # NFD (e + combining acute) vs NFC (é)
@@ -41,6 +38,3 @@ class TestUnicodeNormalizationConsistency:
 
         result = lookup(map_val, lookup_key, default_val)
         assert result.value == "found"
-
-
-# 🌊🪢🔚

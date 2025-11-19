@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import random
 import time
 from typing import Any
@@ -13,12 +6,12 @@ import pytest
 
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.conversion import inference_cache_context
 
 # --- Configuration ---
 NESTING_DEPTH = 5  # A reasonable depth for a single complex object
 
 # --- Test Data Generation ---
-
 
 def generate_complex_object_data(depth: int) -> dict[str, Any]:
     """Generates a single, representative nested Python dictionary."""
@@ -61,7 +54,6 @@ def generate_cty_schema_from_data(d: dict) -> CtyObject:
 
 # --- Pytest Fixture for Test Data ---
 
-
 @pytest.fixture(scope="module")
 def complex_data_and_schema() -> tuple[dict[str, Any], CtyObject]:
     """
@@ -74,7 +66,6 @@ def complex_data_and_schema() -> tuple[dict[str, Any], CtyObject]:
 
 
 # --- Benchmark Test ---
-
 
 def core_roundtrip_operation(raw_data: dict, schema: CtyObject) -> None:
     """
@@ -105,6 +96,3 @@ def test_benchmark_full_conversion_roundtrip(
     # by the benchmark fixture itself via the `with_inference_cache` decorator
     # on the underlying functions.
     benchmark(core_roundtrip_operation, test_data, cty_schema)
-
-
-# 🌊🪢🔚

@@ -1,21 +1,6 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
-from pyvider.cty import (
-    CtyDynamic,
-    CtyList,
-    CtyMap,
-    CtyObject,
-    CtyString,
-    CtyTuple,
-    CtyValue,
-)
+from pyvider.cty import CtyObject, CtyString, CtyValue
 from pyvider.cty.exceptions import AttributePathError
 from pyvider.cty.path import (
     CtyPath,
@@ -70,6 +55,9 @@ class TestGetAttrStep:
         step = GetAttrStep("name")
         with pytest.raises(AttributePathError):
             step.apply_type(obj_type)
+
+
+from pyvider.cty import CtyDynamic, CtyList, CtyTuple
 
 
 class TestIndexStep:
@@ -129,6 +117,9 @@ class TestIndexStep:
         step = IndexStep(1)
         with pytest.raises(AttributePathError):
             step.apply_type(tuple_type)
+
+
+from pyvider.cty import CtyMap
 
 
 class TestKeyStep:
@@ -194,7 +185,9 @@ class TestPath:
         assert isinstance(path.steps[2], KeyStep)
 
     def test_apply_path(self) -> None:
-        obj_type = CtyObject({"users": CtyList(element_type=CtyObject({"name": CtyString()}))})
+        obj_type = CtyObject(
+            {"users": CtyList(element_type=CtyObject({"name": CtyString()}))}
+        )
         obj_value = obj_type.validate({"users": [{"name": "Alice"}, {"name": "Bob"}]})
         path = CtyPath.get_attr("users").index_step(1).child("name")
         result = path.apply_path(obj_value)
@@ -206,7 +199,9 @@ class TestPath:
             path.apply_path("not a cty value")
 
     def test_apply_path_type(self) -> None:
-        obj_type = CtyObject({"users": CtyList(element_type=CtyObject({"name": CtyString()}))})
+        obj_type = CtyObject(
+            {"users": CtyList(element_type=CtyObject({"name": CtyString()}))}
+        )
         path = CtyPath.get_attr("users").index_step(1).child("name")
         result = path.apply_path_type(obj_type)
         assert result == CtyString()
@@ -214,7 +209,6 @@ class TestPath:
     def test_string_representation(self) -> None:
         path = CtyPath.get_attr("users").index_step(1).key_step("name")
         assert str(path) == "users[1]['name']"
-
 
 class TestCtyPathStringRepresentation:
     """
@@ -231,7 +225,13 @@ class TestCtyPathStringRepresentation:
         assert str(path) == "user"
 
     def test_complex_mixed_path(self) -> None:
-        path = CtyPath.get_attr("users").index_step(0).child("addresses").key_step("home").child("zip")
+        path = (
+            CtyPath.get_attr("users")
+            .index_step(0)
+            .child("addresses")
+            .key_step("home")
+            .child("zip")
+        )
         assert str(path) == "users[0].addresses['home'].zip"
 
     def test_path_starting_with_index(self) -> None:
@@ -241,6 +241,3 @@ class TestCtyPathStringRepresentation:
     def test_path_with_only_key(self) -> None:
         path = CtyPath.key("config-key")
         assert str(path) == "['config-key']"
-
-
-# 🌊🪢🔚

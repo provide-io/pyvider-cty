@@ -1,14 +1,10 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""Dedicated performance benchmark for the `cty_to_native` function.
+"""
+Dedicated performance benchmark for the `cty_to_native` function.
 
 This suite tests the adapter's performance against both deeply nested and
 wide (many-element) data structures to ensure it is efficient under
-different kinds of load."""
-
+different kinds of load.
+"""
 import random
 from typing import Any
 
@@ -19,7 +15,6 @@ from pyvider.cty.conversion import cty_to_native
 
 # --- Test Data Generation ---
 
-
 def generate_deep_object(depth: int) -> dict[str, Any]:
     """Generates a deeply nested dictionary."""
     if depth <= 0:
@@ -28,7 +23,6 @@ def generate_deep_object(depth: int) -> dict[str, Any]:
         "id": f"node-{depth}",
         "child": generate_deep_object(depth - 1),
     }
-
 
 def generate_wide_list(count: int) -> list[dict[str, Any]]:
     """Generates a wide list of moderately complex objects."""
@@ -41,9 +35,7 @@ def generate_wide_list(count: int) -> list[dict[str, Any]]:
         for i in range(count)
     ]
 
-
 # --- Pytest Fixtures ---
-
 
 @pytest.fixture(scope="module")
 def deep_cty_value() -> CtyDynamic:
@@ -61,7 +53,6 @@ def wide_cty_value() -> CtyDynamic:
 
 # --- Benchmark Tests ---
 
-
 @pytest.mark.benchmark
 def test_benchmark_cty_to_native_deep_structure(benchmark: Any, deep_cty_value: CtyDynamic) -> None:
     """
@@ -78,6 +69,3 @@ def test_benchmark_cty_to_native_wide_structure(benchmark: Any, wide_cty_value: 
     to test its efficiency with large collections.
     """
     benchmark(cty_to_native, wide_cty_value)
-
-
-# 🌊🪢🔚

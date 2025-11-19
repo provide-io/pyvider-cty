@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty import (
@@ -26,9 +19,13 @@ class TestCtyTupleCreation:
         assert len(empty_tuple.element_types) == 0
 
     def test_tuple_type_init_invalid_element_types(self) -> None:
-        with pytest.raises(CtyTupleValidationError, match="element_types must be a tuple"):
+        with pytest.raises(
+            CtyTupleValidationError, match="element_types must be a tuple"
+        ):
             CtyTuple(element_types=[CtyString()])
-        with pytest.raises(CtyTupleValidationError, match="Element type at index 1 must be a CtyType"):
+        with pytest.raises(
+            CtyTupleValidationError, match="Element type at index 1 must be a CtyType"
+        ):
             CtyTuple(element_types=(CtyString(), "not-a-type"))
 
     def test_tuple_type_string_representation(self) -> None:
@@ -38,6 +35,3 @@ class TestCtyTupleCreation:
     def test_tuple_type_string_representation_empty(self) -> None:
         empty_tuple = CtyTuple(element_types=())
         assert str(empty_tuple) == "tuple([])"
-
-
-# 🌊🪢🔚

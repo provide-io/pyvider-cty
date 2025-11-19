@@ -1,24 +1,10 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 from typing import Never
 
 import attrs
 import pytest
 
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
-from pyvider.cty.types import (
-    CtyBool,
-    CtyDynamic,
-    CtyNumber,
-    CtyObject,
-    CtyString,
-    CtyTuple,
-)
+from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple, CtyObject
 
 
 def test_infer_tuple_with_mixed_types() -> None:
@@ -93,6 +79,3 @@ def test_infer_from_other_types() -> None:
 
     inferred_type = infer_cty_type_from_raw(Other())
     assert inferred_type == CtyDynamic()
-
-
-# 🌊🪢🔚

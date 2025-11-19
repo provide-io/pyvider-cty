@@ -1,9 +1,5 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""Advanced recursion detection for CTY validation.
+"""
+Advanced recursion detection for CTY validation.
 
 This module provides sophisticated recursion detection that can distinguish between:
 1. Genuine circular references that would cause infinite loops
@@ -14,25 +10,19 @@ The implementation is designed for production IaC requirements where:
 - Complex configurations with deep nesting must be supported
 - Genuine circular references must be prevented
 - Performance must be predictable and measurable
-- Debugging and monitoring capabilities are essential"""
+- Debugging and monitoring capabilities are essential
+"""
 
-from __future__ import annotations
-
+import inspect
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-import threading
-import time
-from typing import Any, cast
+from typing import Any, Dict, Optional, Tuple
+from weakref import WeakKeyDictionary
 
-from provide.foundation import logger
-from provide.foundation.errors import error_boundary
-
-from pyvider.cty.config.defaults import (
-    MAX_OBJECT_REVISITS,
-    MAX_VALIDATION_DEPTH,
-    MAX_VALIDATION_TIME_MS,
-)
+from pyvider.telemetry import logger
 
 
 @dataclass
@@ -45,7 +35,7 @@ class ValidationNode:
     parent_path: str
     first_seen_at: float = field(default_factory=time.time)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         self.visits = 1
 
 
@@ -54,7 +44,7 @@ class RecursionContext:
     """Thread-local context for tracking validation recursion."""
 
     # Object identity tracking for cycle detection
-    validation_graph: dict[int, ValidationNode] = field(default_factory=dict)
+    validation_graph: Dict[int, ValidationNode] = field(default_factory=dict)
 
     # Path tracking for detailed diagnostics
     validation_path: list[str] = field(default_factory=list)
@@ -65,21 +55,17 @@ class RecursionContext:
     validation_start_time: float = field(default_factory=time.time)
 
     # Configuration thresholds
-    max_depth_allowed: int = MAX_VALIDATION_DEPTH
-    max_object_revisits: int = MAX_OBJECT_REVISITS
-    max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
+    max_depth_allowed: int = 500  # A safer default, well below Python's typical limit.
+    max_object_revisits: int = 100  # Allow many revisits for complex schemas
+    max_validation_time_ms: int = 30000  # 30 second timeout for pathological cases
 
-    # Flag to indicate validation was stopped due to recursion detection
-    validation_stopped: bool = False
-
-    def reset(self) -> None:
+    def reset(self):
         """Reset context for new validation session."""
         self.validation_graph.clear()
         self.validation_path.clear()
         self.max_depth_reached = 0
         self.total_validations = 0
         self.validation_start_time = time.time()
-        self.validation_stopped = False
 
 
 # Thread-local storage for recursion contexts
@@ -90,10 +76,10 @@ def get_recursion_context() -> RecursionContext:
     """Get or create thread-local recursion context."""
     if not hasattr(_thread_local, "recursion_context"):
         _thread_local.recursion_context = RecursionContext()
-    return cast(RecursionContext, _thread_local.recursion_context)
+    return _thread_local.recursion_context
 
 
-def clear_recursion_context() -> None:
+def clear_recursion_context():
     """Clear thread-local recursion context."""
     if hasattr(_thread_local, "recursion_context"):
         _thread_local.recursion_context.reset()
@@ -109,10 +95,12 @@ class RecursionDetector:
     - Performance pathological cases (excessive validation time)
     """
 
-    def __init__(self, context: RecursionContext | None = None) -> None:
+    def __init__(self, context: Optional[RecursionContext] = None):
         self.context = context or get_recursion_context()
 
-    def should_continue_validation(self, value: Any, current_path: str = "") -> tuple[bool, str | None]:
+    def should_continue_validation(
+        self, value: Any, current_path: str = ""
+    ) -> Tuple[bool, Optional[str]]:
         """
         Determine if validation should continue for the given value.
 
@@ -129,9 +117,7 @@ class RecursionDetector:
         # Performance safeguards - prevent pathological cases
         elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
         if elapsed_ms > self.context.max_validation_time_ms:
-            reason = (
-                f"Validation timeout after {elapsed_ms:.1f}ms (max: {self.context.max_validation_time_ms}ms)"
-            )
+            reason = f"Validation timeout after {elapsed_ms:.1f}ms (max: {self.context.max_validation_time_ms}ms)"
             logger.warning(
                 "CTY validation timeout exceeded",
                 elapsed_ms=elapsed_ms,
@@ -144,7 +130,9 @@ class RecursionDetector:
         # Update context
         self.context.total_validations += 1
         current_depth = len(self.context.validation_path)
-        self.context.max_depth_reached = max(self.context.max_depth_reached, current_depth)
+        self.context.max_depth_reached = max(
+            self.context.max_depth_reached, current_depth
+        )
 
         # Depth safeguards - only trigger for truly deep recursion
         if current_depth > self.context.max_depth_allowed:
@@ -214,11 +202,11 @@ class RecursionDetector:
 
         return True, None
 
-    def enter_validation_scope(self, scope_name: str) -> None:
+    def enter_validation_scope(self, scope_name: str):
         """Enter a new validation scope for path tracking."""
         self.context.validation_path.append(scope_name)
 
-    def exit_validation_scope(self) -> None:
+    def exit_validation_scope(self):
         """Exit the current validation scope."""
         if self.context.validation_path:
             self.context.validation_path.pop()
@@ -227,7 +215,7 @@ class RecursionDetector:
         """Get the current validation path for diagnostics."""
         return " -> ".join(self.context.validation_path)
 
-    def get_performance_metrics(self) -> dict[str, Any]:
+    def get_performance_metrics(self) -> Dict[str, Any]:
         """Get performance metrics for monitoring and debugging."""
         elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
         return {
@@ -235,12 +223,13 @@ class RecursionDetector:
             "max_depth_reached": self.context.max_depth_reached,
             "elapsed_ms": elapsed_ms,
             "objects_in_graph": len(self.context.validation_graph),
-            "avg_validations_per_ms": self.context.total_validations / max(elapsed_ms, 0.001),
+            "avg_validations_per_ms": self.context.total_validations
+            / max(elapsed_ms, 0.001),
             "current_path": self.get_current_path(),
         }
 
 
-def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
+def with_recursion_detection(func: Callable) -> Callable:
     """
     Decorator for advanced recursion detection in validation functions.
     """
@@ -255,56 +244,30 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
 
         detector = RecursionDetector(context)
         scope_name = f"{self.__class__.__name__}.validate(type={type(value).__name__})"
+        detector.enter_validation_scope(scope_name)
 
-        with error_boundary(
-            context={
-                "operation": "recursion_detection",
-                "type_name": self.__class__.__name__,
-                "value_type": type(value).__name__,
-                "validation_depth": len(context.validation_path),
-                "total_validations": context.total_validations,
-            }
-        ):
-            detector.enter_validation_scope(scope_name)
+        try:
+            should_continue, reason = detector.should_continue_validation(
+                value, detector.get_current_path()
+            )
+            if not should_continue:
+                from pyvider.cty.values import CtyValue
 
-            try:
-                # Check if validation was already stopped by a nested call
-                if context.validation_stopped:
-                    from pyvider.cty.values import CtyValue
-
-                    return CtyValue.unknown(self)
-
-                should_continue, reason = detector.should_continue_validation(
-                    value, detector.get_current_path()
+                logger.warning(
+                    "CTY validation stopped due to recursion detection",
+                    reason=reason,
+                    value_type=type(value).__name__,
+                    path=detector.get_current_path(),
                 )
-                if not should_continue:
-                    from pyvider.cty.values import CtyValue
+                return CtyValue.unknown(self)
 
-                    # Set flag to stop all parent validations
-                    context.validation_stopped = True
-
-                    logger.warning(
-                        "CTY validation stopped due to recursion detection",
-                        reason=reason,
-                        value_type=type(value).__name__,
-                        path=detector.get_current_path(),
-                    )
-                    return CtyValue.unknown(self)
-
-                # The decorator no longer passes the internal flag down.
-                result = func(self, value, *args, **kwargs)
-
-                # Check again after validation in case a nested call stopped validation
-                if context.validation_stopped:
-                    from pyvider.cty.values import CtyValue
-
-                    return CtyValue.unknown(self)
-
-                return result
-            finally:
-                detector.exit_validation_scope()
+            # The decorator no longer passes the internal flag down.
+            return func(self, value, *args, **kwargs)
+        finally:
+            detector.exit_validation_scope()
+            # The context is now only cleared by the top-level caller (e.g., test setup),
+            # not by the decorator.
+            if is_top_level_call:
+                pass
 
     return wrapper
-
-
-# 🌊🪢🔚

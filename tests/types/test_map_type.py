@@ -1,10 +1,3 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import pytest
 
 from pyvider.cty.exceptions import (
@@ -54,7 +47,9 @@ class TestCtyMap:
         map_value = map_type.validate({"a": 1})
         assert map_type.get(map_value, "a") == CtyNumber().validate(1)
         assert map_type.get(map_value, "b").is_null
-        assert map_type.get(map_value, "b", CtyNumber().validate(42)) == CtyNumber().validate(42)
+        assert map_type.get(
+            map_value, "b", CtyNumber().validate(42)
+        ) == CtyNumber().validate(42)
 
     def test_map_get_on_non_map_value_fails(self) -> None:
         map_type = CtyMap(element_type=CtyNumber())
@@ -74,6 +69,3 @@ class TestCtyMap:
         """Ensures the constructor raises an error for invalid element types."""
         with pytest.raises(InvalidTypeError):
             CtyMap(element_type="not a cty type")
-
-
-# 🌊🪢🔚

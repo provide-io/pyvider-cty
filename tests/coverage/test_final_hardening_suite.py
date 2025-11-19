@@ -1,23 +1,13 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""Final hardening test suite to address all remaining coverage gaps, bringing
-the library to a production-ready state of test coverage."""
-
+"""
+Final hardening test suite to address all remaining coverage gaps, bringing
+the library to a production-ready state of test coverage.
+"""
 from decimal import Decimal
-
 import pytest
 
 from pyvider.cty import (
-    CtyList,
-    CtyMap,
-    CtyNumber,
-    CtyObject,
-    CtyString,
-    CtyValue,
-    convert,
+    CtyList, CtyMap, CtyNumber, CtyObject, CtyString, CtyTuple, CtyValue,
+    convert
 )
 from pyvider.cty.exceptions import CtyConversionError
 from pyvider.cty.functions import coalesce, greater_than, less_than
@@ -30,7 +20,9 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
+        value=RefinedUnknownValue(
+            number_lower_bound=lower_bound, number_upper_bound=upper_bound
+        ),
     )
 
 
@@ -56,7 +48,9 @@ class TestFinalCoverageSuite:
     def test_convert_object_to_object_missing_required_attribute(self) -> None:
         """Covers the error path for a missing required attribute during object conversion."""
         source_type = CtyObject(attribute_types={"name": CtyString()})
-        target_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
+        target_type = CtyObject(
+            attribute_types={"name": CtyString(), "age": CtyNumber()}
+        )
         source_val = source_type.validate({"name": "Alice"})
 
         with pytest.raises(CtyConversionError, match="Missing required attribute 'age'"):
@@ -71,10 +65,7 @@ class TestFinalCoverageSuite:
 
         # The comparison should fail inside the CtyValue dunder method, raising a Python TypeError
         # because it cannot compare a string to a Decimal.
-        with pytest.raises(
-            TypeError,
-            match=r"'<' not supported between instances of 'str' and 'decimal\.Decimal'",
-        ):
+        with pytest.raises(TypeError, match="'<' not supported between instances of 'str' and 'decimal.Decimal'"):
             _ = malformed_number < n5
 
     def test_collection_helpers_on_malformed_value(self) -> None:
@@ -92,7 +83,6 @@ class TestFinalCoverageSuite:
         """Covers the case where an unknown msgpack extension code is received."""
         from pyvider.cty.codec import _ext_hook
         from pyvider.cty.values.markers import UNREFINED_UNKNOWN
-
         # Any code other than 0 or 12 should be treated as an unrefined unknown
         assert _ext_hook(99, b"some-data") is UNREFINED_UNKNOWN
 
@@ -105,6 +95,3 @@ class TestFinalCoverageSuite:
         # The presence of an unknown value before the real value should not
         # prevent the real value from being found.
         assert coalesce(null_val, unknown_val, real_val) == real_val
-
-
-# 🌊🪢🔚

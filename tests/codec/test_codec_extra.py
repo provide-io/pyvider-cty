@@ -1,21 +1,16 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import msgpack
 import pytest
+from decimal import Decimal
 
 from pyvider.cty import (
-    CtyDynamic,
     CtyList,
     CtyMap,
     CtyObject,
     CtyString,
     CtyTuple,
     CtyValue,
+    CtyDynamic,
+    CtySet,
 )
 from pyvider.cty.codec import (
     _convert_value_to_serializable,
@@ -24,7 +19,7 @@ from pyvider.cty.codec import (
 )
 
 
-def test_serialize_dynamic_with_validated_value() -> None:
+def test_serialize_dynamic_with_validated_value():
     """
     Tests that a CtyDynamic value, correctly created via its validator,
     serializes as expected.
@@ -41,18 +36,20 @@ def test_serialize_dynamic_with_validated_value() -> None:
     assert isinstance(unpacked, list)
     assert len(unpacked) == 2
     # A dict with string keys should be inferred as an object.
-    assert unpacked[0] == b'["object",{"key":"string"}]'
+    assert b'["object",{"key":"string"}]' == unpacked[0]
     assert unpacked[1] == {"key": "value"}
 
 
-def test_convert_value_to_serializable_with_raw_value() -> None:
+def test_convert_value_to_serializable_with_raw_value():
     serializable = _convert_value_to_serializable("hello", CtyString())
     assert serializable == "hello"
 
 
-def test_incorrect_container_type_raises_error() -> None:
+def test_incorrect_container_type_raises_error():
     with pytest.raises(TypeError, match="Value for CtyObject must be a dict"):
-        _convert_value_to_serializable(CtyValue(CtyObject({}), ["not", "a", "dict"]), CtyObject({}))
+        _convert_value_to_serializable(
+            CtyValue(CtyObject({}), ["not", "a", "dict"]), CtyObject({})
+        )
 
     with pytest.raises(TypeError, match="Value for CtyMap must be a dict"):
         _convert_value_to_serializable(
@@ -73,12 +70,11 @@ def test_incorrect_container_type_raises_error() -> None:
         )
 
 
-def test_msgpack_default_handler_unsupported_type() -> None:
+def test_msgpack_default_handler_unsupported_type():
     class Unsupported:
         pass
 
-    with pytest.raises(TypeError, match="Object of type Unsupported is not MessagePack serializable"):
+    with pytest.raises(
+        TypeError, match="Object of type Unsupported is not MessagePack serializable"
+    ):
         msgpack.packb(Unsupported(), default=_msgpack_default_handler)
-
-
-# 🌊🪢🔚

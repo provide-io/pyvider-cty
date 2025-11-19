@@ -1,10 +1,8 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""Utility functions for pyvider-cty examples.
-Provides consistent path resolution and environment setup."""
+#!/usr/bin/env python3
+"""
+Utility functions for pyvider-cty examples.
+Provides consistent path resolution and environment setup.
+"""
 
 import logging
 from pathlib import Path
@@ -41,7 +39,6 @@ def configure_for_example() -> None:
     # Configure basic logging
     logging.basicConfig(
         level=logging.INFO,
+        format="%(asctime)s [%(levelname)-7s] %(name)s: 🐍 %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-
-# 🌊🪢🔚

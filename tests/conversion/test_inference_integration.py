@@ -1,12 +1,6 @@
-#
-# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-"""TODO: Add module docstring."""
-
 import attrs
 import msgpack
+import pytest
 
 from pyvider.cty import CtyDynamic, CtyObject, CtyValue
 from pyvider.cty.codec import cty_from_msgpack
@@ -26,13 +20,13 @@ def test_validate_raw_attrs_object_with_ctydynamic() -> None:
 
     # The schema for deserialization is CtyDynamic
     schema = CtyDynamic()
-
+    
     # cty_from_msgpack will infer the type and wrap it
     cty_val = cty_from_msgpack(packed_data, schema)
-
+    
     assert isinstance(cty_val, CtyValue)
     assert isinstance(cty_val.type, CtyDynamic)
-
+    
     # The inner value should be the inferred CtyObject
     inner_value = cty_val.value
     assert isinstance(inner_value.type, CtyObject)
@@ -40,6 +34,3 @@ def test_validate_raw_attrs_object_with_ctydynamic() -> None:
     assert "count" in inner_value.type.attribute_types
     assert inner_value["name"].value == "test"
     assert inner_value["count"].value == 123
-
-
-# 🌊🪢🔚
