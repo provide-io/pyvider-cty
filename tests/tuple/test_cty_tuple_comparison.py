@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 from pyvider.cty import CtyBool, CtyDynamic, CtyNumber, CtyString, CtyTuple
 
 
@@ -17,3 +24,6 @@ class TestCtyTupleComparison:
         assert not t1.equal(t3)
         assert not t1.equal(t4)
         assert not t1.equal(CtyString())
+
+
+# 🌊🪢🔚

@@ -1,7 +1,9 @@
 #
-# tests/types/test_capsule.py
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 
+"""TODO: Add module docstring."""
 
 from pyvider.cty.types.capsule import CtyCapsule
 
@@ -32,12 +34,8 @@ def test_capsule_equality() -> None:
     capsule_type1 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type2 = CtyCapsule("MyCustom", MyCustomClass)
     capsule_type3 = CtyCapsule("AnotherCustom", AnotherCustomClass)
-    capsule_type4 = CtyCapsule(
-        "MyCustom", AnotherCustomClass
-    )  # Same name, different type
-    capsule_type5 = CtyCapsule(
-        "AnotherCustom", MyCustomClass
-    )  # Different name, same type
+    capsule_type4 = CtyCapsule("MyCustom", AnotherCustomClass)  # Same name, different type
+    capsule_type5 = CtyCapsule("AnotherCustom", MyCustomClass)  # Different name, same type
 
     assert capsule_type1 == capsule_type2
     assert capsule_type1 != capsule_type3
@@ -60,4 +58,4 @@ def test_capsule_hash() -> None:
     assert my_dict[capsule_type2] == "value1"
 
 
-# 🐍🏗️🐣
+# 🌊🪢🔚

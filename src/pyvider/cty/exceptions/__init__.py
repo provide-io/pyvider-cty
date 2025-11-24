@@ -1,6 +1,11 @@
-"""
-Exception hierarchy for the pyvider.cty type system.
-"""
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
 
 from pyvider.cty.exceptions.base import CtyError, CtyFunctionError
 from pyvider.cty.exceptions.conversion import (
@@ -35,6 +40,10 @@ from pyvider.cty.exceptions.validation import (
     CtyValidationError,
 )
 
+"""
+Exception hierarchy for the pyvider.cty type system.
+"""
+
 __all__ = [
     "AttributePathError",
     "CtyAttributeValidationError",
@@ -64,3 +73,5 @@ __all__ = [
     "TransformationError",
     "WireFormatError",
 ]
+
+# 🌊🪢🔚

@@ -1,7 +1,11 @@
-"""
-This test suite covers the CtyTypeProtocol to ensure its runtime checkability
-works as expected and to achieve 100% coverage on types/base.py.
-"""
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""This test suite covers the CtyTypeProtocol to ensure its runtime checkability
+works as expected and to achieve 100% coverage on types/base.py."""
+
 from typing import Any
 
 from pyvider.cty import CtyString, CtyValue
@@ -45,3 +49,6 @@ class TestCtyTypeProtocol:
             pass
 
         assert not isinstance(NotACtyType(), CtyTypeProtocol)
+
+
+# 🌊🪢🔚

@@ -1,0 +1,170 @@
+site_name: pyvider-cty
+site_description: Cty - A powerful type system for configuration data in Python
+site_author: provide.io
+site_url: https://foundry.provide.io/pyvider-cty/
+repo_url: https://github.com/provide-io/pyvider-cty
+repo_name: provide-io/pyvider-cty
+edit_uri: edit/main/docs/
+
+# Development server configuration
+dev_addr: '127.0.0.1:8004'
+
+copyright: Copyright &copy; 2024-2025 provide.io
+
+# Standalone mode settings
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  font:
+    text: Inter
+    code: Fira Code
+
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - header.autohide
+
+plugins:
+  - search
+  - autorefs
+  - macros:
+      include_dir: docs/.shared-theme/data
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            show_bases: true
+            show_inheritance_diagram: false
+            merge_init_into_class: true
+            separate_signature: true
+            members_order: source
+            inherited_members: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - tables
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - .shared-theme/stylesheets/provide-theme.css
+  - .shared-theme/stylesheets/termynal.css
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - .shared-theme/javascripts/mermaid-init.js
+  - .shared-theme/javascripts/termynal.js
+  - .shared-theme/javascripts/custom.js
+
+nav:
+  - Home: index.md
+
+  - Getting Started:
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - Quick Start (5 min): getting-started/quick-start.md
+    - Your First Type System: getting-started/first-type-system.md
+    - Examples: getting-started/examples.md
+
+  - User Guide:
+    - user-guide/index.md
+    - Core Concepts:
+      - Understanding Types: user-guide/core-concepts/types.md
+      - Working with Values: user-guide/core-concepts/values.md
+      - Validation: user-guide/core-concepts/validation.md
+      - Type Conversion: user-guide/core-concepts/conversion.md
+    - Type Reference:
+      - Primitive Types: user-guide/type-reference/primitives.md
+      - Collection Types: user-guide/type-reference/collections.md
+      - Structural Types: user-guide/type-reference/structural.md
+      - Dynamic Types: user-guide/type-reference/dynamic.md
+      - Capsule Types: user-guide/type-reference/capsule.md
+    - Advanced Topics:
+      - Marks System: user-guide/advanced/marks.md
+      - Built-in Functions: user-guide/advanced/functions.md
+      - Serialization: user-guide/advanced/serialization.md
+      - Path Navigation: user-guide/advanced/path-navigation.md
+      - Terraform Interop: user-guide/advanced/terraform-interop.md
+
+  - How-To Guides:
+    - how-to/index.md
+    - Validate Data: how-to/validate-data.md
+    - Serialize Values: how-to/serialize-values.md
+    - Work with Terraform: how-to/work-with-terraform.md
+    - Create Custom Types: how-to/create-custom-types.md
+    - Migrate from go-cty: how-to/migrate-from-go-cty.md
+
+  - API Reference:
+    - api/index.md
+    - Types:
+      - api/types/index.md
+      - Primitives: api/types/primitives.md
+      - Collections: api/types/collections.md
+      - Structural: api/types/structural.md
+      - Capsule: api/types/capsule.md
+    - Values: api/values.md
+    - Conversion: api/conversion.md
+    - Codec: api/codec.md
+    - Functions: api/functions.md
+    - Path Navigation: api/path.md
+    - Validation: api/validation.md
+    - Context: api/context.md
+
+  - Reference:
+    - Troubleshooting: reference/troubleshooting.md
+    - Glossary: reference/glossary.md
+    - go-cty Comparison: reference/go-cty-comparison.md
+    - Release Notes: reference/release-notes.md

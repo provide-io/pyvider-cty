@@ -1,13 +1,17 @@
-"""
-TDD: Ensures the structural cache correctly distinguishes between list-like
-and dict-like containers, even when they contain identical values.
-"""
-import pytest
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TDD: Ensures the structural cache correctly distinguishes between list-like
+and dict-like containers, even when they contain identical values."""
+
 from pyvider.cty.conversion import infer_cty_type_from_raw
-from pyvider.cty.types import CtyList, CtyMap, CtyNumber, CtyObject, CtyString
+from pyvider.cty.types import CtyList, CtyObject
+
 
 class TestInferenceCacheCorrectness:
-    def test_cache_distinguishes_list_from_dict_with_same_values(self):
+    def test_cache_distinguishes_list_from_dict_with_same_values(self) -> None:
         """
         TDD: A list of values and a dict of values must not have colliding
         cache keys. This tests that the container type is part of the key.
@@ -27,3 +31,6 @@ class TestInferenceCacheCorrectness:
 
         assert isinstance(dict_type, CtyObject)
         assert isinstance(dict_type.attribute_types["k1"], CtyObject)
+
+
+# 🌊🪢🔚

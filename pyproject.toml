@@ -4,11 +4,11 @@
 
 [project]
 name = "pyvider-cty"
-description = "Pyvider Cty Package - Core data types and serialization."
-version = "0.0.111"
+description = "Pure-Python implementation of the go-cty type system with strong validation, serialization, and Terraform interoperability"
+dynamic = ["version"]
 requires-python = ">=3.11"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 authors = [
     { name = "Tim Perkins", email = "code@tim.life" },
 ]
@@ -18,22 +18,32 @@ maintainers = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 dependencies = [
     "attrs>=25.1.0",
     "msgpack>=1.1.0",
-    "pyvider-telemetry>=0.0.13",
+    "provide-foundation",
 ]
+
+[project.urls]
+Homepage = "https://foundry.provide.io/pyvider-cty/"
+Documentation = "https://foundry.provide.io/pyvider-cty/"
+Repository = "https://foundry.provide.io/pyvider-cty/repo"
+Issues = "https://foundry.provide.io/pyvider-cty/issues"
 
 [dependency-groups]
 dev = [
-    "provide-testkit[all]",
+    "provide-testkit[standard,advanced-testing,typecheck,build]",
+]
+docs = [
+    "provide-testkit[docs]",
 ]
 
 [build-system]
@@ -45,6 +55,9 @@ package-dir = {"" = "src"} # Specifies that packages are under src
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
 
 
 ################################################################################
@@ -63,10 +76,12 @@ python_files = ["test_*.py"]
 markers = [
     "benchmark: mark test as a performance benchmark",
     "compat: mark test as a cross-language compatibility test",
+    "slow: mark test as slow-running (extreme scale, memory pressure, etc.)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:cannot collect test class.*:pytest.PytestCollectionWarning",
+    "ignore:Module already imported so cannot be rewritten.*:pytest.PytestAssertRewriteWarning",
 ]
 norecursedirs = [
     ".git",
@@ -85,7 +100,7 @@ addopts = "-ra -q --color=yes"
 # ---------------------------------------------------------------------------- #
 
 [tool.ruff]
-line-length = 88
+line-length = 111
 indent-width = 4
 target-version = "py311"
 
@@ -97,6 +112,9 @@ ignore = ["ANN401", "B008", "E501"]
 known-first-party = ["pyvider", "tests"]
 force-sort-within-sections = true
 combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204", "E402"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -120,7 +138,7 @@ warn_unused_configs = true
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
-module = ["structlog.*", "google.*", "grpc.*", "pytest.*"]
+module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------- #
@@ -144,3 +162,6 @@ exclude_lines = [
     "def __str__",
     "pass",
 ]
+
+[tool.uv.sources]
+provide-foundation = { path = "../provide-foundation", editable = true }

@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
-# examples/run_all_examples.py
-"""
-Runs all relevant Python example scripts and checks for unexpected failures.
-"""
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""Runs all relevant Python example scripts and checks for unexpected failures."""
 
 import asyncio
 from pathlib import Path
@@ -25,10 +26,8 @@ def print_section(title: str) -> None:
     print("=" * 70)
 
 
-def print_result(
-    script_name: str, success: bool, stdout: str, stderr: str, exit_code: int
-) -> None:
-    status = "✅ PASSED" if success else "❌ FAILED"
+def print_result(script_name: str, success: bool, stdout: str, stderr: str, exit_code: int) -> None:
+    status = "✅ PASS" if success else "❌ FAIL"
     print(f"\n--- {script_name} --- {status} ---")
     if stdout:
         print("--- STDOUT ---")
@@ -61,9 +60,7 @@ async def run_script(
             stderr=subprocess.PIPE,
             cwd=str(effective_cwd),
         )
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            process.communicate(), timeout=timeout
-        )
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
         stdout = stdout_bytes.decode().strip()
         stderr = stderr_bytes.decode().strip()
         raw_exit_code = process.returncode
@@ -86,17 +83,17 @@ async def main() -> None:
     results: list[tuple[str, bool, str, str, int]] = []
 
     scripts_to_run: list[dict[str, Any]] = [
-        {"file": "ch02_getting_started.py"},
-        {"file": "ch05_primitive_types.py"},
-        {"file": "ch06_collection_types.py"},
-        {"file": "ch07_structural_types.py"},
-        {"file": "ch08_dynamic_types.py"},
-        {"file": "ch09_capsule_types.py"},
-        {"file": "ch10_marks.py"},
-        {"file": "ch11_functions.py"},
-        {"file": "ch12_serialization.py"},
-        {"file": "ch13_path_navigation.py"},
-        {"file": "ch14_terraform_interop.py"},
+        {"file": "getting-started/quick-start.py"},
+        {"file": "types/primitives.py"},
+        {"file": "types/collections.py"},
+        {"file": "types/structural.py"},
+        {"file": "types/dynamic.py"},
+        {"file": "types/capsule.py"},
+        {"file": "advanced/marks.py"},
+        {"file": "advanced/functions.py"},
+        {"file": "advanced/serialization.py"},
+        {"file": "advanced/path-navigation.py"},
+        {"file": "advanced/terraform-interop.py"},
     ]
 
     print_section("Running All Examples")
@@ -124,10 +121,9 @@ async def main() -> None:
 
     print_section("Summary")
     all_passed_count = 0
-    for name, success, _, _, _ in results:
+    for _name, success, _, _, _ in results:
         if success:
             all_passed_count += 1
-        print(f"{'✅ PASSED' if success else '❌ FAILED'}: {name}")
 
     if overall_success:
         print(f"\n🎉 All {len(results)} executable examples passed!")
@@ -140,3 +136,5 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+# 🌊🪢🔚

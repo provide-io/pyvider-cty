@@ -1,8 +1,16 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
+
 # pyvider-cty/src/pyvider/cty/functions/__init__.py
 # This file makes the 'functions' module a package.
-
-from .bytes_functions import byteslen, bytesslice
-from .collection_functions import (
+from pyvider.cty.functions.bytes_functions import byteslen, bytesslice
+from pyvider.cty.functions.collection_functions import (
     chunklist,
     coalescelist,
     compact,
@@ -24,7 +32,7 @@ from .collection_functions import (
     values,
     zipmap,
 )
-from .comparison_functions import (
+from pyvider.cty.functions.comparison_functions import (
     equal,
     greater_than,
     greater_than_or_equal_to,
@@ -34,10 +42,10 @@ from .comparison_functions import (
     min_fn,
     not_equal,
 )
-from .conversion_functions import to_bool, to_number, to_string
-from .datetime_functions import formatdate, timeadd
-from .encoding_functions import csvdecode, jsondecode, jsonencode
-from .numeric_functions import (
+from pyvider.cty.functions.conversion_functions import to_bool, to_number, to_string
+from pyvider.cty.functions.datetime_functions import formatdate, timeadd
+from pyvider.cty.functions.encoding_functions import csvdecode, jsondecode, jsonencode
+from pyvider.cty.functions.numeric_functions import (
     abs_fn,
     add,
     ceil_fn,
@@ -53,7 +61,7 @@ from .numeric_functions import (
     signum_fn,
     subtract,
 )
-from .string_functions import (
+from pyvider.cty.functions.string_functions import (
     chomp,
     indent,
     join,
@@ -72,7 +80,7 @@ from .string_functions import (
     trimsuffix,
     upper,
 )
-from .structural_functions import coalesce
+from pyvider.cty.functions.structural_functions import coalesce
 
 __all__ = [
     "abs_fn",
@@ -146,3 +154,5 @@ __all__ = [
     "values",
     "zipmap",
 ]
+
+# 🌊🪢🔚

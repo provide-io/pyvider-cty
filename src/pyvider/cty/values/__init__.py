@@ -1,4 +1,20 @@
 #
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
+
+from pyvider.cty.values.base import CtyValue
+from pyvider.cty.values.markers import (
+    UNREFINED_UNKNOWN,
+    RefinedUnknownValue,
+    UnknownValue,
+)
+
+#
 # pyvider/cty/values/__init__.py
 #
 """
@@ -9,9 +25,6 @@ within the CTY type system. CtyValue instances pair a Python value
 with its corresponding CtyType and associated metadata.
 """
 
-from .base import CtyValue
-from .markers import UNREFINED_UNKNOWN, RefinedUnknownValue, UnknownValue
-
 __all__ = [
     "UNREFINED_UNKNOWN",
     "CtyValue",
@@ -19,4 +32,4 @@ __all__ = [
     "UnknownValue",
 ]
 
-# 🐍🏗️🐣
+# 🌊🪢🔚

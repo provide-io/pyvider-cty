@@ -1,7 +1,14 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Any, ClassVar, TypeVar, final
+from typing import Any, ClassVar, Generic, TypeVar, cast, final
 
 from attrs import define, field
 
@@ -15,16 +22,14 @@ T = TypeVar("T")
 
 @final
 @define(frozen=True, slots=True)
-class CtySet[T](CtyType[tuple[T, ...]]):
+class CtySet(CtyType[tuple[T, ...]], Generic[T]):
     ctype: ClassVar[str] = "set"
     _type_order: ClassVar[int] = 4
     element_type: CtyType[T] = field(kw_only=True)
 
     def __attrs_post_init__(self) -> None:
         if not isinstance(self.element_type, CtyType):
-            raise CtySetValidationError(
-                f"Expected CtyType for element_type, got {type(self.element_type)}"
-            )
+            raise CtySetValidationError(f"Expected CtyType for element_type, got {type(self.element_type)}")
 
     @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
@@ -40,7 +45,7 @@ class CtySet[T](CtyType[tuple[T, ...]]):
                 and value.type.equal(self)
                 and isinstance(value.value, frozenset)
             ):
-                return value
+                return cast(CtyValue[tuple[T, ...]], value)
             value = value.value
 
         if not isinstance(value, list | tuple | set | frozenset):
@@ -48,8 +53,9 @@ class CtySet[T](CtyType[tuple[T, ...]]):
                 f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}"
             )
 
+        value_iterable = cast(list[Any] | tuple[Any, ...] | set[Any] | frozenset[Any], value)  # type: ignore[redundant-cast]
         unique_items: OrderedDict[tuple[Any, ...], CtyValue[Any]] = OrderedDict()
-        for raw_item in value:
+        for raw_item in value_iterable:
             try:
                 validated_item = self.element_type.validate(raw_item)
                 key = validated_item._canonical_sort_key()
@@ -57,14 +63,10 @@ class CtySet[T](CtyType[tuple[T, ...]]):
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
             except Exception as e:
-                raise CtySetValidationError(
-                    f"Failed to process element for set: {e}", value=raw_item
-                ) from e
+                raise CtySetValidationError(f"Failed to process element for set: {e}", value=raw_item) from e
 
         is_unknown = any(v.is_unknown for v in unique_items.values())
-        return CtyValue(
-            vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown
-        )
+        return CtyValue(vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown)
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtySet):
@@ -85,3 +87,6 @@ class CtySet[T](CtyType[tuple[T, ...]]):
 
     def __str__(self) -> str:
         return f"set({self.element_type})"
+
+
+# 🌊🪢🔚

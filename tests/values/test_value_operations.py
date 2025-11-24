@@ -1,9 +1,12 @@
-"""
-TDD Test Suite for ergonomic helper methods on CtyValue.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TDD Test Suite for ergonomic helper methods on CtyValue.
 
 These tests define the behavior for methods that allow for clean, immutable
-updates to collection-based CtyValue objects, as seen in the project's examples.
-"""
+updates to collection-based CtyValue objects, as seen in the project's examples."""
 
 import pytest
 
@@ -12,7 +15,6 @@ from pyvider.cty import (
     CtyMap,
     CtyNumber,
     CtyString,
-    CtyTuple,
     CtyValue,
 )
 from pyvider.cty.exceptions import CtyValidationError
@@ -104,3 +106,6 @@ class TestCtyValueListOperations:
         """Verifies that .with_element_at() validates the new element against the list's element type."""
         with pytest.raises(CtyValidationError):
             list_val.with_element_at(0, 456)
+
+
+# 🌊🪢🔚

@@ -1,13 +1,17 @@
-"""
-TDD: Verifies that numeric functions consistently propagate or resolve
-refined unknown value constraints.
-"""
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TDD: Verifies that numeric functions consistently propagate or resolve
+refined unknown value constraints."""
+
 from decimal import Decimal
-import pytest
 
 from pyvider.cty import CtyNumber, CtyValue
-from pyvider.cty.functions import subtract, divide, negate, abs_fn
+from pyvider.cty.functions import abs_fn, divide, negate, subtract
 from pyvider.cty.values.markers import RefinedUnknownValue
+
 
 def refined_unknown_num(
     lower_bound: tuple[Decimal, bool] | None = None,
@@ -15,10 +19,9 @@ def refined_unknown_num(
 ) -> CtyValue:
     return CtyValue.unknown(
         CtyNumber(),
-        value=RefinedUnknownValue(
-            number_lower_bound=lower_bound, number_upper_bound=upper_bound
-        ),
+        value=RefinedUnknownValue(number_lower_bound=lower_bound, number_upper_bound=upper_bound),
     )
+
 
 class TestRefinedUnknownPropagation:
     def test_subtract_from_refined_unknown_adjusts_bounds(self) -> None:
@@ -70,3 +73,6 @@ class TestRefinedUnknownPropagation:
         assert isinstance(result.value, RefinedUnknownValue)
         assert result.value.number_lower_bound == (Decimal("10"), True)
         assert result.value.number_upper_bound == (Decimal("20"), True)
+
+
+# 🌊🪢🔚
