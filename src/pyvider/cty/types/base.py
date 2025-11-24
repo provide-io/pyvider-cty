@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -5,6 +12,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
+    Generic,
     Protocol,
     TypeVar,
     runtime_checkable,
@@ -16,14 +24,15 @@ from attrs import define
 if TYPE_CHECKING:
     from pyvider.cty.values.base import CtyValue
 
+T_co = TypeVar("T_co", covariant=True)
 T = TypeVar("T")
 
 
 @runtime_checkable
-class CtyTypeProtocol(Protocol[T]):
+class CtyTypeProtocol(Protocol[T_co]):
     """Protocol defining the essential interface of a CtyType."""
 
-    def validate(self, value: object) -> CtyValue[T]: ...
+    def validate(self, value: object) -> CtyValue[T_co]: ...
     def equal(self, other: Any) -> bool: ...
     def usable_as(self, other: Any) -> bool: ...
     def is_primitive_type(self) -> bool: ...
@@ -31,7 +40,7 @@ class CtyTypeProtocol(Protocol[T]):
 
 # The concrete ABC now implements the protocol
 @define(slots=True)
-class CtyType[T](CtyTypeProtocol[T], ABC):
+class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
     """
     Generic abstract base class for all Cty types.
     """
@@ -40,15 +49,15 @@ class CtyType[T](CtyTypeProtocol[T], ABC):
     _type_order: ClassVar[int] = 99
 
     @abstractmethod
-    def validate(self, value: object) -> "CtyValue[T]":
+    def validate(self, value: object) -> CtyValue[T]:
         pass
 
     @abstractmethod
-    def equal(self, other: "CtyType[T]") -> bool:
+    def equal(self, other: Any) -> bool:
         pass
 
     @abstractmethod
-    def usable_as(self, other: "CtyType[T]") -> bool:
+    def usable_as(self, other: Any) -> bool:
         pass
 
     @abstractmethod
@@ -73,3 +82,6 @@ class CtyType[T](CtyTypeProtocol[T], ABC):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
+
+
+# 🌊🪢🔚

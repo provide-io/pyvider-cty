@@ -1,10 +1,18 @@
-"""
-The pyvider.cty package is a pure-Python implementation of the concepts
-from HashiCorp's `cty` library, providing a rich type system for the framework.
-"""
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 
-from .conversion import convert, unify
-from .exceptions import (
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
+
+from provide.foundation.utils import get_version
+
+__version__ = get_version("flavorpack", caller_file=__file__)
+
+from pyvider.cty.conversion import convert, unify
+from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
     CtyConversionError,
     CtyListValidationError,
@@ -15,9 +23,9 @@ from .exceptions import (
     CtyTypeParseError,
     CtyValidationError,
 )
-from .marks import CtyMark
-from .parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
-from .types import (
+from pyvider.cty.marks import CtyMark
+from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
+from pyvider.cty.types import (
     BytesCapsule,
     CtyBool,
     CtyCapsule,
@@ -32,7 +40,12 @@ from .types import (
     CtyTuple,
     CtyType,
 )
-from .values import CtyValue
+from pyvider.cty.values import CtyValue
+
+"""
+The pyvider.cty package is a pure-Python implementation of the concepts
+from HashiCorp's `cty` library, providing a rich type system for the framework.
+"""
 
 __all__ = [
     "BytesCapsule",
@@ -59,8 +72,11 @@ __all__ = [
     "CtyTypeParseError",
     "CtyValidationError",
     "CtyValue",
+    "__version__",
     "convert",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
     "unify",
 ]
+
+# 🌊🪢🔚

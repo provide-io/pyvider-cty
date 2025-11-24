@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString, CtyTuple
 from pyvider.cty.exceptions import CtyTupleValidationError
 
@@ -32,7 +39,7 @@ class TestTupleDiagnostics:
             schema_type=schema,
             invalid_config=config,
             expected_error_type=CtyTupleValidationError,
-            expected_error_message="At [2]: Boolean validation error: Cannot convert str to bool.",
+            expected_error_message="At [2]: Boolean validation error: Cannot convert str to bool",
         )
 
     def test_error_in_collection_within_tuple(self) -> None:
@@ -54,3 +61,6 @@ class TestTupleDiagnostics:
             expected_error_type=CtyTupleValidationError,
             expected_error_message="At [1][1]: Number validation error: Cannot represent str value 'two' as Decimal",
         )
+
+
+# 🌊🪢🔚

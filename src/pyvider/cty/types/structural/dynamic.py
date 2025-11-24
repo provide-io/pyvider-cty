@@ -1,5 +1,14 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
+
 import json
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from attrs import define
 
@@ -19,19 +28,18 @@ class CtyDynamic(CtyType[object]):
     _type_order: ClassVar[int] = 9
 
     @with_recursion_detection
-    def validate(self, value: object) -> "CtyValue[Any]":
+    def validate(self, value: object) -> CtyValue[Any]:
         """
         Validates a raw Python value for a dynamic type. The result is always a
         CtyValue of type CtyDynamic, which wraps the inferred concrete value.
         """
-        from pyvider.cty.values import CtyValue
-
         from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
         from pyvider.cty.parser import parse_tf_type_to_ctytype
+        from pyvider.cty.values import CtyValue
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyDynamic):
-                return value
+                return cast(CtyValue[Any], value)  # type: ignore[redundant-cast]
             return CtyValue(vtype=self, value=value)
 
         if value is None:
@@ -54,10 +62,10 @@ class CtyDynamic(CtyType[object]):
         concrete_value = inferred_type.validate(value)
         return CtyValue(vtype=self, value=concrete_value)
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyDynamic)
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyDynamic)
 
     def _to_wire_json(self) -> Any:
@@ -68,3 +76,6 @@ class CtyDynamic(CtyType[object]):
 
     def __str__(self) -> str:
         return "dynamic"
+
+
+# 🌊🪢🔚

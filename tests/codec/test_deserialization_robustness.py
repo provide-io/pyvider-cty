@@ -1,25 +1,28 @@
-"""
-TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TDD Test Suite for Deserialization Robustness and Go-Cty Compatibility.
 
 These tests are designed to fail with the current implementation and define
-the desired, more robust behavior for the MessagePack deserializer.
-"""
-import json
+the desired, more robust behavior for the MessagePack deserializer."""
+
 from decimal import Decimal
+import json
 
 import msgpack  # type: ignore
 import pytest
 
 from pyvider.cty import (
     CtyDynamic,
-    CtyList,
     CtyNumber,
     CtyObject,
     CtyString,
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack
-from pyvider.cty.exceptions import CtyValidationError, DeserializationError
+from pyvider.cty.exceptions import CtyValidationError
 
 
 # --- TDD Tests for Issue #7: Dynamic Deserialization Robustness ---
@@ -40,9 +43,7 @@ class TestDynamicDeserializationRobustness:
         packed_bytes = msgpack.packb(payload, use_bin_type=True)
 
         # This should fail during the type parsing stage.
-        with pytest.raises(
-            CtyValidationError, match="Invalid Terraform type specification"
-        ):
+        with pytest.raises(CtyValidationError, match="Invalid Terraform type specification"):
             cty_from_msgpack(packed_bytes, CtyDynamic())
 
     def test_dynamic_deserialization_with_value_mismatch(self) -> None:
@@ -106,3 +107,6 @@ class TestGoCtyCompatibility:
         assert "age" in deserialized_val.value
         assert deserialized_val["age"].is_null is True
         assert deserialized_val["name"].value == "Alice"
+
+
+# 🌊🪢🔚

@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 import unicodedata
 
 import pytest
@@ -21,13 +28,14 @@ TEST_CASES = [
 
 
 @pytest.mark.parametrize("input_str, expected_normalized_str", TEST_CASES)
-def test_string_normalization_on_validate(
-    input_str: str, expected_normalized_str: str
-) -> None:
+def test_string_normalization_on_validate(input_str: str, expected_normalized_str: str) -> None:
     """Tests that CtyString().validate() normalizes input strings."""
     cty_string_type = CtyString()
     validated_value: CtyValue = cty_string_type.validate(input_str)
     # The string should be normalized to NFC, which is the canonical form.
-    assert validated_value.value == unicodedata.normalize(
-        "NFC", expected_normalized_str
+    assert validated_value.value == unicodedata.normalize("NFC", expected_normalized_str), (
+        f"Expected normalized string {unicodedata.normalize('NFC', expected_normalized_str)!r}, but got {validated_value.value!r}"
     )
+
+
+# 🌊🪢🔚

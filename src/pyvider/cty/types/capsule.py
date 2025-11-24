@@ -1,16 +1,26 @@
-# pyvider/cty/types/capsule.py
-"""
-Defines the CtyCapsule type for encapsulating opaque Python objects
-within the CTY type system.
-"""
-import inspect
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
+
 from collections.abc import Callable
+import inspect
 from typing import Any, ClassVar
 
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.values import CtyValue
+
+# pyvider/cty/types/capsule.py
+"""
+Defines the CtyCapsule type for encapsulating opaque Python objects
+within the CTY type system.
+"""
 
 
 class CtyCapsule(CtyType[Any]):
@@ -30,9 +40,9 @@ class CtyCapsule(CtyType[Any]):
     def py_type(self) -> type:
         return self._py_type
 
-    def validate(self, value: object) -> "CtyValue[Any]":
+    def validate(self, value: object) -> CtyValue[Any]:
         val_to_check: object | None
-        original_marks = frozenset()
+        original_marks: frozenset[Any] = frozenset()
 
         if isinstance(value, CtyValue):
             if value.is_null:
@@ -53,12 +63,12 @@ class CtyCapsule(CtyType[Any]):
             )
         return CtyValue(self, val_to_check, marks=original_marks)
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyCapsule) or isinstance(other, CtyCapsuleWithOps):
             return False
         return self.name == other.name and self._py_type == other._py_type
 
-    def usable_as(self, other: "CtyType[Any]") -> bool:
+    def usable_as(self, other: CtyType[Any]) -> bool:
         if isinstance(other, CtyDynamic):
             return True
         return self.equal(other)
@@ -88,8 +98,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         *,
         equal_fn: Callable[[Any, Any], bool] | None = None,
         hash_fn: Callable[[Any], int] | None = None,
-        convert_fn: Callable[[Any, "CtyType[Any]"], "CtyValue[Any] | None"]
-        | None = None,
+        convert_fn: Callable[[Any, CtyType[Any]], CtyValue[Any] | None] | None = None,
     ) -> None:
         """
         Initializes a CtyCapsule with custom operational functions.
@@ -109,7 +118,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         if self.convert_fn and len(inspect.signature(self.convert_fn).parameters) != 2:
             raise TypeError("`convert_fn` must be a callable that accepts 2 arguments")
 
-    def equal(self, other: "CtyType[Any]") -> bool:
+    def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtyCapsuleWithOps):
             return False
         return (
@@ -124,6 +133,7 @@ class CtyCapsuleWithOps(CtyCapsule):
         return f"CtyCapsuleWithOps({self.name}, {self._py_type.__name__})"
 
     def __hash__(self) -> int:
-        return hash(
-            (self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn)
-        )
+        return hash((self.name, self._py_type, self.equal_fn, self.hash_fn, self.convert_fn))
+
+
+# 🌊🪢🔚

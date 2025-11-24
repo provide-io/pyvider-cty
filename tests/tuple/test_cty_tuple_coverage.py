@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 import pytest
 
 from pyvider.cty.exceptions import CtyTupleValidationError, CtyTypeMismatchError
@@ -10,9 +17,7 @@ def test_element_types_validator() -> None:
     with pytest.raises(CtyTupleValidationError, match="element_types must be a tuple"):
         CtyTuple(element_types=[CtyString()])  # type: ignore
 
-    with pytest.raises(
-        CtyTupleValidationError, match="Element type at index 0 must be a CtyType"
-    ):
+    with pytest.raises(CtyTupleValidationError, match="Element type at index 0 must be a CtyType"):
         CtyTuple(element_types=("not a type",))  # type: ignore
 
 
@@ -84,3 +89,6 @@ def test_usable_as_different_lengths() -> None:
     type1 = CtyTuple((CtyString(),))
     type2 = CtyTuple((CtyString(), CtyNumber()))
     assert type1.usable_as(type2) is False
+
+
+# 🌊🪢🔚

@@ -1,4 +1,10 @@
-from decimal import Decimal
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 import pytest
 
 from pyvider.cty import (
@@ -8,6 +14,7 @@ from pyvider.cty import (
     CtyTuple,
     CtyValue,
 )
+
 
 class TestCtyTupleOperations:
     @pytest.fixture
@@ -32,3 +39,6 @@ class TestCtyTupleOperations:
 
     def test_value_length(self, tuple_value) -> None:
         assert len(tuple_value) == 3
+
+
+# 🌊🪢🔚

@@ -1,0 +1,18 @@
+# wrknv configuration for pyvider-cty
+
+[project]
+name = "pyvider-cty"
+description = "Python implementation of the Configuration Type System (CTY)"
+
+[tools]
+uv = "latest"
+
+[siblings]
+patterns = [
+    "provide-foundation", # Foundation telemetry
+    "provide-testkit",    # Testing utilities
+    "wrknv",              # Environment manager
+]
+
+[settings]
+python_version = ">=3.11"

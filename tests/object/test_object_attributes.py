@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 from typing import Any
 
 import pytest
@@ -18,9 +25,7 @@ class TestCtyObjectAttributes:
     def person_value(self, person_type: CtyObject) -> CtyValue[dict[str, Any]]:
         return person_type.validate({"name": "Alice", "age": 30})
 
-    def test_get_valid_attribute(
-        self, person_type: CtyObject, person_value: CtyValue[dict[str, Any]]
-    ) -> None:
+    def test_get_valid_attribute(self, person_type: CtyObject, person_value: CtyValue[dict[str, Any]]) -> None:
         name_val = person_value["name"]
         assert name_val.value == "Alice"
 
@@ -30,9 +35,7 @@ class TestCtyObjectAttributes:
     def test_get_invalid_attribute(
         self, person_type: CtyObject, person_value: CtyValue[dict[str, Any]]
     ) -> None:
-        with pytest.raises(
-            CtyAttributeValidationError, match="Object has no attribute 'unknown'"
-        ):
+        with pytest.raises(CtyAttributeValidationError, match="Object has no attribute 'unknown'"):
             person_type.get_attribute(person_value, "unknown")
 
     def test_has_attribute(self, person_type: CtyObject) -> None:
@@ -53,3 +56,6 @@ class TestCtyObjectAttributes:
         value = CtyValue(person_type, "not a dict")
         with pytest.raises(CtyTypeMismatchError):
             person_type.get_attribute(value, "name")
+
+
+# 🌊🪢🔚

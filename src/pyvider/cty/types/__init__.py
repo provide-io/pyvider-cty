@@ -1,13 +1,11 @@
 #
-# pyvider/cty/types/__init__.py
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
-"""
-Defines the core CTY (Compatible Type System) types.
 
-This package includes the base CtyType class and all concrete type
-implementations such as primitives (string, number, bool), collections
-(list, map, set), and structural types (object, tuple, dynamic, capsule).
-"""
+"""TODO: Add module docstring."""
+
+from __future__ import annotations
 
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.capsule import CtyCapsule, CtyCapsuleWithOps
@@ -28,6 +26,17 @@ from pyvider.cty.types.structural import (
     CtyTuple,
 )
 
+#
+# pyvider/cty/types/__init__.py
+#
+"""
+Defines the core CTY (Compatible Type System) types.
+
+This package includes the base CtyType class and all concrete type
+implementations such as primitives (string, number, bool), collections
+(list, map, set), and structural types (object, tuple, dynamic, capsule).
+"""
+
 __all__ = [
     "BytesCapsule",
     "CtyBool",
@@ -44,4 +53,4 @@ __all__ = [
     "CtyType",
 ]
 
-# 🐍🏗️🐣
+# 🌊🪢🔚

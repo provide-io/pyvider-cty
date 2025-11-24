@@ -1,3 +1,10 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""TODO: Add module docstring."""
+
 import pytest
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString
@@ -51,3 +58,6 @@ class TestCtyBoolType:
     def test_validate_valid_bool(self) -> None:
         result = self.bool_type.validate(True)
         assert result.value is True
+
+
+# 🌊🪢🔚
