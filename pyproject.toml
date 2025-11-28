@@ -93,7 +93,7 @@ norecursedirs = [
     ".hypothesis",
 ]
 # The log_file path will be set dynamically in conftest.py
-addopts = "-ra -q --color=yes"
+addopts = "-ra -q --color=yes --dist load"
 
 # ---------------------------------------------------------------------------- #
 # ruff configuration
