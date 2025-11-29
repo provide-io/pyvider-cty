@@ -1,0 +1,72 @@
+name: Mutation Testing
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sunday at 2 AM
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120  # 2 hours max
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install UV
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-groups
+
+      - name: Install mutation testing tools
+        run: |
+          pip install mutmut
+
+      - name: Run mutation tests on core modules
+        run: |
+          # Test critical modules only (not entire codebase)
+          PYTHONPATH=src mutmut run --max-children=4
+        continue-on-error: true  # Don't fail the workflow if mutations survive
+
+      - name: Generate mutation report
+        run: |
+          mutmut results
+          mutmut html
+        continue-on-error: true
+
+      - name: Upload mutation test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ github.run_number }}
+          path: html/
+          retention-days: 90
+
+      - name: Generate summary
+        run: |
+          echo "## Mutation Testing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          mutmut results >> $GITHUB_STEP_SUMMARY || echo "Mutation testing completed with survivors" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the artifact for detailed HTML report." >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true
+
+# 🧬🔬🪄
