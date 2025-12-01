@@ -1,3 +1,7 @@
+# Inherit shared configuration from provide-foundry
+INHERIT: .provide/foundry/base-mkdocs.yml
+
+# Project-Specific Configuration
 site_name: pyvider-cty
 site_description: Cty - A powerful type system for configuration data in Python
 site_author: provide.io
@@ -62,7 +66,6 @@ plugins:
   - search
   - autorefs
   - macros:
-      include_dir: docs/.shared-theme/data
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -100,14 +103,9 @@ markdown_extensions:
       alternate_style: true
 
 extra_css:
-  - .shared-theme/stylesheets/provide-theme.css
-  - .shared-theme/stylesheets/termynal.css
 
 extra_javascript:
   - https://unpkg.com/mermaid@10/dist/mermaid.min.js
-  - .shared-theme/javascripts/mermaid-init.js
-  - .shared-theme/javascripts/termynal.js
-  - .shared-theme/javascripts/custom.js
 
 nav:
   - Home: index.md
