@@ -27,7 +27,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "attrs>=25.1.0",
+    "attrs>=25.3.0",
     "msgpack>=1.1.0",
     "provide-foundation",
 ]
