@@ -14,15 +14,16 @@ def pre_mutation(context: Any) -> None:
     Can be used to skip certain mutations.
     """
     # Skip mutations in test files
-    if 'test_' in context.filename or '/tests/' in context.filename:
+    if "test_" in context.filename or "/tests/" in context.filename:
         context.skip = True
 
     # Skip mutations in generated files
-    if '_version.py' in context.filename:
+    if "_version.py" in context.filename:
         context.skip = True
 
     # Skip mutations in __init__ files (mostly imports)
-    if '__init__.py' in context.filename:
+    if "__init__.py" in context.filename:
         context.skip = True
+
 
 # 🌊🪢🔚
