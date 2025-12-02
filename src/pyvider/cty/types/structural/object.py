@@ -100,12 +100,15 @@ class CtyObject(CtyType[dict[str, object]]):
         value = {unicodedata.normalize("NFC", str(k)): v for k, v in value_dict.items()}
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
-        all_expected_attrs = set(self.attribute_types.keys())
+        # Normalize attribute_types keys to NFC for consistent comparison
+        all_expected_attrs = {unicodedata.normalize("NFC", k) for k in self.attribute_types.keys()}
         unknown = set(value.keys()) - all_expected_attrs
         if unknown:
             raise CtyAttributeValidationError(f"Unknown attributes: {', '.join(sorted(list(unknown)))}")
 
         for name, attr_type in self.attribute_types.items():
+            # Normalize the attribute name for lookup in the NFC-normalized value dict
+            normalized_name = unicodedata.normalize("NFC", name)
             with error_boundary(
                 context={
                     "operation": "object_attribute_validation",
@@ -115,13 +118,13 @@ class CtyObject(CtyType[dict[str, object]]):
                 }
             ):
                 path = CtyPath(steps=[GetAttrStep(name)])
-                if name not in value:
+                if normalized_name not in value:
                     if name in self.optional_attributes:
                         validated_attrs[name] = CtyValue.null(attr_type)
                         continue
                     raise CtyAttributeValidationError("Missing required attribute", value=None, path=path)
 
-                raw_attr_value = value.get(name)
+                raw_attr_value = value.get(normalized_name)
                 try:
                     existing_marks: frozenset[Any] = frozenset()
                     if isinstance(raw_attr_value, CtyValue):
