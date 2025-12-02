@@ -11,7 +11,7 @@ repo_name: provide-io/pyvider-cty
 edit_uri: edit/main/docs/
 
 # Development server configuration
-dev_addr: '127.0.0.1:8004'
+dev_addr: 127.0.0.1:11011
 
 copyright: Copyright &copy; 2024-2025 provide.io
 
