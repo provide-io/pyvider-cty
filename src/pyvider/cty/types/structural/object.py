@@ -101,7 +101,7 @@ class CtyObject(CtyType[dict[str, object]]):
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
         # Normalize attribute_types keys to NFC for consistent comparison
-        all_expected_attrs = {unicodedata.normalize("NFC", k) for k in self.attribute_types.keys()}
+        all_expected_attrs = {unicodedata.normalize("NFC", k) for k in self.attribute_types}
         unknown = set(value.keys()) - all_expected_attrs
         if unknown:
             raise CtyAttributeValidationError(f"Unknown attributes: {', '.join(sorted(list(unknown)))}")
