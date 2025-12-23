@@ -93,7 +93,8 @@ norecursedirs = [
     ".hypothesis",
 ]
 # The log_file path will be set dynamically in conftest.py
-addopts = "-ra -q --color=yes --dist load"
+addopts = "-ra -q --color=yes"
+# Parallel execution: pytest -n <workers> (range: 2-16, recommend: CPU cores or 8, max: 16 to avoid xdist hang)
 
 # ---------------------------------------------------------------------------- #
 # ruff configuration
