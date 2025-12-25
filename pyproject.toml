@@ -50,9 +50,7 @@ Issues = "https://github.com/provide-io/pyvider-cty/issues"
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.148.8",
-    "memray>=1.0; sys_platform != 'emscripten'",
-    "provide-testkit[standard]",
+    "provide-testkit",
 ]
 docs = [
     "provide-testkit[docs]",
