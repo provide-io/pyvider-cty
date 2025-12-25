@@ -43,14 +43,14 @@ jobs:
         env:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
-      - name: 🐍 Python CI Pipeline
-        uses: provide-io/ci-tooling/actions/python-ci@main
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@main
         with:
-          mode: 'quality'
           python-version: '3.11'
-          run-quality-checks: true
-          dependency-groups: 'dev'
-          upload-artifacts: false
+          install-extras: 'dev'
+
+      - name: 🎨 Quality Checks
+        uses: provide-io/ci-tooling/actions/python-quality@main
 
   # ==================================================================================
   # 🧪 Tests (Multi-Arch Matrix)
@@ -74,16 +74,16 @@ jobs:
         env:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
-      - name: 🧪 Python CI Pipeline
-        uses: provide-io/ci-tooling/actions/python-ci@main
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@main
         with:
-          mode: 'test'
           python-version: ${{ matrix.python-version }}
-          test-directory: 'tests/'
-          source-directory: 'src/'
+          install-extras: 'dev'
+
+      - name: 🧪 Run Tests
+        uses: provide-io/ci-tooling/actions/python-test@main
+        with:
           coverage-threshold: 75
-          dependency-groups: 'dev'
-          upload-artifacts: false
 
       - name: 📊 Upload Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -111,14 +111,14 @@ jobs:
         env:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
-      - name: 🔒 Python CI Pipeline
-        uses: provide-io/ci-tooling/actions/python-ci@main
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@main
         with:
-          mode: 'security'
           python-version: '3.11'
-          run-security-scan: true
-          dependency-groups: 'dev'
-          upload-artifacts: false
+          install-extras: 'dev'
+
+      - name: 🔒 Security Scan
+        uses: provide-io/ci-tooling/actions/python-security@main
 
   # ==================================================================================
   # 📦 Build Package (Single Runner)
@@ -136,13 +136,14 @@ jobs:
         env:
           GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
-      - name: 📦 Python CI Pipeline
-        uses: provide-io/ci-tooling/actions/python-ci@main
+      - name: 🐍 Setup Python Environment
+        uses: provide-io/ci-tooling/actions/setup-python-env@main
         with:
-          mode: 'build'
           python-version: '3.11'
-          dependency-groups: 'dev'
-          upload-artifacts: true
+          install-extras: 'dev'
+
+      - name: 📦 Build Package
+        uses: provide-io/ci-tooling/actions/python-build@main
 
   # ==================================================================================
   # 📋 CI Summary
