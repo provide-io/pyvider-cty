@@ -38,11 +38,6 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔐 Setup GitHub Auth
-        uses: provide-io/ci-tooling/actions/setup-github-auth@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
-
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@main
         with:
@@ -76,12 +71,6 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      - name: 🔐 Setup GitHub Auth
-        if: matrix.os == 'ubuntu-latest'  # Only needed for private repos
-        uses: provide-io/ci-tooling/actions/setup-github-auth@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@main
@@ -121,11 +110,6 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔐 Setup GitHub Auth
-        uses: provide-io/ci-tooling/actions/setup-github-auth@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
-
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@main
         with:
@@ -153,11 +137,6 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      - name: 🔐 Setup GitHub Auth
-        uses: provide-io/ci-tooling/actions/setup-github-auth@main
-        env:
-          GH_ORG_HELPERS: ${{ secrets.GH_ORG_HELPERS }}
 
       - name: 🐍 Setup Python Environment
         uses: provide-io/ci-tooling/actions/setup-python-env@main
