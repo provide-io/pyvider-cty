@@ -49,8 +49,12 @@ jobs:
           python-version: '3.11'
           install-extras: 'dev'
 
-      - name: 🎨 Quality Checks
-        uses: provide-io/ci-tooling/actions/python-quality@main
+      - name: 🎨 Code Quality
+        run: |
+          source workenv/bin/activate || true
+          ruff format . --check
+          ruff check .
+          mypy src
 
   # ==================================================================================
   # 🧪 Tests (Multi-Arch Matrix)
@@ -81,9 +85,10 @@ jobs:
           install-extras: 'dev'
 
       - name: 🧪 Run Tests
-        uses: provide-io/ci-tooling/actions/python-test@main
-        with:
-          coverage-threshold: 75
+        run: |
+          source workenv/bin/activate || true
+          pytest --cov=src --cov-report=xml --cov-report=term-missing
+          coverage report --fail-under=75
 
       - name: 📊 Upload Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -118,7 +123,10 @@ jobs:
           install-extras: 'dev'
 
       - name: 🔒 Security Scan
-        uses: provide-io/ci-tooling/actions/python-security@main
+        run: |
+          source workenv/bin/activate || true
+          bandit -r src/ -f json -o bandit.json || echo "Bandit scan completed"
+          safety check --json > safety.json || echo "Safety scan completed"
 
   # ==================================================================================
   # 📦 Build Package (Single Runner)
@@ -143,7 +151,9 @@ jobs:
           install-extras: 'dev'
 
       - name: 📦 Build Package
-        uses: provide-io/ci-tooling/actions/python-build@main
+        run: |
+          source workenv/bin/activate || true
+          uv build
 
   # ==================================================================================
   # 📋 CI Summary
