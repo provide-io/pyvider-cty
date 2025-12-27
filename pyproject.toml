@@ -40,6 +40,7 @@ Issues = "https://foundry.provide.io/pyvider-cty/issues"
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.148.8",
     "provide-testkit",
 ]
 docs = [
