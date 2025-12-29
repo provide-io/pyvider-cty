@@ -161,7 +161,6 @@ async def test_usable_as_compatible_types() -> None:
     """Test usability with compatible attribute types."""
     # This will be implemented when we have type conversions
     # For now, types must be exactly equal to be compatible
-    pass
 
 
 @pytest.mark.asyncio

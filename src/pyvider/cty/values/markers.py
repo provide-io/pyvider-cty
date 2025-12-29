@@ -19,7 +19,6 @@ This module contains simple marker classes to break import cycles.
 class UnknownValue:
     """A base marker class for all unknown value types."""
 
-    pass
 
 
 class UnrefinedUnknownValue(UnknownValue):

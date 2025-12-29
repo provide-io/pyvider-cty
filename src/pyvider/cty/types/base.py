@@ -62,7 +62,6 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
     @abstractmethod
     def _to_wire_json(self) -> Any:
         """Abstract method for JSON wire format encoding."""
-        pass
 
     def is_primitive_type(self) -> bool:
         return False
