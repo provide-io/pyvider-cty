@@ -23,7 +23,7 @@ def chomp(input_val: CtyValue[Any]) -> CtyValue[Any]:
     s = input_val.value
     if s.endswith("\r\n"):  # type: ignore
         return CtyString().validate(s[:-2])  # type: ignore
-    if s.endswith("\n") or s.endswith("\r"):  # type: ignore
+    if s.endswith(("\n", "\r")):  # type: ignore
         return CtyString().validate(s[:-1])  # type: ignore
     return input_val
 
