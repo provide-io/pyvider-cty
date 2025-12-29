@@ -20,7 +20,6 @@ class UnknownValue:
     """A base marker class for all unknown value types."""
 
 
-
 class UnrefinedUnknownValue(UnknownValue):
     """A marker class for a simple, unrefined unknown value."""
 
