@@ -1,6 +1,12 @@
 #
 # pyvider-cty/pyproject.toml
 #
+# Pure-Python implementation of the go-cty type system
+#
+
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyvider-cty"
@@ -47,10 +53,6 @@ dev = [
 docs = [
     "provide-testkit[docs]",
 ]
-
-[build-system]
-requires = ["setuptools>=75.0", "wheel"]
-build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 package-dir = {"" = "src"} # Specifies that packages are under src
