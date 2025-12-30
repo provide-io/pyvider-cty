@@ -15,6 +15,7 @@ authors = [
 maintainers = [
     { name = "provide.io", email = "code@provide.io" },
 ]
+keywords = ["cty", "go-cty", "terraform", "types", "validation", "serialization"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
