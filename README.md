@@ -1,13 +1,23 @@
-# pyvider.cty
+# Pyvider CTY
 
-**PREVIEW RELEASE**
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/badge/uv-package_manager-FF6B35.svg)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![CI](https://github.com/provide-io/pyvider-cty/actions/workflows/ci.yml/badge.svg)](https://github.com/provide-io/pyvider-cty/actions)
 
-This is the initial release of pyvider.cty. Core functionality is complete and well-tested; please report any issues or suggestions.
+**Pure-Python implementation of the go-cty type system for Terraform tooling**
 
-## Key Features
-- Pure-Python implementation of the go-cty type system.
-- Strong type validation and serialization for configuration data.
-- Designed for Terraform provider and tooling integrations.
+pyvider.cty provides strong type validation and serialization capabilities for configuration data, designed to work seamlessly with Terraform providers and HashiCorp ecosystem tools.
+
+## ✨ Key Features
+
+- 🎯 **Complete Type System** - Full implementation of go-cty primitives, collections, and structural types
+- 🔄 **Cross-Language Compatibility** - JSON/MessagePack serialization for Go interoperability
+- ✅ **Type-Safe Validation** - Strong validation with detailed error messages
+- 🏷️ **Marks System** - Attach metadata to values without modification
+- 🧭 **Path Navigation** - Type-safe access to nested data structures
+- 📚 **Standard Library** - Comprehensive collection of type functions
 
 ## Quick Start
 1. Install: `uv add pyvider-cty`
