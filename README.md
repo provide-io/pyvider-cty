@@ -77,4 +77,4 @@ print(f"Name: {user_val['name'].raw_value}")  # Output: Alice
 - **Python 3.11+ Required**: Due to modern type features and syntax used.
 - **Performance**: The library is not optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
 
-Copyright (c) Provide.io LLC.
+Copyright (c) provide.io LLC.
