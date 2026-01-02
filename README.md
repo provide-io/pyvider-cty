@@ -58,6 +58,34 @@ We welcome contributions! Please see our [Contributing Guidelines](https://githu
 
 Apache License 2.0. See [LICENSE](https://github.com/provide-io/pyvider-cty/blob/main/LICENSE) for details.
 
+## Key Features
+Key features are highlighted in the sections below and in the documentation.
+
+## Quick Start
+For a quick start, see [docs/index.md](docs/index.md).
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[Getting Started](docs/getting-started/index.md)** - Quick start and installation guide
+- **[User Guide](docs/user-guide/index.md)** - Complete guide to all features
+- **[How-To Guides](docs/how-to/index.md)** - Practical task-oriented guides
+- **[API Reference](docs/api/index.md)** - Complete API documentation
+
+Or start with the **[documentation index](docs/index.md)**.
+
+## Development
+Development notes are in [CLAUDE.md](CLAUDE.md).
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE) for details.
+
 ## Overview
 
 `pyvider.cty` is a pure-Python implementation of the [go-cty](https://github.com/zclconf/go-cty) type system, providing strong type validation and serialization capabilities for configuration data. It's designed to work seamlessly with Terraform providers and other HashiCorp ecosystem tools.
@@ -96,6 +124,4 @@ print(f"Name: {user_val['name'].raw_value}")  # Output: Alice
 ## Known Limitations
 
 - **Python 3.11+ Required**: Due to modern type features and syntax used.
-- **Performance**: The library is not optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
-
-Copyright (c) provide.io LLC.
+- **Performance**: The library is not yet optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
