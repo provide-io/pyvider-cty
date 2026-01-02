@@ -2,7 +2,7 @@
 
 **PREVIEW RELEASE**
 
-This is a preview release of pyvider.cty. While the core functionality is complete and well-tested, this release is intended for early adopters and feedback gathering. Please report any issues or suggestions.
+This is the initial release of pyvider.cty. Core functionality is complete and well-tested; please report any issues or suggestions.
 
 ## Key Features
 - Pure-Python implementation of the go-cty type system.
