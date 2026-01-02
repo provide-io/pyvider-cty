@@ -1,5 +1,9 @@
 # Welcome to Pyvider CTY
 
+!!! warning "Pre-release"
+    This documentation covers a pre-release. APIs and features may change, and some documented or roadmap items are exploratory and may change or be removed.
+
+
 **A powerful and flexible type system for Python, compatible with HashiCorp's go-cty.**
 
 `pyvider.cty` is a pure-Python implementation of the [go-cty](https://github.com/zclconf/go-cty) type system, providing strong type validation and serialization capabilities for configuration data. It's designed to work seamlessly with Terraform providers and other HashiCorp ecosystem tools.
@@ -20,7 +24,7 @@
 
 ### 🏗️ **Robust and Reliable**
 - **Immutable Values**: `cty` values are immutable, ensuring data integrity and preventing unintended side effects.
-- **Thoroughly Tested**: A comprehensive test suite ensures the library is reliable and production-ready.
+- **Thoroughly Tested**: A comprehensive test suite ensures the library is reliable and production-focused.
 - **Battle-Tested Concepts**: Based on the well-established `cty` type system from HashiCorp's Terraform.
 
 ### 🔄 **Cross-Language Compatibility**
@@ -95,7 +99,7 @@ print(f"Name: {user_val['name'].raw_value}")
 uv add pyvider-cty
 
 # With pip
-pip install pyvider-cty
+uv add pyvider-cty
 ```
 
 ---
