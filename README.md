@@ -11,31 +11,31 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 
 ## Quick Start
 1. Install: `pip install pyvider-cty`
-2. Follow the [Getting Started guide](docs/getting-started/index.md).
+2. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
 3. See the [Quick Example](#quick-example) below.
 
 ## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
 
-- **[Getting Started](docs/getting-started/index.md)** - Quick start and installation guide
-- **[User Guide](docs/user-guide/index.md)** - Complete guide to all features
-- **[How-To Guides](docs/how-to/index.md)** - Practical task-oriented guides
-- **[API Reference](docs/api/index.md)** - Complete API documentation
+- **[Getting Started](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md)** - Quick start and installation guide
+- **[User Guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/user-guide/index.md)** - Complete guide to all features
+- **[How-To Guides](https://github.com/provide-io/pyvider-cty/blob/main/docs/how-to/index.md)** - Practical task-oriented guides
+- **[API Reference](https://github.com/provide-io/pyvider-cty/blob/main/docs/api/index.md)** - Complete API documentation
 
-Or start with the **[documentation index](docs/index.md)**.
+Or start with the **[documentation index](https://github.com/provide-io/pyvider-cty/blob/main/docs/index.md)**.
 
 ## Development
-- See [CLAUDE.md](CLAUDE.md) for local development notes.
+- See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for local development notes.
 - Run `uv sync --extra dev` to set up the dev environment.
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guidelines](https://github.com/provide-io/pyvider-cty/blob/main/CONTRIBUTING.md) for details.
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](https://github.com/provide-io/pyvider-cty/blob/main/LICENSE) for details.
 
 ## Overview
 
@@ -76,3 +76,5 @@ print(f"Name: {user_val['name'].raw_value}")  # Output: Alice
 
 - **Python 3.11+ Required**: Due to modern type features and syntax used.
 - **Performance**: The library is not yet optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
+
+Copyright (c) Provide.io LLC.
