@@ -5,10 +5,14 @@
 This is a preview release of pyvider.cty. While the core functionality is complete and well-tested, this release is intended for early adopters and feedback gathering. Please report any issues or suggestions.
 
 ## Key Features
-Key features are highlighted in the sections below and in the documentation.
+- Pure-Python implementation of the go-cty type system.
+- Strong type validation and serialization for configuration data.
+- Designed for Terraform provider and tooling integrations.
 
 ## Quick Start
-For a quick start, see [docs/index.md](docs/index.md).
+1. Install: `pip install pyvider-cty`
+2. Follow the [Getting Started guide](docs/getting-started/index.md).
+3. See the [Quick Example](#quick-example) below.
 
 ## Documentation
 
@@ -22,7 +26,8 @@ Comprehensive documentation is available in the `docs/` directory:
 Or start with the **[documentation index](docs/index.md)**.
 
 ## Development
-Development notes are in [CLAUDE.md](CLAUDE.md).
+- See [CLAUDE.md](CLAUDE.md) for local development notes.
+- Run `uv sync --extra dev` to set up the dev environment.
 
 ## Contributing
 
