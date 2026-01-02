@@ -10,7 +10,7 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 - Designed for Terraform provider and tooling integrations.
 
 ## Quick Start
-1. Install: `pip install pyvider-cty`
+1. Install: `uv pip install pyvider-cty`
 2. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
 3. See the [Quick Example](#quick-example) below.
 
