@@ -2,61 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/) [![uv](https://img.shields.io/badge/uv-package_manager-FF6B35.svg)](https://github.com/astral-sh/uv) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![CI](https://github.com/provide-io/pyvider-cty/actions/workflows/ci.yml/badge.svg)](https://github.com/provide-io/pyvider-cty/actions)
 
-**Pure-Python implementation of the go-cty type system for Terraform tooling**
-
-pyvider.cty provides strong type validation and serialization capabilities for configuration data, designed to work seamlessly with Terraform providers and HashiCorp ecosystem tools.
-
-## ✨ Key Features
-
-- 🎯 **Complete Type System** - Full implementation of go-cty primitives, collections, and structural types
-- 🔄 **Cross-Language Compatibility** - JSON/MessagePack serialization for Go interoperability
-- ✅ **Type-Safe Validation** - Strong validation with detailed error messages
-- 🏷️ **Marks System** - Attach metadata to values without modification
-- 🧭 **Path Navigation** - Type-safe access to nested data structures
-- 📚 **Standard Library** - Comprehensive collection of type functions
-
-## Quick Start
-
-> **Note**: pyvider-cty is in pre-release (v0.x.x). APIs and features may change before 1.0 release.
-
-1. Install: `uv add pyvider-cty`
-1. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
-1. See the [Quick Example](#quick-example) below.
-
-## Documentation
-
-Comprehensive documentation is available in the `docs/` directory:
-
-- **[Getting Started](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md)** - Quick start and installation guide
-- **[User Guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/user-guide/index.md)** - Complete guide to all features
-- **[How-To Guides](https://github.com/provide-io/pyvider-cty/blob/main/docs/how-to/index.md)** - Practical task-oriented guides
-- **[API Reference](https://github.com/provide-io/pyvider-cty/blob/main/docs/api/index.md)** - Complete API documentation
-
-Or start with the **[documentation index](https://github.com/provide-io/pyvider-cty/blob/main/docs/index.md)**.
-
-## Development
-
-### Quick Start
-
-```bash
-# Set up environment
-uv sync
-
-# Run common tasks
-uv run pytest             # Run tests
-uv run ruff check .       # Check code
-uv run ruff format .      # Format code
-```
-
-See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for detailed development instructions and architecture information.
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](https://github.com/provide-io/pyvider-cty/blob/main/CONTRIBUTING.md) for details.
-
-## License
-
-Apache License 2.0. See [LICENSE](https://github.com/provide-io/pyvider-cty/blob/main/LICENSE) for details.
+This is the initial release of pyvider.cty. Core functionality is complete and well-tested; please report any issues or suggestions.
 
 ## Key Features
 - Pure-Python implementation of the go-cty type system.
