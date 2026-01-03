@@ -33,7 +33,7 @@ This will:
 If you're using pip, you can install pyvider.cty with:
 
 ```bash
-pip install pyvider-cty
+uv add pyvider-cty
 ```
 
 ### Development Installation
@@ -49,7 +49,7 @@ cd pyvider-cty
 uv sync
 
 # Or with pip
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 ## Verify Installation

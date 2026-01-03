@@ -48,7 +48,7 @@ The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 ## Current Release
 
 **Version**: 0.0.1000 (Released: 2025-10-17)
-**Status**: Alpha - Production Ready
+**Status**: Alpha - Production-focused
 **Development Status**: Active
 
 ### Release Highlights
@@ -62,11 +62,11 @@ The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 
 ### Next Release
 
-See [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) for upcoming changes in the next release.
+See [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) for notes on potential changes in the next release (subject to change).
 
 ## Production Readiness
 
-✅ **The `pyvider.cty` library is production-ready**
+✅ **The `pyvider.cty` library is production-focused**
 
 - Documentation is comprehensive and well-organized
 - Code quality meets high standards with strict type checking
