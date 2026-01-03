@@ -39,8 +39,21 @@ Comprehensive documentation is available in the `docs/` directory:
 Or start with the **[documentation index](https://github.com/provide-io/pyvider-cty/blob/main/docs/index.md)**.
 
 ## Development
-- See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for local development notes.
-- Run `uv sync --extra dev` to set up the dev environment.
+
+### Quick Start
+
+```bash
+# Set up environment
+uv sync
+
+# Run common tasks
+we test           # Run tests
+we lint           # Check code
+we format         # Format code
+we tasks          # See all available commands
+```
+
+See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for detailed development instructions and architecture information.
 
 ## Contributing
 
