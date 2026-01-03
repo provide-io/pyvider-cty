@@ -271,7 +271,7 @@ unmarked, removed_marks = val.unmark()
 ```bash
 uv add pyvider-cty
 # or
-pip install pyvider-cty
+uv add pyvider-cty
 ```
 
 ### Step 2: Update Type Definitions
