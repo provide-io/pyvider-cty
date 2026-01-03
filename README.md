@@ -2,7 +2,7 @@
 
 **PREVIEW RELEASE**
 
-This is a preview release of pyvider.cty. While the core functionality is complete and well-tested, this release is intended for early adopters and feedback gathering. Please report any issues or suggestions.
+This is the initial release of pyvider.cty. Core functionality is complete and well-tested; please report any issues or suggestions.
 
 ## Key Features
 - Pure-Python implementation of the go-cty type system.
@@ -10,7 +10,7 @@ This is a preview release of pyvider.cty. While the core functionality is comple
 - Designed for Terraform provider and tooling integrations.
 
 ## Quick Start
-1. Install: `pip install pyvider-cty`
+1. Install: `uv add pyvider-cty`
 2. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
 3. See the [Quick Example](#quick-example) below.
 
@@ -75,6 +75,6 @@ print(f"Name: {user_val['name'].raw_value}")  # Output: Alice
 ## Known Limitations
 
 - **Python 3.11+ Required**: Due to modern type features and syntax used.
-- **Performance**: The library is not yet optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
+- **Performance**: The library is not optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
 
 Copyright (c) Provide.io LLC.
