@@ -20,6 +20,9 @@ pyvider.cty provides strong type validation and serialization capabilities for c
 - 📚 **Standard Library** - Comprehensive collection of type functions
 
 ## Quick Start
+
+> **Note**: pyvider-cty is in pre-release (v0.x.x). APIs and features may change before 1.0 release.
+
 1. Install: `uv add pyvider-cty`
 2. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
 3. See the [Quick Example](#quick-example) below.
