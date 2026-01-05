@@ -1,7 +1,7 @@
 # Welcome to Pyvider CTY
 
 !!! warning "Pre-release"
-    This documentation covers a pre-release. APIs and features may change, and some documented or roadmap items are exploratory and may change or be removed.
+    This documentation covers a pre-release. APIs and features may change, and some documented items are exploratory and may change or be removed.
 
 
 **A powerful and flexible type system for Python, compatible with HashiCorp's go-cty.**
