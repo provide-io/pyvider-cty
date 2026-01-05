@@ -97,9 +97,6 @@ print(f"Name: {user_val['name'].raw_value}")
 ```bash
 # With uv (recommended)
 uv add pyvider-cty
-
-# With pip
-uv add pyvider-cty
 ```
 
 ---
