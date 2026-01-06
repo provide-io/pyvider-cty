@@ -5,7 +5,7 @@ This guide will help you install pyvider.cty in your Python project.
 ## Requirements
 
 - **Python 3.11 or higher** - pyvider.cty uses modern Python type hints and features
-- **pip or uv** - Package installer for Python
+- **uv** - Package installer for Python
 
 You can check your Python version with:
 
@@ -28,14 +28,6 @@ This will:
 - Install the package and its dependencies
 - Update your project's lock file
 
-### Using pip
-
-If you're using pip, you can install pyvider.cty with:
-
-```bash
-uv add pyvider-cty
-```
-
 ### Development Installation
 
 If you want to contribute to pyvider.cty or work with the latest development version:
@@ -47,9 +39,6 @@ cd pyvider-cty
 
 # Install in development mode with uv
 uv sync
-
-# Or with pip
-uv pip install -e ".[dev]"
 ```
 
 ## Verify Installation
