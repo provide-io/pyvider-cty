@@ -9,96 +9,14 @@ on:
 
 permissions:
   contents: read
-
-env:
-  FORCE_COLOR: "1"
+  security-events: write
 
 jobs:
-  quality:
-    name: 🎨 Code Quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: provide-io/ci-tooling/actions/setup-python-env@main
-        with:
-          python-version: '3.11'
-          install-extras: 'dev'
-
-      - name: 📦 Install Quality Tools
-        run: |
-          source workenv/bin/activate
-          pip install ruff mypy
-
-      - name: 🎨 Code Quality
-        run: |
-          source workenv/bin/activate
-          ruff format . --check || echo "Format check completed"
-          ruff check . || echo "Lint check completed"
-          mypy src || echo "Type check completed"
-
-  test:
-    name: 🧪 Tests
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: provide-io/ci-tooling/actions/setup-python-env@main
-        with:
-          python-version: '3.11'
-          install-extras: 'dev'
-
-      - name: 📦 Install Test Tools
-        run: |
-          source workenv/bin/activate
-          pip install pytest pytest-cov coverage
-
-      - name: 🧪 Run Tests
-        run: |
-          source workenv/bin/activate
-          pytest --cov=src --cov-report=xml --cov-report=term-missing || echo "Tests completed"
-
-      - name: 📊 Check Coverage
-        run: |
-          source workenv/bin/activate
-          coverage report --fail-under=75 || echo "Coverage check completed"
-
-  build:
-    name: 📦 Build Package
-    needs: [quality, test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: provide-io/ci-tooling/actions/setup-python-env@main
-        with:
-          python-version: '3.11'
-          install-extras: 'dev'
-
-      - name: 📦 Build Package
-        run: |
-          source workenv/bin/activate
-          uv build
-
-      - name: 📤 Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  summary:
-    name: 📋 CI Complete
-    needs: [quality, test, build]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📋 Generate Summary
-        run: |
-          echo "## 🎯 CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Quality | ${{ needs.quality.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+  ci:
+    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@v0
+    with:
+      python-version: '3.11'
+      coverage-threshold: 75
+      run-security: true
+      run-secret-scan: true
+    secrets: inherit
