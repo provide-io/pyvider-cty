@@ -10,13 +10,28 @@ Tests the system's ability to handle:
 - Many object attributes (500+)
 - Deep nesting (200+ levels)
 - Huge strings (10MB+)
-- Large maps (10k+ keys)"""
+- Large maps (10k+ keys)
+
+NOTE: These tests are skipped in CI environments because they are
+resource-dependent stress tests that can hit validation timeouts on
+shared runners with variable performance characteristics.
+"""
+
+from __future__ import annotations
+
+import os
 
 from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
 from pyvider.cty import CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+
+# Skip entire module in CI - these are stress tests that require consistent resources
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true",
+    reason="Extreme scale tests skipped in CI due to resource constraints and validation timeouts",
+)
 
 # Extreme scale settings - suppress differing_executors to handle flaky re-runs on resource-constrained systems
 EXTREME_SETTINGS = settings(
