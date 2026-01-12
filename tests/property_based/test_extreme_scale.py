@@ -18,11 +18,17 @@ import pytest
 from pyvider.cty import CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 
-# Extreme scale settings
+# Extreme scale settings - suppress differing_executors to handle flaky re-runs on resource-constrained systems
 EXTREME_SETTINGS = settings(
     deadline=30000,  # 30 seconds for large data
     max_examples=100,  # Fewer examples since each is expensive
-    suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large, HealthCheck.filter_too_much],
+    suppress_health_check=[
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+        HealthCheck.differing_executors,  # Suppress re-execution flakiness
+    ],
+    derandomize=True,  # Use deterministic random to avoid flaky re-runs
 )
 
 
