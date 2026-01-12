@@ -10,7 +10,7 @@ from decimal import Decimal
 import json
 from typing import Any, cast
 
-import msgpack  # type: ignore
+import msgpack
 from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
