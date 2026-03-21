@@ -1,1 +1,7 @@
-{}
+{
+  "codec_total_allocations": 70093,
+  "conversion_total_allocations": 21487,
+  "inference_total_allocations": 28573,
+  "unify_total_allocations": 2420,
+  "validation_total_allocations": 4474
+}
