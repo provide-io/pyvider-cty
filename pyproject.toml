@@ -162,8 +162,13 @@ warn_unused_configs = true
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
-module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*", "msgpack.*"]
+module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "msgpack"
+ignore_missing_imports = true
+follow_imports = "skip"
 
 # ---------------------------------------------------------------------------- #
 # coverage configuration
