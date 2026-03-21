@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright (c) 2026 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 """
 Memray stress test: type unification hot paths.
 
@@ -53,16 +50,12 @@ SAME_SCHEMA_OBJECTS = [
 DYNAMIC_WITH_CONCRETE = [CtyDynamic(), CtyString()]
 
 LARGE_TYPE_LIST = [
-    CtyString(),
-    CtyNumber(),
-    CtyBool(),
+    CtyString(), CtyNumber(), CtyBool(),
     CtyList(element_type=CtyString()),
     CtyMap(element_type=CtyNumber()),
     CtyObject(attribute_types={"a": CtyString()}),
     CtyDynamic(),
-    CtyString(),
-    CtyNumber(),
-    CtyBool(),
+    CtyString(), CtyNumber(), CtyBool(),
 ]
 
 # --- Cycle configs ---
