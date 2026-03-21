@@ -1775,7 +1775,7 @@ docs = [
 requires-dist = [
     { name = "attrs", specifier = ">=25.4.0" },
     { name = "msgpack", specifier = ">=1.1.0" },
-    { name = "provide-foundation", specifier = ">=0.3.21,<0.4" },
+    { name = "provide-foundation", specifier = ">=0.3.21" },
 ]
 
 [package.metadata.requires-dev]
