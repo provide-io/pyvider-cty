@@ -82,6 +82,7 @@ markers = [
     "benchmark: mark test as a performance benchmark",
     "compat: mark test as a cross-language compatibility test",
     "slow: mark test as slow-running (extreme scale, memory pressure, etc.)",
+    "memray: memory profiling stress tests (run with -m memray)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
