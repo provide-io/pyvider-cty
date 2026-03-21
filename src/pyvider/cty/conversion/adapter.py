@@ -21,6 +21,9 @@ from pyvider.cty.types import (
 # Local imports to break the circular dependency cycle.
 from pyvider.cty.values import CtyValue
 
+# Module-level sentinel to avoid per-call allocation
+_POST_PROCESS = object()
+
 
 def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
     """
@@ -33,7 +36,23 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
     if value.is_unknown:
         return None  # Gracefully handle unknown values by returning None.
 
-    POST_PROCESS = object()
+    if value.is_null:
+        return None
+
+    # Fast path for primitive types — avoid allocating work_stack/results/processing
+    if not isinstance(
+        value.type,
+        CtyObject | CtyMap | CtyList | CtySet | CtyTuple | CtyDynamic,
+    ):
+        inner_val = value.value
+        if isinstance(inner_val, Decimal):
+            exponent = inner_val.as_tuple().exponent
+            if isinstance(exponent, int) and exponent >= 0:
+                return int(inner_val)
+            return float(inner_val)
+        return inner_val
+
+    POST_PROCESS = _POST_PROCESS
     work_stack: list[Any] = [value]
     results: dict[int, Any] = {}
     processing: set[int] = set()
@@ -97,18 +116,22 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
             CtyObject | CtyMap | CtyList | CtySet | CtyTuple | CtyDynamic,
         ):
             processing.add(item_id)
-            work_stack.extend([current_item, POST_PROCESS])
+            # Two appends avoid allocating a temporary 2-element list
+            work_stack.append(current_item)
+            work_stack.append(POST_PROCESS)
 
             if isinstance(current_item.type, CtyDynamic):
                 work_stack.append(current_item.value)
             elif hasattr(current_item.value, "__iter__"):  # Robustness check
                 if isinstance(current_item.value, dict):
-                    dict_val = cast(dict[str, Any], current_item.value)
-                    child_values = list(dict_val.values())
+                    # dict.values() supports reversed() in Python 3.8+, no list() needed
+                    work_stack.extend(reversed(current_item.value.values()))
+                elif isinstance(current_item.value, list | tuple):
+                    # reversed() works directly on list/tuple, no intermediate list needed
+                    work_stack.extend(reversed(current_item.value))
                 else:
-                    iterable_val = cast(list[Any] | set[Any] | tuple[Any, ...], current_item.value)
-                    child_values = list(iterable_val)
-                work_stack.extend(reversed(child_values))
+                    # sets need materialisation for reversed()
+                    work_stack.extend(list(current_item.value))
         else:
             inner_val = current_item.value
             if isinstance(inner_val, Decimal):

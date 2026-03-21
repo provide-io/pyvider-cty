@@ -10,7 +10,6 @@ from typing import Any, ClassVar, Generic, TypeVar, cast
 import unicodedata
 
 from attrs import define, field
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty.exceptions import (
     CtyMapValidationError,
@@ -56,26 +55,18 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             raise CtyMapValidationError(f"Input must be a dictionary, got {type(value).__name__}.")
         validated_map: dict[str, CtyValue[V]] = {}
         for k, v in value.items():
-            with error_boundary(
-                context={
-                    "operation": "map_element_validation",
-                    "map_key": str(k),
-                    "element_type": str(self.element_type),
-                    "value_type": type(v).__name__,
-                }
-            ):
-                if not isinstance(k, str):
-                    raise CtyMapValidationError(
-                        f"Map keys must be strings, but got key of type {type(k).__name__}"
-                    )
+            if not isinstance(k, str):
+                raise CtyMapValidationError(
+                    f"Map keys must be strings, but got key of type {type(k).__name__}"
+                )
 
-                normalized_key = unicodedata.normalize("NFC", k)
+            normalized_key = unicodedata.normalize("NFC", k)
 
-                try:
-                    validated_map[normalized_key] = self.element_type.validate(v)
-                except CtyValidationError as e:
-                    new_path = CtyPath(steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else []))
-                    raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
+            try:
+                validated_map[normalized_key] = self.element_type.validate(v)
+            except CtyValidationError as e:
+                new_path = CtyPath(steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else []))
+                raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
 
         is_unknown = any(v.is_unknown for v in validated_map.values())
         return CtyValue(vtype=self, value=validated_map, is_unknown=is_unknown)

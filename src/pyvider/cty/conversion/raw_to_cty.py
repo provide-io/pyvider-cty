@@ -7,13 +7,13 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import threading
 from typing import Any
 
 # pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
 import unicodedata
 
 import attrs
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty.conversion._utils import _attrs_to_dict_safe
 from pyvider.cty.conversion.inference_cache import (
@@ -24,15 +24,37 @@ from pyvider.cty.conversion.inference_cache import (
 from pyvider.cty.types import CtyType
 from pyvider.cty.values import CtyValue
 
+# Module-level sentinel to avoid per-call allocation
+_POST_PROCESS = object()
 
-def _extract_container_children(container: Any) -> list[Any]:
-    """Extract child elements from a container for cache key generation."""
-    children: list[Any] = []
-    if isinstance(container, dict):
-        children.extend(container.values())
-    elif isinstance(container, list | tuple | set | frozenset):
-        children.extend(container)
-    return children
+# Sentinel placeholder for containers during structural cache building.
+# Using a single tuple avoids allocating (item_id,) per container visit.
+_CONTAINER_PLACEHOLDER: tuple[Any, ...] = ("__placeholder__",)
+
+# Cache of structural keys for primitive values, keyed by (type, value).
+# Avoids allocating a new tuple per primitive when the same value recurs.
+_PRIMITIVE_KEY_CACHE: dict[tuple[type, Any], tuple[Any, ...]] = {}
+
+# Lazy-initialized singleton type instances to avoid repeated allocation.
+# Cannot be created at import time due to circular import constraints.
+_SINGLETONS: dict[str, CtyType[Any]] = {}
+
+
+def _get_singleton(name: str) -> CtyType[Any]:
+    """Get or create a singleton primitive type instance."""
+    if name not in _SINGLETONS:
+        from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString
+
+        _SINGLETONS["bool"] = CtyBool()
+        _SINGLETONS["number"] = CtyNumber()
+        _SINGLETONS["string"] = CtyString()
+        _SINGLETONS["dynamic"] = CtyDynamic()
+    return _SINGLETONS[name]
+
+
+# Module-level sort key to avoid lambda allocation per call
+def _repr_key_first(item: tuple[Any, Any]) -> str:
+    return repr(item[0])
 
 
 def _generate_container_cache_key(
@@ -43,46 +65,40 @@ def _generate_container_cache_key(
     Uses value-based keys for small containers with primitives to avoid
     race conditions from Python's object interning.
     """
+    _PRIM = (bool, int, float, str, bytes, type(None))
+
     if isinstance(container, dict):
+        items = container.items()
         # For small dicts containing only primitives, use value-based keys
         # to avoid race conditions from interned objects sharing IDs
-        if len(container) <= 5 and all(
-            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container.values()
-        ):
-            sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
-            return (dict, frozenset((k, v) for k, v in sorted_items))
+        if len(container) <= 5 and all(isinstance(v, _PRIM) for v in container.values()):
+            sorted_items = sorted(items, key=_repr_key_first)
+            return (dict, frozenset(sorted_items))
 
         # For larger or complex dicts, use existing structural cache approach
-        sorted_items = sorted(container.items(), key=lambda item: repr(item[0]))
+        sorted_items = sorted(items, key=_repr_key_first)
         return (
             dict,
             frozenset((k, structural_cache[id(v)]) for k, v in sorted_items),
         )
     elif isinstance(container, list):
         # For lists containing only primitives, use value-based keys to prevent race conditions
-        # Increased threshold to handle test cases with larger datasets
-        if len(container) <= 100 and all(
-            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container
-        ):
+        if len(container) <= 100 and all(isinstance(v, _PRIM) for v in container):
             return (list, tuple(container))
         return (list, tuple(structural_cache[id(v)] for v in container))
     elif isinstance(container, tuple):
         # For tuples containing only primitives, use value-based keys to prevent race conditions
-        if len(container) <= 100 and all(
-            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container
-        ):
+        if len(container) <= 100 and all(isinstance(v, _PRIM) for v in container):
             return (tuple, container)
         return (tuple, tuple(structural_cache[id(v)] for v in container))
     elif isinstance(container, set | frozenset):
         # For sets containing only primitives, use value-based keys to prevent race conditions
-        if len(container) <= 100 and all(
-            isinstance(v, (bool, int, float, str, bytes, type(None))) for v in container
-        ):
-            sorted_items = sorted(list(container), key=repr)
+        if len(container) <= 100 and all(isinstance(v, _PRIM) for v in container):
+            sorted_items = sorted(container, key=repr)
             return (frozenset, frozenset(sorted_items))
 
         # Sort elements by their string representation for deterministic order.
-        sorted_items = sorted(list(container), key=repr)
+        sorted_items = sorted(container, key=repr)
         return (frozenset, frozenset(structural_cache[id(v)] for v in sorted_items))
     else:
         return (type(container),)
@@ -104,11 +120,15 @@ def _process_container_children(
     visited_ids.add(item_id)
 
     # Placeholder is essential for cycle detection.
-    structural_cache[item_id] = (type(current_item), item_id, "placeholder")
+    # Use a shared sentinel tuple instead of allocating (item_id,) per call.
+    structural_cache[item_id] = _CONTAINER_PLACEHOLDER
     post_process_stack.append(current_item)
 
-    children = _extract_container_children(current_item)
-    work_stack.extend(children)
+    # Inline child extraction to avoid intermediate list allocation
+    if isinstance(current_item, dict):
+        work_stack.extend(current_item.values())
+    elif isinstance(current_item, list | tuple | set | frozenset):
+        work_stack.extend(current_item)
 
 
 def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
@@ -117,8 +137,6 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
     using a context-aware cache to handle object cycles and repeated sub-objects.
     Includes thread identity to ensure complete isolation between concurrent operations.
     """
-    import threading
-
     structural_cache = get_structural_key_cache()
     if structural_cache is None:
         # Fallback for when no cache is available (thread safety mode)
@@ -138,9 +156,15 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
 
         if not isinstance(current_item, dict | list | tuple | set | frozenset):
             # For primitive values, use value-based cache keys to avoid race conditions
-            # from shared object IDs (e.g., interned integers, strings)
+            # from shared object IDs (e.g., interned integers, strings).
+            # Cache the key tuples to avoid re-allocating identical tuples for recurring values.
             if isinstance(current_item, (bool, int, float, str, bytes, type(None))):
-                structural_cache[item_id] = (type(current_item).__name__, current_item)
+                cache_lookup = (type(current_item), current_item)
+                cached_key = _PRIMITIVE_KEY_CACHE.get(cache_lookup)
+                if cached_key is None:
+                    cached_key = cache_lookup
+                    _PRIMITIVE_KEY_CACHE[cache_lookup] = cached_key
+                structural_cache[item_id] = cached_key
             else:
                 structural_cache[item_id] = (type(current_item),)
             continue
@@ -169,35 +193,30 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     This function uses an iterative approach with a work stack to avoid recursion limits
     and leverages a context-aware cache for performance and thread-safety.
     """
-    with error_boundary(
-        context={
-            "operation": "cty_type_inference",
-            "value_type": type(value).__name__,
-            "is_attrs_class": attrs.has(type(value)) if hasattr(value, "__class__") else False,
-            "value_repr": str(value)[:100] if value is not None else "None",  # Truncated for safety
-        }
-    ):
-        from pyvider.cty.types import (
-            CtyBool,
-            CtyDynamic,
-            CtyList,
-            CtyMap,
-            CtyNumber,
-            CtyObject,
-            CtySet,
-            CtyString,
-            CtyTuple,
-            CtyType,
-        )
+    from pyvider.cty.types import (
+        CtyList,
+        CtyMap,
+        CtyObject,
+        CtySet,
+        CtyTuple,
+        CtyType,
+    )
 
-        if isinstance(value, CtyValue) or value is None:
-            return CtyDynamic()
+    # Fast path for primitives — avoid cache lookups and work stack allocation.
+    # Uses singleton instances to avoid repeated allocation of parameterless types.
+    if isinstance(value, bool):
+        return _get_singleton("bool")
+    if isinstance(value, int | float | Decimal):
+        return _get_singleton("number")
+    if isinstance(value, str | bytes):
+        return _get_singleton("string")
+    if isinstance(value, CtyValue) or value is None:
+        return _get_singleton("dynamic")
+    if isinstance(value, CtyType):
+        return _get_singleton("dynamic")
 
-        if isinstance(value, CtyType):
-            return CtyDynamic()
-
-        if attrs.has(type(value)):
-            value = _attrs_to_dict_safe(value)
+    if attrs.has(type(value)):
+        value = _attrs_to_dict_safe(value)
 
     container_cache = get_container_schema_cache()
 
@@ -209,7 +228,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
         if structural_key in container_cache:
             return container_cache[structural_key]
 
-    POST_PROCESS = object()
+    POST_PROCESS = _POST_PROCESS
     work_stack: list[Any] = [value]
     results: dict[int, CtyType[Any]] = {}
     processing: set[int] = set()
@@ -226,8 +245,9 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                 container = {unicodedata.normalize("NFC", k): v for k, v in container.items()}
 
             child_values = container.values() if isinstance(container, dict) else container
+            _dynamic = _get_singleton("dynamic")
             child_types = [
-                (v.type if isinstance(v, CtyValue) else results.get(id(v), CtyDynamic())) for v in child_values
+                (v.type if isinstance(v, CtyValue) else results.get(id(v), _dynamic)) for v in child_values
             ]
 
             inferred_schema: CtyType[Any]
@@ -250,7 +270,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                     else CtySet(element_type=unified)
                 )
             else:
-                inferred_schema = CtyDynamic()
+                inferred_schema = _get_singleton("dynamic")
 
             results[container_id] = inferred_schema
             continue
@@ -259,7 +279,7 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
             try:
                 current_item = _attrs_to_dict_safe(current_item)
             except TypeError:
-                results[id(current_item)] = CtyDynamic()
+                results[id(current_item)] = _get_singleton("dynamic")
                 continue
 
         if current_item is None:
@@ -273,13 +293,13 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
 
         if not isinstance(current_item, dict | list | tuple | set):
             if isinstance(current_item, bool):
-                results[item_id] = CtyBool()
+                results[item_id] = _get_singleton("bool")
             elif isinstance(current_item, int | float | Decimal):
-                results[item_id] = CtyNumber()
+                results[item_id] = _get_singleton("number")
             elif isinstance(current_item, str | bytes):
-                results[item_id] = CtyString()
+                results[item_id] = _get_singleton("string")
             else:
-                results[item_id] = CtyDynamic()
+                results[item_id] = _get_singleton("dynamic")
             continue
 
         structural_key = _get_structural_cache_key(current_item)
@@ -288,12 +308,19 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
             continue
 
         processing.add(item_id)
-        work_stack.extend([current_item, POST_PROCESS])
-        work_stack.extend(
-            reversed(list(current_item.values() if isinstance(current_item, dict) else current_item))
-        )
+        # Two appends avoid allocating a temporary 2-element list
+        work_stack.append(current_item)
+        work_stack.append(POST_PROCESS)
+        # Avoid intermediate list allocation: reversed() works directly on
+        # dict.values(), list, and tuple. Sets don't need ordering for inference.
+        if isinstance(current_item, dict):
+            work_stack.extend(reversed(current_item.values()))
+        elif isinstance(current_item, list | tuple):
+            work_stack.extend(reversed(current_item))
+        else:
+            work_stack.extend(current_item)
 
-    final_type = results.get(id(value), CtyDynamic())
+    final_type = results.get(id(value), _get_singleton("dynamic"))
 
     # Cache the result if caching is available
     if container_cache is not None:

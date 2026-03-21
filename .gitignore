@@ -53,6 +53,9 @@ mutants/
 # Benchmarks
 benchmarks/
 
+# Memray profiling output
+memray-output/
+
 # Backup files
 *.bak
 
