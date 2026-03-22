@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, final
 
 from attrs import define, field
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
@@ -80,27 +79,17 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         validated_elements: list[CtyValue[T]] = []
         for i, item in enumerate(raw_list_to_validate):
-            with error_boundary(
-                context={
-                    "operation": "list_element_validation",
-                    "list_index": i,
-                    "element_type": str(self.element_type),
-                    "item_type": type(item).__name__,
-                }
-            ):
-                if item is None and not isinstance(self.element_type, CtyDynamic):
-                    raise CtyListValidationError(
-                        f"List elements cannot be null for element type {self.element_type.ctype}",
-                        path=CtyPath(steps=[IndexStep(i)]),
-                    )
-                try:
-                    validated_item = self.element_type.validate(item)
-                    validated_elements.append(validated_item)
-                except CtyValidationError as e:
-                    new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
-                    raise CtyListValidationError(
-                        e.message, value=item, path=new_path, original_exception=e
-                    ) from e
+            if item is None and not isinstance(self.element_type, CtyDynamic):
+                raise CtyListValidationError(
+                    f"List elements cannot be null for element type {self.element_type.ctype}",
+                    path=CtyPath(steps=[IndexStep(i)]),
+                )
+            try:
+                validated_item = self.element_type.validate(item)
+                validated_elements.append(validated_item)
+            except CtyValidationError as e:
+                new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
+                raise CtyListValidationError(e.message, value=item, path=new_path, original_exception=e) from e
 
         is_unknown = any(v.is_unknown for v in validated_elements)
         return CtyValue(vtype=self, value=tuple(validated_elements), is_unknown=is_unknown)

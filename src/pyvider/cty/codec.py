@@ -11,7 +11,6 @@ import json
 from typing import Any, cast
 
 import msgpack
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
     ERR_DECODE_DYNAMIC_TYPE,
@@ -285,22 +284,13 @@ def _msgpack_default_handler(obj: Any) -> Any:
 
 
 def cty_to_msgpack(value: CtyValue[Any], schema: CtyType[Any]) -> bytes:
-    with error_boundary(
-        context={
-            "operation": "cty_to_msgpack_serialization",
-            "value_type": type(value).__name__,
-            "schema_type": str(schema),
-            "value_is_null": value.is_null if hasattr(value, "is_null") else False,
-            "value_is_unknown": value.is_unknown if hasattr(value, "is_unknown") else False,
-        }
-    ):
-        serializable_data = _convert_value_to_serializable(value, schema)
-        result: bytes = msgpack.packb(
-            serializable_data,
-            default=_msgpack_default_handler,
-            use_bin_type=MSGPACK_USE_BIN_TYPE_TRUE,
-        )
-        return result
+    serializable_data = _convert_value_to_serializable(value, schema)
+    result: bytes = msgpack.packb(
+        serializable_data,
+        default=_msgpack_default_handler,
+        use_bin_type=MSGPACK_USE_BIN_TYPE_TRUE,
+    )
+    return result
 
 
 def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:
@@ -312,40 +302,32 @@ def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:
 
 
 def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
-    with error_boundary(
-        context={
-            "operation": "cty_from_msgpack_deserialization",
-            "data_size": len(data),
-            "schema_type": str(cty_type),
-            "is_dynamic_type": isinstance(cty_type, CtyDynamic),
-        }
+    if not data:
+        return CtyValue.null(cty_type)
+    raw_unpacked = msgpack.unpackb(
+        data,
+        ext_hook=_ext_hook,
+        raw=MSGPACK_RAW_FALSE,
+        strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE,
+    )
+
+    if (
+        isinstance(cty_type, CtyDynamic)
+        and isinstance(raw_unpacked, list)
+        and len(raw_unpacked) == TWO_VALUE
+        and isinstance(raw_unpacked[0], bytes)
     ):
-        if not data:
-            return CtyValue.null(cty_type)
-        raw_unpacked = msgpack.unpackb(
-            data,
-            ext_hook=_ext_hook,
-            raw=MSGPACK_RAW_FALSE,
-            strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE,
-        )
+        try:
+            type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
+            actual_type = parse_tf_type_to_ctytype(type_spec)
+            inner_value = _unpacked_to_cty(raw_unpacked[1], actual_type)
+            return CtyValue(vtype=cty_type, value=inner_value)
+        except json.JSONDecodeError as e:
+            raise DeserializationError(ERR_DECODE_DYNAMIC_TYPE) from e
+        except CtyValidationError as e:
+            raise e
 
-        if (
-            isinstance(cty_type, CtyDynamic)
-            and isinstance(raw_unpacked, list)
-            and len(raw_unpacked) == TWO_VALUE
-            and isinstance(raw_unpacked[0], bytes)
-        ):
-            try:
-                type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
-                actual_type = parse_tf_type_to_ctytype(type_spec)
-                inner_value = _unpacked_to_cty(raw_unpacked[1], actual_type)
-                return CtyValue(vtype=cty_type, value=inner_value)
-            except json.JSONDecodeError as e:
-                raise DeserializationError(ERR_DECODE_DYNAMIC_TYPE) from e
-            except CtyValidationError as e:
-                raise e
-
-        return _unpacked_to_cty(raw_unpacked, cty_type)
+    return _unpacked_to_cty(raw_unpacked, cty_type)
 
 
 # 🌊🪢🔚
