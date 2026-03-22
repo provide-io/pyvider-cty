@@ -298,8 +298,9 @@ def test_dynamic_type_inference_is_deterministic(data) -> None:
     nested_data = data.draw(
         st.recursive(
             primitives,
-            lambda children: st.lists(children, max_size=5)
-            | st.dictionaries(st.text(min_size=1), children, max_size=5),
+            lambda children: (
+                st.lists(children, max_size=5) | st.dictionaries(st.text(min_size=1), children, max_size=5)
+            ),
             max_leaves=10,
         )
     )

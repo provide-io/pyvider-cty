@@ -36,7 +36,7 @@ classifiers = [
 dependencies = [
     "attrs>=25.4.0",
     "msgpack>=1.1.0",
-    "provide-foundation",
+    "provide-foundation>=0.3.21",
 ]
 
 [project.urls]
@@ -95,11 +95,12 @@ norecursedirs = [
     "dist",
     "*.egg-info",
     ".venv",
+    "tests/memray",
     "htmlcov",
     ".hypothesis",
 ]
 # The log_file path will be set dynamically in conftest.py
-addopts = "-ra -q --color=yes"
+addopts = "-m 'not memray' -ra -q --color=yes"
 # Parallel execution: pytest -n <workers> (range: 2-16, recommend: CPU cores or 8, max: 16 to avoid xdist hang)
 
 # ---------------------------------------------------------------------------- #
@@ -164,6 +165,11 @@ disallow_untyped_decorators = false
 [[tool.mypy.overrides]]
 module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "msgpack"
+ignore_missing_imports = true
+follow_imports = "skip"
 
 # ---------------------------------------------------------------------------- #
 # coverage configuration
