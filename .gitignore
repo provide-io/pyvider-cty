@@ -76,3 +76,6 @@ vendor
 certs
 kv-data-*
 bin/
+
+# Local act CI config (machine-specific)
+.actrc
