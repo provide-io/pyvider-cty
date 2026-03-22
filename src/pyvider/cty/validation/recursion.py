@@ -26,7 +26,6 @@ import time
 from typing import Any, cast
 
 from provide.foundation import logger
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
     MAX_OBJECT_REVISITS,
@@ -36,28 +35,14 @@ from pyvider.cty.config.defaults import (
 
 
 @dataclass
-class ValidationNode:
-    """Represents a node in the validation graph for cycle detection."""
-
-    object_id: int
-    object_type: str
-    depth: int
-    parent_path: str
-    first_seen_at: float = field(default_factory=time.time)
-
-    def __post_init__(self) -> None:
-        self.visits = 1
-
-
-@dataclass
 class RecursionContext:
     """Thread-local context for tracking validation recursion."""
 
-    # Object identity tracking for cycle detection
-    validation_graph: dict[int, ValidationNode] = field(default_factory=dict)
+    # Object identity tracking: maps object id -> visit count (lightweight int counter)
+    validation_graph: dict[int, int] = field(default_factory=dict)
 
-    # Path tracking for detailed diagnostics
-    validation_path: list[str] = field(default_factory=list)
+    # Path tracking for detailed diagnostics (None entries are lightweight depth markers)
+    validation_path: list[str | None] = field(default_factory=list)
 
     # Performance monitoring
     max_depth_reached: int = 0
@@ -112,7 +97,7 @@ class RecursionDetector:
     def __init__(self, context: RecursionContext | None = None) -> None:
         self.context = context or get_recursion_context()
 
-    def should_continue_validation(self, value: Any, current_path: str = "") -> tuple[bool, str | None]:
+    def should_continue_validation(self, value: Any, current_path: str = "", /) -> tuple[bool, str | None]:
         """
         Determine if validation should continue for the given value.
 
@@ -127,7 +112,11 @@ class RecursionDetector:
         """
 
         # Performance safeguards - prevent pathological cases
-        elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
+        # Only check time every 64 validations to reduce time.time() overhead
+        if self.context.total_validations & 63 == 0:
+            elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
+        else:
+            elapsed_ms = 0.0
         if elapsed_ms > self.context.max_validation_time_ms:
             reason = (
                 f"Validation timeout after {elapsed_ms:.1f}ms (max: {self.context.max_validation_time_ms}ms)"
@@ -162,55 +151,33 @@ class RecursionDetector:
         if isinstance(value, (str, int, float, bool, type(None))):
             return True, None
 
-        # Skip cycle detection for simple lists of primitives
-        if isinstance(value, list) and all(
+        # Skip cycle detection for simple lists/tuples of primitives
+        if isinstance(value, (list, tuple)) and all(
             isinstance(item, (str, int, float, bool, type(None))) for item in value
         ):
             return True, None
 
-        # Sophisticated cycle detection
+        # Lightweight cycle detection using visit counters
         value_id = id(value)
-        value_type = type(value).__name__
+        visits = self.context.validation_graph.get(value_id, 0) + 1
+        self.context.validation_graph[value_id] = visits
 
-        if value_id in self.context.validation_graph:
-            node = self.context.validation_graph[value_id]
-            node.visits += 1
-
-            # Allow some revisits for complex but legitimate schemas
-            if node.visits > self.context.max_object_revisits:
-                reason = (
-                    f"Circular reference detected: {value_type} object visited "
-                    f"{node.visits} times (max: {self.context.max_object_revisits})"
-                )
-                logger.debug(
-                    "CTY circular reference detected",
-                    object_type=value_type,
-                    object_id=value_id,
-                    visits=node.visits,
-                    first_seen_depth=node.depth,
-                    current_depth=current_depth,
-                    path=current_path,
-                    trace="advanced_recursion_detection",
-                )
-                return False, reason
-
-            # Log revisit for monitoring
+        if visits > self.context.max_object_revisits:
+            value_type = type(value).__name__
+            reason = (
+                f"Circular reference detected: {value_type} object visited "
+                f"{visits} times (max: {self.context.max_object_revisits})"
+            )
             logger.debug(
-                "CTY object revisited",
+                "CTY circular reference detected",
                 object_type=value_type,
                 object_id=value_id,
-                visits=node.visits,
+                visits=visits,
+                current_depth=current_depth,
                 path=current_path,
                 trace="advanced_recursion_detection",
             )
-        else:
-            # First time seeing this object
-            self.context.validation_graph[value_id] = ValidationNode(
-                object_id=value_id,
-                object_type=value_type,
-                depth=current_depth,
-                parent_path=current_path,
-            )
+            return False, reason
 
         return True, None
 
@@ -225,7 +192,7 @@ class RecursionDetector:
 
     def get_current_path(self) -> str:
         """Get the current validation path for diagnostics."""
-        return " -> ".join(self.context.validation_path)
+        return " -> ".join(s for s in self.context.validation_path if s is not None)
 
     def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics for monitoring and debugging."""
@@ -244,6 +211,9 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for advanced recursion detection in validation functions.
     """
+    # Pre-allocate a single detector instance per decorated function.
+    # The detector is stateless — context comes from thread-local storage.
+    _detector = RecursionDetector()
 
     @wraps(func)
     def wrapper(self: Any, value: Any, *args: Any, **kwargs: Any) -> Any:
@@ -253,56 +223,50 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         if is_top_level_call:
             context.reset()
 
-        detector = RecursionDetector(context)
-        scope_name = f"{self.__class__.__name__}.validate(type={type(value).__name__})"
+        # Bind detector to current thread's context (avoids per-call allocation)
+        _detector.context = context
 
-        with error_boundary(
-            context={
-                "operation": "recursion_detection",
-                "type_name": self.__class__.__name__,
-                "value_type": type(value).__name__,
-                "validation_depth": len(context.validation_path),
-                "total_validations": context.total_validations,
-            }
-        ):
-            detector.enter_validation_scope(scope_name)
+        # Use None as a lightweight depth marker instead of an f-string scope name.
+        # The actual scope string is only constructed on the error path.
+        context.validation_path.append(None)
 
-            try:
-                # Check if validation was already stopped by a nested call
-                if context.validation_stopped:
-                    from pyvider.cty.values import CtyValue
+        try:
+            # Check if validation was already stopped by a nested call
+            if context.validation_stopped:
+                from pyvider.cty.values import CtyValue
 
-                    return CtyValue.unknown(self)
+                return CtyValue.unknown(self)
 
-                should_continue, reason = detector.should_continue_validation(
-                    value, detector.get_current_path()
+            should_continue, reason = _detector.should_continue_validation(value)
+            if not should_continue:
+                from pyvider.cty.values import CtyValue
+
+                # Set flag to stop all parent validations
+                context.validation_stopped = True
+
+                # Only construct debug strings on the error path
+                scope_name = f"{self.__class__.__name__}.validate(type={type(value).__name__})"
+                logger.warning(
+                    "CTY validation stopped due to recursion detection",
+                    reason=reason,
+                    value_type=type(value).__name__,
+                    path=scope_name,
                 )
-                if not should_continue:
-                    from pyvider.cty.values import CtyValue
+                return CtyValue.unknown(self)
 
-                    # Set flag to stop all parent validations
-                    context.validation_stopped = True
+            # The decorator no longer passes the internal flag down.
+            result = func(self, value, *args, **kwargs)
 
-                    logger.warning(
-                        "CTY validation stopped due to recursion detection",
-                        reason=reason,
-                        value_type=type(value).__name__,
-                        path=detector.get_current_path(),
-                    )
-                    return CtyValue.unknown(self)
+            # Check again after validation in case a nested call stopped validation
+            if context.validation_stopped:
+                from pyvider.cty.values import CtyValue
 
-                # The decorator no longer passes the internal flag down.
-                result = func(self, value, *args, **kwargs)
+                return CtyValue.unknown(self)
 
-                # Check again after validation in case a nested call stopped validation
-                if context.validation_stopped:
-                    from pyvider.cty.values import CtyValue
-
-                    return CtyValue.unknown(self)
-
-                return result
-            finally:
-                detector.exit_validation_scope()
+            return result
+        finally:
+            if context.validation_path:
+                context.validation_path.pop()
 
     return wrapper
 
