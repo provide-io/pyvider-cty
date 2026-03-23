@@ -50,12 +50,16 @@ SAME_SCHEMA_OBJECTS = [
 DYNAMIC_WITH_CONCRETE = [CtyDynamic(), CtyString()]
 
 LARGE_TYPE_LIST = [
-    CtyString(), CtyNumber(), CtyBool(),
+    CtyString(),
+    CtyNumber(),
+    CtyBool(),
     CtyList(element_type=CtyString()),
     CtyMap(element_type=CtyNumber()),
     CtyObject(attribute_types={"a": CtyString()}),
     CtyDynamic(),
-    CtyString(), CtyNumber(), CtyBool(),
+    CtyString(),
+    CtyNumber(),
+    CtyBool(),
 ]
 
 # --- Cycle configs ---

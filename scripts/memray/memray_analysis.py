@@ -114,9 +114,7 @@ def compare_allocations(baseline: Path, current: Path) -> dict[str, Any]:
     baseline_size = baseline.stat().st_size
     current_size = current.stat().st_size
 
-    size_increase = (
-        ((current_size - baseline_size) / baseline_size * 100) if baseline_size > 0 else 0
-    )
+    size_increase = ((current_size - baseline_size) / baseline_size * 100) if baseline_size > 0 else 0
 
     if size_increase > 10:  # More than 10% increase
         comparison["regression_detected"] = True
@@ -165,50 +163,52 @@ def generate_analysis_report(output_dir: Path) -> str:
 
         report_lines.append("")
 
-    report_lines.extend([
-        "## Key Patterns to Watch",
-        "",
-        "1. **Type validation** (`memray_validation_stress`):",
-        "   - `CtyValue` attrs frozen dataclass instantiation per `validate()` call",
-        "   - Recursive element validation for collections (list/map/set/tuple)",
-        "   - `frozenset` creation for marks on every CtyValue",
-        "   - `with_recursion_detection` decorator overhead",
-        "",
-        "2. **Type inference** (`memray_inference_stress`):",
-        "   - Work stack allocation in iterative inference loop",
-        "   - Cache key generation for containers (`_generate_container_cache_key`)",
-        "   - `sorted()` calls for dict key ordering",
-        "   - `isinstance()` chains across all type checks",
-        "",
-        "3. **Msgpack codec** (`memray_codec_stress`):",
-        "   - `msgpack.packb()` / `msgpack.unpackb()` buffer allocation",
-        "   - `_convert_value_to_serializable` intermediate dict/list creation",
-        "   - `Decimal`-to-bytes conversion for numbers",
-        "   - `ExtType` wrapping for dynamic/refined unknown values",
-        "",
-        "4. **Native conversion** (`memray_conversion_stress`):",
-        "   - `work_stack` list growth in `cty_to_native` iterative loop",
-        "   - `results` dict and `processing` set per conversion call",
-        "   - Tuple/list/dict construction during post-processing",
-        "   - `POST_PROCESS` sentinel object creation per call",
-        "",
-        "5. **Type unification** (`memray_unify_stress`):",
-        "   - `frozenset` creation from input `Iterable` on every call",
-        "   - `lru_cache` interaction with `_unify_frozen`",
-        "   - Pairwise type comparison allocations",
-        "   - Fallback to `CtyDynamic` creation on incompatible types",
-        "",
-        "## Next Steps",
-        "",
-        "```bash",
-        "# Generate flamegraphs for visual inspection",
-        "uv run python scripts/memray/memray_analysis.py",
-        "",
-        "# Compare against baseline after optimization",
-        "# (save current as baseline first, then re-run after changes)",
-        "```",
-        "",
-    ])
+    report_lines.extend(
+        [
+            "## Key Patterns to Watch",
+            "",
+            "1. **Type validation** (`memray_validation_stress`):",
+            "   - `CtyValue` attrs frozen dataclass instantiation per `validate()` call",
+            "   - Recursive element validation for collections (list/map/set/tuple)",
+            "   - `frozenset` creation for marks on every CtyValue",
+            "   - `with_recursion_detection` decorator overhead",
+            "",
+            "2. **Type inference** (`memray_inference_stress`):",
+            "   - Work stack allocation in iterative inference loop",
+            "   - Cache key generation for containers (`_generate_container_cache_key`)",
+            "   - `sorted()` calls for dict key ordering",
+            "   - `isinstance()` chains across all type checks",
+            "",
+            "3. **Msgpack codec** (`memray_codec_stress`):",
+            "   - `msgpack.packb()` / `msgpack.unpackb()` buffer allocation",
+            "   - `_convert_value_to_serializable` intermediate dict/list creation",
+            "   - `Decimal`-to-bytes conversion for numbers",
+            "   - `ExtType` wrapping for dynamic/refined unknown values",
+            "",
+            "4. **Native conversion** (`memray_conversion_stress`):",
+            "   - `work_stack` list growth in `cty_to_native` iterative loop",
+            "   - `results` dict and `processing` set per conversion call",
+            "   - Tuple/list/dict construction during post-processing",
+            "   - `POST_PROCESS` sentinel object creation per call",
+            "",
+            "5. **Type unification** (`memray_unify_stress`):",
+            "   - `frozenset` creation from input `Iterable` on every call",
+            "   - `lru_cache` interaction with `_unify_frozen`",
+            "   - Pairwise type comparison allocations",
+            "   - Fallback to `CtyDynamic` creation on incompatible types",
+            "",
+            "## Next Steps",
+            "",
+            "```bash",
+            "# Generate flamegraphs for visual inspection",
+            "uv run python scripts/memray/memray_analysis.py",
+            "",
+            "# Compare against baseline after optimization",
+            "# (save current as baseline first, then re-run after changes)",
+            "```",
+            "",
+        ]
+    )
 
     return "\n".join(report_lines)
 
