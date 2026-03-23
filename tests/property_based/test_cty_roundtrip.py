@@ -43,7 +43,7 @@ def deep_prepare_for_comparison(data):
     return data
 
 
-@settings(deadline=1000, max_examples=200)
+@settings(deadline=None, max_examples=200)
 @given(native_data=json_strategy)
 def test_cty_wire_format_roundtrip(native_data) -> None:
     """

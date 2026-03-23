@@ -13,11 +13,22 @@ import subprocess
 import time
 
 import pytest
+from hypothesis import HealthCheck, settings as h_settings
 
 from pyvider.cty.validation.recursion import clear_recursion_context
 
 # Note: setproctitle is automatically disabled by provide-testkit's conftest.py
 # to prevent pytest-xdist performance issues
+
+# CI-friendly Hypothesis profile: disables deadlines and suppresses slow-input
+# health checks, tuned for resource-constrained containers where generation and
+# execution are significantly slower than developer machines.
+h_settings.register_profile(
+    "ci",
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
+)
+h_settings.load_profile("ci")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

@@ -4,11 +4,12 @@
 #
 
 
-from hypothesis import given, strategies as st
+from hypothesis import HealthCheck, given, settings, strategies as st
 
 from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
 
 
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(
     st.recursive(
         st.none()
