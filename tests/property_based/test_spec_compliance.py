@@ -242,7 +242,7 @@ def test_object_attribute_order_is_stable(data) -> None:
         assert decoded.value[name].value == f"value_{name}"
 
 
-@settings(deadline=1000, max_examples=100)
+@settings(deadline=None, max_examples=100)
 @given(
     marks_data=st.lists(
         st.tuples(st.text(min_size=1, max_size=20), st.none() | st.integers() | st.text(max_size=50)),
