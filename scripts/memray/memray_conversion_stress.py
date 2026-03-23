@@ -32,66 +32,75 @@ STRING_VALUE = CtyString().validate("hello-benchmark")
 NUMBER_VALUE = CtyNumber().validate(Decimal("42.5"))
 BOOL_VALUE = CtyBool().validate(True)
 
-LIST_VALUE = CtyList(element_type=CtyString()).validate(
-    [f"item-{i}" for i in range(20)]
-)
+LIST_VALUE = CtyList(element_type=CtyString()).validate([f"item-{i}" for i in range(20)])
 
-SET_VALUE = CtySet(element_type=CtyNumber()).validate(
-    {Decimal(str(i)) for i in range(10)}
-)
+SET_VALUE = CtySet(element_type=CtyNumber()).validate({Decimal(str(i)) for i in range(10)})
 
-MAP_VALUE = CtyMap(element_type=CtyString()).validate(
-    {f"key-{i}": f"value-{i}" for i in range(10)}
-)
+MAP_VALUE = CtyMap(element_type=CtyString()).validate({f"key-{i}": f"value-{i}" for i in range(10)})
 
 TUPLE_VALUE = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyBool())).validate(
     ("mixed", Decimal("99"), True)
 )
 
 # Deep nesting: 4 levels of objects
-DEEP_SCHEMA = CtyObject(attribute_types={
-    "level1": CtyObject(attribute_types={
-        "level2": CtyObject(attribute_types={
-            "level3": CtyObject(attribute_types={
-                "value": CtyNumber(),
-                "label": CtyString(),
-            }),
-            "sibling": CtyString(),
-        }),
-        "count": CtyNumber(),
-    }),
-    "name": CtyString(),
-})
+DEEP_SCHEMA = CtyObject(
+    attribute_types={
+        "level1": CtyObject(
+            attribute_types={
+                "level2": CtyObject(
+                    attribute_types={
+                        "level3": CtyObject(
+                            attribute_types={
+                                "value": CtyNumber(),
+                                "label": CtyString(),
+                            }
+                        ),
+                        "sibling": CtyString(),
+                    }
+                ),
+                "count": CtyNumber(),
+            }
+        ),
+        "name": CtyString(),
+    }
+)
 
-DEEP_VALUE = DEEP_SCHEMA.validate({
-    "level1": {
-        "level2": {
-            "level3": {"value": Decimal("42"), "label": "deep"},
-            "sibling": "data",
+DEEP_VALUE = DEEP_SCHEMA.validate(
+    {
+        "level1": {
+            "level2": {
+                "level3": {"value": Decimal("42"), "label": "deep"},
+                "sibling": "data",
+            },
+            "count": Decimal("7"),
         },
-        "count": Decimal("7"),
-    },
-    "name": "root",
-})
+        "name": "root",
+    }
+)
 
 # Complex: object with list of objects
-COMPLEX_SCHEMA = CtyObject(attribute_types={
-    "id": CtyString(),
-    "items": CtyList(element_type=CtyObject(attribute_types={
-        "name": CtyString(),
-        "score": CtyNumber(),
-    })),
-    "tags": CtyMap(element_type=CtyString()),
-})
+COMPLEX_SCHEMA = CtyObject(
+    attribute_types={
+        "id": CtyString(),
+        "items": CtyList(
+            element_type=CtyObject(
+                attribute_types={
+                    "name": CtyString(),
+                    "score": CtyNumber(),
+                }
+            )
+        ),
+        "tags": CtyMap(element_type=CtyString()),
+    }
+)
 
-COMPLEX_VALUE = COMPLEX_SCHEMA.validate({
-    "id": "complex-1",
-    "items": [
-        {"name": f"item-{i}", "score": Decimal(str(i * 10))}
-        for i in range(10)
-    ],
-    "tags": {f"tag-{i}": f"val-{i}" for i in range(5)},
-})
+COMPLEX_VALUE = COMPLEX_SCHEMA.validate(
+    {
+        "id": "complex-1",
+        "items": [{"name": f"item-{i}", "score": Decimal(str(i * 10))} for i in range(10)],
+        "tags": {f"tag-{i}": f"val-{i}" for i in range(5)},
+    }
+)
 
 # --- Cycle configs ---
 
