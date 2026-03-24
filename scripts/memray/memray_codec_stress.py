@@ -27,22 +27,30 @@ BOOL_SCHEMA = CtyBool()
 LIST_SCHEMA = CtyList(element_type=CtyString())
 MAP_SCHEMA = CtyMap(element_type=CtyNumber())
 
-OBJECT_SCHEMA = CtyObject(attribute_types={
-    "name": CtyString(),
-    "age": CtyNumber(),
-    "active": CtyBool(),
-    "email": CtyString(),
-    "role": CtyString(),
-})
+OBJECT_SCHEMA = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
+        "active": CtyBool(),
+        "email": CtyString(),
+        "role": CtyString(),
+    }
+)
 
-NESTED_SCHEMA = CtyObject(attribute_types={
-    "id": CtyString(),
-    "items": CtyList(element_type=CtyObject(attribute_types={
-        "label": CtyString(),
-        "score": CtyNumber(),
-    })),
-    "metadata": CtyMap(element_type=CtyString()),
-})
+NESTED_SCHEMA = CtyObject(
+    attribute_types={
+        "id": CtyString(),
+        "items": CtyList(
+            element_type=CtyObject(
+                attribute_types={
+                    "label": CtyString(),
+                    "score": CtyNumber(),
+                }
+            )
+        ),
+        "metadata": CtyMap(element_type=CtyString()),
+    }
+)
 
 # Pre-validate all test values
 STRING_VALUE = STRING_SCHEMA.validate("benchmark-string-value")
@@ -52,22 +60,23 @@ BOOL_VALUE = BOOL_SCHEMA.validate(True)
 LIST_VALUE = LIST_SCHEMA.validate([f"item-{i}" for i in range(10)])
 MAP_VALUE = MAP_SCHEMA.validate({f"key-{i}": Decimal(str(i * 100)) for i in range(10)})
 
-OBJECT_VALUE = OBJECT_SCHEMA.validate({
-    "name": "benchmark",
-    "age": Decimal("30"),
-    "active": True,
-    "email": "bench@test.io",
-    "role": "admin",
-})
+OBJECT_VALUE = OBJECT_SCHEMA.validate(
+    {
+        "name": "benchmark",
+        "age": Decimal("30"),
+        "active": True,
+        "email": "bench@test.io",
+        "role": "admin",
+    }
+)
 
-NESTED_VALUE = NESTED_SCHEMA.validate({
-    "id": "nested-1",
-    "items": [
-        {"label": f"item-{i}", "score": Decimal(str(i * 10))}
-        for i in range(5)
-    ],
-    "metadata": {"env": "prod", "region": "us-east-1", "version": "2.0"},
-})
+NESTED_VALUE = NESTED_SCHEMA.validate(
+    {
+        "id": "nested-1",
+        "items": [{"label": f"item-{i}", "score": Decimal(str(i * 10))} for i in range(5)],
+        "metadata": {"env": "prod", "region": "us-east-1", "version": "2.0"},
+    }
+)
 
 # --- Cycle configs ---
 
