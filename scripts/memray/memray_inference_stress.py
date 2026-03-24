@@ -32,10 +32,7 @@ NESTED_DICT = {
 
 MIXED_LIST = [1, "two", 3.0, True, {"nested": "dict"}]
 
-LIST_OF_DICTS = [
-    {"id": i, "name": f"item-{i}", "active": i % 2 == 0}
-    for i in range(10)
-]
+LIST_OF_DICTS = [{"id": i, "name": f"item-{i}", "active": i % 2 == 0} for i in range(10)]
 
 COMPLEX_NESTED = {
     "id": "complex-1",
