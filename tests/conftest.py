@@ -14,6 +14,7 @@ import sys
 import time
 
 import pytest
+from hypothesis import HealthCheck, settings as h_settings
 
 # On Windows, prevent UnicodeEncodeError from emoji/box-drawing characters in
 # provide.foundation's structured logger.  colorama wraps sys.stdout with an
