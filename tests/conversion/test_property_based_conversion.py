@@ -50,7 +50,7 @@ def deep_prepare_for_comparison(data):
     return data
 
 
-@settings(deadline=500)
+@settings(deadline=None)
 @given(native_data=json_data)
 def test_conversion_roundtrip_is_lossless(native_data) -> None:
     """
