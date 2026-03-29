@@ -267,6 +267,14 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         finally:
             if context.validation_path:
                 context.validation_path.pop()
+            # Reset total_validations and validation_stopped when returning to
+            # depth 0 so subsequent top-level calls get a fresh context.
+            # Without this, stale state from a previous test can cause the
+            # next top-level call to be treated as a nested call and
+            # immediately return CtyValue.unknown().
+            if not context.validation_path:
+                context.total_validations = 0
+                context.validation_stopped = False
 
     return wrapper
 
