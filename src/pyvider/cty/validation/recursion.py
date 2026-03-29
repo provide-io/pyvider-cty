@@ -218,8 +218,11 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def wrapper(self: Any, value: Any, *args: Any, **kwargs: Any) -> Any:
         context = get_recursion_context()
-        # A call is top-level if the context has not been used yet.
-        is_top_level_call = context.total_validations == 0
+        # A call is top-level if the validation path is empty, meaning no
+        # parent frame is active.  Using the path (not total_validations) lets
+        # the context retain post-run metrics for inspection while still
+        # correctly detecting the start of a fresh top-level validation.
+        is_top_level_call = not context.validation_path
         if is_top_level_call:
             context.reset()
 
@@ -267,14 +270,6 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         finally:
             if context.validation_path:
                 context.validation_path.pop()
-            # Reset total_validations and validation_stopped when returning to
-            # depth 0 so subsequent top-level calls get a fresh context.
-            # Without this, stale state from a previous test can cause the
-            # next top-level call to be treated as a nested call and
-            # immediately return CtyValue.unknown().
-            if not context.validation_path:
-                context.total_validations = 0
-                context.validation_stopped = False
 
     return wrapper
 
