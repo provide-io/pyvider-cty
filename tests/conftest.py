@@ -10,9 +10,29 @@ from collections.abc import Generator
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import time
 
 import pytest
+
+# Reconfigure stdout/stderr to UTF-8 on Windows to prevent UnicodeEncodeError
+# when provide.foundation logs emoji/box-drawing characters.
+if sys.platform == "win32":
+    for _s in (sys.stdout, sys.stderr):
+        if _s is None:
+            continue
+        if hasattr(_s, "reconfigure"):
+            try:
+                _s.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+                continue
+            except Exception:
+                pass
+        _inner = getattr(_s, "stream", None)
+        if _inner is not None and hasattr(_inner, "reconfigure"):
+            try:
+                _inner.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
 from hypothesis import HealthCheck, settings as h_settings
 
 from pyvider.cty.validation.recursion import clear_recursion_context
