@@ -20,51 +20,75 @@ from pyvider.cty.validation.recursion import clear_recursion_context
 
 # --- Schema definitions ---
 
-FLAT_SCHEMA = CtyObject(attribute_types={
-    "name": CtyString(),
-    "age": CtyNumber(),
-    "active": CtyBool(),
-    "email": CtyString(),
-    "role": CtyString(),
-})
-
-NESTED_SCHEMA = CtyObject(attribute_types={
-    "user": CtyObject(attribute_types={
-        "profile": CtyObject(attribute_types={
-            "name": CtyString(),
-            "score": CtyNumber(),
-        }),
+FLAT_SCHEMA = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber(),
         "active": CtyBool(),
-    }),
-    "version": CtyNumber(),
-})
+        "email": CtyString(),
+        "role": CtyString(),
+    }
+)
 
-LIST_OF_OBJECTS_SCHEMA = CtyObject(attribute_types={
-    "items": CtyList(element_type=CtyObject(attribute_types={
-        "id": CtyNumber(),
-        "label": CtyString(),
-    })),
-    "count": CtyNumber(),
-})
+NESTED_SCHEMA = CtyObject(
+    attribute_types={
+        "user": CtyObject(
+            attribute_types={
+                "profile": CtyObject(
+                    attribute_types={
+                        "name": CtyString(),
+                        "score": CtyNumber(),
+                    }
+                ),
+                "active": CtyBool(),
+            }
+        ),
+        "version": CtyNumber(),
+    }
+)
 
-MAP_SCHEMA = CtyObject(attribute_types={
-    "tags": CtyMap(element_type=CtyString()),
-    "scores": CtyMap(element_type=CtyNumber()),
-})
+LIST_OF_OBJECTS_SCHEMA = CtyObject(
+    attribute_types={
+        "items": CtyList(
+            element_type=CtyObject(
+                attribute_types={
+                    "id": CtyNumber(),
+                    "label": CtyString(),
+                }
+            )
+        ),
+        "count": CtyNumber(),
+    }
+)
 
-COMBINED_SCHEMA = CtyObject(attribute_types={
-    "id": CtyString(),
-    "enabled": CtyBool(),
-    "config": CtyObject(attribute_types={
-        "params": CtyList(element_type=CtyNumber()),
-        "metadata": CtyMap(element_type=CtyString()),
-    }),
-    "nested": CtyObject(attribute_types={
-        "inner": CtyObject(attribute_types={
-            "value": CtyNumber(),
-        }),
-    }),
-})
+MAP_SCHEMA = CtyObject(
+    attribute_types={
+        "tags": CtyMap(element_type=CtyString()),
+        "scores": CtyMap(element_type=CtyNumber()),
+    }
+)
+
+COMBINED_SCHEMA = CtyObject(
+    attribute_types={
+        "id": CtyString(),
+        "enabled": CtyBool(),
+        "config": CtyObject(
+            attribute_types={
+                "params": CtyList(element_type=CtyNumber()),
+                "metadata": CtyMap(element_type=CtyString()),
+            }
+        ),
+        "nested": CtyObject(
+            attribute_types={
+                "inner": CtyObject(
+                    attribute_types={
+                        "value": CtyNumber(),
+                    }
+                ),
+            }
+        ),
+    }
+)
 
 # --- Test data ---
 
