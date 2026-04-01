@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from provide.foundation.utils import get_version
 
-__version__ = get_version("flavorpack", caller_file=__file__)
+__version__ = get_version("pyvider-cty", caller_file=__file__)
 
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import (
