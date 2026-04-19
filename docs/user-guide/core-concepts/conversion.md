@@ -35,13 +35,16 @@ converted_value = convert(source_value, target_type)
 ```
 
 **Parameters:**
+
 - `source_value`: A `CtyValue` to convert from
 - `target_type`: A `CtyType` to convert to
 
 **Returns:**
+
 - A new `CtyValue` of the target type
 
 **Raises:**
+
 - `CtyConversionError` if conversion is not possible
 
 ## Conversion Rules
@@ -49,6 +52,7 @@ converted_value = convert(source_value, target_type)
 ### Primitive Conversions
 
 **String → Number**
+
 ```python
 from pyvider.cty import CtyString, CtyNumber, convert
 
@@ -58,6 +62,7 @@ print(num_val.raw_value)  # Decimal('42.5')
 ```
 
 **Number → String**
+
 ```python
 num_val = CtyNumber().validate(42)
 str_val = convert(num_val, CtyString())
@@ -65,6 +70,7 @@ print(str_val.raw_value)  # "42"
 ```
 
 **Bool → String**
+
 ```python
 from pyvider.cty import CtyBool
 
@@ -74,6 +80,7 @@ print(str_val.raw_value)  # "true"
 ```
 
 **String → Bool**
+
 ```python
 str_val = CtyString().validate("true")
 bool_val = convert(str_val, CtyBool())
@@ -84,6 +91,7 @@ print(bool_val.raw_value)  # True
 ```
 
 **Number → Bool**
+
 ```python
 # Non-zero → True, Zero → False
 num_val = CtyNumber().validate(1)
@@ -94,6 +102,7 @@ print(bool_val.raw_value)  # True
 ### Collection Conversions
 
 **List → Set**
+
 ```python
 from pyvider.cty import CtyList, CtySet, CtyString
 
@@ -103,6 +112,7 @@ print(set_val.raw_value)  # {"a", "b"} - duplicates removed
 ```
 
 **Set → List**
+
 ```python
 set_val = CtySet(CtyString()).validate({"x", "y", "z"})
 list_val = convert(set_val, CtyList(CtyString()))
@@ -110,6 +120,7 @@ list_val = convert(set_val, CtyList(CtyString()))
 ```
 
 **List → Tuple**
+
 ```python
 from pyvider.cty import CtyTuple
 
@@ -159,6 +170,7 @@ print(unified_type)  # CtyDynamic - the most general common type
 ```
 
 **Use Cases:**
+
 - Merging data from multiple sources
 - Finding common type for heterogeneous collections
 - Type inference for mixed data
@@ -234,6 +246,7 @@ except CtyConversionError as e:
 ```
 
 Common conversion failures:
+
 - String to Number: Non-numeric strings
 - String to Bool: Strings other than "true"/"false"
 - List to Tuple: Length mismatch
@@ -262,12 +275,12 @@ print(inferred)  # CtyObject with inferred attributes
 **Type Inference Rules:**
 
 1. **Primitives**: Direct mapping (str → CtyString, int → CtyNumber, etc.)
-2. **Lists**: Infers element type from first element or uses CtyDynamic for mixed types
-3. **Dicts with string keys**: CtyObject (if all keys are valid identifiers) or CtyMap
-4. **Dicts with non-string keys**: CtyMap
-5. **Sets**: CtySet with inferred element type
-6. **Tuples**: CtyTuple with per-element types
-7. **None**: CtyDynamic
+1. **Lists**: Infers element type from first element or uses CtyDynamic for mixed types
+1. **Dicts with string keys**: CtyObject (if all keys are valid identifiers) or CtyMap
+1. **Dicts with non-string keys**: CtyMap
+1. **Sets**: CtySet with inferred element type
+1. **Tuples**: CtyTuple with per-element types
+1. **None**: CtyDynamic
 
 **Inference Caching:**
 
@@ -359,8 +372,8 @@ unified = unify([CtyNumber(), CtyBool()])
 Conversion has computational cost:
 
 1. **Type checking** - Validates source and target compatibility
-2. **Value transformation** - Creates new immutable values
-3. **Deep conversion** - Converts nested structures recursively
+1. **Value transformation** - Creates new immutable values
+1. **Deep conversion** - Converts nested structures recursively
 
 For performance-critical paths:
 

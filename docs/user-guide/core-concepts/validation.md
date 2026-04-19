@@ -7,9 +7,9 @@ Validation is the process of checking whether raw Python data conforms to a defi
 Every `CtyType` provides a `validate()` method that:
 
 1. **Accepts raw Python data** (dicts, lists, primitives, etc.)
-2. **Checks conformance** against the type schema
-3. **Returns a CtyValue** if valid
-4. **Raises a CtyValidationError** if invalid
+1. **Checks conformance** against the type schema
+1. **Returns a CtyValue** if valid
+1. **Raises a CtyValidationError** if invalid
 
 ```python
 from pyvider.cty import CtyString, CtyValidationError
@@ -41,6 +41,7 @@ value = CtyString().validate("hello")
 ```
 
 The `validate()` method provides:
+
 - Type checking and coercion
 - Clear error messages
 - Consistent behavior across all types
@@ -51,32 +52,38 @@ The `validate()` method provides:
 ### Primitives
 
 **CtyString**
+
 - Accepts: `str` values
 - Rejects: Non-string types
 - Special handling: Unicode normalization (NFC)
 
 **CtyNumber**
+
 - Accepts: `int`, `float`, `Decimal`
 - Rejects: Non-numeric types
 - Special handling: Preserves precision with `Decimal`
 
 **CtyBool**
+
 - Accepts: `bool` values (`True`, `False`)
 - Rejects: Non-boolean types (including truthy/falsy values like `1`, `0`, `""`)
 
 ### Collections
 
 **CtyList**
+
 - Accepts: `list` or other iterables
 - Element validation: Each element must match `element_type`
 - Preserves: Order
 
 **CtySet**
+
 - Accepts: `set`, `frozenset`, or iterables
 - Element validation: Each element must match `element_type`
 - Removes: Duplicates (enforces set semantics)
 
 **CtyMap**
+
 - Accepts: `dict` with string keys
 - Element validation: All values must match `element_type`
 - Key requirement: Keys must be strings
@@ -84,12 +91,14 @@ The `validate()` method provides:
 ### Structural Types
 
 **CtyObject**
+
 - Accepts: `dict` with specific attributes
 - Attribute validation: Each attribute validated against its type
 - Optional attributes: Missing optional attributes become null values
 - Required attributes: Must be present (unless optional)
 
 **CtyTuple**
+
 - Accepts: `list`, `tuple`, or iterables
 - Element validation: Each position validated against its element type
 - Length requirement: Must match declared element count
@@ -146,6 +155,7 @@ with deeper_validation():
 ```
 
 This protection prevents stack overflow with:
+
 - Circular references (if raw data contains them)
 - Extremely deep nesting
 - Malicious input designed to cause resource exhaustion
@@ -298,8 +308,8 @@ def test_user_validation():
 Validation has computational cost:
 
 1. **Type checking** - Every value is type-checked
-2. **Recursion** - Nested structures validated recursively
-3. **Immutable construction** - Creates new immutable values
+1. **Recursion** - Nested structures validated recursively
+1. **Immutable construction** - Creates new immutable values
 
 For performance-critical paths:
 

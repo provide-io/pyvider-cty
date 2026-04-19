@@ -4,9 +4,9 @@ Collection types represent collections of other types. They allow you to group m
 
 There are three collection types in `pyvider.cty`:
 
-*   `CtyList`: Represents a list of elements of the same type.
-*   `CtySet`: Represents a set of unique elements of the same type.
-*   `CtyMap`: Represents a map of key-value pairs, where the keys are strings and the values are all of the same type.
+- `CtyList`: Represents a list of elements of the same type.
+- `CtySet`: Represents a set of unique elements of the same type.
+- `CtyMap`: Represents a map of key-value pairs, where the keys are strings and the values are all of the same type.
 
 ## `CtyList`
 

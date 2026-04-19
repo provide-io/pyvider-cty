@@ -80,11 +80,11 @@ assert sensitive_mark in removed_marks
 
 Marks are a flexible feature that can be used in a variety of ways. Here are a few examples:
 
-*   **Sensitive Data**: You can use marks to flag sensitive data, such as passwords or API keys. You can then use these marks to ensure that the data is handled appropriately, such as by redacting it from logs or encrypting it before storing it.
+- **Sensitive Data**: You can use marks to flag sensitive data, such as passwords or API keys. You can then use these marks to ensure that the data is handled appropriately, such as by redacting it from logs or encrypting it before storing it.
 
-*   **Data Lineage**: You can use marks to track the lineage of data as it flows through a data pipeline. This can be useful for debugging and for understanding how a particular value was derived.
+- **Data Lineage**: You can use marks to track the lineage of data as it flows through a data pipeline. This can be useful for debugging and for understanding how a particular value was derived.
 
-*   **Controlling Behavior**: You can use marks to control the behavior of functions and other operations. For example, you could create a function that only operates on values that have a specific mark.
+- **Controlling Behavior**: You can use marks to control the behavior of functions and other operations. For example, you could create a function that only operates on values that have a specific mark.
 
 ## See Also
 
