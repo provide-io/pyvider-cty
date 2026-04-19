@@ -1,10 +1,6 @@
 # 🌊🪢 Pyvider CTY
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![uv](https://img.shields.io/badge/uv-package_manager-FF6B35.svg)](https://github.com/astral-sh/uv)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![CI](https://github.com/provide-io/pyvider-cty/actions/workflows/ci.yml/badge.svg)](https://github.com/provide-io/pyvider-cty/actions)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/) [![uv](https://img.shields.io/badge/uv-package_manager-FF6B35.svg)](https://github.com/astral-sh/uv) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![CI](https://github.com/provide-io/pyvider-cty/actions/workflows/ci.yml/badge.svg)](https://github.com/provide-io/pyvider-cty/actions)
 
 **Pure-Python implementation of the go-cty type system for Terraform tooling**
 
@@ -24,8 +20,8 @@ pyvider.cty provides strong type validation and serialization capabilities for c
 > **Note**: pyvider-cty is in pre-release (v0.x.x). APIs and features may change before 1.0 release.
 
 1. Install: `uv add pyvider-cty`
-2. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
-3. See the [Quick Example](#quick-example) below.
+1. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
+1. See the [Quick Example](#quick-example) below.
 
 ## Documentation
 

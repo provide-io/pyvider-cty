@@ -21,9 +21,7 @@ print(f"Type inference cache enabled: {config.enable_type_inference_cache}")
 
 ### Type Inference Cache
 
-**Environment Variable**: `PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE`
-**Default**: `True`
-**Type**: Boolean
+**Environment Variable**: `PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE` **Default**: `True` **Type**: Boolean
 
 Controls whether the type inference cache is enabled for performance optimization.
 
@@ -33,11 +31,13 @@ export PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE=false
 ```
 
 **When to disable:**
+
 - During development when you want fresh type inference on every operation
 - In testing scenarios where caching might hide bugs
 - In memory-constrained environments
 
 **When to enable (default):**
+
 - Production environments for better performance
 - Applications with repeated type inference operations
 - Normal usage scenarios
@@ -94,20 +94,21 @@ print(f"Current depth: {current_depth}/{MAX_VALIDATION_DEPTH}")
 ```
 
 If you encounter depth limit errors, consider:
+
 1. Restructuring your data to be less deeply nested
-2. Breaking validation into smaller chunks
-3. Using dynamic types for extremely nested structures
+1. Breaking validation into smaller chunks
+1. Using dynamic types for extremely nested structures
 
 ## Default Values Reference
 
 All configuration defaults are centralized in `pyvider.cty.config.defaults`:
 
-| Constant | Default | Purpose |
-|----------|---------|---------|
-| `MAX_VALIDATION_DEPTH` | 500 | Recursion depth limit for validation |
-| `MAX_OBJECT_REVISITS` | 100 | Circular reference detection limit |
-| `MAX_VALIDATION_TIME_MS` | 30000 | Validation timeout (milliseconds) |
-| `ENABLE_TYPE_INFERENCE_CACHE` | True | Type inference caching |
+| Constant                      | Default | Purpose                              |
+| ----------------------------- | ------- | ------------------------------------ |
+| `MAX_VALIDATION_DEPTH`        | 500     | Recursion depth limit for validation |
+| `MAX_OBJECT_REVISITS`         | 100     | Circular reference detection limit   |
+| `MAX_VALIDATION_TIME_MS`      | 30000   | Validation timeout (milliseconds)    |
+| `ENABLE_TYPE_INFERENCE_CACHE` | True    | Type inference caching               |
 
 ## Advanced: Using Configuration in Custom Types
 
@@ -139,6 +140,7 @@ class MyCustomValidator:
 All pyvider.cty environment variables use the prefix `PYVIDER_CTY_`.
 
 **Example variables:**
+
 - `PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE`
 
 ## Related Documentation

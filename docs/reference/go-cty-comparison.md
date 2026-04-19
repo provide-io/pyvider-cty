@@ -7,6 +7,7 @@
 ## Overview
 
 Both libraries implement the same conceptual type system with:
+
 - Primitive, collection, and structural types
 - Null and unknown value semantics
 - Mark system for metadata
@@ -15,20 +16,21 @@ Both libraries implement the same conceptual type system with:
 
 ## Key Differences
 
-| Feature | `go-cty` | `pyvider.cty` | Notes |
-|---|---|---|---|
-| **Language** | Go (compiled) | Python (interpreted) | Affects performance and idioms |
-| **Type System** | Go interfaces & structs | Python classes with `@attrs` | Both provide strong typing |
-| **API Style** | Idiomatic Go | Idiomatic Python | Different but equivalent patterns |
-| **Performance** | Faster (compiled) | Slower (interpreted) | Python fast enough for typical use |
-| **Null Handling** | `cty.NullVal(type)` | `CtyValue.null(type)` | Class method vs function |
-| **Package Structure** | Multiple packages | Single `pyvider.cty` package | Python convention |
+| Feature               | `go-cty`                | `pyvider.cty`                | Notes                              |
+| --------------------- | ----------------------- | ---------------------------- | ---------------------------------- |
+| **Language**          | Go (compiled)           | Python (interpreted)         | Affects performance and idioms     |
+| **Type System**       | Go interfaces & structs | Python classes with `@attrs` | Both provide strong typing         |
+| **API Style**         | Idiomatic Go            | Idiomatic Python             | Different but equivalent patterns  |
+| **Performance**       | Faster (compiled)       | Slower (interpreted)         | Python fast enough for typical use |
+| **Null Handling**     | `cty.NullVal(type)`     | `CtyValue.null(type)`        | Class method vs function           |
+| **Package Structure** | Multiple packages       | Single `pyvider.cty` package | Python convention                  |
 
 ## API Translation Examples
 
 ### Creating Types
 
 **Go (go-cty):**
+
 ```go
 import "github.com/zclconf/go-cty/cty"
 
@@ -46,6 +48,7 @@ listType := cty.List(cty.String)
 ```
 
 **Python (pyvider.cty):**
+
 ```python
 from pyvider.cty import CtyString, CtyNumber, CtyObject, CtyList
 
@@ -67,6 +70,7 @@ list_type = CtyList(element_type=CtyString())
 ### Creating Values
 
 **Go:**
+
 ```go
 // String value
 strVal := cty.StringVal("hello")
@@ -88,6 +92,7 @@ unknownVal := cty.UnknownVal(cty.String)
 ```
 
 **Python:**
+
 ```python
 from pyvider.cty import CtyString, CtyNumber, CtyObject
 from pyvider.cty.values import CtyValue
@@ -112,6 +117,7 @@ unknown_val = CtyValue.unknown(CtyString())
 ### Accessing Values
 
 **Go:**
+
 ```go
 // Access raw value
 rawStr := strVal.AsString()
@@ -127,6 +133,7 @@ if person.IsNull() {
 ```
 
 **Python:**
+
 ```python
 # Access raw value
 raw_str = str_val.raw_value
@@ -143,6 +150,7 @@ if person.is_null:
 ### Marks
 
 **Go:**
+
 ```go
 import "github.com/zclconf/go-cty/cty"
 
@@ -160,6 +168,7 @@ unmarked, marks := marked.Unmark()
 ```
 
 **Python:**
+
 ```python
 from pyvider.cty.marks import CtyMark
 
@@ -179,6 +188,7 @@ unmarked_val, removed_marks = marked.unmark()
 ### Type Conversion
 
 **Go:**
+
 ```go
 import "github.com/zclconf/go-cty/cty/convert"
 
@@ -193,6 +203,7 @@ unified, _ := convert.UnifyUnsafe([]cty.Type{cty.String, cty.Number})
 ```
 
 **Python:**
+
 ```python
 from pyvider.cty import convert, unify, CtyNumber
 from pyvider.cty.exceptions import CtyConversionError
@@ -211,6 +222,7 @@ unified = unify([CtyString(), CtyNumber()])
 ### Serialization
 
 **Go:**
+
 ```go
 import (
     "github.com/zclconf/go-cty/cty"
@@ -225,6 +237,7 @@ val, err = msgpack.Unmarshal(bytes, valType)
 ```
 
 **Python:**
+
 ```python
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
@@ -240,6 +253,7 @@ val = cty_from_msgpack(msgpack_bytes, val_type)
 ### Error Handling
 
 **Go:** Uses explicit error returns
+
 ```go
 val, err := someFunction()
 if err != nil {
@@ -248,6 +262,7 @@ if err != nil {
 ```
 
 **Python:** Uses exceptions
+
 ```python
 try:
     val = some_function()
@@ -259,6 +274,7 @@ except CtyValidationError as e:
 ### Iteration
 
 **Go:** Range-based for loops
+
 ```go
 it := listVal.ElementIterator()
 for it.Next() {
@@ -268,6 +284,7 @@ for it.Next() {
 ```
 
 **Python:** Pythonic iteration
+
 ```python
 for elem_val in list_val:
     # process elem_val
@@ -277,6 +294,7 @@ for elem_val in list_val:
 ### Optional Attributes
 
 **Go:** Uses `OptionalAttrs` in object definition
+
 ```go
 objType := cty.ObjectWithOptionalAttrs(
     map[string]cty.Type{
@@ -288,6 +306,7 @@ objType := cty.ObjectWithOptionalAttrs(
 ```
 
 **Python:** Uses `optional_attributes` parameter
+
 ```python
 obj_type = CtyObject(
     attribute_types={
@@ -313,6 +332,7 @@ python_bytes = cty_to_msgpack(value, schema)
 ```
 
 This enables true cross-language interoperability for:
+
 - Terraform provider development
 - Multi-language systems
 - Configuration sharing
@@ -320,17 +340,20 @@ This enables true cross-language interoperability for:
 ## Performance Considerations
 
 **go-cty advantages:**
+
 - Faster execution (compiled vs interpreted)
 - Lower memory overhead
 - Better for CPU-intensive operations
 
 **pyvider.cty advantages:**
+
 - Rapid development and prototyping
 - Rich Python ecosystem integration
 - Easier debugging and introspection
 - Better for I/O-bound operations
 
 **Performance tips for pyvider.cty:**
+
 ```python
 # Cache schemas - don't recreate them
 config_schema = CtyObject(
@@ -371,29 +394,30 @@ When migrating from go-cty to pyvider.cty:
 
 ## Feature Parity Matrix
 
-| Feature | go-cty | pyvider.cty | Notes |
-|---|---|---|---|
-| **Primitive Types** | ✅ | ✅ | Full parity |
-| **Collection Types** | ✅ | ✅ | Full parity |
-| **Structural Types** | ✅ | ✅ | Full parity |
-| **Dynamic Type** | ✅ | ✅ | Full parity |
-| **Capsule Types** | ✅ | ✅ | Full parity |
-| **Marks** | ✅ | ✅ | Full parity |
-| **Null/Unknown Values** | ✅ | ✅ | Full parity |
-| **Refined Unknowns** | ✅ | ✅ | Full parity |
-| **Type Conversion** | ✅ | ✅ | Full parity |
-| **Type Unification** | ✅ | ✅ | Full parity |
-| **MessagePack Serialization** | ✅ | ✅ | Cross-compatible |
-| **JSON Encoding Functions** | ✅ | ✅ | Via `jsonencode`/`jsondecode` functions |
-| **Standard Library Functions** | ✅ | ✅ | Comparable coverage |
-| **Path Navigation** | ✅ | ✅ | Full parity |
-| **Terraform Type Parsing** | ✅ | ✅ | Full parity |
+| Feature                        | go-cty | pyvider.cty | Notes                                   |
+| ------------------------------ | ------ | ----------- | --------------------------------------- |
+| **Primitive Types**            | ✅     | ✅          | Full parity                             |
+| **Collection Types**           | ✅     | ✅          | Full parity                             |
+| **Structural Types**           | ✅     | ✅          | Full parity                             |
+| **Dynamic Type**               | ✅     | ✅          | Full parity                             |
+| **Capsule Types**              | ✅     | ✅          | Full parity                             |
+| **Marks**                      | ✅     | ✅          | Full parity                             |
+| **Null/Unknown Values**        | ✅     | ✅          | Full parity                             |
+| **Refined Unknowns**           | ✅     | ✅          | Full parity                             |
+| **Type Conversion**            | ✅     | ✅          | Full parity                             |
+| **Type Unification**           | ✅     | ✅          | Full parity                             |
+| **MessagePack Serialization**  | ✅     | ✅          | Cross-compatible                        |
+| **JSON Encoding Functions**    | ✅     | ✅          | Via `jsonencode`/`jsondecode` functions |
+| **Standard Library Functions** | ✅     | ✅          | Comparable coverage                     |
+| **Path Navigation**            | ✅     | ✅          | Full parity                             |
+| **Terraform Type Parsing**     | ✅     | ✅          | Full parity                             |
 
 ## Common Migration Patterns
 
 ### Pattern 1: Validation Function
 
 **Go:**
+
 ```go
 func ValidateConfig(raw map[string]interface{}) (cty.Value, error) {
     configType := cty.Object(map[string]cty.Type{
@@ -407,6 +431,7 @@ func ValidateConfig(raw map[string]interface{}) (cty.Value, error) {
 ```
 
 **Python:**
+
 ```python
 def validate_config(raw: dict) -> CtyValue:
     config_type = CtyObject(
@@ -426,6 +451,7 @@ def validate_config(raw: dict) -> CtyValue:
 ### Pattern 2: Iterating Collections
 
 **Go:**
+
 ```go
 func ProcessList(listVal cty.Value) {
     it := listVal.ElementIterator()
@@ -437,6 +463,7 @@ func ProcessList(listVal cty.Value) {
 ```
 
 **Python:**
+
 ```python
 def process_list(list_val: CtyValue) -> None:
     for val in list_val:
@@ -446,6 +473,7 @@ def process_list(list_val: CtyValue) -> None:
 ### Pattern 3: Working with Marks
 
 **Go:**
+
 ```go
 func RedactSensitive(val cty.Value) cty.Value {
     val, marks := val.Unmark()
@@ -459,6 +487,7 @@ func RedactSensitive(val cty.Value) cty.Value {
 ```
 
 **Python:**
+
 ```python
 from pyvider.cty.marks import CtyMark
 

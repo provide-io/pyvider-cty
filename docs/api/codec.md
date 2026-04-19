@@ -3,6 +3,7 @@
 The `pyvider.cty.codec` module provides serialization and deserialization capabilities for `CtyValue` instances, enabling cross-language compatibility with go-cty and efficient binary storage.
 
 Key functions:
+
 - **`cty_to_msgpack(value, type)`** - Serialize a `CtyValue` to MessagePack binary format
 - **`cty_from_msgpack(data, type)`** - Deserialize MessagePack binary data back to a `CtyValue`
 
@@ -14,13 +15,6 @@ Key functions:
 
 For detailed serialization documentation, see: **[User Guide: Serialization](../user-guide/advanced/serialization.md)**
 
----
+______________________________________________________________________
 
-::: pyvider.cty.codec
-    options:
-      show_source: true
-      show_root_heading: true
-      members_order: source
-      show_if_no_docstring: false
-      filters:
-        - "!^_"
+::: pyvider.cty.codec options: show_source: true show_root_heading: true members_order: source show_if_no_docstring: false filters: - "!^\_"

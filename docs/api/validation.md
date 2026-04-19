@@ -3,6 +3,7 @@
 The `pyvider.cty.validation` module provides utilities for preventing infinite recursion during validation of deeply nested or circular data structures.
 
 Key components:
+
 - **`RecursionContext`** - Tracks visited objects during validation to detect cycles
 - **`RecursionDetector`** - Manages recursion detection state
 - **`with_recursion_detection`** - Decorator that adds recursion detection to validation methods
@@ -30,14 +31,6 @@ validated_value = schema.validate(config)  # Returns CtyValue
 
 For comprehensive validation documentation, see: **[User Guide: Validation](../user-guide/core-concepts/validation.md)**
 
----
+______________________________________________________________________
 
-::: pyvider.cty.validation
-    options:
-      show_source: true
-      show_root_heading: true
-      members_order: source
-      show_if_no_docstring: false
-      filters:
-        - "!^_"
-        - "^__init__$"
+::: pyvider.cty.validation options: show_source: true show_root_heading: true members_order: source show_if_no_docstring: false filters: - "!^\_" - "^__init__$"

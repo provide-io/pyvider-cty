@@ -9,20 +9,24 @@ The `pyvider.cty.parser` module provides functions for parsing Terraform type st
 Parses a Terraform type constraint (as a Python object or string) into a `CtyType` instance.
 
 **Signature:**
+
 ```python
 def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]
 ```
 
 **Parameters:**
+
 - `tf_type`: A Terraform type specification, which can be:
   - A string for primitive types: `"string"`, `"number"`, `"bool"`, `"dynamic"`
   - A list with two elements `[type_kind, type_spec]` for collections and structural types
   - A nested structure for complex types
 
 **Returns:**
+
 - A `CtyType` instance corresponding to the Terraform type
 
 **Raises:**
+
 - `CtyValidationError`: If the type specification is invalid
 
 **Examples:**
@@ -86,6 +90,7 @@ Terraform uses a JSON-based format to represent types:
 ### Primitive Types
 
 Represented as strings:
+
 - `"string"` → `CtyString()`
 - `"number"` → `CtyNumber()`
 - `"bool"` → `CtyBool()`
@@ -94,6 +99,7 @@ Represented as strings:
 ### Collection Types
 
 Represented as `[kind, element_type]`:
+
 - `["list", "string"]` → `CtyList(element_type=CtyString())`
 - `["set", "number"]` → `CtySet(element_type=CtyNumber())`
 - `["map", "bool"]` → `CtyMap(element_type=CtyBool())`
@@ -101,6 +107,7 @@ Represented as `[kind, element_type]`:
 ### Structural Types
 
 **Object**: `["object", {...}]`
+
 ```python
 ["object", {
     "attr1": "string",
@@ -109,6 +116,7 @@ Represented as `[kind, element_type]`:
 ```
 
 **Tuple**: `["tuple", [...]]`
+
 ```python
 ["tuple", ["string", "number", "bool"]]
 ```
@@ -236,14 +244,6 @@ post_type = load_schema("post")
 - **[How to Work with Terraform](../how-to/work-with-terraform.md)** - Practical Terraform integration
 - **[Types API](types/index.md)** - Type system reference
 
----
+______________________________________________________________________
 
-::: pyvider.cty.parser
-    options:
-      show_source: true
-      show_root_heading: true
-      members_order: source
-      show_if_no_docstring: false
-      filters:
-        - "!^_"
-        - "^__init__$"
+::: pyvider.cty.parser options: show_source: true show_root_heading: true members_order: source show_if_no_docstring: false filters: - "!^\_" - "^__init__$"

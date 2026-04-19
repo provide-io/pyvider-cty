@@ -330,11 +330,11 @@ validated = instance_schema.validate(resource_config)
 ## Best Practices
 
 1. **Parse type strings once**: Cache parsed type schemas
-2. **Validate early**: Check types before Terraform execution
-3. **Use MessagePack**: For Terraform provider communication
-4. **Handle optional fields**: Many Terraform attributes are optional
-5. **Test with real data**: Use actual Terraform configs for testing
-6. **Document schemas**: Keep schema documentation up to date
+1. **Validate early**: Check types before Terraform execution
+1. **Use MessagePack**: For Terraform provider communication
+1. **Handle optional fields**: Many Terraform attributes are optional
+1. **Test with real data**: Use actual Terraform configs for testing
+1. **Document schemas**: Keep schema documentation up to date
 
 ## Common Patterns
 

@@ -19,22 +19,26 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 ### Development Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/provide-io/pyvider-cty.git
    cd pyvider-cty
    ```
 
-2. **Set up development environment**
+1. **Set up development environment**
+
    ```bash
    uv sync
    ```
 
    This automatically:
+
    - Creates a virtual environment in `.venv/`
    - Installs all dependencies including dev tools
    - Activates the environment
 
-3. **Verify setup**
+1. **Verify setup**
+
    ```bash
    uv run pytest tests/
    ```
@@ -44,23 +48,26 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
 ### Before You Start
 
 1. Check existing issues and pull requests
-2. For major changes, open an issue first to discuss
-3. Fork the repository and create a feature branch
+1. For major changes, open an issue first to discuss
+1. Fork the repository and create a feature branch
 
 ### Making Changes
 
 1. **Create a feature branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
-2. **Make your changes**
+1. **Make your changes**
+
    - Write clear, concise code
    - Follow the existing code style
    - Add tests for new functionality
    - Update documentation as needed
 
-3. **Run quality checks**
+1. **Run quality checks**
+
    ```bash
    # Format code
    uv run ruff format src/ tests/
@@ -192,6 +199,7 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -202,6 +210,7 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 - `chore`: Build process, dependencies, etc.
 
 **Examples:**
+
 ```
 feat(types): add CtyDuration type
 fix(codec): handle edge case in MessagePack serialization
@@ -212,23 +221,27 @@ test(functions): add property-based tests for numeric functions
 ### Pull Request Process
 
 1. **Update your branch**
+
    ```bash
    git fetch origin
    git rebase origin/main
    ```
 
-2. **Push your changes**
+1. **Push your changes**
+
    ```bash
    git push origin feature/your-feature-name
    ```
 
-3. **Create Pull Request**
+1. **Create Pull Request**
+
    - Use a clear, descriptive title
    - Fill out the PR template completely
    - Link related issues
    - Request review from maintainers
 
-4. **PR Requirements**
+1. **PR Requirements**
+
    - All tests must pass
    - Coverage must meet threshold (75%+)
    - Type checking must pass (mypy strict mode)
@@ -237,7 +250,8 @@ test(functions): add property-based tests for numeric functions
    - Documentation must be updated
    - Changes must be noted in CHANGELOG.md
 
-5. **Address Review Feedback**
+1. **Address Review Feedback**
+
    - Respond to all comments
    - Make requested changes
    - Push updates to the same branch
@@ -266,11 +280,11 @@ pyvider-cty/
 (For maintainers only)
 
 1. Update VERSION file
-2. Update CHANGELOG.md
-3. Update pyproject.toml `Development Status` classifier
-4. Create release tag: `git tag v0.0.XXXX`
-5. Push tag: `git push origin v0.0.XXXX`
-6. GitHub Actions handles the rest
+1. Update CHANGELOG.md
+1. Update pyproject.toml `Development Status` classifier
+1. Create release tag: `git tag v0.0.XXXX`
+1. Push tag: `git push origin v0.0.XXXX`
+1. GitHub Actions handles the rest
 
 ## Questions?
 
@@ -282,6 +296,6 @@ pyvider-cty/
 
 By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
 
----
+______________________________________________________________________
 
 Thank you for contributing to pyvider-cty!

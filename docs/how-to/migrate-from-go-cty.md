@@ -8,19 +8,20 @@ This guide helps you migrate from HashiCorp's go-cty (Go) to pyvider.cty (Python
 
 ### Language Differences
 
-| Aspect | go-cty (Go) | pyvider.cty (Python) |
-|--------|-------------|----------------------|
-| **Language** | Go | Python 3.11+ |
-| **Type System** | Go interfaces | Python classes with type hints |
-| **Null Safety** | Built-in | `is_null` property |
-| **Immutability** | By design | By design (attrs frozen) |
-| **Error Handling** | `error` return values | Python exceptions |
+| Aspect             | go-cty (Go)           | pyvider.cty (Python)           |
+| ------------------ | --------------------- | ------------------------------ |
+| **Language**       | Go                    | Python 3.11+                   |
+| **Type System**    | Go interfaces         | Python classes with type hints |
+| **Null Safety**    | Built-in              | `is_null` property             |
+| **Immutability**   | By design             | By design (attrs frozen)       |
+| **Error Handling** | `error` return values | Python exceptions              |
 
 ### API Differences
 
 #### Creating Types
 
 **go-cty (Go):**
+
 ```go
 import "github.com/zclconf/go-cty/cty"
 
@@ -36,6 +37,7 @@ objectType := cty.Object(map[string]cty.Type{
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 from pyvider.cty import CtyString, CtyNumber, CtyBool, CtyList, CtyObject
 
@@ -55,6 +57,7 @@ object_type = CtyObject(
 #### Creating Values
 
 **go-cty (Go):**
+
 ```go
 strVal := cty.StringVal("hello")
 numVal := cty.NumberIntVal(42)
@@ -67,6 +70,7 @@ objVal := cty.ObjectVal(map[string]cty.Value{
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 # pyvider.cty validates raw Python data
 object_type = CtyObject(
@@ -85,6 +89,7 @@ obj_val = object_type.validate({
 #### Accessing Values
 
 **go-cty (Go):**
+
 ```go
 // Type assertion required
 name := objVal.GetAttr("name").AsString()
@@ -97,6 +102,7 @@ if objVal.IsNull() {
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 # Dictionary-style access
 name = obj_val['name'].raw_value  # "Alice"
@@ -114,6 +120,7 @@ if obj_val.is_null:
 Both go-cty and pyvider.cty use MessagePack for serialization, and they're compatible!
 
 **go-cty (Go):**
+
 ```go
 import "github.com/zclconf/go-cty/cty/msgpack"
 
@@ -131,6 +138,7 @@ if err != nil {
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
@@ -142,6 +150,7 @@ decoded = cty_from_msgpack(encoded, val_type)
 ```
 
 **Cross-language compatibility:**
+
 ```python
 # Python can read Go's msgpack
 go_encoded = load_from_go_service()
@@ -157,6 +166,7 @@ send_to_go_service(py_encoded)
 ### Terraform Type Strings
 
 **go-cty (Go):**
+
 ```go
 import "github.com/hashicorp/hcl/v2/hclsyntax"
 
@@ -166,6 +176,7 @@ valType, diags := convert.GetType(expr, nil)
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 from pyvider.cty.parser import parse_tf_type_to_ctytype
 
@@ -178,6 +189,7 @@ val_type = parse_tf_type_to_ctytype("list(string)")
 ### Validation
 
 **go-cty (Go):**
+
 ```go
 // Explicit conversion/validation
 val, err := convert.Convert(unknownVal, targetType)
@@ -187,6 +199,7 @@ if err != nil {
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 # Validation via validate method
 try:
@@ -198,6 +211,7 @@ except CtyValidationError as e:
 ### Iterating Collections
 
 **go-cty (Go):**
+
 ```go
 // List iteration
 for it := listVal.ElementIterator(); it.Next(); {
@@ -213,6 +227,7 @@ for it := objVal.ElementIterator(); it.Next(); {
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 # List iteration (Pythonic)
 for val in list_val:
@@ -231,6 +246,7 @@ for key, val in obj_val.raw_value.items():
 ### Marks
 
 **go-cty (Go):**
+
 ```go
 import "github.com/zclconf/go-cty/cty"
 
@@ -247,6 +263,7 @@ unmarked := val.Unmark()
 ```
 
 **pyvider.cty (Python):**
+
 ```python
 from pyvider.cty.marks import CtyMark
 
@@ -358,11 +375,13 @@ py_value = cty_from_msgpack(go_data, schema)
 ### 1. Value Construction
 
 **Go allows direct value construction:**
+
 ```go
 val := cty.ObjectVal(...)
 ```
 
 **Python requires validation:**
+
 ```python
 val = obj_type.validate(...)
 ```
@@ -370,11 +389,13 @@ val = obj_type.validate(...)
 ### 2. Type vs Value
 
 **In Go, types and values are more distinct:**
+
 ```go
 valType := val.Type()
 ```
 
 **In Python, use the property:**
+
 ```python
 val_type = val.type
 ```
@@ -382,11 +403,13 @@ val_type = val.type
 ### 3. Null Handling
 
 **Go uses IsNull():**
+
 ```go
 if val.IsNull() { ... }
 ```
 
 **Python uses is_null:**
+
 ```python
 if val.is_null: ...
 ```

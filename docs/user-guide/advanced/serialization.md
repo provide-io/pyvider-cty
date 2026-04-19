@@ -6,18 +6,18 @@ Serialization is the process of converting your in-memory `CtyValue` into a form
 
 ## Key Concepts
 
-1.  **Type Fidelity**: `pyvider.cty`'s serialization aims to preserve as much type information and value precision as possible. The serialized form includes information about the value's `cty` type, its actual data, its known/null status, and any marks.
+1. **Type Fidelity**: `pyvider.cty`'s serialization aims to preserve as much type information and value precision as possible. The serialized form includes information about the value's `cty` type, its actual data, its known/null status, and any marks.
 
-2.  **Handling of Null and Unknown Values**: Null and unknown values are explicitly represented in the serialized output, so they can be correctly restored.
+1. **Handling of Null and Unknown Values**: Null and unknown values are explicitly represented in the serialized output, so they can be correctly restored.
 
-3.  **The Role of `target_type` in Deserialization**: When you deserialize data, you **must** provide the `target_type`—the `CtyType` you expect the data to conform to. This guides the reconstruction process and ensures the data is validated against the correct schema.
+1. **The Role of `target_type` in Deserialization**: When you deserialize data, you **must** provide the `target_type`—the `CtyType` you expect the data to conform to. This guides the reconstruction process and ensures the data is validated against the correct schema.
 
 ## MessagePack Serialization
 
 The `pyvider.cty.codec` module provides functions for MessagePack serialization.
 
-*   `cty_to_msgpack(value: CtyValue, schema: CtyType) -> bytes`: Serializes a `CtyValue` to a MessagePack byte string.
-*   `cty_from_msgpack(data: bytes, cty_type: CtyType) -> CtyValue`: Deserializes a MessagePack byte string to a `CtyValue`.
+- `cty_to_msgpack(value: CtyValue, schema: CtyType) -> bytes`: Serializes a `CtyValue` to a MessagePack byte string.
+- `cty_from_msgpack(data: bytes, cty_type: CtyType) -> CtyValue`: Deserializes a MessagePack byte string to a `CtyValue`.
 
 ### Basic Example
 
@@ -238,18 +238,21 @@ msgpack_bytes = cty_to_msgpack(data, data_type)
 ## Performance Considerations
 
 **MessagePack Benefits:**
+
 - **Compact**: Typically smaller than JSON
 - **Fast**: Binary format is faster to parse than text-based JSON
 - **Type-safe**: Preserves type information and cty semantics
 - **Compatible**: Works seamlessly with go-cty
 
 **When to Use MessagePack:**
+
 - Storing configuration data
 - Transmitting data between Python and Go services
 - Working with Terraform providers
 - Any scenario requiring type fidelity and performance
 
 **When to Use JSON Functions:**
+
 - When you need human-readable output
 - Integrating with JSON-based APIs
 - Debugging and inspection
@@ -258,10 +261,10 @@ msgpack_bytes = cty_to_msgpack(data, data_type)
 ## Best Practices
 
 1. **Always provide the type during deserialization**: The type parameter is required for proper reconstruction
-2. **Cache schemas**: Don't recreate `CtyType` instances repeatedly; create once and reuse
-3. **Handle serialization errors**: Wrap serialize/deserialize calls in try-except blocks
-4. **Validate after deserialization**: While the type is enforced during deserialization, consider additional validation for external data
-5. **Use MessagePack for production**: Prefer MessagePack over JSON for production systems requiring reliability and performance
+1. **Cache schemas**: Don't recreate `CtyType` instances repeatedly; create once and reuse
+1. **Handle serialization errors**: Wrap serialize/deserialize calls in try-except blocks
+1. **Validate after deserialization**: While the type is enforced during deserialization, consider additional validation for external data
+1. **Use MessagePack for production**: Prefer MessagePack over JSON for production systems requiring reliability and performance
 
 ## Error Handling
 

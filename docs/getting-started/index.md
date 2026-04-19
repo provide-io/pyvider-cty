@@ -7,9 +7,9 @@ Welcome to pyvider.cty! This section will help you get up and running quickly.
 Follow these guides in order to get started with pyvider.cty:
 
 1. **[Installation](installation.md)** - Install pyvider.cty in your project
-2. **[Quick Start (5 minutes)](quick-start.md)** - Build your first type-safe data structure
-3. **[Your First Type System](first-type-system.md)** - Understand the fundamentals
-4. **[Examples](examples.md)** - Explore runnable examples
+1. **[Quick Start (5 minutes)](quick-start.md)** - Build your first type-safe data structure
+1. **[Your First Type System](first-type-system.md)** - Understand the fundamentals
+1. **[Examples](examples.md)** - Explore runnable examples
 
 ## What You'll Learn
 
@@ -35,6 +35,6 @@ After completing the getting started guides, you can:
 - Check out the **[How-To Guides](../how-to/index.md)** for practical solutions to common tasks
 - Reference the **[API Documentation](../api/index.md)** for detailed API information
 
----
+______________________________________________________________________
 
 Ready to get started? Begin with **[Installation](installation.md)** →

@@ -5,6 +5,7 @@ Practical, task-oriented guides for common use cases with pyvider.cty.
 ## Available Guides
 
 ### Data Validation
+
 - **[Validate Complex Data Structures](validate-data.md)** - Comprehensive guide to validating nested structures, collections, and complex data
   - Basic validation patterns
   - Nested structures
@@ -13,6 +14,7 @@ Practical, task-oriented guides for common use cases with pyvider.cty.
   - Error handling and recovery
 
 ### Serialization
+
 - **[Serialize and Deserialize Values](serialize-values.md)** - Work with MessagePack format for storage and transmission
   - Basic serialization
   - Complex structures
@@ -21,6 +23,7 @@ Practical, task-oriented guides for common use cases with pyvider.cty.
   - Compression and optimization
 
 ### Terraform Integration
+
 - **[Work with Terraform Types](work-with-terraform.md)** - Parse and work with Terraform type systems
   - Parse Terraform type strings
   - Validate Terraform configurations
@@ -28,13 +31,16 @@ Practical, task-oriented guides for common use cases with pyvider.cty.
   - Provider development patterns
 
 ### Advanced Usage
+
 - **[Create Custom Types](create-custom-types.md)** - Extend the type system with custom validation
+
   - Type composition and factories
   - Validation wrappers
   - Domain-specific types
   - Type registries
 
 - **[Migrate from go-cty](migrate-from-go-cty.md)** - Port Go code to Python
+
   - API differences
   - Serialization compatibility
   - Common patterns translation
