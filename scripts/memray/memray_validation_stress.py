@@ -147,7 +147,7 @@ def stress_validation() -> None:
 
     total_cycles = 0
 
-    for name, schema, data, cycles in CONFIGS:
+    for _name, schema, data, cycles in CONFIGS:
         for _ in range(cycles):
             clear_recursion_context()
             _ = schema.validate(data)

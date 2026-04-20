@@ -61,7 +61,6 @@ if sys.platform == "win32":
                     _inner.reconfigure(encoding="utf-8", errors="replace")
                 except Exception:
                     pass
-from hypothesis import HealthCheck, settings as h_settings
 
 from pyvider.cty.validation.recursion import clear_recursion_context
 
