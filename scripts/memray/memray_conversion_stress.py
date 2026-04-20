@@ -125,7 +125,7 @@ def stress_conversion() -> None:
 
     total_cycles = 0
 
-    for name, value, cycles in CONFIGS:
+    for _name, value, cycles in CONFIGS:
         for _ in range(cycles):
             _ = cty_to_native(value)
         total_cycles += cycles

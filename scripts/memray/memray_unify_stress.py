@@ -84,7 +84,7 @@ def stress_unify() -> None:
 
     total_cycles = 0
 
-    for name, type_list, cycles in CONFIGS:
+    for _name, type_list, cycles in CONFIGS:
         for _ in range(cycles):
             _ = unify(type_list)
         total_cycles += cycles
