@@ -9,7 +9,6 @@ This document provides current status and release readiness information for the 
 ✅ **Documentation Status: Excellent**
 
 The documentation has been completely restructured to align with provide.io ecosystem patterns:
-
 - New getting started guides with 5-minute quick start
 - Comprehensive user guide organized by topic
 - Complete API reference with mkdocstrings integration
@@ -29,26 +28,28 @@ The documentation has been completely restructured to align with provide.io ecos
 
 The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
 
-| Feature                        | `go-cty`                                                                       | `pyvider.cty`                                                                      | Notes                                                                                                             |
-| ------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Language**                   | Go                                                                             | Python                                                                             | The most obvious difference is the language. `go-cty` is written in Go, while `pyvider.cty` is written in Python. |
-| **API**                        | The `go-cty` API is designed to be idiomatic Go.                               | The `pyvider.cty` API is designed to be idiomatic Python.                          | This means that the two APIs are not directly compatible, but the underlying concepts are the same.               |
-| **Extensibility**              | `go-cty` can be extended with custom types and functions.                      | `pyvider.cty` can also be extended with custom types and functions.                | The mechanism for extension is different in the two libraries.                                                    |
-| **Performance**                | `go-cty` is a compiled language, so it is generally faster than `pyvider.cty`. | `pyvider.cty` is an interpreted language, so it is generally slower than `go-cty`. | However, `pyvider.cty` is still fast enough for most use cases.                                                   |
-| **Primitive Types**            | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Collection Types**           | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Structural Types**           | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Dynamic Types**              | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Capsule Types**              | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Marks**                      | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Functions**                  | Yes                                                                            | Yes                                                                                | `pyvider.cty` has a comprehensive set of built-in functions that is comparable to `go-cty`.                       |
-| **Serialization**              | Yes                                                                            | Yes                                                                                | `pyvider.cty` supports Msgpack serialization, which is compatible with `go-cty`.                                  |
-| **Path Navigation**            | Yes                                                                            | Yes                                                                                |                                                                                                                   |
-| **Terraform Interoperability** | Yes                                                                            | Yes                                                                                | `pyvider.cty` can parse Terraform type strings.                                                                   |
+| Feature | `go-cty` | `pyvider.cty` | Notes |
+|---|---|---|---|
+| **Language** | Go | Python | The most obvious difference is the language. `go-cty` is written in Go, while `pyvider.cty` is written in Python. |
+| **API** | The `go-cty` API is designed to be idiomatic Go. | The `pyvider.cty` API is designed to be idiomatic Python. | This means that the two APIs are not directly compatible, but the underlying concepts are the same. |
+| **Extensibility** | `go-cty` can be extended with custom types and functions. | `pyvider.cty` can also be extended with custom types and functions. | The mechanism for extension is different in the two libraries. |
+| **Performance** | `go-cty` is a compiled language, so it is generally faster than `pyvider.cty`. | `pyvider.cty` is an interpreted language, so it is generally slower than `go-cty`. | However, `pyvider.cty` is still fast enough for most use cases. |
+| **Primitive Types** | Yes | Yes | |
+| **Collection Types** | Yes | Yes | |
+| **Structural Types** | Yes | Yes | |
+| **Dynamic Types** | Yes | Yes | |
+| **Capsule Types** | Yes | Yes | |
+| **Marks** | Yes | Yes | |
+| **Functions** | Yes | Yes | `pyvider.cty` has a comprehensive set of built-in functions that is comparable to `go-cty`. |
+| **Serialization** | Yes | Yes | `pyvider.cty` supports Msgpack serialization, which is compatible with `go-cty`. |
+| **Path Navigation** | Yes | Yes | |
+| **Terraform Interoperability** | Yes | Yes | `pyvider.cty` can parse Terraform type strings. |
 
 ## Current Release
 
-**Version**: 0.0.1000 (Released: 2025-10-17) **Status**: Alpha - Production-focused **Development Status**: Active
+**Version**: 0.0.1000 (Released: 2025-10-17)
+**Status**: Alpha - Production-focused
+**Development Status**: Active
 
 ### Release Highlights
 

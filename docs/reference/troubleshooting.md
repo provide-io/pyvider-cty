@@ -2,12 +2,11 @@
 
 This guide helps you diagnose and resolve common issues when using `pyvider.cty`.
 
-______________________________________________________________________
+---
 
 ## Quick Lookup Index
 
 **Errors:**
-
 - [CtyValidationError](#ctyvalidationerror) - Data doesn't match schema
 - [CtyAttributeValidationError](#ctyattributevalidationerror) - Object attribute validation failed
 - [CtyListValidationError](#ctylistvalidationerror) - List validation failed
@@ -22,7 +21,6 @@ ______________________________________________________________________
 - [CtyFunctionError](#ctyfunctionerror) - Built-in function error
 
 **Common Scenarios:**
-
 - [Missing Required Attributes](#scenario-1-missing-required-attributes)
 - [Type Conversion Issues](#scenario-2-type-conversion-issues)
 - [Null vs Missing Attributes](#scenario-3-null-vs-missing-attributes)
@@ -30,12 +28,11 @@ ______________________________________________________________________
 - [Recursion Depth Exceeded](#scenario-5-recursion-depth-exceeded)
 
 **Resources:**
-
 - [Debugging Tips](#debugging-tips)
 - [Performance Troubleshooting](#performance-troubleshooting)
 - [Getting Help](#getting-help)
 
-______________________________________________________________________
+---
 
 ## Exception Hierarchy
 
@@ -101,7 +98,7 @@ except CtyValidationError as e:
     print(f"Validation error: {e}")
 ```
 
-______________________________________________________________________
+---
 
 ## Exception Reference
 
@@ -112,14 +109,12 @@ ______________________________________________________________________
 **Description**: Base exception raised when data doesn't conform to a type schema.
 
 **Common Causes**:
-
 - Wrong data type (e.g., string instead of number)
 - Missing required attributes in objects
 - Invalid collection elements
 - Data structure doesn't match schema
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
@@ -136,26 +131,23 @@ except CtyValidationError as e:
 ```
 
 **How to Fix**:
-
 - Read the error message carefully - it includes the path to the invalid field
 - Verify your data structure matches the schema exactly
 - Check for typos in attribute names
 - Ensure all required fields are present
 
-______________________________________________________________________
+---
 
 #### `CtyAttributeValidationError`
 
 **Description**: Raised when an object attribute fails validation.
 
 **Common Causes**:
-
 - Missing required attributes
 - Extra attributes not defined in schema
 - Attribute value doesn't match its type
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString
 
@@ -169,25 +161,22 @@ except CtyAttributeValidationError as e:
 ```
 
 **How to Fix**:
-
 - Use `optional_attributes` parameter for optional fields
 - Remove extra attributes from data or add them to the schema
 - Verify attribute types match the schema
 
-______________________________________________________________________
+---
 
 #### `CtyListValidationError`
 
 **Description**: Raised when list validation fails.
 
 **Common Causes**:
-
 - Element doesn't match the list's element type
 - Non-list value passed to list type
 - Heterogeneous elements in a homogeneous list
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyList, CtyString
 
@@ -201,25 +190,22 @@ except CtyListValidationError as e:
 ```
 
 **How to Fix**:
-
 - Ensure all elements match the declared element type
 - Check for type mismatches in the list
 - Use `CtyDynamic` if you need heterogeneous lists
 
-______________________________________________________________________
+---
 
 #### `CtyMapValidationError`
 
 **Description**: Raised when map validation fails.
 
 **Common Causes**:
-
 - Value doesn't match the map's element type
 - Non-string keys
 - Non-dict value passed to map type
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyMap, CtyNumber
 
@@ -233,25 +219,22 @@ except CtyMapValidationError as e:
 ```
 
 **How to Fix**:
-
 - Ensure all values match the declared element type
 - Verify all keys are strings
 - Check the data structure is a dictionary
 
-______________________________________________________________________
+---
 
 #### `CtySetValidationError`
 
 **Description**: Raised when set validation fails.
 
 **Common Causes**:
-
 - Element doesn't match the set's element type
 - Duplicate elements in input
 - Unhashable elements
 
 **Example**:
-
 ```python
 from pyvider.cty import CtySet, CtyString
 
@@ -265,25 +248,22 @@ except CtySetValidationError as e:
 ```
 
 **How to Fix**:
-
 - Ensure all elements match the declared element type
 - Remove duplicates if present
 - Verify elements are hashable
 
-______________________________________________________________________
+---
 
 #### `CtyTupleValidationError`
 
 **Description**: Raised when tuple validation fails.
 
 **Common Causes**:
-
 - Wrong number of elements
 - Element at specific position doesn't match expected type
 - Non-sequence value passed to tuple type
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyTuple, CtyString, CtyNumber
 
@@ -297,24 +277,21 @@ except CtyTupleValidationError as e:
 ```
 
 **How to Fix**:
-
 - Ensure exactly the right number of elements
 - Verify each element matches its positional type
 - Check element order matches the schema
 
-______________________________________________________________________
+---
 
 #### `CtyTypeMismatchError`
 
 **Description**: Raised when value type doesn't match expected type.
 
 **Common Causes**:
-
 - Passing completely wrong type (e.g., dict instead of list)
 - Type confusion in nested structures
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyString
 
@@ -328,12 +305,11 @@ except CtyTypeMismatchError as e:
 ```
 
 **How to Fix**:
-
 - Verify the data type matches the schema
 - Check for type confusion (list vs dict, string vs number)
 - Use type conversion if appropriate
 
-______________________________________________________________________
+---
 
 ### Conversion Errors
 
@@ -342,13 +318,11 @@ ______________________________________________________________________
 **Description**: Base exception for type conversion failures.
 
 **Common Causes**:
-
 - Attempting to convert between incompatible types
 - Invalid string format when converting to number
 - Conversion would lose data or precision
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyString, CtyNumber, convert
 
@@ -362,26 +336,23 @@ except CtyConversionError as e:
 ```
 
 **How to Fix**:
-
 - Check if the conversion is logically valid
 - Verify string format when converting to numbers
 - Use validation instead of conversion when appropriate
 - Consider using `CtyDynamic` for unknown types
 
-______________________________________________________________________
+---
 
 #### `CtyTypeParseError`
 
 **Description**: Raised when parsing a type string fails.
 
 **Common Causes**:
-
 - Invalid Terraform type string syntax
 - Unsupported type in string
 - Malformed type expression
 
 **Example**:
-
 ```python
 from pyvider.cty import parse_tf_type_to_ctytype
 
@@ -393,13 +364,12 @@ except CtyTypeParseError as e:
 ```
 
 **How to Fix**:
-
 - Verify the type string syntax is correct
 - Check for matching brackets and braces
 - Refer to Terraform type syntax documentation
 - Use explicit type construction instead of parsing
 
-______________________________________________________________________
+---
 
 ### Serialization Errors
 
@@ -408,13 +378,11 @@ ______________________________________________________________________
 **Description**: Raised when serializing a value to MessagePack fails.
 
 **Common Causes**:
-
 - Unsupported data type in value
 - Circular references
 - Capsule types without proper serialization support
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack
@@ -431,25 +399,22 @@ except SerializationError as e:
 ```
 
 **How to Fix**:
-
 - Ensure all data types are serializable
 - Check for circular references in capsule types
 - Verify capsule types implement proper serialization
 
-______________________________________________________________________
+---
 
 #### `DeserializationError`
 
 **Description**: Raised when deserializing MessagePack data fails.
 
 **Common Causes**:
-
 - Corrupted MessagePack data
 - Schema mismatch between serialization and deserialization
 - Invalid MessagePack format
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack
@@ -465,12 +430,11 @@ except DeserializationError as e:
 ```
 
 **How to Fix**:
-
 - Verify the MessagePack data is not corrupted
 - Ensure the same schema is used for serialization and deserialization
 - Check data was actually serialized with cty_to_msgpack
 
-______________________________________________________________________
+---
 
 ### Function Errors
 
@@ -479,13 +443,11 @@ ______________________________________________________________________
 **Description**: Raised when a built-in function fails.
 
 **Common Causes**:
-
 - Invalid arguments to function
 - Null or unknown values where concrete values expected
 - Type mismatch in function parameters
 
 **Example**:
-
 ```python
 from pyvider.cty import CtyString
 from pyvider.cty.functions import upper
@@ -500,19 +462,17 @@ except CtyFunctionError as e:
 ```
 
 **How to Fix**:
-
 - Check function documentation for argument requirements
 - Verify values are not null or unknown unless function supports it
 - Ensure argument types match function expectations
 
-______________________________________________________________________
+---
 
 ## Common Scenarios
 
 ### Scenario 1: Missing Required Attributes
 
 **Problem**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
 
@@ -529,7 +489,6 @@ value = schema.validate(data)  # Raises CtyValidationError
 ```
 
 **Solution**:
-
 ```python
 # Option 1: Make 'age' optional
 schema = CtyObject(
@@ -542,12 +501,11 @@ value = schema.validate({"name": "Alice"})  # Works!
 value = schema.validate({"name": "Alice", "age": 30})  # Works!
 ```
 
-______________________________________________________________________
+---
 
 ### Scenario 2: Type Conversion Issues
 
 **Problem**:
-
 ```python
 from pyvider.cty import CtyNumber
 
@@ -556,7 +514,6 @@ value = number_type.validate("123")  # Raises CtyTypeMismatchError
 ```
 
 **Solution**:
-
 ```python
 # Option 1: Use conversion
 from pyvider.cty import CtyString, convert
@@ -568,12 +525,11 @@ number_val = convert(string_val, CtyNumber())  # Works!
 value = number_type.validate(123)  # Works!
 ```
 
-______________________________________________________________________
+---
 
 ### Scenario 3: Null vs Missing Attributes
 
 **Problem**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyValue
 
@@ -588,7 +544,6 @@ data2 = {"name": "Alice", "nickname": None}  # nickname is explicitly null
 ```
 
 **Solution**:
-
 ```python
 # Missing optional attribute becomes null automatically
 value1 = schema.validate(data1)
@@ -601,12 +556,11 @@ print(value2["nickname"].is_null)  # True
 # Both are equivalent in cty
 ```
 
-______________________________________________________________________
+---
 
 ### Scenario 4: Accessing Null Values
 
 **Problem**:
-
 ```python
 from pyvider.cty import CtyObject, CtyString
 
@@ -620,7 +574,6 @@ name = value["name"].raw_value  # Raises error - can't get raw_value of null
 ```
 
 **Solution**:
-
 ```python
 # Check for null before accessing
 value = schema.validate({})
@@ -630,12 +583,11 @@ else:
     print(f"Name: {value['name'].raw_value}")
 ```
 
-______________________________________________________________________
+---
 
 ### Scenario 5: Recursion Depth Exceeded
 
 **Problem**:
-
 ```python
 # Creating extremely deep nested structure
 deep_data = {"level": {}}
@@ -648,7 +600,6 @@ for i in range(1000):
 ```
 
 **Solution**:
-
 ```python
 from pyvider.cty.context import MAX_VALIDATION_DEPTH
 
@@ -659,7 +610,7 @@ from pyvider.cty.context import MAX_VALIDATION_DEPTH
 # 3. Adjusting MAX_VALIDATION_DEPTH (with caution)
 ```
 
-______________________________________________________________________
+---
 
 ## Debugging Tips
 
@@ -752,7 +703,7 @@ api_value = api_schema.validate(config["api"])
 full_value = full_schema.validate({"database": db_value, "api": api_value})
 ```
 
-______________________________________________________________________
+---
 
 ## Performance Troubleshooting
 
@@ -761,7 +712,6 @@ ______________________________________________________________________
 **Problem**: Validation is slow for large datasets.
 
 **Solutions**:
-
 - Cache schema objects - don't recreate types repeatedly
 - Validate once, reuse the validated `CtyValue`
 - Consider batching for very large datasets
@@ -784,24 +734,22 @@ for item in large_dataset:
 **Problem**: Deeply nested structures cause performance issues.
 
 **Solutions**:
-
 - Flatten data structures where possible
 - Use references instead of deep nesting
 - Consider alternative data modeling
 
-______________________________________________________________________
+---
 
 ## Getting Help
 
 If you're still stuck after consulting this guide:
 
 1. **Check the documentation**: Review the [User Guide](../user-guide/index.md) and [API Reference](../api/index.md)
-1. **Review examples**: Look at the [Examples](../getting-started/examples.md) for similar use cases
-1. **Search issues**: Check [GitHub Issues](https://github.com/provide-io/pyvider-cty/issues) for similar problems
-1. **Ask for help**: Open a new issue with a minimal reproducible example
+2. **Review examples**: Look at the [Examples](../getting-started/examples.md) for similar use cases
+3. **Search issues**: Check [GitHub Issues](https://github.com/provide-io/pyvider-cty/issues) for similar problems
+4. **Ask for help**: Open a new issue with a minimal reproducible example
 
 When reporting issues, include:
-
 - Complete error message and stack trace
 - Minimal code example that reproduces the issue
 - Your Python version and pyvider.cty version

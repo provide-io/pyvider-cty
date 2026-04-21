@@ -5,7 +5,6 @@ This guide shows you how to serialize pyvider.cty values to MessagePack format f
 ## Why MessagePack?
 
 MessagePack is a binary serialization format that:
-
 - Is more compact than JSON
 - Preserves type information precisely
 - Is compatible with go-cty for cross-language interoperability
@@ -299,11 +298,11 @@ restored = deserialize_compressed(compressed, large_schema)
 ## Best Practices
 
 1. **Always provide the schema**: Deserialization requires the type schema
-1. **Use binary mode for files**: MessagePack is binary, use `'wb'` and `'rb'`
-1. **Validate after deserialization**: Extra safety check
-1. **Version your schemas**: Include version info if schemas might change
-1. **Handle errors gracefully**: Network/disk operations can fail
-1. **Test round-trips**: Ensure serialize → deserialize → serialize is stable
+2. **Use binary mode for files**: MessagePack is binary, use `'wb'` and `'rb'`
+3. **Validate after deserialization**: Extra safety check
+4. **Version your schemas**: Include version info if schemas might change
+5. **Handle errors gracefully**: Network/disk operations can fail
+6. **Test round-trips**: Ensure serialize → deserialize → serialize is stable
 
 ## Common Patterns
 

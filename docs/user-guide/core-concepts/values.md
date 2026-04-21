@@ -23,16 +23,16 @@ assert raw_string == "hello"
 
 One of the key features of `cty` values is that they are **immutable**. This means that once a value is created, it cannot be changed. This has several advantages:
 
-- **Predictability**: It makes your code more predictable, as you can be sure that a value will not change unexpectedly.
-- **Safety**: It helps to prevent bugs caused by unintended side effects.
-- **Concurrency**: It makes it easier to write concurrent code, as you don't have to worry about race conditions when accessing values.
+*   **Predictability**: It makes your code more predictable, as you can be sure that a value will not change unexpectedly.
+*   **Safety**: It helps to prevent bugs caused by unintended side effects.
+*   **Concurrency**: It makes it easier to write concurrent code, as you don't have to worry about race conditions when accessing values.
 
 ## Special Values: Null and Unknown
 
 In addition to regular values, `pyvider.cty` has two special kinds of values:
 
-1. **Null Values**: A null value represents the explicit absence of a value.
-1. **Unknown Values**: An unknown value represents a value that is not yet known but will be populated later.
+1.  **Null Values**: A null value represents the explicit absence of a value.
+2.  **Unknown Values**: An unknown value represents a value that is not yet known but will be populated later.
 
 You can create these using the class methods on `CtyValue`:
 
@@ -71,7 +71,6 @@ except TypeError as e:
 `pyvider.cty` supports **refined unknowns**, which are unknown values that carry additional refinement information. This feature is particularly useful in scenarios like Terraform planning, where you know that a value will be computed later but can provide constraints about what that value will be.
 
 Refined unknowns allow you to specify partial information about an unknown value, such as:
-
 - Range constraints for numbers
 - String prefix/suffix constraints
 - Collection length constraints
@@ -94,7 +93,6 @@ refined_unknown = RefinedUnknownValue(
 ```
 
 **When to use refined unknowns:**
-
 - **Terraform providers**: During the plan phase when values will be known during apply
 - **Validation**: When you need to validate that constraints will be satisfied even though the actual value is unknown
 - **Type propagation**: In function implementations where unknowns need to propagate with refinements

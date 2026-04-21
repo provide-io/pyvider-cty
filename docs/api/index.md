@@ -9,7 +9,6 @@ The pyvider.cty API is organized into the following modules:
 ### Core Modules
 
 - **[Types](types/index.md)** - Type system implementation (primitives, collections, structural, capsule)
-
   - [Primitive Types](types/primitives.md) - `CtyString`, `CtyNumber`, `CtyBool`
   - [Collection Types](types/collections.md) - `CtyList`, `CtyMap`, `CtySet`
   - [Structural Types](types/structural.md) - `CtyObject`, `CtyTuple`, `CtyDynamic`
@@ -18,40 +17,33 @@ The pyvider.cty API is organized into the following modules:
 - **[Values](values.md)** - `CtyValue` class for immutable, type-safe data instances
 
 - **[Conversion](conversion.md)** - Type conversion and unification functions
-
   - `convert(value, target_type)` - Convert between types
   - `unify(types)` - Find the most specific common type
 
 ### Serialization & Encoding
 
 - **[Codec](codec.md)** - MessagePack serialization for cross-language compatibility
-
   - `cty_to_msgpack()` - Serialize to binary format
   - `cty_from_msgpack()` - Deserialize from binary format
 
 - **[Functions](functions.md)** - Standard library of built-in functions
-
   - String manipulation, numeric operations, collection functions
   - Type conversions, encoding/decoding, date/time operations
 
 ### Advanced Features
 
 - **[Path Navigation](path.md)** - Navigate nested structures with `CtyPath`
-
   - `GetAttrStep`, `IndexStep`, `KeyStep`
 
 - **[Parser](parser.md)** - Terraform type string parsing
-
   - `parse_tf_type_to_ctytype()` - Parse Terraform type specifications
   - `parse_type_string_to_ctytype()` - Alias for backward compatibility
 
 - **[Validation](validation.md)** - Recursion detection and validation utilities
-
   - Recursion context management
   - Cycle detection decorators
 
 - **[Context](context.md)** - Validation depth tracking
-
   - Context-local state management
   - Depth limit protection
 
@@ -114,8 +106,16 @@ from pyvider.cty import (
 - **[Getting Started](../getting-started/index.md)** - Quick introduction
 - **[Examples](../getting-started/examples.md)** - Runnable code examples
 
-______________________________________________________________________
+---
 
 # PyVider CTY API
 
-::: pyvider.cty options: show_source: true show_root_heading: true members_order: source show_if_no_docstring: false filters: - "!^\_" - "^__init__$"
+::: pyvider.cty
+    options:
+      show_source: true
+      show_root_heading: true
+      members_order: source
+      show_if_no_docstring: false
+      filters:
+        - "!^_"
+        - "^__init__$"

@@ -173,7 +173,7 @@ Now you understand the fundamentals! Continue learning:
 - **[User Guide: Core Concepts](../user-guide/core-concepts/types.md)** - Deep dive into types
 - **[User Guide: Type Reference](../user-guide/type-reference/primitives.md)** - Learn about all available types
 
-______________________________________________________________________
+---
 
 **Key Concepts:**
 

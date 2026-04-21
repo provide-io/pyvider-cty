@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 # Inherit shared configuration from provide-foundry
 INHERIT: .provide/foundry/base-mkdocs.yml
 
@@ -14,7 +11,7 @@ repo_name: provide-io/pyvider-cty
 edit_uri: edit/main/docs/
 
 # Development server configuration
-dev_addr: 127.0.0.1:11011
+dev_addr: 127.0.0.1:11005
 
 copyright: Copyright &copy; 2024-2025 provide.io
 

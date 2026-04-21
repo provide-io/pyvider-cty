@@ -7,9 +7,9 @@ This guide shows you how to validate complex, nested data structures with pyvide
 The fundamental pattern for validation is:
 
 1. Define a type schema
-1. Call `.validate()` with raw Python data
-1. Handle validation errors
-1. Work with the validated `CtyValue`
+2. Call `.validate()` with raw Python data
+3. Handle validation errors
+4. Work with the validated `CtyValue`
 
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
@@ -282,11 +282,11 @@ result = try_validate(data, schemas)  # Matches schema_v2
 ## Best Practices
 
 1. **Build schemas incrementally**: Start with simple types and compose them
-1. **Use descriptive variable names**: `user_type`, `address_type` are clear
-1. **Validate early**: Validate at system boundaries (API inputs, file loads)
-1. **Handle errors gracefully**: Provide clear error messages to users
-1. **Reuse schemas**: Define common schemas once and import them
-1. **Document optional fields**: Make it clear which fields can be omitted
+2. **Use descriptive variable names**: `user_type`, `address_type` are clear
+3. **Validate early**: Validate at system boundaries (API inputs, file loads)
+4. **Handle errors gracefully**: Provide clear error messages to users
+5. **Reuse schemas**: Define common schemas once and import them
+6. **Document optional fields**: Make it clear which fields can be omitted
 
 ## Common Patterns
 

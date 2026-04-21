@@ -149,7 +149,7 @@ You've learned the core workflow! Now you can:
 - **[Explore more examples](examples.md)** - See pyvider.cty in action
 - **[Dive into the User Guide](../user-guide/index.md)** - Learn about all features
 
-______________________________________________________________________
+---
 
 **Key Takeaways:**
 

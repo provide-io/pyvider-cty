@@ -5,7 +5,6 @@ This guide shows advanced techniques for creating custom types and extending pyv
 ## When to Create Custom Types
 
 Consider custom types when you need:
-
 - Domain-specific validation logic
 - Reusable type compositions
 - Complex validation rules
@@ -301,11 +300,11 @@ user_schema = registry.create_object({
 ## Best Practices
 
 1. **Compose before creating**: Use existing types when possible
-1. **Validate incrementally**: Build on base type validation
-1. **Provide clear errors**: Make validation failures informative
-1. **Document constraints**: Clearly document what your types enforce
-1. **Test thoroughly**: Custom types need comprehensive tests
-1. **Consider reusability**: Design for use across your codebase
+2. **Validate incrementally**: Build on base type validation
+3. **Provide clear errors**: Make validation failures informative
+4. **Document constraints**: Clearly document what your types enforce
+5. **Test thoroughly**: Custom types need comprehensive tests
+6. **Consider reusability**: Design for use across your codebase
 
 ## Common Patterns
 
