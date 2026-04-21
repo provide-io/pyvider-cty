@@ -39,7 +39,7 @@ classifiers = [
 dependencies = [
     "attrs>=25.3.0",
     "msgpack>=1.1.0",
-    "provide-foundation>=0.3.29",
+    "provide-foundation>=0.4.0",
 ]
 
 [project.urls]
@@ -52,10 +52,10 @@ Issues = "https://github.com/provide-io/pyvider-cty/issues"
 dev = [
     "hypothesis>=6.148.8",
     "memray>=1.0; sys_platform != 'emscripten'",
-    "provide-testkit[standard]",
+    "provide-testkit[standard]>=0.4.0",
 ]
 docs = [
-    "provide-testkit[docs]",
+    "provide-testkit[docs]>=0.4.0",
 ]
 
 [tool.setuptools]
@@ -196,11 +196,5 @@ exclude_lines = [
     "def __str__",
     "pass",
 ]
-
-# [tool.uv.sources]
-# provide-foundation = { path = "../provide-foundation", editable = true }
-# Note: provide-foundation removed from local sources for CI compatibility
-# Will use PyPI version when available
-
 [tool.bandit]
 exclude_dirs = [".venv", "tests", "workenv"]

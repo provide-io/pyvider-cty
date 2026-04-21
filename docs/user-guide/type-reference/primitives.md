@@ -4,9 +4,9 @@ Primitive types are the most basic building blocks of the `pyvider.cty` type sys
 
 There are three primitive types in `pyvider.cty`:
 
-- `CtyString`: Represents a string of text.
-- `CtyNumber`: Represents a number (integer or float).
-- `CtyBool`: Represents a boolean value (`True` or `False`).
+*   `CtyString`: Represents a string of text.
+*   `CtyNumber`: Represents a number (integer or float).
+*   `CtyBool`: Represents a boolean value (`True` or `False`).
 
 ## `CtyString`
 

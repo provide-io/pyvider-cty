@@ -4,8 +4,8 @@ Structural types represent more complex, structured data. They allow you to defi
 
 There are two structural types in `pyvider.cty`:
 
-- `CtyObject`: Represents an object with a fixed set of named attributes, each with its own type.
-- `CtyTuple`: Represents a sequence of elements with a fixed length, where each element can have a different type.
+*   `CtyObject`: Represents an object with a fixed set of named attributes, each with its own type.
+*   `CtyTuple`: Represents a sequence of elements with a fixed length, where each element can have a different type.
 
 ## `CtyObject`
 

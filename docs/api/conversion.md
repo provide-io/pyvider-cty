@@ -3,7 +3,6 @@
 The `pyvider.cty.conversion` module provides type conversion and unification capabilities for transforming values between different cty types.
 
 Key functions:
-
 - **`convert(value, target_type)`** - Convert a `CtyValue` to a different type when possible (e.g., number to string, string to number)
 - **`unify(types)`** - Find the most specific type that can represent all given types (type unification)
 
@@ -13,6 +12,14 @@ Type conversion is essential for building flexible APIs that accept multiple inp
 
 For detailed conversion documentation, see: **[User Guide: Type Conversion](../user-guide/core-concepts/conversion.md)**
 
-______________________________________________________________________
+---
 
-::: pyvider.cty.conversion options: show_source: true show_root_heading: true members_order: source show_if_no_docstring: false filters: - "!^\_" - "^__init__$"
+::: pyvider.cty.conversion
+    options:
+      show_source: true
+      show_root_heading: true
+      members_order: source
+      show_if_no_docstring: false
+      filters:
+        - "!^_"
+        - "^__init__$"

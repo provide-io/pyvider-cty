@@ -20,6 +20,9 @@ pyvider.cty provides strong type validation and serialization capabilities for c
 - 📚 **Standard Library** - Comprehensive collection of type functions
 
 ## Quick Start
+
+> **Note**: pyvider-cty is in pre-release (v0.x.x). APIs and features may change before 1.0 release.
+
 1. Install: `uv add pyvider-cty`
 2. Follow the [Getting Started guide](https://github.com/provide-io/pyvider-cty/blob/main/docs/getting-started/index.md).
 3. See the [Quick Example](#quick-example) below.
@@ -36,8 +39,21 @@ Comprehensive documentation is available in the `docs/` directory:
 Or start with the **[documentation index](https://github.com/provide-io/pyvider-cty/blob/main/docs/index.md)**.
 
 ## Development
-- See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for local development notes.
-- Run `uv sync --extra dev` to set up the dev environment.
+
+### Quick Start
+
+```bash
+# Set up environment
+uv sync
+
+# Run common tasks
+we run test       # Run tests
+we run lint       # Check code
+we run format     # Format code
+we tasks          # See all available commands
+```
+
+See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for detailed development instructions and architecture information.
 
 ## Contributing
 
@@ -87,4 +103,4 @@ print(f"Name: {user_val['name'].raw_value}")  # Output: Alice
 - **Python 3.11+ Required**: Due to modern type features and syntax used.
 - **Performance**: The library is not optimized for performance-critical applications involving very large or deeply nested data structures. Performance is reasonable for typical use cases.
 
-Copyright (c) Provide.io LLC.
+Copyright (c) provide.io LLC.

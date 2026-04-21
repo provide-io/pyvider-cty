@@ -3,7 +3,6 @@
 The `pyvider.cty.values` module defines the `CtyValue` class, which represents immutable, type-safe data instances in the cty system.
 
 Key concepts:
-
 - **Immutability** - Once created, `CtyValue` instances cannot be modified. All operations return new values.
 - **Type safety** - Every value has an associated `CtyType` that governs its structure and operations
 - **Special values** - Support for null values (`CtyValue.null(type)`) and unknown values (`CtyValue.unknown(type)`)
@@ -16,6 +15,14 @@ Key concepts:
 
 For detailed value documentation, see: **[User Guide: Working with Values](../user-guide/core-concepts/values.md)**
 
-______________________________________________________________________
+---
 
-::: pyvider.cty.values options: show_source: true show_root_heading: true members_order: source show_if_no_docstring: false filters: - "!^\_" - "^__init__$"
+::: pyvider.cty.values
+    options:
+      show_source: true
+      show_root_heading: true
+      members_order: source
+      show_if_no_docstring: false
+      filters:
+        - "!^_"
+        - "^__init__$"

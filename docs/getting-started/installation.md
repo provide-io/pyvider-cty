@@ -24,7 +24,6 @@ uv add pyvider-cty
 ```
 
 This will:
-
 - Add pyvider-cty to your project dependencies
 - Install the package and its dependencies
 - Update your project's lock file
