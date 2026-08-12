@@ -52,19 +52,16 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if value is None:
             return CtyValue.null(self)
 
-        # Check for UnrefinedUnknownValue which can slip through if a CtyValue wrapper is removed
-        from pyvider.cty.values.markers import UnrefinedUnknownValue
+        # A bare marker is the same fact as a CtyValue whose is_unknown is set, just
+        # without its wrapper — which is how it arrives once an outer CtyValue has been
+        # unwrapped above. Unknown is a normal state during ValidateResourceConfig:
+        # terraform sends it for every attribute whose value depends on `for_each`, a
+        # data source, or another resource, and rejecting it makes a provider unusable
+        # with `for_each` even though nothing about the configuration is wrong.
+        from pyvider.cty.values.markers import UnknownValue
 
-        if isinstance(value, UnrefinedUnknownValue):
-            raise CtyListValidationError(
-                "Cannot use unknown/computed value for list parameter. "
-                "This value won't be known until apply time, but is needed during validation. "
-                "Possible causes:\n"
-                "  - Circular reference (e.g., data source referencing itself)\n"
-                "  - Using output from another resource/data source that hasn't been created yet\n"
-                "  - Dynamic values in function calls during validation\n"
-                "Hint: Check for self-references or values that depend on resources not yet created."
-            )
+        if isinstance(value, UnknownValue):
+            return CtyValue.unknown(self)
 
         if isinstance(value, list | tuple | set | frozenset):
             value_collection = cast(list[object] | tuple[object, ...] | set[object] | frozenset[object], value)
