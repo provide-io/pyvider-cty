@@ -37,28 +37,26 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 f"element_type must be a CtyType instance, got {type(self.element_type).__name__}"
             )
 
-    @with_recursion_detection
-    def validate(self, value: object) -> CtyValue[dict[str, V]]:
+    def _short_circuit(self, value: object) -> tuple[CtyValue[dict[str, V]] | None, object]:
+        """The answers that need no validation: a value already of this exact type,
+        null, and unknown in either shape. Returns (answer, value-to-validate)."""
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, dict):
-                return cast(CtyValue[dict[str, V]], value)  # Fast path
+                return cast(CtyValue[dict[str, V]], value), value  # Fast path
             if value.is_null:
-                return CtyValue.null(self)
+                return CtyValue.null(self), value
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return CtyValue.unknown(self), value
             value = value.value
-
         if value is None:
-            return CtyValue.null(self)
+            return CtyValue.null(self), value
+        return self.unknown_marker(value), value
 
-        # A bare marker carries the same fact as an unknown CtyValue, minus the
-        # wrapper it loses when an outer value is unwrapped. Terraform sends unknown
-        # for every attribute that depends on for_each, a data source or another
-        # resource, so rejecting it makes the type unusable in ordinary configurations.
-        from pyvider.cty.values.markers import UnknownValue
-
-        if isinstance(value, UnknownValue):
-            return CtyValue.unknown(self)
+    @with_recursion_detection
+    def validate(self, value: object) -> CtyValue[dict[str, V]]:
+        answer, value = self._short_circuit(value)
+        if answer is not None:
+            return answer
 
         if not isinstance(value, dict):
             raise CtyMapValidationError(f"Input must be a dictionary, got {type(value).__name__}.")

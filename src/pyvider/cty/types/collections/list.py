@@ -52,16 +52,8 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if value is None:
             return CtyValue.null(self)
 
-        # A bare marker is the same fact as a CtyValue whose is_unknown is set, just
-        # without its wrapper — which is how it arrives once an outer CtyValue has been
-        # unwrapped above. Unknown is a normal state during ValidateResourceConfig:
-        # terraform sends it for every attribute whose value depends on `for_each`, a
-        # data source, or another resource, and rejecting it makes a provider unusable
-        # with `for_each` even though nothing about the configuration is wrong.
-        from pyvider.cty.values.markers import UnknownValue
-
-        if isinstance(value, UnknownValue):
-            return CtyValue.unknown(self)
+        if (unknown := self.unknown_marker(value)) is not None:
+            return unknown
 
         if isinstance(value, list | tuple | set | frozenset):
             value_collection = cast(list[object] | tuple[object, ...] | set[object] | frozenset[object], value)

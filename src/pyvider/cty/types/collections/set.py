@@ -30,31 +30,30 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
         if not isinstance(self.element_type, CtyType):
             raise CtySetValidationError(f"Expected CtyType for element_type, got {type(self.element_type)}")
 
-    @with_recursion_detection
-    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
+    def _short_circuit(self, value: object) -> tuple[CtyValue[tuple[T, ...]] | None, object]:
+        """The answers that need no validation: null, unknown in either shape, and a
+        value already of this exact type. Returns (answer, value-to-validate)."""
         if value is None:
-            return CtyValue.null(self)
+            return CtyValue.null(self), value
         if isinstance(value, CtyValue):
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return CtyValue.unknown(self), value
             if value.is_null:
-                return CtyValue.null(self)
+                return CtyValue.null(self), value
             if (
                 isinstance(value.type, CtySet)
                 and value.type.equal(self)
                 and isinstance(value.value, frozenset)
             ):
-                return cast(CtyValue[tuple[T, ...]], value)
+                return cast(CtyValue[tuple[T, ...]], value), value
             value = value.value
+        return self.unknown_marker(value), value
 
-        # A bare marker carries the same fact as an unknown CtyValue, minus the
-        # wrapper it loses when an outer value is unwrapped. Terraform sends unknown
-        # for every attribute that depends on for_each, a data source or another
-        # resource, so rejecting it makes the type unusable in ordinary configurations.
-        from pyvider.cty.values.markers import UnknownValue
-
-        if isinstance(value, UnknownValue):
-            return CtyValue.unknown(self)
+    @with_recursion_detection
+    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
+        answer, value = self._short_circuit(value)
+        if answer is not None:
+            return answer
 
         if not isinstance(value, list | tuple | set | frozenset):
             raise CtySetValidationError(

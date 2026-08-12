@@ -63,6 +63,26 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
     def _to_wire_json(self) -> Any:
         """Abstract method for JSON wire format encoding."""
 
+    def unknown_marker(self, value: object) -> CtyValue[T] | None:
+        """This type's unknown value when `value` is an unwrapped unknown marker.
+
+        Terraform sends unknown for every attribute that depends on for_each, a data
+        source or another resource, and an outer type unwrapping its CtyValue leaves
+        the marker bare. Collections that only recognised the wrapped form rejected
+        those configurations outright, so the check belongs where all of them can
+        share it — and stating it once keeps each `validate` under its complexity
+        budget rather than paying for the same six lines three times.
+        """
+        # Imported here, not at module scope: base.py keeps CtyValue as a
+        # TYPE_CHECKING-only forward reference to avoid an import cycle, so the name
+        # does not exist at runtime.
+        from pyvider.cty.values.base import CtyValue
+        from pyvider.cty.values.markers import UnknownValue
+
+        if isinstance(value, UnknownValue):
+            return CtyValue.unknown(self)
+        return None
+
     def is_primitive_type(self) -> bool:
         return False
 
