@@ -47,6 +47,15 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 return cast(CtyValue[tuple[T, ...]], value)
             value = value.value
 
+        # A bare marker carries the same fact as an unknown CtyValue, minus the
+        # wrapper it loses when an outer value is unwrapped. Terraform sends unknown
+        # for every attribute that depends on for_each, a data source or another
+        # resource, so rejecting it makes the type unusable in ordinary configurations.
+        from pyvider.cty.values.markers import UnknownValue
+
+        if isinstance(value, UnknownValue):
+            return CtyValue.unknown(self)
+
         if not isinstance(value, list | tuple | set | frozenset):
             raise CtySetValidationError(
                 f"Expected a Python set, frozenset, list, or tuple, got {type(value).__name__}"

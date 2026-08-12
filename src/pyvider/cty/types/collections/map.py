@@ -51,6 +51,15 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         if value is None:
             return CtyValue.null(self)
 
+        # A bare marker carries the same fact as an unknown CtyValue, minus the
+        # wrapper it loses when an outer value is unwrapped. Terraform sends unknown
+        # for every attribute that depends on for_each, a data source or another
+        # resource, so rejecting it makes the type unusable in ordinary configurations.
+        from pyvider.cty.values.markers import UnknownValue
+
+        if isinstance(value, UnknownValue):
+            return CtyValue.unknown(self)
+
         if not isinstance(value, dict):
             raise CtyMapValidationError(f"Input must be a dictionary, got {type(value).__name__}.")
         validated_map: dict[str, CtyValue[V]] = {}
