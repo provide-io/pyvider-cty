@@ -61,8 +61,12 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
                 case _:
                     raise CtyValidationError(f"Unknown primitive type name: '{tf_type}'")
 
-        if isinstance(tf_type, list) and len(tf_type) == 2:
-            type_kind, type_spec = tf_type
+        # An object type may carry a third element: the names that may be omitted.
+        # Accepting only the 2-element form rejects every type terraform sends back
+        # for a schema that declares optional object attributes.
+        if isinstance(tf_type, list) and len(tf_type) in (2, 3):
+            type_kind, type_spec = tf_type[0], tf_type[1]
+            optional_names = tf_type[2] if len(tf_type) == 3 else ()
 
             # Handle collection types where the spec is a single type
             if type_kind in (TYPE_KIND_LIST, TYPE_KIND_SET, TYPE_KIND_MAP):
@@ -83,7 +87,10 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
                             f"Object type spec must be a dictionary, got {type(type_spec).__name__}"
                         )
                     attr_types = {name: parse_tf_type_to_ctytype(spec) for name, spec in type_spec.items()}
-                    return CtyObject(attribute_types=attr_types)
+                    return CtyObject(
+                        attribute_types=attr_types,
+                        optional_attributes=frozenset(optional_names or ()),
+                    )
                 case "tuple":
                     if not isinstance(type_spec, list):
                         raise CtyValidationError(

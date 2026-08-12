@@ -198,7 +198,15 @@ class CtyObject(CtyType[dict[str, object]]):
         attrs_json = {
             name: attr_type._to_wire_json() for name, attr_type in sorted(self.attribute_types.items())
         }
-        return [self.ctype, attrs_json]
+        if not self.optional_attributes:
+            return [self.ctype, attrs_json]
+        # go-cty's third element is the list of attributes that may be omitted.
+        # Dropping it makes every attribute of every nested object REQUIRED as far as
+        # terraform is concerned: a `map(object({run, shell, image}))` where only `run`
+        # is meant to be needed rejects the configuration with `attribute "image" is
+        # required`, and no provider-side change can fix that, because the constraint
+        # is being sent from here.
+        return [self.ctype, attrs_json, sorted(self.optional_attributes)]
 
     def is_primitive_type(self) -> bool:
         return False
