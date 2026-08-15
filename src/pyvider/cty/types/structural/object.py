@@ -119,15 +119,9 @@ class CtyObject(CtyType[dict[str, object]]):
 
             raw_attr_value = value.get(normalized_name)
             try:
-                existing_marks: frozenset[Any] = frozenset()
-                if isinstance(raw_attr_value, CtyValue):
-                    existing_marks = raw_attr_value.marks
-
+                # Marks on raw_attr_value survive this call: every validate is
+                # wrapped in @preserves_marks.
                 validated_attr = attr_type.validate(raw_attr_value)
-
-                if existing_marks:
-                    validated_attr = validated_attr.with_marks(existing_marks)
-
             except CtyValidationError as e:
                 new_path = CtyPath(steps=[GetAttrStep(name)] + (e.path.steps if e.path else []))
                 raise CtyAttributeValidationError(

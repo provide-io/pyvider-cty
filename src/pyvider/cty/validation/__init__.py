@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from pyvider.cty.validation.marks import preserves_marks
 from pyvider.cty.validation.recursion import (
     RecursionContext,
     RecursionDetector,
@@ -52,6 +53,7 @@ __all__ = [
     "RecursionDetector",
     "clear_recursion_context",
     "get_recursion_context",
+    "preserves_marks",
     "validate_config",
     "with_recursion_detection",
 ]

@@ -13,6 +13,7 @@ from attrs import define
 
 from pyvider.cty.exceptions import CtyStringValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.marks import preserves_marks
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
@@ -23,6 +24,7 @@ class CtyString(CtyType[str]):
     ctype: ClassVar[str] = "string"
     _type_order: ClassVar[int] = 1
 
+    @preserves_marks
     def validate(self, value: object) -> CtyValue[str]:
         from pyvider.cty.values import CtyValue, UnknownValue
 
