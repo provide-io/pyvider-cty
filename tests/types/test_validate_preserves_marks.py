@@ -34,7 +34,7 @@ from pyvider.cty import (
     CtyType,
     CtyValue,
 )
-from pyvider.cty.marks import CtyMark
+from pyvider.cty.marks import CtyMark, collect_marks_deep
 from pyvider.cty.validation import clear_recursion_context, get_recursion_context
 
 SENSITIVE = CtyMark("sensitive")
@@ -159,6 +159,69 @@ def test_marks_survive_a_collection_round_trip() -> None:
     twice = lst.validate(once)
 
     assert twice.value[0].marks == frozenset({SENSITIVE})
+
+
+class TestDeepMarkMemoCannotGoStale:
+    """The memo must never answer "no marks" for a value that has marks.
+
+    Freezing CtyValue freezes the reference to its payload, not the payload:
+    maps and objects hold a plain dict, and `validate` accepts raw lists. A memo
+    taken over one of those can be left under-reporting by an in-place mutation,
+    and a memo that under-reports is a silent declassification -- a value that
+    has become sensitive still answering "not sensitive".
+
+    The break these tests catch: memoizing the walk over a subtree that contains
+    a container capable of changing behind the memo's back.
+    """
+
+    def test_a_mutated_map_payload_is_not_answered_from_a_stale_memo(self) -> None:
+        m = CtyMap(element_type=CtyString()).validate({"k": "public"})
+
+        assert collect_marks_deep(m) == frozenset()
+        m.value["k"] = marked_string()
+
+        assert collect_marks_deep(m) == frozenset({SENSITIVE})
+
+    def test_a_mutated_object_payload_is_not_answered_from_a_stale_memo(self) -> None:
+        o = CtyObject(attribute_types={"a": CtyString()}).validate({"a": "public"})
+
+        assert collect_marks_deep(o) == frozenset()
+        o.value["a"] = marked_string()
+
+        assert collect_marks_deep(o) == frozenset({SENSITIVE})
+
+    def test_a_memoized_child_cannot_poison_its_parent(self) -> None:
+        """A cached descendant answers for its whole subtree, so caching one
+        that can still change would spread the stale answer upwards."""
+        element = CtyMap(element_type=CtyString())
+        child = element.validate({"k": "public"})
+        parent = CtyList(element_type=element).validate([child])
+
+        assert collect_marks_deep(parent) == frozenset()
+        parent.value[0].value["k"] = marked_string()
+
+        assert collect_marks_deep(parent) == frozenset({SENSITIVE})
+
+    def test_a_mutable_container_anywhere_in_the_subtree_blocks_the_memo(self) -> None:
+        """It is the whole subtree that has to be immutable, not just the root.
+
+        The root here holds a tuple, which is fine on its own; the dict is a
+        level down.
+        """
+        element = CtyMap(element_type=CtyString())
+        parent = CtyList(element_type=element).validate([element.validate({"k": "v"})])
+
+        collect_marks_deep(parent)
+
+        assert parent._deep_marks is None
+
+    def test_an_immutable_subtree_is_still_memoized(self) -> None:
+        """The memo is what keeps stdlib calls off an O(n) walk per argument."""
+        value = CtyList(element_type=CtyString()).validate(["a", "b"])
+
+        assert value._deep_marks is None
+        assert collect_marks_deep(value) == frozenset()
+        assert value._deep_marks == frozenset()
 
 
 class TestMarksSurviveTheRecursionGuard:
