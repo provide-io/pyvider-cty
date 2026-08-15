@@ -231,16 +231,25 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(
             f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}"
         )
-    if collection.is_null or collection.is_unknown or value.is_unknown:
+    if collection.is_null or collection.is_unknown or not value.is_wholly_known():
         return CtyValue.unknown(CtyBool())
 
     # An unknown element could still turn out to be the value we are looking
     # for, so a miss against a partially-unknown collection is undecided rather
     # than false. An exact match still wins outright: it cannot be un-matched by
-    # whatever the unknowns resolve to. This mirrors go-cty's ContainsFunc.
+    # whatever the unknowns resolve to.
+    #
+    # "Unknown" has to be read deeply. An object whose attribute is unknown is
+    # itself known, so testing `is_unknown` alone lets a partially-unknown
+    # element fall through to `==`, which answers with a plain bool and reports
+    # a definite miss. go-cty avoids this by comparing with `Value.Equals`,
+    # which is three-valued. Until pyvider.cty has that, any element carrying an
+    # unknown anywhere counts as undecided: vaguer than go-cty, which can still
+    # rule out an element on a known attribute that differs, but never claiming
+    # a certainty the data does not support.
     saw_unknown = False
     for element_value in cast("tuple[Any, ...]", collection.value):
-        if isinstance(element_value, CtyValue) and element_value.is_unknown:
+        if isinstance(element_value, CtyValue) and not element_value.is_wholly_known():
             saw_unknown = True
             continue
         if element_value == value:

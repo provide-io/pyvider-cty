@@ -47,6 +47,11 @@ class CtyValue(Generic[T]):
     is_null: bool = field(default=False)
     marks: frozenset[Any] = field(factory=frozenset)
 
+    # Memo for `collect_marks_deep`, filled on first ask. Excluded from init,
+    # equality, hashing and repr: it is derived state, not part of the value.
+    # A CtyValue is immutable, so the answer cannot go stale.
+    _deep_marks: frozenset[Any] | None = field(default=None, init=False, eq=False, repr=False)
+
     def __attrs_post_init__(self) -> None:
         from pyvider.cty.types import CtyDynamic
 
@@ -276,6 +281,34 @@ class CtyValue(Generic[T]):
         if self.is_unknown or self.is_null:
             return hash((self.vtype, self.is_unknown, self.is_null, self.marks))
         return hash((self.vtype, self.is_unknown, self.is_null, self.marks, self.value))
+
+    def is_wholly_known(self) -> bool:
+        """False if this value, or anything nested inside it, is unknown.
+
+        go-cty spells this `Value.IsWhollyKnown`. `is_unknown` answers only for
+        the top level, so a known object with an unknown attribute reports as
+        known -- which is the right answer to a different question than the one
+        callers deciding "can I draw a conclusion from this value" are asking.
+        """
+        stack: list[Any] = [self]
+        visited: set[int] = set()
+        while stack:
+            current = stack.pop()
+            current_id = id(current)
+            if current_id in visited:
+                continue
+            visited.add(current_id)
+            if isinstance(current, CtyValue):
+                if current.is_unknown:
+                    return False
+                if current.is_null:
+                    continue
+                stack.append(current.value)
+            elif isinstance(current, dict):
+                stack.extend(current.values())
+            elif isinstance(current, (list, tuple, set, frozenset)):
+                stack.extend(current)
+        return True
 
     def has_mark(self, mark: object) -> bool:
         return mark in self.marks

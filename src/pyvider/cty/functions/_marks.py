@@ -13,6 +13,9 @@ therefore never see or manage marks themselves.
 pyvider.cty has no function framework yet (#12). This decorator is the seam it
 will fill in behind: the stdlib functions are written mark-unaware, exactly as
 go-cty's `Impl` functions are, and the wrapper owns the policy.
+
+The deep walk itself lives in `pyvider.cty.marks`, shared with the recursion
+guard and the set constructor.
 """
 
 from __future__ import annotations
@@ -21,54 +24,11 @@ from collections.abc import Callable
 import functools
 from typing import Any, ParamSpec, TypeVar
 
-from attrs import evolve
-
+from pyvider.cty.marks import _strip, collect_marks_deep
 from pyvider.cty.values import CtyValue
 
 P = ParamSpec("P")
 R = TypeVar("R")
-
-
-def _children(value: CtyValue[Any]) -> tuple[Any, ...] | dict[str, Any] | None:
-    """The nested CtyValues a container holds, or None for a leaf.
-
-    Lists and tuples hold a tuple of values; a validated set holds a *frozenset*,
-    not a tuple; maps and objects hold a dict; CtyDynamic wraps a single value.
-    Primitives and capsules are leaves.
-
-    Sets are snapshotted into a tuple so that the order seen here is the order
-    `_strip` rebuilds against -- iterating a frozenset twice is only reliably
-    consistent for the same object, and `_strip` compares element-wise.
-    """
-    if value.is_null or value.is_unknown:
-        return None
-    inner = value.value
-    if isinstance(inner, tuple):
-        return inner
-    if isinstance(inner, (frozenset, set)):
-        return tuple(inner)
-    if isinstance(inner, dict):
-        return inner
-    if isinstance(inner, CtyValue):
-        return (inner,)
-    return None
-
-
-def _marks_deep(value: CtyValue[Any]) -> frozenset[Any]:
-    """Every mark anywhere in a possibly-nested value.
-
-    go-cty spells this `Value.UnmarkDeep`. pyvider.cty has no deep mark
-    operations yet (#8); when they land, this collapses into a call to them.
-    """
-    marks = value.marks
-    children = _children(value)
-    if children is None:
-        return marks
-    values = children.values() if isinstance(children, dict) else children
-    for child in values:
-        if isinstance(child, CtyValue):
-            marks |= _marks_deep(child)
-    return marks
 
 
 def _collect(args: tuple[Any, ...], kwargs: dict[str, Any]) -> frozenset[Any]:
@@ -76,48 +36,8 @@ def _collect(args: tuple[Any, ...], kwargs: dict[str, Any]) -> frozenset[Any]:
     marks: frozenset[Any] = frozenset()
     for arg in (*args, *kwargs.values()):
         if isinstance(arg, CtyValue):
-            marks |= _marks_deep(arg)
+            marks |= collect_marks_deep(arg)
     return marks
-
-
-def _strip(value: Any) -> Any:
-    """A copy of `value` with every mark removed, at any depth."""
-    if not isinstance(value, CtyValue):
-        return value
-
-    children = _children(value)
-    stripped = value.unmark()[0] if value.marks else value
-
-    if children is None:
-        return stripped
-
-    # "Did anything change" is decided by identity, never by ==. CtyValue.__eq__
-    # delegates to a CtyCapsuleWithOps' equal_fn, which compares payloads and
-    # ignores marks entirely, so an equality check reports "unchanged" for a
-    # capsule whose mark was just stripped and hands the caller back the marked
-    # value. _strip returns the input object itself when it has nothing to do,
-    # which makes `is` an exact test.
-    if isinstance(children, dict):
-        rebuilt_map = {k: _strip(v) for k, v in children.items()}
-        if all(rebuilt_map[k] is v for k, v in children.items()):
-            return stripped
-        return evolve(stripped, value=rebuilt_map)
-
-    if isinstance(stripped.value, CtyValue):
-        rebuilt_inner = _strip(children[0])
-        if rebuilt_inner is children[0]:
-            return stripped
-        return evolve(stripped, value=rebuilt_inner)
-
-    rebuilt_seq = tuple(_strip(v) for v in children)
-    if all(new is old for new, old in zip(rebuilt_seq, children, strict=True)):
-        return stripped
-    if isinstance(stripped.value, (frozenset, set)):
-        # Rebuild as a set. Removing marks can make two elements that differed
-        # only by their marks equal, so the unmarked set may be smaller -- which
-        # is what an unmarked view of the set should be.
-        return evolve(stripped, value=frozenset(rebuilt_seq))
-    return evolve(stripped, value=rebuilt_seq)
 
 
 def preserve_marks(fn: Callable[P, R]) -> Callable[P, R]:
