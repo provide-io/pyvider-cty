@@ -193,6 +193,36 @@ def test_deeply_nested_mark_propagates_to_the_result() -> None:
     assert SENSITIVE in result.marks
 
 
+def test_mark_on_a_set_element_propagates_to_the_result() -> None:
+    """A validated set stores a frozenset, not a tuple.
+
+    Walking only tuples and dicts to find nested marks skips every set, so a
+    sensitive element inside a set is dropped from the result of any function
+    that reads it -- and the implementation is handed the marked element it was
+    supposed to be shielded from.
+    """
+    collection = STRSET.validate([s("safe"), s("hunter2").mark(SENSITIVE)])
+
+    result = F.length(collection)
+
+    assert result.value == 2
+    assert SENSITIVE in result.marks
+
+
+def test_set_elements_are_unmarked_before_the_function_runs() -> None:
+    seen: list[frozenset[Any]] = []
+
+    @preserve_marks
+    def record_element_marks(arg: CtyValue[Any]) -> CtyValue[Any]:
+        seen.append(frozenset().union(*(e.marks for e in arg.value)))
+        return s("done")
+
+    result = record_element_marks(STRSET.validate([s("hunter2").mark(SENSITIVE)]))
+
+    assert seen == [frozenset()], "the wrapped function saw a marked set element"
+    assert result.marks == frozenset({SENSITIVE})
+
+
 def test_wrapped_function_does_not_see_marks_on_its_arguments() -> None:
     """go-cty strips marks before `Impl` runs so implementations cannot mishandle them.
 

@@ -32,14 +32,21 @@ R = TypeVar("R")
 def _children(value: CtyValue[Any]) -> tuple[Any, ...] | dict[str, Any] | None:
     """The nested CtyValues a container holds, or None for a leaf.
 
-    Lists, sets and tuples hold a tuple of values; maps and objects hold a dict;
-    CtyDynamic wraps a single value. Primitives and capsules are leaves.
+    Lists and tuples hold a tuple of values; a validated set holds a *frozenset*,
+    not a tuple; maps and objects hold a dict; CtyDynamic wraps a single value.
+    Primitives and capsules are leaves.
+
+    Sets are snapshotted into a tuple so that the order seen here is the order
+    `_strip` rebuilds against -- iterating a frozenset twice is only reliably
+    consistent for the same object, and `_strip` compares element-wise.
     """
     if value.is_null or value.is_unknown:
         return None
     inner = value.value
     if isinstance(inner, tuple):
         return inner
+    if isinstance(inner, (frozenset, set)):
+        return tuple(inner)
     if isinstance(inner, dict):
         return inner
     if isinstance(inner, CtyValue):
@@ -105,6 +112,11 @@ def _strip(value: Any) -> Any:
     rebuilt_seq = tuple(_strip(v) for v in children)
     if all(new is old for new, old in zip(rebuilt_seq, children, strict=True)):
         return stripped
+    if isinstance(stripped.value, (frozenset, set)):
+        # Rebuild as a set. Removing marks can make two elements that differed
+        # only by their marks equal, so the unmarked set may be smaller -- which
+        # is what an unmarked view of the set should be.
+        return evolve(stripped, value=frozenset(rebuilt_seq))
     return evolve(stripped, value=rebuilt_seq)
 
 
