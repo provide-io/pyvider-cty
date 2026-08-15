@@ -601,13 +601,18 @@ for i in range(1000):
 
 **Solution**:
 ```python
-from pyvider.cty.context import MAX_VALIDATION_DEPTH
+from pyvider.cty.config.defaults import MAX_VALIDATION_DEPTH
 
-# The default limit is 500 levels
+# The limit is derived from sys.getrecursionlimit(), because each level of
+# nesting costs two Python frames: 480 at the default limit of 1000.
+# Validating at exactly this depth is guaranteed to work; one level past it
+# returns a controlled `unknown` rather than raising.
+#
 # If you need deeper structures, consider:
 # 1. Flattening your data structure
 # 2. Using references instead of deep nesting
-# 3. Adjusting MAX_VALIDATION_DEPTH (with caution)
+# 3. Raising sys.setrecursionlimit(), which raises the derived depth with it
+# 4. Pinning PYVIDER_CTY_MAX_VALIDATION_DEPTH (only alongside step 3)
 ```
 
 ---

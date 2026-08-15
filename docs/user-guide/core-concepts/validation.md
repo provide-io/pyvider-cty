@@ -142,7 +142,8 @@ with deeper_validation():
     # Validation depth increased by 1
     pass
 
-# Maximum depth: 500 (configurable via MAX_VALIDATION_DEPTH)
+# Maximum depth: derived from sys.getrecursionlimit(); override with
+# PYVIDER_CTY_MAX_VALIDATION_DEPTH
 ```
 
 This protection prevents stack overflow with:

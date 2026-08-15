@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import sys
+
 """Centralized default values for pyvider-cty configuration.
 All defaults are defined here instead of inline in field definitions.
 """
@@ -18,13 +20,48 @@ ENABLE_TYPE_INFERENCE_CACHE = True  # Enable caching for type inference performa
 # =================================
 # Validation defaults
 # =================================
-MAX_VALIDATION_DEPTH = 500  # Safer default, well below Python's typical limit
+# Python frames consumed per level of nesting during validation: the
+# `with_recursion_detection` wrapper, then the `validate` it wraps. Measured,
+# not guessed -- stack depth at the innermost leaf is exactly
+# `FRAMES_PER_VALIDATION_LEVEL * levels + 2`.
+FRAMES_PER_VALIDATION_LEVEL = 2
 
-# How deep the validator's own descent must already be before it will attribute
-# a RecursionError to itself and degrade to an unknown. Shallower than this, the
-# error came from something the validator called -- capsule code, a custom
-# equal_fn, a self-referential raw structure -- and must surface instead.
-MIN_DEPTH_TO_OWN_RECURSION_ERROR = MAX_VALIDATION_DEPTH // 2
+# Frames left over for whoever called into validation, so that hitting the
+# depth limit is a controlled stop rather than a RecursionError raised in the
+# caller's own stack.
+VALIDATION_STACK_MARGIN = 40
+
+# Sentinel for "derive the limit"; any positive configured value wins instead.
+MAX_VALIDATION_DEPTH_AUTO = 0
+
+
+def default_max_validation_depth() -> int:
+    """The deepest nesting the interpreter can actually carry.
+
+    This used to be a flat 500, which was not deliverable. Each level costs two
+    Python frames against CPython's 1000-frame limit, so 500 levels needs the
+    entire stack with nothing left for the caller: the real ceiling was 496, and
+    input nested 497-500 deep came back as a silent unknown despite being inside
+    the documented limit.
+
+    Deriving it keeps the promise true under whatever recursion limit is
+    actually in force, including a host that has raised it. Set
+    `PYVIDER_CTY_MAX_VALIDATION_DEPTH` to override with a fixed value.
+    """
+    from pyvider.cty.config.runtime import CtyConfig
+
+    configured = CtyConfig.get_current().max_validation_depth
+    if configured > MAX_VALIDATION_DEPTH_AUTO:
+        return configured
+    usable = sys.getrecursionlimit() - VALIDATION_STACK_MARGIN
+    return max(1, usable // FRAMES_PER_VALIDATION_LEVEL)
+
+
+# The value at import time, kept for callers that read it directly. The
+# authoritative live value is `get_recursion_context().max_depth_allowed`, which
+# is derived per context so it tracks a recursion limit changed after import.
+MAX_VALIDATION_DEPTH = default_max_validation_depth()
+
 MAX_OBJECT_REVISITS = 100  # Allow many revisits for complex schemas
 MAX_VALIDATION_TIME_MS = 30000  # 30 second timeout for pathological cases
 

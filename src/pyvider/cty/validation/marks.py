@@ -53,9 +53,12 @@ def preserves_marks(func: ValidateFn) -> ValidateFn:
     decorator here. A decorator that wraps a recursive call keeps its frame on
     the stack for every level of nesting, so stacking a second one over
     `with_recursion_detection` took the per-level cost from two frames to
-    three and cut the maximum validatable nesting depth from 493 to 329 --
-    below the 500 that MAX_VALIDATION_DEPTH advertises. Leaf types have no
-    such cost: their frame is live once, at the bottom.
+    three and cut the maximum validatable nesting depth by a third. Leaf types
+    have no such cost: their frame is live once, at the bottom.
+
+    That per-level frame cost is not incidental -- `FRAMES_PER_VALIDATION_LEVEL`
+    is what the advertised depth limit is derived from, so a third frame here
+    would silently make that number a lie again.
 
     Declared as an identity on the function type so each `validate` keeps its
     own signature. `validate` implementations return differently-parameterised

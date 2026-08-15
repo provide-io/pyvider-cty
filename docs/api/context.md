@@ -5,7 +5,7 @@ The `pyvider.cty.context` module provides utilities for tracking validation dept
 Key components:
 - **`deeper_validation()`** - Context manager to safely increment and decrement validation depth
 - **`get_validation_depth()`** - Returns the current validation depth
-- **`MAX_VALIDATION_DEPTH`** - Configurable maximum depth limit (default: 500 levels)
+- **`MAX_VALIDATION_DEPTH`** - Maximum depth limit, derived from `sys.getrecursionlimit()` (480 at the default limit of 1000). Override with `PYVIDER_CTY_MAX_VALIDATION_DEPTH`.
 - **Context-local state** - Validation depth is stored per-context using `contextvars` for thread and async safety
 
 The context system is used internally by the validation system to track nesting depth. You typically won't interact with it directly unless you're:
@@ -65,7 +65,7 @@ validated = nested_type.validate(data)
 from pyvider.cty import CtyObject, CtyList, CtyString
 from pyvider.cty.context import MAX_VALIDATION_DEPTH
 
-# The default MAX_VALIDATION_DEPTH is 500
+# MAX_VALIDATION_DEPTH is derived: (sys.getrecursionlimit() - 40) // 2
 # This prevents stack overflow with extremely deep nesting
 
 # Example of structure that would hit depth limits:

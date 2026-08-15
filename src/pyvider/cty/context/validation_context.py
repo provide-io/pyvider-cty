@@ -11,7 +11,12 @@ from collections.abc import Generator
 from contextlib import contextmanager
 import contextvars
 
-MAX_VALIDATION_DEPTH = 500  # Configurable
+# Re-exported from the real one rather than declared again. This module used to
+# carry its own `MAX_VALIDATION_DEPTH = 500`, which governed nothing -- the
+# depth mechanism here has no callers in the validator -- while being the value
+# the documentation pointed readers at. Two constants of the same name that
+# disagree is how the 500 came to be believed in the first place.
+from pyvider.cty.config.defaults import MAX_VALIDATION_DEPTH as MAX_VALIDATION_DEPTH
 
 _validation_depth = contextvars.ContextVar("validation_depth", default=0)
 
