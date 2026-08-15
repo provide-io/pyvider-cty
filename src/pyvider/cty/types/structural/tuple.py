@@ -48,6 +48,10 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             if value.is_null:
                 return CtyValue.null(self)
             value = value.value
+
+        if (unknown := self.unknown_marker(value)) is not None:
+            return unknown
+
         if not isinstance(value, list | tuple):
             raise CtyTupleValidationError(f"Expected tuple or list, got {type(value).__name__}")
         value_seq = cast(list[Any] | tuple[Any, ...], value)  # type: ignore[redundant-cast]

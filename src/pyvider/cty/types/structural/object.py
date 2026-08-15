@@ -78,6 +78,9 @@ class CtyObject(CtyType[dict[str, object]]):
 
         if value is None:
             return CtyValue.null(self)
+
+        if (unknown_marker := self.unknown_marker(value)) is not None:
+            return unknown_marker
         from pyvider.cty.types.structural.dynamic import CtyDynamic
 
         unknown_optionals = self.optional_attributes - set(self.attribute_types.keys())
