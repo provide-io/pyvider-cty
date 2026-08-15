@@ -12,6 +12,8 @@ during planning but the object structure itself is known."""
 
 from pyvider.cty import CtyObject, CtyString, CtyValue
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.parser import parse_tf_type_to_ctytype
+from pyvider.cty.values.markers import UNREFINED_UNKNOWN
 
 
 def test_object_with_unknown_field_is_not_unknown() -> None:
@@ -146,6 +148,52 @@ def test_explicitly_unknown_object() -> None:
     # Validating an explicitly unknown object should preserve unknown status
     validated = obj_type.validate(unknown_obj)
     assert validated.is_unknown, "Explicitly unknown object should remain unknown after validation"
+
+
+def test_object_validation_with_unrefined_unknown_value() -> None:
+    """A bare unknown marker validates to an unknown object.
+
+    Terraform sends unknown for every attribute that depends on for_each, a data
+    source or another resource, and an outer type unwrapping its CtyValue leaves
+    the marker bare. CtyObject only recognised the wrapped CtyValue.unknown()
+    form and raised on the bare marker, making any object attribute unusable in
+    those configurations. See issue #3.
+    """
+    obj_type = CtyObject(attribute_types={"name": CtyString()})
+
+    result = obj_type.validate(UNREFINED_UNKNOWN)
+
+    assert result.is_unknown
+    assert result.type.equal(obj_type)
+
+
+def test_object_wire_json_round_trips_optional_attributes() -> None:
+    """_to_wire_json's 3-element form for optional attributes survives the parser.
+
+    go-cty's wire format is [type_kind, attrs, optional_names] when an object
+    declares optional attributes. Dropping the third element makes every
+    attribute of every nested object required as far as terraform is concerned.
+    """
+    obj_type = CtyObject(
+        attribute_types={"name": CtyString(), "age": CtyString()},
+        optional_attributes=frozenset(["age"]),
+    )
+
+    wire = obj_type._to_wire_json()
+
+    assert wire == ["object", {"age": "string", "name": "string"}, ["age"]]
+
+    round_tripped = parse_tf_type_to_ctytype(wire)
+
+    assert round_tripped.equal(obj_type)
+    assert round_tripped.optional_attributes == frozenset(["age"])
+
+
+def test_object_wire_json_omits_third_element_without_optional_attributes() -> None:
+    """No optional attributes means the 2-element wire form, matching go-cty."""
+    obj_type = CtyObject(attribute_types={"name": CtyString()})
+
+    assert obj_type._to_wire_json() == ["object", {"name": "string"}]
 
 
 # 🌊🪢🔚
