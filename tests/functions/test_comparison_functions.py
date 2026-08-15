@@ -82,3 +82,53 @@ class TestComparisonFunctions:
 
 
 # 🌊🪢🔚
+
+
+class TestEqualityWithNestedUnknowns:
+    """`equal` and `not_equal` must not decide a comparison they cannot see.
+
+    `is_unknown` answers only for the top level. An object whose attribute is
+    unknown is itself known, so testing it alone let a partially-unknown value
+    reach `==`, which answers with a plain bool. That unknown attribute could
+    still resolve to the value that makes the two equal, so a definite answer
+    asserts more than the data supports.
+
+    The containers are inconsistent about this by nature, which is why the bug
+    showed up for objects and not lists: a list built from an unknown element
+    reports itself unknown, an object with an unknown attribute does not.
+
+    The break these tests catch: deciding equality from `is_unknown` rather than
+    from whether the values are wholly known.
+    """
+
+    def _obj(self, attr_value):
+        from pyvider.cty import CtyObject
+
+        return CtyObject(attribute_types={"a": CtyString()}).validate({"a": attr_value})
+
+    def test_equal_is_undecided_when_an_attribute_is_unknown(self) -> None:
+        lhs = self._obj(CtyValue.unknown(CtyString()))
+        rhs = self._obj(CtyString().validate("z"))
+
+        assert equal(lhs, rhs).is_unknown
+
+    def test_not_equal_is_undecided_when_an_attribute_is_unknown(self) -> None:
+        lhs = self._obj(CtyValue.unknown(CtyString()))
+        rhs = self._obj(CtyString().validate("z"))
+
+        assert not_equal(lhs, rhs).is_unknown
+
+    def test_wholly_known_values_still_answer_definitely(self) -> None:
+        assert equal(CtyString().validate("a"), CtyString().validate("a")).value is True
+        assert equal(CtyString().validate("a"), CtyString().validate("b")).value is False
+        assert not_equal(CtyString().validate("a"), CtyString().validate("b")).value is True
+
+    def test_nulls_are_still_equal(self) -> None:
+        """A null is a known absence, not an open question."""
+        assert equal(CtyValue.null(CtyString()), CtyValue.null(CtyString())).value is True
+
+    def test_equal_objects_with_all_attributes_known_answer_definitely(self) -> None:
+        lhs = self._obj(CtyString().validate("z"))
+        rhs = self._obj(CtyString().validate("z"))
+
+        assert equal(lhs, rhs).value is True
