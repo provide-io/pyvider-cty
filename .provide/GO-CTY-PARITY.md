@@ -172,6 +172,29 @@ Mutually independent. Parallelizable across whoever is free.
 
 ---
 
+## Release gate — must be done before this branch ships
+
+This branch carries a **breaking behavioural change**: `CtySet.validate` hoists element marks onto the set, so `set.value[i].marks` is now always empty and sensitivity has to be read off the set itself. go-cty behaves the same way (`SetVal`), but any consumer reading marks per element would silently conclude "not sensitive".
+
+Every consumer in the workspace declares an **unbounded** dependency, with no `tool.uv.sources` override:
+
+| Repo | Declares |
+|---|---|
+| `pyvider` | `pyvider-cty>=0.4.0` |
+| `pyvider-components` | `pyvider-cty>=0.4.0` |
+| `pyvider-hcl` | `pyvider-cty>=0.4.0` |
+| `tofusoup` | `pyvider-cty>=0.4.0` |
+| `provide-workspace` | `pyvider-cty>=0.4.0` |
+
+So the moment `0.5.0` is published, all five absorb the change with no signal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
+
+- [ ] **Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**, then bump each one deliberately.
+  Not done on this branch on purpose: the consumer repos are all sitting on unrelated branches (`adminy/main`, `chore/use-reusable-release`), and a cap committed to a branch that never merges is worse than no cap, because it looks done. Apply this to whichever branch actually ships.
+- [ ] **Cut `0.4.0` → `0.5.0`**, not a patch. The set change is breaking, and the mark fixes change what `validate` returns for every marked input.
+- [ ] Only `pyvider-cty` needs a release. Nothing else in the workspace changes.
+
+---
+
 ## Open decisions
 
 ### 1. When does #12 (function framework) land?
@@ -252,5 +275,6 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 | 2026-08-15 | #15 implemented. Filed #16 — msgpack silently drops marks where go-cty errors — discovered verifying #15. Marks now survive validation at every level; they still do not survive serialization, which is #16. |
 | 2026-08-15 | #16 decision recorded: match go-cty and raise. Established that sensitivity travels via the wire *schema*, not the value, so #16 does not depend on #8 as first assumed — but pyvider's `_apply_schema_marks_iterative` is dead work that must be deleted first or the new error crashes every sensitive attribute. |
 | 2026-08-15 | Phase 1 closed except #16. Adversarial review of the branch found a third mark-dropping path (the recursion guard's early exits); fixed. Filed #17 — `MAX_VALIDATION_DEPTH` is 500 but validation crashes above 495, pre-existing and verified against a clean `gh-origin/main` worktree. Review prompt kept at `.provide/ADVERSARIAL-REVIEW-PROMPT.md`. |
+| 2026-08-15 | Fourth round, security-focused, against the whole branch. Differential matrix over 51 mark-flow scenarios, run against both `gh-origin/main` and HEAD with an independent detector: base lost the mark in **34 of 51**, HEAD in **0**. No declassification found, so no security finding. It did disprove a claim this branch had written down — the memo was justified as "CtyValue is immutable, so the answer cannot go stale", but freezing an attrs class freezes the *reference* to the payload, not the payload, and map/object payloads are plain dicts. A stale under-reporting memo was reproducible by in-place mutation. Rather than assert an immutability nothing enforces, the walk now reports whether it saw a mutable container anywhere in the subtree and the memo is skipped if it did. The staleness class is gone by construction; the 200k-list memo is unaffected, and dict-payload values re-walk at 6-18 us for realistic sizes. Also recorded the release gate: the set change is breaking and all five consumers pin unbounded. |
 | 2026-08-15 | Third review round (`/code-review high`), seven findings, all seven reproduced and fixed. Two were performance regressions introduced by the mark work itself: `preserve_marks` deep-walked every argument *before* its no-marks fast path, taking `length()` on a 200k list from 0.005 ms to 41 ms **per call**; and the guard's stop path re-walked the input at every unwinding frame, making abort O(depth x size). Both are now fixed by memoizing the deep walk on the value (`CtyValue._deep_marks`) — 20 calls went 799 ms to 40 ms, and a single fresh walk is back to the pre-regression 41 ms. The walk itself was consolidated into `pyvider.cty.marks`: **three divergent copies of it were the root cause of this entire class of bug**, each having guessed at a different set of container types. Also: set elements no longer carry marks (go-cty parity, above); `contains` reads unknown deeply; the blanket `except RecursionError` is now scoped by depth so unrelated recursion bugs surface instead of becoming an unknown; a log field that was always empty now reports depth; and a comment justifying deleted mark-restoring code named only one of the two mechanisms that replaced it. |
 | 2026-08-15 | Second adversarial review round. Found the deep-mark walk matched only `tuple` and `dict`, so it skipped every **set** — a validated `CtySet` stores a `frozenset`. Present in two places, and the one the reviewer did not reach was the worse of the two: `functions/_marks.py` is the production path, where a sensitive set element was dropped from the result of every stdlib call *and* handed to the implementation the strip was meant to shield. Also found the guard collected marks only when its input was already a `CtyValue`, losing them for the raw `list`/`dict` inputs `validate` is normally given. Both fixed; the collector is now iterative, because it runs precisely when the value is too deep or too cyclic to recurse over. #17's crash half fixed in the same pass. |

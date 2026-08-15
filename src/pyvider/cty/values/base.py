@@ -49,7 +49,13 @@ class CtyValue(Generic[T]):
 
     # Memo for `collect_marks_deep`, filled on first ask. Excluded from init,
     # equality, hashing and repr: it is derived state, not part of the value.
-    # A CtyValue is immutable, so the answer cannot go stale.
+    #
+    # Only filled when that walk proves the whole subtree immutable. Freezing
+    # this class freezes the reference to `value`, not what `value` points at:
+    # maps and objects hold a plain dict, and `validate` accepts raw lists. A
+    # memo taken over one of those could be left under-reporting marks by an
+    # in-place mutation, which is the silent declassification the mark machinery
+    # exists to prevent. See `pyvider.cty.marks._walk_marks`.
     _deep_marks: frozenset[Any] | None = field(default=None, init=False, eq=False, repr=False)
 
     def __attrs_post_init__(self) -> None:

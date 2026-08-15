@@ -46,6 +46,10 @@ class CtyMark:
 # iterable but incapable of carrying a mark.
 _MARK_BEARING_SEQUENCES = (list, tuple, set, frozenset)
 
+# Containers whose contents can change after a walk has looked at them. A memo
+# taken over one of these could later under-report marks, so it is not taken.
+_MUTABLE_CONTAINERS = (dict, list, set, bytearray)
+
 
 def collect_marks_deep(value: Any) -> frozenset[Any]:
     """Every mark anywhere in `value`, at any depth.
@@ -64,37 +68,56 @@ def collect_marks_deep(value: Any) -> frozenset[Any]:
     Iterative by design. One caller is the recursion guard's stop path, reached
     precisely when a value was too deep or too cyclic to recurse over.
 
-    The result is memoized on a CtyValue, which is immutable, so the answer
-    cannot go stale. That memo is what keeps the cost linear where it matters:
-    the wrapper around every stdlib function asks this question about every
-    argument, so without it an O(1) call like `length` pays a full walk of its
-    input every time it is called.
+    The result is memoized on the CtyValue, which is what keeps the cost linear
+    where it matters: the wrapper around every stdlib function asks this question
+    about every argument, so without a memo an O(1) call like `length` pays a
+    full walk of its input every time it is called.
+
+    The memo is only stored when the walk proves the whole subtree immutable.
+    A CtyValue is a frozen attrs class, but that freezes the *reference* to its
+    payload, not the payload: maps and objects hold a plain dict, and `validate`
+    accepts raw lists. Mutating one of those in place after a walk would leave a
+    memo that under-reports marks -- a value that has become sensitive still
+    answering "no marks", which is the silent declassification this whole
+    mechanism exists to prevent. Rather than assert an immutability the type
+    system does not enforce, the walk reports whether it saw any mutable
+    container and the memo is skipped if it did.
     """
     from pyvider.cty.values import CtyValue
 
     if not isinstance(value, CtyValue):
-        return _walk_marks(value)
+        return _walk_marks(value)[0]
     if value._deep_marks is not None:
         return value._deep_marks
-    marks = _walk_marks(value)
-    object.__setattr__(value, "_deep_marks", marks)
+    marks, memoizable = _walk_marks(value)
+    if memoizable:
+        object.__setattr__(value, "_deep_marks", marks)
     return marks
 
 
-def _push_children(current: Any, stack: list[Any], visited: set[int]) -> None:
-    """Queue a raw container's children, unless it has been seen before."""
+def _push_children(current: Any, stack: list[Any], visited: set[int]) -> bool:
+    """Queue a raw container's children, unless it has been seen before.
+
+    Returns whether `current` is a container that can change behind a memo's
+    back, which the caller accumulates to decide if the walk is memoizable.
+    """
     current_id = id(current)
-    if current_id in visited:
-        return
-    visited.add(current_id)
-    if isinstance(current, dict):
-        stack.extend(current.values())
-    else:
-        stack.extend(current)
+    if current_id not in visited:
+        visited.add(current_id)
+        if isinstance(current, dict):
+            stack.extend(current.values())
+        else:
+            stack.extend(current)
+    return isinstance(current, _MUTABLE_CONTAINERS)
 
 
-def _walk_marks(root: Any) -> frozenset[Any]:
+def _walk_marks(root: Any) -> tuple[frozenset[Any], bool]:
     """The walk behind `collect_marks_deep`, without the memo.
+
+    Returns the marks found, and whether the result is safe to memoize -- false
+    if any container in the subtree can be mutated in place behind the memo's
+    back. A cached descendant is treated as immutable without re-checking,
+    because it could only have been cached by this same rule.
 
     Hot: it runs over every element of every collection argument to every stdlib
     function. Three things keep the constant down, and all three showed up as
@@ -104,21 +127,24 @@ def _walk_marks(root: Any) -> frozenset[Any]:
        cannot take part in a cycle, and leaves are nearly all of the work.
      - `marks |= ...` is guarded, because unioning an empty frozenset still
        allocates one, once per element.
-     - The isinstance tuple is built once, not per iteration.
+     - The isinstance tuples are built once, not per iteration, and the mutability
+       test is reached only for values already known to hold a container.
     """
     from pyvider.cty.values import CtyValue
 
     marks: frozenset[Any] = frozenset()
     visited: set[int] = set()
     stack: list[Any] = [root]
+    memoizable = True
     nested = (CtyValue, dict, *_MARK_BEARING_SEQUENCES)
+    mutable = _MUTABLE_CONTAINERS
 
     while stack:
         current = stack.pop()
 
         if not isinstance(current, CtyValue):
             if isinstance(current, nested):
-                _push_children(current, stack, visited)
+                memoizable &= not _push_children(current, stack, visited)
             continue
 
         # A descendant that already knows its own deep marks answers for its
@@ -134,6 +160,8 @@ def _walk_marks(root: Any) -> frozenset[Any]:
             marks |= current.marks
         inner = current.value
         if isinstance(inner, nested):
+            if isinstance(inner, mutable):
+                memoizable = False
             # Identity, not equality: cycles are why the recursion guard exists,
             # and a shared subtree only needs collecting once.
             current_id = id(current)
@@ -142,7 +170,7 @@ def _walk_marks(root: Any) -> frozenset[Any]:
             visited.add(current_id)
             stack.append(inner)
 
-    return marks
+    return marks, memoizable
 
 
 def unmark_deep(value: Any) -> tuple[Any, frozenset[Any]]:
