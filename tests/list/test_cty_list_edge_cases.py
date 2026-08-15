@@ -4,7 +4,6 @@
 #
 
 
-
 from pyvider.cty.types.collections import CtyList
 from pyvider.cty.types.primitives import CtyString
 from pyvider.cty.values.markers import UNREFINED_UNKNOWN
