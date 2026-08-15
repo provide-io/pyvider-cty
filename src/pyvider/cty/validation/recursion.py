@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
+import sys
 import threading
 import time
 from typing import Any, cast
@@ -207,6 +208,64 @@ class RecursionDetector:
         }
 
 
+# Raw Python containers that may hold already-marked CtyValues. Sets are here
+# because a validated CtySet stores a frozenset, and strings are deliberately
+# absent: they are iterable but hold no marks.
+_MARK_BEARING_SEQUENCES = (list, tuple, set, frozenset)
+
+
+def _collect_deep_marks(value: Any) -> frozenset[Any]:
+    """Every mark anywhere inside `value`, at any depth.
+
+    Walks raw Python containers as well as CtyValues. `validate` is routinely
+    handed a plain list or dict whose *elements* are already-validated marked
+    values, and on a stop path there is no validated result to read marks off
+    -- only the input.
+
+    Iterative by design. This runs precisely when the value was too deep or too
+    cyclic to validate, so a recursive collector would raise RecursionError
+    while trying to salvage marks from the value that caused one.
+    """
+    from pyvider.cty.values import CtyValue
+
+    marks: frozenset[Any] = frozenset()
+    visited: set[int] = set()
+    stack: list[Any] = [value]
+
+    while stack:
+        current = stack.pop()
+        # Identity, not equality: cycles are the reason this module exists, and
+        # a shared subtree only needs collecting once.
+        current_id = id(current)
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+
+        if isinstance(current, CtyValue):
+            marks |= current.marks
+            stack.append(current.value)
+        elif isinstance(current, dict):
+            stack.extend(current.values())
+        elif isinstance(current, _MARK_BEARING_SEQUENCES):
+            stack.extend(current)
+
+    return marks
+
+
+def _unknown_with_source_marks(value: Any, source_type: Any) -> Any:
+    """An unknown of `source_type` carrying every mark found in `value`.
+
+    Stopping validation is exactly when a value must not quietly lose its
+    sensitivity: the caller gets an unknown either way, and an unmarked unknown
+    is the silent declassification this mechanism exists to prevent.
+    """
+    from pyvider.cty.values import CtyValue
+
+    unknown = CtyValue.unknown(source_type)
+    marks = _collect_deep_marks(value)
+    return unknown.with_marks(marks) if marks else unknown
+
+
 def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for advanced recursion detection in validation functions.
@@ -251,14 +310,10 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         try:
             # Check if validation was already stopped by a nested call
             if context.validation_stopped:
-                from pyvider.cty.values import CtyValue
-
-                return reapply_marks(value, CtyValue.unknown(self))
+                return _unknown_with_source_marks(value, self)
 
             should_continue, reason = _detector.should_continue_validation(value)
             if not should_continue:
-                from pyvider.cty.values import CtyValue
-
                 # Set flag to stop all parent validations
                 context.validation_stopped = True
 
@@ -270,18 +325,26 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                     value_type=type(value).__name__,
                     path=scope_name,
                 )
-                return reapply_marks(value, CtyValue.unknown(self))
+                return _unknown_with_source_marks(value, self)
 
             # The decorator no longer passes the internal flag down.
             result = func(self, value, *args, **kwargs)
 
             # Check again after validation in case a nested call stopped validation
             if context.validation_stopped:
-                from pyvider.cty.values import CtyValue
-
-                return reapply_marks(value, CtyValue.unknown(self))
+                return _unknown_with_source_marks(value, self)
 
             return reapply_marks(value, result)
+        except RecursionError:
+            context.validation_stopped = True
+
+            logger.warning(
+                "CTY validation hit Python recursion depth while validating value",
+                value_type=type(value).__name__,
+                recursion_limit=sys.getrecursionlimit(),
+                path=" -> ".join(s for s in context.validation_path if s is not None),
+            )
+            return _unknown_with_source_marks(value, self)
         finally:
             if context.validation_path:
                 context.validation_path.pop()

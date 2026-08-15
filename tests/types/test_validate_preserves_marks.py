@@ -176,3 +176,65 @@ class TestMarksSurviveTheRecursionGuard:
 
         assert result.is_unknown
         assert result.marks == frozenset({SENSITIVE})
+
+    def test_guard_keeps_a_mark_carried_only_by_a_set_element(self) -> None:
+        """A validated set stores a frozenset, not a tuple.
+
+        Collecting nested marks by matching on `tuple` and `dict` alone walks
+        straight past every set, so the one container whose payload type is
+        unusual is also the one that silently declassifies.
+        """
+        set_type = CtySet(element_type=CtyString())
+        seed = set_type.validate([marked_string()])
+
+        self._stop_validation_at(0)
+        result = set_type.validate(seed)
+
+        assert result.is_unknown
+        assert result.marks == frozenset({SENSITIVE})
+
+    def test_guard_keeps_marks_carried_by_a_raw_list_input(self) -> None:
+        """The input is a plain list holding an already-marked value.
+
+        On a stop path there is no validated result to read marks off, so they
+        have to come from the input -- and `validate` is routinely handed raw
+        Python containers rather than a CtyValue.
+        """
+        inner = CtyList(element_type=CtyString())
+        outer = CtyList(element_type=inner)
+
+        self._stop_validation_at(1)
+        result = outer.validate([inner.validate([marked_string()])])
+
+        assert result.is_unknown
+        assert result.marks == frozenset({SENSITIVE})
+
+    def test_guard_keeps_marks_carried_by_a_raw_dict_input(self) -> None:
+        """Same as the list case, for the mapping side of the walk."""
+        obj = CtyObject(attribute_types={"a": CtyString()})
+
+        self._stop_validation_at(0)
+        result = obj.validate({"a": marked_string()})
+
+        assert result.is_unknown
+        assert result.marks == frozenset({SENSITIVE})
+
+    def test_collecting_marks_terminates_on_a_cyclic_raw_input(self) -> None:
+        """The collector runs on the path a cycle reaches, so it must survive one."""
+        from pyvider.cty.validation.recursion import _collect_deep_marks
+
+        cyclic: list[Any] = [marked_string()]
+        cyclic.append(cyclic)
+
+        assert _collect_deep_marks(cyclic) == frozenset({SENSITIVE})
+
+    def test_collecting_marks_does_not_recurse_on_deep_input(self) -> None:
+        """A recursive collector would raise while salvaging marks from the
+        very value whose depth triggered the stop."""
+        from pyvider.cty.validation.recursion import _collect_deep_marks
+
+        nested: Any = marked_string()
+        for _ in range(5_000):
+            nested = [nested]
+
+        assert _collect_deep_marks(nested) == frozenset({SENSITIVE})
