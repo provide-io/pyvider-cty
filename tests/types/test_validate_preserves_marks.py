@@ -64,10 +64,48 @@ def test_list_preserves_marks_on_its_elements() -> None:
     assert result.value[0].marks == frozenset({SENSITIVE})
 
 
-def test_set_preserves_marks_on_its_elements() -> None:
+def test_set_hoists_marks_from_its_elements_onto_itself() -> None:
+    """A set carries its elements' marks; the elements themselves carry none.
+
+    go-cty's `SetVal` deep-unmarks every element and applies the union to the
+    set (cty/value_init.go), and its set internals panic outright on hashing a
+    marked element (cty/set_internals.go). The reason is mechanical: de-dup keys
+    on the element's value, which is mark-blind, so a sensitive element that
+    collides with an equal unmarked one is silently overwritten -- see
+    `test_set_dedup_keeps_the_mark_of_the_element_it_drops`.
+    """
     result = CtySet(element_type=CtyString()).validate([marked_string()])
 
-    assert [e.marks for e in result.value] == [frozenset({SENSITIVE})]
+    assert result.marks == frozenset({SENSITIVE})
+    assert [e.marks for e in result.value] == [frozenset()]
+
+
+def test_set_dedup_keeps_the_mark_of_the_element_it_drops() -> None:
+    """The case that makes storing marks on set elements untenable.
+
+    Two elements equal but for their marks de-dup to one, and whichever loses
+    takes its mark with it. Hoisting means the survivor's identity no longer
+    decides whether the set is sensitive.
+    """
+    result = CtySet(element_type=CtyString()).validate(
+        [CtyString().validate("a").mark(SENSITIVE), CtyString().validate("a")]
+    )
+
+    assert len(result.value) == 1
+    assert result.marks == frozenset({SENSITIVE})
+
+
+def test_set_hoists_marks_from_deep_inside_an_element() -> None:
+    """`SetVal` uses UnmarkDeep, not a shallow unmark.
+
+    The element type is dynamic rather than a collection because set elements
+    have to be hashable, and a set of lists is unsupported for that reason --
+    which is separate from marks.
+    """
+    result = CtySet(element_type=CtyDynamic()).validate([CtyDynamic().validate(marked_string())])
+
+    assert result.marks == frozenset({SENSITIVE})
+    assert [e.marks for e in result.value] == [frozenset()]
 
 
 def test_map_preserves_marks_on_its_values() -> None:
@@ -178,20 +216,65 @@ class TestMarksSurviveTheRecursionGuard:
         assert result.marks == frozenset({SENSITIVE})
 
     def test_guard_keeps_a_mark_carried_only_by_a_set_element(self) -> None:
-        """A validated set stores a frozenset, not a tuple.
+        """A set's payload is a frozenset, not a tuple.
 
         Collecting nested marks by matching on `tuple` and `dict` alone walks
         straight past every set, so the one container whose payload type is
-        unusual is also the one that silently declassifies.
+        unusual is also the one that silently declassifies. The payload is built
+        directly here because `CtySet.validate` now hoists element marks onto
+        the set -- which would hide exactly the case this pins.
         """
         set_type = CtySet(element_type=CtyString())
-        seed = set_type.validate([marked_string()])
+        seed = CtyValue(vtype=set_type, value=frozenset({marked_string()}))
 
         self._stop_validation_at(0)
         result = set_type.validate(seed)
 
         assert result.is_unknown
         assert result.marks == frozenset({SENSITIVE})
+
+    def test_marks_are_collected_once_and_memoized(self) -> None:
+        """The unwind must not re-walk the subtree at every ancestor frame.
+
+        Every frame above the one that trips the guard also returns an unknown
+        carrying the input's marks. If each re-walked its own subtree the abort
+        path would be O(depth x size) -- on the very input whose size or depth
+        is why validation was abandoned.
+        """
+        from pyvider.cty.marks import collect_marks_deep
+
+        inner = CtyList(element_type=CtyString())
+        seed = inner.validate([marked_string()])
+        assert seed._deep_marks is None
+
+        assert collect_marks_deep(seed) == frozenset({SENSITIVE})
+        assert seed._deep_marks == frozenset({SENSITIVE})
+
+        outer = CtyList(element_type=inner)
+        self._stop_validation_at(1)
+        assert outer.validate([seed]).marks == frozenset({SENSITIVE})
+
+    def test_a_recursion_error_from_shallow_code_is_not_swallowed(self) -> None:
+        """The guard owns depth failures, not every RecursionError beneath it.
+
+        A capsule's converter blowing its own stack two levels in is a broken
+        input, and turning it into an unknown makes it indistinguishable from a
+        legitimately undecided one.
+        """
+        from pyvider.cty import CtyCapsule
+
+        class Boom:
+            pass
+
+        def explode(_: object) -> Boom:
+            return explode(_)
+
+        capsule = CtyCapsule("Boom", Boom)
+        object.__setattr__(capsule, "validate", explode)
+
+        clear_recursion_context()
+        with pytest.raises(RecursionError):
+            CtyList(element_type=capsule).validate([object()])
 
     def test_guard_keeps_marks_carried_by_a_raw_list_input(self) -> None:
         """The input is a plain list holding an already-marked value.
@@ -221,20 +304,20 @@ class TestMarksSurviveTheRecursionGuard:
 
     def test_collecting_marks_terminates_on_a_cyclic_raw_input(self) -> None:
         """The collector runs on the path a cycle reaches, so it must survive one."""
-        from pyvider.cty.validation.recursion import _collect_deep_marks
+        from pyvider.cty.marks import collect_marks_deep
 
         cyclic: list[Any] = [marked_string()]
         cyclic.append(cyclic)
 
-        assert _collect_deep_marks(cyclic) == frozenset({SENSITIVE})
+        assert collect_marks_deep(cyclic) == frozenset({SENSITIVE})
 
     def test_collecting_marks_does_not_recurse_on_deep_input(self) -> None:
         """A recursive collector would raise while salvaging marks from the
         very value whose depth triggered the stop."""
-        from pyvider.cty.validation.recursion import _collect_deep_marks
+        from pyvider.cty.marks import collect_marks_deep
 
         nested: Any = marked_string()
         for _ in range(5_000):
             nested = [nested]
 
-        assert _collect_deep_marks(nested) == frozenset({SENSITIVE})
+        assert collect_marks_deep(nested) == frozenset({SENSITIVE})

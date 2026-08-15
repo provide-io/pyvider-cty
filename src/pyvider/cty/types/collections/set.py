@@ -12,6 +12,7 @@ from typing import Any, ClassVar, Generic, TypeVar, cast, final
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
+from pyvider.cty.marks import unmark_deep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
@@ -62,18 +63,31 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
 
         value_iterable = cast(list[Any] | tuple[Any, ...] | set[Any] | frozenset[Any], value)  # type: ignore[redundant-cast]
         unique_items: OrderedDict[tuple[Any, ...], CtyValue[Any]] = OrderedDict()
+        # Marks are hoisted off the elements onto the set itself, as go-cty's
+        # `SetVal` does (cty/value_init.go). A set cannot hold a marked element:
+        # de-duplication keys on the element's value, which is mark-blind, so an
+        # element marked sensitive that collides with an equal unmarked one was
+        # simply overwritten and its mark lost. go-cty goes further and panics on
+        # hashing a marked element (cty/set_internals.go) rather than trust the
+        # invariant to callers.
+        element_marks: frozenset[Any] = frozenset()
         for raw_item in value_iterable:
             try:
                 validated_item = self.element_type.validate(raw_item)
-                key = validated_item._canonical_sort_key()
-                unique_items[key] = validated_item
+                unmarked_item, item_marks = unmark_deep(validated_item)
+                element_marks |= item_marks
+                key = unmarked_item._canonical_sort_key()
+                unique_items[key] = unmarked_item
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
             except Exception as e:
                 raise CtySetValidationError(f"Failed to process element for set: {e}", value=raw_item) from e
 
         is_unknown = any(v.is_unknown for v in unique_items.values())
-        return CtyValue(vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown)
+        result: CtyValue[tuple[T, ...]] = CtyValue(
+            vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown
+        )
+        return result.with_marks(element_marks) if element_marks else result
 
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtySet):

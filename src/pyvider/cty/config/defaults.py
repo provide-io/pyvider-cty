@@ -19,6 +19,12 @@ ENABLE_TYPE_INFERENCE_CACHE = True  # Enable caching for type inference performa
 # Validation defaults
 # =================================
 MAX_VALIDATION_DEPTH = 500  # Safer default, well below Python's typical limit
+
+# How deep the validator's own descent must already be before it will attribute
+# a RecursionError to itself and degrade to an unknown. Shallower than this, the
+# error came from something the validator called -- capsule code, a custom
+# equal_fn, a self-referential raw structure -- and must surface instead.
+MIN_DEPTH_TO_OWN_RECURSION_ERROR = MAX_VALIDATION_DEPTH // 2
 MAX_OBJECT_REVISITS = 100  # Allow many revisits for complex schemas
 MAX_VALIDATION_TIME_MS = 30000  # 30 second timeout for pathological cases
 

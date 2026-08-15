@@ -174,3 +174,60 @@ class TestContainsUnknownHandling:
 
         assert contains(collection, CtyString().validate("b")).value is True
         assert contains(collection, CtyString().validate("z")).value is False
+
+    def test_element_that_is_known_but_holds_an_unknown_is_undecided(self) -> None:
+        """`is_unknown` answers only for the top level.
+
+        An object with an unknown attribute is itself known, so testing
+        `element.is_unknown` lets it fall through to `==`, which answers with a
+        plain bool and reports a definite miss. What that attribute resolves to
+        could still make the element equal to the value being searched for.
+        """
+        obj = CtyObject(attribute_types={"a": CtyString()})
+        collection = CtyList(element_type=obj).validate([obj.validate({"a": CtyValue.unknown(CtyString())})])
+
+        result = contains(collection, obj.validate({"a": CtyString().validate("z")}))
+
+        assert result.is_unknown
+
+    def test_a_needle_holding_an_unknown_is_undecided(self) -> None:
+        """The value searched for gets the same treatment as the elements."""
+        obj = CtyObject(attribute_types={"a": CtyString()})
+        collection = CtyList(element_type=obj).validate([obj.validate({"a": CtyString().validate("z")})])
+
+        result = contains(collection, obj.validate({"a": CtyValue.unknown(CtyString())}))
+
+        assert result.is_unknown
+
+
+class TestIsWhollyKnown:
+    """go-cty's `Value.IsWhollyKnown`: unknown anywhere inside counts."""
+
+    def test_a_known_scalar_is_wholly_known(self) -> None:
+        assert CtyString().validate("a").is_wholly_known()
+
+    def test_an_unknown_is_not(self) -> None:
+        assert not CtyValue.unknown(CtyString()).is_wholly_known()
+
+    def test_a_null_is_wholly_known(self) -> None:
+        """Null is a known absence, not an open question."""
+        assert CtyValue.null(CtyString()).is_wholly_known()
+
+    def test_a_nested_unknown_makes_the_whole_value_not_wholly_known(self) -> None:
+        obj = CtyObject(attribute_types={"a": CtyString()})
+        outer = CtyList(element_type=obj).validate([obj.validate({"a": CtyValue.unknown(CtyString())})])
+
+        assert not outer.is_unknown
+        assert not outer.is_wholly_known()
+
+    def test_an_unknown_inside_a_set_counts(self) -> None:
+        """The payload is a frozenset, the container type most walks forget."""
+        collection = CtySet(element_type=CtyString()).validate(
+            [CtyString().validate("a"), CtyValue.unknown(CtyString())]
+        )
+
+        assert not collection.is_wholly_known()
+
+    def test_a_fully_known_nested_value_is_wholly_known(self) -> None:
+        inner = CtyList(element_type=CtyString())
+        assert CtyList(element_type=inner).validate([inner.validate(["a"])]).is_wholly_known()

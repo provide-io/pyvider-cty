@@ -119,8 +119,11 @@ class CtyObject(CtyType[dict[str, object]]):
 
             raw_attr_value = value.get(normalized_name)
             try:
-                # Marks on raw_attr_value survive this call: every validate is
-                # wrapped in @preserves_marks.
+                # Marks on raw_attr_value survive this call. Leaf types get that
+                # from @preserves_marks; the recursing types get it from inside
+                # @with_recursion_detection, which restores marks on every exit
+                # including its early ones. A type carrying neither would
+                # silently drop them here.
                 validated_attr = attr_type.validate(raw_attr_value)
             except CtyValidationError as e:
                 new_path = CtyPath(steps=[GetAttrStep(name)] + (e.path.steps if e.path else []))
