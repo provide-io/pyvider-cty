@@ -30,9 +30,8 @@ from provide.foundation import logger
 
 from pyvider.cty.config.defaults import (
     MAX_OBJECT_REVISITS,
-    MAX_VALIDATION_DEPTH,
     MAX_VALIDATION_TIME_MS,
-    MIN_DEPTH_TO_OWN_RECURSION_ERROR,
+    default_max_validation_depth,
 )
 
 
@@ -52,7 +51,9 @@ class RecursionContext:
     validation_start_time: float = field(default_factory=time.time)
 
     # Configuration thresholds
-    max_depth_allowed: int = MAX_VALIDATION_DEPTH
+    # Derived per context rather than read from a module constant, so it tracks
+    # a recursion limit raised after import. See default_max_validation_depth.
+    max_depth_allowed: int = field(default_factory=default_max_validation_depth)
     max_object_revisits: int = MAX_OBJECT_REVISITS
     max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
 
@@ -254,9 +255,12 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         # this one. Every wrapper around a recursive validate keeps its frame
         # alive for the whole descent, so a separate @preserves_marks on these
         # types cost a third frame per nesting level and dropped the maximum
-        # validatable depth from 493 to 329 - under the 500 that
-        # MAX_VALIDATION_DEPTH promises. Leaf types, which cannot recurse, use
+        # validatable depth by a third. Leaf types, which cannot recurse, use
         # the decorator; see validation/marks.py.
+        #
+        # Two frames per level is a published number: FRAMES_PER_VALIDATION_LEVEL
+        # is what the advertised depth limit is derived from. Adding a frame here
+        # without updating it makes that limit undeliverable again.
         #
         # Every exit from here goes through reapply_marks, including the guard's
         # early ones. Stopping validation is exactly when a value must not
@@ -299,7 +303,10 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
             # else -- capsule code, a custom equal_fn, a self-referential raw
             # structure -- and converting that to an unknown would make a broken
             # input indistinguishable from a legitimately undecided one.
-            if len(context.validation_path) < MIN_DEPTH_TO_OWN_RECURSION_ERROR:
+            #
+            # Taken from the live limit rather than its own constant so the two
+            # cannot drift apart when the limit is derived or configured.
+            if len(context.validation_path) < context.max_depth_allowed // 2:
                 raise
 
             context.validation_stopped = True

@@ -48,7 +48,7 @@ The library defines several important constants in `pyvider.cty.config.defaults`
 
 ### Validation Limits
 
-- **`MAX_VALIDATION_DEPTH`**: `500` - Maximum depth for nested validation (protects against stack overflow)
+- **`MAX_VALIDATION_DEPTH`**: Maximum depth for nested validation (protects against stack overflow). **Derived, not fixed** — see [Validation Depth Management](#validation-depth-management).
 - **`MAX_OBJECT_REVISITS`**: `100` - Maximum times an object can be revisited during validation
 - **`MAX_VALIDATION_TIME_MS`**: `30000` (30 seconds) - Timeout for pathological validation cases
 
@@ -83,15 +83,27 @@ PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE=true
 
 ## Validation Depth Management
 
-While `MAX_VALIDATION_DEPTH` is not runtime-configurable, you can work with deeply nested structures by understanding the limits:
+`MAX_VALIDATION_DEPTH` is **derived from the interpreter's recursion limit**, and it is runtime-configurable.
+
+Each level of nesting costs two Python frames — the recursion guard's wrapper, then the `validate` it wraps — so the deliverable depth is bounded by `sys.getrecursionlimit()`. It was previously a flat `500`, which could not be honoured: the real ceiling was 496, so input nested 497–500 deep came back as a silent `unknown` while sitting inside the documented limit. Deriving it keeps the number true.
 
 ```python
-from pyvider.cty.context import get_validation_depth, MAX_VALIDATION_DEPTH
+import sys
+from pyvider.cty.config.defaults import MAX_VALIDATION_DEPTH
 
-# Check current validation depth (during validation)
-current_depth = get_validation_depth()
-print(f"Current depth: {current_depth}/{MAX_VALIDATION_DEPTH}")
+print(sys.getrecursionlimit())   # 1000
+print(MAX_VALIDATION_DEPTH)      # 480  == (1000 - 40) // 2
 ```
+
+Raising the recursion limit raises the depth with it; validation nested exactly `MAX_VALIDATION_DEPTH` deep is guaranteed to validate, and one level past it is a controlled `unknown` rather than a `RecursionError`.
+
+To pin a fixed limit instead, set `PYVIDER_CTY_MAX_VALIDATION_DEPTH` to a positive integer. Lower it to fail earlier; raise it only if you have also raised `sys.setrecursionlimit` to match.
+
+```bash
+export PYVIDER_CTY_MAX_VALIDATION_DEPTH=200
+```
+
+The live value in force is `get_recursion_context().max_depth_allowed`, which is derived per context and so tracks a recursion limit changed after import.
 
 If you encounter depth limit errors, consider:
 1. Restructuring your data to be less deeply nested
@@ -104,7 +116,7 @@ All configuration defaults are centralized in `pyvider.cty.config.defaults`:
 
 | Constant | Default | Purpose |
 |----------|---------|---------|
-| `MAX_VALIDATION_DEPTH` | 500 | Recursion depth limit for validation |
+| `MAX_VALIDATION_DEPTH` | derived from `sys.getrecursionlimit()` | Recursion depth limit for validation |
 | `MAX_OBJECT_REVISITS` | 100 | Circular reference detection limit |
 | `MAX_VALIDATION_TIME_MS` | 30000 | Validation timeout (milliseconds) |
 | `ENABLE_TYPE_INFERENCE_CACHE` | True | Type inference caching |

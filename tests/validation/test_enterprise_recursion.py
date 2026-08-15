@@ -29,9 +29,13 @@ class TestAdvancedRecursionDetection:
     def setup_method(self) -> None:
         """Reset recursion context before each test."""
         clear_recursion_context()
+        # `reset()` deliberately keeps the configured limit, so a test that
+        # lowers it leaks into every later test in the process.
+        self._original_max_depth = get_recursion_context().max_depth_allowed
 
     def teardown_method(self) -> None:
         """Ensure context is cleared after each test."""
+        get_recursion_context().max_depth_allowed = self._original_max_depth
         clear_recursion_context()
 
     def test_handles_legitimate_deep_nesting(self) -> None:
