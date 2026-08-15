@@ -16,7 +16,7 @@ Living document. Updated as work lands — do not let it drift.
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Unknown-marker fixes (#3, PR #4) | ✅ Done |
-| 1 | Correctness bugs | 🔨 In progress — #5 and #15 done; #16, msgpack Inf, and the three behavioural fixes remain |
+| 1 | Correctness bugs | ✅ Done except #16, which is sequenced behind a pyvider change |
 | 2 | Verification infrastructure (tofusoup) | ⬜ Not started |
 | 3 | Foundations | ⬜ Not started |
 | 4 | Marks, properly | ⬜ Not started |
@@ -33,6 +33,17 @@ Living document. Updated as work lands — do not let it drift.
 - **Nothing is pushed and no PR is opened.** The branch stays local until the whole implementation is done.
 - **Do not close issues automatically.** No `Closes #N` in commit messages.
 - **An adversarial review happens after implementation, performed by someone other than the implementing agent.** Commit in coherent, self-describing increments so that review has something readable to work against.
+
+## Verify before filing
+
+Two of the five items in phase 1 turned out not to be gaps at all. Both were filed from reading go-cty — its CHANGELOG in one case, the shape of its source in the other — rather than from running pyvider:
+
+- The three `Contains` / `Merge` / `element` "behavioural fixes" described bugs **go-cty** had. pyvider is an independent implementation and never had them.
+- msgpack `±Inf` was filed because `codec.py` has no infinity branch. It does not need one; Python reaches the same bytes implicitly.
+
+Meanwhile the sweep that disproved them turned up a real bug nobody had listed (`contains` returning a definite `False` for partially-unknown collections).
+
+**So: run the behaviour before believing the gap.** Absence of a code path in pyvider is not absence of the behaviour, and a go-cty bugfix is not evidence pyvider shares the bug. This applies directly to the remaining phases — several items in #14 were filed from grep results and should be re-checked empirically before any work starts on them.
 
 ## Structural notes
 
@@ -65,13 +76,23 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   **Do not remove `_apply_schema_marks_iterative` itself.** It has two other call sites — `plan_resource_change.py:237` and `apply_resource_change.py:268` — both *inbound*, after `unmarshal`. Marks cannot cross the wire, so the handlers re-derive them from the schema and hand the marked value to the resource as `ctx.config_cty`. `pyvider-components/tests/resources/test_tdd_resource_context_contract.py:139` is a live contract on that path.
   **Blast radius, from a full `/Volumes/data/pyv` sweep:** `pyvider` is the only production consumer that marks. `pyvider-components` reads marks in tests on the inbound path. `tofusoup`'s `*_with_marks` tests assert in memory and never serialize a marked value. Nothing else marks. One line of production code changes outside this repo.
   Breaking change for any other caller that marks and serializes: needs a release note, not a patch release.
-- [ ] **#14 item 9 — msgpack `±Inf` handling**
-  `codec.py` has no infinity path. Same character as #5: a silent wire-correctness hole.
-- [ ] **Split out of #9 — behavioural fixes to shipped functions**
-  These are bugs in functions that already exist, not new ports. They should not queue behind the port work. File as a separate issue when starting.
-  - [ ] `Contains` must accept a null second argument (go-cty 1.18.1)
-  - [ ] `Merge` must not raise on all-null args of the same object type (1.18.1)
-  - [ ] `element` negative index into a tuple (1.16.2)
+- [x] **~~#14 item 9 — msgpack `±Inf` handling~~ — already correct**
+  Filed because `codec.py` has no infinity branch. It does not need one: `float(Decimal("Infinity"))` is already `inf`, and msgpack encodes that as float64 infinity — byte for byte what go-cty's explicit `EncodeFloat64(math.Inf(...))` produces (`cb7ff0000000000000` / `cbfff0000000000000`). Go needed the special case; Python does not.
+  Pinned with `tests/codec/test_msgpack_infinity.py` so the encoding cannot drift onto the large-number-as-string path.
+- [x] **~~Split out of #9 — behavioural fixes to shipped functions~~ — not needed**
+  All three were derived from go-cty's CHANGELOG rather than from running pyvider, and all three were already correct on `main`. pyvider's implementations are independent re-writes; they never had go-cty's specific bugs.
+  - `Contains` with a null second argument — already accepted, finds null elements correctly
+  - `Merge` on all-null args — already returns `{}` without raising
+  - `element` negative index into a tuple — already returns the right element
+  **Lesson for the rest of this work: test the behaviour before filing it as a gap.** A CHANGELOG entry describes a bug *go-cty* had, which says nothing about whether a separate implementation shares it.
+- [x] **`contains` returned a definite `False` for partially-unknown collections**
+  Found by the sweep above — not on any list. An unknown element could still be the value being searched for, so a miss is undecided rather than false. An exact match still wins outright. Mirrors go-cty's `ContainsFunc`.
+  Same class as #5 and #15: claiming certainty that is not there.
+- [ ] **#17 — `MAX_VALIDATION_DEPTH` is 500 but validation crashes above 495**
+  Pre-existing, verified against a clean `gh-origin/main` worktree — not a regression from this branch. The guard counts logical nesting depth while the real constraint is Python stack frames (two per level against CPython's 1000), and nothing reconciles the two. Input inside the documented limit crashes instead of degrading to a controlled unknown.
+  Not on this branch: unrelated to marks, and it changes either a documented constant or the guard's core mechanism.
+- [ ] **`contains` on a null collection returns unknown; go-cty raises**
+  `collection.go:340`, "cannot search a nil list or set". Deliberately not fixed with the above: turning a return into a raise is a behavioural break that belongs with #16's strictness work. Much weaker case than #16 — nothing leaks, the caller just gets a vaguer answer.
 
 ## Phase 2 — verification infrastructure
 
@@ -223,3 +244,4 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 | 2026-08-15 | #5 implemented on `feat/go-cty-parity` (local, unpushed). Filed #15 — collection `validate()` discards element marks — discovered while testing #5. |
 | 2026-08-15 | #15 implemented. Filed #16 — msgpack silently drops marks where go-cty errors — discovered verifying #15. Marks now survive validation at every level; they still do not survive serialization, which is #16. |
 | 2026-08-15 | #16 decision recorded: match go-cty and raise. Established that sensitivity travels via the wire *schema*, not the value, so #16 does not depend on #8 as first assumed — but pyvider's `_apply_schema_marks_iterative` is dead work that must be deleted first or the new error crashes every sensitive attribute. |
+| 2026-08-15 | Phase 1 closed except #16. Adversarial review of the branch found a third mark-dropping path (the recursion guard's early exits); fixed. Filed #17 — `MAX_VALIDATION_DEPTH` is 500 but validation crashes above 495, pre-existing and verified against a clean `gh-origin/main` worktree. Review prompt kept at `.provide/ADVERSARIAL-REVIEW-PROMPT.md`. |
