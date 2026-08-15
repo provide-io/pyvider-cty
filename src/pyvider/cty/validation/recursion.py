@@ -233,12 +233,27 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         # The actual scope string is only constructed on the error path.
         context.validation_path.append(None)
 
+        # Marks are restored here rather than by a second decorator layered over
+        # this one. Every wrapper around a recursive validate keeps its frame
+        # alive for the whole descent, so a separate @preserves_marks on these
+        # types cost a third frame per nesting level and dropped the maximum
+        # validatable depth from 493 to 329 - under the 500 that
+        # MAX_VALIDATION_DEPTH promises. Leaf types, which cannot recurse, use
+        # the decorator; see validation/marks.py.
+        #
+        # Every exit from here goes through reapply_marks, including the guard's
+        # early ones. Stopping validation is exactly when a value must not
+        # quietly lose its sensitivity: the caller gets an unknown either way,
+        # and an unmarked unknown is the same silent declassification this whole
+        # mechanism exists to prevent.
+        from pyvider.cty.validation.marks import reapply_marks
+
         try:
             # Check if validation was already stopped by a nested call
             if context.validation_stopped:
                 from pyvider.cty.values import CtyValue
 
-                return CtyValue.unknown(self)
+                return reapply_marks(value, CtyValue.unknown(self))
 
             should_continue, reason = _detector.should_continue_validation(value)
             if not should_continue:
@@ -255,7 +270,7 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                     value_type=type(value).__name__,
                     path=scope_name,
                 )
-                return CtyValue.unknown(self)
+                return reapply_marks(value, CtyValue.unknown(self))
 
             # The decorator no longer passes the internal flag down.
             result = func(self, value, *args, **kwargs)
@@ -264,16 +279,7 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
             if context.validation_stopped:
                 from pyvider.cty.values import CtyValue
 
-                return CtyValue.unknown(self)
-
-            # Marks are restored here rather than by a second decorator layered
-            # over this one. Every wrapper around a recursive validate keeps its
-            # frame alive for the whole descent, so a separate @preserves_marks
-            # on these types cost a third frame per nesting level and dropped the
-            # maximum validatable depth from 493 to 329 - under the 500 that
-            # MAX_VALIDATION_DEPTH promises. Leaf types, which cannot recurse,
-            # use the decorator; see validation/marks.py.
-            from pyvider.cty.validation.marks import reapply_marks
+                return reapply_marks(value, CtyValue.unknown(self))
 
             return reapply_marks(value, result)
         finally:

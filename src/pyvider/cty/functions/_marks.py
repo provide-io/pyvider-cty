@@ -83,16 +83,29 @@ def _strip(value: Any) -> Any:
 
     if children is None:
         return stripped
-    if isinstance(children, dict):
-        rebuilt: Any = {k: _strip(v) for k, v in children.items()}
-    elif isinstance(stripped.value, CtyValue):
-        rebuilt = _strip(children[0])
-    else:
-        rebuilt = tuple(_strip(v) for v in children)
 
-    if rebuilt == stripped.value:
+    # "Did anything change" is decided by identity, never by ==. CtyValue.__eq__
+    # delegates to a CtyCapsuleWithOps' equal_fn, which compares payloads and
+    # ignores marks entirely, so an equality check reports "unchanged" for a
+    # capsule whose mark was just stripped and hands the caller back the marked
+    # value. _strip returns the input object itself when it has nothing to do,
+    # which makes `is` an exact test.
+    if isinstance(children, dict):
+        rebuilt_map = {k: _strip(v) for k, v in children.items()}
+        if all(rebuilt_map[k] is v for k, v in children.items()):
+            return stripped
+        return evolve(stripped, value=rebuilt_map)
+
+    if isinstance(stripped.value, CtyValue):
+        rebuilt_inner = _strip(children[0])
+        if rebuilt_inner is children[0]:
+            return stripped
+        return evolve(stripped, value=rebuilt_inner)
+
+    rebuilt_seq = tuple(_strip(v) for v in children)
+    if all(new is old for new, old in zip(rebuilt_seq, children, strict=True)):
         return stripped
-    return evolve(stripped, value=rebuilt)
+    return evolve(stripped, value=rebuilt_seq)
 
 
 def preserve_marks(fn: Callable[P, R]) -> Callable[P, R]:
