@@ -1,0 +1,213 @@
+# go-cty Parity Tracker
+
+Living document. Updated as work lands — do not let it drift.
+
+| | |
+|---|---|
+| **go-cty baseline** | `v1.19.0-1-g0d1eb26` (`/Users/tim/code/tf/go-cty`) |
+| **pyvider-cty baseline** | `main @ fa0ba5e` |
+| **Last full review** | 2026-08-15 |
+| **Next review trigger** | go-cty tags v1.19.1+, or any phase completing |
+
+---
+
+## Status at a glance
+
+| Phase | Scope | State |
+|---|---|---|
+| 0 | Unknown-marker fixes (#3, PR #4) | ✅ Done |
+| 1 | Correctness bugs | 🔨 In progress — #5 done, #15 + msgpack Inf + the three behavioural fixes remain |
+| 2 | Verification infrastructure (tofusoup) | ⬜ Not started |
+| 3 | Foundations | ⬜ Not started |
+| 4 | Marks, properly | ⬜ Not started |
+| 5 | Breadth | ⬜ Not started |
+| 6 | Refinements | ⬜ Not started |
+| 7 | Architecture | ⬜ Not started |
+| — | Docs (#13) | 🔄 Continuous |
+
+---
+
+## Working agreement
+
+- **All work lands on the single local branch `feat/go-cty-parity`.** Not one branch per issue — splitting the work across branches complicates the review.
+- **Nothing is pushed and no PR is opened.** The branch stays local until the whole implementation is done.
+- **Do not close issues automatically.** No `Closes #N` in commit messages.
+- **An adversarial review happens after implementation, performed by someone other than the implementing agent.** Commit in coherent, self-describing increments so that review has something readable to work against.
+
+## Structural notes
+
+Two things shape the ordering below.
+
+**Issue #14 is not a unit of work.** It is ten unrelated items grouped for filing convenience. Each is scheduled individually in the phase where its dependents need it. When closing #14, close it as a tracker — the items land across phases 1, 3, 4, 5, 6, and 7.
+
+**tofusoup#2 is a different repository.** It runs in parallel with phase 1, not after it.
+
+---
+
+## Phase 1 — correctness bugs
+
+Wrong today. Verifiable with in-repo tests. No dependencies.
+
+- [x] **#5 — stdlib functions silently drop marks**
+  `functions/_marks.py` adds `@preserve_marks`, applied to all 68 exported functions. Collects marks deeply (matching go-cty's `UnmarkDeep`), calls the impl with unmarked arguments, re-applies the union to the result.
+  Tests: `tests/functions/test_mark_propagation.py` — 119 cases, parametrized over every export, plus nested/deep cases and a fixture-completeness guard so a new export cannot skip coverage.
+  Widened `CtyValue.with_marks` to `AbstractSet[Any]` (it always accepted frozensets; the annotation was too narrow) and dropped the now-redundant `type: ignore` in `object.py:129`.
+  The decorator is the **seam** #12 fills in behind later.
+- [ ] **#15 — collection `validate()` discards marks on already-validated elements**
+  Found while writing the #5 tests. `CtyList`/`CtySet`/`CtyMap`/`CtyTuple`/`CtyDynamic` all drop element marks; `CtyObject` alone preserves them. Marked values cannot be nested through the normal construction path.
+  Blocks the nested half of mark semantics — #5's deep collection is correct but currently only reachable via direct `CtyValue(...)` construction. The `listval` helper in the #5 tests exists solely to work around this and should be deleted when it lands.
+- [ ] **#14 item 9 — msgpack `±Inf` handling**
+  `codec.py` has no infinity path. Same character as #5: a silent wire-correctness hole.
+- [ ] **Split out of #9 — behavioural fixes to shipped functions**
+  These are bugs in functions that already exist, not new ports. They should not queue behind the port work. File as a separate issue when starting.
+  - [ ] `Contains` must accept a null second argument (go-cty 1.18.1)
+  - [ ] `Merge` must not raise on all-null args of the same object type (1.18.1)
+  - [ ] `element` negative index into a tuple (1.16.2)
+
+## Phase 2 — verification infrastructure
+
+Runs parallel with phase 1. Repo: `provide-io/tofusoup` (`/Volumes/data/pyv/tofusoup`).
+
+- [ ] **tofusoup#2a — bump go-cty 1.14.1 → 1.19.x**
+  `src/tofusoup/harness/go/soup-go/go.mod:13`. Cheap. Until this lands, every differential result is measured against a five-version-stale oracle.
+- [ ] **tofusoup#2b — `soup-go cty call` subcommand**
+  Highest-leverage single addition. Covers ~70 existing functions plus everything still to port. Emit `{type, value, marks}` so #5 becomes assertable against Go rather than against a reading of the source.
+- [ ] **Regenerate pyvider fixtures from the harness**
+  `compatibility/tests/fixtures/go-cty/*.msgpack` is 17 checked-in binaries with no Go-side generator in the repo. Cannot be rebuilt when go-cty moves.
+
+## Phase 3 — foundations
+
+Not user-visible. All of it unblocks later phases.
+
+- [ ] **#6 — `walk` / `transform` / `deep_values`**
+  Blocks phase 4 entirely and `UnknownAsNull`.
+  Watch: set elements use an `IndexStep` keyed by the element value; do not propagate parent marks down to child callbacks (go-cty 1.15.0 fixed exactly that bug).
+- [ ] **#14 item 6 — `ctystrings`**
+  `NormalizeString` + `SafeKnownPrefix`. Blocks `strlen` (#9) and `StringPrefix` (#10).
+  ⚠️ Requires the Unicode-segmentation dependency decision — see below.
+- [ ] **#14 item 1 — `PathSet`**
+  Needed by `MarkWithPaths` / `UnmarkDeepWithPaths` in phase 4. Requires `CtyPath` to be hashable — verify.
+- [ ] **#14 item 4 — `RawEquals`**
+  Small. Tests in every later phase want it. `__eq__` cannot serve both the cty-semantic and structural-identity roles.
+
+## Phase 4 — marks, properly
+
+- [ ] **#8 — deep mark operations + a real `ValueMarks` type**
+  Unblocked by #6 and `PathSet`. Keep go-cty's fast paths: identity return when nothing is marked, no-op on empty path-marks.
+- [ ] **#14 item 7 — `IndexStep.Apply` through a set** (go-cty 1.18.0)
+  Belongs here: #6's traversal is what produces these paths.
+- [ ] **#14 item 3 — `UnknownAsNull`**
+  Including the 1.16.4 mark-preservation behaviour.
+
+## Phase 5 — breadth
+
+Mutually independent. Parallelizable across whoever is free.
+
+- [ ] **#9 — remaining stdlib ports**
+  bool ops (`not`/`and`/`or`), five set ops, `range`, `assertnotnull`, `strlen` (needs ctystrings), generalized `MakeToFunc`.
+- [ ] **#7 — `format` / `formatlist`**
+  Largest single port. Hand-write the verb tokeniser from `format_fsm.rl`; do not bend Python `%`/`str.format` (no positional `%[2]s`, wrong number rendering). Verify numeric verbs against the Go harness.
+- [ ] **#11 — `cty/json` value codec**
+  `Marshal` / `Unmarshal` / `ImpliedType`. Not the same as the `jsonencode`/`jsondecode` functions.
+- [ ] **#14 item 8 — capsule ops gaps**
+  `GoString`, `TypeGoString`, `RawEquals`, `ExtensionData`, split `ConversionFrom`/`ConversionTo` (needed for the 1.16.0 capsule↔capsule fallback).
+
+## Phase 6 — refinements
+
+- [ ] **#10 — `Refine` builder + consistency assertions**
+  Needs `ctystrings` from phase 3 for `StringPrefix` vs `StringPrefixFull`.
+  The validation is the point, not the API shape: inconsistent bounds, refining a known value, prefix-on-a-number, narrowing-never-widening.
+- [ ] **#14 item 2 — `Value.Range` / `ValueRange`**
+  Needs #10.
+
+## Phase 7 — architecture
+
+- [ ] **#12 — the `cty/function` framework**
+  `Function`, `Spec`, `Parameter`, `Unpredictable`, `ArgError`, `RefineResult`. Migrate stdlib behind the existing public names. Absorbs #5's decorator.
+- [ ] **#14 item 5 — `Type.TestConformance`**
+  Distinct from the existing `usable_as` (= go-cty `UsableAs`): allows `DynamicPseudoType` wildcards, returns path-tagged errors rather than a bool.
+
+## Continuous
+
+- [ ] **#13 — docs: `docs/reference/go-cty-comparison.md` parity matrix**
+  Five rows currently overstate coverage (Marks, Refined Unknowns, Capsule Types, Standard Library, JSON). Eight features have no row at all.
+  **Update the relevant row as each phase lands.** Doing it once at the end guarantees it goes stale again. Add the go-cty version the matrix was last checked against.
+
+---
+
+## Open decisions
+
+### 1. When does #12 (function framework) land?
+
+Real rework tension. If the framework lands *after* #7 and #9, those functions get written hand-rolled and then migrated.
+
+**Current plan:** make #5's decorator the seam. Define the wrapper interface in phase 1, write everything in #7/#9 against it, let #12 fill in behind it in phase 7 without touching function bodies. Correctness lands immediately; rework avoided. Cost: the decorator is slightly over-designed for what phase 1 alone needs.
+
+**Alternative:** do the big refactor up front — moves #12 to phase 3 and delays phases 4–6 by its duration.
+
+**Status:** unresolved. Defaulting to the seam approach.
+
+### 2. Unicode segmentation dependency (gates phase 3 item 2)
+
+`Strlen` and `SafeKnownPrefix` need real UAX#29 grapheme cluster segmentation. go-cty tracks Unicode 17 on Go 1.27+, Unicode 15 below.
+
+Options: take a dependency (`uniseg`-equivalent), vendor the tables, or document an explicit deviation and use code points.
+
+This is a question about pyvider-cty's dependency posture more than a technical one. Gates `strlen` (#9) and `StringPrefix` (#10).
+
+**Status:** unresolved. Needs an owner decision.
+
+---
+
+## Confirmed parity (no action)
+
+Verified accurate against go-cty `v1.19.0-1-g0d1eb26`:
+
+primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optional object attributes incl. wire form · null/unknown semantics · shallow marks · refined-unknown **data model and msgpack `0x0c` wire codec** (all six keys) · msgpack marshal/unmarshal incl. big-int-as-string (1.14.4) · type wire JSON encode/decode · `convert` · `unify` · path steps GetAttr/Index/Key with `apply` and `apply_type` · Go-native bridge analog (`raw_to_cty` / `cty_to_native`) · cross-language fixture harness
+
+## Not applicable
+
+- **`cty/gocty`** — Go reflection bridge. Python analog is `conversion/raw_to_cty.py` + `conversion/adapter.py`, already present.
+
+---
+
+## Issue index
+
+| Issue | Title | Phase |
+|---|---|---|
+| [#5](https://github.com/provide-io/pyvider-cty/issues/5) | stdlib functions silently drop marks | 1 |
+| [#6](https://github.com/provide-io/pyvider-cty/issues/6) | Walk / Transform / DeepValues | 3 |
+| [#7](https://github.com/provide-io/pyvider-cty/issues/7) | Format and FormatList | 5 |
+| [#8](https://github.com/provide-io/pyvider-cty/issues/8) | Deep mark operations | 4 |
+| [#9](https://github.com/provide-io/pyvider-cty/issues/9) | Remaining stdlib functions | 1 (fixes) + 5 (ports) |
+| [#10](https://github.com/provide-io/pyvider-cty/issues/10) | Refine builder API | 6 |
+| [#11](https://github.com/provide-io/pyvider-cty/issues/11) | cty/json value codec | 5 |
+| [#12](https://github.com/provide-io/pyvider-cty/issues/12) | cty/function framework | 7 |
+| [#13](https://github.com/provide-io/pyvider-cty/issues/13) | docs: parity matrix overstates | continuous |
+| [#14](https://github.com/provide-io/pyvider-cty/issues/14) | Assorted core gaps (tracker) | 1,3,4,5,6,7 |
+| [#15](https://github.com/provide-io/pyvider-cty/issues/15) | `validate()` discards element marks | 1 |
+| [tofusoup#2](https://github.com/provide-io/tofusoup/issues/2) | go-cty bump + harness surface | 2 |
+
+### #14 item → phase map
+
+| Item | Phase |
+|---|---|
+| 1. `PathSet` | 3 |
+| 2. `Value.Range` / `ValueRange` | 6 |
+| 3. `UnknownAsNull` | 4 |
+| 4. `RawEquals` | 3 |
+| 5. `Type.TestConformance` | 7 |
+| 6. `ctystrings` | 3 |
+| 7. `IndexStep.Apply` through a set | 4 |
+| 8. Capsule ops gaps | 5 |
+| 9. msgpack infinity | 1 |
+| 10. `ValueMarks.Has` / `Insert` | 4 (folded into #8) |
+
+---
+
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-08-15 | Initial review against go-cty `v1.19.0-1-g0d1eb26`. Filed #5–#14 and tofusoup#2. PR #4 merged (rebase), closing #3. |
+| 2026-08-15 | #5 implemented on `feat/go-cty-parity` (local, unpushed). Filed #15 — collection `validate()` discards element marks — discovered while testing #5. |
