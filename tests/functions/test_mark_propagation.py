@@ -131,17 +131,6 @@ CALLS: dict[str, tuple[CtyValue[Any], ...]] = {
 }
 
 
-def listval(element_type: Any, *elements: CtyValue[Any]) -> CtyValue[Any]:
-    """Build a list value directly, preserving marks on its elements.
-
-    `CtyList.validate()` discards marks carried by already-validated elements,
-    so it cannot express a marked element inside a collection. That is a
-    separate defect in the types layer; these tests construct the value
-    directly so that they exercise mark propagation rather than that bug.
-    """
-    return CtyValue(vtype=CtyList(element_type=element_type), value=tuple(elements))
-
-
 def test_every_exported_function_has_a_fixture() -> None:
     """A new stdlib export must not silently skip mark coverage."""
     assert set(CALLS) == set(F.__all__)
@@ -185,7 +174,7 @@ def test_mark_on_a_nested_element_propagates_to_the_result() -> None:
     function reading that list must carry the mark out. Collecting only the
     container's own marks would let `join` leak the element's value unmarked.
     """
-    collection = listval(CtyString(), s("safe"), s("hunter2").mark(SENSITIVE))
+    collection = STRS.validate([s("safe"), s("hunter2").mark(SENSITIVE)])
 
     result = F.join(s(","), collection)
 
@@ -195,8 +184,8 @@ def test_mark_on_a_nested_element_propagates_to_the_result() -> None:
 
 def test_deeply_nested_mark_propagates_to_the_result() -> None:
     """The deep collection must recurse past the first level."""
-    inner = listval(CtyString(), s("x").mark(SENSITIVE))
-    outer = listval(CtyList(element_type=CtyString()), inner)
+    inner_type = CtyList(element_type=CtyString())
+    outer = CtyList(element_type=inner_type).validate([inner_type.validate([s("x").mark(SENSITIVE)])])
 
     result = F.flatten(outer)
 

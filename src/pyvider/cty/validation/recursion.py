@@ -266,7 +266,16 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
 
                 return CtyValue.unknown(self)
 
-            return result
+            # Marks are restored here rather than by a second decorator layered
+            # over this one. Every wrapper around a recursive validate keeps its
+            # frame alive for the whole descent, so a separate @preserves_marks
+            # on these types cost a third frame per nesting level and dropped the
+            # maximum validatable depth from 493 to 329 - under the 500 that
+            # MAX_VALIDATION_DEPTH promises. Leaf types, which cannot recurse,
+            # use the decorator; see validation/marks.py.
+            from pyvider.cty.validation.marks import reapply_marks
+
+            return reapply_marks(value, result)
         finally:
             if context.validation_path:
                 context.validation_path.pop()

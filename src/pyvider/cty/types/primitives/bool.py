@@ -12,6 +12,7 @@ from attrs import define
 
 from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.marks import preserves_marks
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
@@ -22,6 +23,7 @@ class CtyBool(CtyType[bool]):
     ctype: ClassVar[str] = "bool"
     _type_order: ClassVar[int] = 2  # Correct go-cty order
 
+    @preserves_marks
     def validate(self, value: object) -> CtyValue[bool]:  # noqa: C901
         from pyvider.cty.values import CtyValue, UnknownValue
 

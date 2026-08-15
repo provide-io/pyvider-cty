@@ -16,7 +16,7 @@ Living document. Updated as work lands — do not let it drift.
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Unknown-marker fixes (#3, PR #4) | ✅ Done |
-| 1 | Correctness bugs | 🔨 In progress — #5 done, #15 + msgpack Inf + the three behavioural fixes remain |
+| 1 | Correctness bugs | 🔨 In progress — #5 and #15 done; #16, msgpack Inf, and the three behavioural fixes remain |
 | 2 | Verification infrastructure (tofusoup) | ⬜ Not started |
 | 3 | Foundations | ⬜ Not started |
 | 4 | Marks, properly | ⬜ Not started |
@@ -53,9 +53,13 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   Tests: `tests/functions/test_mark_propagation.py` — 119 cases, parametrized over every export, plus nested/deep cases and a fixture-completeness guard so a new export cannot skip coverage.
   Widened `CtyValue.with_marks` to `AbstractSet[Any]` (it always accepted frozensets; the annotation was too narrow) and dropped the now-redundant `type: ignore` in `object.py:129`.
   The decorator is the **seam** #12 fills in behind later.
-- [ ] **#15 — collection `validate()` discards marks on already-validated elements**
-  Found while writing the #5 tests. `CtyList`/`CtySet`/`CtyMap`/`CtyTuple`/`CtyDynamic` all drop element marks; `CtyObject` alone preserves them. Marked values cannot be nested through the normal construction path.
-  Blocks the nested half of mark semantics — #5's deep collection is correct but currently only reachable via direct `CtyValue(...)` construction. The `listval` helper in the #5 tests exists solely to work around this and should be deleted when it lands.
+- [x] **#15 — collection `validate()` discards marks on already-validated elements**
+  Root cause was not the containers: they delegate to `self.element_type.validate(item)`, and the *element* type unwrapped `.value` and rebuilt a fresh `CtyValue`. `CtyObject` was the only type re-applying marks, by hand.
+  `validation/marks.py` adds `@preserves_marks`, applied to all ten `validate` implementations outermost of `@with_recursion_detection`. Stated once, like `CtyType.unknown_marker`, rather than ten times. `CtyObject`'s hand-rolled copy deleted.
+  Typed as an identity on the function type (`TypeVar` bound to `Callable`), so each `validate` keeps its own signature — a concrete signature flattens `CtyValue[str]` / `CtyValue[tuple[T, ...]]` / `CtyValue[Any]` together and shifts inference at every call site in the package.
+  Tests: `tests/types/test_validate_preserves_marks.py`, 12 cases across every container and primitive. The `listval` workaround is gone from the #5 tests, which now use `validate()`.
+- [ ] **#16 — `cty_to_msgpack` silently drops marks instead of refusing to serialize**
+  Found verifying #15. go-cty errors (`marshal.go:49`, "value has marks, so it cannot be serialized"); pyvider writes the value and discards the flag. Pre-existing, but #15 widens the exposure by making nested marks real.
 - [ ] **#14 item 9 — msgpack `±Inf` handling**
   `codec.py` has no infinity path. Same character as #5: a silent wire-correctness hole.
 - [ ] **Split out of #9 — behavioural fixes to shipped functions**
@@ -186,6 +190,7 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 | [#13](https://github.com/provide-io/pyvider-cty/issues/13) | docs: parity matrix overstates | continuous |
 | [#14](https://github.com/provide-io/pyvider-cty/issues/14) | Assorted core gaps (tracker) | 1,3,4,5,6,7 |
 | [#15](https://github.com/provide-io/pyvider-cty/issues/15) | `validate()` discards element marks | 1 |
+| [#16](https://github.com/provide-io/pyvider-cty/issues/16) | msgpack silently drops marks | 1 |
 | [tofusoup#2](https://github.com/provide-io/tofusoup/issues/2) | go-cty bump + harness surface | 2 |
 
 ### #14 item → phase map
@@ -211,3 +216,4 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 |---|---|
 | 2026-08-15 | Initial review against go-cty `v1.19.0-1-g0d1eb26`. Filed #5–#14 and tofusoup#2. PR #4 merged (rebase), closing #3. |
 | 2026-08-15 | #5 implemented on `feat/go-cty-parity` (local, unpushed). Filed #15 — collection `validate()` discards element marks — discovered while testing #5. |
+| 2026-08-15 | #15 implemented. Filed #16 — msgpack silently drops marks where go-cty errors — discovered verifying #15. Marks now survive validation at every level; they still do not survive serialization, which is #16. |

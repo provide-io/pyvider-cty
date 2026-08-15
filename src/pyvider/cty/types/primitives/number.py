@@ -13,6 +13,7 @@ from attrs import define
 
 from pyvider.cty.exceptions import CtyNumberValidationError
 from pyvider.cty.types.base import CtyType
+from pyvider.cty.validation.marks import preserves_marks
 
 if TYPE_CHECKING:
     from pyvider.cty.values import CtyValue
@@ -23,6 +24,7 @@ class CtyNumber(CtyType[Decimal]):
     ctype: ClassVar[str] = "number"
     _type_order: ClassVar[int] = 0
 
+    @preserves_marks
     def validate(self, value: object) -> CtyValue[Decimal]:
         from pyvider.cty.values import CtyValue, UnknownValue
 

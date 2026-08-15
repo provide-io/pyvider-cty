@@ -13,6 +13,7 @@ from typing import Any, ClassVar
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.types.structural import CtyDynamic
+from pyvider.cty.validation.marks import preserves_marks
 from pyvider.cty.values import CtyValue
 
 # pyvider/cty/types/capsule.py
@@ -39,6 +40,7 @@ class CtyCapsule(CtyType[Any]):
     def py_type(self) -> type:
         return self._py_type
 
+    @preserves_marks
     def validate(self, value: object) -> CtyValue[Any]:
         val_to_check: object | None
         original_marks: frozenset[Any] = frozenset()
