@@ -21,35 +21,17 @@ from pyvider.cty.functions._marks import preserve_marks
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-def _comparable_definitely(a: CtyValue[Any], b: CtyValue[Any]) -> bool:
-    """Whether an equality between these two can be decided at all.
-
-    `is_unknown` answers only for the top level. An object whose attribute is
-    unknown is itself known, so testing it alone lets a partially-unknown value
-    reach `==`, which answers with a plain bool -- and that unknown could still
-    resolve to whatever makes the two equal. Containers are inconsistent about
-    this by nature: a list built from an unknown element reports itself unknown,
-    an object with an unknown attribute does not.
-
-    go-cty decides this with the three-valued `Value.Equals`, which can still
-    rule a value *out* on a known attribute that differs. This is the safe
-    subset of that: vaguer, never claiming a certainty the data lacks.
-    """
-    return a.is_wholly_known() and b.is_wholly_known()
-
-
 @preserve_marks
 def equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
-    if not _comparable_definitely(a, b):
-        return CtyValue.unknown(CtyBool())
-    return CtyBool().validate(a == b)
+    return a.equals(b)
 
 
 @preserve_marks
 def not_equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
-    if not _comparable_definitely(a, b):
-        return CtyValue.unknown(CtyBool())
-    return CtyBool().validate(a != b)
+    result = a.equals(b)
+    if result.is_unknown:
+        return result
+    return CtyBool().validate(not result.value)
 
 
 def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # noqa: C901
