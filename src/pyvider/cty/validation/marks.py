@@ -35,12 +35,17 @@ def reapply_marks(source: object, result: Any) -> Any:
 
     The rule itself, stated once. It is applied from two places because of
     stack depth, not because it differs between them -- see `preserves_marks`.
-    """
-    from pyvider.cty.values import CtyValue
 
-    if not isinstance(source, CtyValue) or not source.marks:
+    Asks for the marks rather than for the type. This runs once per element of
+    every collection validated, and an `isinstance` against a lazily imported
+    CtyValue cost an import lookup plus a type check per element to answer a
+    question a single attribute read answers. Anything without `marks` is not a
+    marked value, which is all this needs to know.
+    """
+    marks = getattr(source, "marks", None)
+    if not marks:
         return result
-    return result.with_marks(source.marks)
+    return result.with_marks(marks)
 
 
 def preserves_marks(func: ValidateFn) -> ValidateFn:

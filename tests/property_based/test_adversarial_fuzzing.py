@@ -37,7 +37,11 @@ from pyvider.cty import (
     CtyString,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
-from pyvider.cty.exceptions import CtyValidationError, DeserializationError
+from pyvider.cty.exceptions import (
+    CtyMarksSerializationError,
+    CtyValidationError,
+    DeserializationError,
+)
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.values import CtyValue
 
@@ -247,8 +251,15 @@ def test_many_marks_on_value_are_handled(num_marks: int, data) -> None:
     # Verify marks are attached
     assert len(marked_value.marks) == num_marks
 
-    # Serialize (marks won't be included, but shouldn't cause issues)
-    msgpack_bytes = cty_to_msgpack(marked_value, marked_value.type)
+    # Serializing a marked value is refused, however many marks it carries.
+    # Marks have no wire representation, so dropping them silently would hand
+    # the consumer a sensitive value it no longer knows is sensitive.
+    with pytest.raises(CtyMarksSerializationError):
+        cty_to_msgpack(marked_value, marked_value.type)
+
+    # Unmarked, the same value serializes normally -- the marks are the only
+    # reason it was refused, and the count of them changes nothing.
+    msgpack_bytes = cty_to_msgpack(marked_value.unmark()[0], marked_value.type)
     assert len(msgpack_bytes) > 0
 
 

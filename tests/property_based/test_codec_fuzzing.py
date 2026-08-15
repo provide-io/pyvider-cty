@@ -22,7 +22,8 @@ from pyvider.cty import (
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 from pyvider.cty.conversion import cty_to_native
-from pyvider.cty.marks import CtyMark
+from pyvider.cty.exceptions import CtyMarksSerializationError
+from pyvider.cty.marks import CtyMark, unmark_deep
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.markers import UnknownValue
 
@@ -127,22 +128,25 @@ def test_codec_handles_deep_nesting(nested_data) -> None:
 @given(marked_value=marked_nested_value_strategy())
 def test_codec_handles_marked_nested_structures(marked_value: CtyValue) -> None:
     """
-    Fuzzing test: Codec should handle marked nested structures gracefully.
+    Fuzzing test: the codec must refuse a marked value, however it is nested.
 
-    Tests that the codec can serialize values with marks attached,
-    even though marks are not preserved during serialization (by design).
-
-    Note: Marks are transient metadata and are NOT serialized to msgpack.
+    This previously asserted that marks were silently dropped, "by design".
+    They are not serializable -- `tfplugin6.DynamicValue` carries only msgpack
+    and json, with no channel for them -- but that makes dropping them a silent
+    declassification, not a design. go-cty raises for the same reason.
     """
-    # Serialize (marks will be dropped)
-    msgpack_bytes = cty_to_msgpack(marked_value, marked_value.type)
+    # The strategy draws 0-3 marks, so it produces unmarked values too, and
+    # those must still serialize -- the refusal has to be caused by the marks
+    # and nothing else.
+    unmarked, marks = unmark_deep(marked_value)
+    if marks:
+        with pytest.raises(CtyMarksSerializationError):
+            cty_to_msgpack(marked_value, marked_value.type)
 
-    # Deserialize
-    decoded = cty_from_msgpack(msgpack_bytes, marked_value.type)
-
-    # Value structure should be preserved (but marks are lost)
+    # The structure itself is fine: unmarked, it round-trips and keeps its type.
+    decoded = cty_from_msgpack(cty_to_msgpack(unmarked, marked_value.type), marked_value.type)
     assert decoded.type.equal(marked_value.type)
-    assert decoded.marks == frozenset()  # Marks are not serialized
+    assert decoded.marks == frozenset()
 
 
 @settings(deadline=1000, max_examples=100)

@@ -22,6 +22,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.exceptions import CtyMarksSerializationError
 from pyvider.cty.marks import CtyMark
 
 
@@ -76,11 +77,31 @@ def assert_value_roundtrip(value: CtyValue) -> None:
         pytest.fail(f"Roundtrip assertion failed with an exception: {e!r}", pytrace=True)
 
 
+def assert_marked_value_is_refused(value: CtyValue) -> None:
+    """Serializing a marked value must fail, and the unmarked one must not.
+
+    These cases used to assert that a marked value round-tripped -- by
+    unmarking *both* sides before comparing, which is the bug written down as
+    a test: the marks were gone from the wire and the assertion looked past it.
+    Marks have no wire representation (`tfplugin6.DynamicValue` carries only
+    `msgpack` and `json`), so a silent drop hands Terraform a sensitive value it
+    no longer knows is sensitive. go-cty refuses for the same reason.
+
+    Unmarking and re-running proves the structure itself still serializes, so
+    each case keeps the shape coverage it was written for -- the mark is the
+    only reason it is refused.
+    """
+    with pytest.raises(CtyMarksSerializationError):
+        cty_to_msgpack(value, value.type)
+
+    assert_value_roundtrip(deep_unmark(value))
+
+
 class TestTddDefinitiveCorrectness:
     def test_dynamic_wrapping_list_of_marked_strings(self) -> None:
         list_type = CtyList(element_type=CtyString())
         marked_list_val = list_type.validate(["a", "b"]).mark(CtyMark("sensitive"))
-        assert_value_roundtrip(marked_list_val)
+        assert_marked_value_is_refused(marked_list_val)
 
     def test_map_of_tuples_containing_marked_values(self) -> None:
         tuple_type = CtyTuple(element_types=(CtyNumber(), CtyString()))
@@ -90,21 +111,21 @@ class TestTddDefinitiveCorrectness:
         marked_inner_string = CtyString().validate("two").mark(CtyMark("secret"))
         tuple_val_2 = CtyValue(vtype=tuple_type, value=(tuple_val_2_unmarked.value[0], marked_inner_string))
         map_val = map_type.validate({"first": tuple_val_1, "second": tuple_val_2})
-        assert_value_roundtrip(map_val)
+        assert_marked_value_is_refused(map_val)
 
     def test_object_with_marked_dynamic_list(self) -> None:
         list_type = CtyList(element_type=CtyString())
         marked_list = list_type.validate(["x", "y"]).mark(CtyMark("tainted"))
         obj_type = CtyObject(attribute_types={"data": CtyDynamic()})
         obj_val = obj_type.validate({"data": marked_list})
-        assert_value_roundtrip(obj_val)
+        assert_marked_value_is_refused(obj_val)
 
     def test_list_of_dynamic_values_wrapping_marked_primitives(self) -> None:
         list_type = CtyList(element_type=CtyDynamic())
         marked_num = CtyNumber().validate(100).mark(CtyMark("computed"))
         marked_bool = CtyBool().validate(True).mark(CtyMark("sensitive"))
         list_val = list_type.validate([marked_num, marked_bool, "unmarked"])
-        assert_value_roundtrip(list_val)
+        assert_marked_value_is_refused(list_val)
 
 
 # 🌊🪢🔚

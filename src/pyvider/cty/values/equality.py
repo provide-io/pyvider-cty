@@ -31,10 +31,25 @@ if TYPE_CHECKING:
     from pyvider.cty.values.base import CtyValue
 
 
-def _bool(result: bool) -> CtyValue[Any]:
-    from pyvider.cty.types import CtyBool
+_CACHED: dict[bool, CtyValue[Any]] = {}
 
-    return CtyBool().validate(result)
+
+def _bool(result: bool) -> CtyValue[Any]:
+    """A true/false answer, built once.
+
+    `CtyBool().validate(...)` constructs a type and runs the full validation
+    path, recursion guard included, to produce one of two possible values. A
+    comparison returns one of them every time, so they are built once and
+    shared -- CtyValue is immutable, and marks are applied with `with_marks`,
+    which evolves a new instance rather than touching this one.
+    """
+    cached = _CACHED.get(result)
+    if cached is None:
+        from pyvider.cty.types import CtyBool
+
+        cached = CtyBool().validate(result)
+        _CACHED[result] = cached
+    return cached
 
 
 def _undecided() -> CtyValue[Any]:
@@ -42,6 +57,18 @@ def _undecided() -> CtyValue[Any]:
     from pyvider.cty.values.base import CtyValue
 
     return CtyValue.unknown(CtyBool())
+
+
+# Payloads that can hold a nested CtyValue, and so a nested mark or unknown.
+_NESTING_PAYLOADS = (dict, list, tuple, set, frozenset)
+
+
+def _is_leaf(value: CtyValue[Any]) -> bool:
+    """Whether `value` has nothing nested inside it."""
+    from pyvider.cty.values.base import CtyValue
+
+    inner = value.value
+    return not isinstance(inner, CtyValue) and not isinstance(inner, _NESTING_PAYLOADS)
 
 
 def _unwrap_dynamic(value: CtyValue[Any]) -> CtyValue[Any]:
@@ -64,9 +91,19 @@ def equals(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """
     from pyvider.cty.marks import collect_marks_deep, unmark_deep
 
-    marks = collect_marks_deep(a) | collect_marks_deep(b)
-    if not marks:
+    # Two leaves cannot hide a mark below the top level, so their own `marks`
+    # settles it. Comparing scalars is the overwhelmingly common case and must
+    # not pay to set up a walk that can only ever look at one value.
+    if _is_leaf(a) and _is_leaf(b) and not a.marks and not b.marks:
+        return _equals_leaves(a, b)
+
+    # `collect_marks_deep` is memoized, but only after it has walked once, and
+    # for a freshly built value that first walk dominates the comparison.
+    a_marks = collect_marks_deep(a)
+    b_marks = collect_marks_deep(b)
+    if not a_marks and not b_marks:
         return _equals_unmarked(a, b)
+    marks = a_marks | b_marks
 
     # go-cty keeps only top-level marks when exactly one side is null, on the
     # grounds that nested marks cannot have informed a decision that never
@@ -76,6 +113,29 @@ def equals(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
 
     result = _equals_unmarked(unmark_deep(a)[0], unmark_deep(b)[0])
     return result.with_marks(marks)
+
+
+def _equals_leaves(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """Both operands hold no nested value, so skip the container dispatch.
+
+    Same decisions as `_equals_unmarked`, in the same order, minus the dynamic
+    unwrapping a leaf cannot need and the isinstance chain over container types
+    it can never match. Comparing two scalars is the common case by a wide
+    margin and it is worth not walking past five container tests to reach it.
+    """
+    from pyvider.cty.types import CtyCapsule
+
+    if a.is_unknown or b.is_unknown:
+        return _equals_with_unknown(a, b)
+    if a.is_null and b.is_null:
+        return _bool(True)
+    if a.is_null or b.is_null:
+        return _bool(False)
+    if not a.vtype.equal(b.vtype):
+        return _bool(False)
+    if isinstance(a.vtype, CtyCapsule):
+        return _bool(a == b)
+    return _bool(bool(a.value == b.value))
 
 
 def _equals_unmarked(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:

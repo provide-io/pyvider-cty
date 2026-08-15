@@ -31,12 +31,43 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
+# Payload types that can hide a mark below the top level. A CtyValue holding
+# anything else is a leaf, and its own `marks` is the whole answer.
+_NESTING_PAYLOADS = (CtyValue, dict, list, tuple, set, frozenset)
+
+
+def _arg_marks(arg: Any) -> frozenset[Any]:
+    """Marks anywhere in one argument, avoiding the walk for leaves.
+
+    This runs on every argument of every stdlib call, so the common case -- an
+    unmarked scalar -- must not pay for the general machinery. Setting up the
+    walk (stack, visited set, memo write) costs more than the two attribute
+    reads that answer the question outright.
+    """
+    if not isinstance(arg, CtyValue):
+        return frozenset()
+    if not isinstance(arg.value, _NESTING_PAYLOADS):
+        return arg.marks
+    return collect_marks_deep(arg)
+
+
 def _collect(args: tuple[Any, ...], kwargs: dict[str, Any]) -> frozenset[Any]:
-    """Union of every mark carried anywhere inside the CtyValue arguments."""
+    """Union of every mark carried anywhere inside the CtyValue arguments.
+
+    `args` and `kwargs` are walked separately rather than merged, because
+    merging allocates a tuple on every stdlib call and the stdlib functions are
+    positional -- kwargs is almost always empty.
+    """
     marks: frozenset[Any] = frozenset()
-    for arg in (*args, *kwargs.values()):
-        if isinstance(arg, CtyValue):
-            marks |= collect_marks_deep(arg)
+    for arg in args:
+        arg_marks = _arg_marks(arg)
+        if arg_marks:
+            marks |= arg_marks
+    if kwargs:
+        for arg in kwargs.values():
+            arg_marks = _arg_marks(arg)
+            if arg_marks:
+                marks |= arg_marks
     return marks
 
 

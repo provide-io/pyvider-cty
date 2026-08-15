@@ -36,6 +36,7 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.conversion import encode_cty_type_to_wire_json
 from pyvider.cty.exceptions import (
+    CtyMarksSerializationError,
     CtyValidationError,
     DeserializationError,
     SerializationError,
@@ -137,7 +138,7 @@ def _serialize_unknown(value: CtyValue[Any]) -> Any:
     return msgpack.ExtType(MSGPACK_EXT_TYPE_REFINED_UNKNOWN, packed_payload)
 
 
-def _serialize_dynamic(value: CtyValue[Any]) -> list[Any]:
+def _serialize_dynamic(value: CtyValue[Any], path: str = "") -> list[Any]:
     inner_value = value.value
     if not isinstance(inner_value, CtyValue):
         raise SerializationError(
@@ -146,30 +147,36 @@ def _serialize_dynamic(value: CtyValue[Any]) -> list[Any]:
         )
 
     actual_type = inner_value.type
-    serializable_inner = _convert_value_to_serializable(inner_value, actual_type)
+    serializable_inner = _convert_value_to_serializable(inner_value, actual_type, path)
 
     type_spec_json = encode_cty_type_to_wire_json(actual_type)
     type_spec_bytes = json.dumps(type_spec_json, separators=(",", ":")).encode("utf-8")
     return [type_spec_bytes, serializable_inner]
 
 
-def _serialize_object_value(inner_val: Any, schema: CtyObject) -> dict[str, Any]:
+def _serialize_object_value(inner_val: Any, schema: CtyObject, path: str = "") -> dict[str, Any]:
     """Serialize a CtyObject value."""
     if not isinstance(inner_val, dict):
         raise TypeError(ERR_VALUE_FOR_OBJECT)
     return {
-        k: _convert_value_to_serializable(v, schema.attribute_types[k]) for k, v in sorted(inner_val.items())
+        k: _convert_value_to_serializable(v, schema.attribute_types[k], f"{path}.{k}")
+        for k, v in sorted(inner_val.items())
     }
 
 
-def _serialize_map_value(inner_val: Any, schema: CtyMap[Any]) -> dict[str, Any]:
+def _serialize_map_value(inner_val: Any, schema: CtyMap[Any], path: str = "") -> dict[str, Any]:
     """Serialize a CtyMap value."""
     if not isinstance(inner_val, dict):
         raise TypeError(ERR_VALUE_FOR_MAP)
-    return {k: _convert_value_to_serializable(v, schema.element_type) for k, v in sorted(inner_val.items())}
+    return {
+        k: _convert_value_to_serializable(v, schema.element_type, f'{path}["{k}"]')
+        for k, v in sorted(inner_val.items())
+    }
 
 
-def _serialize_collection_value(inner_val: Any, schema: CtyList[Any] | CtySet[Any]) -> list[Any]:
+def _serialize_collection_value(
+    inner_val: Any, schema: CtyList[Any] | CtySet[Any], path: str = ""
+) -> list[Any]:
     """Serialize a CtyList or CtySet value."""
     if not hasattr(inner_val, "__iter__"):
         raise TypeError(ERR_VALUE_FOR_LIST_SET)
@@ -178,14 +185,20 @@ def _serialize_collection_value(inner_val: Any, schema: CtyList[Any] | CtySet[An
         if isinstance(schema, CtySet)
         else inner_val
     )
-    return [_convert_value_to_serializable(item, schema.element_type) for item in items]
+    return [
+        _convert_value_to_serializable(item, schema.element_type, f"{path}[{i}]")
+        for i, item in enumerate(items)
+    ]
 
 
-def _serialize_tuple_value(inner_val: Any, schema: CtyTuple) -> list[Any]:
+def _serialize_tuple_value(inner_val: Any, schema: CtyTuple, path: str = "") -> list[Any]:
     """Serialize a CtyTuple value."""
     if not isinstance(inner_val, tuple):
         raise TypeError(ERR_VALUE_FOR_TUPLE)
-    return [_convert_value_to_serializable(item, schema.element_types[i]) for i, item in enumerate(inner_val)]
+    return [
+        _convert_value_to_serializable(item, schema.element_types[i], f"{path}[{i}]")
+        for i, item in enumerate(inner_val)
+    ]
 
 
 def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
@@ -251,26 +264,40 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
         return str(decimal_val)
 
 
-def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any]) -> Any:
+def _reject_marks(value: CtyValue[Any], path: str) -> None:
+    """Marks have no wire representation, so serializing one is an error.
+
+    Checked at every level rather than only at the root, so the message can say
+    *where* the mark is -- go-cty does the same, and for a marked attribute
+    buried in a large object the location is most of the useful information.
+    Shallow on purpose: the recursion reaches every nested value anyway, and a
+    deep walk here would re-scan the whole structure at every level.
+    """
+    if value.marks:
+        raise CtyMarksSerializationError(path=path or None)
+
+
+def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any], path: str = "") -> Any:
     if not isinstance(value, CtyValue):
         value = schema.validate(value)
+    _reject_marks(value, path)
     if value.is_unknown:
         return _serialize_unknown(value)
     if value.is_null:
         return None
     if isinstance(schema, CtyDynamic):
-        return _serialize_dynamic(value)
+        return _serialize_dynamic(value, path)
 
     inner_val = value.value
     if isinstance(schema, CtyObject):
-        return _serialize_object_value(inner_val, schema)
+        return _serialize_object_value(inner_val, schema, path)
     if isinstance(schema, CtyMap):
-        return _serialize_map_value(inner_val, schema)
+        return _serialize_map_value(inner_val, schema, path)
     if isinstance(schema, CtyList | CtySet):
         schema_narrowed = cast(CtyList[Any] | CtySet[Any], schema)  # type: ignore[redundant-cast]
-        return _serialize_collection_value(inner_val, schema_narrowed)
+        return _serialize_collection_value(inner_val, schema_narrowed, path)
     if isinstance(schema, CtyTuple):
-        return _serialize_tuple_value(inner_val, schema)
+        return _serialize_tuple_value(inner_val, schema, path)
     if isinstance(inner_val, Decimal):
         return _serialize_decimal_value(inner_val)
     return inner_val
