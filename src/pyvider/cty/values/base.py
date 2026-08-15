@@ -288,6 +288,17 @@ class CtyValue(Generic[T]):
             return hash((self.vtype, self.is_unknown, self.is_null, self.marks))
         return hash((self.vtype, self.is_unknown, self.is_null, self.marks, self.value))
 
+    def equals(self, other: CtyValue[Any]) -> CtyValue[Any]:
+        """Whether this equals `other`: true, false, or **unknown**.
+
+        go-cty spells this `Value.Equals`. Unlike `==`, which must answer with a
+        plain bool, this can decline to decide -- which is the only correct
+        answer when the comparison depends on a value that is not yet known.
+        """
+        from pyvider.cty.values.equality import equals
+
+        return equals(self, other)
+
     def is_wholly_known(self) -> bool:
         """False if this value, or anything nested inside it, is unknown.
 
