@@ -10,8 +10,10 @@ from typing import Any
 
 from pyvider.cty import CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions._marks import preserve_marks
 
 
+@preserve_marks
 def coalesce(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not args:
         raise CtyFunctionError("coalesce must have at least one argument")

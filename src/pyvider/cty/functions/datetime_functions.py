@@ -17,6 +17,7 @@ from pyvider.cty.config.defaults import (
     SECONDS_PER_SECOND,
 )
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions._marks import preserve_marks
 
 # A simplified mapping from Go's time layout to Python's strftime format.
 # This is not exhaustive but covers common cases.
@@ -45,6 +46,7 @@ def _translate_go_format(go_fmt: str) -> str:
     return py_fmt
 
 
+@preserve_marks
 def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(spec.type, CtyString) or not isinstance(timestamp.type, CtyString):
         raise CtyFunctionError("formatdate: arguments must be strings")
@@ -79,6 +81,7 @@ def _parse_duration(duration_str: str) -> timedelta:
     return timedelta(seconds=total_seconds)
 
 
+@preserve_marks
 def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(timestamp.type, CtyString) or not isinstance(duration.type, CtyString):
         raise CtyFunctionError("timeadd: arguments must be strings")

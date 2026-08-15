@@ -12,8 +12,10 @@ from typing import Any, cast
 
 from pyvider.cty import CtyList, CtyNumber, CtyString, CtyTuple, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions._marks import preserve_marks
 
 
+@preserve_marks
 def chomp(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"chomp: input must be a string, got {input_val.type.ctype}")
@@ -28,6 +30,7 @@ def chomp(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return input_val
 
 
+@preserve_marks
 def strrev(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"strrev: input must be a string, got {input_val.type.ctype}")
@@ -36,6 +39,7 @@ def strrev(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_val.value[::-1])  # type: ignore
 
 
+@preserve_marks
 def trimspace(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"trimspace: input must be a string, got {input_val.type.ctype}")
@@ -44,6 +48,7 @@ def trimspace(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_val.value.strip())  # type: ignore
 
 
+@preserve_marks
 def indent(prefix_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(prefix_val.type, CtyString) or not isinstance(input_val.type, CtyString):
         raise CtyFunctionError("indent: arguments must be strings")
@@ -55,6 +60,7 @@ def indent(prefix_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]
     return CtyString().validate("\n".join(indented_lines))
 
 
+@preserve_marks
 def substr(input_val: CtyValue[Any], offset_val: CtyValue[Any], length_val: CtyValue[Any]) -> CtyValue[Any]:
     if (
         not isinstance(input_val.type, CtyString)
@@ -83,6 +89,7 @@ def substr(input_val: CtyValue[Any], offset_val: CtyValue[Any], length_val: CtyV
     return CtyString().validate(s[offset : offset + length])
 
 
+@preserve_marks
 def trim(input_val: CtyValue[Any], cutset_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(cutset_val.type, CtyString):
         raise CtyFunctionError("trim: both arguments must be strings")
@@ -93,6 +100,7 @@ def trim(input_val: CtyValue[Any], cutset_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.strip(cutset_str))
 
 
+@preserve_marks
 def title(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"title: input must be a string, got {input_val.type.ctype}")
@@ -102,6 +110,7 @@ def title(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.title())
 
 
+@preserve_marks
 def trimprefix(input_val: CtyValue[Any], prefix_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(prefix_val.type, CtyString):
         raise CtyFunctionError("trimprefix: both arguments must be strings")
@@ -114,6 +123,7 @@ def trimprefix(input_val: CtyValue[Any], prefix_val: CtyValue[Any]) -> CtyValue[
     return input_val
 
 
+@preserve_marks
 def trimsuffix(input_val: CtyValue[Any], suffix_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(suffix_val.type, CtyString):
         raise CtyFunctionError("trimsuffix: both arguments must be strings")
@@ -126,6 +136,7 @@ def trimsuffix(input_val: CtyValue[Any], suffix_val: CtyValue[Any]) -> CtyValue[
     return input_val
 
 
+@preserve_marks
 def regex(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(pattern_val.type, CtyString):
         raise CtyFunctionError("regex: both arguments must be strings")
@@ -140,6 +151,7 @@ def regex(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[Any]
         raise CtyFunctionError(f"regex: invalid regular expression: {e}") from e
 
 
+@preserve_marks
 def regexall(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(pattern_val.type, CtyString):
         raise CtyFunctionError("regexall: both arguments must be strings")
@@ -155,6 +167,7 @@ def regexall(input_val: CtyValue[Any], pattern_val: CtyValue[Any]) -> CtyValue[A
         raise CtyFunctionError(f"regexall: invalid regular expression: {e}") from e
 
 
+@preserve_marks
 def upper(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"upper: input must be a string, got {input_val.type.ctype}")
@@ -164,6 +177,7 @@ def upper(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.upper())
 
 
+@preserve_marks
 def lower(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"lower: input must be a string, got {input_val.type.ctype}")
@@ -173,6 +187,7 @@ def lower(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.lower())
 
 
+@preserve_marks
 def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(separator.type, CtyString) or not isinstance(elements.type, CtyList | CtyTuple):
         raise CtyFunctionError("join: arguments must be string and list/tuple")
@@ -185,6 +200,7 @@ def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(sep_str.join(str_elements))
 
 
+@preserve_marks
 def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(separator.type, CtyString) or not isinstance(text.type, CtyString):
         raise CtyFunctionError("split: arguments must be strings")
@@ -198,6 +214,7 @@ def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
     return result
 
 
+@preserve_marks
 def replace(string: CtyValue[Any], substring: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:
     if (
         not isinstance(string.type, CtyString)
@@ -222,6 +239,7 @@ def replace(string: CtyValue[Any], substring: CtyValue[Any], replacement: CtyVal
     return CtyString().validate(result)
 
 
+@preserve_marks
 def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:
     if (
         not isinstance(string.type, CtyString)

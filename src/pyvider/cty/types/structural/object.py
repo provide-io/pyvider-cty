@@ -126,7 +126,7 @@ class CtyObject(CtyType[dict[str, object]]):
                 validated_attr = attr_type.validate(raw_attr_value)
 
                 if existing_marks:
-                    validated_attr = validated_attr.with_marks(existing_marks)  # type: ignore
+                    validated_attr = validated_attr.with_marks(existing_marks)
 
             except CtyValidationError as e:
                 new_path = CtyPath(steps=[GetAttrStep(name)] + (e.path.steps if e.path else []))

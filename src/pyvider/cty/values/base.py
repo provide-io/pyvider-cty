@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -283,7 +283,7 @@ class CtyValue(Generic[T]):
     def mark(self, mark: object) -> Self:
         return evolve(self, marks=self.marks.union({mark}))
 
-    def with_marks(self, marks_to_add: set[Any]) -> Self:
+    def with_marks(self, marks_to_add: AbstractSet[Any]) -> Self:
         return evolve(self, marks=self.marks.union(marks_to_add))
 
     def unmark(self) -> tuple[Self, frozenset[Any]]:

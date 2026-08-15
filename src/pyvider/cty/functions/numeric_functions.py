@@ -13,6 +13,7 @@ from typing import Any, cast
 from pyvider.cty import CtyNumber, CtyString, CtyValue
 from pyvider.cty.config.defaults import POSITIVE_BOUNDARY, ZERO_VALUE
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions._marks import preserve_marks
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
@@ -191,6 +192,7 @@ def _propagate_refined_unknowns(op: str, a: CtyValue[Any], b: CtyValue[Any]) -> 
     return CtyValue.unknown(CtyNumber(), value=RefinedUnknownValue(**new_ref))
 
 
+@preserve_marks
 def add(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("add: arguments must be numbers")
@@ -203,6 +205,7 @@ def add(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(a_val + b_val)
 
 
+@preserve_marks
 def subtract(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("subtract: arguments must be numbers")
@@ -215,6 +218,7 @@ def subtract(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(a_val - b_val)
 
 
+@preserve_marks
 def multiply(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("multiply: arguments must be numbers")
@@ -229,6 +233,7 @@ def multiply(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(a_val * b_val)
 
 
+@preserve_marks
 def divide(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("divide: arguments must be numbers")
@@ -243,6 +248,7 @@ def divide(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(a_val / b_val)
 
 
+@preserve_marks
 def modulo(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(a.type, CtyNumber) or not isinstance(b.type, CtyNumber):
         raise CtyFunctionError("modulo: arguments must be numbers")
@@ -255,6 +261,7 @@ def modulo(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(Decimal(str(math.fmod(float(a_val), float(b_val)))))
 
 
+@preserve_marks
 def negate(a: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(a.type, CtyNumber):
         raise CtyFunctionError("negate: argument must be a number")
@@ -284,6 +291,7 @@ def negate(a: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(-a_val)
 
 
+@preserve_marks
 def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
         raise CtyFunctionError(f"abs: input must be a number, got {input_val.type.ctype}")
@@ -321,6 +329,7 @@ def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(abs(val))
 
 
+@preserve_marks
 def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
         raise CtyFunctionError(f"ceil: input must be a number, got {input_val.type.ctype}")
@@ -330,6 +339,7 @@ def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(Decimal(math.ceil(val)))
 
 
+@preserve_marks
 def floor_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
         raise CtyFunctionError(f"floor: input must be a number, got {input_val.type.ctype}")
@@ -339,6 +349,7 @@ def floor_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(Decimal(math.floor(val)))
 
 
+@preserve_marks
 def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(num_val.type, CtyNumber) or not isinstance(base_val.type, CtyNumber):
         raise CtyFunctionError("log: arguments must be numbers")
@@ -359,6 +370,7 @@ def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"log: math domain error: {e}") from e
 
 
+@preserve_marks
 def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(num_val.type, CtyNumber) or not isinstance(power_val.type, CtyNumber):
         raise CtyFunctionError("pow: arguments must be numbers")
@@ -373,6 +385,7 @@ def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"pow: invalid operation: {e}") from e
 
 
+@preserve_marks
 def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyNumber):
         raise CtyFunctionError(f"signum: input must be a number, got {input_val.type.ctype}")
@@ -386,6 +399,7 @@ def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyNumber().validate(Decimal("0"))
 
 
+@preserve_marks
 def parseint_fn(str_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(str_val.type, CtyString) or not isinstance(base_val.type, CtyNumber):
         raise CtyFunctionError("parseint: arguments must be string and number")
@@ -404,6 +418,7 @@ def parseint_fn(str_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any
         return CtyValue.null(CtyNumber())
 
 
+@preserve_marks
 def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyNumber):
         raise CtyFunctionError(f"int: argument must be a number, got {val.type.ctype}")

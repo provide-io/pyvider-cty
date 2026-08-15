@@ -31,9 +31,11 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions._marks import preserve_marks
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
+@preserve_marks
 def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         error_message = ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=input_val.type.ctype)
@@ -86,6 +88,7 @@ def _determine_unified_element_type(
     return final_element_type
 
 
+@preserve_marks
 def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"flatten: input must be a list, set, or tuple, got {input_val.type.ctype}")
@@ -113,6 +116,7 @@ def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
+@preserve_marks
 def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
@@ -148,6 +152,7 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return result
 
 
+@preserve_marks
 def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -171,6 +176,7 @@ def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return CtyNumber().validate(len(input_val.value))  # type: ignore[arg-type]
 
 
+@preserve_marks
 def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(f"slice: input must be a list or tuple, got {input_val.type.ctype}")
@@ -190,6 +196,7 @@ def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[
     return CtyList(element_type=element_type).validate(input_val.value[start:end])  # type: ignore[no-any-return,index]
 
 
+@preserve_marks
 def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -218,6 +225,7 @@ def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
         return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
+@preserve_marks
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(
@@ -228,6 +236,7 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     return CtyBool().validate(value in collection.value)  # type: ignore[operator]
 
 
+@preserve_marks
 def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -247,6 +256,7 @@ def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return result
 
 
+@preserve_marks
 def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -266,6 +276,7 @@ def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return CtyList(element_type=elem_type).validate(list(input_val.value.values()))  # type: ignore[no-any-return]
 
 
+@preserve_marks
 def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError("reverse: input must be a list or tuple")
@@ -274,6 +285,7 @@ def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return input_val.type.validate(list(reversed(input_val.value)))  # type: ignore[no-any-return,call-overload]
 
 
+@preserve_marks
 def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     if collection.is_unknown or key.is_unknown:
         return CtyValue.unknown(CtyBool())
@@ -293,6 +305,7 @@ def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     )
 
 
+@preserve_marks
 def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     if not hasindex(collection, key).value:
         raise CtyFunctionError("index: key does not exist in collection")
@@ -304,6 +317,7 @@ def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     return collection[key_val]
 
 
+@preserve_marks
 def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -325,6 +339,7 @@ def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
         return collection.value[int(idx.value) % length]  # type: ignore[no-any-return,index,call-overload]
 
 
+@preserve_marks
 def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
@@ -336,6 +351,7 @@ def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
     raise CtyFunctionError("coalescelist: no non-empty list or tuple found in arguments")
 
 
+@preserve_marks
 def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
@@ -355,6 +371,7 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     return result
 
 
+@preserve_marks
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
         raise CtyFunctionError("chunklist: arguments must be a list/tuple and a number")
@@ -370,6 +387,7 @@ def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
     return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)  # type: ignore[no-any-return]
 
 
+@preserve_marks
 def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyMap | CtyObject):
         raise CtyFunctionError("lookup: collection must be a map or object")
@@ -390,6 +408,7 @@ def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]
     return collection.value[key.value]  # type: ignore[no-any-return]
 
 
+@preserve_marks
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not all(isinstance(arg.type, CtyMap | CtyObject) for arg in args):
         raise CtyFunctionError("merge: all arguments must be maps or objects")
@@ -404,6 +423,7 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     return inferred_type.validate(result)
 
 
+@preserve_marks
 def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not all(isinstance(arg.type, CtyList | CtySet | CtyTuple) for arg in args):
         raise CtyFunctionError("setproduct: all arguments must be collections")
@@ -430,6 +450,7 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[no-any-return]
 
 
+@preserve_marks
 def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(keys.type, CtyList | CtyTuple) or not isinstance(values.type, CtyList | CtyTuple):
         raise CtyFunctionError("zipmap: arguments must be lists or tuples")
