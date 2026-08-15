@@ -33,6 +33,7 @@ from pyvider.cty import (
 )
 import pyvider.cty.functions as F
 from pyvider.cty.functions import upper
+from pyvider.cty.functions._marks import preserve_marks
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.types import BytesCapsule
 
@@ -202,4 +203,38 @@ def test_wrapped_function_does_not_see_marks_on_its_arguments() -> None:
     result = F.equal(s("a").mark(SENSITIVE), s("a"))
 
     assert result.value is True
+    assert result.marks == frozenset({SENSITIVE})
+
+
+def test_marks_are_stripped_from_capsule_elements_with_custom_equality() -> None:
+    """Stripping must not depend on `__eq__` reporting a mark difference.
+
+    `CtyValue.__eq__` delegates to a CtyCapsuleWithOps' `equal_fn`, which
+    compares payloads and never looks at marks. A strip that decides "nothing
+    changed" by comparing the rebuilt container against the original therefore
+    concludes wrongly for capsule elements, and hands the wrapped function the
+    marked value it was supposed to be shielded from.
+    """
+    from pyvider.cty import CtyCapsuleWithOps
+
+    class Box:
+        def __init__(self, v: int) -> None:
+            self.v = v
+
+    capsule = CtyCapsuleWithOps("Box", Box, equal_fn=lambda a, b: a.v == b.v)
+    collection = CtyValue(
+        vtype=CtyList(element_type=capsule),
+        value=(capsule.validate(Box(1)).mark(SENSITIVE),),
+    )
+
+    seen: list[frozenset[Any]] = []
+
+    @preserve_marks
+    def record_element_marks(arg: CtyValue[Any]) -> CtyValue[Any]:
+        seen.append(arg.value[0].marks)
+        return s("done")
+
+    result = record_element_marks(collection)
+
+    assert seen == [frozenset()], "the wrapped function saw a marked argument"
     assert result.marks == frozenset({SENSITIVE})
