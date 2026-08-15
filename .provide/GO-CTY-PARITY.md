@@ -60,6 +60,9 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   Tests: `tests/types/test_validate_preserves_marks.py`, 12 cases across every container and primitive. The `listval` workaround is gone from the #5 tests, which now use `validate()`.
 - [ ] **#16 — `cty_to_msgpack` silently drops marks instead of refusing to serialize**
   Found verifying #15. go-cty errors (`marshal.go:49`, "value has marks, so it cannot be serialized"); pyvider writes the value and discards the flag. Pre-existing, but #15 widens the exposure by making nested marks real.
+  **Decision: match go-cty. Not blocked on #8.** Sensitivity reaches Terraform through `tfplugin6.Schema.Attribute.sensitive` (field 7), not through the value — `DynamicValue` carries only `msgpack`/`json` and has no mark channel. So no caller on this path needs `UnmarkDeepWithPaths` to comply.
+  **Sequencing: the pyvider-side change must land first.** `pyvider/conversion/marshaler.py:118-120` applies schema marks and serializes on the next line, so every mark it sets is already discarded — `_apply_schema_marks_iterative` is dead work, and the new error would turn it into a crash on every sensitive attribute. Delete it there, then make this strict.
+  Breaking change for any other caller that marks and serializes: needs a release note, not a patch release.
 - [ ] **#14 item 9 — msgpack `±Inf` handling**
   `codec.py` has no infinity path. Same character as #5: a silent wire-correctness hole.
 - [ ] **Split out of #9 — behavioural fixes to shipped functions**
@@ -217,3 +220,4 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 | 2026-08-15 | Initial review against go-cty `v1.19.0-1-g0d1eb26`. Filed #5–#14 and tofusoup#2. PR #4 merged (rebase), closing #3. |
 | 2026-08-15 | #5 implemented on `feat/go-cty-parity` (local, unpushed). Filed #15 — collection `validate()` discards element marks — discovered while testing #5. |
 | 2026-08-15 | #15 implemented. Filed #16 — msgpack silently drops marks where go-cty errors — discovered verifying #15. Marks now survive validation at every level; they still do not survive serialization, which is #16. |
+| 2026-08-15 | #16 decision recorded: match go-cty and raise. Established that sensitivity travels via the wire *schema*, not the value, so #16 does not depend on #8 as first assumed — but pyvider's `_apply_schema_marks_iterative` is dead work that must be deleted first or the new error crashes every sensitive attribute. |
