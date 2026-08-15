@@ -231,9 +231,24 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(
             f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}"
         )
-    if collection.is_null or collection.is_unknown:
+    if collection.is_null or collection.is_unknown or value.is_unknown:
         return CtyValue.unknown(CtyBool())
-    return CtyBool().validate(value in collection.value)  # type: ignore[operator]
+
+    # An unknown element could still turn out to be the value we are looking
+    # for, so a miss against a partially-unknown collection is undecided rather
+    # than false. An exact match still wins outright: it cannot be un-matched by
+    # whatever the unknowns resolve to. This mirrors go-cty's ContainsFunc.
+    saw_unknown = False
+    for element_value in cast("tuple[Any, ...]", collection.value):
+        if isinstance(element_value, CtyValue) and element_value.is_unknown:
+            saw_unknown = True
+            continue
+        if element_value == value:
+            return CtyBool().validate(True)
+
+    if saw_unknown:
+        return CtyValue.unknown(CtyBool())
+    return CtyBool().validate(False)
 
 
 @preserve_marks

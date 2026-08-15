@@ -132,3 +132,45 @@ class TestHasIndexIndex:
 
 
 # 🌊🪢🔚
+
+
+class TestContainsUnknownHandling:
+    """`contains` must not claim certainty it does not have.
+
+    go-cty tracks unknown elements while scanning: if no element matches
+    exactly but some element is unknown, the answer is unknown rather than
+    false, because that unknown could still turn out to be the value.
+
+    The break these tests catch: returning a definite False for a collection
+    whose contents are not fully known.
+    """
+
+    def test_unknown_element_makes_the_answer_unknown(self) -> None:
+        list_type = CtyList(element_type=CtyString())
+        collection = CtyValue(
+            vtype=list_type,
+            value=(CtyString().validate("a"), CtyValue.unknown(CtyString())),
+        )
+
+        result = contains(collection, CtyString().validate("zzz"))
+
+        assert result.is_unknown
+
+    def test_exact_match_wins_over_an_unknown_element(self) -> None:
+        """A definite hit is still definite, even alongside unknowns."""
+        list_type = CtyList(element_type=CtyString())
+        collection = CtyValue(
+            vtype=list_type,
+            value=(CtyString().validate("a"), CtyValue.unknown(CtyString())),
+        )
+
+        result = contains(collection, CtyString().validate("a"))
+
+        assert not result.is_unknown
+        assert result.value is True
+
+    def test_fully_known_collection_still_answers_definitely(self) -> None:
+        collection = CtyList(element_type=CtyString()).validate(["a", "b"])
+
+        assert contains(collection, CtyString().validate("b")).value is True
+        assert contains(collection, CtyString().validate("z")).value is False
