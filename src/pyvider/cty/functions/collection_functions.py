@@ -225,6 +225,16 @@ def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
         return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
+# Payloads that can hide an unknown below the top level. A CtyValue holding
+# anything else is a leaf, so `is_unknown` is the complete answer for it.
+_NESTING_PAYLOADS = (CtyValue, dict, list, tuple, set, frozenset)
+
+
+def _is_known_leaf(value: CtyValue[Any]) -> bool:
+    """Wholly known, decided without a walk. False means "ask properly"."""
+    return not value.is_unknown and not isinstance(value.value, _NESTING_PAYLOADS)
+
+
 @preserve_marks
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
@@ -242,24 +252,44 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     # Comparison goes through the three-valued `equals`, as go-cty's
     # ContainsFunc does. Testing `is_unknown` on the element is not enough --
     # an object whose attribute is unknown is itself known -- and treating any
-    # element containing an unknown as undecided is needlessly vague, because
-    # an element can still be ruled *out* on a known attribute that differs.
+    # element containing an unknown as undecided is needlessly vague, because an
+    # element can still be ruled *out* on a known attribute that differs.
+    #
+    # But `equals` is far heavier than `==`, and most collections hold known
+    # scalars, so each element gets a cheap test first: a leaf that is not
+    # unknown is wholly known, decided by two attribute reads rather than a
+    # walk. Only elements that could hide an unknown reach `equals`. The cheap
+    # test must stay *per element* -- an is-anything-unknown pre-pass over the
+    # whole collection would defeat the early exit, which is what makes finding
+    # a hit near the front cost nothing.
+    hit, saw_unknown = _scan_for_value(cast("tuple[Any, ...]", collection.value), value)
+    if hit:
+        return CtyBool().validate(True)
+    if saw_unknown:
+        return CtyValue.unknown(CtyBool())
+    return CtyBool().validate(False)
+
+
+def _scan_for_value(elements: tuple[Any, ...], value: CtyValue[Any]) -> tuple[bool, bool]:
+    """Scan for `value`, returning (found, saw_something_undecided)."""
+    value_known = value.is_wholly_known()
     saw_unknown = False
-    for element_value in cast("tuple[Any, ...]", collection.value):
+    for element_value in elements:
         if not isinstance(element_value, CtyValue):
             if element_value == value:
-                return CtyBool().validate(True)
+                return True, saw_unknown
+            continue
+        if value_known and _is_known_leaf(element_value):
+            # Both sides wholly known, so `==` is the whole answer either way.
+            if element_value == value:
+                return True, saw_unknown
             continue
         match = element_value.equals(value)
         if match.is_unknown:
             saw_unknown = True
-            continue
-        if match.value is True:
-            return CtyBool().validate(True)
-
-    if saw_unknown:
-        return CtyValue.unknown(CtyBool())
-    return CtyBool().validate(False)
+        elif match.value is True:
+            return True, saw_unknown
+    return False, saw_unknown
 
 
 @preserve_marks

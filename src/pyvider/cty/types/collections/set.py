@@ -12,12 +12,15 @@ from typing import Any, ClassVar, Generic, TypeVar, cast, final
 from attrs import define, field
 
 from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
-from pyvider.cty.marks import unmark_deep
+from pyvider.cty.marks import _strip, collect_marks_deep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
 T = TypeVar("T")
+
+# Payloads that can hide a mark below the top level; anything else is a leaf.
+_NESTING_PAYLOADS = (CtyValue, dict, list, tuple, set, frozenset)
 
 
 @final
@@ -74,10 +77,18 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
         for raw_item in value_iterable:
             try:
                 validated_item = self.element_type.validate(raw_item)
-                unmarked_item, item_marks = unmark_deep(validated_item)
-                element_marks |= item_marks
-                key = unmarked_item._canonical_sort_key()
-                unique_items[key] = unmarked_item
+                # Only look for marks where one could be hiding, and only
+                # rebuild an element that actually carries one. A leaf answers
+                # from its own `marks`; `_strip` walks and reconstructs the
+                # whole element, which on an unmarked set is pure overhead paid
+                # once per member.
+                if validated_item.marks or isinstance(validated_item.value, _NESTING_PAYLOADS):
+                    item_marks = collect_marks_deep(validated_item)
+                    if item_marks:
+                        element_marks |= item_marks
+                        validated_item = _strip(validated_item)
+                key = validated_item._canonical_sort_key()
+                unique_items[key] = validated_item
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
             except Exception as e:

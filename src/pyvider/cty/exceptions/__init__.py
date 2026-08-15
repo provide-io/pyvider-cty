@@ -6,7 +6,11 @@
 
 from __future__ import annotations
 
-from pyvider.cty.exceptions.base import CtyError, CtyFunctionError
+from pyvider.cty.exceptions.base import (
+    CtyError,
+    CtyFunctionError,
+    CtyMarksSerializationError,
+)
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
     CtyTypeConversionError,
@@ -53,6 +57,7 @@ __all__ = [
     "CtyFunctionError",
     "CtyListValidationError",
     "CtyMapValidationError",
+    "CtyMarksSerializationError",
     "CtyNumberValidationError",
     "CtySetValidationError",
     "CtyStringValidationError",
