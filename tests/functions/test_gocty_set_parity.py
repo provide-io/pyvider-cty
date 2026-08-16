@@ -155,6 +155,18 @@ class TestSetOperationRejects:
 
         assert elements_of(setunion(S("a"), wrapped)) == {"a", "b"}
 
+    def test_an_unsettled_dynamic_is_refused_rather_than_unwrapped(self) -> None:
+        """The unwrap loop needs both of its conditions.
+
+        A mutation run turned its `and` into an `or` and nothing failed, because
+        no test supplied a value satisfying one condition and not the other.
+        This one's type is dynamic but has no inner CtyValue to descend into, so
+        the loop must not run -- with `or` it descends into the unknown marker
+        and dies on an attribute error instead of refusing cleanly.
+        """
+        with pytest.raises(CtyFunctionError, match="set required"):
+            setunion(S("a"), CtyValue.unknown(CtyDynamic()))
+
 
 class TestSetOperationUnifyGap:
     """A known divergence, and it is in `unify` rather than in these functions.
