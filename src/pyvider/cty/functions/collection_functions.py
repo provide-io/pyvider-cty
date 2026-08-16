@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from decimal import Decimal
 from itertools import product
 from typing import Any, cast
 
@@ -36,7 +37,14 @@ from pyvider.cty.config.defaults import (
     ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT,
     ERR_LENGTH_INPUT_MUST_BE_COLLECTION,
     ERR_MERGE_ALL_ARGS_MUST_BE_MAPS_OBJECTS,
+    ERR_RANGE_ARG_COUNT,
+    ERR_RANGE_ARGS_MUST_BE_NUMBERS,
+    ERR_RANGE_END_MUST_BE_GREATER,
+    ERR_RANGE_END_MUST_BE_LESS,
+    ERR_RANGE_STEP_MUST_NOT_BE_ZERO,
+    ERR_RANGE_TOO_MANY_VALUES,
     ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
+    MAX_RANGE_LENGTH,
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
@@ -705,6 +713,59 @@ def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
 
     val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
     return CtyMap(element_type=val_elem_type).validate(result_map)  # type: ignore[no-any-return]
+
+
+def _range_bounds(numbers: list[Decimal]) -> tuple[Decimal, Decimal, Decimal]:
+    """go-cty's start/end/step defaulting for one, two or three arguments.
+
+    With fewer than three the step is inferred from the direction of travel, so
+    `range(5, 1)` counts down rather than raising.
+    """
+    match numbers:
+        case [end]:
+            return Decimal(0), end, Decimal(-1) if end < 0 else Decimal(1)
+        case [start, end]:
+            return start, end, Decimal(-1) if end < start else Decimal(1)
+        case [start, end, step]:
+            return start, end, step
+        case _:
+            raise CtyFunctionError(ERR_RANGE_ARG_COUNT)
+
+
+@preserve_marks
+def range_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `RangeFunc`. Named with a suffix to leave the builtin alone."""
+    for arg in args:
+        if not isinstance(arg.type, CtyNumber):
+            raise CtyFunctionError(ERR_RANGE_ARGS_MUST_BE_NUMBERS.format(type=arg.type.ctype))
+        if arg.is_null:
+            raise CtyFunctionError(ERR_RANGE_ARGS_MUST_BE_NUMBERS.format(type="null"))
+    if any(arg.is_unknown for arg in args):
+        return CtyValue.unknown(CtyList(element_type=CtyNumber()))
+
+    start, end, step = _range_bounds([cast(Decimal, arg.value) for arg in args])
+    if step == 0:
+        # go-cty checks this with `step == cty.Zero`, which compares two structs
+        # holding different big.Float pointers and so never fires: a zero step
+        # loops until the 1024 cap and reports that instead. Refused cleanly
+        # here, the same call this package already makes for `indent`'s negative
+        # count. Both implementations refuse; only the message differs.
+        raise CtyFunctionError(ERR_RANGE_STEP_MUST_NOT_BE_ZERO)
+
+    descending = step < 0
+    if descending and end > start:
+        raise CtyFunctionError(ERR_RANGE_END_MUST_BE_LESS)
+    if not descending and end < start:
+        raise CtyFunctionError(ERR_RANGE_END_MUST_BE_GREATER)
+
+    numbers: list[Decimal] = []
+    current = start
+    while current > end if descending else current < end:
+        if len(numbers) >= MAX_RANGE_LENGTH:
+            raise CtyFunctionError(ERR_RANGE_TOO_MANY_VALUES.format(limit=MAX_RANGE_LENGTH))
+        numbers.append(current)
+        current += step
+    return cast(CtyValue[Any], CtyList(element_type=CtyNumber()).validate(numbers))
 
 
 # 🌊🪢🔚

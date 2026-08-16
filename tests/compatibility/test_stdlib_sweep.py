@@ -83,6 +83,14 @@ def se(v: list[str]) -> Arg:
     return CtySet(element_type=CtyString()).validate(v), {"type": ["set", "string"], "value": v}
 
 
+def sb(v: list[bool]) -> Arg:
+    return CtySet(element_type=CtyBool()).validate(v), {"type": ["set", "bool"], "value": v}
+
+
+def sn(v: list[Any]) -> Arg:
+    return CtySet(element_type=CtyNumber()).validate(v), {"type": ["set", "number"], "value": v}
+
+
 def mn(v: dict[str, Any]) -> Arg:
     return CtyMap(element_type=CtyNumber()).validate(v), {"type": ["map", "number"], "value": v}
 
@@ -155,8 +163,13 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("lessthan", [nm(1), nm(2)]),
     ("lessthanorequalto", [nm(1), nm(1)]),
     ("not", [bl(True)]),
+    ("not", [bl(False)]),
     ("and", [bl(True), bl(False)]),
+    ("and", [bl(True), bl(True)]),
+    ("and", [bl(False), bl(False)]),
     ("or", [bl(True), bl(False)]),
+    ("or", [bl(False), bl(False)]),
+    ("or", [bl(True), bl(True)]),
     # collections
     ("distinct", [ls(["a", "a", "b"])]),
     ("compact", [ls(["a", "", "b"])]),
@@ -184,15 +197,31 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("slice", [ls(["a", "b", "c"]), nm(1), nm(3)]),
     ("zipmap", [ls(["a", "b"]), ls(["1", "2"])]),
     ("setunion", [se(["a"]), se(["b"])]),
+    ("setunion", [se(["a"])]),
+    ("setunion", [se([]), se([])]),
+    ("setunion", [se(["a"]), se(["a"])]),
+    ("setunion", [se(["a"]), sb([True])]),
+    ("setunion", [se(["a"]), sn([1])]),
     ("setintersection", [se(["a", "b"]), se(["b"])]),
+    ("setintersection", [se(["a"]), se(["b"])]),
     ("setsubtract", [se(["a", "b"]), se(["b"])]),
+    ("setsubtract", [se(["a"]), se(["a"])]),
     ("flatten", [ls(["a"])]),
     ("chunklist", [ls(["a", "b", "c"]), nm(2)]),
     ("length", [ls(["a", "b"])]),
     ("coalesce", [st(""), st("b")]),
     ("coalescelist", [ls([]), ls(["a"])]),
     ("range", [nm(3)]),
+    ("range", [nm(-3)]),
+    ("range", [nm(0)]),
+    ("range", [nm(1), nm(5)]),
+    ("range", [nm(5), nm(1)]),
     ("range", [nm(1), nm(5), nm(2)]),
+    ("range", [nm(5), nm(1), nm(-2)]),
+    ("range", [nm(0), nm("1"), nm("0.25")]),
+    ("range", [nm(1), nm(5), nm(-1)]),
+    ("range", [nm(0), nm(2000)]),
+    ("range", [nm(0), nm(10), nm(0)]),
     # encoding and time
     ("jsonencode", [ls(["a"])]),
     ("jsonencode", [nm(1)]),
@@ -233,6 +262,12 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # means reproducing its float64 step, which is a decision, not a fix.
     "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
     "pow(2,0.5)": "numeric precision model: go-cty computes in float64, Decimal is more precise",
+    # Both are the same gap, and it is in `unify`, not in the set operations.
+    # go-cty unifies a mixture of primitives with convert.UnifyUnsafe, which
+    # widens everything to string; this package's `unify` has no primitive
+    # widening rule at all and answers dynamic.
+    "setunion(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
+    "setunion(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
 }
 
 # go-cty's name for a function, and this package's name for the same function.
@@ -258,6 +293,10 @@ NAME_MAP = {
     "lessthan": "less_than",
     "lessthanorequalto": "less_than_or_equal_to",
     "reverselist": "reverse",
+    "and": "and_fn",
+    "or": "or_fn",
+    "not": "not_fn",
+    "range": "range_fn",
 }
 
 
@@ -361,7 +400,7 @@ def test_the_sweep_covers_most_of_what_the_oracle_exposes() -> None:
     """
     covered = {func for func, _args in CASES}
 
-    assert len(covered) >= 55, f"sweep covers only {len(covered)} functions"
+    assert len(covered) >= 70, f"sweep covers only {len(covered)} functions"
 
 
 # 🌊🪢🔚

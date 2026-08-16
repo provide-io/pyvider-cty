@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # pyvider-cty/src/pyvider/cty/functions/__init__.py
 # This file makes the 'functions' module a package.
+from pyvider.cty.functions.bool_functions import and_fn, not_fn, or_fn
 from pyvider.cty.functions.bytes_functions import byteslen, bytesslice
 from pyvider.cty.functions.collection_functions import (
     chunklist,
@@ -24,6 +25,7 @@ from pyvider.cty.functions.collection_functions import (
     length,
     lookup,
     merge,
+    range_fn,
     reverse,
     setproduct,
     slice,
@@ -60,6 +62,13 @@ from pyvider.cty.functions.numeric_functions import (
     signum_fn,
     subtract,
 )
+from pyvider.cty.functions.set_functions import (
+    sethaselement,
+    setintersection,
+    setsubtract,
+    setsymmetricdifference,
+    setunion,
+)
 from pyvider.cty.functions.string_functions import (
     chomp,
     indent,
@@ -84,6 +93,7 @@ from pyvider.cty.functions.structural_functions import coalesce
 __all__ = [
     "abs_fn",
     "add",
+    "and_fn",
     "byteslen",
     "bytesslice",
     "ceil_fn",
@@ -125,14 +135,22 @@ __all__ = [
     "multiply",
     "negate",
     "not_equal",
+    "not_fn",
+    "or_fn",
     "parseint_fn",
     "pow_fn",
+    "range_fn",
     "regex",
     "regexall",
     "regexreplace",
     "replace",
     "reverse",
+    "sethaselement",
+    "setintersection",
     "setproduct",
+    "setsubtract",
+    "setsymmetricdifference",
+    "setunion",
     "signum_fn",
     "slice",
     "sort",
