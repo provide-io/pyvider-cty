@@ -127,7 +127,7 @@ class CtyObject(CtyType[dict[str, object]]):
                 # silently drop them here.
                 validated_attr = attr_type.validate(raw_attr_value)
             except CtyValidationError as e:
-                new_path = CtyPath(steps=[GetAttrStep(name)] + (e.path.steps if e.path else []))
+                new_path = CtyPath(steps=(GetAttrStep(name), *(e.path.steps if e.path else ())))
                 raise CtyAttributeValidationError(
                     e.message,
                     value=raw_attr_value,

@@ -73,7 +73,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             try:
                 validated_map[normalized_key] = self.element_type.validate(v)
             except CtyValidationError as e:
-                new_path = CtyPath(steps=[KeyStep(normalized_key)] + (e.path.steps if e.path else []))
+                new_path = CtyPath(steps=(KeyStep(normalized_key), *(e.path.steps if e.path else ())))
                 raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
 
         is_unknown = any(v.is_unknown for v in validated_map.values())

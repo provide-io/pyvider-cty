@@ -40,6 +40,7 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+from pyvider.cty.walk import deep_values, transform, walk
 
 """
 The pyvider.cty package is a pure-Python implementation of the concepts
@@ -73,9 +74,12 @@ __all__ = [
     "CtyValue",
     "__version__",
     "convert",
+    "deep_values",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
+    "transform",
     "unify",
+    "walk",
 ]
 
 # 🌊🪢🔚

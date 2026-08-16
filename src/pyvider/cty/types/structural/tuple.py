@@ -64,7 +64,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
                 validated_element = element_type.validate(raw_element)
                 validated_elements.append(validated_element)
             except CtyValidationError as e:
-                new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
+                new_path = CtyPath(steps=(IndexStep(i), *(e.path.steps if e.path else ())))
                 raise CtyTupleValidationError(
                     e.message, value=raw_element, path=new_path, original_exception=e
                 ) from e
