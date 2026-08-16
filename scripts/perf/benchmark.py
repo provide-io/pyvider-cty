@@ -35,6 +35,7 @@ from pyvider.cty import (
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 import pyvider.cty.functions as F
+from pyvider.cty.walk import deep_values, transform
 
 REPEATS = 5
 
@@ -134,6 +135,13 @@ def scenarios(f: dict[str, Any]) -> dict[str, Any]:
         # run against an older base would be measuring a different call.
         "fn flatten(list[list][10k])": lambda: F.flatten(f["big_nested"]),
         "fn chunklist(list[50k], 100)": lambda: F.chunklist(f["big_list"], CtyNumber().validate(100)),
+        # traversal: allocates a CtyPath per value visited, and `transform`
+        # additionally re-validates every container it rebuilds. Both are here
+        # from the start rather than after a regression, which is how `flatten`
+        # got measured -- it shipped a 117% slowdown that only the harness saw.
+        # Absent from an older base, so they report as new rather than changed.
+        "deep_values(list[obj][10k])": lambda: sum(1 for _ in deep_values(f["big_objs"])),
+        "transform(list[obj][10k])": lambda: transform(f["big_objs"], lambda _p, v: v),
         # wire
         "msgpack encode obj list[10k]": lambda: cty_to_msgpack(f["big_objs"], f["objs"]),
         "msgpack decode obj list[10k]": lambda: cty_from_msgpack(f["objs_packed"], f["objs"]),

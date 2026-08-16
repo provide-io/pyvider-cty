@@ -6,7 +6,7 @@ Living document. Updated as work lands — do not let it drift.
 |---|---|
 | **go-cty baseline** | `v1.19.0-1-g0d1eb26` (`/Users/tim/code/tf/go-cty`) |
 | **pyvider-cty baseline** | `main @ fa0ba5e` |
-| **Last full review** | 2026-08-15 |
+| **Last full review** | 2026-08-16 |
 | **Next review trigger** | go-cty tags v1.19.1+, or any phase completing |
 
 ---
@@ -18,7 +18,7 @@ Living document. Updated as work lands — do not let it drift.
 | 0 | Unknown-marker fixes (#3, PR #4) | ✅ Done |
 | 1 | Correctness bugs | ✅ Done, #16 included (paired change landed in `pyvider`) |
 | 2 | Verification infrastructure (tofusoup) | ✅ Done — go-cty 1.19 + `soup-go cty call` oracle |
-| 3 | Foundations | ⬜ Not started |
+| 3 | Foundations | ✅ Done — 3 of 5 items were not gaps; `SafeKnownPrefix` deferred on the Unicode decision |
 | 4 | Marks, properly | ⬜ Not started |
 | 5 | Breadth | ⬜ Not started |
 | 6 | Refinements | ⬜ Not started |
@@ -142,23 +142,31 @@ Runs parallel with phase 1. Repo: `provide-io/tofusoup` (`/Volumes/data/pyv/tofu
 
 Not user-visible. All of it unblocks later phases.
 
-- [ ] **#6 — `walk` / `transform` / `deep_values`**
-  Blocks phase 4 entirely and `UnknownAsNull`.
-  Watch: set elements use an `IndexStep` keyed by the element value; do not propagate parent marks down to child callbacks (go-cty 1.15.0 fixed exactly that bug).
-- [ ] **#14 item 6 — `ctystrings`**
-  `NormalizeString` + `SafeKnownPrefix`. Blocks `strlen` (#9) and `StringPrefix` (#10).
-  ⚠️ Requires the Unicode-segmentation dependency decision — see below.
-- [ ] **#14 item 1 — `PathSet`**
-  Needed by `MarkWithPaths` / `UnmarkDeepWithPaths` in phase 4. Requires `CtyPath` to be hashable — verify.
-- [ ] **#14 item 4 — `RawEquals`**
-  Small. Tests in every later phase want it. `__eq__` cannot serve both the cty-semantic and structural-identity roles.
+**Three of the five items were not gaps.** Each was filed from reading go-cty's public API rather than from running pyvider — the same mistake the "Verify before filing" section above was written about, repeated verbatim one phase later. Each cut below records what was run to disprove it, so nobody re-files them.
+
+- [x] **#6 — `walk` / `transform` / `deep_values`** — landed in `src/pyvider/cty/walk.py`
+  Real, and already being paid for badly: pyvider's `conversion/marshaler.py` hand-rolls two iterative deep traversals of a value tree (`_apply_schema_marks_iterative`, `_unmark_deep`), and its own comment records that a recursive version "did raise RecursionError at a nesting depth pyvider-cty advertises as supported". So all three entry points are iterative, and a 400-deep test pins it.
+  Shaped for Python rather than transliterated: `deep_values` is a generator, which is what go-cty itself recommends once Go grew iterators. `walk` exists only for the pruning `deep_values` cannot express.
+  Both watch-items held. Set elements are addressed by themselves — go-cty puts that on `IndexStep`, pyvider on `KeyStep`, because pyvider split go-cty's one index step into an int-keyed and a key-keyed one. Parent marks cannot reach child callbacks here, since marks live on the value and a child is a separate value; pinned anyway, because go-cty 1.15.0 shows the bug is reachable by other designs.
+  Also required extending `KeyStep` to apply through a set — otherwise `walk` emits set-element paths it cannot then follow. That is #14 item 7, landed early because it is a prerequisite rather than a phase-4 nicety.
+- [x] **#14 item 1 — `PathSet`** — cut; `CtyPath` made hashable instead
+  go-cty needs a dedicated type with crc64 hashing rules only because Go cannot hash a slice. Python's `set[CtyPath]` is the same thing once `CtyPath` is frozen, which it now is (`steps` is a tuple; the converter still accepts the list callers pass). Verified before: `hash(CtyPath.get_attr("a"))` raised `unhashable type`.
+  Its only stated dependent — `MarkWithPaths` / `UnmarkDeepWithPaths` in phase 4 — rests on an assumption this document already retracted: sensitivity reaches Terraform through the wire schema, not through the value. `PathSet` also has zero callers inside go-cty itself.
+- [x] **#14 item 4 — `RawEquals`** — cut; already present under two names
+  The item's own justification was that "`__eq__` cannot serve both the cty-semantic and structural-identity roles". pyvider already split them: `__eq__` is the structural one (`marked != unmarked`, `null(string) != null(number)`, `unknown == unknown`), and `.equals()` returns the three-valued cty answer. Landed in `f4a1d90`, before the item was filed.
+- [x] **#14 item 6 — `NormalizeString`** — cut; the behaviour is already there
+  go-cty's own docs say `Normalize` "achieves the same effect as wrapping a string in a value using `cty.StringVal` and then unwrapping it again" — i.e. cty normalizes at construction. pyvider does too, deliberately: `types/primitives/string.py:51`, `types/collections/map.py:71,98`, `conversion/raw_to_cty.py:245`. Verified: NFD `"é"` is stored as one code point, compares equal to the precomposed form, and collides with it as a map key — matching the oracle.
+  The standalone helper exists in go-cty because Go has no stdlib NFC and needs `golang.org/x/text`. Python's is `unicodedata.normalize("NFC", s)`. A wrapper would add a name, not a capability.
+- [ ] **#14 item 6 — `SafeKnownPrefix`** — still open, still blocked
+  The half of `ctystrings` that is a real gap. Needs UAX#29 grapheme segmentation. Blocks `strlen` (#9) and `StringPrefix` (#10).
+  ⚠️ Requires the Unicode-segmentation dependency decision — see below. **Deferred deliberately** (2026-08-16): nothing exports `strlen` today, so nothing is blocked by waiting.
 
 ## Phase 4 — marks, properly
 
 - [ ] **#8 — deep mark operations + a real `ValueMarks` type**
-  Unblocked by #6 and `PathSet`. Keep go-cty's fast paths: identity return when nothing is marked, no-op on empty path-marks.
-- [ ] **#14 item 7 — `IndexStep.Apply` through a set** (go-cty 1.18.0)
-  Belongs here: #6's traversal is what produces these paths.
+  Unblocked by #6. `PathSet` was cut in phase 3 — a `set[CtyPath]` is the Python equivalent now that `CtyPath` is hashable — so `MarkWithPaths` / `UnmarkDeepWithPaths` need no new container. Re-check whether they are wanted at all before building them: sensitivity reaches Terraform through the wire schema, not the value. Keep go-cty's fast paths: identity return when nothing is marked, no-op on empty path-marks.
+- [x] **#14 item 7 — step through a set** (go-cty 1.18.0) — landed in phase 3
+  Landed early because #6's traversal is what produces these paths, so `walk` could not emit an applicable set-element path without it. On `KeyStep` rather than `IndexStep`, because pyvider split go-cty's single index step in two.
 - [ ] **#14 item 3 — `UnknownAsNull`**
   Including the 1.16.4 mark-preservation behaviour.
 
@@ -190,6 +198,18 @@ Mutually independent. Parallelizable across whoever is free.
 - [ ] **#14 item 5 — `Type.TestConformance`**
   Distinct from the existing `usable_as` (= go-cty `UsableAs`): allows `DynamicPseudoType` wildcards, returns path-tagged errors rather than a bool.
 
+## Cross-repo follow-ups — not this repo, do not lose
+
+Found while doing parity work here. Each belongs to another repository and is recorded only so it is not rediscovered from scratch.
+
+- [ ] **`pyvider-components` stdlib functions disagree with Terraform's builtins of the same name.** `pyvider-components/src/pyvider/components/functions/` registers 20 provider functions, of which ~16 duplicate a `pyvider-cty` stdlib name with an independent plain-Python implementation. They import nothing from `pyvider.cty.functions`.
+  Confirmed divergence: `provider::pyvider::length("👨‍👩‍👧‍👦")` returns **7** (Python `len`, code points). Terraform's own `length` returns **1** (grapheme clusters). pyvider-cty's now refuses the call. Three implementations, three answers — and the components one is what practitioners actually call, shadowing a builtin's name while disagreeing with it.
+  **Do not fix by rerouting components through `pyvider.cty.functions`.** The boundary in `pyvider/protocols/tfprotov6/handlers/call_function.py` converts to native Python before dispatch (`unmarshal` → `cty_to_native` → the function → `marshal`), so a component function never sees a `CtyValue`; rerouting means changing pyvider's function-call protocol, not editing components. Unknowns are already short-circuited at that boundary (`call_function.py:50`), and marks cannot cross the wire, so cty's per-function unknown and mark handling would be dead code there.
+  The two sets of functions have genuinely different contracts: components' should track **Terraform's** stdlib, pyvider-cty's should track **go-cty's**, and `length` is exactly where those differ.
+  Blocked on the same UAX#29 decision as `SafeKnownPrefix` below. Note `"café"` returns 4 only because that literal is NFC-composed; the NFD spelling returns 5, which is the case normalization exists for.
+
+- [ ] **Latent, not yet live: `pyvider`'s `cty_path_to_proto_path` will render a set-element path badly.** `pyvider/src/pyvider/protocols/tfprotov6/handlers/utils.py:385` maps a `KeyStep` to `element_key_string=str(key)`. Phase 3 gave `KeyStep` a second role — a set element keys itself — so that `key` can now be a whole `CtyValue`, and `str()` of one is its repr. Unreachable today: validation only ever builds a `KeyStep` for a map key (`types/collections/map.py:76`), and nothing yet feeds `walk`-produced paths into diagnostics. It becomes reachable the moment something does.
+
 ## Continuous
 
 - [ ] **#13 — docs: `docs/reference/go-cty-comparison.md` parity matrix**
@@ -214,7 +234,7 @@ Every consumer in the workspace declares an **unbounded** dependency, with no `t
 
 So the moment `0.5.0` is published, all five absorb the change with no signal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
 
-- [ ] **Release notes must name seven breaking changes**, not one:
+- [ ] **Release notes must name eight breaking changes**, not one:
   1. Set elements no longer carry marks; read them off the set (go-cty's `SetVal` behaviour).
   2. Serializing a marked value now raises instead of silently dropping the marks.
   3. **Map and object payloads are immutable.** `value.value[k] = x` now raises `TypeError`. Nothing in the workspace does it any more, but external provider code might, and the failure is loud and at the point of the mistake -- which is the intent, since the silent alternative corrupted sensitivity tracking.
@@ -222,6 +242,7 @@ So the moment `0.5.0` is published, all five absorb the change with no signal. A
   5. `regex` returns capture groups (a tuple, or an object for named groups) rather than the whole match, and raises on a non-match rather than returning `""`. `regexall`'s elements have the same shape.
   6. `indent` takes a number of spaces rather than a prefix string, and no longer indents the first line.
   7. `flatten` returns a tuple rather than a list, recurses through nested sequences, keeps null elements, and passes non-sequence elements through instead of raising. `chunklist` preserves the element type and accepts a size of 0.
+  8. **`length` refuses a string.** It counted code points, which agreed with neither go-cty (which refuses the call, leaving strings to `strlen`) nor Terraform (which counts grapheme clusters — 1 for a four-person family emoji where this said 7). It now also accepts a dynamic wrapping a collection, which it previously refused; that half is a widening and breaks nobody. Callers wanting the old answer have `len(value.value)`; `strlen` is not available yet, since it needs the deferred UAX#29 decision.
 - [ ] **Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**, then bump each one deliberately.
   Not done on this branch on purpose: the consumer repos are all sitting on unrelated branches (`adminy/main`, `chore/use-reusable-release`), and a cap committed to a branch that never merges is worse than no cap, because it looks done. Apply this to whichever branch actually ships.
 - [ ] **Cut `0.4.0` → `0.5.0`**, not a patch. The set change is breaking, and the mark fixes change what `validate` returns for every marked input.
@@ -249,7 +270,7 @@ Options: take a dependency (`uniseg`-equivalent), vendor the tables, or document
 
 This is a question about pyvider-cty's dependency posture more than a technical one. Gates `strlen` (#9) and `StringPrefix` (#10).
 
-**Status:** unresolved. Needs an owner decision.
+**Status:** **deferred, 2026-08-16.** `NormalizeString` turned out not to need it (pyvider already normalizes at construction — see phase 3), and nothing exports `strlen` today, so nothing is blocked by waiting. Still gates `SafeKnownPrefix`, `strlen` (#9), `StringPrefix` (#10), and the `pyvider-components` divergence recorded under cross-repo follow-ups. Revisit when the first of those is actually wanted.
 
 ---
 
@@ -304,6 +325,8 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 
 | Date | Change |
 |---|---|
+| 2026-08-16 | **Phase 3 done — and three of its five items were not gaps.** `RawEquals` already existed as the `__eq__` / `.equals()` split; `PathSet` is a Go workaround for unhashable slices, so `CtyPath` was made hashable and a `set[CtyPath]` stands in; `NormalizeString`'s behaviour was already present, since pyvider NFC-normalizes at construction exactly as go-cty does. All three were filed from reading go-cty's public API rather than running pyvider — the same mistake "Verify before filing" was written about one phase earlier. What did land: `walk` / `deep_values` / `transform` in `src/pyvider/cty/walk.py`, all iterative, because pyvider's own marshaler records that the recursive version of this shape "did raise RecursionError at a nesting depth pyvider-cty advertises as supported". `deep_values` is a generator, which is what go-cty recommends now that Go has iterators; `walk` exists only for the pruning a generator cannot express. Extending `KeyStep` to apply through a set came with it — #14 item 7, landed early because `walk` would otherwise emit set-element paths it could not follow. 37 tests, the load-bearing one being that every emitted path re-applies to the value it came from. |
+| 2026-08-16 | **`length` diverged three ways, and nothing had listed it.** Found by running the oracle while checking whether phase 3's items were real. It accepted a string and counted code points (go-cty refuses; Terraform counts grapheme clusters — three implementations, three answers for one emoji); it refused a dynamic that go-cty accepts; and go-cty's own error text names three collection types where its check names four. Fixed, with six new oracle cases. The null-collection case is left returning unknown, to move together with the same deferred strictness change in `contains`. Also recorded a cross-repo follow-up: `pyvider-components` registers ~16 provider functions that shadow pyvider-cty stdlib names with independent plain-Python implementations, and `provider::pyvider::length` disagrees with Terraform's builtin of the same name. That one is not fixable by rerouting through pyvider-cty — the function-call boundary converts to native Python before dispatch — and is blocked on the same UAX#29 decision. |
 | 2026-08-15 | Initial review against go-cty `v1.19.0-1-g0d1eb26`. Filed #5–#14 and tofusoup#2. PR #4 merged (rebase), closing #3. |
 | 2026-08-15 | #5 implemented on `feat/go-cty-parity` (local, unpushed). Filed #15 — collection `validate()` discards element marks — discovered while testing #5. |
 | 2026-08-15 | #15 implemented. Filed #16 — msgpack silently drops marks where go-cty errors — discovered verifying #15. Marks now survive validation at every level; they still do not survive serialization, which is #16. |

@@ -77,7 +77,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                 validated_item = self.element_type.validate(item)
                 validated_elements.append(validated_item)
             except CtyValidationError as e:
-                new_path = CtyPath(steps=[IndexStep(i)] + (e.path.steps if e.path else []))
+                new_path = CtyPath(steps=(IndexStep(i), *(e.path.steps if e.path else ())))
                 raise CtyListValidationError(e.message, value=item, path=new_path, original_exception=e) from e
 
         is_unknown = any(v.is_unknown for v in validated_elements)

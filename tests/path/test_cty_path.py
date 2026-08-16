@@ -179,7 +179,7 @@ class TestKeyStep:
 class TestPath:
     def test_path_init_empty(self) -> None:
         path = CtyPath.empty()
-        assert path.steps == []
+        assert path.steps == ()
 
     def test_path_init_with_steps(self) -> None:
         path = CtyPath([GetAttrStep("user"), IndexStep(0)])

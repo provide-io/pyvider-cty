@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from typing import Any, TypeVar, cast
 
 from attrs import define, field
@@ -109,18 +110,49 @@ class IndexStep(PathStep):
 
 @define(frozen=True)
 class KeyStep(PathStep):
+    """A step into a map by its key, or into a set by the element itself.
+
+    The set case exists because a traversal has to be able to say where it is.
+    go-cty puts it on `IndexStep` and explains the reasoning there: a path
+    "is often used to describe the current location in a nested data structure
+    when working with functions like Walk or Transform, and in that case
+    traversal into a set is represented as an IndexStep whose key is the set
+    element value itself, with the idea that a set element effectively acts as
+    its own key in the set". pyvider splits go-cty's single `IndexStep` into an
+    int-keyed `IndexStep` and this key-keyed one, so the set case lands here.
+    """
+
     key: object = field()
+
+    def _apply_to_set(self, value: CtyValue[Any]) -> CtyValue[Any]:
+        from pyvider.cty.types.collections import CtySet
+
+        element_type = cast(CtySet[Any], value.type).element_type
+        elements = cast("frozenset[CtyValue[Any]]", value.value)
+        if self.key in elements:
+            # The set's marks come along: cty cannot hold marks on set elements,
+            # so an element's sensitivity is recorded on the set as a whole.
+            return cast(CtyValue[Any], self.key).with_marks(value.marks)
+        if isinstance(self.key, CtyValue) and self.key.is_unknown:
+            return CtyValue.unknown(element_type).with_marks(value.marks)
+        if any(element.is_unknown for element in elements):
+            # One of the unknowns could still turn out to be the element asked
+            # for, so "absent" would be asserting more than the data supports.
+            return CtyValue.unknown(element_type).with_marks(value.marks)
+        raise AttributePathError("Set does not contain the requested element")
 
     def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError("Cannot get key from null value")
         if value.is_unknown:
             return CtyValue.unknown(self.apply_type(value.type))
-        from pyvider.cty.types.collections import CtyMap
+        from pyvider.cty.types.collections import CtyMap, CtySet
         from pyvider.cty.types.structural import CtyDynamic
 
         if isinstance(value.type, CtyMap):
             return value.type.get(value, self.key)
+        if isinstance(value.type, CtySet):
+            return self._apply_to_set(value)
         if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
             result = self.apply(value.value)
             return CtyValue(result.type, result.value)
@@ -130,11 +162,13 @@ class KeyStep(PathStep):
 
     def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
         from pyvider.cty.types import CtyString
-        from pyvider.cty.types.collections import CtyMap
+        from pyvider.cty.types.collections import CtyMap, CtySet
         from pyvider.cty.types.structural import CtyDynamic
 
         if isinstance(vtype, CtyDynamic):
             return CtyDynamic()
+        if isinstance(vtype, CtySet):
+            return vtype.element_type
         if not isinstance(vtype, CtyMap):
             raise AttributePathError(f"Cannot get key from non-map type {vtype.__class__.__name__}")
         try:
@@ -144,37 +178,59 @@ class KeyStep(PathStep):
         return vtype.element_type
 
     def __str__(self) -> str:
+        # A set element keys itself, so the raw key is a whole CtyValue whose
+        # repr would swamp the path. Show what it holds instead.
+        if isinstance(self.key, CtyValue):
+            return f"[{self.key.value!r}]"
         return f"[{self.key!r}]"
 
 
-@define
+def _as_steps(steps: Iterable[PathStep]) -> tuple[PathStep, ...]:
+    """Store the steps as a tuple, while still accepting the list callers pass."""
+    return tuple(steps)
+
+
+@define(frozen=True)
 class CtyPath:
-    steps: list[PathStep] = field(factory=list)
+    """A location within a nested value, as the steps taken to reach it.
+
+    Frozen, and so hashable, which is what lets a plain `set[CtyPath]` stand in
+    for go-cty's `PathSet`. go-cty needs a dedicated type there only because Go
+    cannot hash a slice -- it ships crc64 hashing rules to fake it. `steps` is
+    stored as a tuple for the same reason; the converter still accepts a list,
+    so existing construction keeps working.
+    """
+
+    steps: tuple[PathStep, ...] = field(factory=tuple, converter=_as_steps)
 
     @classmethod
     def empty(cls) -> CtyPath:
-        return cls([])
+        return cls(())
 
     @classmethod
     def get_attr(cls, name: str) -> CtyPath:
-        return cls([GetAttrStep(name)])
+        return cls((GetAttrStep(name),))
 
     @classmethod
     def index(cls, index: int) -> CtyPath:
-        return cls([IndexStep(index)])
+        return cls((IndexStep(index),))
 
     @classmethod
     def key(cls, key: object) -> CtyPath:
-        return cls([KeyStep(key)])
+        return cls((KeyStep(key),))
+
+    def with_step(self, step: PathStep) -> CtyPath:
+        """This path with one more step on the end."""
+        return CtyPath((*self.steps, step))
 
     def child(self, name: str) -> CtyPath:
-        return CtyPath([*self.steps, GetAttrStep(name)])
+        return self.with_step(GetAttrStep(name))
 
     def index_step(self, index: int) -> CtyPath:
-        return CtyPath([*self.steps, IndexStep(index)])
+        return self.with_step(IndexStep(index))
 
     def key_step(self, key: object) -> CtyPath:
-        return CtyPath([*self.steps, KeyStep(key)])
+        return self.with_step(KeyStep(key))
 
     def apply_path(self, value: object) -> CtyValue[Any]:
         if not self.steps:
