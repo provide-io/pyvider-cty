@@ -225,5 +225,15 @@ class TestTimeAdd:
         with pytest.raises(CtyFunctionError):
             timeadd(S("2020-01-01T00:00:00Z"), S(duration))
 
+    @pytest.mark.parametrize("duration", ["3000000h", "1000000000000000000000ns"])
+    def test_a_duration_too_large_for_an_int64(self, duration: str) -> None:
+        """time.Duration counts nanoseconds in an int64, so ~292 years is the ceiling.
+
+        Nothing in Python's arithmetic objects to these, so the limit has to be
+        checked rather than inherited. go-cty refuses both.
+        """
+        with pytest.raises(CtyFunctionError):
+            timeadd(S("2020-01-01T00:00:00Z"), S(duration))
+
 
 # 🌊🪢🔚
