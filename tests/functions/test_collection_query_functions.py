@@ -56,8 +56,11 @@ class TestKeysValues:
         assert keys(m).raw_value == ["a", "b"]
 
     def test_keys_object(self) -> None:
+        """A tuple, not a list -- an object's attribute names are fixed by its
+        type, so go-cty gives the result one entry per attribute. Ordering and
+        the type itself are pinned in test_gocty_stdlib_parity.py."""
         o = CtyObject({"a": CtyString(), "b": CtyString()}).validate({"a": "x", "b": "y"})
-        assert keys(o).raw_value == ["a", "b"]
+        assert keys(o).raw_value == ("a", "b")
 
     def test_keys_null_unknown(self) -> None:
         assert keys(CtyValue.null(CtyMap(element_type=CtyString()))).is_unknown
@@ -72,8 +75,10 @@ class TestKeysValues:
         assert values(m).raw_value == ["x", "y"]
 
     def test_values_object(self) -> None:
+        """Also a tuple: an object's attributes have differing types, and a list
+        would have to widen them all to dynamic to hold them."""
         o = CtyObject({"a": CtyString(), "b": CtyString()}).validate({"a": "x", "b": "y"})
-        assert values(o).raw_value == ["x", "y"]
+        assert values(o).raw_value == ("x", "y")
 
     def test_values_null_unknown(self) -> None:
         assert values(CtyValue.null(CtyMap(element_type=CtyString()))).is_unknown
