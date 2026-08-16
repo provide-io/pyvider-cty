@@ -49,11 +49,16 @@ class TestCtyListAdvanced:
         assert "CtyList" in repr_str
 
     def test_validate_with_null_element(self) -> None:
-        """Test that validating a list with a null element raises an error."""
-        from pyvider.cty.exceptions import CtyListValidationError
+        """A null element is a value of the element type, not an error.
 
-        with pytest.raises(CtyListValidationError):
-            self.string_list.validate(["a", None, "c"])
+        This asserted a raise, which recorded what the code did. cty has no
+        notion of a non-nullable type, so go-cty writes a null inside a list and
+        Terraform sends one for `["a", null]`.
+        """
+        validated = self.string_list.validate(["a", None, "c"])
+
+        assert validated.raw_value == ["a", None, "c"]
+        assert validated.value[1].is_null
 
     def test_element_at_on_non_list_value(self) -> None:
         """Test that element_at raises an error for non-list CtyValue."""
