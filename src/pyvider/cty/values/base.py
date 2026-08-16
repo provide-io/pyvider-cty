@@ -58,6 +58,13 @@ class CtyValue(Generic[T]):
     # exists to prevent. See `pyvider.cty.marks._walk_marks`.
     _deep_marks: frozenset[Any] | None = field(default=None, init=False, eq=False, repr=False)
 
+    # Memo for `_strip`, filled on first ask and under the same immutability
+    # rule as `_deep_marks`. Stripping rebuilds the whole subtree, and the
+    # function wrapper strips every marked argument on every call, so without
+    # this a marked 50k-element list cost 40 ms per stdlib call against 0.005 ms
+    # for the same list unmarked.
+    _stripped: Any = field(default=None, init=False, eq=False, repr=False)
+
     def __attrs_post_init__(self) -> None:
         from pyvider.cty.types import CtyDynamic
 

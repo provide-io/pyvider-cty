@@ -23,7 +23,7 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from pyvider.cty import CtyList, CtyString, CtyType
+from pyvider.cty import CtyDynamic, CtyList, CtyString, CtyType
 from pyvider.cty.config.defaults import (
     FRAMES_PER_VALIDATION_LEVEL,
     MAX_VALIDATION_DEPTH,
@@ -33,9 +33,9 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.validation import clear_recursion_context, get_recursion_context
 
 
-def nested(depth: int) -> tuple[CtyType[Any], Any]:
-    """A list nested `depth` deep around a single string."""
-    cty_type: CtyType[Any] = CtyString()
+def nested(depth: int, base: CtyType[Any] | None = None) -> tuple[CtyType[Any], Any]:
+    """A list nested `depth` deep around a single leaf value."""
+    cty_type: CtyType[Any] = base or CtyString()
     raw: Any = "x"
     for _ in range(depth):
         cty_type, raw = CtyList(element_type=cty_type), [raw]
@@ -59,8 +59,11 @@ class TestTheAdvertisedDepthIsReal:
     def test_the_guard_stops_before_python_does(self) -> None:
         """One past the limit must be a controlled unknown, not a RecursionError.
 
-        The margin exists so the failure is the guard's, with its logging and its
-        mark handling, rather than an exception thrown from the caller's stack.
+        The margin exists so the failure is the guard's, with its logging and
+        its mark handling, rather than an exception thrown from the caller's
+        stack -- and it has to hold for a *realistic* caller. Running under
+        pytest already sits deeper than the original 40-frame margin, which is
+        how a too-small margin was found: this test crashed instead of stopping.
         """
         clear_recursion_context()
         limit = get_recursion_context().max_depth_allowed
@@ -90,10 +93,24 @@ class TestTheAdvertisedDepthIsReal:
         assert raised > default_max_validation_depth()
 
     def test_the_import_time_constant_agrees_with_the_live_value(self) -> None:
-        """`pyvider.cty.context` used to export a second, unrelated 500."""
+        """`pyvider.cty.context` used to export a second, unrelated 500.
+
+        The guard permits one level more than the advertised depth. That extra
+        entry is spent by CtyDynamic, whose guarded `validate` delegates to the
+        concrete type's guarded `validate`; without it, dynamic values stopped
+        one level short of the number every other type reached.
+        """
+        from pyvider.cty.config.defaults import DYNAMIC_DELEGATION_RESERVE
         from pyvider.cty.context import MAX_VALIDATION_DEPTH as CONTEXT_CONSTANT
 
         clear_recursion_context()
 
         assert CONTEXT_CONSTANT == MAX_VALIDATION_DEPTH
-        assert get_recursion_context().max_depth_allowed == MAX_VALIDATION_DEPTH
+        assert get_recursion_context().max_depth_allowed == MAX_VALIDATION_DEPTH + DYNAMIC_DELEGATION_RESERVE
+
+    def test_a_dynamic_value_reaches_the_advertised_depth_too(self) -> None:
+        """The reserve exists for exactly this case."""
+        clear_recursion_context()
+        cty_type, raw = nested(MAX_VALIDATION_DEPTH, CtyDynamic())
+
+        assert not cty_type.validate(raw).is_unknown

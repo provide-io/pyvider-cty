@@ -27,12 +27,26 @@ ENABLE_TYPE_INFERENCE_CACHE = True  # Enable caching for type inference performa
 FRAMES_PER_VALIDATION_LEVEL = 2
 
 # Frames left over for whoever called into validation, so that hitting the
-# depth limit is a controlled stop rather than a RecursionError raised in the
-# caller's own stack.
-VALIDATION_STACK_MARGIN = 40
+# depth limit is a controlled stop rather than a RecursionError in the caller's
+# own stack. Sized for a realistic caller rather than a bare one: 40 was not a
+# margin at all, since pytest alone sits deeper than that, and a provider
+# handler under gRPC and asyncio is deeper still. Too small a margin turns the
+# guard's controlled stop into a crash exactly when the caller is a real
+# program rather than a script.
+VALIDATION_STACK_MARGIN = 100
+
+# One level held back for CtyDynamic. Its `validate` is guarded and then
+# delegates to the concrete type's `validate`, which is guarded too, so a
+# dynamic value spends one more guard entry than its nesting depth. Without
+# this reserve the advertised limit held for every type except dynamic, which
+# stopped one level short of it.
+DYNAMIC_DELEGATION_RESERVE = 1
 
 # Sentinel for "derive the limit"; any positive configured value wins instead.
 MAX_VALIDATION_DEPTH_AUTO = 0
+
+
+_DERIVED_DEPTH_CACHE: dict[tuple[int, int], int] = {}
 
 
 def default_max_validation_depth() -> int:
@@ -50,11 +64,23 @@ def default_max_validation_depth() -> int:
     """
     from pyvider.cty.config.runtime import CtyConfig
 
+    # Keyed on the recursion limit so a limit raised after import is picked up,
+    # and cached so that recomputing it per validation session stays free. An
+    # earlier version evaluated this once per thread and never again, so the
+    # ceiling depended on when a thread first validated: raising the limit left
+    # existing threads on the old ceiling while new ones got the new one.
+    limit = sys.getrecursionlimit()
+    cache_key = (limit, VALIDATION_STACK_MARGIN)
+    cached = _DERIVED_DEPTH_CACHE.get(cache_key)
+    if cached is not None:
+        configured = CtyConfig.get_current().max_validation_depth
+        return configured if configured > MAX_VALIDATION_DEPTH_AUTO else cached
+
     configured = CtyConfig.get_current().max_validation_depth
-    if configured > MAX_VALIDATION_DEPTH_AUTO:
-        return configured
-    usable = sys.getrecursionlimit() - VALIDATION_STACK_MARGIN
-    return max(1, usable // FRAMES_PER_VALIDATION_LEVEL)
+    usable = (limit - VALIDATION_STACK_MARGIN) // FRAMES_PER_VALIDATION_LEVEL
+    derived = max(1, usable - DYNAMIC_DELEGATION_RESERVE)
+    _DERIVED_DEPTH_CACHE[cache_key] = derived
+    return configured if configured > MAX_VALIDATION_DEPTH_AUTO else derived
 
 
 # The value at import time, kept for callers that read it directly. The

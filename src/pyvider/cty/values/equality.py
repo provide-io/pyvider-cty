@@ -63,6 +63,21 @@ def _undecided() -> CtyValue[Any]:
 _NESTING_PAYLOADS = (dict, list, tuple, set, frozenset)
 
 
+def _has_dynamic(vtype: Any) -> bool:
+    """Whether `vtype` is, or contains, a dynamic pseudo-type."""
+    from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtyObject, CtySet, CtyTuple
+
+    if isinstance(vtype, CtyDynamic):
+        return True
+    if isinstance(vtype, CtyList | CtySet | CtyMap):
+        return _has_dynamic(vtype.element_type)
+    if isinstance(vtype, CtyTuple):
+        return any(_has_dynamic(t) for t in vtype.element_types)
+    if isinstance(vtype, CtyObject):
+        return any(_has_dynamic(t) for t in vtype.attribute_types.values())
+    return False
+
+
 def _is_leaf(value: CtyValue[Any]) -> bool:
     """Whether `value` has nothing nested inside it."""
     from pyvider.cty.values.base import CtyValue
@@ -167,6 +182,13 @@ def _equals_with_unknown(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if known.is_null:
         # The unknown may yet resolve to null, which would make them equal.
         return _undecided()
+    if _has_dynamic(known.vtype) or _has_dynamic(unknown.vtype):
+        # go-cty checks `other.ty.HasDynamicTypes()` here. An unknown of dynamic
+        # type has no settled type to compare against -- it is what
+        # `cty_from_msgpack` produces for every not-yet-known dynamic attribute
+        # Terraform sends -- so the type test below would rule it unequal on a
+        # difference that has not been decided yet.
+        return _undecided()
     if not known.vtype.equal(unknown.vtype):
         # No null comparison is in play, so mismatched types can never be equal
         # however the unknown resolves.
@@ -234,6 +256,11 @@ def _equals_item(x: Any, y: Any) -> CtyValue[Any]:
 
     if isinstance(x, CtyValue) and isinstance(y, CtyValue):
         return _equals_unmarked(x, y)
+    # An unknown's payload is a marker object, so comparing it raw would answer
+    # definitely about a value that is not known.
+    for side in (x, y):
+        if isinstance(side, CtyValue) and (side.is_unknown or not side.is_wholly_known()):
+            return _undecided()
     x_raw = x.value if isinstance(x, CtyValue) else x
     y_raw = y.value if isinstance(y, CtyValue) else y
     return _bool(bool(x_raw == y_raw))

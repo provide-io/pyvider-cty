@@ -41,6 +41,7 @@ from pyvider.cty.exceptions import (
     DeserializationError,
     SerializationError,
 )
+from pyvider.cty.marks import collect_marks_deep
 from pyvider.cty.parser import parse_tf_type_to_ctytype
 from pyvider.cty.types import (
     CtyDynamic,
@@ -270,8 +271,14 @@ def _reject_marks(value: CtyValue[Any], path: str) -> None:
     Checked at every level rather than only at the root, so the message can say
     *where* the mark is -- go-cty does the same, and for a marked attribute
     buried in a large object the location is most of the useful information.
-    Shallow on purpose: the recursion reaches every nested value anyway, and a
-    deep walk here would re-scan the whole structure at every level.
+    Shallow on purpose: the recursion reaches most nested values anyway, and a
+    deep walk at every level would re-scan the whole structure repeatedly.
+
+    "Most" is not "all", which is why `cty_to_msgpack` also asks once, deeply,
+    before starting. A container is flagged unknown when any element is unknown
+    (`list.py`, `tuple.py`, `set.py`), and an unknown serializes to a marker
+    without the encoder ever descending -- so a list holding a marked unknown
+    reached the wire with its top level unmarked and its mark silently dropped.
     """
     if value.marks:
         raise CtyMarksSerializationError(path=path or None)
@@ -311,6 +318,15 @@ def _msgpack_default_handler(obj: Any) -> Any:
 
 
 def cty_to_msgpack(value: CtyValue[Any], schema: CtyType[Any]) -> bytes:
+    # Asked once, deeply, before encoding. The per-level check inside the
+    # encoder gives the path to the offending value, but it only sees values
+    # the encoder actually descends into -- and it does not descend into an
+    # unknown, which a container becomes as soon as any element is unknown.
+    # Without this a marked unknown inside a list, map or tuple serialized
+    # silently, dropping exactly the flag this refusal exists to protect.
+    if isinstance(value, CtyValue) and collect_marks_deep(value):
+        _reject_marks(value, "")
+        raise CtyMarksSerializationError()
     serializable_data = _convert_value_to_serializable(value, schema)
     result: bytes = msgpack.packb(
         serializable_data,

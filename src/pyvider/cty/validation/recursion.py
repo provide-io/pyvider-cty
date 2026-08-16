@@ -29,10 +29,22 @@ from typing import Any, cast
 from provide.foundation import logger
 
 from pyvider.cty.config.defaults import (
+    DYNAMIC_DELEGATION_RESERVE,
     MAX_OBJECT_REVISITS,
     MAX_VALIDATION_TIME_MS,
     default_max_validation_depth,
 )
+
+
+def _guard_depth_limit() -> int:
+    """What the guard permits, which is the advertised depth plus the reserve.
+
+    A CtyDynamic value spends one guard entry more than its nesting depth,
+    because its own guarded `validate` delegates to the concrete type's guarded
+    `validate`. Handing the guard that one extra entry is what makes the
+    advertised depth reachable for every type rather than all but one.
+    """
+    return default_max_validation_depth() + DYNAMIC_DELEGATION_RESERVE
 
 
 @dataclass
@@ -53,7 +65,10 @@ class RecursionContext:
     # Configuration thresholds
     # Derived per context rather than read from a module constant, so it tracks
     # a recursion limit raised after import. See default_max_validation_depth.
-    max_depth_allowed: int = field(default_factory=default_max_validation_depth)
+    max_depth_allowed: int = field(default_factory=_guard_depth_limit)
+    # The recursion limit `max_depth_allowed` was derived from, so a limit
+    # changed later can be noticed without discarding an explicit override.
+    derived_from_recursion_limit: int = field(default_factory=sys.getrecursionlimit)
     max_object_revisits: int = MAX_OBJECT_REVISITS
     max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
 
@@ -61,7 +76,23 @@ class RecursionContext:
     validation_stopped: bool = False
 
     def reset(self) -> None:
-        """Reset context for new validation session."""
+        """Reset context for new validation session.
+
+        Re-derives the depth ceiling only when the interpreter's recursion
+        limit has actually moved. Contexts are per-thread, so deriving it once
+        at construction left each thread pinned to whatever the limit was when
+        that thread first validated, and a pool gave different workers
+        different ceilings.
+
+        Recomputing unconditionally is wrong in the other direction: a caller
+        that sets `max_depth_allowed` explicitly -- which tests and anything
+        wanting a tighter bound do -- would have it silently discarded by the
+        next top-level validate.
+        """
+        current_limit = sys.getrecursionlimit()
+        if current_limit != self.derived_from_recursion_limit:
+            self.max_depth_allowed = _guard_depth_limit()
+            self.derived_from_recursion_limit = current_limit
         self.validation_graph.clear()
         self.validation_path.clear()
         self.max_depth_reached = 0
@@ -210,6 +241,12 @@ class RecursionDetector:
         }
 
 
+# How many of the innermost frames to inspect when deciding whether a
+# RecursionError came from cty's own descent. The stack that ran out is the
+# one at the bottom; a handful of frames is enough to tell whose it is.
+_OVERFLOW_FRAMES_INSPECTED = 5
+
+
 def _unknown_with_source_marks(value: Any, source_type: Any) -> Any:
     """An unknown of `source_type` carrying every mark found in `value`.
 
@@ -223,6 +260,67 @@ def _unknown_with_source_marks(value: Any, source_type: Any) -> Any:
     unknown = CtyValue.unknown(source_type)
     marks = collect_marks_deep(value)
     return unknown.with_marks(marks) if marks else unknown
+
+
+def _recover_from_overflow(exc: RecursionError, context: RecursionContext, value: Any, owner: Any) -> Any:
+    """Turn a stack overflow inside cty's own descent into a controlled stop.
+
+    Re-raises anything that did not originate here. An overflow raised by
+    something cty called -- capsule code, a custom converter, a self-referential
+    raw structure -- is a broken input, and converting it to an unknown would
+    make it indistinguishable from a legitimately undecided one.
+
+    Ownership is decided from where the overflow happened, not from how deep the
+    validation path is. Depth was the wrong question in both directions: a
+    caller already 700 frames deep overflows cty at a shallow validation depth
+    and had its crash re-raised, while an infinite recursion in user code at a
+    deep validation path was swallowed into an unknown.
+
+    Everything here competes for the small overshoot CPython allows during
+    cleanup, so the order matters: the degraded result is built first, and
+    logging -- which goes through structlog and needs several frames -- is
+    attempted last and allowed to fail.
+    """
+    tb = exc.__traceback__
+    frames = []
+    while tb is not None:
+        frames.append(tb.tb_frame)
+        tb = tb.tb_next
+
+    ours = False
+    for frame in frames[-_OVERFLOW_FRAMES_INSPECTED:]:
+        if frame.f_globals.get("__name__", "").startswith("pyvider.cty"):
+            ours = True
+            break
+    if not ours:
+        raise exc
+
+    context.validation_stopped = True
+
+    try:
+        degraded = _unknown_with_source_marks(value, owner)
+    except RecursionError:
+        # Not enough stack left even to collect the marks. Crashing is the safer
+        # failure: an unknown whose marks could not be gathered would silently
+        # declassify a sensitive value.
+        raise exc from None
+
+    # `contextlib.suppress` would read better but is a context manager, and
+    # entering one costs frames this path does not have.
+    try:  # noqa: SIM105
+        logger.warning(
+            "CTY validation hit Python recursion depth while validating value",
+            value_type=type(value).__name__,
+            recursion_limit=sys.getrecursionlimit(),
+            depth=len(context.validation_path),
+            path=f"{owner.__class__.__name__}.validate(type={type(value).__name__})",
+        )
+    except RecursionError:
+        # Best effort. Losing the diagnostic is preferable to losing the
+        # controlled stop it was describing.
+        pass
+
+    return degraded
 
 
 def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -297,27 +395,8 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
                 return _unknown_with_source_marks(value, self)
 
             return reapply_marks(value, result)
-        except RecursionError:
-            # Only own this error when the descent is deep enough to have caused
-            # it. A RecursionError raised three levels in comes from something
-            # else -- capsule code, a custom equal_fn, a self-referential raw
-            # structure -- and converting that to an unknown would make a broken
-            # input indistinguishable from a legitimately undecided one.
-            #
-            # Taken from the live limit rather than its own constant so the two
-            # cannot drift apart when the limit is derived or configured.
-            if len(context.validation_path) < context.max_depth_allowed // 2:
-                raise
-
-            context.validation_stopped = True
-            logger.warning(
-                "CTY validation hit Python recursion depth while validating value",
-                value_type=type(value).__name__,
-                recursion_limit=sys.getrecursionlimit(),
-                depth=len(context.validation_path),
-                path=f"{self.__class__.__name__}.validate(type={type(value).__name__})",
-            )
-            return _unknown_with_source_marks(value, self)
+        except RecursionError as exc:
+            return _recover_from_overflow(exc, context, value, self)
         finally:
             if context.validation_path:
                 context.validation_path.pop()

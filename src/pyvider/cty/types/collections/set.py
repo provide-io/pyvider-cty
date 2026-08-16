@@ -44,10 +44,15 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 return CtyValue.unknown(self), value
             if value.is_null:
                 return CtyValue.null(self), value
+            # The pass-through requires the value to already satisfy the
+            # invariant this type enforces: no marked elements, marks on the set
+            # itself. A hand-built set with marked elements would otherwise skip
+            # the hoisting below and keep them, which de-duplication then drops.
             if (
                 isinstance(value.type, CtySet)
                 and value.type.equal(self)
                 and isinstance(value.value, frozenset)
+                and not any(collect_marks_deep(e) for e in value.value)
             ):
                 return cast(CtyValue[tuple[T, ...]], value), value
             value = value.value

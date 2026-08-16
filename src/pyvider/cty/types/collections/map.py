@@ -21,6 +21,7 @@ from pyvider.cty.path import CtyPath, KeyStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.frozen import FrozenDict
 
 V = TypeVar("V")
 
@@ -76,7 +77,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
 
         is_unknown = any(v.is_unknown for v in validated_map.values())
-        return CtyValue(vtype=self, value=validated_map, is_unknown=is_unknown)
+        return CtyValue(vtype=self, value=FrozenDict(validated_map), is_unknown=is_unknown)
 
     def get(
         self,

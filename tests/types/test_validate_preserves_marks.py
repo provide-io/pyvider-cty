@@ -168,20 +168,21 @@ class TestDeepMarkMemo:
     it memoizes on the value. Without that memo the cost is linear *per call*:
     a 20k-entry map took 2.7 ms on every `length()`, a 96,000% regression.
 
-    The memo assumes a payload is never mutated in place. That is a contract
-    rather than something the type system enforces -- freezing an attrs class
-    freezes the reference to `value`, not what it points at, and maps and
-    objects hold a plain dict. The same contract already underpins `__eq__`,
-    `__hash__` and `_canonical_sort_key`, all of which read payload contents.
+    So the memo is only taken when the walk proves the whole subtree immutable.
+    Freezing an attrs class freezes the reference to `value`, not what it points
+    at, and maps and objects hold a plain dict.
 
-    An earlier version skipped the memo for any subtree containing a mutable
-    container, making a stale answer impossible by construction. That was
-    measured only on maps of 10-1000 entries, where it looked free. It was not,
-    and the mutation it defended against has no caller anywhere in the
-    workspace. If the defence is wanted back, the way to get it is to make map
-    and object payloads genuinely immutable -- a `dict` subclass that refuses
-    mutation keeps every `isinstance(x, dict)` check working -- rather than to
-    give up the memo.
+    That gate was removed once, for speed, on the stated grounds that nothing in
+    the workspace mutates a payload in place. It was asserted without checking
+    and was false: `pyvider` does it in three places, and the consequence was a
+    value that had become sensitive going on answering "not sensitive" -- and
+    only when something had asked about its marks earlier, so identical code
+    gave different answers depending on what had run before it.
+
+    The cost is real and falls on maps and objects, which re-walk per call. The
+    way to recover it is to make those payloads genuinely immutable -- a `dict`
+    subclass that refuses mutation keeps every `isinstance(x, dict)` check
+    working -- not to memoize something that can change.
     """
 
     def test_the_memo_is_taken(self) -> None:
@@ -192,8 +193,14 @@ class TestDeepMarkMemo:
         assert collect_marks_deep(value) == frozenset()
         assert value._deep_marks == frozenset()
 
-    def test_the_memo_is_taken_for_mapping_payloads_too(self) -> None:
-        """Maps and objects are where skipping the memo hurt most."""
+    def test_a_mapping_payload_is_memoized_because_it_is_frozen(self) -> None:
+        """Map and object payloads are `FrozenDict`, so the memo is safe.
+
+        They were briefly excluded, since a plain dict can change behind a memo.
+        That was correct but cost a full re-walk on every stdlib call -- 12 ms
+        for a 20k-entry map, and every Terraform resource is an object. The
+        invariant is now enforced rather than assumed.
+        """
         m = CtyMap(element_type=CtyString()).validate({"k": "v"})
 
         collect_marks_deep(m)
@@ -223,21 +230,29 @@ class TestDeepMarkMemo:
         assert marked._deep_marks is None
         assert collect_marks_deep(marked) == frozenset({SENSITIVE})
 
-    def test_mutating_a_payload_in_place_is_unsupported(self) -> None:
-        """Documents the contract's edge, so the trade-off stays visible.
+    def test_a_payload_cannot_be_mutated_behind_the_memo(self) -> None:
+        """The stale memo is prevented by making the mutation impossible.
 
-        Nothing in the workspace mutates a payload; if something starts to,
-        this test is where the consequence is written down.
+        With a memo over a mutable payload, a value that had become sensitive
+        went on answering "not sensitive" -- and only when something had asked
+        about its marks earlier, so identical code gave different answers
+        depending on what had run before it. Refusing the mutation turns a
+        silent declassification into a loud error at the point of the mistake.
         """
         m = CtyMap(element_type=CtyString()).validate({"k": "public"})
         assert collect_marks_deep(m) == frozenset()
 
-        m.value["k"] = marked_string()
+        with pytest.raises(TypeError, match="immutable"):
+            m.value["k"] = marked_string()
 
-        assert collect_marks_deep(m) == frozenset(), (
-            "in-place payload mutation is outside the contract; the memo still "
-            "reports the value as it was when first asked"
-        )
+        assert collect_marks_deep(m) == frozenset()
+
+    def test_a_raw_payload_is_still_not_memoized(self) -> None:
+        """A hand-built value can hold a plain dict, which really can change."""
+        value = CtyValue(vtype=CtyMap(element_type=CtyString()), value={"k": marked_string()})
+
+        assert collect_marks_deep(value) == frozenset({SENSITIVE})
+        assert value._deep_marks is None
 
 
 class TestMarksSurviveTheRecursionGuard:

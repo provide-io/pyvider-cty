@@ -69,6 +69,16 @@ def build_fixtures() -> dict[str, Any]:
     big_map = string_map.validate(raw_map)
     big_objs = objs.validate(raw_objs)
 
+    # Marked variants. Their absence is why a 16,000x slowdown on the marked
+    # path survived the benchmark that motivated the optimisation: everything
+    # measured was unmarked, and the marked path is the one providers use for
+    # every sensitive attribute.
+    from pyvider.cty.marks import CtyMark
+
+    sensitive = CtyMark("sensitive")
+    marked_list = big_list.mark(sensitive)
+    marked_map = big_map.mark(sensitive)
+
     return {
         "strings": strings,
         "string_set": string_set,
@@ -83,6 +93,8 @@ def build_fixtures() -> dict[str, Any]:
         "big_list": big_list,
         "big_map": big_map,
         "big_objs": big_objs,
+        "marked_list": marked_list,
+        "marked_map": marked_map,
         "objs_packed": cty_to_msgpack(big_objs, objs),
     }
 
@@ -107,6 +119,10 @@ def scenarios(f: dict[str, Any]) -> dict[str, Any]:
         "fn contains(list[50k], hit)": lambda: F.contains(f["big_list"], s.validate("0")),
         "fn contains(list[50k], miss)": lambda: F.contains(f["big_list"], s.validate("nope")),
         "fn keys(map[20k])": lambda: F.keys(f["big_map"]),
+        # marked: every sensitive attribute a provider handles takes this path
+        "fn length(MARKED list[50k]) x50": lambda: [F.length(f["marked_list"]) for _ in range(50)],
+        "fn length(MARKED map[20k]) x50": lambda: [F.length(f["marked_map"]) for _ in range(50)],
+        "fn contains(MARKED list[50k], hit)": lambda: F.contains(f["marked_list"], CtyString().validate("0")),
         "fn sort(list[50k])": lambda: F.sort(f["big_list"]),
         # wire
         "msgpack encode obj list[10k]": lambda: cty_to_msgpack(f["big_objs"], f["objs"]),
