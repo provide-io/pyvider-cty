@@ -386,9 +386,11 @@ class TestLength:
         m = CtyMap(element_type=CtyString()).validate({"a": "x", "b": "y"})
         assert length(m).raw_value == 2
 
-    def test_length_string(self) -> None:
-        s = CtyString().validate("hello")
-        assert length(s).raw_value == 5
+    def test_length_string_is_refused(self) -> None:
+        """go-cty's `length` is collections-only; counting a string is
+        `strlen`'s job. Pinned properly in test_gocty_stdlib_parity.py."""
+        with pytest.raises(CtyFunctionError):
+            length(CtyString().validate("hello"))
 
     def test_length_null_unknown(self) -> None:
         assert length(CtyValue.null(CtyList(element_type=CtyString()))).is_unknown

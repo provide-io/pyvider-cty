@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""`indent`, `flatten` and `chunklist` must answer what go-cty answers.
+"""`indent`, `flatten`, `chunklist` and `length` must answer what go-cty answers.
 
 Every expectation was taken from running real go-cty through the soup-go
 oracle, not from reading its source. What these pin, all divergent before:
@@ -16,6 +16,8 @@ oracle, not from reading its source. What these pin, all divergent before:
     go-cty passes straight through.
   - `chunklist` erased the element type to dynamic, and rejected a size of 0
     that go-cty accepts as "one chunk holding everything".
+  - `length` accepted a string, which go-cty refuses, and refused a dynamic,
+    which go-cty accepts.
 """
 
 from __future__ import annotations
@@ -28,14 +30,16 @@ import pytest
 from pyvider.cty import (
     CtyDynamic,
     CtyList,
+    CtyMap,
     CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
     CtyValue,
 )
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import chunklist, flatten, indent
+from pyvider.cty.functions import chunklist, flatten, indent, length
 
 STRS = CtyList(element_type=CtyString())
 
@@ -289,6 +293,82 @@ class TestChunklist:
         self, collection: CtyValue[Any], size: CtyValue[Any]
     ) -> None:
         assert chunklist(collection, size).is_unknown
+
+
+class TestLength:
+    """`LengthFunc` counts a *collection*, and only a collection.
+
+    Its parameter is `DynamicPseudoType`, so the type check runs on the
+    resolved type: a dynamic wrapping a list is counted, a dynamic wrapping a
+    string is refused just as a bare string is. go-cty's own error text says
+    "a list, a map or a tuple" and is stale -- the check names sets too, and
+    the oracle counts one.
+    """
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (CtyList(element_type=CtyString()).validate(["a", "b"]), 2),
+            (CtySet(element_type=CtyString()).validate(["a", "b"]), 2),
+            (CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("a", 1)), 2),
+            (CtyMap(element_type=CtyString()).validate({"a": "x"}), 1),
+        ],
+        ids=["list", "set", "tuple", "map"],
+    )
+    def test_every_collection_type_is_counted(self, value: CtyValue[Any], expected: int) -> None:
+        assert length(value).value == expected
+
+    def test_a_string_is_refused(self) -> None:
+        """Was 5. go-cty refuses the call outright -- counting a string is
+        `strlen`'s job, and it counts grapheme clusters rather than the code
+        points this returned."""
+        with pytest.raises(CtyFunctionError, match="collection"):
+            length(s("hello"))
+
+    def test_a_string_of_combining_characters_is_refused_too(self) -> None:
+        """The reason the old answer was not merely differently-spelled: this
+        returned 7, where go-cty's `strlen` would say 1 and Terraform's
+        `length` says 1. It agreed with neither."""
+        with pytest.raises(CtyFunctionError, match="collection"):
+            length(s("👨‍👩‍👧‍👦"))
+
+    def test_a_dynamic_wrapping_a_collection_is_counted(self) -> None:
+        """Was refused. go-cty's parameter is `DynamicPseudoType`, so the
+        wrapper is resolved before the type check rather than failing it."""
+        assert length(CtyDynamic().validate(["a", "b"])).value == 2
+
+    def test_a_dynamic_wrapping_a_string_is_still_refused(self) -> None:
+        """Unwrapping is not a licence to count anything: the resolved type is
+        what the check runs on."""
+        with pytest.raises(CtyFunctionError, match="collection"):
+            length(CtyDynamic().validate("hello"))
+
+    def test_an_unknown_dynamic_is_unknown_rather_than_refused(self) -> None:
+        """Nothing to unwrap and nothing to refuse: go-cty's type check lets
+        `DynamicPseudoType` through precisely so this can stay undecided."""
+        assert length(CtyValue.unknown(CtyDynamic())).is_unknown
+
+    @pytest.mark.parametrize("bad", [CtyNumber().validate(1), CtyValue.unknown(CtyNumber())], ids=str)
+    def test_a_non_collection_is_refused_known_or_not(self, bad: CtyValue[Any]) -> None:
+        """An unknown *number* is still typed, so the check still decides."""
+        with pytest.raises(CtyFunctionError, match="collection"):
+            length(bad)
+
+    def test_an_object_is_refused(self) -> None:
+        """go-cty counts map and tuple but not object."""
+        with pytest.raises(CtyFunctionError, match="collection"):
+            length(CtyObject(attribute_types={"a": CtyString()}).validate({"a": "x"}))
+
+    def test_a_null_collection_stays_unknown(self) -> None:
+        """A deliberate hold-out, not an oversight. go-cty raises "argument
+        must not be null" here. Turning that return into a raise is the same
+        strictness change already deferred for `contains`, and the two should
+        move together rather than one at a time.
+        """
+        assert length(CtyValue.null(CtyList(element_type=CtyString()))).is_unknown
+
+    def test_an_unknown_collection_is_unknown(self) -> None:
+        assert length(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
 
 # 🌊🪢🔚
