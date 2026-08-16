@@ -29,6 +29,7 @@ from pyvider.cty.config.defaults import (
     ERR_REGEX_MIXED_CAPTURE_GROUPS,
     ERR_REGEX_NO_MATCH,
     ERR_REGEXALL_ARGS_MUST_BE_STRINGS,
+    ERR_REGEXREPLACE_ALL_ARGS_MUST_BE_STRINGS,
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
@@ -483,7 +484,7 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
         or not isinstance(pattern.type, CtyString)
         or not isinstance(replacement.type, CtyString)
     ):
-        raise CtyFunctionError("regexreplace: all arguments must be strings")
+        raise CtyFunctionError(ERR_REGEXREPLACE_ALL_ARGS_MUST_BE_STRINGS)
     if (
         string.is_null
         or string.is_unknown

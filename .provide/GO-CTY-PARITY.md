@@ -210,6 +210,9 @@ Found while doing parity work here. Each belongs to another repository and is re
 
 - [ ] **Latent, not yet live: `pyvider`'s `cty_path_to_proto_path` will render a set-element path badly.** `pyvider/src/pyvider/protocols/tfprotov6/handlers/utils.py:385` maps a `KeyStep` to `element_key_string=str(key)`. Phase 3 gave `KeyStep` a second role — a set element keys itself — so that `key` can now be a whole `CtyValue`, and `str()` of one is its repr. Unreachable today: validation only ever builds a `KeyStep` for a map key (`types/collections/map.py:76`), and nothing yet feeds `walk`-produced paths into diagnostics. It becomes reachable the moment something does.
 
+- [ ] **143 of the 197 `ERR_*` constants in `config/defaults.py` are never used** — the function raises a hardcoded copy of the same text instead. `divide` raises `"divide by zero"` while `ERR_DIVIDE_BY_ZERO` sits unused; `upper` builds an f-string while `ERR_UPPER_MUST_BE_STRING` sits unused. Found three times now as a side effect of other work (`length`, `regexreplace` twice), each time by noticing the constant while editing the function.
+  Mechanical, no behavioural change, touches most of the stdlib — which is why it is filed rather than folded into a fix commit, where it would bury the change under noise. Worth one dedicated pass. Note the detection is crude (a name occurring once in `src/` and `tests/` is assumed dead), so verify each before deleting; the ratio is too large to be measurement error but individual entries may not be.
+
 ## Continuous
 
 - [ ] **#13 — docs: `docs/reference/go-cty-comparison.md` parity matrix**
