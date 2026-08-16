@@ -131,10 +131,14 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
 
 Runs parallel with phase 1. Repo: `provide-io/tofusoup` (`/Volumes/data/pyv/tofusoup`).
 
-- [ ] **tofusoup#2a — bump go-cty 1.14.1 → 1.19.x**
-  `src/tofusoup/harness/go/soup-go/go.mod:13`. Cheap. Until this lands, every differential result is measured against a five-version-stale oracle.
-- [ ] **tofusoup#2b — `soup-go cty call` subcommand**
-  Highest-leverage single addition. Covers ~70 existing functions plus everything still to port. Emit `{type, value, marks}` so #5 becomes assertable against Go rather than against a reading of the source.
+- [x] **tofusoup#2a — bump go-cty 1.14.1 → 1.19.x** — *done*
+  `go.mod:13` reads `github.com/zclconf/go-cty v1.19.0`, matching the reference checkout (`v1.19.0-1-g0d1eb26`, one commit ahead of the tag). The "five-version-stale oracle" warning this entry used to carry was itself stale; every differential result on this branch is measured against 1.19.0.
+- [x] **tofusoup#2b — `soup-go cty call` subcommand** — *done, and it exposes 74 of go-cty's 83 stdlib functions*
+- [ ] **tofusoup#2c — the nine stdlib functions `cty call` cannot reach**
+  Enumerated from `var *Func = function.New` across `cty/function/stdlib/`, minus the two that are the same function under a different Go var name (`AbsoluteFunc` is `abs`, `ReverseFunc` is `strrev`):
+  `assertnotnull`, `byteslen`, `bytesslice`, `sethaselement`, `setsymmetricdifference`, `strlen`, `tobool`, `tonumber`, `tostring`.
+  **Seven of those nine are implemented here and therefore have no differential verification at all** — `byteslen`, `bytesslice`, `sethaselement`, `setsymmetricdifference`, `tobool`, `tonumber`, `tostring`. They are checked against a reading of go-cty's source, which is precisely the method that produced the two non-existent gaps recorded at the top of this file. The other two, `strlen` and `assertnotnull`, are not ported yet.
+  The sweep reports 100% of what the harness exposes, so this gap is invisible from inside pyvider-cty. That is the same shape as the `NAME_MAP` bug: coverage measured against the wrong denominator.
 - [ ] **Regenerate pyvider fixtures from the harness**
   `compatibility/tests/fixtures/go-cty/*.msgpack` is 17 checked-in binaries with no Go-side generator in the repo. Cannot be rebuilt when go-cty moves.
 
