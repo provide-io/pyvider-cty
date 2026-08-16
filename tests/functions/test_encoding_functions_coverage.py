@@ -43,10 +43,25 @@ class TestEncodingFunctionsCoverage:
         assert csvdecode(CtyValue.null(CtyString())).is_unknown
         assert csvdecode(CtyValue.unknown(CtyString())).is_unknown
 
-    def test_csvdecode_invalid_csv(self, mocker) -> None:
-        mocker.patch("csv.DictReader", side_effect=Exception("test error"))
-        with pytest.raises(CtyFunctionError):
-            csvdecode(CtyString().validate("a,b\n1,2"))
+    @pytest.mark.parametrize(
+        ("document", "why"),
+        [
+            ("", "missing header line"),
+            ("a,a\n1,2", "duplicate column name"),
+            ("a,b\n1", "wrong number of fields"),
+            ("a,b\n1,2,3", "wrong number of fields"),
+        ],
+    )
+    def test_csvdecode_invalid_csv(self, document: str, why: str) -> None:
+        """The inputs go-cty rejects.
+
+        This used to mock csv.DictReader into raising, which tested that the
+        try/except was present rather than that any real document is rejected --
+        and it went on passing after the implementation stopped using DictReader
+        at all.
+        """
+        with pytest.raises(CtyFunctionError, match=why):
+            csvdecode(CtyString().validate(document))
 
 
 # 🌊🪢🔚

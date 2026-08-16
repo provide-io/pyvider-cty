@@ -40,6 +40,7 @@ from pyvider.cty import (
     CtyList,
     CtyMap,
     CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyValue,
@@ -80,6 +81,15 @@ def mp(v: dict[str, str]) -> Arg:
 
 def se(v: list[str]) -> Arg:
     return CtySet(element_type=CtyString()).validate(v), {"type": ["set", "string"], "value": v}
+
+
+def mn(v: dict[str, Any]) -> Arg:
+    return CtyMap(element_type=CtyNumber()).validate(v), {"type": ["map", "number"], "value": v}
+
+
+def ob(v: dict[str, str]) -> Arg:
+    object_type = CtyObject(attribute_types=dict.fromkeys(v, CtyString()))
+    return object_type.validate(v), {"type": ["object", dict.fromkeys(v, "string")], "value": v}
 
 
 # (function name, arguments). The id is derived, so adding a row is one line.
@@ -164,6 +174,11 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("lookup", [mp({"a": "1"}), st("a"), st("z")]),
     ("lookup", [mp({"a": "1"}), st("q"), st("z")]),
     ("merge", [mp({"a": "1"}), mp({"b": "2"})]),
+    ("merge", [mp({"a": "1"}), mp({"a": "2"})]),
+    ("merge", [ob({"a": "1"}), ob({"b": "2"})]),
+    ("merge", [mp({"a": "1"}), ob({"b": "2"})]),
+    ("merge", [mp({"a": "1"}), mn({"b": 2})]),
+    ("merge", [mp({})]),
     ("reverselist", [ls(["a", "b"])]),
     ("sort", [ls(["b", "a", "C"])]),
     ("slice", [ls(["a", "b", "c"]), nm(1), nm(3)]),
@@ -183,16 +198,32 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("jsonencode", [nm(1)]),
     ("jsondecode", [st('{"a":1}')]),
     ("jsondecode", [st("[1,2]")]),
+    ("jsondecode", [st('[1,"a",true]')]),
+    ("jsondecode", [st('{"a":{"b":[1,{"c":true}]}}')]),
+    ("jsondecode", [st('{"a":null}')]),
+    ("jsondecode", [st("null")]),
+    ("jsondecode", [st("{}")]),
     ("csvdecode", [st("a,b\n1,2")]),
+    ("csvdecode", [st("a,b\n1,2\n3,4")]),
+    ("csvdecode", [st("a,b")]),
+    ("csvdecode", [st("a,a\n1,2")]),
+    ("csvdecode", [st("a,b\n1")]),
     ("timeadd", [st("2020-01-01T00:00:00Z"), st("1h")]),
+    ("timeadd", [st("2020-01-01T00:00:00+02:00"), st("1h30m")]),
+    ("timeadd", [st("2020-01-01T00:00:00Z"), st("-2h5m")]),
+    ("timeadd", [st("2020-01-01T00:00:00Z"), st("not a duration")]),
     ("formatdate", [st("YYYY-MM-DD"), st("2020-01-02T03:04:05Z")]),
+    ("formatdate", [st("EEEE, DD MMMM YYYY hh:mm:ss ZZZZ"), st("2020-01-02T03:04:05Z")]),
+    ("formatdate", [st("HH:mm aa Z"), st("2020-11-22T13:04:05-08:00")]),
+    ("formatdate", [st("'it''s' YYYY"), st("2020-01-02T03:04:05Z")]),
+    ("formatdate", [st("YYY"), st("2020-01-02T03:04:05Z")]),
+    ("formatdate", [st("YYYY"), st("2020-01-02 03:04:05Z")]),
 ]
 
 # Divergences that are real, reproduced, and not yet fixed. Strict xfails, so
 # that fixing one turns its entry red and forces it out of this list. Each entry
 # is a case id and why it is still here.
 KNOWN_DIVERGENCES: dict[str, str] = {
-    "merge({'a': '1'},{'b': '2'})": "returns an object type where go-cty returns map(string)",
     # The numeric precision model differs, and in both directions. go-cty holds
     # a number in a 512-bit big.Float, so a non-terminating quotient comes back
     # with 155 significant digits against Decimal's 28-digit default context --
@@ -202,11 +233,6 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # means reproducing its float64 step, which is a decision, not a fix.
     "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
     "pow(2,0.5)": "numeric precision model: go-cty computes in float64, Decimal is more precise",
-    'jsondecode({"a":1})': "returns dynamic wrapping the value; go-cty returns the concrete object type",
-    "jsondecode([1,2])": "returns dynamic wrapping the value; go-cty returns the concrete tuple type",
-    "csvdecode(a,b\n1,2)": "elements are dynamic-wrapped; go-cty returns list(object(...))",
-    "timeadd(2020-01-01T00:00:00Z,1h)": "renders the offset as +00:00 where go-cty writes Z",
-    "formatdate(YYYY-MM-DD,2020-01-02T03:04:05Z)": "not implemented; returns the format string unchanged",
 }
 
 # go-cty's name for a function, and this package's name for the same function.
@@ -287,7 +313,7 @@ def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
 
 
 @pytest.mark.parametrize(("func", "args"), CASES, ids=[_case_id(func, args) for func, args in CASES])
-def test_the_two_implementations_answer_the_same(func: str, args: list[Arg]) -> None:
+def test_the_two_implementations_answer_the_same(func: str, args: list[Arg], request: Any) -> None:
     """Same call, same result type and value.
 
     Both refusing counts as agreement: the messages differ between a Go and a
@@ -296,7 +322,12 @@ def test_the_two_implementations_answer_the_same(func: str, args: list[Arg]) -> 
     """
     case_id = _case_id(func, args)
     if case_id in KNOWN_DIVERGENCES:
-        pytest.xfail(KNOWN_DIVERGENCES[case_id])
+        # A marker rather than pytest.xfail(), which aborts the test then and
+        # there: the body has to actually run for a fixed divergence to XPASS
+        # and, being strict, fail. Calling pytest.xfail() here would have made
+        # KNOWN_DIVERGENCES exactly the kind of list that rots unnoticed that
+        # it exists to prevent.
+        request.node.add_marker(pytest.mark.xfail(reason=KNOWN_DIVERGENCES[case_id], strict=True))
 
     theirs = _go_result(func, [spec for _value, spec in args])
     ours = _our_result(func, [value for value, _spec in args])

@@ -19,8 +19,15 @@ def S(v):
 
 class TestDateTimeFunctions:
     def test_formatdate(self) -> None:
+        """The format dialect is go-cty's YYYY-MM-DD, not Go's 2006-01-02 layout.
+
+        This assertion used to pass `2006-01-02` and expect a formatted date,
+        which recorded what this package did rather than what go-cty does; under
+        go-cty's rules digits are literal and that string formats as itself.
+        The dialect is covered properly in test_gocty_datetime_parity.py.
+        """
         ts = S("2020-02-03T04:05:06Z")
-        assert formatdate(S("2006-01-02"), ts).value == "2020-02-03"
+        assert formatdate(S("YYYY-MM-DD"), ts).value == "2020-02-03"
 
     def test_timeadd(self) -> None:
         ts = S("2020-01-02T03:04:05Z")

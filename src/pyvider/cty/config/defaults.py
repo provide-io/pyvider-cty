@@ -399,6 +399,9 @@ ERR_TOSTRING_CANNOT_CONVERT = "tostring: cannot convert {type} to number"
 # Codec and JSON error messages
 ERR_CSVDECODE_ARG_MUST_BE_STRING = "csvdecode: argument must be a string, got {type}"
 ERR_CSVDECODE_FAILED = "csvdecode: failed to decode CSV: {error}"
+ERR_CSVDECODE_MISSING_HEADER = "csvdecode: missing header line"
+ERR_CSVDECODE_DUPLICATE_COLUMN = 'csvdecode: duplicate column name "{name}"'
+ERR_CSVDECODE_WRONG_FIELD_COUNT = "csvdecode: CSV parse error on line {line}: wrong number of fields"
 ERR_JSONDECODE_ARG_MUST_BE_STRING = "jsondecode: argument must be a string, got {type}"
 ERR_JSONDECODE_FAILED = "jsondecode: failed to decode JSON: {error}"
 ERR_JSONENCODE_FAILED = "jsonencode: failed to encode value: {error}"
@@ -406,9 +409,13 @@ ERR_JSONENCODE_FAILED = "jsonencode: failed to encode value: {error}"
 # Date and time function error messages
 ERR_FORMATDATE_ARGS_MUST_BE_STRINGS = "formatdate: arguments must be strings"
 ERR_FORMATDATE_INVALID_TIMESTAMP = "formatdate: invalid timestamp format: {error}"
+ERR_FORMATDATE_INVALID_VERB = 'formatdate: invalid date format verb "{verb}"'
+ERR_FORMATDATE_INVALID_VERB_LENGTH = 'formatdate: invalid date format verb "{verb}": {expected}'
+ERR_FORMATDATE_UNTERMINATED_LITERAL = "formatdate: unterminated literal '"
 ERR_TIMEADD_ARGS_MUST_BE_STRINGS = "timeadd: arguments must be strings"
 ERR_TIMEADD_INVALID_FORMAT = "timeadd: invalid argument format: {error}"
 ERR_INVALID_DURATION_FORMAT = "Invalid duration string format: '{duration_str}'"
+ERR_INVALID_RFC3339_TIMESTAMP = "not a valid RFC3339 timestamp: {timestamp!r}"
 
 # Parsing and validation error messages
 ERR_PARSEINT_ARGS_MUST_BE_STRING_NUMBER = "parseint: arguments must be string and number"
