@@ -325,7 +325,9 @@ ERR_LOG_MATH_DOMAIN_ERROR = "log: math domain error: {error}"
 
 # String function error messages
 ERR_CHOMP_MUST_BE_STRING = "chomp: input must be a string, got {type}"
-ERR_INDENT_ARGS_MUST_BE_STRINGS = "indent: arguments must be strings"
+ERR_INDENT_ARGS_MUST_BE_NUMBER_AND_STRING = "indent: arguments must be a number of spaces and a string"
+ERR_INDENT_SPACES_MUST_BE_WHOLE = "indent: spaces must be a whole number within the int64 range, got {value}"
+ERR_INDENT_SPACES_MUST_NOT_BE_NEGATIVE = "indent: spaces must not be negative, got {spaces}"
 ERR_JOIN_ARGS_MUST_BE_STRING_AND_LIST = "join: arguments must be string and list/tuple"
 ERR_LOWER_MUST_BE_STRING = "lower: input must be a string, got {type}"
 ERR_UPPER_MUST_BE_STRING = "upper: input must be a string, got {type}"
@@ -343,15 +345,21 @@ ERR_TRIMSPACE_MUST_BE_STRING = "trimspace: input must be a string, got {type}"
 
 # Regular expression error messages
 ERR_REGEX_ARGS_MUST_BE_STRINGS = "regex: both arguments must be strings"
-ERR_REGEX_INVALID_EXPRESSION = "regex: invalid regular expression: {error}"
 ERR_REGEXALL_ARGS_MUST_BE_STRINGS = "regexall: both arguments must be strings"
-ERR_REGEXALL_INVALID_EXPRESSION = "regexall: invalid regular expression: {error}"
+# Shared by regex and regexall, which decide their result type from the pattern
+# by the same rules. Worded as go-cty words them (cty/function/stdlib/regexp.go).
+ERR_REGEX_INVALID_PATTERN = "{func}: invalid regexp pattern: {error}"
+ERR_REGEX_MIXED_CAPTURE_GROUPS = (
+    "{func}: invalid regexp pattern: cannot mix both named and unnamed capture groups"
+)
+ERR_REGEX_NO_MATCH = "regex: pattern did not match any part of the given string"
 ERR_REGEXREPLACE_ALL_ARGS_MUST_BE_STRINGS = "regexreplace: all arguments must be strings"
 ERR_REGEXREPLACE_INVALID_EXPRESSION = "regexreplace: invalid regular expression: {error}"
 
 # Collection function error messages
 ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER = "chunklist: arguments must be a list/tuple and a number"
-ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE = "chunklist: size must be a positive number"
+ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE = "chunklist: the size argument must be positive"
+ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE = "chunklist: size must be a whole number within the int64 range, got {value}"
 ERR_COALESCE_MIN_ONE_ARG = "coalesce must have at least one argument"
 ERR_COALESCELIST_NO_NON_EMPTY_LIST = "coalescelist: no non-empty list or tuple found in arguments"
 ERR_COMPACT_ARG_MUST_BE_COLLECTION_OF_STRINGS = "compact: argument must be a list, set, or tuple of strings"
@@ -363,8 +371,7 @@ ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE = "distinct: input must be a list, set
 ERR_DISTINCT_ELEMENT_NOT_HASHABLE = "distinct: element of type {type} is not hashable. Error: {error}"
 ERR_ELEMENT_CANNOT_USE_WITH_EMPTY_LIST = "element: cannot use element function with an empty list"
 ERR_ELEMENT_COLLECTION_MUST_BE_LIST_TUPLE = "element: collection must be a list or tuple"
-ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE = "flatten: input must be a list, set, or tuple, got {type}"
-ERR_FLATTEN_ALL_ELEMENTS_MUST_BE_LISTS = "flatten: all elements must be lists, sets, or tuples; found {type}"
+ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE = "flatten: can only flatten lists, sets and tuples, got {type}"
 ERR_HASINDEX_COLLECTION_MUST_BE_LIST_TUPLE_MAP_OBJECT = (
     "hasindex: collection must be a list, tuple, map, or object, got {type}"
 )

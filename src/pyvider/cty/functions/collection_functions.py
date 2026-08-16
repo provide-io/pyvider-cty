@@ -26,11 +26,16 @@ from pyvider.cty import (
     unify,
 )
 from pyvider.cty.config.defaults import (
+    ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER,
+    ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE,
+    ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE,
     ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
     ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
+    ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
 )
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions._args import whole_number
 from pyvider.cty.functions._marks import preserve_marks
 from pyvider.cty.values.markers import RefinedUnknownValue
 
@@ -60,60 +65,78 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyList(element_type=element_type).validate(result_elements)  # type: ignore[no-any-return]
 
 
-def _extract_inner_value(outer_element_val: Any) -> Any:
-    """Extract the inner value from a potentially dynamic outer element."""
-    return (
-        outer_element_val.value
-        if isinstance(outer_element_val, CtyValue) and isinstance(outer_element_val.type, CtyDynamic)
-        else outer_element_val
-    )
+def _unwrap_dynamic(element: CtyValue[Any]) -> CtyValue[Any]:
+    """The value a CtyDynamic wrapper stands in front of."""
+    while isinstance(element.type, CtyDynamic) and isinstance(element.value, CtyValue):
+        element = element.value
+    return element
 
 
-def _validate_collection_element(inner_val: Any) -> None:
-    """Validate that an inner value is a proper collection for flattening."""
-    if not isinstance(inner_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(
-            f"flatten: all elements must be lists, sets, or tuples; found {inner_val.type.ctype}"
-        )
+def _sequence_elements(seq: CtyValue[Any]) -> list[CtyValue[Any]]:
+    """A sequence's elements in a stable order.
+
+    A set has no order of its own, so it is given the same one that was used to
+    de-duplicate it, rather than whatever the frozenset happens to iterate in.
+    """
+    if isinstance(seq.value, frozenset):
+        return sorted(seq.value, key=lambda element: element._canonical_sort_key())
+    return list(cast(tuple[CtyValue[Any], ...], seq.value))
 
 
-def _determine_unified_element_type(
-    final_element_type: CtyType[Any] | None, new_element_type: CtyType[Any]
-) -> CtyType[Any]:
-    """Determine the unified element type for flattened elements."""
-    if final_element_type is None:
-        return new_element_type
-    elif not final_element_type.equal(new_element_type):
-        return CtyDynamic()
-    return final_element_type
+def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
+    """go-cty's `flattener` (cty/function/stdlib/collection.go), iteratively.
+
+    Descends into any element that is itself a sequence, at any depth, and
+    passes everything else through untouched -- including nulls, which are
+    values in their own right, and a null *sequence*, which has no elements to
+    descend into. An unknown sequence makes the whole result unknown, because
+    its length decides the result's length and so the result's type.
+
+    Iterative rather than recursive because the nesting it walks is the value's
+    own, which can be as deep as validation allows.
+    """
+    out: list[CtyValue[Any]] = []
+    known = True
+    stack: list[list[CtyValue[Any]]] = [_sequence_elements(seq)[::-1]]
+    while stack:
+        frame = stack[-1]
+        if not frame:
+            stack.pop()
+            continue
+        element = _unwrap_dynamic(frame.pop())
+        if element.is_unknown and isinstance(element.type, CtyDynamic | CtyList | CtySet | CtyTuple):
+            known = False
+        elif element.is_null or not isinstance(element.type, CtyList | CtySet | CtyTuple):
+            out.append(element)
+        else:
+            stack.append(_sequence_elements(element)[::-1])
+    return out, known
 
 
 @preserve_marks
 def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `FlattenFunc`: a sequence of sequences becomes one tuple.
+
+    A tuple, not a list. Flattening a mixture of element types into a list
+    would have to widen them all to dynamic to fit; a tuple carries each
+    element's own type, which is why go-cty returns one.
+    """
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"flatten: input must be a list, set, or tuple, got {input_val.type.ctype}")
+        error_message = ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=input_val.type.ctype)
+        raise CtyFunctionError(error_message)
     if input_val.is_null or input_val.is_unknown:
         return input_val
 
-    result_elements = []
-    final_element_type: CtyType[Any] | None = None
-
-    for outer_element_val in input_val.value:  # type: ignore[attr-defined]
-        inner_val = _extract_inner_value(outer_element_val)
-        if not isinstance(inner_val, CtyValue) or inner_val.is_null:
-            continue
-        if inner_val.is_unknown:
-            return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-
-        _validate_collection_element(inner_val)
-
-        for inner_element_val in inner_val.value:  # type: ignore[attr-defined]
-            final_element_type = _determine_unified_element_type(final_element_type, inner_element_val.type)
-            result_elements.append(inner_element_val)
-
-    if final_element_type is None:
-        return CtyList(element_type=CtyDynamic()).validate([])  # type: ignore[no-any-return]
-    return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
+    elements, known = _flatten_elements(input_val)
+    if not known:
+        return CtyValue.unknown(CtyDynamic())
+    result_type = CtyTuple(element_types=tuple(element.type for element in elements))
+    # Built directly rather than through `validate`. The result type is derived
+    # from the elements' own types, so validating each element against the type
+    # taken from it is a no-op by construction -- one that cost more than the
+    # flattening itself: 16 ms to 36 ms on a 10k-element input, because a tuple
+    # type has one entry per element and each entry is entered separately.
+    return CtyValue(vtype=result_type, value=tuple(elements))
 
 
 @preserve_marks
@@ -443,20 +466,46 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     return result
 
 
+def _chunk_element_type(collection: CtyValue[Any]) -> CtyType[Any]:
+    """The type the chunks hold.
+
+    go-cty's return type is `cty.List(args[0].Type())` -- the argument's own
+    type, element type included, rather than dynamic. Its parameter is declared
+    as `list(dynamic)`, which its conversion layer refuses a tuple for; this
+    accepts one anyway and unifies the element types, which costs nothing and
+    keeps a working call working.
+    """
+    if isinstance(collection.type, CtyList):
+        return collection.type.element_type
+    return unify(list(cast(CtyTuple, collection.type).element_types))
+
+
+def _chunk_size(size: CtyValue[Any]) -> int:
+    """The chunk size, or a refusal. Zero is legal and means "one chunk"."""
+    count = whole_number(size, ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE)
+    if count < 0:
+        raise CtyFunctionError(ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE)
+    return count
+
+
 @preserve_marks
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `ChunklistFunc`: a sequence split into fixed-size chunks."""
     if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
-        raise CtyFunctionError("chunklist: arguments must be a list/tuple and a number")
+        raise CtyFunctionError(ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER)
     if collection.is_null or collection.is_unknown or size.is_null or size.is_unknown:
-        return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-    chunk_size = int(size.value)  # type: ignore[call-overload]
-    if chunk_size <= 0:
-        raise CtyFunctionError("chunklist: size must be a positive number")
-    chunks = [
-        collection.value[i : i + chunk_size]  # type: ignore[index]
-        for i in range(0, len(collection.value), chunk_size)  # type: ignore[arg-type]
-    ]
-    return CtyList(element_type=CtyList(element_type=CtyDynamic())).validate(chunks)  # type: ignore[no-any-return]
+        return CtyValue.unknown(CtyList(element_type=CtyList(element_type=CtyDynamic())))
+
+    result_type = CtyList(element_type=CtyList(element_type=_chunk_element_type(collection)))
+    chunk_size = _chunk_size(size)
+    elements = list(cast(tuple[CtyValue[Any], ...], collection.value))
+    if not elements:
+        return cast(CtyValue[Any], result_type.validate([]))
+    if chunk_size == 0:
+        # go-cty: "if size is 0, returns a list made of the initial list".
+        return cast(CtyValue[Any], result_type.validate([elements]))
+    chunks = [elements[i : i + chunk_size] for i in range(0, len(elements), chunk_size)]
+    return cast(CtyValue[Any], result_type.validate(chunks))
 
 
 @preserve_marks

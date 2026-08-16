@@ -68,6 +68,7 @@ def build_fixtures() -> dict[str, Any]:
     big_list = strings.validate(raw_list)
     big_map = string_map.validate(raw_map)
     big_objs = objs.validate(raw_objs)
+    big_nested = nested.validate(raw_nested)
 
     # Marked variants. Their absence is why a 16,000x slowdown on the marked
     # path survived the benchmark that motivated the optimisation: everything
@@ -93,6 +94,7 @@ def build_fixtures() -> dict[str, Any]:
         "big_list": big_list,
         "big_map": big_map,
         "big_objs": big_objs,
+        "big_nested": big_nested,
         "marked_list": marked_list,
         "marked_map": marked_map,
         "objs_packed": cty_to_msgpack(big_objs, objs),
@@ -124,6 +126,14 @@ def scenarios(f: dict[str, Any]) -> dict[str, Any]:
         "fn length(MARKED map[20k]) x50": lambda: [F.length(f["marked_map"]) for _ in range(50)],
         "fn contains(MARKED list[50k], hit)": lambda: F.contains(f["marked_list"], CtyString().validate("0")),
         "fn sort(list[50k])": lambda: F.sort(f["big_list"]),
+        # go-cty-shaped results: `flatten` builds a tuple type with one entry
+        # per output element, and `chunklist` one list per chunk. Both allocate
+        # per element where the old implementations allocated one shared type,
+        # so both are here to make that cost visible rather than assumed.
+        # `regexall` is deliberately absent: its arguments changed order, so a
+        # run against an older base would be measuring a different call.
+        "fn flatten(list[list][10k])": lambda: F.flatten(f["big_nested"]),
+        "fn chunklist(list[50k], 100)": lambda: F.chunklist(f["big_list"], CtyNumber().validate(100)),
         # wire
         "msgpack encode obj list[10k]": lambda: cty_to_msgpack(f["big_objs"], f["objs"]),
         "msgpack decode obj list[10k]": lambda: cty_from_msgpack(f["objs_packed"], f["objs"]),

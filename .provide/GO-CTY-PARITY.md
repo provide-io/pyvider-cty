@@ -110,6 +110,22 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   `CtyValue.is_wholly_known()` (go-cty's `Value.IsWhollyKnown`) landed alongside it and remains the right test wherever a value has to be *usable*, as opposed to compared.
 - [ ] **`contains` on a null collection returns unknown; go-cty raises**
   `collection.go:340`, "cannot search a nil list or set". Deliberately not fixed with the above: turning a return into a raise is a behavioural break that belongs with #16's strictness work. Much weaker case than #16 — nothing leaks, the caller just gets a vaguer answer.
+- [x] **Five stdlib functions answered differently from go-cty** — *breaking*
+  Found by the oracle, not by reading: `regex`, `regexall`, `indent`, `flatten`, `chunklist`.
+  - `regex`/`regexall` took `(string, pattern)` where go-cty takes `(pattern, string)`. Both are strings, so a call written for one order type-checks against the other and silently returns a wrong answer.
+  - `regex` returned the whole match and discarded capture groups. go-cty's result type *is* the capture groups (`regexPatternResultType`): no groups → the whole match as a string; unnamed groups → a tuple in order; named groups → an object; mixing the two kinds → refused. A group that did not participate is null, not `""`.
+  - `regex` returned `""` for a non-match where go-cty raises. `""` is a legitimate match for plenty of patterns, so the caller could not tell the two apart.
+  - `indent` took a prefix *string* where go-cty takes a *count of spaces*, and indented the first line, which go-cty deliberately does not — the function exists to line a multi-line value up under something already on the first line. Deliberate divergence kept: a negative count raises cleanly rather than reproducing go-cty's `strings.Repeat` panic.
+  - `flatten` returned a `list` with a unified element type where go-cty returns a `tuple`, which is why go-cty need not widen a mixture to dynamic. It also flattened one level where go-cty recurses, dropped null elements go-cty keeps, and raised on a non-sequence element go-cty passes through.
+  - `chunklist` erased the chunk element type to dynamic (go-cty's return type is `cty.List(args[0].Type())`), and refused a size of 0 that go-cty reads as one chunk holding everything. Kept as a superset: a tuple argument is accepted, with its element types unified, where go-cty's `list(dynamic)` parameter refuses one outright.
+
+  Zero callers anywhere in the workspace, so nothing broke — but all of it is a breaking API change for anyone outside it, and belongs in the same release as the other three.
+  Now covered by `tests/compatibility/test_stdlib_oracle.py`, which compares **answers** rather than wire bytes: 27 calls agreeing on type and value, plus 5 that both implementations must refuse. That file is the thing that was missing. Every one of these divergences survived because every test asserted what the code did, so nothing could notice.
+
+  Three pre-existing gaps surfaced while implementing them. None is fixed here; each is wider than this item.
+  - [ ] **`CtyObject.validate` refuses a null attribute** unless it is declared optional. go-cty has no such rule — nullability is not part of an object type there. This is not hypothetical: a named capture group that does not participate in a match is null, so `regex("(?P<x>a)|(?P<y>z)", "a")` crashed until the result was built directly rather than through `validate`. Declaring the attributes optional is not the fix, because that adds go-cty's third wire element to the type. Changing the rule touches every object validation in the package.
+  - [ ] **Python `re` is not RE2.** `regex(r"(a)\1", "aa")` and `regex("a(?=b)", "ab")` both succeed here and are *refused* by go-cty ("invalid escape sequence in \1", "invalid or unsupported Perl syntax in (?="). Superset, so patterns valid in both behave identically — but a provider whose pattern is only tested here can ship one Terraform then rejects.
+  - [ ] **A `CtySet` cannot hold a list**, because a `CtyValue` with a list payload is unhashable. go-cty has no such limit.
 
 ## Phase 2 — verification infrastructure
 
@@ -198,10 +214,14 @@ Every consumer in the workspace declares an **unbounded** dependency, with no `t
 
 So the moment `0.5.0` is published, all five absorb the change with no signal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
 
-- [ ] **Release notes must name three breaking changes**, not one:
+- [ ] **Release notes must name seven breaking changes**, not one:
   1. Set elements no longer carry marks; read them off the set (go-cty's `SetVal` behaviour).
   2. Serializing a marked value now raises instead of silently dropping the marks.
   3. **Map and object payloads are immutable.** `value.value[k] = x` now raises `TypeError`. Nothing in the workspace does it any more, but external provider code might, and the failure is loud and at the point of the mistake -- which is the intent, since the silent alternative corrupted sensitivity tracking.
+  4. **`regex` and `regexall` take `(pattern, string)`**, not `(string, pattern)`. Lead with this one. Both arguments are strings, so an un-updated call keeps type-checking and quietly returns a wrong answer — the only change here with no failure mode to warn the caller.
+  5. `regex` returns capture groups (a tuple, or an object for named groups) rather than the whole match, and raises on a non-match rather than returning `""`. `regexall`'s elements have the same shape.
+  6. `indent` takes a number of spaces rather than a prefix string, and no longer indents the first line.
+  7. `flatten` returns a tuple rather than a list, recurses through nested sequences, keeps null elements, and passes non-sequence elements through instead of raising. `chunklist` preserves the element type and accepts a size of 0.
 - [ ] **Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**, then bump each one deliberately.
   Not done on this branch on purpose: the consumer repos are all sitting on unrelated branches (`adminy/main`, `chore/use-reusable-release`), and a cap committed to a branch that never merges is worse than no cap, because it looks done. Apply this to whichever branch actually ships.
 - [ ] **Cut `0.4.0` → `0.5.0`**, not a patch. The set change is breaking, and the mark fixes change what `validate` returns for every marked input.
