@@ -48,9 +48,15 @@ class TestDistinct:
 
 
 class TestFlatten:
+    """`flatten` returns a tuple, so `raw_value` is a tuple too.
+
+    See tests/functions/test_gocty_stdlib_parity.py for the go-cty behaviour
+    these follow, and why a list was the wrong return type.
+    """
+
     def test_flatten_list_of_lists(self) -> None:
         lst = CtyList(element_type=CtyList(element_type=CtyString())).validate([["a", "b"], ["c"]])
-        assert flatten(lst).raw_value == ["a", "b", "c"]
+        assert flatten(lst).raw_value == ("a", "b", "c")
 
     def test_flatten_tuple_of_lists(self) -> None:
         t = CtyTuple(
@@ -59,13 +65,14 @@ class TestFlatten:
                 CtyList(element_type=CtyString()),
             )
         ).validate([["a", "b"], ["c"]])
-        assert flatten(t).raw_value == ["a", "b", "c"]
+        assert flatten(t).raw_value == ("a", "b", "c")
 
     def test_flatten_with_null_unknown(self) -> None:
         assert flatten(CtyValue.null(CtyList(element_type=CtyDynamic()))).is_null
         assert flatten(CtyValue.unknown(CtyList(element_type=CtyDynamic()))).is_unknown
 
     def test_flatten_with_null_element(self) -> None:
+        """A null is a value, and go-cty keeps it. Dropping it shortened the result."""
         lst = CtyList(element_type=CtyDynamic()).validate(
             [
                 CtyList(element_type=CtyString()).validate(["a"]),
@@ -73,7 +80,7 @@ class TestFlatten:
                 CtyList(element_type=CtyString()).validate(["b"]),
             ]
         )
-        assert flatten(lst).raw_value == ["a", "b"]
+        assert flatten(lst).raw_value == ("a", None, "b")
 
     def test_flatten_with_unknown_element(self) -> None:
         lst = CtyList(element_type=CtyDynamic()).validate(
@@ -85,14 +92,14 @@ class TestFlatten:
         assert flatten(lst).is_unknown
 
     def test_flatten_with_non_list_element(self) -> None:
+        """go-cty passes a non-sequence element through instead of refusing."""
         lst = CtyList(element_type=CtyDynamic()).validate(
             [
                 CtyList(element_type=CtyString()).validate(["a"]),
                 CtyString().validate("b"),
             ]
         )
-        with pytest.raises(CtyFunctionError, match="all elements must be lists, sets, or tuples"):
-            flatten(lst)
+        assert flatten(lst).raw_value == ("a", "b")
 
     def test_flatten_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -100,9 +107,10 @@ class TestFlatten:
 
     def test_flatten_empty(self) -> None:
         lst = CtyList(element_type=CtyList(element_type=CtyString())).validate([])
-        assert flatten(lst).raw_value == []
+        assert flatten(lst).raw_value == ()
 
     def test_flatten_mixed_types(self) -> None:
+        """A tuple carries each element's own type, so nothing widens to dynamic."""
         lst = CtyList(element_type=CtyDynamic()).validate(
             [
                 CtyList(element_type=CtyString()).validate(["a"]),
@@ -110,9 +118,8 @@ class TestFlatten:
             ]
         )
         result = flatten(lst)
-        assert isinstance(result.type, CtyList)
-        assert isinstance(result.type.element_type, CtyDynamic)
-        assert result.raw_value == ["a", 1]
+        assert result.type.equal(CtyTuple(element_types=(CtyString(), CtyNumber())))
+        assert result.raw_value == ("a", 1)
 
 
 class TestReverse:

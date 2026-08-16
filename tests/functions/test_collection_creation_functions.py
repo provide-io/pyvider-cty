@@ -171,9 +171,10 @@ class TestChunklist:
             )
 
     def test_chunklist_invalid_size(self) -> None:
+        """Zero is legal -- go-cty reads it as one chunk holding everything."""
         lst = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
-        with pytest.raises(CtyFunctionError, match="size must be a positive number"):
-            chunklist(lst, CtyNumber().validate(0))
+        with pytest.raises(CtyFunctionError, match="must be positive"):
+            chunklist(lst, CtyNumber().validate(-1))
 
 
 class TestLookup:

@@ -124,39 +124,13 @@ class TestStringAdvancedFunctions:
             trimspace(CtyNumber().validate(123))
 
     def test_indent(self) -> None:
-        prefix = CtyString().validate("  ")
-        text = CtyString().validate("hello\nworld")
-        result = indent(prefix, text)
-        assert result.value == "  hello\n  world"
+        """`indent` takes a number of spaces and leaves the first line alone.
 
-    def test_indent_empty_string(self) -> None:
-        prefix = CtyString().validate("  ")
-        text = CtyString().validate("")
-        result = indent(prefix, text)
-        assert result.value == "  "
-
-    def test_indent_no_newlines(self) -> None:
-        prefix = CtyString().validate(">> ")
-        text = CtyString().validate("single line")
-        result = indent(prefix, text)
-        assert result.value == ">> single line"
-
-    def test_indent_null_unknown(self) -> None:
-        prefix = CtyString().validate("  ")
-        text = CtyString().validate("hello")
-        assert indent(CtyValue.null(CtyString()), text).is_unknown
-        assert indent(prefix, CtyValue.null(CtyString())).is_unknown
-        assert indent(CtyValue.unknown(CtyString()), text).is_unknown
-        assert indent(prefix, CtyValue.unknown(CtyString())).is_unknown
-
-    def test_indent_wrong_type(self) -> None:
-        from pyvider.cty.functions.string_functions import indent
-        from pyvider.cty.types import CtyNumber
-
-        with pytest.raises(CtyFunctionError):
-            indent(CtyNumber().validate(123), CtyString().validate("hello"))
-        with pytest.raises(CtyFunctionError):
-            indent(CtyString().validate("  "), CtyNumber().validate(123))
+        The rest of its behaviour, and why it changed, is in
+        tests/functions/test_gocty_stdlib_parity.py.
+        """
+        result = indent(CtyNumber().validate(2), CtyString().validate("hello\nworld"))
+        assert result.value == "hello\n  world"
 
     def test_substr(self) -> None:
         s = CtyString().validate("hello world")
@@ -311,74 +285,14 @@ class TestStringAdvancedFunctions:
             trimsuffix(CtyString().validate("a"), CtyNumber().validate(123))
 
     def test_regex(self) -> None:
-        s = CtyString().validate("hello world")
-        pattern = CtyString().validate(r"\w+")
-        result = regex(s, pattern)
-        assert result.value == "hello"
-
-    def test_regex_no_match(self) -> None:
-        s = CtyString().validate("hello world")
-        pattern = CtyString().validate(r"\d+")
-        result = regex(s, pattern)
-        assert result.value == ""
-
-    def test_regex_invalid_pattern(self) -> None:
-        s = CtyString().validate("hello")
-        pattern = CtyString().validate("[")
-        with pytest.raises(CtyFunctionError):
-            regex(s, pattern)
-
-    def test_regex_null_unknown(self) -> None:
-        s = CtyString().validate("hello")
-        pattern = CtyString().validate(".")
-        assert regex(CtyValue.null(CtyString()), pattern).is_unknown
-        assert regex(s, CtyValue.null(CtyString())).is_unknown
-        assert regex(CtyValue.unknown(CtyString()), pattern).is_unknown
-        assert regex(s, CtyValue.unknown(CtyString())).is_unknown
-
-    def test_regex_wrong_type(self) -> None:
-        from pyvider.cty.functions.string_functions import regex
-        from pyvider.cty.types import CtyNumber
-
-        with pytest.raises(CtyFunctionError):
-            regex(CtyNumber().validate(123), CtyString().validate("."))
-        with pytest.raises(CtyFunctionError):
-            regex(CtyString().validate("a"), CtyNumber().validate(123))
+        """Pattern first, then the string. The result shape follows the capture
+        groups; that, and everything else, is pinned against real go-cty in
+        tests/functions/test_gocty_regexp_parity.py."""
+        assert regex(CtyString().validate(r"\w+"), CtyString().validate("hello world")).value == "hello"
 
     def test_regexall(self) -> None:
-        s = CtyString().validate("hello world")
-        pattern = CtyString().validate(r"\w+")
-        result = regexall(s, pattern)
+        result = regexall(CtyString().validate(r"\w+"), CtyString().validate("hello world"))
         assert [v.value for v in result.value] == ["hello", "world"]
-
-    def test_regexall_no_match(self) -> None:
-        s = CtyString().validate("hello world")
-        pattern = CtyString().validate(r"\d+")
-        result = regexall(s, pattern)
-        assert [v.value for v in result.value] == []
-
-    def test_regexall_invalid_pattern(self) -> None:
-        s = CtyString().validate("hello")
-        pattern = CtyString().validate("[")
-        with pytest.raises(CtyFunctionError):
-            regexall(s, pattern)
-
-    def test_regexall_null_unknown(self) -> None:
-        s = CtyString().validate("hello")
-        pattern = CtyString().validate(".")
-        assert regexall(CtyValue.null(CtyString()), pattern).is_unknown
-        assert regexall(s, CtyValue.null(CtyString())).is_unknown
-        assert regexall(CtyValue.unknown(CtyString()), pattern).is_unknown
-        assert regexall(s, CtyValue.unknown(CtyString())).is_unknown
-
-    def test_regexall_wrong_type(self) -> None:
-        from pyvider.cty.functions.string_functions import regexall
-        from pyvider.cty.types import CtyNumber
-
-        with pytest.raises(CtyFunctionError):
-            regexall(CtyNumber().validate(123), CtyString().validate("."))
-        with pytest.raises(CtyFunctionError):
-            regexall(CtyString().validate("a"), CtyNumber().validate(123))
 
     def test_regexreplace(self) -> None:
         from pyvider.cty.functions import regexreplace
