@@ -103,6 +103,19 @@ class TestLogicalOperatorsReject:
     def test_a_dynamic_wrapper_is_seen_through(self) -> None:
         assert not_fn(CtyDynamic().validate(True)).value is False
 
+    def test_an_unsettled_dynamic_is_unknown_rather_than_unwrapped(self) -> None:
+        """The unwrap loop needs both of its conditions.
+
+        A mutation run turned its `and` into an `or` and nothing failed, because
+        no test supplied a value that satisfies one condition and not the other.
+        This is that value: its type is dynamic, but there is no inner CtyValue
+        to descend into, so the loop must not run.
+        """
+        result = not_fn(CtyValue.unknown(CtyDynamic()))
+
+        assert result.is_unknown
+        assert result.type == CtyBool()
+
 
 class TestLogicalOperatorMarks:
     def test_marks_propagate(self) -> None:

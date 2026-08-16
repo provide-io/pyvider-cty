@@ -225,6 +225,18 @@ class TestTimeAdd:
         with pytest.raises(CtyFunctionError):
             timeadd(S("2020-01-01T00:00:00Z"), S(duration))
 
+    def test_the_int64_ceiling_is_inclusive(self) -> None:
+        """Exactly maxint64 nanoseconds is accepted; one more is not.
+
+        Both sides agree on the boundary itself, which is the only place a `>`
+        and a `>=` differ -- and a mutation run showed nothing here noticed the
+        difference.
+        """
+        assert timeadd(S("2020-01-01T00:00:00Z"), S("9223372036854775807ns")).value == "2312-04-11T23:47:16Z"
+
+        with pytest.raises(CtyFunctionError):
+            timeadd(S("2020-01-01T00:00:00Z"), S("9223372036854775808ns"))
+
     @pytest.mark.parametrize("duration", ["3000000h", "1000000000000000000000ns"])
     def test_a_duration_too_large_for_an_int64(self, duration: str) -> None:
         """time.Duration counts nanoseconds in an int64, so ~292 years is the ceiling.
