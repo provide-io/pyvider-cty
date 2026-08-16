@@ -24,6 +24,10 @@ lint: ## Run linting
 format: ## Format code
 	uv run ruff format src/ tests/ scripts/
 
+.PHONY: compat
+compat: ## Cross-language wire checks against real go-cty (needs the soup-go harness)
+	uv run python scripts/compat/run_compat.py
+
 .PHONY: perf-report
 perf-report: ## Compare hot-path performance against a baseline ref (report only, never fails)
 	uv run python scripts/perf/perf_report.py --base $(or $(BASE),gh-origin/main)

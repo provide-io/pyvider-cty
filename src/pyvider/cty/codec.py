@@ -225,44 +225,35 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
         else:
             return str(int_val)
     else:
-        # For non-integers, check if converting to float would lose precision
-        # This matches go-cty's behavior of preserving exact decimal values
+        # go-cty emits a float64 only when the conversion is *exact*
+        # (`cty/msgpack/marshal.go:92`); otherwise it writes the decimal text.
+        #
+        # The exactness test has to compare against the float's true binary
+        # value, `Decimal(float_val)`, not against `str(float_val)`. The latter
+        # is the shortest repr that round-trips, so `str(0.1)` is "0.1" and the
+        # comparison said "no precision lost" for a float that is really
+        # 0.1000000000000000055511151231257827. We then wrote that float to the
+        # wire where go-cty writes the string "0.1", so the two implementations
+        # disagreed byte for byte, and Terraform read back a different number
+        # than was written -- a perpetual diff on every non-integer attribute.
         float_val = float(decimal_val)
+        try:
+            is_exact = Decimal(float_val) == decimal_val
+        except (ValueError, OverflowError, ArithmeticError):
+            is_exact = False
 
-        # Strategy: Detect if the Decimal has float artifacts (from being created via Decimal(float))
-        # vs being created from a clean source like Decimal("123.456789012345678901234567890").
-        #
-        # Float artifacts look like very long decimal expansions (e.g., ...28421709430404...)
-        # that come from binary floating point representation.
-        #
-        # Key insight: If the decimal's string representation has many digits (>16 significant figures
-        # after decimal point) and differs from the float's string representation, it's likely artifacts.
-
-        original_str = str(decimal_val)
-        float_str = str(float_val)
-
-        # Check if the original string has float artifacts (very long precision)
-        # Float64 has ~15-17 significant decimal digits. If we see more than 20 digits after
-        # the decimal point, it's likely float representation artifacts.
-        if "." in original_str:
-            decimal_part = original_str.split(".")[1]
-            if len(decimal_part) > 20:
-                # This looks like float artifacts - just use the float
-                return float_val
-
-        # Convert float back to Decimal via its string representation to check precision loss
-        roundtrip_decimal = Decimal(float_str)
-
-        # If round-trip through float preserves the value, no precision loss
-        if decimal_val == roundtrip_decimal:
+        if is_exact:
             return float_val
 
-        # If the string representations are equal, use float (they're equivalent)
-        if original_str == float_str:
-            return float_val
+        return _decimal_text(decimal_val)
 
-        # Otherwise, preserve as string to maintain precision beyond float64
-        return str(decimal_val)
+
+def _decimal_text(decimal_val: Decimal) -> str:
+    """Plain decimal notation without an exponent -- go-cty's `Text('f', -1)`."""
+    text = format(decimal_val, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text or "0"
 
 
 def _reject_marks(value: CtyValue[Any], path: str) -> None:

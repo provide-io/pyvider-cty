@@ -30,6 +30,7 @@ it with:
 
 from __future__ import annotations
 
+from decimal import Decimal
 import json
 import os
 from pathlib import Path
@@ -63,6 +64,19 @@ def _soup_go() -> str:
             "tofusoup/src/tofusoup/harness/go/soup-go, or set SOUP_GO_BIN."
         )
     return candidate
+
+
+def _as_json_text(native: Any) -> bytes:
+    """The JSON go-cty is handed. A Decimal is written as its own digits so the
+    harness parses the same number we encoded, rather than a float rounding."""
+    if isinstance(native, Decimal):
+        return format(native, "f").encode()
+    return json.dumps(native).encode()
+
+
+def _same_number(left: Any, right: Any) -> bool:
+    """Numeric comparison that does not route through float."""
+    return Decimal(str(left)) == Decimal(str(right))
 
 
 def _go_convert(payload: bytes, type_spec: Any, *, to_json: bool) -> bytes:
@@ -104,6 +118,21 @@ CASES: list[tuple[str, CtyType[Any], Any, Any]] = [
     ("number int", CtyNumber(), "number", 42),
     ("number negative", CtyNumber(), "number", -17),
     ("number large", CtyNumber(), "number", 9007199254740993),
+    # Fractional numbers are where the two encoders parted company. go-cty
+    # emits a float64 only when the conversion is exact, and the decimal text
+    # otherwise; writing the float regardless meant Terraform read back a
+    # different number than was written, on every non-integer attribute.
+    # Given as Decimal, not float. `0.1` the Python float is the binary
+    # approximation 0.1000000000000000055511151231257827, which genuinely *is*
+    # exactly float64-representable, so encoding it as a float is right. go-cty
+    # is handed the decimal literal `0.1`, a different number. Comparing the two
+    # only means something if both sides start from the same value.
+    ("number exact half", CtyNumber(), "number", Decimal("1.5")),
+    ("number exact quarter", CtyNumber(), "number", Decimal("2.25")),
+    ("number inexact tenth", CtyNumber(), "number", Decimal("0.1")),
+    ("number inexact third", CtyNumber(), "number", Decimal("0.3")),
+    ("number inexact negative", CtyNumber(), "number", Decimal("-0.0001")),
+    ("number pi-ish", CtyNumber(), "number", Decimal("3.14159")),
     ("list of strings", CtyList(element_type=CtyString()), ["list", "string"], ["a", "b", "c"]),
     ("list empty", CtyList(element_type=CtyString()), ["list", "string"], []),
     ("map of strings", CtyMap(element_type=CtyString()), ["map", "string"], {"b": "2", "a": "1"}),
@@ -125,7 +154,12 @@ def test_go_cty_reads_what_pyvider_writes(
 
     as_json = _go_convert(packed, type_spec, to_json=True)
 
-    assert json.loads(as_json) == native, f"{label}: go-cty decoded our msgpack differently"
+    if isinstance(native, Decimal):
+        assert _same_number(as_json.decode().strip(), native), (
+            f"{label}: go-cty decoded our msgpack differently"
+        )
+    else:
+        assert json.loads(as_json) == native, f"{label}: go-cty decoded our msgpack differently"
 
 
 @pytest.mark.parametrize(("label", "cty_type", "type_spec", "native"), CASES, ids=[c[0] for c in CASES])
@@ -133,14 +167,17 @@ def test_pyvider_reads_what_go_cty_writes(
     label: str, cty_type: CtyType[Any], type_spec: Any, native: Any
 ) -> None:
     """And the other direction: Terraform's bytes on ours."""
-    packed = _go_convert(json.dumps(native).encode(), type_spec, to_json=False)
+    packed = _go_convert(_as_json_text(native), type_spec, to_json=False)
 
     decoded = cty_from_msgpack(packed, cty_type)
 
     assert decoded.type.equal(cty_type)
     assert not decoded.is_null
     assert not decoded.is_unknown
-    assert decoded.raw_value == native, f"{label}: we decoded go-cty's msgpack differently"
+    if isinstance(native, Decimal):
+        assert _same_number(decoded.raw_value, native), f"{label}: we decoded go-cty's msgpack differently"
+    else:
+        assert decoded.raw_value == native, f"{label}: we decoded go-cty's msgpack differently"
 
 
 @pytest.mark.parametrize(("label", "cty_type", "type_spec", "native"), CASES, ids=[c[0] for c in CASES])
@@ -153,6 +190,6 @@ def test_both_implementations_emit_the_same_bytes(
     differ on the wire still show up as a spurious diff.
     """
     ours = cty_to_msgpack(cty_type.validate(native), cty_type)
-    theirs = _go_convert(json.dumps(native).encode(), type_spec, to_json=False)
+    theirs = _go_convert(_as_json_text(native), type_spec, to_json=False)
 
     assert ours == theirs, f"{label}: ours={ours!r} go-cty={theirs!r}"

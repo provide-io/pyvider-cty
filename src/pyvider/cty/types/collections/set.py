@@ -124,7 +124,16 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
     def equal(self, other: CtyType[Any]) -> bool:
         if not isinstance(other, CtySet):
             return False
-        return self.element_type.equal(other.element_type)
+        # The chain of same-kind containers is walked, not recursed. Type
+        # structure nests as deeply as values do, and `equal` is among the most
+        # called methods here -- a recursive descent overflowed the stack for a
+        # sufficiently nested type, out of anything that compared two of them.
+        # Only the linear part is flattened; branching shapes (tuple, object)
+        # still recurse, bounded by the schema's own breadth.
+        left, right = self.element_type, other.element_type
+        while isinstance(left, CtySet) and isinstance(right, CtySet):
+            left, right = left.element_type, right.element_type
+        return left.equal(right)
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
