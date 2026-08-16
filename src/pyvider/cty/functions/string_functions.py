@@ -404,52 +404,67 @@ def _extract_reference(template: str, start: int) -> tuple[str | None, int]:
     return name, index
 
 
-def _expand_go_template(match: re.Match[str], template: str) -> str:
-    """`template` with its group references filled in, by Go's rules.
+# A parsed replacement template: literal text, a numbered group, or a named one.
+# Parsed once per call rather than once per match -- re-parsing per match made a
+# 40k-match replacement 6.6x slower than `re.sub`, and the template does not
+# change between matches.
+_LITERAL, _NUMBERED, _NAMED = 0, 1, 2
+GoTemplate = list[tuple[int, Any]]
 
-    Go and Python expand opposite syntaxes: Go reads `$1` and `${name}` and
-    passes `\\1` through as literal text, while Python's `re.sub` does exactly
-    the reverse. Handing a Go-style template to `re.sub` therefore does not
-    merely format differently -- it emits the placeholder verbatim and drops
-    the substitution, and a Python-style one silently substitutes where go-cty
-    would not. Expanding here, with a function replacement, keeps `re.sub` from
-    interpreting the template at all.
 
-    Three details that a shorter version gets wrong, all pinned by tests:
-    a name is the longest run of letters, digits and underscores, so `$1W` is
-    the group named "1W" rather than group 1 followed by a "W"; a reference to
-    a group that does not exist or did not participate expands to nothing
-    rather than erroring or staying literal; and a malformed reference emits a
-    bare `$` and carries on from the next character.
+def _parse_go_template(template: str) -> GoTemplate:
+    """`template` split into literal text and the group references between it.
+
+    Go's rules, three of which a shorter version gets wrong and each of which
+    is pinned by a test: a name is the longest run of letters, digits and
+    underscores, so `$1W` is the group named "1W" rather than group 1 followed
+    by a "W" -- which is why go-cty's own test writes `${1}W`; `$$` is one
+    literal `$`; and a malformed reference emits a bare `$` and carries on from
+    the next character.
     """
-    out: list[str] = []
+    segments: GoTemplate = []
     index = 0
     while index < len(template):
         dollar = template.find("$", index)
         if dollar < 0:
-            out.append(template[index:])
+            segments.append((_LITERAL, template[index:]))
             break
-        out.append(template[index:dollar])
+        if dollar > index:
+            segments.append((_LITERAL, template[index:dollar]))
         index = dollar + 1
 
         if index < len(template) and template[index] == "$":
-            out.append("$")
+            segments.append((_LITERAL, "$"))
             index += 1
             continue
 
         name, resumed = _extract_reference(template, index)
         if name is None:
-            out.append("$")
+            segments.append((_LITERAL, "$"))
             index = resumed
             continue
         index = resumed
 
         number = _group_number(name)
-        captured = (
-            (match.group(number) if number <= match.re.groups else None)
-            if number is not None
-            else match.groupdict().get(name)
-        )
+        segments.append((_NUMBERED, number) if number is not None else (_NAMED, name))
+    return segments
+
+
+def _expand_go_template(match: re.Match[str], segments: GoTemplate) -> str:
+    """A match rendered through an already-parsed template.
+
+    A reference to a group that does not exist, or that did not participate in
+    this match, contributes nothing -- Go neither errors nor leaves it literal.
+    """
+    out: list[str] = []
+    for kind, value in segments:
+        if kind is _LITERAL:
+            out.append(value)
+            continue
+        if kind is _NUMBERED:
+            captured = match.group(value) if value <= match.re.groups else None
+        else:
+            captured = match.groupdict().get(value)
         if captured is not None:
             out.append(captured)
     return "".join(out)
@@ -481,8 +496,24 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
 
     compiled = _compile_pattern("regexreplace", cast(str, pattern.value))
     template = cast(str, replacement.value)
-    result = compiled.sub(lambda match: _expand_go_template(match, template), cast(str, string.value))
-    return CtyString().validate(result)
+    subject = cast(str, string.value)
+
+    if "$" not in template and "\\" not in template:
+        # Inert in both dialects -- Go expands only `$`, Python only `\`. Handing
+        # it straight to `sub` keeps the whole replacement at C speed, which is
+        # the common "replace with a fixed string" case.
+        return CtyString().validate(compiled.sub(template, subject))
+
+    # A per-match Python callback, which costs about 2.7x `re.sub` on a
+    # 40k-match subject. The faster shape is to rewrite the Go template into
+    # Python's own `\g<1>` dialect and let the C expander run it -- deliberately
+    # not done. It needs a second escaping layer to keep literal text literal in
+    # a dialect where backslash is significant, plus resolving away references
+    # to groups that do not exist, since Python raises where Go expands nothing.
+    # That is a lot of new surface on the function that just shipped a silent
+    # wrong answer, to save 8 ms on an input size no provider produces.
+    segments = _parse_go_template(template)
+    return CtyString().validate(compiled.sub(lambda match: _expand_go_template(match, segments), subject))
 
 
 # 🌊🪢🔚
