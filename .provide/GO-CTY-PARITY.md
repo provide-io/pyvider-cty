@@ -25,6 +25,35 @@ Living document. Updated as work lands — do not let it drift.
 | 7 | Architecture | ⬜ Not started |
 | — | Docs (#13) | 🔄 Continuous |
 
+Phase 2 and 5 are partly done: 2's oracle exists but reaches 74 of go-cty's 83
+stdlib functions, and 5's ports landed except `format`/`formatlist`. Both are
+itemised below.
+
+---
+
+## The worklist
+
+Ordered by what it costs to be wrong about, not by phase. Phases say what
+belongs together; this says what to do next. Every entry links to its detail
+further down.
+
+| # | Item | Why it is here | Where |
+|---|---|---|---|
+| 1 | **`CtyList` refuses a null element, on read** | A live wire bug in the direction Terraform drives: a provider handed `["a", null]` raises instead of decoding. Set, tuple and map already accept nulls — list is the odd one out. | Phase 1 |
+| 2 | **tofusoup#2c — 7 implemented functions with no oracle** | Not a bug, a blind spot. Those seven are verified against a *reading* of go-cty's source, which is the method this file opens by warning about. Cheap: extend `cty call`'s dispatch table. | Phase 2 |
+| 3 | **Function framework argument policy** | 146 hand-rolled null/unknown checks, no two alike, and the root cause of most divergences found so far. Settles decision 4 in one move instead of ~70 edits. Breaking — before 0.5.0 or pay twice. | Decision 1 |
+| 4 | **`unify` has no primitive widening rule** | 4 strict xfails across two functions, and `concat` only surfaced because someone went looking. Expect more. | Phase 5 |
+| 5 | **Numeric precision model** | Needs a decision, not an implementation. Measured: raising the Decimal context is free for ordinary numbers — the cost is in operand width, not context. | Decision 3 |
+| 6 | **`format` / `formatlist`** | The last two oracle-exposed functions missing, and the largest single port left. | Phase 5 |
+| 7 | **Release gate** | Cap the five consumers, cut 0.5.0, thirteen breaking changes to write up. | Release gate |
+| 8 | **pyvider-components delegating to cty** | The largest *actual* parity win: nothing in the workspace calls the cty stdlib, so this repo keeps getting more correct while the code practitioners invoke does not change. | Cross-repo |
+
+**A caveat on 3 and 8.** Both rest on the claim that the framework seam and the
+components split are root causes rather than symptoms. That claim is
+well-evidenced for the bugs actually found; it has not been tested against the
+bugs not yet found. Treat the sequencing argument as a strong prior, not a
+conclusion.
+
 ---
 
 ## Working agreement
@@ -108,6 +137,13 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   Covers the ordering go-cty is careful about — unknowns are examined *before* nulls, because an unrefined unknown may yet become null and nulls of any type are equal — plus mark propagation (compare unmarked, union onto the result, top-level-only marks when exactly one side is null), dynamic unwrapping, and structural recursion for list, tuple, set, map and object.
   **Not implemented**: go-cty disqualifies some comparisons early from an unknown's refinement bounds (`Value.Range().Includes`). pyvider.cty has only partial refinement support, so those return unknown here. Safe direction — vaguer, never wrong.
   `CtyValue.is_wholly_known()` (go-cty's `Value.IsWhollyKnown`) landed alongside it and remains the right test wherever a value has to be *usable*, as opposed to compared.
+- [ ] **`CtyList` refuses a null element, and refuses it on read** — *worklist #1*
+  A null is a value of any type in cty and go-cty encodes one inside any container. This package refuses two of them, and refuses them on **read**: a provider handed state containing `["a", null]` for a `list(string)` raises `CtyListValidationError` from `cty_from_msgpack` instead of decoding it. `["a", null]` is valid Terraform configuration, so this is reachable from a practitioner's `.tf` file.
+  The inconsistency is the tell, and it is the shape of every other bug this work has found — a rule applied to the container types someone had in mind. A null decodes fine inside a **map**, a **set** and a **tuple**. It is refused inside a **list**, and inside an **object** unless the attribute was declared optional.
+  **The object half is mostly mitigated, the list half is not.** `pyvider/schema/types/object.py:41` marks every `optional` or `computed` attribute optional, so those decode. A `required` attribute that arrives null (import, some plan phases) still fails. Nothing mitigates the list case.
+  Declaring an attribute optional is not a general workaround: optionality adds go-cty's third element to the wire type, so it changes the type Terraform is told about.
+  Pinned in `tests/compatibility/test_tofusoup_compat.py` as three strict xfails, with the map/set/tuple cases pinned as *passing* so whatever fixes this cannot regress them.
+  A fourth, separate and byte-level: a set holding a null re-encodes with the null first where go-cty writes it last. Both decode to the same value, so only a byte comparison catches it — and Terraform compares serialized state, so it is a diff that reappears on every plan. Set ordering agrees everywhere else; only a null moves it.
 - [ ] **`contains` on a null collection returns unknown; go-cty raises**
   `collection.go:340`, "cannot search a nil list or set". Deliberately not fixed with the above: turning a return into a raise is a behavioural break that belongs with #16's strictness work. Much weaker case than #16 — nothing leaks, the caller just gets a vaguer answer.
 - [x] **Five stdlib functions answered differently from go-cty** — *breaking*
@@ -244,6 +280,13 @@ Found while doing parity work here. Each belongs to another repository and is re
   Mechanical, no behavioural change, touches most of the stdlib — which is why it is filed rather than folded into a fix commit, where it would bury the change under noise. Worth one dedicated pass. Note the detection is crude (a name occurring once in `src/` and `tests/` is assumed dead), so verify each before deleting; the ratio is too large to be measurement error but individual entries may not be.
 
 ## Continuous
+
+- [x] **Mutation testing — `scripts/mutation_check.py`**
+  Coverage says a line ran; it does not say a test would have failed had the line been wrong. Every parity bug found on this branch had high coverage over it, so coverage was never going to catch this class. Line coverage is 94% against a `fail_under` of 70.
+  Hand-rolled because **mutmut 3.5 cannot run against this project**, and the reason is in mutmut: its trampoline does `from mutmut.__main__ import record_trampoline_hit`, and that module calls `set_start_method('fork')` at import with no `force=True`. Decorators here run at import time, so the trampoline fires during collection inside a subprocess where the context is already set. Fixing it means patching site-packages.
+  Two hazards if anyone retries mutmut: its instrumented imports write `.pyc` into the **real** `__pycache__`, which then breaks ordinary test runs with `KeyError: MUTANT_UNDER_TEST` while `git status` shows nothing wrong; and this project's pytest `pythonpath = ["src", "."]` defeats mutmut's isolation so modules resolve from both trees at once.
+  First run: 78 mutants over the four newest function modules, **72 killed, 6 survived**, 3 of those real and now killed — the int64 duration ceiling (tested past the boundary, never at it) and the dynamic-unwrap `and` in two modules (no test supplied a value satisfying one condition but not the other). Each new test was confirmed to fail against its mutation before being committed.
+  Not wired into CI: a full run is minutes and the signal is for when code changes, not per-commit. Run it after touching a function module.
 
 - [ ] **#13 — docs: `docs/reference/go-cty-comparison.md` parity matrix**
   Five rows currently overstate coverage (Marks, Refined Unknowns, Capsule Types, Standard Library, JSON). Eight features have no row at all.
