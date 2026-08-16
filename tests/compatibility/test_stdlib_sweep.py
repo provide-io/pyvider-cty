@@ -75,6 +75,10 @@ def ln(v: list[Any]) -> Arg:
     return CtyList(element_type=CtyNumber()).validate(v), {"type": ["list", "number"], "value": v}
 
 
+def lb(v: list[bool]) -> Arg:
+    return CtyList(element_type=CtyBool()).validate(v), {"type": ["list", "bool"], "value": v}
+
+
 def mp(v: dict[str, str]) -> Arg:
     return CtyMap(element_type=CtyString()).validate(v), {"type": ["map", "string"], "value": v}
 
@@ -174,6 +178,8 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("distinct", [ls(["a", "a", "b"])]),
     ("compact", [ls(["a", "", "b"])]),
     ("concat", [ls(["a"]), ls(["b"])]),
+    ("concat", [ls(["a"]), ln([1])]),
+    ("concat", [ls(["a"]), lb([True])]),
     ("contains", [ls(["a"]), st("a")]),
     ("contains", [ls(["a"]), st("z")]),
     ("element", [ls(["a", "b"]), nm(1)]),
@@ -268,6 +274,11 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # widening rule at all and answers dynamic.
     "setunion(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
     "setunion(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
+    # The same gap, reached through a different function -- which is the point
+    # of writing these two down. `concat` had a sweep case already, but it used
+    # two string lists, so the divergence sat behind a passing test.
+    "concat(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
+    "concat(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
 }
 
 # go-cty's name for a function, and this package's name for the same function.
