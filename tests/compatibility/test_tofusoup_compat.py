@@ -47,7 +47,9 @@ from pyvider.cty import (
     CtyMap,
     CtyNumber,
     CtyObject,
+    CtySet,
     CtyString,
+    CtyTuple,
     CtyType,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
@@ -74,9 +76,37 @@ def _as_json_text(native: Any) -> bytes:
     return json.dumps(native).encode()
 
 
-def _same_number(left: Any, right: Any) -> bool:
-    """Numeric comparison that does not route through float."""
-    return Decimal(str(left)) == Decimal(str(right))
+def _canonical(value: Any, cty_type: CtyType[Any]) -> Any:
+    """Both sides in one shape, so the comparison is about content.
+
+    Three differences here are not wire differences and must not be read as
+    such. A set has no order of its own, so the order its elements come back in
+    is not part of the value. A tuple decodes to a Python tuple where the JSON
+    side is a list. And a number must not be compared through float.
+
+    Byte-for-byte agreement is checked separately, by
+    `test_both_implementations_emit_the_same_bytes` -- which is where set
+    ordering *does* have to match, and does.
+    """
+    if isinstance(cty_type, CtySet):
+        return sorted(
+            (_canonical(element, cty_type.element_type) for element in value),
+            key=lambda element: json.dumps(element, sort_keys=True, default=str),
+        )
+    if isinstance(cty_type, CtyList):
+        return [_canonical(element, cty_type.element_type) for element in value]
+    if isinstance(cty_type, CtyTuple):
+        return [
+            _canonical(element, element_type)
+            for element, element_type in zip(value, cty_type.element_types, strict=True)
+        ]
+    if isinstance(cty_type, CtyMap):
+        return {key: _canonical(element, cty_type.element_type) for key, element in value.items()}
+    if isinstance(cty_type, CtyObject):
+        return {name: _canonical(value[name], t) for name, t in cty_type.attribute_types.items()}
+    if isinstance(cty_type, CtyNumber):
+        return Decimal(str(value))
+    return value
 
 
 def _go_convert(payload: bytes, type_spec: Any, *, to_json: bool) -> bytes:
@@ -142,6 +172,59 @@ CASES: list[tuple[str, CtyType[Any], Any, Any]] = [
         ["object", {"name": "string", "size": "number"}],
         {"name": "widget", "size": 3},
     ),
+    # Structural types. These were absent, and the omission mattered: the types
+    # the decoders were fixed to return in August 2026 -- a tuple from
+    # `jsondecode`, a `list(object(...))` from `csvdecode` -- are exactly the
+    # ones this file did not check. The argument for those fixes was that the
+    # type is what crosses the wire, so the wire is where they belong.
+    (
+        "tuple mixed",
+        CtyTuple(element_types=(CtyString(), CtyNumber())),
+        ["tuple", ["string", "number"]],
+        ["a", 1],
+    ),
+    ("tuple empty", CtyTuple(element_types=()), ["tuple", []], []),
+    (
+        "list of objects",
+        CtyList(element_type=CtyObject(attribute_types={"a": CtyString(), "b": CtyString()})),
+        ["list", ["object", {"a": "string", "b": "string"}]],
+        [{"a": "1", "b": "2"}, {"a": "3", "b": "4"}],
+    ),
+    (
+        "list of tuples",
+        CtyList(element_type=CtyTuple(element_types=(CtyString(), CtyNumber()))),
+        ["list", ["tuple", ["string", "number"]]],
+        [["a", 1], ["b", 2]],
+    ),
+    # A set has no order of its own, so agreeing on bytes means agreeing on the
+    # order it is written in -- checked across case, magnitude and non-ASCII,
+    # since a sort that differs anywhere differs on the wire.
+    ("set of strings", CtySet(element_type=CtyString()), ["set", "string"], ["b", "A", "a", "B"]),
+    ("set of numbers", CtySet(element_type=CtyNumber()), ["set", "number"], [10, 2, 33, 4]),
+    ("set unicode", CtySet(element_type=CtyString()), ["set", "string"], ["\u00e9", "z", "a"]),
+    ("set empty", CtySet(element_type=CtyString()), ["set", "string"], []),
+    (
+        "object holding a list",
+        CtyObject(attribute_types={"n": CtyList(element_type=CtyString())}),
+        ["object", {"n": ["list", "string"]}],
+        {"n": ["x", "y"]},
+    ),
+    (
+        "map of objects",
+        CtyMap(element_type=CtyObject(attribute_types={"a": CtyString()})),
+        ["map", ["object", {"a": "string"}]],
+        {"k": {"a": "1"}},
+    ),
+    (
+        "object holding a list of objects holding a set",
+        CtyObject(
+            attribute_types={
+                "l": CtyList(element_type=CtyObject(attribute_types={"s": CtySet(element_type=CtyString())}))
+            }
+        ),
+        ["object", {"l": ["list", ["object", {"s": ["set", "string"]}]]}],
+        {"l": [{"s": ["y", "x"]}]},
+    ),
 ]
 
 
@@ -154,12 +237,12 @@ def test_go_cty_reads_what_pyvider_writes(
 
     as_json = _go_convert(packed, type_spec, to_json=True)
 
-    if isinstance(native, Decimal):
-        assert _same_number(as_json.decode().strip(), native), (
-            f"{label}: go-cty decoded our msgpack differently"
-        )
-    else:
-        assert json.loads(as_json) == native, f"{label}: go-cty decoded our msgpack differently"
+    # parse_float=Decimal so a nested number is not rounded on the way in.
+    theirs = json.loads(as_json, parse_float=Decimal)
+
+    assert _canonical(theirs, cty_type) == _canonical(native, cty_type), (
+        f"{label}: go-cty decoded our msgpack differently"
+    )
 
 
 @pytest.mark.parametrize(("label", "cty_type", "type_spec", "native"), CASES, ids=[c[0] for c in CASES])
@@ -174,10 +257,9 @@ def test_pyvider_reads_what_go_cty_writes(
     assert decoded.type.equal(cty_type)
     assert not decoded.is_null
     assert not decoded.is_unknown
-    if isinstance(native, Decimal):
-        assert _same_number(decoded.raw_value, native), f"{label}: we decoded go-cty's msgpack differently"
-    else:
-        assert decoded.raw_value == native, f"{label}: we decoded go-cty's msgpack differently"
+    assert _canonical(decoded.raw_value, cty_type) == _canonical(native, cty_type), (
+        f"{label}: we decoded go-cty's msgpack differently"
+    )
 
 
 @pytest.mark.parametrize(("label", "cty_type", "type_spec", "native"), CASES, ids=[c[0] for c in CASES])
@@ -193,3 +275,99 @@ def test_both_implementations_emit_the_same_bytes(
     theirs = _go_convert(_as_json_text(native), type_spec, to_json=False)
 
     assert ours == theirs, f"{label}: ours={ours!r} go-cty={theirs!r}"
+
+
+# A null is a value of any type in cty, and go-cty encodes one inside any
+# container. This package refuses two of them -- and refuses them on *read*,
+# which is the direction Terraform drives. A provider handed state containing
+# either raises instead of decoding it.
+#
+# The inconsistency is the tell, and it is the same shape as every other bug
+# this parity work has turned up: a rule applied to the container types someone
+# had in mind. A null decodes fine inside a map, a set and a tuple. It is
+# refused inside a list, and inside an object unless the attribute was declared
+# optional -- and declaring it optional is not a workaround, because optionality
+# adds go-cty's third element to the wire type, so it changes the type Terraform
+# is told about.
+NULL_IN_CONTAINER: list[tuple[str, CtyType[Any], Any, bytes]] = [
+    ("list element", CtyList(element_type=CtyString()), ["list", "string"], b'["a",null]'),
+    (
+        "object attribute",
+        CtyObject(attribute_types={"a": CtyString(), "b": CtyNumber()}),
+        ["object", {"a": "string", "b": "number"}],
+        b'{"a":null,"b":1}',
+    ),
+    (
+        "object element of a list",
+        CtyList(element_type=CtyObject(attribute_types={"a": CtyString()})),
+        ["list", ["object", {"a": "string"}]],
+        b'[{"a":"x"},null]',
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("label", "cty_type", "type_spec", "json_text"),
+    NULL_IN_CONTAINER,
+    ids=[c[0] for c in NULL_IN_CONTAINER],
+)
+@pytest.mark.xfail(
+    strict=True, reason="a null inside a list or a required object attribute is refused on read"
+)
+def test_a_null_inside_a_container_can_be_read(
+    label: str, cty_type: CtyType[Any], type_spec: Any, json_text: bytes
+) -> None:
+    """go-cty writes these; we must be able to read them."""
+    theirs = _go_convert(json_text, type_spec, to_json=False)
+
+    cty_from_msgpack(theirs, cty_type)
+
+
+@pytest.mark.parametrize(
+    ("label", "cty_type", "type_spec", "json_text"),
+    [
+        ("map value", CtyMap(element_type=CtyString()), ["map", "string"], b'{"k":null}'),
+        ("set element", CtySet(element_type=CtyString()), ["set", "string"], b'["a",null]'),
+        (
+            "tuple element",
+            CtyTuple(element_types=(CtyString(), CtyString())),
+            ["tuple", ["string", "string"]],
+            b'["a",null]',
+        ),
+    ],
+    ids=["map value", "set element", "tuple element"],
+)
+def test_a_null_inside_these_containers_reads_back(
+    label: str, cty_type: CtyType[Any], type_spec: Any, json_text: bytes
+) -> None:
+    """The other half of the inconsistency, pinned so a fix does not regress it.
+
+    These three already accept a null. Whatever settles the list and object
+    cases has to leave these working.
+    """
+    theirs = _go_convert(json_text, type_spec, to_json=False)
+
+    decoded = cty_from_msgpack(theirs, cty_type)
+
+    assert decoded.raw_value is not None, f"{label}: decoded to nothing"
+
+
+@pytest.mark.xfail(strict=True, reason="a null sorts first here and last in go-cty, so the bytes differ")
+def test_a_set_holding_a_null_re_encodes_to_the_same_bytes() -> None:
+    """Where a null sorts among a set's elements is a wire difference.
+
+    go-cty writes `["a", null]` and this package writes `[null, "a"]` for the
+    same set. Both decode to the same value, so nothing catches it except a byte
+    comparison -- and Terraform compares serialized state, so it is a diff that
+    reappears on every plan. Set ordering agrees everywhere else: it was checked
+    across case, magnitude and non-ASCII, and only a null moves it.
+    """
+    cty_type = CtySet(element_type=CtyString())
+    theirs = _go_convert(b'["a",null]', ["set", "string"], to_json=False)
+
+    decoded = cty_from_msgpack(theirs, cty_type)
+
+    assert cty_to_msgpack(decoded, cty_type) == theirs
+
+
+# 🌊🪢🔚
