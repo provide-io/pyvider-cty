@@ -48,7 +48,7 @@ from pyvider.cty import (
 )
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import chunklist, flatten, indent, length, regex, regexall
+from pyvider.cty.functions import chunklist, flatten, indent, length, regex, regexall, regexreplace
 
 pytestmark = pytest.mark.compat
 
@@ -171,6 +171,48 @@ CASES: list[tuple[str, str, Callable[[], CtyValue[Any]], list[str]]] = [
         lambda: length(CtyDynamic().validate(["a", "b"])),
         [json.dumps({"type": "dynamic", "value": ["a", "b"]})],
     ),
+    (
+        "regexreplace braced group",
+        "regexreplace",
+        lambda: regexreplace(_st("-ab-axxb-"), _st("a(x*)b"), _st("${1}W")),
+        [s("-ab-axxb-"), s("a(x*)b"), s("${1}W")],
+    ),
+    (
+        "regexreplace bare group",
+        "regexreplace",
+        lambda: regexreplace(_st("-ab-axxb-"), _st("a(x*)b"), _st("$1")),
+        [s("-ab-axxb-"), s("a(x*)b"), s("$1")],
+    ),
+    (
+        "regexreplace name run swallows letters",
+        "regexreplace",
+        lambda: regexreplace(_st("-ab-axxb-"), _st("a(x*)b"), _st("$1W")),
+        [s("-ab-axxb-"), s("a(x*)b"), s("$1W")],
+    ),
+    (
+        "regexreplace backslash is literal",
+        "regexreplace",
+        lambda: regexreplace(_st("-ab-axxb-"), _st("a(x*)b"), _st("\\1W")),
+        [s("-ab-axxb-"), s("a(x*)b"), s("\\1W")],
+    ),
+    (
+        "regexreplace named group",
+        "regexreplace",
+        lambda: regexreplace(_st("abc"), _st("(?P<mid>b)"), _st("[${mid}]")),
+        [s("abc"), s("(?P<mid>b)"), s("[${mid}]")],
+    ),
+    (
+        "regexreplace missing group",
+        "regexreplace",
+        lambda: regexreplace(_st("abc"), _st("(b)"), _st("${nope}")),
+        [s("abc"), s("(b)"), s("${nope}")],
+    ),
+    (
+        "regexreplace malformed reference",
+        "regexreplace",
+        lambda: regexreplace(_st("ab"), _st("b"), _st("${1")),
+        [s("ab"), s("b"), s("${1")],
+    ),
     ("indent two", "indent", lambda: indent(_nm(2), _st("a\nb")), [num(2), s("a\nb")]),
     ("indent trailing", "indent", lambda: indent(_nm(2), _st("a\n")), [num(2), s("a\n")]),
     ("indent crlf", "indent", lambda: indent(_nm(2), _st("a\r\nb")), [num(2), s("a\r\nb")]),
@@ -276,6 +318,12 @@ REFUSALS: list[tuple[str, str, Callable[[], CtyValue[Any]], list[str]]] = [
         [seq(["list", "string"], ["a"]), num(-1)],
     ),
     ("flatten a string", "flatten", lambda: flatten(_st("x")), [s("x")]),
+    (
+        "regexreplace invalid pattern",
+        "regexreplace",
+        lambda: regexreplace(_st("x"), _st("("), _st("y")),
+        [s("x"), s("("), s("y")],
+    ),
     ("length of a string", "length", lambda: length(_st("hello")), [s("hello")]),
     (
         "length of a dynamic string",
