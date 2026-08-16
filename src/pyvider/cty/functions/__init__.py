@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # pyvider-cty/src/pyvider/cty/functions/__init__.py
 # This file makes the 'functions' module a package.
+from pyvider.cty.functions._framework import STDLIB
 from pyvider.cty.functions.bool_functions import and_fn, not_fn, or_fn
 from pyvider.cty.functions.bytes_functions import byteslen, bytesslice
 from pyvider.cty.functions.collection_functions import (
@@ -91,6 +92,7 @@ from pyvider.cty.functions.string_functions import (
 from pyvider.cty.functions.structural_functions import coalesce
 
 __all__ = [
+    "STDLIB",
     "abs_fn",
     "add",
     "and_fn",

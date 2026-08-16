@@ -33,11 +33,11 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.values.frozen import FrozenDict
 
 
-@preserve_marks
+@stdlib_function("chomp")
 def chomp(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"chomp: input must be a string, got {input_val.type.ctype}")
@@ -52,7 +52,7 @@ def chomp(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return input_val
 
 
-@preserve_marks
+@stdlib_function("strrev")
 def strrev(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"strrev: input must be a string, got {input_val.type.ctype}")
@@ -61,7 +61,7 @@ def strrev(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_val.value[::-1])  # type: ignore
 
 
-@preserve_marks
+@stdlib_function("trimspace")
 def trimspace(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"trimspace: input must be a string, got {input_val.type.ctype}")
@@ -85,7 +85,7 @@ def _indent_spaces(spaces_val: CtyValue[Any]) -> int:
     return count
 
 
-@preserve_marks
+@stdlib_function("indent")
 def indent(spaces_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `IndentFunc`: a number of spaces after every newline.
 
@@ -104,7 +104,7 @@ def indent(spaces_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]
     return CtyString().validate(str(input_val.value).replace("\n", f"\n{pad}"))
 
 
-@preserve_marks
+@stdlib_function("substr")
 def substr(input_val: CtyValue[Any], offset_val: CtyValue[Any], length_val: CtyValue[Any]) -> CtyValue[Any]:
     if (
         not isinstance(input_val.type, CtyString)
@@ -133,7 +133,7 @@ def substr(input_val: CtyValue[Any], offset_val: CtyValue[Any], length_val: CtyV
     return CtyString().validate(s[offset : offset + length])
 
 
-@preserve_marks
+@stdlib_function("trim")
 def trim(input_val: CtyValue[Any], cutset_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(cutset_val.type, CtyString):
         raise CtyFunctionError("trim: both arguments must be strings")
@@ -144,7 +144,7 @@ def trim(input_val: CtyValue[Any], cutset_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.strip(cutset_str))
 
 
-@preserve_marks
+@stdlib_function("title")
 def title(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"title: input must be a string, got {input_val.type.ctype}")
@@ -154,7 +154,7 @@ def title(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.title())
 
 
-@preserve_marks
+@stdlib_function("trimprefix")
 def trimprefix(input_val: CtyValue[Any], prefix_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(prefix_val.type, CtyString):
         raise CtyFunctionError("trimprefix: both arguments must be strings")
@@ -167,7 +167,7 @@ def trimprefix(input_val: CtyValue[Any], prefix_val: CtyValue[Any]) -> CtyValue[
     return input_val
 
 
-@preserve_marks
+@stdlib_function("trimsuffix")
 def trimsuffix(input_val: CtyValue[Any], suffix_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString) or not isinstance(suffix_val.type, CtyString):
         raise CtyFunctionError("trimsuffix: both arguments must be strings")
@@ -244,7 +244,7 @@ def _capture_result(match: re.Match[str], result_type: CtyType[Any]) -> CtyValue
     return CtyValue(vtype=result_type, value=FrozenDict(dict(zip(names, groups, strict=True))))
 
 
-@preserve_marks
+@stdlib_function("regex")
 def regex(pattern_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `RegexFunc`: `regex(pattern, string)`, pattern first.
 
@@ -270,7 +270,7 @@ def regex(pattern_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]
     return _capture_result(match, result_type)
 
 
-@preserve_marks
+@stdlib_function("regexall")
 def regexall(pattern_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `RegexAllFunc`: every non-overlapping match, as a list.
 
@@ -291,7 +291,7 @@ def regexall(pattern_val: CtyValue[Any], input_val: CtyValue[Any]) -> CtyValue[A
     return cast(CtyValue[Any], result_type.validate(matches))
 
 
-@preserve_marks
+@stdlib_function("upper")
 def upper(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"upper: input must be a string, got {input_val.type.ctype}")
@@ -301,7 +301,7 @@ def upper(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.upper())
 
 
-@preserve_marks
+@stdlib_function("lower")
 def lower(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"lower: input must be a string, got {input_val.type.ctype}")
@@ -311,7 +311,7 @@ def lower(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(input_str.lower())
 
 
-@preserve_marks
+@stdlib_function("join")
 def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(separator.type, CtyString) or not isinstance(elements.type, CtyList | CtyTuple):
         raise CtyFunctionError("join: arguments must be string and list/tuple")
@@ -324,7 +324,7 @@ def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(sep_str.join(str_elements))
 
 
-@preserve_marks
+@stdlib_function("split")
 def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(separator.type, CtyString) or not isinstance(text.type, CtyString):
         raise CtyFunctionError("split: arguments must be strings")
@@ -338,7 +338,7 @@ def split(separator: CtyValue[Any], text: CtyValue[Any]) -> CtyValue[Any]:
     return result
 
 
-@preserve_marks
+@stdlib_function("replace")
 def replace(string: CtyValue[Any], substring: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:
     if (
         not isinstance(string.type, CtyString)
@@ -471,7 +471,7 @@ def _expand_go_template(match: re.Match[str], segments: GoTemplate) -> str:
     return "".join(out)
 
 
-@preserve_marks
+@stdlib_function("regexreplace")
 def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `RegexReplaceFunc`.
 

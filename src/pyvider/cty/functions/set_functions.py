@@ -18,7 +18,7 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError, CtyFunctionError
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 
 
 def _set_arg(value: CtyValue[Any], func: str) -> CtyValue[Any]:
@@ -95,31 +95,31 @@ def _set_operation(
     return cast(CtyValue[Any], result_type.validate(list(combined)))
 
 
-@preserve_marks
+@stdlib_function("setunion")
 def setunion(*args: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `SetUnionFunc`."""
     return _set_operation("setunion", lambda a, b: a | b, args, allow_unknowns=True)
 
 
-@preserve_marks
+@stdlib_function("setintersection")
 def setintersection(*args: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `SetIntersectionFunc`."""
     return _set_operation("setintersection", lambda a, b: a & b, args, allow_unknowns=False)
 
 
-@preserve_marks
+@stdlib_function("setsubtract")
 def setsubtract(*args: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `SetSubtractFunc`. Takes exactly two sets."""
     return _set_operation("setsubtract", lambda a, b: a - b, args, allow_unknowns=False)
 
 
-@preserve_marks
+@stdlib_function("setsymmetricdifference")
 def setsymmetricdifference(*args: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `SetSymmetricDifferenceFunc`."""
     return _set_operation("setsymmetricdifference", lambda a, b: a ^ b, args, allow_unknowns=False)
 
 
-@preserve_marks
+@stdlib_function("sethaselement")
 def sethaselement(collection: CtyValue[Any], element: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `SetHasElementFunc`.
 

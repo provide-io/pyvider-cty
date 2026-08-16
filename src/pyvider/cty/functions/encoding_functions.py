@@ -35,10 +35,10 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.conversion import cty_to_native
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 
 
-@preserve_marks
+@stdlib_function("jsonencode")
 def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
     if val.is_unknown:
         return CtyValue.unknown(CtyString())
@@ -94,7 +94,7 @@ def _implied_type(native: Any) -> CtyType[Any]:
     return done.pop()
 
 
-@preserve_marks
+@stdlib_function("jsondecode")
 def jsondecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyString):
         raise CtyFunctionError(ERR_JSONDECODE_ARG_MUST_BE_STRING.format(type=val.type.ctype))
@@ -143,7 +143,7 @@ def _csv_rows(val_str: str) -> tuple[list[str], list[list[str]]]:
     return header, rows
 
 
-@preserve_marks
+@stdlib_function("csvdecode")
 def csvdecode(val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(val.type, CtyString):
         raise CtyFunctionError(ERR_CSVDECODE_ARG_MUST_BE_STRING.format(type=val.type.ctype))
