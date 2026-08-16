@@ -23,6 +23,7 @@ from typing import Any
 import pytest
 
 from pyvider.cty import (
+    CtyBool,
     CtyList,
     CtyMap,
     CtyNumber,
@@ -49,6 +50,10 @@ def n(v: object) -> CtyValue[Any]:
     return CtyNumber().validate(v)
 
 
+def b(v: bool) -> CtyValue[Any]:  # noqa: FBT001
+    return CtyBool().validate(v)
+
+
 STRS = CtyList(element_type=CtyString())
 STRMAP = CtyMap(element_type=CtyString())
 STRSET = CtySet(element_type=CtyString())
@@ -58,6 +63,7 @@ STRSET = CtySet(element_type=CtyString())
 CALLS: dict[str, tuple[CtyValue[Any], ...]] = {
     "abs_fn": (n(-5),),
     "add": (n(1), n(2)),
+    "and_fn": (b(True), b(True)),
     "byteslen": (BytesCapsule.validate(b"abc"),),
     "bytesslice": (BytesCapsule.validate(b"abcde"), n(1), n(3)),
     "ceil_fn": (n("1.2"),),
@@ -102,15 +108,23 @@ CALLS: dict[str, tuple[CtyValue[Any], ...]] = {
     "multiply": (n(2), n(3)),
     "negate": (n(1),),
     "not_equal": (s("a"), s("b")),
+    "not_fn": (b(True),),
+    "or_fn": (b(True), b(False)),
     "parseint_fn": (s("ff"), n(16)),
     "pow_fn": (n(2), n(3)),
+    "range_fn": (n(3),),
     # Pattern first, as go-cty takes them.
     "regex": (s("b"), s("abc")),
     "regexall": (s("b"), s("abc")),
     "regexreplace": (s("abc"), s("b"), s("X")),
     "replace": (s("abc"), s("b"), s("X")),
     "reverse": (STRS.validate(["a", "b"]),),
+    "sethaselement": (STRSET.validate(["a"]), s("a")),
+    "setintersection": (STRSET.validate(["a", "b"]), STRSET.validate(["b"])),
     "setproduct": (STRSET.validate(["a"]), STRSET.validate(["b"])),
+    "setsubtract": (STRSET.validate(["a", "b"]), STRSET.validate(["b"])),
+    "setsymmetricdifference": (STRSET.validate(["a"]), STRSET.validate(["b"])),
+    "setunion": (STRSET.validate(["a"]), STRSET.validate(["b"])),
     "signum_fn": (n(-3),),
     "slice": (STRS.validate(["a", "b", "c"]), n(0), n(2)),
     "sort": (STRS.validate(["b", "a"]),),

@@ -179,6 +179,10 @@ MAX_STRING_LENGTH_DISPLAY = 100
 MAX_RECURSION_DEPTH = 100
 MIN_COLLECTION_SIZE = 0
 
+# go-cty's own cap on range(): the result has to be buffered in memory, and the
+# function exists to make small lists of indices to iterate over.
+MAX_RANGE_LENGTH = 1024
+
 # =================================
 # Exception message templates
 # =================================
@@ -391,6 +395,26 @@ ERR_SORT_CANNOT_SORT_WITH_NULL_UNKNOWN = (
 ERR_SORT_ELEMENTS_MUST_BE_STRING_NUMBER_BOOL = "sort: elements must be string, number, or bool. Found: {type}"
 ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT = "values: input must be a map or object, got {type}"
 ERR_ZIPMAP_ARGS_MUST_BE_LISTS = "zipmap: arguments must be lists or tuples"
+
+# Logical function error messages
+ERR_BOOL_ARG_MUST_BE_BOOL = "{func}: bool required, but received {type}"
+ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"
+
+# Set operation error messages
+ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
+ERR_SET_OP_REQUIRES_ONE_SET = "{func}: at least one set must be provided"
+ERR_SET_OP_INCOMPATIBLE_ELEMENTS = "{func}: given sets must all have compatible element types"
+
+# range() error messages
+ERR_RANGE_ARG_COUNT = "range: must have one, two, or three arguments"
+ERR_RANGE_ARGS_MUST_BE_NUMBERS = "range: arguments must be numbers, got {type}"
+ERR_RANGE_STEP_MUST_NOT_BE_ZERO = "range: step must not be zero"
+ERR_RANGE_END_MUST_BE_LESS = "range: end must be less than start when step is negative"
+ERR_RANGE_END_MUST_BE_GREATER = "range: end must be greater than start when step is positive"
+ERR_RANGE_TOO_MANY_VALUES = (
+    "range: more than {limit} values were generated; either decrease the "
+    "difference between start and end or use a smaller step"
+)
 
 # Type conversion function error messages
 ERR_TOBOOL_CANNOT_CONVERT = "tobool: cannot convert {type} to bool"
