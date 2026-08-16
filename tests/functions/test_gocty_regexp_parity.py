@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""`regex` and `regexall` must answer what go-cty answers.
+"""`regex`, `regexall` and `regexreplace` must answer what go-cty answers.
 
 Every expectation here was taken from running real go-cty through the soup-go
 oracle (`soup-go cty call regex ...`), not from reading its source. The
@@ -19,6 +19,10 @@ divergences these pin were all present before this file existed:
     stylistic difference.
   - A non-match returned `""`, where go-cty raises. `""` is a legitimate match
     for plenty of patterns, so the caller could not tell the two apart.
+  - `regexreplace` expanded the replacement with Python's `re.sub` rules, which
+    are the *inverse* of Go's: Go expands `$1` and treats `\\1` as literal text,
+    Python expands `\\1` and treats `$1` as literal text. Every replacement
+    referring to a capture group was silently wrong, in both directions.
 """
 
 from __future__ import annotations
@@ -29,7 +33,7 @@ import pytest
 
 from pyvider.cty import CtyNumber, CtyObject, CtyString, CtyTuple, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import regex, regexall
+from pyvider.cty.functions import regex, regexall, regexreplace
 
 
 def s(text: str) -> CtyValue[Any]:
@@ -221,6 +225,95 @@ class TestRegexAll:
         self, pattern: CtyValue[Any], subject: CtyValue[Any]
     ) -> None:
         assert regexall(pattern, subject).is_unknown
+
+
+class TestRegexReplace:
+    """`re.ReplaceAllString(str, replace)` -- Go's replacement template.
+
+    Go and Python expand opposite syntaxes, so this was not "slightly
+    different formatting": each engine emitted the other's placeholder as
+    literal text. A replacement referring to a capture group came out wrong
+    whichever dialect the caller wrote it in.
+
+    Note the argument order differs from `regex`: go-cty's `RegexReplaceFunc`
+    takes `(str, pattern, replace)`, string first, while `RegexFunc` takes
+    `(pattern, string)`. That asymmetry is go-cty's own, and this package
+    matches it rather than tidying it.
+    """
+
+    def test_a_replacement_without_placeholders_is_literal(self) -> None:
+        assert regexreplace(s("-ab-axxb-"), s("a(x*)b"), s("T")).value == "-T-T-"
+
+    def test_a_braced_group_reference_expands(self) -> None:
+        """go-cty's own test case for this function."""
+        assert regexreplace(s("-ab-axxb-"), s("a(x*)b"), s("${1}W")).value == "-W-xxW-"
+
+    def test_a_bare_dollar_reference_expands(self) -> None:
+        assert regexreplace(s("-ab-axxb-"), s("a(x*)b"), s("$1")).value == "--xx-"
+
+    def test_a_name_run_swallows_following_letters(self) -> None:
+        """`$1W` is the group named "1W", not group 1 followed by "W" -- Go
+        takes the longest run of letters, digits and underscores. No such group
+        exists, so it expands to nothing. This is why go-cty's own test writes
+        `${1}W`, and it is the case a naive translation gets wrong."""
+        assert regexreplace(s("-ab-axxb-"), s("a(x*)b"), s("$1W")).value == "---"
+
+    def test_a_backslash_reference_is_literal_text(self) -> None:
+        """Python's `re.sub` would expand this. Go emits it verbatim."""
+        assert regexreplace(s("-ab-axxb-"), s("a(x*)b"), s(r"\1W")).value == r"-\1W-\1W-"
+
+    def test_a_doubled_dollar_is_one_literal_dollar(self) -> None:
+        assert regexreplace(s("ab"), s("b"), s("$$")).value == "a$"
+
+    def test_a_named_group_expands_by_name(self) -> None:
+        assert regexreplace(s("abc"), s("(?P<mid>b)"), s("[${mid}]")).value == "a[b]c"
+
+    def test_an_unknown_group_name_expands_to_nothing(self) -> None:
+        """Not an error, and not left as literal text."""
+        assert regexreplace(s("abc"), s("(b)"), s("${nope}")).value == "ac"
+
+    def test_an_out_of_range_group_number_expands_to_nothing(self) -> None:
+        assert regexreplace(s("abc"), s("(b)"), s("${9}")).value == "ac"
+
+    def test_a_group_that_did_not_participate_expands_to_nothing(self) -> None:
+        assert regexreplace(s("a"), s("(a)|(z)"), s("[$2]")).value == "[]"
+
+    @pytest.mark.parametrize(
+        ("replacement", "expected"),
+        [
+            ("$", "a$"),
+            ("$}", "a$}"),
+            ("${", "a${"),
+            ("${1", "a${1"),
+            ("${}", "a${}"),
+        ],
+        ids=["bare", "stray brace", "unclosed", "unclosed named", "empty name"],
+    )
+    def test_a_malformed_reference_is_emitted_as_a_literal_dollar(
+        self, replacement: str, expected: str
+    ) -> None:
+        """Go's `extract` returns not-ok and `expand` writes a raw `$`, then
+        carries on parsing from the next character."""
+        assert regexreplace(s("ab"), s("b"), s(replacement)).value == expected
+
+    def test_a_leading_zero_is_a_name_rather_than_a_number(self) -> None:
+        """Go disallows leading zeros when reading a group number, and falls
+        back to treating the run as a group *name*."""
+        assert regexreplace(s("abc"), s("(b)"), s("${01}")).value == "ac"
+
+    def test_an_invalid_pattern_is_refused(self) -> None:
+        with pytest.raises(CtyFunctionError, match="regexreplace"):
+            regexreplace(s("x"), s("("), s("y"))
+
+    @pytest.mark.parametrize("index", [0, 1, 2])
+    def test_a_null_or_unknown_argument_yields_unknown(self, index: int) -> None:
+        """go-cty raises "argument must not be null" instead. Left as unknown
+        to move with the same deferred strictness change as `contains` and
+        `length`, rather than one function at a time."""
+        args = [s("ab"), s("b"), s("c")]
+        args[index] = CtyValue.unknown(CtyString())
+
+        assert regexreplace(*args).is_unknown
 
 
 # 🌊🪢🔚

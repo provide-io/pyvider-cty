@@ -295,6 +295,14 @@ class TestStringAdvancedFunctions:
         assert [v.value for v in result.value] == ["hello", "world"]
 
     def test_regexreplace(self) -> None:
+        """A literal replacement, which is the case both dialects agree on.
+
+        This test used to be the only coverage `regexreplace` had, and it
+        passed throughout the whole period the function expanded capture groups
+        with Python's rules instead of Go's -- `\\d` and `*` involve no group
+        reference, so it never reached the code that was wrong. The real
+        expansion rules are pinned in test_gocty_regexp_parity.py.
+        """
         from pyvider.cty.functions import regexreplace
 
         assert regexreplace(S("a1b2"), S(r"\d"), S("*")).value == "a*b*"

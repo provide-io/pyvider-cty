@@ -362,8 +362,107 @@ def replace(string: CtyValue[Any], substring: CtyValue[Any], replacement: CtyVal
     return CtyString().validate(result)
 
 
+def _group_number(name: str) -> int | None:
+    """The capture-group number `name` denotes, or None if it names one instead.
+
+    Go reads the run as a number only when every byte is an ASCII digit, and
+    rejects a leading zero and anything from 10^8 up -- in which case the run
+    falls back to being a *name*, which is why `${01}` looks up a group called
+    "01" and finds nothing rather than meaning group 1.
+    """
+    if not (name.isascii() and name.isdigit()):
+        return None
+    if name[0] == "0" and len(name) > 1:
+        return None
+    number = int(name)
+    return number if number < 100_000_000 else None
+
+
+def _extract_reference(template: str, start: int) -> tuple[str | None, int]:
+    """Read the group reference beginning just after a `$`.
+
+    Returns the name and the index to resume at, or `(None, start)` when the
+    reference is malformed -- an empty name, or `${` with no closing brace.
+    Go's `extract` treats both as "not a reference at all".
+    """
+    index = start
+    braced = index < len(template) and template[index] == "{"
+    if braced:
+        index += 1
+
+    name_start = index
+    while index < len(template) and (template[index].isalnum() or template[index] == "_"):
+        index += 1
+    name = template[name_start:index]
+    if not name:
+        return None, start
+
+    if braced:
+        if index >= len(template) or template[index] != "}":
+            return None, start
+        index += 1
+    return name, index
+
+
+def _expand_go_template(match: re.Match[str], template: str) -> str:
+    """`template` with its group references filled in, by Go's rules.
+
+    Go and Python expand opposite syntaxes: Go reads `$1` and `${name}` and
+    passes `\\1` through as literal text, while Python's `re.sub` does exactly
+    the reverse. Handing a Go-style template to `re.sub` therefore does not
+    merely format differently -- it emits the placeholder verbatim and drops
+    the substitution, and a Python-style one silently substitutes where go-cty
+    would not. Expanding here, with a function replacement, keeps `re.sub` from
+    interpreting the template at all.
+
+    Three details that a shorter version gets wrong, all pinned by tests:
+    a name is the longest run of letters, digits and underscores, so `$1W` is
+    the group named "1W" rather than group 1 followed by a "W"; a reference to
+    a group that does not exist or did not participate expands to nothing
+    rather than erroring or staying literal; and a malformed reference emits a
+    bare `$` and carries on from the next character.
+    """
+    out: list[str] = []
+    index = 0
+    while index < len(template):
+        dollar = template.find("$", index)
+        if dollar < 0:
+            out.append(template[index:])
+            break
+        out.append(template[index:dollar])
+        index = dollar + 1
+
+        if index < len(template) and template[index] == "$":
+            out.append("$")
+            index += 1
+            continue
+
+        name, resumed = _extract_reference(template, index)
+        if name is None:
+            out.append("$")
+            index = resumed
+            continue
+        index = resumed
+
+        number = _group_number(name)
+        captured = (
+            (match.group(number) if number <= match.re.groups else None)
+            if number is not None
+            else match.groupdict().get(name)
+        )
+        if captured is not None:
+            out.append(captured)
+    return "".join(out)
+
+
 @preserve_marks
 def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `RegexReplaceFunc`.
+
+    Note the argument order differs from `regex`: go-cty takes `(str, pattern,
+    replace)` here and `(pattern, string)` there. That asymmetry is go-cty's
+    own, and this matches it rather than tidying it.
+    """
     if (
         not isinstance(string.type, CtyString)
         or not isinstance(pattern.type, CtyString)
@@ -380,14 +479,10 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
     ):
         return CtyValue.unknown(CtyString())
 
-    try:
-        string_str = cast(str, string.value)
-        pattern_str = cast(str, pattern.value)
-        replacement_str = cast(str, replacement.value)
-        result = re.sub(pattern_str, replacement_str, string_str)
-        return CtyString().validate(result)
-    except re.error as e:
-        raise CtyFunctionError(f"regexreplace: invalid regular expression: {e}") from e
+    compiled = _compile_pattern("regexreplace", cast(str, pattern.value))
+    template = cast(str, replacement.value)
+    result = compiled.sub(lambda match: _expand_go_template(match, template), cast(str, string.value))
+    return CtyString().validate(result)
 
 
 # 🌊🪢🔚
