@@ -176,6 +176,15 @@ Mutually independent. Parallelizable across whoever is free.
 
 - [ ] **#9 — remaining stdlib ports**
   bool ops (`not`/`and`/`or`), five set ops, `range`, `assertnotnull`, `strlen` (needs ctystrings), generalized `MakeToFunc`.
+  Independently confirmed by `tests/compatibility/test_stdlib_sweep.py`, which skips exactly these: `and`, `or`, `not`, `setunion`, `setintersection`, `setsubtract`, `range`.
+- [ ] **Divergences the sweep found, each reproduced against the oracle**
+  Held as strict xfails in `KNOWN_DIVERGENCES`, so fixing one turns its entry red and forces it out of the list rather than letting it rot.
+  - `merge` returns an object type where go-cty returns `map(string)`.
+  - `jsondecode` returns a `dynamic` wrapping the value; go-cty returns the concrete `object(...)` / tuple type. Same for `csvdecode`'s elements. This one reaches the wire, so Terraform sees a different type.
+  - `timeadd` renders the offset as `+00:00` where go-cty writes `Z`. Both are valid RFC3339, but Terraform compares strings, so this is a perpetual diff.
+  - `formatdate` is not implemented at all — it returns the format string unchanged.
+- [ ] **Public function names do not match Terraform's**
+  `max` is exported as `max_fn`, `pow` as `pow_fn`, `notequal` as `not_equal`, `reverselist` as `reverse`, and so on for sixteen functions — the `_fn` suffix dodging a Python builtin, the rest snake_cased. Harmless inside Python, but it means the package's public API is not the vocabulary its users write Terraform in, and it made a sweep silently skip fourteen functions while reporting them covered. Decide whether to alias, rename, or document.
 - [ ] **#7 — `format` / `formatlist`**
   Largest single port. Hand-write the verb tokeniser from `format_fsm.rl`; do not bend Python `%`/`str.format` (no positional `%[2]s`, wrong number rendering). Verify numeric verbs against the Go harness.
 - [ ] **#11 — `cty/json` value codec**
@@ -237,7 +246,7 @@ Every consumer in the workspace declares an **unbounded** dependency, with no `t
 
 So the moment `0.5.0` is published, all five absorb the change with no signal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
 
-- [ ] **Release notes must name nine breaking changes**, not one:
+- [ ] **Release notes must name ten breaking changes**, not one:
   1. Set elements no longer carry marks; read them off the set (go-cty's `SetVal` behaviour).
   2. Serializing a marked value now raises instead of silently dropping the marks.
   3. **Map and object payloads are immutable.** `value.value[k] = x` now raises `TypeError`. Nothing in the workspace does it any more, but external provider code might, and the failure is loud and at the point of the mistake -- which is the intent, since the silent alternative corrupted sensitivity tracking.
@@ -247,6 +256,7 @@ So the moment `0.5.0` is published, all five absorb the change with no signal. A
   7. `flatten` returns a tuple rather than a list, recurses through nested sequences, keeps null elements, and passes non-sequence elements through instead of raising. `chunklist` preserves the element type and accepts a size of 0.
   8. **`length` refuses a string.** It counted code points, which agreed with neither go-cty (which refuses the call, leaving strings to `strlen`) nor Terraform (which counts grapheme clusters — 1 for a four-person family emoji where this said 7). It now also accepts a dynamic wrapping a collection, which it previously refused; that half is a widening and breaks nobody. Callers wanting the old answer have `len(value.value)`; `strlen` is not available yet, since it needs the deferred UAX#29 decision.
   9. **`regexreplace` expands the replacement by Go's rules, not Python's.** The two dialects are inverses: Go reads `$1` and `${name}` and passes `\1` through as literal text; Python's `re.sub` does exactly the reverse. Every replacement referring to a capture group was therefore silently wrong in one direction or the other — a Go-style `${1}W` came out as the literal text `${1}W`, and a Python-style `\1` substituted where go-cty would have emitted it verbatim. Confirmed against the oracle in both directions and pinned by a 612-case differential sweep.
+  10. **`values` returns a map's values in key order, and both `keys` and `values` return a tuple for an object.** `values` used insertion order while `keys` sorted, so the two no longer corresponded and `zipmap(keys(m), values(m))` — the ordinary way to rebuild a map — silently paired every value with the wrong key. The object result type also changed: go-cty returns a tuple, since an object's attributes have differing types and a list would widen them all to dynamic. No caller anywhere in the workspace, and neither is a registered provider function.
 - [ ] **Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**, then bump each one deliberately.
   Not done on this branch on purpose: the consumer repos are all sitting on unrelated branches (`adminy/main`, `chore/use-reusable-release`), and a cap committed to a branch that never merges is worse than no cap, because it looks done. Apply this to whichever branch actually ships.
 - [ ] **Cut `0.4.0` → `0.5.0`**, not a patch. The set change is breaking, and the mark fixes change what `validate` returns for every marked input.
@@ -265,6 +275,18 @@ Real rework tension. If the framework lands *after* #7 and #9, those functions g
 **Alternative:** do the big refactor up front — moves #12 to phase 3 and delays phases 4–6 by its duration.
 
 **Status:** unresolved. Defaulting to the seam approach.
+
+### 3. Numeric precision model
+
+Found by the stdlib sweep, and it differs in *both* directions.
+
+go-cty holds a number in a 512-bit `big.Float`, so `divide(1, 3)` comes back with 155 significant digits against this package's 28 (Decimal's default context). But its transcendental functions compute in `float64` first, so `pow(2, 0.5)` comes back with 17 significant digits, and there this package is the **more** accurate of the two.
+
+Neither is a wrong answer. Matching go-cty means both widening the Decimal context *and* deliberately reproducing its float64 rounding step in `pow` and `log` — that is, making the implementation less accurate on purpose so that a value round-trips identically. That is a decision about what parity means here, not a bug fix.
+
+Terraform compares values as they arrive on the wire, so a difference in the last digits is a real diff, not a cosmetic one.
+
+**Status:** unresolved. Held as xfails in the sweep so it stays visible.
 
 ### 2. Unicode segmentation dependency (gates phase 3 item 2)
 
@@ -329,6 +351,7 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 
 | Date | Change |
 |---|---|
+| 2026-08-16 | **Systematic sweep of the stdlib against the oracle, and it found what the reviewer's method predicted it would.** The `regexreplace` finding came from looking past the branch diff, so the same move was generalised: `tests/compatibility/test_stdlib_sweep.py` drives every function the oracle exposes from one table, writing each case once so the two implementations cannot drift apart in the test itself. First run: six divergences in 46 calls. The worst was `values`, which returned a map's values in insertion order while `keys` returned them sorted — so `zipmap(keys(m), values(m))`, the ordinary way to rebuild a map, silently paired every value with the wrong key, with a result that still type-checked and still looked like a map. Fixed, along with both functions returning a list where go-cty returns a tuple for an object input. Adding a name map (`max` is exported as `max_fn`, `notequal` as `not_equal`, sixteen in all) took the sweep from 60 comparisons to 82 and surfaced `pow`'s precision divergence, which had been hidden behind a skip that read as coverage. Five divergences remain as strict xfails so that fixing one forces its entry out; the eight skips are exactly the phase 5 port list, arrived at independently. |
 | 2026-08-16 | **Seventh review round, external. One real finding, and it was the same class as the five already fixed.** `regexreplace` was never touched by the regex work and still used `re.sub` with the caller's template handed straight to Python. Go and Python expand opposite syntaxes, so each engine emitted the other's placeholder as literal text: `${1}W` produced the literal `${1}W` here against `-W-xxW-` in go-cty, and `\1` substituted here where go-cty passes it through. Wrong in both directions, type-checking the whole way — the same failure mode as the `regex` argument swap. Its one existing test used `\d` → `*`, no capture group, so it passed throughout. Fixed by expanding the template with Go's own rules (longest run of letters/digits/underscores for a name, so `$1W` is the group named "1W"; unresolved references expand to nothing; malformed ones emit a bare `$`), verified by a 612-case differential sweep across 6 texts x 6 patterns x 17 templates, all agreeing. Eight new oracle cases. The review's second finding — that `regex`/`regexall` accept RE2-incompatible syntax — was already recorded here as an accepted divergence, and its suggested fix rested on a misreading: `_compile_pattern` is `re.compile` plus a better error message, not an RE2-compatible path, so routing through it buys error consistency and nothing more. |
 | 2026-08-16 | **Phase 3 done — and three of its five items were not gaps.** `RawEquals` already existed as the `__eq__` / `.equals()` split; `PathSet` is a Go workaround for unhashable slices, so `CtyPath` was made hashable and a `set[CtyPath]` stands in; `NormalizeString`'s behaviour was already present, since pyvider NFC-normalizes at construction exactly as go-cty does. All three were filed from reading go-cty's public API rather than running pyvider — the same mistake "Verify before filing" was written about one phase earlier. What did land: `walk` / `deep_values` / `transform` in `src/pyvider/cty/walk.py`, all iterative, because pyvider's own marshaler records that the recursive version of this shape "did raise RecursionError at a nesting depth pyvider-cty advertises as supported". `deep_values` is a generator, which is what go-cty recommends now that Go has iterators; `walk` exists only for the pruning a generator cannot express. Extending `KeyStep` to apply through a set came with it — #14 item 7, landed early because `walk` would otherwise emit set-element paths it could not follow. 37 tests, the load-bearing one being that every emitted path re-applies to the value it came from. |
 | 2026-08-16 | **`length` diverged three ways, and nothing had listed it.** Found by running the oracle while checking whether phase 3's items were real. It accepted a string and counted code points (go-cty refuses; Terraform counts grapheme clusters — three implementations, three answers for one emoji); it refused a dynamic that go-cty accepts; and go-cty's own error text names three collection types where its check names four. Fixed, with six new oracle cases. The null-collection case is left returning unknown, to move together with the same deferred strictness change in `contains`. Also recorded a cross-repo follow-up: `pyvider-components` registers ~16 provider functions that shadow pyvider-cty stdlib names with independent plain-Python implementations, and `provider::pyvider::length` disagrees with Terraform's builtin of the same name. That one is not fixable by rerouting through pyvider-cty — the function-call boundary converts to native Python before dispatch — and is blocked on the same UAX#29 decision. |

@@ -18,6 +18,11 @@ oracle, not from reading its source. What these pin, all divergent before:
     that go-cty accepts as "one chunk holding everything".
   - `length` accepted a string, which go-cty refuses, and refused a dynamic,
     which go-cty accepts.
+  - `values` returned a map's values in insertion order where go-cty sorts them
+    by key, so `keys` and `values` no longer lined up. `zipmap(keys(m),
+    values(m))` -- the standard way to rebuild a map -- silently paired every
+    value with the wrong key. Both also returned the wrong *type* for an object
+    input, where go-cty returns a tuple rather than a list.
 """
 
 from __future__ import annotations
@@ -39,7 +44,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import chunklist, flatten, indent, length
+from pyvider.cty.functions import chunklist, flatten, indent, keys, length, values
 
 STRS = CtyList(element_type=CtyString())
 
@@ -369,6 +374,100 @@ class TestLength:
 
     def test_an_unknown_collection_is_unknown(self) -> None:
         assert length(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
+
+
+class TestKeysAndValues:
+    """Both iterate in lexicographic order by key, and both return a *tuple*
+    for an object input.
+
+    go-cty's guarantee is a property of the types rather than of these two
+    functions: "cty guarantees that these types always iterate in key
+    lexicographical order". `keys` already sorted; `values` did not, which is
+    the whole of the bug -- two functions documented to correspond, that did
+    not.
+    """
+
+    MIXED = CtyMap(element_type=CtyString()).validate({"b": "bee", "a": "ay", "c": "see"})
+
+    def test_a_maps_values_come_back_in_key_order(self) -> None:
+        """Was insertion order."""
+        assert [v.value for v in values(self.MIXED).value] == ["ay", "bee", "see"]
+
+    def test_a_maps_keys_come_back_in_order(self) -> None:
+        assert [k.value for k in keys(self.MIXED).value] == ["a", "b", "c"]
+
+    def test_keys_and_values_line_up(self) -> None:
+        """The property that actually matters, and the one that was broken.
+
+        `zipmap(keys(m), values(m))` is the ordinary way to rebuild a map, and
+        with `values` unsorted it reassociated every entry -- silently, with a
+        result that still type-checked and still looked like a map.
+        """
+        paired = dict(
+            zip(
+                [k.value for k in keys(self.MIXED).value],
+                [v.value for v in values(self.MIXED).value],
+                strict=True,
+            )
+        )
+
+        assert paired == {"b": "bee", "a": "ay", "c": "see"}
+
+    def test_a_maps_values_are_a_list_of_the_element_type(self) -> None:
+        assert values(self.MIXED).type.equal(CtyList(element_type=CtyString()))
+
+    def test_an_objects_values_are_a_tuple_ordered_by_attribute_name(self) -> None:
+        """A tuple, because an object's attributes have differing types and a
+        list would have to widen them to dynamic to hold them."""
+        obj = CtyObject(attribute_types={"b": CtyString(), "a": CtyNumber()}).validate({"b": "bee", "a": 1})
+
+        result = values(obj)
+
+        assert result.type.equal(CtyTuple(element_types=(CtyNumber(), CtyString())))
+        assert [v.value for v in result.value] == [1, "bee"]
+
+    def test_an_objects_keys_are_a_tuple_of_strings(self) -> None:
+        obj = CtyObject(attribute_types={"b": CtyString(), "a": CtyNumber()}).validate({"b": "bee", "a": 1})
+
+        result = keys(obj)
+
+        assert result.type.equal(CtyTuple(element_types=(CtyString(), CtyString())))
+        assert [k.value for k in result.value] == ["a", "b"]
+
+    def test_an_empty_object_gives_the_empty_tuple(self) -> None:
+        empty = CtyObject(attribute_types={}).validate({})
+
+        assert values(empty).type.equal(CtyTuple(element_types=()))
+        assert keys(empty).type.equal(CtyTuple(element_types=()))
+
+    def test_an_empty_map_gives_an_empty_list(self) -> None:
+        empty = CtyMap(element_type=CtyString()).validate({})
+
+        assert values(empty).type.equal(CtyList(element_type=CtyString()))
+        assert list(values(empty).value) == []
+
+    def test_sorting_is_by_code_point_rather_than_locale(self) -> None:
+        """Go's `sort.Strings` is a byte-wise comparison, so uppercase sorts
+        before lowercase. A locale-aware sort would disagree."""
+        m = CtyMap(element_type=CtyString()).validate({"b": "1", "A": "2", "a": "3"})
+
+        assert [k.value for k in keys(m).value] == ["A", "a", "b"]
+        assert [v.value for v in values(m).value] == ["2", "3", "1"]
+
+    @pytest.mark.parametrize("bad", [s("x"), CtyList(element_type=CtyString()).validate(["a"])], ids=str)
+    def test_a_non_mapping_is_refused(self, bad: CtyValue[Any]) -> None:
+        with pytest.raises(CtyFunctionError):
+            values(bad)
+        with pytest.raises(CtyFunctionError):
+            keys(bad)
+
+    @pytest.mark.parametrize("kind", ["null", "unknown"], ids=str)
+    def test_a_null_or_unknown_mapping_yields_unknown(self, kind: str) -> None:
+        m = CtyMap(element_type=CtyString())
+        arg = CtyValue.null(m) if kind == "null" else CtyValue.unknown(m)
+
+        assert values(arg).is_unknown
+        assert keys(arg).is_unknown
 
 
 # 🌊🪢🔚

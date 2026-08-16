@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from itertools import product
 from typing import Any, cast
 
@@ -32,7 +33,9 @@ from pyvider.cty.config.defaults import (
     ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
     ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
     ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
+    ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT,
     ERR_LENGTH_INPUT_MUST_BE_COLLECTION,
+    ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
 )
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
@@ -353,13 +356,21 @@ def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
         }
     ):
         if not isinstance(input_val.type, CtyMap | CtyObject):
-            raise CtyFunctionError(f"keys: input must be a map or object, got {input_val.type.ctype}")
+            raise CtyFunctionError(ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT.format(type=input_val.type.ctype))
+        if isinstance(input_val.type, CtyObject):
+            # An object's attribute names are fixed by its type, so go-cty can
+            # and does give the result a tuple type with one entry per
+            # attribute rather than a list.
+            names = sorted(input_val.type.attribute_types)
+            object_type = CtyTuple(element_types=(CtyString(),) * len(names))
+            if input_val.is_null or input_val.is_unknown:
+                return CtyValue.unknown(object_type)
+            return cast(CtyValue[Any], object_type.validate(tuple(names)))
+
+        result_type = CtyList(element_type=CtyString())
         if input_val.is_null or input_val.is_unknown:
-            return CtyValue.unknown(CtyList(element_type=CtyString()))
-        result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
-            sorted(list(input_val.value.keys()))  # type: ignore[attr-defined]
-        )
-        return result
+            return CtyValue.unknown(result_type)
+        return cast(CtyValue[Any], result_type.validate(sorted(cast(Mapping[str, Any], input_val.value))))
 
 
 @preserve_marks
@@ -373,13 +384,31 @@ def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
         }
     ):
         if not isinstance(input_val.type, CtyMap | CtyObject):
-            raise CtyFunctionError(f"values: input must be a map or object, got {input_val.type.ctype}")
-        elem_type = input_val.type.element_type if isinstance(input_val.type, CtyMap) else CtyDynamic()
+            raise CtyFunctionError(ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT.format(type=input_val.type.ctype))
+
+        # Lexicographic by key, which is not a property of this function but of
+        # the types: "cty guarantees that these types always iterate in key
+        # lexicographical order". Returning them in insertion order meant `keys`
+        # and `values` no longer corresponded, so `zipmap(keys(m), values(m))`
+        # paired every value with the wrong key.
+        if isinstance(input_val.type, CtyObject):
+            attribute_types = input_val.type.attribute_types
+            names = sorted(attribute_types)
+            # A tuple rather than a list: an object's attributes have differing
+            # types, and a list would have to widen them all to dynamic.
+            object_type = CtyTuple(element_types=tuple(attribute_types[name] for name in names))
+            if input_val.is_null or input_val.is_unknown:
+                return CtyValue.unknown(object_type)
+            payload = cast(Mapping[str, CtyValue[Any]], input_val.value)
+            return cast(CtyValue[Any], object_type.validate(tuple(payload[name] for name in names)))
+
+        result_type = CtyList(element_type=input_val.type.element_type)
         if input_val.is_null or input_val.is_unknown:
-            return CtyValue.unknown(CtyList(element_type=elem_type))
+            return CtyValue.unknown(result_type)
         if not isinstance(input_val.value, dict):
-            raise CtyFunctionError("values: input value is not a map or object")
-        return CtyList(element_type=elem_type).validate(list(input_val.value.values()))  # type: ignore[no-any-return]
+            raise CtyFunctionError(ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT.format(type=input_val.type.ctype))
+        mapping = cast(Mapping[str, CtyValue[Any]], input_val.value)
+        return cast(CtyValue[Any], result_type.validate([mapping[name] for name in sorted(mapping)]))
 
 
 @preserve_marks
