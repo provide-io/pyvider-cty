@@ -289,14 +289,20 @@ def test_both_implementations_emit_the_same_bytes(
 # optional -- and declaring it optional is not a workaround, because optionality
 # adds go-cty's third element to the wire type, so it changes the type Terraform
 # is told about.
-NULL_IN_CONTAINER: list[tuple[str, CtyType[Any], Any, bytes]] = [
-    ("list element", CtyList(element_type=CtyString()), ["list", "string"], b'["a",null]'),
+# Every container that now reads a null back. `list` and `list of object` were
+# xfailed here until the guard in CtyList.validate was removed; they are in this
+# list rather than deleted, because the next change to that code path is exactly
+# what they exist to catch.
+READS_A_NULL: list[tuple[str, CtyType[Any], Any, bytes]] = [
+    ("map value", CtyMap(element_type=CtyString()), ["map", "string"], b'{"k":null}'),
+    ("set element", CtySet(element_type=CtyString()), ["set", "string"], b'["a",null]'),
     (
-        "object attribute",
-        CtyObject(attribute_types={"a": CtyString(), "b": CtyNumber()}),
-        ["object", {"a": "string", "b": "number"}],
-        b'{"a":null,"b":1}',
+        "tuple element",
+        CtyTuple(element_types=(CtyString(), CtyString())),
+        ["tuple", ["string", "string"]],
+        b'["a",null]',
     ),
+    ("list element", CtyList(element_type=CtyString()), ["list", "string"], b'["a",null]'),
     (
         "object element of a list",
         CtyList(element_type=CtyObject(attribute_types={"a": CtyString()})),
@@ -305,15 +311,28 @@ NULL_IN_CONTAINER: list[tuple[str, CtyType[Any], Any, bytes]] = [
     ),
 ]
 
+# The one still refused: a null for an object attribute not declared optional.
+# Declaring it optional is not a general workaround, because optionality adds
+# go-cty's third element to the wire type and so changes the type Terraform is
+# told about. Mostly mitigated in practice -- pyvider's schema layer marks every
+# optional or computed attribute optional -- but a required attribute that
+# arrives null still fails.
+STILL_REFUSED: list[tuple[str, CtyType[Any], Any, bytes]] = [
+    (
+        "object attribute",
+        CtyObject(attribute_types={"a": CtyString(), "b": CtyNumber()}),
+        ["object", {"a": "string", "b": "number"}],
+        b'{"a":null,"b":1}',
+    ),
+]
+
 
 @pytest.mark.parametrize(
     ("label", "cty_type", "type_spec", "json_text"),
-    NULL_IN_CONTAINER,
-    ids=[c[0] for c in NULL_IN_CONTAINER],
+    STILL_REFUSED,
+    ids=[c[0] for c in STILL_REFUSED],
 )
-@pytest.mark.xfail(
-    strict=True, reason="a null inside a list or a required object attribute is refused on read"
-)
+@pytest.mark.xfail(strict=True, reason="a null for a required object attribute is refused on read")
 def test_a_null_inside_a_container_can_be_read(
     label: str, cty_type: CtyType[Any], type_spec: Any, json_text: bytes
 ) -> None:
@@ -325,26 +344,13 @@ def test_a_null_inside_a_container_can_be_read(
 
 @pytest.mark.parametrize(
     ("label", "cty_type", "type_spec", "json_text"),
-    [
-        ("map value", CtyMap(element_type=CtyString()), ["map", "string"], b'{"k":null}'),
-        ("set element", CtySet(element_type=CtyString()), ["set", "string"], b'["a",null]'),
-        (
-            "tuple element",
-            CtyTuple(element_types=(CtyString(), CtyString())),
-            ["tuple", ["string", "string"]],
-            b'["a",null]',
-        ),
-    ],
-    ids=["map value", "set element", "tuple element"],
+    READS_A_NULL,
+    ids=[c[0] for c in READS_A_NULL],
 )
 def test_a_null_inside_these_containers_reads_back(
     label: str, cty_type: CtyType[Any], type_spec: Any, json_text: bytes
 ) -> None:
-    """The other half of the inconsistency, pinned so a fix does not regress it.
-
-    These three already accept a null. Whatever settles the list and object
-    cases has to leave these working.
-    """
+    """A null is a value of any type in cty, so every container has to hold one."""
     theirs = _go_convert(json_text, type_spec, to_json=False)
 
     decoded = cty_from_msgpack(theirs, cty_type)

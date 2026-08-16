@@ -68,11 +68,14 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
         validated_elements: list[CtyValue[T]] = []
         for i, item in enumerate(raw_list_to_validate):
-            if item is None and not isinstance(self.element_type, CtyDynamic):
-                raise CtyListValidationError(
-                    f"List elements cannot be null for element type {self.element_type.ctype}",
-                    path=CtyPath(steps=[IndexStep(i)]),
-                )
+            # A null element is not refused. A null is a value of any type in
+            # cty -- nullability is not part of a type there -- so go-cty writes
+            # one inside a list and Terraform sends it for `["a", null]`, which
+            # is ordinary configuration. This used to raise, and it raised on
+            # *read*, so decoding that state failed rather than the value merely
+            # being unconstructable. `element_type.validate(None)` already
+            # returns a null of the element type, which is what set, tuple and
+            # map have always relied on here.
             try:
                 validated_item = self.element_type.validate(item)
                 validated_elements.append(validated_item)
@@ -122,8 +125,6 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         return left.equal(right)
 
     def usable_as(self, other: CtyType[Any]) -> bool:
-        from pyvider.cty.types.structural import CtyDynamic
-
         if isinstance(other, CtyDynamic):
             return True
         if not isinstance(other, CtyList):

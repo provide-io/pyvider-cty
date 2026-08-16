@@ -47,16 +47,20 @@ def test_list_of_booleans_validation(value: list[bool]) -> None:
 @given(st.lists(st.none() | st.integers(), max_size=20))
 @settings(deadline=500)  # Increase deadline to 500ms for validation-heavy test
 def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
-    """
-    Tests that a CtyList(element_type=CtyString) raises a validation error for lists containing non-strings.
+    """A non-string element is refused; a null one is not.
+
+    `None` used to count as an invalid type here, which followed the code
+    rather than cty: a null is a value of any type, so a null string is a
+    perfectly good `list(string)` element. The null case is asserted rather
+    than merely tolerated.
     """
     list_type = CtyList(element_type=CtyString())
-    if any(not isinstance(v, str) for v in value):
+    if any(v is not None and not isinstance(v, str) for v in value):
         with pytest.raises(CtyValidationError):
             list_type.validate(value)
     else:
-        # This branch is for hypothesis to have valid cases as well
-        list_type.validate(value)
+        validated = list_type.validate(value)
+        assert [v.value for v in validated.value] == value
 
 
 # 🌊🪢🔚

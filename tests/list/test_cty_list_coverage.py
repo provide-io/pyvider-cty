@@ -31,9 +31,20 @@ def test_validate_with_set() -> None:
 
 
 def test_validate_null_element_in_list() -> None:
+    """A null element is a value, not an error.
+
+    This used to assert the opposite, which recorded what the code did rather
+    than what cty says: a null is a value of any type there, so go-cty writes
+    one inside a list and Terraform sends it for `["a", null]`. The refusal
+    happened on read too, so decoding that state raised.
+    """
     list_type = CtyList(element_type=CtyString())
-    with pytest.raises(CtyListValidationError, match="List elements cannot be null"):
-        list_type.validate(["a", None, "c"])
+
+    validated = list_type.validate(["a", None, "c"])
+
+    assert validated.raw_value == ["a", None, "c"]
+    assert validated.value[1].is_null
+    assert validated.value[1].type == CtyString()
 
 
 def test_element_at_on_non_cty_list_value() -> None:
