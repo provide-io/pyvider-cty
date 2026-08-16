@@ -62,6 +62,11 @@ def _as_set_of(value: CtyValue[Any], element_type: CtyType[Any], func: str) -> f
     try:
         return frozenset(convert(element, element_type) for element in elements)
     except CtyConversionError as e:
+        # Cannot fire today, and the reason is the `unify` gap rather than an
+        # oversight: this path runs only when the element types differ, and
+        # when they differ `unify` answers dynamic, which everything converts
+        # to. It becomes reachable the moment `unify` learns to widen, and
+        # go-cty reports an argument error there rather than a conversion one.
         raise CtyFunctionError(ERR_SET_OP_INCOMPATIBLE_ELEMENTS.format(func=func)) from e
 
 

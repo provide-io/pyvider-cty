@@ -150,6 +150,11 @@ class TestSetOperationRejects:
         with pytest.raises(CtyFunctionError, match="at least one set"):
             setunion()
 
+    def test_a_dynamic_wrapper_around_a_set_is_seen_through(self) -> None:
+        wrapped = CtyDynamic().validate(STRING_SET.validate(["b"]))
+
+        assert elements_of(setunion(S("a"), wrapped)) == {"a", "b"}
+
 
 class TestSetOperationUnifyGap:
     """A known divergence, and it is in `unify` rather than in these functions.
