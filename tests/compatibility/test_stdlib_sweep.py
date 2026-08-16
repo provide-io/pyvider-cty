@@ -197,6 +197,8 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("concat", [ls(["a"]), ls(["b"])]),
     ("concat", [ls(["a"]), ln([1])]),
     ("concat", [ls(["a"]), lb([True])]),
+    ("concat", [ln([1]), lb([True])]),
+    ("concat", [ls(["a"]), nul(["list", "string"], CtyList(element_type=CtyString()))]),
     ("contains", [ls(["a"]), st("a")]),
     ("contains", [ls(["a"]), st("z")]),
     ("element", [ls(["a", "b"]), nm(1)]),
@@ -336,17 +338,6 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # means reproducing its float64 step, which is a decision, not a fix.
     "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
     "pow(2,0.5)": "numeric precision model: go-cty computes in float64, Decimal is more precise",
-    # Both are the same gap, and it is in `unify`, not in the set operations.
-    # go-cty unifies a mixture of primitives with convert.UnifyUnsafe, which
-    # widens everything to string; this package's `unify` has no primitive
-    # widening rule at all and answers dynamic.
-    "setunion(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
-    "setunion(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
-    # The same gap, reached through a different function -- which is the point
-    # of writing these two down. `concat` had a sweep case already, but it used
-    # two string lists, so the divergence sat behind a passing test.
-    "concat(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
-    "concat(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
 }
 
 
