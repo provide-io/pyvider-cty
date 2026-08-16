@@ -25,6 +25,7 @@ fail, which is what forces the list to shrink rather than rot.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from pathlib import Path
@@ -43,10 +44,12 @@ from pyvider.cty import (
     CtyObject,
     CtySet,
     CtyString,
+    CtyType,
     CtyValue,
 )
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.functions import STDLIB
+from pyvider.cty.types import BytesCapsule
 
 pytestmark = pytest.mark.compat
 
@@ -102,6 +105,20 @@ def mn(v: dict[str, Any]) -> Arg:
 def ob(v: dict[str, str]) -> Arg:
     object_type = CtyObject(attribute_types=dict.fromkeys(v, CtyString()))
     return object_type.validate(v), {"type": ["object", dict.fromkeys(v, "string")], "value": v}
+
+
+def by(v: bytes) -> Arg:
+    """A Bytes capsule buffer, carried to the harness as base64.
+
+    JSON has no byte-string literal and go-cty refuses to marshal a capsule
+    type at all, so base64 is the only spelling both ends can agree on.
+    """
+    return BytesCapsule.validate(v), {"type": "bytes", "value": base64.b64encode(v).decode()}
+
+
+def nul(spec: Any, cty_type: CtyType[Any]) -> Arg:
+    """A typed null. Distinct from unknown, and the two are answered differently."""
+    return CtyValue.null(cty_type), {"type": spec, "null": True}
 
 
 # (function name, arguments). The id is derived, so adding a row is one line.
@@ -212,6 +229,18 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("setintersection", [se(["a"]), se(["b"])]),
     ("setsubtract", [se(["a", "b"]), se(["b"])]),
     ("setsubtract", [se(["a"]), se(["a"])]),
+    ("setsymmetricdifference", [se(["a", "b"]), se(["b", "c"])]),
+    ("setsymmetricdifference", [se(["a"]), se(["a"])]),
+    ("setsymmetricdifference", [se([]), se(["a"])]),
+    ("setsymmetricdifference", [se(["a"]), se(["b"]), se(["c"])]),
+    ("sethaselement", [se(["a", "b"]), st("a")]),
+    ("sethaselement", [se(["a", "b"]), st("z")]),
+    ("sethaselement", [se([]), st("a")]),
+    ("setproduct", [se(["a"]), se(["x"])]),
+    ("setproduct", [se(["a", "b"]), se(["x", "y"])]),
+    ("setproduct", [se(["a"]), se([])]),
+    ("setproduct", [ls(["a", "b"]), ls(["x"])]),
+    ("setproduct", [se(["a"])]),
     ("flatten", [ls(["a"])]),
     ("chunklist", [ls(["a", "b", "c"]), nm(2)]),
     ("length", [ls(["a", "b"])]),
@@ -253,6 +282,36 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("formatdate", [st("'it''s' YYYY"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("YYY"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("YYYY"), st("2020-01-02 03:04:05Z")]),
+    # bytes
+    ("byteslen", [by(b"hello world")]),
+    ("byteslen", [by(b"")]),
+    ("bytesslice", [by(b"hello world"), nm(0), nm(11)]),
+    ("bytesslice", [by(b"hello world"), nm(0), nm(0)]),
+    ("bytesslice", [by(b"hello world"), nm(1), nm(3)]),
+    ("bytesslice", [by(b"hello world"), nm(6), nm(5)]),
+    ("bytesslice", [by(b"hello world"), nm(9), nm(5)]),
+    ("bytesslice", [by(b"hello world"), nm(-1), nm(2)]),
+    ("bytesslice", [by(b"hello world"), nm(1), nm(-2)]),
+    # conversion
+    ("tostring", [st("a")]),
+    ("tostring", [nm(1)]),
+    ("tostring", [nm("1.5")]),
+    ("tostring", [bl(True)]),
+    ("tostring", [bl(False)]),
+    ("tostring", [ls(["a"])]),
+    ("tostring", [nul("string", CtyString())]),
+    ("tonumber", [nm(1)]),
+    ("tonumber", [st("1.5")]),
+    ("tonumber", [st("abc")]),
+    ("tonumber", [bl(True)]),
+    ("tonumber", [ls(["a"])]),
+    ("tonumber", [nul("number", CtyNumber())]),
+    ("tobool", [bl(True)]),
+    ("tobool", [st("true")]),
+    ("tobool", [st("false")]),
+    ("tobool", [st("yes")]),
+    ("tobool", [nm(1)]),
+    ("tobool", [nul("bool", CtyBool())]),
 ]
 
 # Divergences that are real, reproduced, and not yet fixed. Strict xfails, so
@@ -279,6 +338,48 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # two string lists, so the divergence sat behind a passing test.
     "concat(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
     "concat(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
+    # `bytesslice`'s third argument is a *length* in go-cty (`bytes.go:80-106`:
+    # `end := offset + length`), and an end index here. The two agree only when
+    # the offset is zero, which is why every test written from this side passed.
+    # go-cty also refuses a negative or out-of-range argument outright; Python
+    # slicing silently clamps, and a negative end counts back from the far end,
+    # so `bytesslice(buf, 1, -2)` returns eight bytes where go-cty errors.
+    "bytesslice(aGVsbG8gd29ybGQ=,1,3)": "third argument is a length in go-cty, an end index here",
+    "bytesslice(aGVsbG8gd29ybGQ=,6,5)": "third argument is a length in go-cty, an end index here",
+    "bytesslice(aGVsbG8gd29ybGQ=,9,5)": "go-cty refuses offset+length past the buffer; slicing clamps",
+    "bytesslice(aGVsbG8gd29ybGQ=,-1,2)": "go-cty refuses a negative offset; slicing counts from the end",
+    "bytesslice(aGVsbG8gd29ybGQ=,1,-2)": "go-cty refuses a negative length; slicing counts from the end",
+    # `setproduct` was already reachable from the oracle and simply never
+    # driven, which is its own lesson: the blind spot was not only the nine
+    # functions the harness could not reach.
+    # go-cty preserves ordering when every argument is ordered -- `listCount ==
+    # len(args)` returns `cty.List(cty.Tuple(...))` at `collection.go:975` --
+    # and `collection_functions.py:697` always builds a set, so the ordering
+    # the caller asked for by passing lists is discarded.
+    "setproduct(['a', 'b'],['x'])": "go-cty returns a list when every argument is ordered; always a set here",
+    "setproduct(['a'])": "go-cty requires at least two arguments (collection.go:942)",
+    # `tostring` falls through to `str(value.value)` for anything it does not
+    # recognise, so a list comes back as the repr of the internal tuple of
+    # CtyValues. go-cty refuses the conversion.
+    "tostring(['a'])": "unconvertible values render as a Python repr here; go-cty refuses",
+    "tonumber(True)": "bool converts to 1 here; go-cty refuses bool to number",
+    # A null argument answers unknown here and null-of-the-target-type there.
+    # This is the null-argument policy recorded as decision 4 in the tracker,
+    # not three separate bugs -- go-cty's `MakeToFunc` sets `AllowNull` and
+    # lets `convert.Convert` carry the null through.
+    "tostring(None)": "null argument answers unknown here, null of the target type in go-cty",
+    "tonumber(None)": "null argument answers unknown here, null of the target type in go-cty",
+    "tobool(None)": "null argument answers unknown here, null of the target type in go-cty",
+}
+
+
+# Functions the oracle exposes that this sweep does not drive, and why. Every
+# one of them is unported; nothing implemented here belongs in this list.
+UNSWEPT: dict[str, str] = {
+    "assertnotnull": "not ported",
+    "format": "not ported -- the largest remaining stdlib port",
+    "formatlist": "not ported -- same port as `format`",
+    "strlen": "not ported -- blocked on UAX#29 grapheme segmentation",
 }
 
 
@@ -327,6 +428,12 @@ def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
         return "error", f"{type(exc).__name__}: {exc}"
     if result.is_unknown:
         return "unknown", None
+    if result.type.equal(BytesCapsule):
+        # A capsule has no wire form on either side -- go-cty refuses to
+        # marshal a capsule type at all -- so the harness carries the buffer as
+        # base64 and this does the same. That compares the buffers, rather than
+        # two different ways of declining to encode them.
+        return "ok", ("bytes", base64.b64encode(result.value).decode())
     return "ok", (
         result.type._to_wire_json(),
         msgpack.unpackb(cty_to_msgpack(result, result.type), strict_map_key=False),
@@ -374,15 +481,27 @@ def test_the_known_divergence_list_is_not_stale() -> None:
     )
 
 
-def test_the_sweep_covers_most_of_what_the_oracle_exposes() -> None:
+def test_the_sweep_drives_every_function_the_oracle_exposes() -> None:
     """A guard on coverage, not on behaviour.
 
-    The sweep is only worth anything if it is broad, and breadth is exactly the
-    property that decays quietly as functions are added.
+    Measured against the oracle's own surface rather than against a threshold
+    typed in here. A threshold is coverage reported against the wrong
+    denominator, which is the bug this file exists to catch in the library --
+    and it was live in this very test: it asserted "at least 70 functions" while
+    the harness reached 74 of go-cty's 83, so seven implemented functions had no
+    differential verification at all and nothing here could say so.
     """
+    completed = subprocess.run(  # nosec
+        [_soup_go(), "cty", "functions"], capture_output=True, check=True
+    )
+    exposed = set(json.loads(completed.stdout.decode()))
     covered = {func for func, _args in CASES}
 
-    assert len(covered) >= 70, f"sweep covers only {len(covered)} functions"
+    assert not covered - exposed, f"sweep drives what the oracle does not expose: {covered - exposed}"
+    assert exposed - covered == set(UNSWEPT), (
+        f"exposed but unswept and unexplained: {sorted(exposed - covered - set(UNSWEPT))}; "
+        f"explained but no longer unswept: {sorted(set(UNSWEPT) - (exposed - covered))}"
+    )
 
 
 # 🌊🪢🔚
