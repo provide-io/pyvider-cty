@@ -21,6 +21,12 @@ Terraform resource is an object, so that is the common path, not a corner.
 Subclassing `dict` rather than using `MappingProxyType` is deliberate: every
 `isinstance(payload, dict)` check in this package and its consumers keeps
 working, and msgpack and JSON encoders serialize it without knowing.
+
+This blocks mutation through the public API. Calling an unbound base method
+explicitly -- `dict.__init__(payload, ...)`, `dict.update(payload, ...)` --
+still reaches the C implementation, exactly as `object.__setattr__` still
+defeats a frozen attrs class. That is deliberate subversion rather than an
+accident, and no amount of subclassing prevents it.
 """
 
 from __future__ import annotations
@@ -45,6 +51,10 @@ class FrozenDict(dict[str, Any]):
 
     __setitem__ = _immutable
     __delitem__ = _immutable
+    # `|=` is idiomatic and dispatches to dict.__ior__ in C, which never reaches
+    # the overrides below. Without this the whole immutability claim, and the
+    # memo that rests on it, was one operator away from being false.
+    __ior__ = _immutable
     pop = _immutable
     popitem = _immutable
     clear = _immutable

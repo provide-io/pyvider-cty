@@ -42,6 +42,12 @@ VALIDATION_STACK_MARGIN = 100
 # stopped one level short of it.
 DYNAMIC_DELEGATION_RESERVE = 1
 
+# How much of its own descent the guard must have completed before it will
+# attribute a stack overflow to the input's nesting. Below this, the stack ran
+# out because the *caller* was already deep, and the input is fine -- degrading
+# it to an unknown reports a real attribute value as "known after apply".
+MIN_OWNED_OVERFLOW_DEPTH = 8
+
 # Sentinel for "derive the limit"; any positive configured value wins instead.
 MAX_VALIDATION_DEPTH_AUTO = 0
 
@@ -62,25 +68,34 @@ def default_max_validation_depth() -> int:
     actually in force, including a host that has raised it. Set
     `PYVIDER_CTY_MAX_VALIDATION_DEPTH` to override with a fixed value.
     """
-    from pyvider.cty.config.runtime import CtyConfig
+    import os
+
+    # The override is read from the environment directly, on every call. Going
+    # through CtyConfig meant parsing the whole config, which was too costly to
+    # do per validation session -- so it was read once and cached, and an
+    # override set after a thread's first validation was then ignored for the
+    # life of that thread.
+    override = os.environ.get("PYVIDER_CTY_MAX_VALIDATION_DEPTH")
+    if override:
+        try:
+            configured = int(override)
+        except ValueError:
+            configured = MAX_VALIDATION_DEPTH_AUTO
+        if configured > MAX_VALIDATION_DEPTH_AUTO:
+            return configured
 
     # Keyed on the recursion limit so a limit raised after import is picked up,
-    # and cached so that recomputing it per validation session stays free. An
-    # earlier version evaluated this once per thread and never again, so the
-    # ceiling depended on when a thread first validated: raising the limit left
-    # existing threads on the old ceiling while new ones got the new one.
+    # and cached so recomputing it per validation session stays free.
     limit = sys.getrecursionlimit()
     cache_key = (limit, VALIDATION_STACK_MARGIN)
     cached = _DERIVED_DEPTH_CACHE.get(cache_key)
     if cached is not None:
-        configured = CtyConfig.get_current().max_validation_depth
-        return configured if configured > MAX_VALIDATION_DEPTH_AUTO else cached
+        return cached
 
-    configured = CtyConfig.get_current().max_validation_depth
     usable = (limit - VALIDATION_STACK_MARGIN) // FRAMES_PER_VALIDATION_LEVEL
     derived = max(1, usable - DYNAMIC_DELEGATION_RESERVE)
     _DERIVED_DEPTH_CACHE[cache_key] = derived
-    return configured if configured > MAX_VALIDATION_DEPTH_AUTO else derived
+    return derived
 
 
 # The value at import time, kept for callers that read it directly. The

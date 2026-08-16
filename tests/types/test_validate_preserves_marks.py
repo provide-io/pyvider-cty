@@ -415,3 +415,115 @@ class TestMarksSurviveTheRecursionGuard:
             nested = [nested]
 
         assert collect_marks_deep(nested) == frozenset({SENSITIVE})
+
+
+class TestFixesThatHadNoTest:
+    """Each of these failed when its fix was reverted, and not before.
+
+    A review found four round-four fixes that could be reverted with the whole
+    suite still green -- including the one that let a marked value reach the
+    wire. A fix without a test is a fix that will be undone by someone tidying
+    up, so each of them is pinned here.
+    """
+
+    def test_a_marked_unknown_inside_a_container_is_not_serialized(self) -> None:
+        """The container is flagged unknown by its element, and an unknown
+        encodes to a marker without the encoder descending -- so the per-level
+        mark check never saw the mark. It reached the wire."""
+        from pyvider.cty.codec import cty_to_msgpack
+        from pyvider.cty.exceptions import CtyMarksSerializationError
+
+        for cty_type, raw in (
+            (CtyList(element_type=CtyString()), [CtyValue.unknown(CtyString()).mark(SENSITIVE)]),
+            (CtyMap(element_type=CtyString()), {"a": CtyValue.unknown(CtyString()).mark(SENSITIVE)}),
+            (CtyTuple(element_types=(CtyString(),)), [CtyValue.unknown(CtyString()).mark(SENSITIVE)]),
+        ):
+            value = cty_type.validate(raw)
+            assert value.is_unknown, "container takes its unknown-ness from the element"
+            with pytest.raises(CtyMarksSerializationError):
+                cty_to_msgpack(value, cty_type)
+
+    def test_a_hand_built_set_does_not_keep_marked_elements(self) -> None:
+        """The pass-through returned such a set untouched, so de-duplication
+        could later drop the mark with the element that lost."""
+        set_type = CtySet(element_type=CtyString())
+        hand_built = CtyValue(vtype=set_type, value=frozenset({marked_string()}))
+
+        result = set_type.validate(hand_built)
+
+        assert result.marks == frozenset({SENSITIVE})
+        assert [e.marks for e in result.value] == [frozenset()]
+
+    def test_equality_against_an_unknown_of_dynamic_type_is_undecided(self) -> None:
+        """What `cty_from_msgpack` produces for every not-yet-known dynamic
+        attribute Terraform sends. go-cty answers unknown; this answered False."""
+        assert CtyString().validate("x").equals(CtyValue.unknown(CtyDynamic())).is_unknown
+        assert CtyValue.unknown(CtyDynamic()).equals(CtyString().validate("x")).is_unknown
+
+    def test_contains_matches_a_null_of_a_different_type(self) -> None:
+        """`==` requires matching types; `equals` treats nulls of any type as
+        equal, as go-cty does. The `==` shortcut disagreed for exactly these."""
+        from pyvider.cty.functions import contains
+
+        collection = CtyList(element_type=CtyDynamic()).validate([CtyValue.null(CtyString())])
+
+        result = contains(collection, CtyValue.null(CtyNumber()))
+
+        assert not result.is_unknown
+        assert result.value is True
+
+    def test_a_marked_element_does_not_change_what_contains_answers(self) -> None:
+        """The answer must depend on the data, not on its sensitivity.
+
+        `_strip` could not descend into a container flagged unknown by one of
+        its elements, so the marked element survived into the comparison and
+        `CtyValue.__eq__` -- which counts marks -- reported a miss.
+        """
+        from pyvider.cty.functions import contains
+
+        list_type = CtyList(element_type=CtyString())
+        needle = CtyString().validate("a")
+        plain = list_type.validate(["a", CtyValue.unknown(CtyString())])
+        marked = list_type.validate([marked_string_named("a"), CtyValue.unknown(CtyString())])
+
+        assert contains(plain, needle).value is True
+        assert contains(marked, needle).value is True
+        assert SENSITIVE in contains(marked, needle).marks
+
+    def test_a_frozen_payload_refuses_the_in_place_merge_operator(self) -> None:
+        """`|=` dispatches to dict.__ior__ in C and skipped every override.
+
+        The payload is bound to a local first, deliberately. Writing
+        `value.value |= {...}` re-assigns the attribute and so is refused by
+        attrs' frozen class regardless -- the test would pass with the hole
+        wide open. Mutating the payload object itself is the real attack, and
+        the one that silently poisoned the deep-mark memo.
+        """
+        value = CtyObject(attribute_types={"a": CtyString()}).validate({"a": "public"})
+        assert collect_marks_deep(value) == frozenset()
+
+        payload = value.value
+
+        with pytest.raises(TypeError, match="immutable"):
+            payload |= {"a": marked_string()}
+
+        assert collect_marks_deep(value) == frozenset(), "memo must still be right"
+
+    def test_a_stripped_payload_is_frozen_too(self) -> None:
+        """`_strip` memoizes and hands every caller the same object, so a plain
+        dict payload there reintroduced the mutable shared state FrozenDict
+        exists to prevent."""
+        from pyvider.cty.marks import _strip
+        from pyvider.cty.values.frozen import FrozenDict
+
+        value = CtyObject(attribute_types={"a": CtyString()}).validate({"a": marked_string()})
+
+        stripped = _strip(value)
+
+        assert isinstance(stripped.value, FrozenDict)
+        with pytest.raises(TypeError, match="immutable"):
+            stripped.value["b"] = "tampered"
+
+
+def marked_string_named(text: str) -> CtyValue[Any]:
+    return CtyString().validate(text).mark(SENSITIVE)

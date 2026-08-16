@@ -64,17 +64,30 @@ _NESTING_PAYLOADS = (dict, list, tuple, set, frozenset)
 
 
 def _has_dynamic(vtype: Any) -> bool:
-    """Whether `vtype` is, or contains, a dynamic pseudo-type."""
+    """Whether `vtype` is, or contains, a dynamic pseudo-type.
+
+    Iterative. Types nest as deeply as values do, and this runs on every
+    comparison against an unknown -- a recursive version raised RecursionError
+    out of `equals` for a sufficiently nested type.
+    """
     from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtyObject, CtySet, CtyTuple
 
-    if isinstance(vtype, CtyDynamic):
-        return True
-    if isinstance(vtype, CtyList | CtySet | CtyMap):
-        return _has_dynamic(vtype.element_type)
-    if isinstance(vtype, CtyTuple):
-        return any(_has_dynamic(t) for t in vtype.element_types)
-    if isinstance(vtype, CtyObject):
-        return any(_has_dynamic(t) for t in vtype.attribute_types.values())
+    stack = [vtype]
+    seen: set[int] = set()
+    while stack:
+        current = stack.pop()
+        if isinstance(current, CtyDynamic):
+            return True
+        current_id = id(current)
+        if current_id in seen:
+            continue
+        seen.add(current_id)
+        if isinstance(current, CtyList | CtySet | CtyMap):
+            stack.append(current.element_type)
+        elif isinstance(current, CtyTuple):
+            stack.extend(current.element_types)
+        elif isinstance(current, CtyObject):
+            stack.extend(current.attribute_types.values())
     return False
 
 

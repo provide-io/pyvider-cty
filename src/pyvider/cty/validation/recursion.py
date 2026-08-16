@@ -32,18 +32,28 @@ from pyvider.cty.config.defaults import (
     DYNAMIC_DELEGATION_RESERVE,
     MAX_OBJECT_REVISITS,
     MAX_VALIDATION_TIME_MS,
+    MIN_OWNED_OVERFLOW_DEPTH,
     default_max_validation_depth,
 )
 
 
 def _guard_depth_limit() -> int:
-    """What the guard permits, which is the advertised depth plus the reserve.
+    """What the guard permits.
 
     A CtyDynamic value spends one guard entry more than its nesting depth,
     because its own guarded `validate` delegates to the concrete type's guarded
-    `validate`. Handing the guard that one extra entry is what makes the
-    advertised depth reachable for every type rather than all but one.
+    `validate`. The derived limit hands the guard that one extra entry so the
+    advertised depth is reachable for every type rather than all but one; the
+    other types can therefore reach one level beyond what is advertised, which
+    is why the advertised number is a floor and not a ceiling.
+
+    An explicitly configured limit gets no reserve. Someone who asks for a bound
+    of 10 means 10, and silently permitting 11 makes the setting a lie.
     """
+    import os
+
+    if os.environ.get("PYVIDER_CTY_MAX_VALIDATION_DEPTH"):
+        return default_max_validation_depth()
     return default_max_validation_depth() + DYNAMIC_DELEGATION_RESERVE
 
 
@@ -69,6 +79,9 @@ class RecursionContext:
     # The recursion limit `max_depth_allowed` was derived from, so a limit
     # changed later can be noticed without discarding an explicit override.
     derived_from_recursion_limit: int = field(default_factory=sys.getrecursionlimit)
+    # What the derivation last produced, so an explicit override that changes
+    # is noticed while a caller's hand-set `max_depth_allowed` is left alone.
+    derived_depth: int = field(default_factory=_guard_depth_limit)
     max_object_revisits: int = MAX_OBJECT_REVISITS
     max_validation_time_ms: int = MAX_VALIDATION_TIME_MS
 
@@ -90,9 +103,11 @@ class RecursionContext:
         next top-level validate.
         """
         current_limit = sys.getrecursionlimit()
-        if current_limit != self.derived_from_recursion_limit:
-            self.max_depth_allowed = _guard_depth_limit()
+        derived = _guard_depth_limit()
+        if current_limit != self.derived_from_recursion_limit or derived != self.derived_depth:
+            self.max_depth_allowed = derived
             self.derived_from_recursion_limit = current_limit
+            self.derived_depth = derived
         self.validation_graph.clear()
         self.validation_path.clear()
         self.max_depth_reached = 0
@@ -292,7 +307,13 @@ def _recover_from_overflow(exc: RecursionError, context: RecursionContext, value
         if frame.f_globals.get("__name__", "").startswith("pyvider.cty"):
             ours = True
             break
-    if not ours:
+
+    # Both conditions are needed. The traceback says the stack ran out in cty's
+    # code; the depth says cty's own descent is what consumed it. Without the
+    # second, a caller already ~990 frames deep validating a *two-level* value
+    # overflowed inside cty and had a perfectly valid input degraded to an
+    # unknown -- silently, since degrading raises nothing.
+    if not ours or len(context.validation_path) < MIN_OWNED_OVERFLOW_DEPTH:
         raise exc
 
     context.validation_stopped = True
