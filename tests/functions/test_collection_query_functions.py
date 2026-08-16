@@ -145,29 +145,38 @@ class TestContainsUnknownHandling:
     whose contents are not fully known.
     """
 
-    def test_unknown_element_makes_the_answer_unknown(self) -> None:
-        list_type = CtyList(element_type=CtyString())
-        collection = CtyValue(
-            vtype=list_type,
-            value=(CtyString().validate("a"), CtyValue.unknown(CtyString())),
-        )
+    def test_unknown_element_makes_a_miss_unknown(self) -> None:
+        """Built through `validate`, as a caller would.
 
-        result = contains(collection, CtyString().validate("zzz"))
+        These cases used to hand-build the CtyValue, which hid something: a
+        list reports itself unknown as soon as any element is unknown, and
+        `contains` used to return on that flag before looking at the elements
+        at all. So the behaviour asserted here was unreachable through the
+        public API, and the real answer for every list was "unknown".
+        """
+        collection = CtyList(element_type=CtyString()).validate(["a", CtyValue.unknown(CtyString())])
 
-        assert result.is_unknown
+        assert collection.is_unknown, "the container flags itself unknown"
+        assert contains(collection, CtyString().validate("zzz")).is_unknown
 
     def test_exact_match_wins_over_an_unknown_element(self) -> None:
-        """A definite hit is still definite, even alongside unknowns."""
-        list_type = CtyList(element_type=CtyString())
-        collection = CtyValue(
-            vtype=list_type,
-            value=(CtyString().validate("a"), CtyValue.unknown(CtyString())),
-        )
+        """A definite hit is still definite, even alongside unknowns.
+
+        go-cty's ContainsFunc answers `true` here, and so must this: whatever
+        the unknown resolves to cannot un-match an element that already matched.
+        """
+        collection = CtyList(element_type=CtyString()).validate(["a", CtyValue.unknown(CtyString())])
 
         result = contains(collection, CtyString().validate("a"))
 
         assert not result.is_unknown
         assert result.value is True
+
+    def test_a_wholly_unknown_collection_is_undecidable(self) -> None:
+        """No elements to scan, so nothing can be concluded."""
+        collection = CtyValue.unknown(CtyList(element_type=CtyString()))
+
+        assert contains(collection, CtyString().validate("a")).is_unknown
 
     def test_fully_known_collection_still_answers_definitely(self) -> None:
         collection = CtyList(element_type=CtyString()).validate(["a", "b"])

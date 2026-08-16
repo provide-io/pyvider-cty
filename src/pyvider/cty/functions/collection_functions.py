@@ -231,8 +231,14 @@ _NESTING_PAYLOADS = (CtyValue, dict, list, tuple, set, frozenset)
 
 
 def _is_known_leaf(value: CtyValue[Any]) -> bool:
-    """Wholly known, decided without a walk. False means "ask properly"."""
-    return not value.is_unknown and not isinstance(value.value, _NESTING_PAYLOADS)
+    """Wholly known and non-null, decided without a walk.
+
+    Nulls are excluded deliberately. `CtyValue.__eq__` requires the types to
+    match, but `equals` treats nulls of any type as equal, as go-cty does -- so
+    the `==` shortcut disagrees with the real comparison for a null of one type
+    searched for in a collection of another. False here means "ask properly".
+    """
+    return not value.is_unknown and not value.is_null and not isinstance(value.value, _NESTING_PAYLOADS)
 
 
 @preserve_marks
@@ -241,7 +247,17 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(
             f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}"
         )
-    if collection.is_null or collection.is_unknown:
+    if collection.is_null:
+        return CtyValue.unknown(CtyBool())
+
+    # A collection reports itself unknown as soon as any element is unknown
+    # (`list.py`, `tuple.py`, `set.py`), but it keeps its elements. Returning
+    # undecided on that flag alone threw away an answer that was available: a
+    # list holding "a" and an unknown definitely contains "a", whatever the
+    # unknown turns out to be, and go-cty's ContainsFunc says so. Only a
+    # collection with nothing to scan is genuinely undecidable here.
+    elements = collection.value
+    if not isinstance(elements, (tuple, frozenset, list)):
         return CtyValue.unknown(CtyBool())
 
     # An unknown element could still turn out to be the value being searched
@@ -262,7 +278,7 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     # test must stay *per element* -- an is-anything-unknown pre-pass over the
     # whole collection would defeat the early exit, which is what makes finding
     # a hit near the front cost nothing.
-    hit, saw_unknown = _scan_for_value(cast("tuple[Any, ...]", collection.value), value)
+    hit, saw_unknown = _scan_for_value(tuple(elements), value)
     if hit:
         return CtyBool().validate(True)
     if saw_unknown:
@@ -272,7 +288,7 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
 
 def _scan_for_value(elements: tuple[Any, ...], value: CtyValue[Any]) -> tuple[bool, bool]:
     """Scan for `value`, returning (found, saw_something_undecided)."""
-    value_known = value.is_wholly_known()
+    value_known = value.is_wholly_known() and not value.is_null
     saw_unknown = False
     for element_value in elements:
         if not isinstance(element_value, CtyValue):

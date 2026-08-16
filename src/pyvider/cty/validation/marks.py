@@ -25,9 +25,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+if TYPE_CHECKING:
+    from pyvider.cty.values.base import CtyValue
 
 ValidateFn = TypeVar("ValidateFn", bound=Callable[..., Any])
+
+# Resolved once, lazily: importing CtyValue at module scope would cycle.
+_CTY_VALUE_TYPE: type | None = None
 
 
 def reapply_marks(source: object, result: Any) -> Any:
@@ -36,16 +42,26 @@ def reapply_marks(source: object, result: Any) -> Any:
     The rule itself, stated once. It is applied from two places because of
     stack depth, not because it differs between them -- see `preserves_marks`.
 
-    Asks for the marks rather than for the type. This runs once per element of
-    every collection validated, and an `isinstance` against a lazily imported
-    CtyValue cost an import lookup plus a type check per element to answer a
-    question a single attribute read answers. Anything without `marks` is not a
-    marked value, which is all this needs to know.
+    Checks the type, not just for a `marks` attribute. Duck-typing here was
+    faster -- this runs once per element of every collection validated -- but a
+    capsule can wrap an arbitrary Python object, and an object that happens to
+    carry its own `marks` had that attribute adopted as cty marks: a string
+    became a frozenset of its characters, and an int raised TypeError out of
+    `validate`. The class is cached so the check stays one isinstance, without
+    the per-call import lookup that motivated the duck-typing.
     """
-    marks = getattr(source, "marks", None)
-    if not marks:
+    global _CTY_VALUE_TYPE
+    if _CTY_VALUE_TYPE is None:
+        from pyvider.cty.values import CtyValue
+
+        _CTY_VALUE_TYPE = CtyValue
+
+    if not isinstance(source, _CTY_VALUE_TYPE):
         return result
-    return result.with_marks(marks)
+    marked = cast("CtyValue[Any]", source)
+    if not marked.marks:
+        return result
+    return result.with_marks(marked.marks)
 
 
 def preserves_marks(func: ValidateFn) -> ValidateFn:

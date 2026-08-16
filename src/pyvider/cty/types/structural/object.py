@@ -22,6 +22,7 @@ from pyvider.cty.path import CtyPath, GetAttrStep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.frozen import FrozenDict
 
 
 @define(frozen=True, slots=True)
@@ -146,7 +147,7 @@ class CtyObject(CtyType[dict[str, object]]):
         # Don't mark the entire object as unknown just because some fields are unknown
         # Terraform expects field-level unknown tracking, not object-level
         # The object itself is only unknown if explicitly passed as unknown
-        return CtyValue(vtype=self, value=validated_attrs, is_unknown=False)
+        return CtyValue(vtype=self, value=FrozenDict(validated_attrs), is_unknown=False)
 
     def get_attribute(self, obj_value: CtyValue[Any], name: str) -> CtyValue[Any]:
         if not isinstance(obj_value, CtyValue):
