@@ -35,9 +35,9 @@ from pyvider.cty.config.defaults import (
     ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
     ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT,
     ERR_LENGTH_INPUT_MUST_BE_COLLECTION,
+    ERR_MERGE_ALL_ARGS_MUST_BE_MAPS_OBJECTS,
     ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
 )
-from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
 from pyvider.cty.functions._marks import preserve_marks
@@ -569,19 +569,97 @@ def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]
     return collection.value[key.value]  # type: ignore[no-any-return]
 
 
+def _merge_one(arg: CtyValue[Any], attribute_types: dict[str, CtyType[Any]]) -> tuple[CtyType[Any], bool]:
+    """Fold one merge argument's attributes into `attribute_types`.
+
+    Returns the type this argument contributes to the all-arguments-match test,
+    and whether the attribute set is still fully known after it.
+    """
+    arg_type = arg.type
+    if isinstance(arg_type, CtyObject):
+        # A null object is treated as having no attributes at all, and it
+        # compares against the other arguments as the empty object type.
+        if arg.is_null:
+            return CtyObject(attribute_types={}), True
+        attribute_types.update(arg_type.attribute_types)
+        return arg_type, True
+
+    if not isinstance(arg_type, CtyMap):
+        raise CtyFunctionError(ERR_MERGE_ALL_ARGS_MUST_BE_MAPS_OBJECTS)
+    if arg.is_null:
+        return arg_type, True  # Contributes nothing, but its type still counts.
+    if arg.is_unknown:
+        # Its keys are exactly what is unknown about it, so the attribute set
+        # of the result cannot be predicted.
+        return arg_type, False
+
+    element_type = arg_type.element_type
+    for key in cast(Mapping[str, Any], arg.value):
+        attribute_types[key] = element_type
+    return arg_type, True
+
+
+def _merge_result_type(args: tuple[CtyValue[Any], ...]) -> CtyType[Any] | None:
+    """The type go-cty's MergeFunc declares for these arguments.
+
+    None stands for go-cty's DynamicPseudoType, which it uses both when an
+    argument's own type is dynamic and when a mix of unknown maps leaves the
+    attribute set unknowable.
+    """
+    attribute_types: dict[str, CtyType[Any]] = {}
+    first: CtyType[Any] | None = None
+    matching = True
+    attributes_known = True
+
+    for index, arg in enumerate(args):
+        # Checked inside the loop rather than up front, because go-cty gives up
+        # at the first dynamic argument and so never reaches a later argument
+        # that would have been rejected outright.
+        if isinstance(arg.type, CtyDynamic):
+            return None
+        arg_type, known = _merge_one(arg, attribute_types)
+        attributes_known = attributes_known and known
+        if index == 0:
+            first = arg_type
+        elif matching and arg_type != first:
+            matching = False
+
+    # Every argument had the same type, so the result keeps it -- which is how a
+    # merge of maps stays a map rather than collapsing into an object.
+    if matching:
+        return first
+    if not attributes_known:
+        return None
+    return CtyObject(attribute_types=attribute_types)
+
+
 @preserve_marks
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
-    if not all(isinstance(arg.type, CtyMap | CtyObject) for arg in args):
-        raise CtyFunctionError("merge: all arguments must be maps or objects")
-    if any(v.is_unknown for v in args):
-        return CtyValue.unknown(CtyDynamic())
-    result: dict[str, Any] = {}
+    # No arguments gives an empty object: there are no key-value types to read.
+    if not args:
+        return cast(CtyValue[Any], CtyObject(attribute_types={}).validate({}))
+
+    # Unwrapped first, because dynamic means two different things in the two
+    # packages: in go-cty a known value never carries DynamicPseudoType, so its
+    # rules for a dynamic argument are rules about a value whose type is not yet
+    # settled. Here a dynamic wrapper routinely stands in front of a perfectly
+    # concrete map or object, and that inner type is the one go-cty would see.
+    args = tuple(_unwrap_dynamic(arg) for arg in args)
+
+    result_type = _merge_result_type(args)
+    if any(arg.is_unknown for arg in args):
+        return CtyValue.unknown(result_type if result_type is not None else CtyDynamic())
+
+    merged: dict[str, CtyValue[Any]] = {}
     for arg in args:
         if not arg.is_null:
-            result.update(arg.value)  # type: ignore[call-overload]
+            merged.update(cast(Mapping[str, CtyValue[Any]], arg.value))
 
-    inferred_type = infer_cty_type_from_raw(result)
-    return inferred_type.validate(result)
+    if result_type is None:
+        # go-cty declares dynamic here but still returns a concrete ObjectVal,
+        # so the value describes itself even though the signature could not.
+        result_type = CtyObject(attribute_types={name: value.type for name, value in merged.items()})
+    return cast(CtyValue[Any], result_type.validate(merged))
 
 
 @preserve_marks
