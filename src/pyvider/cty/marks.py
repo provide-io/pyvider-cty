@@ -205,8 +205,15 @@ def _children(value: Any) -> tuple[Any, ...] | dict[str, Any] | None:
     """
     from pyvider.cty.values import CtyValue
 
-    if not isinstance(value, CtyValue) or value.is_null or value.is_unknown:
+    if not isinstance(value, CtyValue):
         return None
+    # Deliberately not skipped for `is_unknown`. A container flags itself
+    # unknown as soon as any element is unknown while keeping the rest of its
+    # elements, so bailing here left `_strip` unable to descend -- `unmark_deep`
+    # then reported an unknown container's deep marks without removing them,
+    # and `contains` gave a different answer for the same data depending on
+    # whether an element was marked. A genuinely unknown value holds a marker
+    # object rather than a container, and falls through the type tests below.
     inner = value.value
     if isinstance(inner, tuple):
         return inner
@@ -272,10 +279,17 @@ def _strip_uncached(value: Any) -> Any:
     # value. _strip returns the input object itself when it has nothing to do,
     # which makes `is` an exact test.
     if isinstance(children, dict):
+        from pyvider.cty.values.frozen import FrozenDict
+
         rebuilt_map = {k: _strip(v) for k, v in children.items()}
         if all(rebuilt_map[k] is v for k, v in children.items()):
             return stripped
-        return evolve(stripped, value=rebuilt_map)
+        # Rebuilt frozen when the source was. `_strip` memoizes and hands every
+        # caller the same object, so a plain dict here reintroduced exactly the
+        # mutable shared payload FrozenDict exists to prevent -- and left the
+        # stripped copy unmemoizable, so the marked path kept paying full price.
+        payload = FrozenDict(rebuilt_map) if isinstance(children, FrozenDict) else rebuilt_map
+        return evolve(stripped, value=payload)
 
     if isinstance(stripped.value, CtyValue):
         rebuilt_inner = _strip(children[0])
