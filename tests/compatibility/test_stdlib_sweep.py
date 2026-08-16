@@ -306,12 +306,21 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("tonumber", [bl(True)]),
     ("tonumber", [ls(["a"])]),
     ("tonumber", [nul("number", CtyNumber())]),
+    ("tostring", [nm("1e2")]),
+    ("tostring", [nm("1e-7")]),
+    ("tostring", [nm("1.50")]),
     ("tobool", [bl(True)]),
     ("tobool", [st("true")]),
     ("tobool", [st("false")]),
     ("tobool", [st("yes")]),
+    ("tobool", [st("TRUE")]),
+    ("tobool", [st("True")]),
+    ("tobool", [st("1")]),
+    ("tobool", [st("0")]),
     ("tobool", [nm(1)]),
     ("tobool", [nul("bool", CtyBool())]),
+    ("setproduct", [se(["a"]), ls(["x"])]),
+    ("setproduct", [ls(["a", "b"]), ls(["x", "y"])]),
 ]
 
 # Divergences that are real, reproduced, and not yet fixed. Strict xfails, so
@@ -338,38 +347,6 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # two string lists, so the divergence sat behind a passing test.
     "concat(['a'],[1])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
     "concat(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
-    # `bytesslice`'s third argument is a *length* in go-cty (`bytes.go:80-106`:
-    # `end := offset + length`), and an end index here. The two agree only when
-    # the offset is zero, which is why every test written from this side passed.
-    # go-cty also refuses a negative or out-of-range argument outright; Python
-    # slicing silently clamps, and a negative end counts back from the far end,
-    # so `bytesslice(buf, 1, -2)` returns eight bytes where go-cty errors.
-    "bytesslice(aGVsbG8gd29ybGQ=,1,3)": "third argument is a length in go-cty, an end index here",
-    "bytesslice(aGVsbG8gd29ybGQ=,6,5)": "third argument is a length in go-cty, an end index here",
-    "bytesslice(aGVsbG8gd29ybGQ=,9,5)": "go-cty refuses offset+length past the buffer; slicing clamps",
-    "bytesslice(aGVsbG8gd29ybGQ=,-1,2)": "go-cty refuses a negative offset; slicing counts from the end",
-    "bytesslice(aGVsbG8gd29ybGQ=,1,-2)": "go-cty refuses a negative length; slicing counts from the end",
-    # `setproduct` was already reachable from the oracle and simply never
-    # driven, which is its own lesson: the blind spot was not only the nine
-    # functions the harness could not reach.
-    # go-cty preserves ordering when every argument is ordered -- `listCount ==
-    # len(args)` returns `cty.List(cty.Tuple(...))` at `collection.go:975` --
-    # and `collection_functions.py:697` always builds a set, so the ordering
-    # the caller asked for by passing lists is discarded.
-    "setproduct(['a', 'b'],['x'])": "go-cty returns a list when every argument is ordered; always a set here",
-    "setproduct(['a'])": "go-cty requires at least two arguments (collection.go:942)",
-    # `tostring` falls through to `str(value.value)` for anything it does not
-    # recognise, so a list comes back as the repr of the internal tuple of
-    # CtyValues. go-cty refuses the conversion.
-    "tostring(['a'])": "unconvertible values render as a Python repr here; go-cty refuses",
-    "tonumber(True)": "bool converts to 1 here; go-cty refuses bool to number",
-    # A null argument answers unknown here and null-of-the-target-type there.
-    # This is the null-argument policy recorded as decision 4 in the tracker,
-    # not three separate bugs -- go-cty's `MakeToFunc` sets `AllowNull` and
-    # lets `convert.Convert` carry the null through.
-    "tostring(None)": "null argument answers unknown here, null of the target type in go-cty",
-    "tonumber(None)": "null argument answers unknown here, null of the target type in go-cty",
-    "tobool(None)": "null argument answers unknown here, null of the target type in go-cty",
 }
 
 

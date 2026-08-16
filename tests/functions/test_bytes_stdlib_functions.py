@@ -26,7 +26,31 @@ class TestBytesFunctions:
         assert byteslen(BytesCapsule.validate(b"hello")).value == 5
 
     def test_bytesslice(self) -> None:
-        assert bytesslice(BytesCapsule.validate(b"hello"), N(1), N(4)).value == b"ell"
+        """The third argument is a length, not an end index.
+
+        This asserted `bytesslice(b"hello", 1, 4) == b"ell"`, which is what an
+        end index gives. go-cty computes `end := offset + length`
+        (`stdlib/bytes.go:98`), so that call returns `b"ello"` and it is
+        `(1, 3)` that yields `b"ell"`. The two spellings agree whenever the
+        offset is zero, which is how this went unnoticed.
+        """
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(1), N(3)).value == b"ell"
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(1), N(4)).value == b"ello"
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(0), N(5)).value == b"hello"
+        assert bytesslice(BytesCapsule.validate(b"hello"), N(5), N(0)).value == b""
+
+    def test_bytesslice_bounds_are_checked_not_clamped(self) -> None:
+        """Python slicing accepts everything; go-cty refuses.
+
+        A past-the-end range silently yields a short buffer, and a negative one
+        counts back from the far end -- `bytesslice(b"hello", 1, -2)` returned
+        `b"el"` rather than an error.
+        """
+        buf = BytesCapsule.validate(b"hello")
+
+        for offset, length in ((6, 0), (0, 6), (3, 3), (-1, 2), (1, -2)):
+            with pytest.raises(CtyFunctionError):
+                bytesslice(buf, N(offset), N(length))
 
     def test_byteslen_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):

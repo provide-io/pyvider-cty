@@ -7,12 +7,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from decimal import Decimal
 from functools import lru_cache
 from typing import Any, cast
 
 from provide.foundation.errors import error_boundary
 
 from pyvider.cty.config.defaults import (
+    ERR_CANNOT_CONVERT_BOOL_CASE,
     ERR_CANNOT_CONVERT_GENERAL,
     ERR_CANNOT_CONVERT_TO_BOOL,
     ERR_CANNOT_CONVERT_VALIDATION,
@@ -26,7 +28,6 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
 from pyvider.cty.types import (
     CtyBool,
-    CtyCapsule,
     CtyCapsuleWithOps,
     CtyDynamic,
     CtyList,
@@ -43,6 +44,21 @@ from pyvider.cty.values import CtyValue
 Implementation of the public `convert` and `unify` functions for explicit
 CTY-to-CTY type conversion.
 """
+
+
+def _number_to_string(raw: Any) -> str:
+    """A number as go-cty renders it: plain decimal, never exponent notation.
+
+    go-cty formats with `big.Float.Text('f', -1)`, which has no exponent form
+    and no trailing zeros. `str(Decimal)` has both -- a number that arrived as
+    `1e2` stringified as `"1E+2"` where go-cty says `"100"`, and a `Decimal`
+    keeps the trailing zeros of `1.50` where a `big.Float` never had them.
+    `normalize()` strips the zeros, and `format(..., "f")` undoes the exponent
+    that normalizing an integral value introduces.
+    """
+    if isinstance(raw, Decimal) and raw.is_finite():
+        return format(raw.normalize(), "f")
+    return str(raw)
 
 
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
@@ -107,14 +123,25 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         if isinstance(target_type, CtyDynamic):
             return value.with_marks(set(value.marks))
 
-        # String conversion
-        if isinstance(target_type, CtyString) and not isinstance(value.type, CtyCapsule):
-            raw = value.value
-            new_val = ("true" if raw else "false") if isinstance(raw, bool) else str(raw)
-            return CtyValue(target_type, new_val).with_marks(set(value.marks))
+        # String conversion. go-cty's table (cty/convert/conversion_primitive.go)
+        # defines exactly two conversions to string -- from number and from bool
+        # -- and nothing else. This used to convert *anything* non-capsule with
+        # `str(raw)`, and `raw` for a collection is the internal tuple of
+        # CtyValues, so `convert(list, string)` returned the text of a repr:
+        # "(CtyValue(vtype=CtyString(), value='a', ...),)". A plausible-looking
+        # string, headed for Terraform state.
+        if isinstance(target_type, CtyString):
+            if isinstance(value.type, CtyBool):
+                text = "true" if value.value else "false"
+                return CtyValue(target_type, text).with_marks(set(value.marks))
+            if isinstance(value.type, CtyNumber):
+                return CtyValue(target_type, _number_to_string(value.value)).with_marks(set(value.marks))
 
-        # Number conversion
-        if isinstance(target_type, CtyNumber):
+        # Number conversion. Only from a string, or from a number of course.
+        # This used to hand the payload to CtyNumber().validate, which accepts a
+        # bool because a Python bool *is* an int -- so `convert(true, number)`
+        # returned 1 where go-cty has no bool-to-number conversion at all.
+        if isinstance(target_type, CtyNumber) and isinstance(value.type, CtyString | CtyNumber):
             try:
                 validated = target_type.validate(value.value)
                 return validated.with_marks(set(value.marks))
@@ -128,14 +155,24 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                     target_type=target_type,
                 ) from e
 
-        # Boolean conversion
+        # Boolean conversion. go-cty accepts "true"/"1" and "false"/"0", and
+        # refuses any other casing with a message that says so; this lowercased
+        # first, so "TRUE" converted here and is refused there.
         if isinstance(target_type, CtyBool):
             if isinstance(value.type, CtyString):
-                s = str(value.value).lower()
-                if s == "true":
+                text = str(value.value)
+                if text in ("true", "1"):
                     return CtyValue(target_type, True).with_marks(set(value.marks))
-                if s == "false":
+                if text in ("false", "0"):
                     return CtyValue(target_type, False).with_marks(set(value.marks))
+                lowered = text.lower()
+                if lowered in ("true", "false"):
+                    error_message = ERR_CANNOT_CONVERT_BOOL_CASE.format(text=text, lowered=lowered)
+                    raise CtyConversionError(
+                        error_message,
+                        source_value=value,
+                        target_type=target_type,
+                    )
             error_message = ERR_CANNOT_CONVERT_TO_BOOL.format(value_type=value.type)
             raise CtyConversionError(
                 error_message,
@@ -152,12 +189,18 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             converted = target_type.validate(value.value).with_marks(set(value.marks))
             return converted
 
-        if isinstance(target_type, CtyList) and isinstance(value.type, CtyList):
-            if target_type.element_type.equal(value.type.element_type):
-                return value
-            if isinstance(target_type.element_type, CtyDynamic):
-                converted = target_type.validate(value.value).with_marks(set(value.marks))
-                return converted
+        # A list of anything widens to a list of dynamic. There is deliberately
+        # no same-element-type case: `CtyList.equal` *is* element-type equality,
+        # so two lists with equal element types are equal lists and the identity
+        # exit at the top of this function has already returned. The branch that
+        # used to test for it could not run.
+        if (
+            isinstance(target_type, CtyList)
+            and isinstance(value.type, CtyList)
+            and isinstance(target_type.element_type, CtyDynamic)
+        ):
+            converted = target_type.validate(value.value).with_marks(set(value.marks))
+            return converted
 
         # Object conversion
         if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
@@ -207,9 +250,11 @@ def _unify_frozen(types: frozenset[CtyType[Any]]) -> CtyType[Any]:
         return CtyList(element_type=unified_element_type)
 
     if all(isinstance(t, CtyObject) for t in type_set):
+        # `obj_types` cannot be empty here: an empty `type_set` returned above,
+        # and the guard on this branch says every remaining member is a
+        # CtyObject. Filtering again is what convinces the type checker, not a
+        # case that can occur.
         obj_types = [t for t in type_set if isinstance(t, CtyObject)]
-        if not obj_types:
-            return CtyDynamic()
 
         key_sets = [set(t.attribute_types.keys()) for t in obj_types]
         # If key sets are not identical, unification results in CtyDynamic.

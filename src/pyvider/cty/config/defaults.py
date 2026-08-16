@@ -212,6 +212,10 @@ ERR_CUSTOM_CONVERTER_WRONG_TYPE = (
 ERR_DYNAMIC_VALUE_NOT_CTYVALUE = "Dynamic value does not contain a CtyValue"
 ERR_CANNOT_CONVERT_VALIDATION = "Cannot convert {value_type} to {target_type}: {message}"
 ERR_CANNOT_CONVERT_TO_BOOL = "Cannot convert {value_type} to bool"
+ERR_CANNOT_CONVERT_TO_TYPE = "{func}: cannot convert {type} to {target}"
+ERR_CANNOT_CONVERT_BOOL_CASE = (
+    'Cannot convert "{text}" to bool; to convert from string, use lowercase "{lowered}"'
+)
 ERR_SOURCE_OBJECT_NOT_DICT = "Source object is not a dictionary"
 ERR_CANNOT_CONVERT_GENERAL = "Cannot convert from {value_type} to {target_type}"
 
@@ -406,6 +410,9 @@ ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"
 # Set operation error messages
 ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
 ERR_SET_OP_REQUIRES_ONE_SET = "{func}: at least one set must be provided"
+ERR_SETPRODUCT_REQUIRES_TWO = "setproduct: at least two arguments are required"
+ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION = "setproduct: a set or a list is required, got {type}"
+ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL = "setproduct: argument must not be null"
 ERR_SET_OP_INCOMPATIBLE_ELEMENTS = "{func}: given sets must all have compatible element types"
 
 # range() error messages
@@ -457,6 +464,11 @@ ERR_ERROR_AT_TYPE_STEP = "Error at type step {step_num} ({step}): {error}"
 # Bytes and capsule function error messages
 ERR_BYTESLEN_ARG_MUST_BE_BYTES_CAPSULE = "byteslen: argument must be a Bytes capsule, got {type}"
 ERR_BYTESSLICE_ARGS_MUST_BE_BYTES_NUMBER_NUMBER = "bytesslice: arguments must be Bytes capsule, number, number"
+ERR_BYTESSLICE_NEGATIVE = "bytesslice: offset and length must be non-negative"
+ERR_BYTESSLICE_OFFSET_PAST_END = "bytesslice: offset {offset} is greater than total buffer length {total}"
+ERR_BYTESSLICE_PAST_END = (
+    "bytesslice: offset {offset} + length {length} is greater than total buffer length {total}"
+)
 
 # Generic value operation error messages
 ERR_GET_OPERATION_NON_MAP_CTYVALUE = "get operation called on non-map CtyValue"
