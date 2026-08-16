@@ -32,6 +32,7 @@ from pyvider.cty.config.defaults import (
     ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
     ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
     ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
+    ERR_LENGTH_INPUT_MUST_BE_COLLECTION,
 )
 from pyvider.cty.conversion import infer_cty_type_from_raw
 from pyvider.cty.exceptions import CtyFunctionError
@@ -185,18 +186,28 @@ def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
             "input_is_unknown": input_val.is_unknown,
         }
     ):
-        if not isinstance(input_val.type, CtyList | CtySet | CtyTuple | CtyMap | CtyString):
-            raise CtyFunctionError(f"length: input must be a collection or string, got {input_val.type.ctype}")
-        if input_val.is_unknown:
-            if isinstance(input_val.value, RefinedUnknownValue):
-                lower = input_val.value.collection_length_lower_bound
-                upper = input_val.value.collection_length_upper_bound
+        # go-cty declares the parameter as DynamicPseudoType and type-checks the
+        # *resolved* type, so a dynamic standing in front of a list is counted
+        # while one standing in front of a string is refused, exactly as a bare
+        # string is. A dynamic that is unknown or null has nothing to resolve to,
+        # and go-cty lets DynamicPseudoType itself through the check so that the
+        # answer can stay undecided rather than becoming an error.
+        collection = _unwrap_dynamic(input_val)
+        undecided = isinstance(collection.type, CtyDynamic)
+        if not undecided and not isinstance(collection.type, CtyList | CtySet | CtyTuple | CtyMap):
+            raise CtyFunctionError(ERR_LENGTH_INPUT_MUST_BE_COLLECTION.format(type=collection.type.ctype))
+        if collection.is_unknown:
+            if isinstance(collection.value, RefinedUnknownValue):
+                lower = collection.value.collection_length_lower_bound
+                upper = collection.value.collection_length_upper_bound
                 if lower is not None and lower == upper:
                     return CtyNumber().validate(lower)
             return CtyValue.unknown(CtyNumber())
-        if input_val.is_null:
+        # go-cty raises "argument must not be null" here. Left as an unknown to
+        # move with the same deferred strictness change as `contains`.
+        if collection.is_null or undecided:
             return CtyValue.unknown(CtyNumber())
-        return CtyNumber().validate(len(input_val.value))  # type: ignore[arg-type]
+        return CtyNumber().validate(len(collection.value))  # type: ignore[arg-type]
 
 
 @preserve_marks

@@ -36,10 +36,19 @@ from typing import Any
 import msgpack
 import pytest
 
-from pyvider.cty import CtyList, CtyNumber, CtyString, CtyTuple, CtyValue
+from pyvider.cty import (
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyValue,
+)
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import chunklist, flatten, indent, regex, regexall
+from pyvider.cty.functions import chunklist, flatten, indent, length, regex, regexall
 
 pytestmark = pytest.mark.compat
 
@@ -138,6 +147,30 @@ CASES: list[tuple[str, str, Callable[[], CtyValue[Any]], list[str]]] = [
         [s("(?P<x>b)"), s("abcb")],
     ),
     ("regexall empty", "regexall", lambda: regexall(_st("(z)"), _st("abc")), [s("(z)"), s("abc")]),
+    (
+        "length of a list",
+        "length",
+        lambda: length(STRS.validate(["a", "b"])),
+        [seq(["list", "string"], ["a", "b"])],
+    ),
+    (
+        "length of a set",
+        "length",
+        lambda: length(CtySet(element_type=CtyString()).validate(["a", "b"])),
+        [seq(["set", "string"], ["a", "b"])],
+    ),
+    (
+        "length of a map",
+        "length",
+        lambda: length(CtyMap(element_type=CtyString()).validate({"a": "x"})),
+        [seq(["map", "string"], {"a": "x"})],
+    ),
+    (
+        "length of a dynamic list",
+        "length",
+        lambda: length(CtyDynamic().validate(["a", "b"])),
+        [json.dumps({"type": "dynamic", "value": ["a", "b"]})],
+    ),
     ("indent two", "indent", lambda: indent(_nm(2), _st("a\nb")), [num(2), s("a\nb")]),
     ("indent trailing", "indent", lambda: indent(_nm(2), _st("a\n")), [num(2), s("a\n")]),
     ("indent crlf", "indent", lambda: indent(_nm(2), _st("a\r\nb")), [num(2), s("a\r\nb")]),
@@ -243,6 +276,13 @@ REFUSALS: list[tuple[str, str, Callable[[], CtyValue[Any]], list[str]]] = [
         [seq(["list", "string"], ["a"]), num(-1)],
     ),
     ("flatten a string", "flatten", lambda: flatten(_st("x")), [s("x")]),
+    ("length of a string", "length", lambda: length(_st("hello")), [s("hello")]),
+    (
+        "length of a dynamic string",
+        "length",
+        lambda: length(CtyDynamic().validate("hello")),
+        [json.dumps({"type": "dynamic", "value": "hello"})],
+    ),
 ]
 
 

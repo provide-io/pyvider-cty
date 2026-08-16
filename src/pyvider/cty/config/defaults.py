@@ -377,7 +377,7 @@ ERR_HASINDEX_COLLECTION_MUST_BE_LIST_TUPLE_MAP_OBJECT = (
 )
 ERR_INDEX_KEY_DOES_NOT_EXIST = "index: key does not exist in collection"
 ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT = "keys: input must be a map or object, got {type}"
-ERR_LENGTH_INPUT_MUST_BE_COLLECTION_STRING = "length: input must be a collection or string, got {type}"
+ERR_LENGTH_INPUT_MUST_BE_COLLECTION = "length: input must be a collection, got {type}"
 ERR_LOOKUP_COLLECTION_MUST_BE_MAP_OBJECT = "lookup: collection must be a map or object"
 ERR_MERGE_ALL_ARGS_MUST_BE_MAPS_OBJECTS = "merge: all arguments must be maps or objects"
 ERR_REVERSE_INPUT_MUST_BE_LIST_TUPLE = "reverse: input must be a list or tuple"
