@@ -17,16 +17,16 @@ from pyvider.cty.config.defaults import (
     ERR_MIN_ONE_ARG,
 )
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-@preserve_marks
+@stdlib_function("equal")
 def equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return a.equals(b)
 
 
-@preserve_marks
+@stdlib_function("notequal")
 def not_equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     result = a.equals(b)
     if result.is_unknown:
@@ -106,22 +106,22 @@ def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # n
     return CtyBool().validate(ops[op](a.value, b.value))
 
 
-@preserve_marks
+@stdlib_function("greaterthan")
 def greater_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, ">")
 
 
-@preserve_marks
+@stdlib_function("greaterthanorequalto")
 def greater_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, ">=")
 
 
-@preserve_marks
+@stdlib_function("lessthan")
 def less_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, "<")
 
 
-@preserve_marks
+@stdlib_function("lessthanorequalto")
 def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return _compare(a, b, "<=")
 
@@ -203,12 +203,12 @@ def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
     return CtyValue.unknown(args[0].type)
 
 
-@preserve_marks
+@stdlib_function("max")
 def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="max")
 
 
-@preserve_marks
+@stdlib_function("min")
 def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     return _multi_compare(*args, op="min")
 

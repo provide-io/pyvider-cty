@@ -25,7 +25,7 @@ from pyvider.cty.config.defaults import (
     ERR_TIMEADD_INVALID_FORMAT,
 )
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 
 # go-cty deliberately keeps its own definition of RFC3339 rather than deferring
 # to whatever the host language accepts, so that these functions do not shift
@@ -332,7 +332,7 @@ def _render_verb(token: str, moment: datetime) -> str:
     return renderer(moment)
 
 
-@preserve_marks
+@stdlib_function("formatdate")
 def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(spec.type, CtyString) or not isinstance(timestamp.type, CtyString):
         raise CtyFunctionError(ERR_FORMATDATE_ARGS_MUST_BE_STRINGS)
@@ -355,7 +355,7 @@ def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate("".join(rendered))
 
 
-@preserve_marks
+@stdlib_function("timeadd")
 def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(timestamp.type, CtyString) or not isinstance(duration.type, CtyString):
         raise CtyFunctionError(ERR_TIMEADD_ARGS_MUST_BE_STRINGS)

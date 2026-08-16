@@ -19,7 +19,7 @@ from pyvider.cty.config.defaults import (
     ERR_BOOL_ARG_MUST_NOT_BE_NULL,
 )
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 
 
 def _bool_arg(value: CtyValue[Any], func: str) -> bool | None:
@@ -43,7 +43,7 @@ def _bool_arg(value: CtyValue[Any], func: str) -> bool | None:
     return cast(bool, inner.value)
 
 
-@preserve_marks
+@stdlib_function("not")
 def not_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `NotFunc`."""
     operand = _bool_arg(val, "not")
@@ -52,7 +52,7 @@ def not_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     return cast(CtyValue[Any], CtyBool().validate(not operand))
 
 
-@preserve_marks
+@stdlib_function("and")
 def and_fn(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `AndFunc`.
 
@@ -67,7 +67,7 @@ def and_fn(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return cast(CtyValue[Any], CtyBool().validate(left and right))
 
 
-@preserve_marks
+@stdlib_function("or")
 def or_fn(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `OrFunc`. Does not short-circuit, for the reason `and_fn` gives."""
     left, right = _bool_arg(a, "or"), _bool_arg(b, "or")

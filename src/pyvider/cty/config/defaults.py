@@ -396,6 +396,9 @@ ERR_SORT_ELEMENTS_MUST_BE_STRING_NUMBER_BOOL = "sort: elements must be string, n
 ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT = "values: input must be a map or object, got {type}"
 ERR_ZIPMAP_ARGS_MUST_BE_LISTS = "zipmap: arguments must be lists or tuples"
 
+# Stdlib registry error messages
+ERR_STDLIB_DUPLICATE_NAME = "two functions are declared as the stdlib function {name!r}: {first} and {second}"
+
 # Logical function error messages
 ERR_BOOL_ARG_MUST_BE_BOOL = "{func}: bool required, but received {type}"
 ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"

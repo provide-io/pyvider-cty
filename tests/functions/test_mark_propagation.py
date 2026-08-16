@@ -33,7 +33,7 @@ from pyvider.cty import (
     CtyValue,
 )
 import pyvider.cty.functions as F
-from pyvider.cty.functions import upper
+from pyvider.cty.functions import STDLIB, upper
 from pyvider.cty.functions._marks import preserve_marks
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.types import BytesCapsule
@@ -147,9 +147,14 @@ CALLS: dict[str, tuple[CtyValue[Any], ...]] = {
 }
 
 
-def test_every_exported_function_has_a_fixture() -> None:
-    """A new stdlib export must not silently skip mark coverage."""
-    assert set(CALLS) == set(F.__all__)
+def test_every_stdlib_function_has_a_fixture() -> None:
+    """A new stdlib function must not silently skip mark coverage.
+
+    Driven off the registry rather than `__all__`, because the registry holds
+    exactly the functions the mark policy applies to -- `__all__` also carries
+    the registry itself and anything else the package chooses to export.
+    """
+    assert set(CALLS) == {fn.__name__ for fn in STDLIB.values()}
 
 
 @pytest.mark.parametrize("name", sorted(CALLS))

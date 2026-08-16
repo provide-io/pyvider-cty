@@ -10,10 +10,10 @@ from typing import Any
 
 from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 
 
-@preserve_marks
+@stdlib_function("tostring")
 def to_string(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyString())
@@ -24,7 +24,7 @@ def to_string(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate(str(input_val.value))
 
 
-@preserve_marks
+@stdlib_function("tonumber")
 def to_number(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyNumber())
@@ -34,7 +34,7 @@ def to_number(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(f"tostring: cannot convert {input_val.type.ctype} to number") from e
 
 
-@preserve_marks
+@stdlib_function("tobool")
 def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if input_val.is_null or input_val.is_unknown:
         return CtyValue.unknown(CtyBool())

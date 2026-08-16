@@ -48,11 +48,11 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
-from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-@preserve_marks
+@stdlib_function("distinct")
 def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         error_message = ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=input_val.type.ctype)
@@ -125,7 +125,7 @@ def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
     return out, known
 
 
-@preserve_marks
+@stdlib_function("flatten")
 def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `FlattenFunc`: a sequence of sequences becomes one tuple.
 
@@ -151,7 +151,7 @@ def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyValue(vtype=result_type, value=tuple(elements))
 
 
-@preserve_marks
+@stdlib_function("sort")
 def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
@@ -187,7 +187,7 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return result
 
 
-@preserve_marks
+@stdlib_function("length")
 def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -221,7 +221,7 @@ def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return CtyNumber().validate(len(collection.value))  # type: ignore[arg-type]
 
 
-@preserve_marks
+@stdlib_function("slice")
 def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError(f"slice: input must be a list or tuple, got {input_val.type.ctype}")
@@ -241,7 +241,7 @@ def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[
     return CtyList(element_type=element_type).validate(input_val.value[start:end])  # type: ignore[no-any-return,index]
 
 
-@preserve_marks
+@stdlib_function("concat")
 def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -286,7 +286,7 @@ def _is_known_leaf(value: CtyValue[Any]) -> bool:
     return not value.is_unknown and not value.is_null and not isinstance(value.value, _NESTING_PAYLOADS)
 
 
-@preserve_marks
+@stdlib_function("contains")
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(
@@ -353,7 +353,7 @@ def _scan_for_value(elements: tuple[Any, ...], value: CtyValue[Any]) -> tuple[bo
     return False, saw_unknown
 
 
-@preserve_marks
+@stdlib_function("keys")
 def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -381,7 +381,7 @@ def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return cast(CtyValue[Any], result_type.validate(sorted(cast(Mapping[str, Any], input_val.value))))
 
 
-@preserve_marks
+@stdlib_function("values")
 def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -419,7 +419,7 @@ def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
         return cast(CtyValue[Any], result_type.validate([mapping[name] for name in sorted(mapping)]))
 
 
-@preserve_marks
+@stdlib_function("reverselist")
 def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(input_val.type, CtyList | CtyTuple):
         raise CtyFunctionError("reverse: input must be a list or tuple")
@@ -428,7 +428,7 @@ def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return input_val.type.validate(list(reversed(input_val.value)))  # type: ignore[no-any-return,call-overload]
 
 
-@preserve_marks
+@stdlib_function("hasindex")
 def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     if collection.is_unknown or key.is_unknown:
         return CtyValue.unknown(CtyBool())
@@ -448,7 +448,7 @@ def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     )
 
 
-@preserve_marks
+@stdlib_function("index")
 def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     if not hasindex(collection, key).value:
         raise CtyFunctionError("index: key does not exist in collection")
@@ -460,7 +460,7 @@ def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
     return collection[key_val]
 
 
-@preserve_marks
+@stdlib_function("element")
 def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
     with error_boundary(
         context={
@@ -482,7 +482,7 @@ def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
         return collection.value[int(idx.value) % length]  # type: ignore[no-any-return,index,call-overload]
 
 
-@preserve_marks
+@stdlib_function("coalescelist")
 def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
@@ -494,7 +494,7 @@ def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
     raise CtyFunctionError("coalescelist: no non-empty list or tuple found in arguments")
 
 
-@preserve_marks
+@stdlib_function("compact")
 def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
@@ -536,7 +536,7 @@ def _chunk_size(size: CtyValue[Any]) -> int:
     return count
 
 
-@preserve_marks
+@stdlib_function("chunklist")
 def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `ChunklistFunc`: a sequence split into fixed-size chunks."""
     if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
@@ -556,7 +556,7 @@ def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
     return cast(CtyValue[Any], result_type.validate(chunks))
 
 
-@preserve_marks
+@stdlib_function("lookup")
 def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyMap | CtyObject):
         raise CtyFunctionError("lookup: collection must be a map or object")
@@ -641,7 +641,7 @@ def _merge_result_type(args: tuple[CtyValue[Any], ...]) -> CtyType[Any] | None:
     return CtyObject(attribute_types=attribute_types)
 
 
-@preserve_marks
+@stdlib_function("merge")
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     # No arguments gives an empty object: there are no key-value types to read.
     if not args:
@@ -670,7 +670,7 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     return cast(CtyValue[Any], result_type.validate(merged))
 
 
-@preserve_marks
+@stdlib_function("setproduct")
 def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not all(isinstance(arg.type, CtyList | CtySet | CtyTuple) for arg in args):
         raise CtyFunctionError("setproduct: all arguments must be collections")
@@ -697,7 +697,7 @@ def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
     return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[no-any-return]
 
 
-@preserve_marks
+@stdlib_function("zipmap")
 def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(keys.type, CtyList | CtyTuple) or not isinstance(values.type, CtyList | CtyTuple):
         raise CtyFunctionError("zipmap: arguments must be lists or tuples")
@@ -732,7 +732,7 @@ def _range_bounds(numbers: list[Decimal]) -> tuple[Decimal, Decimal, Decimal]:
             raise CtyFunctionError(ERR_RANGE_ARG_COUNT)
 
 
-@preserve_marks
+@stdlib_function("range")
 def range_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `RangeFunc`. Named with a suffix to leave the builtin alone."""
     for arg in args:

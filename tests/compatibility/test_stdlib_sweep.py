@@ -46,7 +46,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.codec import cty_to_msgpack
-import pyvider.cty.functions as F
+from pyvider.cty.functions import STDLIB
 
 pytestmark = pytest.mark.compat
 
@@ -281,35 +281,6 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     "concat(['a'],[True])": "unify widens a mix of primitives to string in go-cty, to dynamic here",
 }
 
-# go-cty's name for a function, and this package's name for the same function.
-# The two diverge systematically -- `max` is exported as `max_fn` to dodge the
-# Python builtin, comparisons are spelled in snake_case -- so without this map
-# the sweep skips fourteen functions while reporting that it covered them.
-# That the public API does not use Terraform's own function names is a separate
-# parity question, recorded in the tracker rather than settled here.
-NAME_MAP = {
-    "abs": "abs_fn",
-    "ceil": "ceil_fn",
-    "floor": "floor_fn",
-    "int": "int_fn",
-    "log": "log_fn",
-    "max": "max_fn",
-    "min": "min_fn",
-    "parseint": "parseint_fn",
-    "pow": "pow_fn",
-    "signum": "signum_fn",
-    "notequal": "not_equal",
-    "greaterthan": "greater_than",
-    "greaterthanorequalto": "greater_than_or_equal_to",
-    "lessthan": "less_than",
-    "lessthanorequalto": "less_than_or_equal_to",
-    "reverselist": "reverse",
-    "and": "and_fn",
-    "or": "or_fn",
-    "not": "not_fn",
-    "range": "range_fn",
-}
-
 
 def _case_id(func: str, args: list[Arg]) -> str:
     rendered = ",".join(str(spec.get("value")) for _value, spec in args)
@@ -347,7 +318,7 @@ def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
     Compared as msgpack rather than read off the value, so what is checked is
     what would actually reach Terraform.
     """
-    implementation = getattr(F, NAME_MAP.get(func, func), None)
+    implementation = STDLIB.get(func)
     if implementation is None:
         return "missing", None
     try:
