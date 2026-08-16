@@ -354,7 +354,6 @@ ERR_REGEX_MIXED_CAPTURE_GROUPS = (
 )
 ERR_REGEX_NO_MATCH = "regex: pattern did not match any part of the given string"
 ERR_REGEXREPLACE_ALL_ARGS_MUST_BE_STRINGS = "regexreplace: all arguments must be strings"
-ERR_REGEXREPLACE_INVALID_EXPRESSION = "regexreplace: invalid regular expression: {error}"
 
 # Collection function error messages
 ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER = "chunklist: arguments must be a list/tuple and a number"
