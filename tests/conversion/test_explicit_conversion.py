@@ -20,6 +20,7 @@ from pyvider.cty import (
     CtyCapsuleWithOps,
     CtyDynamic,
     CtyList,
+    CtyMap,
     CtyNumber,
     CtyObject,
     CtySet,
@@ -272,52 +273,83 @@ class TestConvertFunction:
 
 
 class TestUnifyFunction:
-    """Tests the `unify(types)` function."""
+    """Tests `unify(types)` against go-cty's `convert.UnifyUnsafe`.
+
+    This table used to assert that unification answered `dynamic` for every
+    mixed input -- different primitives, objects with different attribute names,
+    tuples of different lengths. That was a record of what the code did. A
+    differential run against `soup-go cty unify` agreed on 6 of 38 cases, and
+    every expectation below now comes from the oracle rather than from here.
+
+    `None` is "these types have nothing in common", which `dynamic` used to
+    stand in for as well -- so an error and a result were the same value.
+    """
 
     @pytest.mark.parametrize(
         "type_list, expected_unified_type",
         [
-            ([], CtyDynamic()),
+            # Degenerate
+            ([], None),
             ([CtyString()], CtyString()),
             ([CtyString(), CtyString()], CtyString()),
-            ([CtyString(), CtyNumber()], CtyDynamic()),
+            # Primitives: string is the supertype, and number/bool have none.
+            ([CtyString(), CtyNumber()], CtyString()),
+            ([CtyString(), CtyBool()], CtyString()),
+            ([CtyNumber(), CtyBool()], None),
+            ([CtyString(), CtyNumber(), CtyBool()], CtyString()),
+            # Dynamic has the lowest preference, so a concrete neighbour wins...
+            ([CtyString(), CtyDynamic()], CtyString()),
+            ([CtyDynamic(), CtyDynamic()], CtyDynamic()),
+            # ...except among collections, where which path unification will
+            # take once the dynamic resolves cannot be predicted.
+            ([CtyList(element_type=CtyString()), CtyDynamic()], CtyDynamic()),
+            # Collections unify elementwise.
             (
                 [CtyList(element_type=CtyString()), CtyList(element_type=CtyString())],
                 CtyList(element_type=CtyString()),
             ),
             (
                 [CtyList(element_type=CtyString()), CtyList(element_type=CtyNumber())],
-                CtyList(element_type=CtyDynamic()),
+                CtyList(element_type=CtyString()),
             ),
             (
-                [CtyList(element_type=CtyString()), CtySet(element_type=CtyString())],
-                CtyDynamic(),
+                [CtyList(element_type=CtyNumber()), CtyList(element_type=CtyBool())],
+                None,
             ),
+            (
+                [CtyMap(element_type=CtyString()), CtyMap(element_type=CtyNumber())],
+                CtyMap(element_type=CtyString()),
+            ),
+            # A list is preferred over a set holding the same thing.
+            (
+                [CtyList(element_type=CtyString()), CtySet(element_type=CtyString())],
+                CtyList(element_type=CtyString()),
+            ),
+            ([CtyList(element_type=CtyString()), CtyMap(element_type=CtyString())], None),
+            # Objects: attribute by attribute when the names match exactly...
             (
                 [CtyObject({"a": CtyString()}), CtyObject({"a": CtyString()})],
                 CtyObject({"a": CtyString()}),
             ),
             (
-                [CtyObject({"a": CtyString()}), CtyObject({"b": CtyString()})],
-                CtyDynamic(),
+                [CtyObject({"common": CtyString()}), CtyObject({"common": CtyNumber()})],
+                CtyObject({"common": CtyString()}),
             ),
+            # ...and as a map when they do not, which is what an object is
+            # shaped like once the per-attribute types stop mattering.
+            ([CtyObject({"a": CtyString()}), CtyObject({"b": CtyString()})], CtyMap(element_type=CtyString())),
             (
-                [CtyTuple((CtyString(),)), CtyTuple((CtyString(), CtyNumber()))],
-                CtyDynamic(),
+                [CtyObject({"a": CtyString()}), CtyObject({"a": CtyString(), "b": CtyString()})],
+                CtyMap(element_type=CtyString()),
             ),
+            ([CtyObject({}), CtyObject({"a": CtyString()})], CtyMap(element_type=CtyString())),
+            ([CtyObject({"a": CtyNumber()}), CtyObject({"b": CtyBool()})], None),
             (
                 [
                     CtyObject({"a": CtyString(), "b": CtyNumber()}),
                     CtyObject({"a": CtyString(), "c": CtyBool()}),
                 ],
-                CtyDynamic(),
-            ),
-            (
-                [
-                    CtyObject({"common": CtyString()}),
-                    CtyObject({"common": CtyNumber()}),
-                ],
-                CtyObject({"common": CtyDynamic()}),
+                CtyMap(element_type=CtyString()),
             ),
             (
                 [
@@ -325,41 +357,61 @@ class TestUnifyFunction:
                     CtyObject({"a": CtyString(), "b": CtyNumber(), "c": CtyBool()}),
                     CtyObject({"a": CtyString(), "b": CtyNumber(), "d": CtyString()}),
                 ],
-                CtyDynamic(),
+                CtyMap(element_type=CtyString()),
+            ),
+            # An object unifies with a map when every attribute reaches the
+            # element type.
+            (
+                [CtyObject({"a": CtyString()}), CtyMap(element_type=CtyString())],
+                CtyMap(element_type=CtyString()),
+            ),
+            # Optionality does not survive unification -- go-cty rebuilds a
+            # plain object from the unified attribute types.
+            (
+                [
+                    CtyObject({"a": CtyString()}),
+                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
+                ],
+                CtyObject({"a": CtyString()}),
             ),
             (
                 [
                     CtyObject({"a": CtyString()}),
                     CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes={"b"}),
                 ],
-                CtyDynamic(),
+                CtyMap(element_type=CtyString()),
+            ),
+            # Tuples: positionally when the lengths match, as a list when not.
+            (
+                [CtyTuple((CtyString(), CtyString())), CtyTuple((CtyString(), CtyNumber()))],
+                CtyTuple((CtyString(), CtyString())),
             ),
             (
-                [
-                    CtyObject({"a": CtyString()}),
-                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
-                ],
-                CtyObject({"a": CtyString()}, optional_attributes={"a"}),
+                [CtyTuple((CtyString(),)), CtyTuple((CtyString(), CtyNumber()))],
+                CtyList(element_type=CtyString()),
             ),
+            ([CtyTuple((CtyNumber(),)), CtyTuple((CtyBool(),))], None),
             (
-                [
-                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
-                    CtyObject({"a": CtyString()}, optional_attributes={"a"}),
-                ],
-                CtyObject({"a": CtyString()}, optional_attributes={"a"}),
+                [CtyTuple((CtyString(), CtyString())), CtyList(element_type=CtyString())],
+                CtyList(element_type=CtyString()),
             ),
-            (
-                [
-                    CtyObject({}),
-                    CtyObject({"a": CtyString()}),
-                ],
-                CtyDynamic(),
-            ),
+            # Incompatible kinds are never bridged.
+            ([CtyObject({"a": CtyString()}), CtyTuple((CtyString(),))], None),
+            ([CtyString(), CtyList(element_type=CtyString())], None),
         ],
     )
-    def test_unification_scenarios(self, type_list: Iterable[CtyType], expected_unified_type: CtyType) -> None:
+    def test_unification_scenarios(
+        self, type_list: Iterable[CtyType], expected_unified_type: CtyType | None
+    ) -> None:
         unified_type = unify(type_list)
-        assert unified_type.equal(expected_unified_type)
+
+        if expected_unified_type is None:
+            assert unified_type is None, f"expected no common type, got {unified_type}"
+            return
+        assert unified_type is not None, f"expected {expected_unified_type}, got no common type"
+        assert unified_type.equal(expected_unified_type), (
+            f"expected {expected_unified_type}, got {unified_type}"
+        )
 
 
 # 🌊🪢🔚

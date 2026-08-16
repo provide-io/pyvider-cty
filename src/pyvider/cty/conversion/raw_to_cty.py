@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 import threading
-from typing import Any
+from typing import Any, cast
 
 # pyvider-cty/src/pyvider/cty/conversion/raw_to_cty.py
 import unicodedata
@@ -331,10 +331,50 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
 
 
 def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
-    """Unifies a set of CtyTypes into a single representative type."""
-    from pyvider.cty.conversion.explicit import unify
+    """One type describing a raw Python container's members.
 
-    return unify(types)
+    Deliberately *not* `pyvider.cty.conversion.unify`, despite the name they
+    used to share. That one answers "what single type can all of these convert
+    to", which is the question a function's return type asks; this one answers
+    "what type describes this raw structure", which is the question inference
+    asks, and the two differ exactly where it matters here. go-cty unifies
+    {string, bool} to string because a bool converts to a string -- but nothing
+    converts on this path, so inferring `list(string)` for `["a", True]` makes
+    the very next `validate` refuse the bool it was inferred from.
+
+    So: the common type when there is an exact one, structurally for containers,
+    and dynamic otherwise -- dynamic being a type that describes anything, which
+    is what a heterogeneous raw list needs.
+    """
+    from pyvider.cty.types import CtyDynamic, CtyList, CtyObject
+
+    if not types:
+        return CtyDynamic()
+    if len(types) == 1:
+        return next(iter(types))
+    if any(isinstance(candidate, CtyDynamic) for candidate in types):
+        return CtyDynamic()
+
+    if all(isinstance(candidate, CtyList) for candidate in types):
+        elements = {cast(CtyList[Any], candidate).element_type for candidate in types}
+        return CtyList(element_type=_unify_types(elements))
+
+    if all(isinstance(candidate, CtyObject) for candidate in types):
+        objects = [cast(CtyObject, candidate) for candidate in types]
+        names = list(objects[0].attribute_types)
+        if any(set(other.attribute_types) != set(names) for other in objects[1:]):
+            return CtyDynamic()
+        optional: set[str] = {
+            name for name in names if any(name in obj.optional_attributes for obj in objects)
+        }
+        return CtyObject(
+            attribute_types={
+                name: _unify_types({obj.attribute_types[name] for obj in objects}) for name in names
+            },
+            optional_attributes=optional,  # type: ignore[arg-type]  # attrs converter takes any set
+        )
+
+    return CtyDynamic()
 
 
 # 🌊🪢🔚

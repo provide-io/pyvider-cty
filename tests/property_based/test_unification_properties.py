@@ -6,8 +6,9 @@
 
 from hypothesis import assume, given, settings, strategies as st
 
-from pyvider.cty import CtyBool, CtyDynamic, CtyList, CtyNumber, CtyObject, CtyString
-from pyvider.cty.conversion.explicit import convert, unify
+from pyvider.cty import CtyBool, CtyDynamic, CtyList, CtyMap, CtyNumber, CtyObject, CtyString
+from pyvider.cty.conversion.explicit import convert
+from pyvider.cty.conversion.unify import unify
 from pyvider.cty.types import CtyType
 
 # Strategy for generating simple types
@@ -68,220 +69,172 @@ all_types = simple_types | list_types_strategy() | object_types_strategy() | st.
 @settings(deadline=1000, max_examples=200)
 @given(cty_type=all_types)
 def test_unify_single_type_returns_same_type(cty_type: CtyType) -> None:
-    """
-    Property test: Unifying a single type should return that type.
-
-    Tests the identity property: unify({T}) = T
-    """
+    """unify({T}) = T. The one property that survived the port unchanged."""
     result = unify([cty_type])
+    assert result is not None
     assert result.equal(cty_type)
 
 
 @settings(deadline=1000, max_examples=200)
 @given(types=st.lists(all_types, min_size=1, max_size=5))
 def test_unify_is_idempotent(types: list[CtyType]) -> None:
-    """
-    Property test: Unifying types is idempotent.
-
-    Tests that unify(unify(types)) == unify(types)
-    """
+    """Unifying a unified type with itself changes nothing."""
     unified_once = unify(types)
+    assume(unified_once is not None)
+
     unified_twice = unify([unified_once])
 
+    assert unified_twice is not None
     assert unified_twice.equal(unified_once)
 
 
 @settings(deadline=1000, max_examples=200)
 @given(types=st.lists(all_types, min_size=1, max_size=5))
-def test_unify_with_dynamic_returns_dynamic(types: list[CtyType]) -> None:
-    """
-    Property test: Unifying any types with CtyDynamic returns CtyDynamic.
+def test_dynamic_never_prevents_unification(types: list[CtyType]) -> None:
+    """Dynamic is not the absorbing element, and asserting it was hid the bug.
 
-    Tests that CtyDynamic is the absorbing element for unification.
-    """
-    types_with_dynamic = [*types, CtyDynamic()]
-    result = unify(types_with_dynamic)
+    This file used to require `unify(types + [dynamic]) is dynamic`, which is
+    exactly backwards for primitives: dynamic has the *lowest* preference in
+    go-cty, so `unify(string, dynamic)` is string. It is absorbing only among
+    collections, where which conversion path a resolved dynamic would take
+    cannot be predicted.
 
-    assert isinstance(result, CtyDynamic)
+    What is true in general is weaker and is the property worth pinning: adding
+    a dynamic never turns a unifiable group into an unresolvable one.
+    """
+    without = unify(types)
+    with_dynamic = unify([*types, CtyDynamic()])
+
+    if without is not None:
+        assert with_dynamic is not None
 
 
 @settings(deadline=1000, max_examples=200)
-@given(element_types=st.lists(simple_types | st.just(CtyDynamic()), min_size=1, max_size=4))
+@given(types=st.lists(simple_types, min_size=1, max_size=4))
+def test_a_dynamic_among_primitives_defers_to_its_neighbours(types: list[CtyType]) -> None:
+    """The half of the old property that is true, stated correctly."""
+    assume(unify(types) is not None)
+
+    assert unify([*types, CtyDynamic()]) == unify(types)
+
+
+@settings(deadline=1000, max_examples=200)
+@given(element_types=st.lists(simple_types, min_size=1, max_size=4))
 def test_unify_list_types_unifies_element_types(element_types: list[CtyType]) -> None:
-    """
-    Property test: Unifying list types should unify their element types.
+    """unify({list(T1), list(T2)}) = list(unify({T1, T2})), or neither exists.
 
-    Tests that unify({List[T1], List[T2], ...}) = List[unify({T1, T2, ...})]
+    Restricted to concrete element types: a `list(dynamic)` in the group makes
+    the whole group unify to dynamic rather than to a list, which is a
+    different property and is pinned separately below.
     """
-    list_types = [CtyList(element_type=et) for et in element_types]
+    list_types = [CtyList(element_type=element) for element in element_types]
+
     unified_lists = unify(list_types)
+    unified_elements = unify(element_types)
 
-    # Should be a list type
+    if unified_elements is None:
+        assert unified_lists is None
+        return
     assert isinstance(unified_lists, CtyList)
+    assert unified_lists.element_type.equal(unified_elements)
 
-    # Element type should be the unification of all element types
-    expected_element_type = unify(element_types)
-    assert unified_lists.element_type.equal(expected_element_type)
+
+@settings(deadline=1000, max_examples=200)
+@given(element_type=simple_types)
+def test_a_dynamic_alongside_a_collection_makes_the_whole_result_dynamic(
+    element_type: CtyType,
+) -> None:
+    """Which path unification takes once the dynamic resolves is unknowable.
+
+    Note what this is *not*: a `list(dynamic)` is a list, so it groups with the
+    other lists and its element defers to theirs -- `unify(list(string),
+    list(dynamic))` is `list(string)`. It is a bare dynamic *beside* a
+    collection that forces the whole answer to dynamic.
+    """
+    assert isinstance(unify([CtyList(element_type=element_type), CtyDynamic()]), CtyDynamic)
+
+    deferred = unify([CtyList(element_type=element_type), CtyList(element_type=CtyDynamic())])
+    assert isinstance(deferred, CtyList)
+    assert deferred.element_type.equal(element_type)
 
 
 @settings(deadline=1000, max_examples=100)
-@given(data=st.data())
-def test_unify_objects_with_same_keys_unifies_attribute_types(data) -> None:
-    """
-    Property test: Unifying object types with the same keys unifies attribute types.
+@given(names=st.lists(st.sampled_from(["a", "b", "c", "d"]), min_size=1, max_size=4, unique=True))
+def test_objects_with_the_same_attribute_names_unify_attribute_by_attribute(
+    names: list[str],
+) -> None:
+    left = CtyObject(attribute_types=dict.fromkeys(names, CtyString()))
+    right = CtyObject(attribute_types=dict.fromkeys(names, CtyNumber()))
 
-    Tests that objects with identical attribute names can be unified by
-    unifying each attribute type.
-    """
-    # Generate a set of attribute names
-    attr_names = data.draw(
-        st.lists(
-            st.text(
-                min_size=1,
-                max_size=10,
-                alphabet=st.characters(whitelist_categories=("L",), blacklist_characters="_"),
-            ),
-            min_size=1,
-            max_size=3,
-            unique=True,
-        )
-    )
+    unified = unify([left, right])
 
-    if not attr_names:
-        attr_names = ["default"]
-
-    # Generate 2-3 object types with the same keys but different value types
-    num_objects = data.draw(st.integers(min_value=2, max_value=3))
-    object_types = []
-
-    for _ in range(num_objects):
-        attr_types = {name: data.draw(simple_types) for name in attr_names}
-        object_types.append(CtyObject(attribute_types=attr_types))
-
-    unified = unify(object_types)
-
-    # Should be an object type
     assert isinstance(unified, CtyObject)
-
-    # Should have the same keys
-    assert set(unified.attribute_types.keys()) == set(attr_names)
-
-    # Each attribute should be the unification of the corresponding attributes
-    for attr_name in attr_names:
-        attr_type_list = [obj.attribute_types[attr_name] for obj in object_types]
-        expected_attr_type = unify(attr_type_list)
-        assert unified.attribute_types[attr_name].equal(expected_attr_type)
+    assert set(unified.attribute_types) == set(names)
+    assert all(attribute.equal(CtyString()) for attribute in unified.attribute_types.values())
 
 
-@settings(deadline=1000, max_examples=100)
-@given(data=st.data())
-def test_unify_objects_with_different_keys_returns_dynamic(data) -> None:
+def test_objects_with_different_attribute_names_unify_as_a_map() -> None:
+    """Not dynamic, which is what this file used to require.
+
+    An object whose per-attribute types no longer line up is map-shaped data,
+    and go-cty says so: `unifyObjectTypes` falls back to `unifyObjectTypesToMap`
+    rather than giving up. Answering dynamic threw away the element type that
+    every attribute did agree on.
     """
-    Property test: Unifying objects with different keys returns CtyDynamic.
+    unified = unify([CtyObject({"a": CtyString()}), CtyObject({"b": CtyString()})])
 
-    Tests that objects with incompatible structures cannot be unified.
+    assert unified is not None
+    assert unified.equal(CtyMap(element_type=CtyString()))
+
+
+def test_objects_whose_attributes_have_no_common_type_do_not_unify() -> None:
+    assert unify([CtyObject({"a": CtyNumber()}), CtyObject({"b": CtyBool()})]) is None
+
+
+@settings(deadline=1000, max_examples=200)
+@given(types=st.lists(simple_types, min_size=2, max_size=3, unique=True))
+def test_mixed_primitives_unify_to_string_when_one_is_a_string(types: list[CtyType]) -> None:
+    """String is the supertype of the primitives; number and bool have none.
+
+    This used to assert dynamic for every mixed group, which is both wrong
+    answers at once -- it lost the widening go-cty does, and it reported a
+    result where go-cty reports failure.
     """
-    # Generate two object types with different keys
-    keys1 = data.draw(
-        st.lists(
-            st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
-            min_size=1,
-            max_size=3,
-            unique=True,
-        )
-    )
-    keys2 = data.draw(
-        st.lists(
-            st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
-            min_size=1,
-            max_size=3,
-            unique=True,
-        )
-    )
-
-    # Ensure keys are different
-    assume(set(keys1) != set(keys2))
-
-    if not keys1:
-        keys1 = ["default1"]
-    if not keys2:
-        keys2 = ["default2"]
-
-    obj1 = CtyObject(attribute_types={k: CtyString() for k in keys1})
-    obj2 = CtyObject(attribute_types={k: CtyString() for k in keys2})
-
-    unified = unify([obj1, obj2])
-
-    # Should return CtyDynamic since keys don't match
-    assert isinstance(unified, CtyDynamic)
-
-
-@settings(deadline=1000, max_examples=100)
-@given(types=st.lists(simple_types, min_size=2, max_size=4))
-def test_unify_different_primitive_types_returns_dynamic(types: list[CtyType]) -> None:
-    """
-    Property test: Unifying different primitive types returns CtyDynamic.
-
-    Tests that incompatible primitive types cannot be unified.
-    """
-    # Ensure we have at least two different types
-    unique_type_names = {type(t).__name__ for t in types}
-    assume(len(unique_type_names) >= 2)
-
     unified = unify(types)
 
-    # Different primitive types should unify to CtyDynamic
-    assert isinstance(unified, CtyDynamic)
+    if any(isinstance(candidate, CtyString) for candidate in types):
+        assert unified is not None
+        assert unified.equal(CtyString())
+    else:
+        assert unified is None
 
 
-def test_unify_empty_list_returns_dynamic() -> None:
+def test_unify_of_nothing_has_no_answer() -> None:
+    """Degenerate, and None rather than dynamic: there is nothing to describe."""
+    assert unify([]) is None
+
+
+@settings(deadline=1000, max_examples=100)
+@given(types=st.lists(simple_types, min_size=1, max_size=4))
+def test_every_type_converts_to_the_unified_type(types: list[CtyType]) -> None:
+    """The contract that makes unification worth anything.
+
+    If `unify` names a type, every input must actually reach it -- otherwise it
+    has promised a type that nothing can be converted to, and the caller finds
+    out at conversion time.
     """
-    Property test: Unifying an empty list returns CtyDynamic.
+    unified = unify(types)
+    assume(unified is not None)
 
-    Tests the base case of unification.
-    """
-    result = unify([])
-    assert isinstance(result, CtyDynamic)
-
-
-@settings(deadline=1000, max_examples=50)
-@given(data=st.data())
-def test_conversion_respects_unified_type(data) -> None:
-    """
-    Property test: Values can be converted to their unified type.
-
-    Tests that if types can be unified, values of those types can be
-    converted to the unified type.
-    """
-    # Generate a list type
-    element_type1 = data.draw(simple_types)
-    element_type2 = data.draw(simple_types)
-
-    list_type1 = CtyList(element_type=element_type1)
-    list_type2 = CtyList(element_type=element_type2)
-
-    # Unify the list types
-    unified_type = unify([list_type1, list_type2])
-
-    # Should get a list type with unified element type
-    assert isinstance(unified_type, CtyList)
-
-    # Create a value of the first type
-    if isinstance(element_type1, CtyString):
-        value1 = list_type1.validate(["test"])
-    elif isinstance(element_type1, CtyNumber):
-        value1 = list_type1.validate([42])
-    else:  # CtyBool
-        value1 = list_type1.validate([True])
-
-    # Should be able to convert to unified type
-    try:
-        converted = convert(value1, unified_type)
-        assert converted.type.equal(unified_type)
-    except Exception:
-        # Conversion might fail for incompatible types, which is expected
-        # when element types are incompatible primitives
-        assert isinstance(unified_type.element_type, CtyDynamic)
+    samples = {
+        "string": "1",
+        "number": 1,
+        "bool": True,
+    }
+    for source in types:
+        value = source.validate(samples[source.ctype])
+        converted = convert(value, unified)
+        assert converted.type.equal(unified)
 
 
 # 🌊🪢🔚

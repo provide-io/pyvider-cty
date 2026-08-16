@@ -217,6 +217,7 @@ ERR_CANNOT_CONVERT_BOOL_CASE = (
     'Cannot convert "{text}" to bool; to convert from string, use lowercase "{lowered}"'
 )
 ERR_SOURCE_OBJECT_NOT_DICT = "Source object is not a dictionary"
+ERR_TUPLE_LENGTH_MISMATCH = "Cannot convert a sequence of {got} elements to a tuple of {want}"
 ERR_CANNOT_CONVERT_GENERAL = "Cannot convert from {value_type} to {target_type}"
 
 # Type system error messages
@@ -366,6 +367,7 @@ ERR_REGEXREPLACE_ALL_ARGS_MUST_BE_STRINGS = "regexreplace: all arguments must be
 # Collection function error messages
 ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER = "chunklist: arguments must be a list/tuple and a number"
 ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE = "chunklist: the size argument must be positive"
+ERR_CHUNKLIST_TUPLE_NOT_UNIFIABLE = "chunklist: tuple elements have no common type"
 ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE = "chunklist: size must be a whole number within the int64 range, got {value}"
 ERR_COALESCE_MIN_ONE_ARG = "coalesce must have at least one argument"
 ERR_COALESCELIST_NO_NON_EMPTY_LIST = "coalescelist: no non-empty list or tuple found in arguments"
@@ -410,7 +412,11 @@ ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"
 # Set operation error messages
 ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
 ERR_SET_OP_REQUIRES_ONE_SET = "{func}: at least one set must be provided"
+ERR_CONCAT_REQUIRES_ONE = "concat: at least one argument is required"
+ERR_CONCAT_ARG_MUST_NOT_BE_NULL = "concat: argument must not be null"
+ERR_CONCAT_ARGS_MUST_BE_SEQUENCES = "concat: all arguments must be lists or tuples, got {type}"
 ERR_SETPRODUCT_REQUIRES_TWO = "setproduct: at least two arguments are required"
+ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE = "setproduct: all elements must be of the same type"
 ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION = "setproduct: a set or a list is required, got {type}"
 ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL = "setproduct: argument must not be null"
 ERR_SET_OP_INCOMPATIBLE_ELEMENTS = "{func}: given sets must all have compatible element types"

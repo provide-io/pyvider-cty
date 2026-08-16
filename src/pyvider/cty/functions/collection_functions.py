@@ -31,6 +31,10 @@ from pyvider.cty.config.defaults import (
     ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER,
     ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE,
     ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE,
+    ERR_CHUNKLIST_TUPLE_NOT_UNIFIABLE,
+    ERR_CONCAT_ARG_MUST_NOT_BE_NULL,
+    ERR_CONCAT_ARGS_MUST_BE_SEQUENCES,
+    ERR_CONCAT_REQUIRES_ONE,
     ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
     ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
     ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
@@ -46,9 +50,11 @@ from pyvider.cty.config.defaults import (
     ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION,
     ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL,
     ERR_SETPRODUCT_REQUIRES_TWO,
+    ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE,
     ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
     MAX_RANGE_LENGTH,
 )
+from pyvider.cty.conversion import convert
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
 from pyvider.cty.functions._framework import stdlib_function
@@ -245,32 +251,53 @@ def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[
 
 
 @stdlib_function("concat")
-def concat(*lists: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(
-        context={
-            "operation": "cty_function_concat",
-            "num_lists": len(lists),
-            "list_types": [str(lst.type) for lst in lists[:3]],  # First 3 for context
-        }
-    ):
-        if not all(isinstance(lst.type, CtyList | CtyTuple) for lst in lists):
-            raise CtyFunctionError("concat: all arguments must be lists or tuples")
-        result_elements = []
-        final_element_type: CtyType[Any] | None = None
-        if any(lst.is_unknown for lst in lists):
-            return CtyValue.unknown(CtyList(element_type=CtyDynamic()))
-        for lst in lists:
-            if lst.is_null:
-                continue
-            for element in lst.value:  # type: ignore[attr-defined]
-                if final_element_type is None:
-                    final_element_type = element.type
-                elif not final_element_type.equal(element.type):
-                    final_element_type = CtyDynamic()
-                result_elements.append(element)
-        if final_element_type is None:
-            return CtyList(element_type=CtyDynamic()).validate([])  # type: ignore[no-any-return]
-        return CtyList(element_type=final_element_type).validate(result_elements)  # type: ignore[no-any-return]
+def concat(*sequences: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `ConcatFunc`.
+
+    A list when every argument is a list *and* their element types unify, and a
+    tuple otherwise -- because a tuple is the only type that can carry a
+    different type per position, which is what concatenating a `list(number)`
+    with a `list(bool)` produces.
+
+    This used to derive the element type from the elements themselves, widening
+    to dynamic at the first mismatch, so `concat(list(string), list(number))`
+    came back a `list(dynamic)` holding the originals where go-cty returns a
+    `list(string)` holding `["a", "1"]`. Both halves were wrong: no unification,
+    and no tuple fallback.
+    """
+    if not sequences:
+        raise CtyFunctionError(ERR_CONCAT_REQUIRES_ONE)
+    for sequence in sequences:
+        if not isinstance(sequence.type, CtyList | CtyTuple):
+            raise CtyFunctionError(ERR_CONCAT_ARGS_MUST_BE_SEQUENCES.format(type=sequence.type.ctype))
+    if any(sequence.is_null for sequence in sequences):
+        raise CtyFunctionError(ERR_CONCAT_ARG_MUST_NOT_BE_NULL)
+
+    if all(isinstance(sequence.type, CtyList) for sequence in sequences):
+        unified = unify([sequence.type for sequence in sequences])
+        if isinstance(unified, CtyList):
+            if any(sequence.is_unknown for sequence in sequences):
+                # The type is settled even though the contents are not.
+                return CtyValue.unknown(unified)
+            converted = [
+                convert(element, unified.element_type)
+                for sequence in sequences
+                for element in cast(Iterable[CtyValue[Any]], sequence.value)
+            ]
+            return cast(CtyValue[Any], unified.validate(converted))
+
+    elements: list[CtyValue[Any]] = []
+    for sequence in sequences:
+        if sequence.is_unknown:
+            # A tuple type has one entry per element, so it cannot be built
+            # without knowing how many elements there are.
+            return CtyValue.unknown(CtyDynamic())
+        elements.extend(cast(Iterable[CtyValue[Any]], sequence.value))
+
+    result_type = CtyTuple(element_types=tuple(element.type for element in elements))
+    # Built directly: the type is derived from the elements' own types, so
+    # validating each against the type taken from it is a no-op by construction.
+    return CtyValue(vtype=result_type, value=tuple(elements))
 
 
 # Payloads that can hide an unknown below the top level. A CtyValue holding
@@ -528,7 +555,13 @@ def _chunk_element_type(collection: CtyValue[Any]) -> CtyType[Any]:
     """
     if isinstance(collection.type, CtyList):
         return collection.type.element_type
-    return unify(list(cast(CtyTuple, collection.type).element_types))
+    # A tuple whose elements have no common type has no list form, and so
+    # nothing to chunk. `unify` used to answer dynamic for that, which produced
+    # a `list(dynamic)` of values that had never been converted to anything.
+    unified = unify(cast(CtyTuple, collection.type).element_types)
+    if unified is None:
+        raise CtyFunctionError(ERR_CHUNKLIST_TUPLE_NOT_UNIFIABLE)
+    return unified
 
 
 def _chunk_size(size: CtyValue[Any]) -> int:
@@ -567,7 +600,10 @@ def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]
     element_type = collection.type.element_type if isinstance(collection.type, CtyMap) else CtyDynamic()
 
     if collection.is_unknown or key.is_unknown:
-        return CtyValue.unknown(unify([element_type, default.type]))
+        # The result is either an element or the default, so its type is
+        # whatever covers both; dynamic when nothing does, since an unknown of
+        # dynamic is a claim about nothing rather than a wrong claim.
+        return CtyValue.unknown(unify([element_type, default.type]) or CtyDynamic())
 
     if (
         collection.is_null
@@ -685,7 +721,12 @@ def _setproduct_element_type(arg: CtyValue[Any]) -> tuple[CtyType[Any], bool]:
         # tuple of mixed primitives reaches the `unify` gap recorded in the
         # tracker: string there, dynamic here. An empty tuple is dynamic in
         # both.
-        return (unify(arg_type.element_types) if arg_type.element_types else CtyDynamic()), True
+        if not arg_type.element_types:
+            return CtyDynamic(), True
+        unified = unify(arg_type.element_types)
+        if unified is None:
+            raise CtyFunctionError(ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE)
+        return unified, True
     raise CtyFunctionError(ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION.format(type=arg_type.ctype))
 
 

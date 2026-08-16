@@ -8,7 +8,7 @@
 import pytest
 
 from pyvider.cty import (
-    CtyDynamic,
+    CtyBool,
     CtyList,
     CtyMap,
     CtyNumber,
@@ -333,22 +333,42 @@ class TestSliceConcat:
         assert concat(l1, l2).raw_value == ["a", "b", "c", "d"]
 
     def test_concat_tuples(self) -> None:
+        """A tuple in, a tuple out -- go-cty only returns a list when every
+        argument is a list whose element types unify."""
         t1 = CtyTuple(element_types=(CtyString(), CtyString())).validate(("a", "b"))
         t2 = CtyTuple(element_types=(CtyString(), CtyString())).validate(("c", "d"))
-        assert concat(t1, t2).raw_value == ["a", "b", "c", "d"]
+
+        result = concat(t1, t2)
+
+        assert isinstance(result.type, CtyTuple)
+        assert result.raw_value == ("a", "b", "c", "d")
 
     def test_concat_mixed(self) -> None:
         lst = CtyList(element_type=CtyString()).validate(["a", "b"])
         t = CtyTuple(element_types=(CtyString(), CtyString())).validate(("c", "d"))
-        assert concat(lst, t).raw_value == ["a", "b", "c", "d"]
 
-    def test_concat_with_null_unknown(self) -> None:
+        result = concat(lst, t)
+
+        assert isinstance(result.type, CtyTuple)
+        assert result.raw_value == ("a", "b", "c", "d")
+
+    def test_concat_refuses_a_null_argument(self) -> None:
+        """This used to skip nulls silently, so the result had fewer elements
+        than the arguments described. go-cty refuses the call."""
         lst = CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert concat(lst, CtyValue.null(CtyList(element_type=CtyString()))).raw_value == [
-            "a",
-            "b",
-        ]
-        assert concat(lst, CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
+
+        with pytest.raises(CtyFunctionError):
+            concat(lst, CtyValue.null(CtyList(element_type=CtyString())))
+
+    def test_concat_with_an_unknown_list_keeps_the_element_type(self) -> None:
+        """The type is settled by the argument types even when the contents
+        are not, so it does not collapse to `list(dynamic)`."""
+        lst = CtyList(element_type=CtyString()).validate(["a", "b"])
+
+        result = concat(lst, CtyValue.unknown(CtyList(element_type=CtyString())))
+
+        assert result.is_unknown
+        assert result.type.equal(CtyList(element_type=CtyString()))
 
     def test_concat_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -357,16 +377,30 @@ class TestSliceConcat:
                 CtyString().validate("b"),
             )
 
-    def test_concat_empty(self) -> None:
-        assert concat().raw_value == []
+    def test_concat_requires_an_argument(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            concat()
 
-    def test_concat_mixed_types(self) -> None:
+    def test_concat_widens_element_types_that_unify(self) -> None:
+        """`list(string)` + `list(number)` is a `list(string)`, not a
+        `list(dynamic)` holding the originals: the element types unify, and the
+        elements are converted rather than merely collected."""
         l1 = CtyList(element_type=CtyString()).validate(["a"])
         l2 = CtyList(element_type=CtyNumber()).validate([1])
+
         result = concat(l1, l2)
-        assert isinstance(result.type, CtyList)
-        assert isinstance(result.type.element_type, CtyDynamic)
-        assert result.raw_value == ["a", 1]
+
+        assert result.type.equal(CtyList(element_type=CtyString()))
+        assert result.raw_value == ["a", "1"]
+
+    def test_concat_falls_back_to_a_tuple_when_the_elements_do_not_unify(self) -> None:
+        """Only a tuple can carry a different type per position."""
+        result = concat(
+            CtyList(element_type=CtyNumber()).validate([1]),
+            CtyList(element_type=CtyBool()).validate([True]),
+        )
+
+        assert result.type.equal(CtyTuple(element_types=(CtyNumber(), CtyBool())))
 
 
 class TestLength:

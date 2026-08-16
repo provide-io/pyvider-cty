@@ -168,25 +168,37 @@ class TestSetOperationRejects:
             setunion(S("a"), CtyValue.unknown(CtyDynamic()))
 
 
-class TestSetOperationUnifyGap:
-    """A known divergence, and it is in `unify` rather than in these functions.
+class TestSetOperationsWidenTheirElements:
+    """This class used to be `TestSetOperationUnifyGap` and asserted the gap.
 
-    go-cty unifies a mixture of primitives with `convert.UnifyUnsafe`, which
-    widens everything to string, so `setunion(set(string), set(bool))` is a
-    `set(string)` containing `"true"`. This package's `unify` has no primitive
-    widening rule and answers dynamic. Pinned in the sweep as a strict xfail;
-    asserted here so the current behaviour is at least written down.
+    `unify` had no primitive widening rule, so `setunion(set(string),
+    set(bool))` came back a `set(dynamic)` holding the two originals rather than
+    a `set(string)` holding `"true"`. It was pinned here as "at least written
+    down", which is how a divergence becomes furniture. `unify` is now a port of
+    go-cty's, so these assert the widening instead.
     """
 
-    def test_a_mixed_union_is_a_set_of_dynamic_here(self) -> None:
+    def test_a_mixed_union_widens_to_a_set_of_string(self) -> None:
         mixed = setunion(S("a"), CtySet(element_type=CtyBool()).validate([True]))
 
-        assert mixed.type == CtySet(element_type=CtyDynamic())
+        assert mixed.type == CtySet(element_type=CtyString())
+        assert {element.raw_value for element in mixed.value} == {"a", "true"}
 
-    def test_the_elements_survive_untouched(self) -> None:
+    def test_the_elements_are_converted_not_merely_collected(self) -> None:
         mixed = setunion(S("a"), NUMBER_SET.validate([1]))
 
-        assert {element.raw_value for element in mixed.value} == {"a", 1}
+        assert mixed.type == CtySet(element_type=CtyString())
+        assert {element.raw_value for element in mixed.value} == {"a", "1"}
+
+    def test_elements_with_no_common_type_are_refused(self) -> None:
+        """go-cty's `setOperationReturnType` errors rather than answering.
+
+        A `set(dynamic)` used to come back here, which is the same value `unify`
+        produced when it *did* have an answer -- so "these have nothing in
+        common" and "these unify to dynamic" were indistinguishable.
+        """
+        with pytest.raises(CtyFunctionError):
+            setunion(NUMBER_SET.validate([1]), CtySet(element_type=CtyBool()).validate([True]))
 
 
 # 🌊🪢🔚

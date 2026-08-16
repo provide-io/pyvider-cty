@@ -46,12 +46,14 @@ def _result_element_type(args: list[CtyValue[Any]], func: str) -> CtyType[Any]:
     if all(element_type.equal(element_types[0]) for element_type in element_types):
         return element_types[0]
 
-    # go-cty unifies with `convert.UnifyUnsafe`, which widens a mixture of
-    # primitives to string. This package's `unify` has no such rule and answers
-    # dynamic instead, so a mixed-element result is a set of dynamic here and a
-    # set of string there. Recorded as a divergence and pinned in the sweep,
-    # rather than fixed by changing `unify` under everything else that calls it.
-    return unify(element_types)
+    # go-cty's `setOperationReturnType` refuses the call when the element types
+    # have nothing in common -- `setunion(set(number), set(bool))` is an error
+    # there. It used to be a `set(dynamic)` here, because `unify` answered
+    # dynamic both for "these unify to dynamic" and for "these do not unify".
+    unified = unify(element_types)
+    if unified is None:
+        raise CtyFunctionError(ERR_SET_OP_INCOMPATIBLE_ELEMENTS.format(func=func))
+    return unified
 
 
 def _as_set_of(value: CtyValue[Any], element_type: CtyType[Any], func: str) -> frozenset[CtyValue[Any]]:
