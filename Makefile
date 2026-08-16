@@ -24,6 +24,10 @@ lint: ## Run linting
 format: ## Format code
 	uv run ruff format src/ tests/ scripts/
 
+.PHONY: perf-report
+perf-report: ## Compare hot-path performance against a baseline ref (report only, never fails)
+	uv run python scripts/perf/perf_report.py --base $(or $(BASE),gh-origin/main)
+
 .PHONY: memray
 memray: ## Run memray memory stress tests (all subsystems)
 	@mkdir -p memray-output
