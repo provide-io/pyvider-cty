@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from decimal import Decimal
 from itertools import product
 from typing import Any, cast
@@ -43,6 +43,9 @@ from pyvider.cty.config.defaults import (
     ERR_RANGE_END_MUST_BE_LESS,
     ERR_RANGE_STEP_MUST_NOT_BE_ZERO,
     ERR_RANGE_TOO_MANY_VALUES,
+    ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION,
+    ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL,
+    ERR_SETPRODUCT_REQUIRES_TWO,
     ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
     MAX_RANGE_LENGTH,
 )
@@ -670,31 +673,63 @@ def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     return cast(CtyValue[Any], result_type.validate(merged))
 
 
+def _setproduct_element_type(arg: CtyValue[Any]) -> tuple[CtyType[Any], bool]:
+    """One argument's contribution to the result element type, and whether it is ordered."""
+    arg_type = arg.type
+    if isinstance(arg_type, CtySet):
+        return arg_type.element_type, False
+    if isinstance(arg_type, CtyList):
+        return arg_type.element_type, True
+    if isinstance(arg_type, CtyTuple):
+        # go-cty unifies a tuple's element types (`collection.go:958`), so a
+        # tuple of mixed primitives reaches the `unify` gap recorded in the
+        # tracker: string there, dynamic here. An empty tuple is dynamic in
+        # both.
+        return (unify(arg_type.element_types) if arg_type.element_types else CtyDynamic()), True
+    raise CtyFunctionError(ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION.format(type=arg_type.ctype))
+
+
 @stdlib_function("setproduct")
 def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
-    if not all(isinstance(arg.type, CtyList | CtySet | CtyTuple) for arg in args):
-        raise CtyFunctionError("setproduct: all arguments must be collections")
-    if any(v.is_unknown for v in args):
-        return CtyValue.unknown(CtySet(element_type=CtyDynamic()))
+    """go-cty's `SetProductFunc`.
 
-    iterables = [list(arg.value) for arg in args if not arg.is_null]  # type: ignore[call-overload]
-    if not iterables:
-        return CtySet(element_type=CtyDynamic()).validate([])  # type: ignore[no-any-return]
+    The result is a **list** when every argument is ordered, and a set only when
+    one of them is a set (`collection.go:975`). This always built a set, so the
+    ordering a caller asked for by passing lists was discarded -- and the
+    function's own docstring in go-cty is that lists and tuples "preserve the
+    input ordering".
+    """
+    if len(args) < 2:
+        raise CtyFunctionError(ERR_SETPRODUCT_REQUIRES_TWO)
 
-    prod = product(*iterables)
-    result_tuples = [tuple(item) for item in prod]
-
-    elem_types = []
+    element_types: list[CtyType[Any]] = []
+    ordered = 0
     for arg in args:
-        if not arg.is_null:
-            if isinstance(arg.type, CtyList | CtySet):
-                arg_type_cast = cast(CtyList[Any] | CtySet[Any], arg.type)  # type: ignore[redundant-cast]
-                elem_types.append(arg_type_cast.element_type)
-            else:
-                elem_types.append(CtyDynamic())
-    tuple_type = CtyTuple(element_types=tuple(elem_types))
+        element_type, is_ordered = _setproduct_element_type(arg)
+        element_types.append(element_type)
+        ordered += is_ordered
 
-    return CtySet(element_type=tuple_type).validate(result_tuples)  # type: ignore[no-any-return]
+    tuple_type = CtyTuple(element_types=tuple(element_types))
+    result_type: CtyType[Any] = (
+        CtyList(element_type=tuple_type) if ordered == len(args) else CtySet(element_type=tuple_type)
+    )
+
+    # The result type is computable from the argument types alone, so an
+    # unknown argument makes the value unknown without making the type dynamic.
+    if any(arg.is_unknown for arg in args):
+        return CtyValue.unknown(result_type)
+
+    # A null argument used to be dropped, which changed the arity of the result
+    # tuple according to which arguments happened to be null. go-cty refuses it
+    # outright, and so does this -- a type that varies with the data is a
+    # different fault from the null-argument policy question.
+    if any(arg.is_null for arg in args):
+        raise CtyFunctionError(ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL)
+
+    iterables = [list(cast(Iterable[Any], arg.value)) for arg in args]
+    result_tuples = [tuple(item) for item in product(*iterables)]
+
+    return result_type.validate(result_tuples)
 
 
 @stdlib_function("zipmap")

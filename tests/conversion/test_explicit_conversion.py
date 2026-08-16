@@ -11,6 +11,7 @@ package. These tests will fail until the functions are implemented in the
 `pyvider.cty.conversion.explicit` module."""
 
 from collections.abc import Iterable
+from decimal import Decimal
 
 import pytest
 
@@ -47,7 +48,15 @@ class TestConvertFunction:
             (CtyValue(CtyString(), "-1.5e2"), CtyNumber(), -150),
             (CtyValue(CtyString(), "true"), CtyBool(), True),
             (CtyValue(CtyString(), "false"), CtyBool(), False),
-            (CtyValue(CtyString(), "TRUE"), CtyBool(), True),
+            # go-cty accepts "1" and "0" as well as "true" and "false", and
+            # nothing else -- see the mixed-case entries in the refusal table
+            # below, which this row used to contradict.
+            (CtyValue(CtyString(), "1"), CtyBool(), True),
+            (CtyValue(CtyString(), "0"), CtyBool(), False),
+            (CtyValue(CtyNumber(), 100), CtyString(), "100"),
+            (CtyValue(CtyNumber(), Decimal("1e2")), CtyString(), "100"),
+            (CtyValue(CtyNumber(), Decimal("1.50")), CtyString(), "1.5"),
+            (CtyValue(CtyNumber(), Decimal("1e-7")), CtyString(), "0.0000001"),
             (
                 CtyValue(CtyList(element_type=CtyString()), ["a", "b"]),
                 CtySet(element_type=CtyString()),
@@ -102,11 +111,38 @@ class TestConvertFunction:
                 CtyValue(CtyList(element_type=CtyString()), ["a"]),
                 CtyList(element_type=CtyNumber()),
             ),
+            # Mixed case. This used to convert, because the comparison
+            # lowercased first; go-cty refuses it and says to use lowercase.
+            (CtyValue(CtyString(), "TRUE"), CtyBool()),
+            (CtyValue(CtyString(), "False"), CtyBool()),
+            # A bool is not a number. This used to return 1, because the payload
+            # went to CtyNumber().validate and a Python bool is an int.
+            (CtyValue(CtyBool(), True), CtyNumber()),
+            # Nothing but a number or a bool converts to a string. This used to
+            # return the repr of the internal tuple of CtyValues.
+            (CtyValue(CtyList(element_type=CtyString()), ["a"]), CtyString()),
+            (CtyValue(CtyObject({}), {}), CtyString()),
         ],
     )
     def test_failed_conversions(self, source_val: CtyValue, target_type: CtyType) -> None:
         with pytest.raises(CtyConversionError):
             convert(source_val, target_type)
+
+    def test_a_collection_does_not_stringify_as_its_repr(self) -> None:
+        """The refusal above, stated as the bug it fixes.
+
+        `convert` reached `str(value.value)` for anything it did not recognise,
+        and the payload of a collection is its internal tuple of CtyValues, so
+        this returned the literal text "(CtyValue(vtype=CtyString(), ...),)" --
+        a well-formed string, of the right type, that would have gone on to
+        Terraform state.
+        """
+        collection = CtyValue(CtyList(element_type=CtyString()), ["a"])
+
+        with pytest.raises(CtyConversionError) as caught:
+            convert(collection, CtyString())
+
+        assert "CtyValue(" not in str(caught.value)
 
     def test_conversion_preserves_marks(self) -> None:
         marked_val = CtyValue(CtyNumber(), 123).mark(CtyMark("sensitive"))
@@ -126,6 +162,65 @@ class TestConvertFunction:
         assert len(converted_val.value) == 2
         assert converted_val.value[0].type.equal(CtyDynamic())
         assert converted_val.value[0].value.type.equal(CtyString())
+
+    def test_the_wrong_case_is_refused_differently_from_a_non_bool(self) -> None:
+        """Both raise, and asserting only that hides the branch.
+
+        Found by mutation testing: flipping the `in` to `not in` at the case
+        check sent every unconvertible string down the "use lowercase" path, and
+        nothing failed, because every test here asked only for the exception
+        type. go-cty tells the two apart on purpose -- "TRUE" is a value the
+        author meant as a bool, and saying so is more use than "a bool is
+        required".
+        """
+        with pytest.raises(CtyConversionError, match="lowercase"):
+            convert(CtyValue(CtyString(), "TRUE"), CtyBool())
+
+        with pytest.raises(CtyConversionError) as caught:
+            convert(CtyValue(CtyString(), "yes"), CtyBool())
+        assert "lowercase" not in str(caught.value)
+
+    def test_a_dynamic_converts_the_value_it_wraps(self) -> None:
+        """A CtyDynamic is a wrapper; the conversion applies to what is inside."""
+        wrapped = CtyDynamic().validate(123)
+
+        converted = convert(wrapped, CtyString())
+
+        assert converted.type.equal(CtyString())
+        assert converted.value == "123"
+
+    def test_a_dynamic_wrapping_a_raw_payload_is_refused(self) -> None:
+        """A CtyDynamic's payload is always another CtyValue.
+
+        It is what carries the concrete type, so a dynamic holding a bare
+        Python object has no type to convert *from*.
+        """
+        malformed = CtyValue(CtyDynamic(), "not a CtyValue")
+
+        with pytest.raises(CtyConversionError):
+            convert(malformed, CtyString())
+
+    def test_an_object_whose_payload_is_not_a_dict_is_refused(self) -> None:
+        malformed = CtyValue(CtyObject({"a": CtyString()}), "not a dict")
+
+        with pytest.raises(CtyConversionError):
+            convert(malformed, CtyObject({"a": CtyNumber()}))
+
+    def test_an_optional_target_attribute_absent_from_the_source_becomes_null(self) -> None:
+        source = CtyObject({"a": CtyString()}).validate({"a": "1"})
+        target = CtyObject({"a": CtyString(), "b": CtyNumber()}, optional_attributes=frozenset({"b"}))
+
+        converted = convert(source, target)
+
+        assert converted.type.equal(target)
+        assert converted.value["b"].is_null
+
+    def test_a_required_target_attribute_absent_from_the_source_is_refused(self) -> None:
+        source = CtyObject({"a": CtyString()}).validate({"a": "1"})
+        target = CtyObject({"a": CtyString(), "b": CtyNumber()})
+
+        with pytest.raises(CtyConversionError):
+            convert(source, target)
 
     def test_capsule_conversion(self) -> None:
         class MyType:
