@@ -21,7 +21,7 @@ Living document. Updated as work lands — do not let it drift.
 | 3 | Foundations | ✅ Done — 3 of 5 items were not gaps; `SafeKnownPrefix` deferred on the Unicode decision |
 | 4 | Marks, properly | ✅ Done — `unknown_as_null` and the path-aware mark pair both landed |
 | 5 | Breadth | ✅ Done — every one of go-cty's 83 stdlib functions is implemented and swept; only the `cty/json` *value* codec (#11) remains, and it sits in phase 6 |
-| 6 | Refinements | ⬜ Not started |
+| 6 | Refinements | ✅ Done — the `Refine` builder, `SafeKnownPrefix` and `Value.Range` all landed |
 | 7 | Architecture | 🟨 The `cty/function` framework's null policy landed; type conformance and the rest have not |
 | — | Docs (#13) | 🔄 Continuous |
 
@@ -312,11 +312,15 @@ Mutually independent. Parallelizable across whoever is free.
 
 ## Phase 6 — refinements
 
-- [ ] **#10 — `Refine` builder + consistency assertions**
-  Needs `ctystrings` from phase 3 for `StringPrefix` vs `StringPrefixFull`.
-  The validation is the point, not the API shape: inconsistent bounds, refining a known value, prefix-on-a-number, narrowing-never-widening.
-- [ ] **#14 item 2 — `Value.Range` / `ValueRange`**
-  Needs #10.
+- [x] **#10 — `Refine` builder + consistency assertions** — *closed 2026-08-17, `b11177c`*
+  The entry was right that the validation is the point and not the API shape, and it named the four checks that mattered. Thirteen refusals landed, each pinned: nullness contradicting itself or the value, bounds crossing, bounds/lengths/prefixes on the wrong type, and each of those contradicting a known value or an earlier refinement. go-cty panics on all of them; this raises.
+  **Refinements only narrow.** A widening bound is discarded rather than stored — later information may add certainty and may never remove it, and accepting a wider bound lets a caller un-learn something Terraform has already planned against.
+  **Refining can produce a known value**, which surprises on first reading and is go-cty's behaviour: an unknown that is not null and lies in `[5, 5]` *is* 5, an unknown collection of length 0 is the empty collection, and a known-null refinement is the null.
+  `SafeKnownPrefix` came with it — **#14 item 6, which this file had recorded as blocked on the Unicode decision, was unblocked by the grapheme work and cost nothing extra.** It drops the final grapheme cluster because a later character may combine with it; go-cty's own documentation uses `"hello"` as the unsafe example, so the answer is `"hell"`.
+- [x] **#14 item 2 — `Value.Range` / `ValueRange`** — *closed 2026-08-17, `e4e154e`*
+  The read side. `includes()` is three-valued, and that is the whole point: "unknown" is the honest answer when the refinements neither admit nor exclude a candidate. Being *within* the bounds is not equality either — a candidate that passes every bound has only failed to be ruled out — so only a hard exclusion is definite.
+  **The payoff was in `equality.py`, which had recorded this as deliberately unimplemented**: "go-cty disqualifies some comparisons early using the refinement bounds; pyvider.cty has only partial refinement support, so those cases return unknown here". They no longer do. An unknown number refined to `[1, 10]` is definitely not 50; an unknown string with prefix `"abc"` is definitely not `"xyz"`; an unknown list of length ≥ 3 is definitely not a one-element list. Where the range cannot decide, the previous safe direction is unchanged.
+  One existing test asserted the *gap* rather than a behaviour — "not_equal with refined unknown returns unknown", using a bound that does in fact exclude its candidate. Its sibling used a within-bounds candidate and still passes, which is why only one of the pair failed and why the pair now states both halves explicitly.
 
 ## Phase 7 — architecture
 

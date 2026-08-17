@@ -110,10 +110,16 @@ def can_convert_unsafe(source: CtyType[Any], target: CtyType[Any]) -> bool:  # n
         return True
     if source.equal(target):
         return True
-    if isinstance(source, CtyCapsuleWithOps):
+    if isinstance(source, CtyCapsuleWithOps) and source.convert_fn is not None:
         # Whether a capsule converts is its own `convert_fn`'s decision, and
         # that needs the value. Optimistic, matching the "unsafe" contract.
-        return source.convert_fn is not None
+        return True
+    if isinstance(target, CtyCapsuleWithOps) and target.convert_to_fn is not None:
+        # The other direction: a capsule declaring `convert_to_fn` can receive a
+        # value. go-cty splits ConversionFrom and ConversionTo for exactly this,
+        # and without the second half a capsule can be converted out of and
+        # never into -- which is also what blocks capsule-to-capsule.
+        return True
     if isinstance(source, CtyCapsule) or isinstance(target, CtyCapsule):
         return False
 
@@ -192,6 +198,15 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                 )
                 raise CtyConversionError(error_message, source_value=value, target_type=target_type)
             return CtyValue.null(target_type) if value.is_null else CtyValue.unknown(target_type)
+
+        # Into a capsule that declares how to receive a value. The target's
+        # `ConversionTo` is tried before the source's `ConversionFrom`, which is
+        # go-cty's order (`convert/conversion.go:172-184`) and matters only when
+        # both ends are capsules -- there, the destination decides first.
+        if isinstance(target_type, CtyCapsuleWithOps) and target_type.convert_to_fn:
+            received = target_type.convert_to_fn(value, target_type)
+            if received is not None:
+                return target_type.validate(received)
 
         # Capsule conversion with operations
         if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
