@@ -27,9 +27,6 @@ from __future__ import annotations
 
 import base64
 import json
-import os
-from pathlib import Path
-import shutil
 import subprocess  # nosec
 from typing import Any
 
@@ -50,6 +47,7 @@ from pyvider.cty import (
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.functions import STDLIB
 from pyvider.cty.types import BytesCapsule
+from tests.compatibility._oracle import soup_go
 
 pytestmark = pytest.mark.compat
 
@@ -470,17 +468,10 @@ def _case_id(func: str, args: list[Arg]) -> str:
     return f"{func}({rendered})"
 
 
-def _soup_go() -> str:
-    candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or "/tmp/soup-go"  # nosec
-    if not Path(candidate).exists():
-        pytest.skip(f"soup-go harness not found at {candidate}; set SOUP_GO_BIN.")
-    return candidate
-
-
 def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
     """go-cty's answer as (kind, payload): ok / unknown / error."""
     completed = subprocess.run(  # nosec
-        [_soup_go(), "cty", "call", func, *[json.dumps(spec) for spec in specs]],
+        [soup_go(), "cty", "call", func, *[json.dumps(spec) for spec in specs]],
         capture_output=True,
         check=False,
     )
@@ -616,7 +607,7 @@ def test_the_sweep_drives_every_function_the_oracle_exposes() -> None:
     differential verification at all and nothing here could say so.
     """
     completed = subprocess.run(  # nosec
-        [_soup_go(), "cty", "functions"], capture_output=True, check=True
+        [soup_go(), "cty", "functions"], capture_output=True, check=True
     )
     exposed = set(json.loads(completed.stdout.decode()))
     covered = {func for func, _args in CASES}

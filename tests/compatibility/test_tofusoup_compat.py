@@ -32,9 +32,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 import json
-import os
 from pathlib import Path
-import shutil
 import subprocess  # nosec
 import tempfile
 from typing import Any
@@ -54,19 +52,9 @@ from pyvider.cty import (
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 from pyvider.cty.json_codec import cty_to_json
+from tests.compatibility._oracle import soup_go
 
 pytestmark = pytest.mark.compat
-
-
-def _soup_go() -> str:
-    """The harness binary, or skip. Never silently passes without it."""
-    candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or "/tmp/soup-go"  # nosec
-    if not Path(candidate).exists():
-        pytest.skip(
-            f"soup-go harness not found at {candidate}. Build it from "
-            "tofusoup/src/tofusoup/harness/go/soup-go, or set SOUP_GO_BIN."
-        )
-    return candidate
 
 
 def _as_json_text(native: Any) -> bytes:
@@ -118,7 +106,7 @@ def _go_canonical_json(json_text: bytes, type_spec: Any) -> bytes:
     two encoders, so both sides have to start from the same document and end in
     the same format.
     """
-    binary = _soup_go()
+    binary = soup_go()
     with tempfile.TemporaryDirectory() as tmp:
         src, dst = Path(tmp) / "in", Path(tmp) / "out"
         src.write_bytes(json_text)
@@ -146,7 +134,7 @@ def _go_canonical_json(json_text: bytes, type_spec: Any) -> bytes:
 
 def _go_convert(payload: bytes, type_spec: Any, *, to_json: bool) -> bytes:
     """Round a value through go-cty, converting between msgpack and JSON."""
-    binary = _soup_go()
+    binary = soup_go()
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "in"
         dst = Path(tmp) / "out"

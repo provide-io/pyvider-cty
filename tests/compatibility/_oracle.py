@@ -1,0 +1,217 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""The soup-go harness, and the value dialect both implementations speak.
+
+Three test modules had each grown their own copy of "find the binary", which is
+the shape of divergence this repository keeps finding: the copies agreed today
+and nothing made them agree tomorrow. They now share this one.
+
+The rest of the module is the bridge that makes the non-stdlib half of go-cty
+comparable at all. `cty call` can only say "unknown", "null" or "marked" about a
+whole value, which is enough for a function's answer and not enough for
+`UnknownAsNull`, `MarkWithPaths` or a refined unknown -- all of which exist
+precisely to talk about depth. `rich()` writes a pyvider value in the harness's
+richer dialect, and `canonical()` normalises both sides' numbers so a comparison
+is comparing values rather than spellings.
+
+Numbers travel as `{"$number": "<digits>"}` in this direction. A JSON float
+would round through a float64 and lose precision above 2**53, which would make
+the two implementations disagree about an argument neither of them chose.
+"""
+
+from __future__ import annotations
+
+import base64
+from decimal import Decimal
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess  # nosec
+from typing import Any
+
+import pytest
+
+from pyvider.cty import (
+    CtyBool,
+    CtyCapsule,
+    CtyDynamic,
+    CtyList,
+    CtyMap,
+    CtyNumber,
+    CtyObject,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyType,
+    CtyValue,
+)
+from pyvider.cty.conversion import encode_cty_type_to_wire_json
+from pyvider.cty.types import BytesCapsule
+from pyvider.cty.values.markers import RefinedUnknownValue
+
+__all__ = ["canonical", "dynamic_arg", "rich", "run", "soup_go", "type_spec"]
+
+
+def soup_go() -> str:
+    """The harness binary, or skip. Never silently passes without it."""
+    candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or "/tmp/soup-go"  # nosec
+    if not Path(candidate).exists():
+        pytest.skip(
+            f"soup-go harness not found at {candidate}. Build it from "
+            "tofusoup/src/tofusoup/harness/go/soup-go, or set SOUP_GO_BIN."
+        )
+    return candidate
+
+
+def run(*args: str) -> dict[str, Any]:
+    """Run one harness command and parse its single JSON object.
+
+    A non-zero exit is a failure here rather than a comparison result: the
+    commands report go-cty's own refusals in the JSON as `ok: false`, so a
+    process that died instead means the harness was misused or is broken, and
+    reading that as "the implementations disagree" would point at the wrong
+    code.
+    """
+    completed = subprocess.run(  # nosec
+        [soup_go(), *args], capture_output=True, text=True, check=False
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            f"harness exited {completed.returncode} for {args!r}:\n{completed.stderr.strip()}"
+        )
+    try:
+        # parse_int as well as parse_float: length bounds reach maxint, and a
+        # number that arrives as a float has already lost the argument.
+        return json.loads(completed.stdout, parse_float=Decimal, parse_int=Decimal)
+    except json.JSONDecodeError as exc:  # pragma: no cover - a broken harness
+        raise AssertionError(f"harness produced no JSON for {args!r}: {completed.stdout!r}") from exc
+
+
+def type_spec(cty_type: CtyType[Any]) -> str:
+    """A pyvider type in the harness's JSON type dialect.
+
+    Delegates to the wire encoder rather than re-deriving the spelling, so a
+    test writes its type once and both implementations are handed the same one.
+    """
+    if cty_type.equal(BytesCapsule):
+        # A capsule type has no JSON spelling of its own; the harness accepts
+        # this name for the one capsule both sides know about.
+        return json.dumps("bytes")
+    return json.dumps(encode_cty_type_to_wire_json(cty_type))
+
+
+def rich(value: CtyValue[Any]) -> Any:
+    """A pyvider value in the harness's rich dialect."""
+    if value.marks:
+        # unmark() returns the value *and* the marks it removed, so the value
+        # is the first half of the pair rather than the whole answer.
+        unmarked, marks = value.unmark()
+        return {"$marks": sorted(str(mark) for mark in marks), "$value": rich(unmarked)}
+    if value.is_unknown:
+        payload: dict[str, Any] = {"$unknown": True}
+        refinements = _refinements(value)
+        if refinements:
+            payload["$refine"] = refinements
+        return payload
+    if value.is_null:
+        return {"$null": True}
+    return _rich_known(value)
+
+
+def dynamic_arg(value: CtyValue[Any]) -> Any:
+    """A value for a position whose declared type is `dynamic`.
+
+    The concrete type has to travel with it. Sent as a plain rich value, the
+    harness infers a type from the JSON -- and JSON infers a *tuple* from an
+    array -- so a list arrived as a tuple and the operation under test was
+    handed a different value from the one the test wrote.
+    """
+    inner = value.value if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue) else value
+    return {"$dynamic": {"type": json.loads(type_spec(inner.type)), "value": rich(inner)}}
+
+
+def _rich_known(value: CtyValue[Any]) -> Any:
+    cty_type = value.type
+    match cty_type:
+        case CtyDynamic():
+            inner = value.value
+            return rich(inner) if isinstance(inner, CtyValue) else inner
+        case CtyString():
+            return str(value.value)
+        case CtyBool():
+            return bool(value.value)
+        case CtyNumber():
+            return {"$number": _number_text(value.value)}
+        case CtyList() | CtyTuple():
+            return [rich(element) for element in value.value]
+        case CtySet():
+            # Sorted the way the codec sorts, because that order is the answer:
+            # a set's element order reaches the wire and go-cty's iteration
+            # order is what the harness reports back.
+            elements = sorted(value.value, key=lambda element: element._canonical_sort_key())
+            return [rich(element) for element in elements]
+        case CtyMap() | CtyObject():
+            return {name: rich(element) for name, element in value.value.items()}
+        case CtyCapsule() if cty_type.equal(BytesCapsule):
+            return {"$bytes": base64.b64encode(value.value).decode()}
+    raise AssertionError(f"no rich encoding for {cty_type}")
+
+
+def _number_text(number: Any) -> str:
+    """Exact digits, never an exponent.
+
+    `format(d, "f")` is what keeps 1E+2 and 100 the same argument on both sides.
+    """
+    decimal = Decimal(str(number))
+    if decimal.is_infinite():
+        return "Infinity" if decimal > 0 else "-Infinity"
+    return format(decimal, "f")
+
+
+def _refinements(value: CtyValue[Any]) -> dict[str, Any]:
+    raw = value.value
+    if not isinstance(raw, RefinedUnknownValue):
+        return {}
+    out: dict[str, Any] = {}
+    if raw.is_known_null is not None:
+        out["is_known_null"] = raw.is_known_null
+    if raw.string_prefix:
+        out["string_prefix"] = raw.string_prefix
+    if raw.number_lower_bound is not None:
+        out["number_lower_bound"] = [_number_text(raw.number_lower_bound[0]), raw.number_lower_bound[1]]
+    if raw.number_upper_bound is not None:
+        out["number_upper_bound"] = [_number_text(raw.number_upper_bound[0]), raw.number_upper_bound[1]]
+    if raw.collection_length_lower_bound is not None:
+        out["collection_length_lower_bound"] = raw.collection_length_lower_bound
+    if raw.collection_length_upper_bound is not None:
+        out["collection_length_upper_bound"] = raw.collection_length_upper_bound
+    return out
+
+
+def canonical(payload: Any) -> Any:
+    """Both spellings of a number become a Decimal.
+
+    The harness writes numbers as JSON tokens and `rich()` writes them as
+    `{"$number": ...}`, which are the same number written two ways. Without
+    this, every comparison would fail on the spelling and none of them would be
+    about behaviour.
+    """
+    match payload:
+        case bool():
+            return payload
+        case {"$number": str() as text}:
+            return Decimal(text)
+        case dict():
+            return {key: canonical(item) for key, item in payload.items()}
+        case list():
+            return [canonical(item) for item in payload]
+        case Decimal() | int() | float():
+            return Decimal(str(payload))
+    return payload
+
+
+# 🌊🪢🔚
