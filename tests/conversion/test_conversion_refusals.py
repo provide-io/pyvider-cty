@@ -62,12 +62,25 @@ class TestConvertRefusals:
         with pytest.raises(CtyConversionError):
             convert(source, CtyTuple(element_types=(S, S)))
 
-    def test_a_sequence_of_the_right_length_converts_positionally(self) -> None:
-        source = CtyList(element_type=N).validate([1, 2])
+    def test_a_tuple_of_the_right_length_converts_positionally(self) -> None:
+        source = CtyTuple(element_types=(N, N)).validate([1, 2])
 
         converted = convert(source, CtyTuple(element_types=(S, S)))
 
         assert converted.raw_value == ("1", "2")
+
+    def test_a_list_does_not_convert_to_a_tuple(self) -> None:
+        """It used to, and go-cty has no such conversion.
+
+        A collection's length is a property of the value and a tuple's is part
+        of its type, so the conversion is one that type-checking cannot decide.
+        `can_convert_unsafe` said so all along -- `convert` was performing a
+        conversion its own predicate denied.
+        """
+        source = CtyList(element_type=N).validate([1, 2])
+
+        with pytest.raises(CtyConversionError):
+            convert(source, CtyTuple(element_types=(S, S)))
 
     def test_an_object_whose_payload_is_not_a_dict_is_refused(self) -> None:
         malformed = CtyValue(CtyObject({"a": S}), "not a dict")

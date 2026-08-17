@@ -93,7 +93,13 @@ class _Payload:
         # An object is map-shaped once the per-attribute types agree.
         (CtyObject({"a": N}), mp(S), True),
         (CtyObject({"a": lst(S)}), mp(S), False),
-        (mp(S), CtyObject({"a": S}), False),
+        # And the other direction, which this table recorded as False from a
+        # reading of go-cty's source. go-cty has `conversionMapToObject` and
+        # allows it unsafely -- "we don't know if all the map keys will
+        # correspond to object attributes" -- which the harness confirms.
+        (mp(S), CtyObject({"a": S}), True),
+        (mp(lst(S)), CtyObject({"a": S}), False),
+        (mp(S), CtyObject({"a": S, "b": N}, optional_attributes=frozenset({"b"})), True),
         # Objects convert to a subset of themselves; this is what unification
         # deliberately does *not* use.
         (CtyObject({"a": S, "b": N}), CtyObject({"a": S}), True),
@@ -135,7 +141,11 @@ def _sample(cty_type: CtyType[Any]) -> CtyValue[Any]:
     if isinstance(cty_type, CtyList | CtySet):
         return cty_type.validate([_sample(cty_type.element_type).value])
     if isinstance(cty_type, CtyMap):
-        return cty_type.validate({"k": _sample(cty_type.element_type).value})
+        # Keyed "a" so that a map can reach the object type in TYPES. A map
+        # converts to an object by key, so a sample keyed anything else fails on
+        # the *value* -- a legal outcome for an unsafe conversion, and one that
+        # would leave this test unable to check the contract for that pair.
+        return cty_type.validate({"a": _sample(cty_type.element_type).value})
     if isinstance(cty_type, CtyTuple):
         return cty_type.validate(tuple(_sample(element).value for element in cty_type.element_types))
     if isinstance(cty_type, CtyObject):

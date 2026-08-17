@@ -21,6 +21,7 @@ from pyvider.cty.config.defaults import (
     ERR_CUSTOM_CONVERTER_NON_CTYVALUE,
     ERR_CUSTOM_CONVERTER_WRONG_TYPE,
     ERR_DYNAMIC_VALUE_NOT_CTYVALUE,
+    ERR_MAP_MISSING_REQUIRED_ATTRIBUTE,
     ERR_MISSING_REQUIRED_ATTRIBUTE,
     ERR_SOURCE_OBJECT_NOT_DICT,
     ERR_TUPLE_LENGTH_MISMATCH,
@@ -153,6 +154,19 @@ def can_convert_unsafe(source: CtyType[Any], target: CtyType[Any]) -> bool:  # n
             )
         return False
 
+    if isinstance(target, CtyObject) and isinstance(source, CtyMap):
+        # Unsafe only, and go-cty says why: "we don't know if all the map keys
+        # will correspond to object attributes". Which keys a map holds is a
+        # property of the value, so the type can only be optimistic. A required
+        # attribute whose type the map's elements cannot reach still rules it
+        # out here; an optional one does not, because the map may simply not
+        # carry that key.
+        return all(
+            can_convert_unsafe(source.element_type, want)
+            for name, want in target.attribute_types.items()
+            if name not in target.optional_attributes
+        )
+
     if isinstance(target, CtyObject) and isinstance(source, CtyObject):
         # Unsafe conversion permits a target that is a *subset* of the source:
         # dropping attributes nobody asked for is legal. Unification is
@@ -169,6 +183,92 @@ def can_convert_unsafe(source: CtyType[Any], target: CtyType[Any]) -> bool:  # n
     return False
 
 
+def _collection_target(
+    target: CtyList[Any] | CtySet[Any], source: CtyList[Any] | CtySet[Any] | CtyTuple
+) -> CtyList[Any] | CtySet[Any]:
+    """The collection type a conversion actually produces.
+
+    A `dynamic` element type in the *target* is not a request for a collection
+    of dynamics -- it is the absence of a constraint, and go-cty resolves it
+    from the source rather than storing it. `list(any)` given a `list(string)`
+    yields a `list(string)`, because converting each element to dynamic is the
+    identity and `ListVal` then infers the element type from what it was handed.
+
+    Producing `list(dynamic)` instead puts a *type constraint* in a value's
+    type, which is a distinction go-cty is careful about, and it reaches the
+    wire: a provider returning `list(any)` would tell Terraform nothing about
+    its elements.
+    """
+    if not isinstance(target.element_type, CtyDynamic):
+        return target
+
+    if isinstance(source, CtyTuple):
+        if not source.element_types:
+            # Nothing to infer from. go-cty keeps the dynamic here too.
+            return target
+        # go-cty unifies the tuple's element types (conversion_collection.go's
+        # conversionTupleToList), and refuses when they have no common type.
+        from pyvider.cty.conversion.unify import unify
+
+        unified = unify(list(source.element_types))
+        if unified is None or isinstance(unified, CtyDynamic):
+            return target
+        return type(target)(element_type=unified)
+
+    return type(target)(element_type=source.element_type)
+
+
+def _without_optional(cty_type: CtyType[Any]) -> CtyType[Any]:
+    """go-cty's `Type.WithoutOptionalAttributesDeep`.
+
+    Optionality is a property of a type *constraint* -- "you need not supply
+    this" -- and says nothing about a value, which either has the attribute or
+    has null for it. go-cty is careful never to let one reach a value's type,
+    and `Convert` strips it both when deciding a conversion is unnecessary and
+    when building the result.
+
+    It matters on the wire: a schema declaring `b` optional and a value whose
+    type still says so are different documents, and the second is a type
+    constraint claiming to be a value.
+    """
+    match cty_type:
+        case CtyObject():
+            return CtyObject(
+                attribute_types={
+                    name: _without_optional(attribute) for name, attribute in cty_type.attribute_types.items()
+                },
+                optional_attributes=frozenset(),
+            )
+        case CtyList():
+            return CtyList(element_type=_without_optional(cty_type.element_type))
+        case CtySet():
+            return CtySet(element_type=_without_optional(cty_type.element_type))
+        case CtyMap():
+            return CtyMap(element_type=_without_optional(cty_type.element_type))
+        case CtyTuple():
+            return CtyTuple(element_types=tuple(_without_optional(e) for e in cty_type.element_types))
+    return cty_type
+
+
+def _map_to_object(value: CtyValue[Any], target_type: CtyObject) -> CtyValue[Any]:
+    """go-cty's `conversionMapToObject`."""
+    items = cast(dict[str, CtyValue[Any]], value.value or {})
+    attributes: dict[str, CtyValue[Any]] = {}
+    for name, want in target_type.attribute_types.items():
+        if name in items:
+            attributes[name] = convert(items[name], want)
+        elif name in target_type.optional_attributes:
+            attributes[name] = CtyValue.null(want)
+        else:
+            raise CtyConversionError(
+                ERR_MAP_MISSING_REQUIRED_ATTRIBUTE.format(name=name),
+                source_value=value,
+                target_type=target_type,
+            )
+    concrete = cast(CtyObject, _without_optional(target_type))
+    return cast("CtyValue[Any]", concrete.validate(attributes).with_marks(set(value.marks)))
+
+
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
@@ -182,8 +282,12 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             "value_is_unknown": value.is_unknown,
         }
     ):
-        # Early exit cases
-        if value.type.equal(target_type):
+        # Early exit cases. Compared against the target with its optionality
+        # stripped, which is go-cty's `in.Type().Equals(want.WithoutOptional
+        # AttributesDeep())`: a value whose type already matches needs no
+        # conversion, and whether the *constraint* marked an attribute optional
+        # has no bearing on that.
+        if value.type.equal(target_type) or value.type.equal(_without_optional(target_type)):
             return value
 
         # A null or an unknown still has to be *convertible*: nullness is not
@@ -312,12 +416,20 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # was refused. A conversion `can_convert_unsafe` admits has to be one
         # `convert` performs, or unification promises a type nothing can reach.
         if isinstance(target_type, CtySet | CtyList) and isinstance(value.type, CtyList | CtySet | CtyTuple):
-            element_type = target_type.element_type
+            collection = _collection_target(target_type, value.type)
+            element_type = collection.element_type
             elements = [convert(element, element_type) for element in _ordered_elements(value)]
-            converted: CtyValue[Any] = target_type.validate(elements).with_marks(set(value.marks))
+            converted: CtyValue[Any] = collection.validate(elements).with_marks(set(value.marks))
             return converted
 
-        if isinstance(target_type, CtyTuple) and isinstance(value.type, CtyTuple | CtyList | CtySet):
+        # Tuple *from a tuple only*. go-cty's table has no list-to-tuple or
+        # set-to-tuple conversion at all -- a collection's length is a property
+        # of the value and a tuple's is part of its type, so the conversion
+        # would be one that type-checking cannot decide. This accepted both,
+        # while `can_convert_unsafe` above said it could not, so `convert`
+        # performed a conversion its own predicate denied: unification could
+        # refuse a type that `convert` would in fact have reached.
+        if isinstance(target_type, CtyTuple) and isinstance(value.type, CtyTuple):
             source_elements = _ordered_elements(value)
             if len(source_elements) != len(target_type.element_types):
                 error_message = ERR_TUPLE_LENGTH_MISMATCH.format(
@@ -347,6 +459,16 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             ).with_marks(set(value.marks))
             return converted
 
+        # A map converts to an object, and only unsafely: which keys a map holds
+        # is a property of the value, so the type cannot promise the attributes
+        # will be there. Keys the object does not declare are *skipped* rather
+        # than refused, a missing optional attribute becomes null, and a missing
+        # required one is the error. All three are go-cty's rules
+        # (`conversionMapToObject`), and without any of it a provider decoding
+        # `map(string)` config into a schema object was simply refused.
+        if isinstance(target_type, CtyObject) and isinstance(value.type, CtyMap):
+            return _map_to_object(value, target_type)
+
         # Object conversion
         if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
             new_attrs = {}
@@ -363,7 +485,8 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
                 else:
                     error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
                     raise CtyConversionError(error_message)
-            converted = target_type.validate(new_attrs).with_marks(set(value.marks))
+            concrete = cast(CtyObject, _without_optional(target_type))
+            converted = concrete.validate(new_attrs).with_marks(set(value.marks))
             return converted
 
         # Fallback - no conversion available

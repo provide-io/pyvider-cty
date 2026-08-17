@@ -110,8 +110,10 @@ class TestFinalCoveragePush:
         source_val = CtyList(element_type=CtyString()).validate(["a", "b"])
         target_type = CtyList(element_type=CtyDynamic())
         result = convert(source_val, target_type)
-        assert result.type.equal(target_type)
-        assert result.value[0].type.is_dynamic_type()
+        # A dynamic element type in the target is the absence of a constraint,
+        # so the concrete element type survives. See test_explicit_conversion.
+        assert result.type.equal(CtyList(element_type=CtyString()))
+        assert not result.value[0].type.is_dynamic_type()
 
     # --- Coverage for: src/pyvider/cty/conversion/adapter.py ---
 
