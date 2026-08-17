@@ -114,6 +114,12 @@ addopts = "-m 'not memray' -ra -q --color=yes"
 line-length = 111
 indent-width = 4
 target-version = "py311"
+# ruff >= 0.16 formats Python blocks inside Markdown. This repo is on 0.15, so
+# the exclusion is inert today and exists because the dependency refresh will
+# cross that boundary: without it, the first `ruff format .` after the upgrade
+# restyles every code block in docs/ as a side effect of upgrading a linter.
+# It did exactly that to 44 files in provide-foundation.
+exclude = ["**/*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "ANN", "B", "BLE", "C90", "PIE", "PLR", "S", "SIM", "PTH", "RUF"]
