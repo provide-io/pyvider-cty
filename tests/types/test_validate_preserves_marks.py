@@ -427,9 +427,18 @@ class TestFixesThatHadNoTest:
     """
 
     def test_a_marked_unknown_inside_a_container_is_not_serialized(self) -> None:
-        """The container is flagged unknown by its element, and an unknown
-        encodes to a marker without the encoder descending -- so the per-level
-        mark check never saw the mark. It reached the wire."""
+        """A marked unknown element must not slip past the mark check.
+
+        The original bug: the container was flagged unknown *by* its element,
+        and an unknown encodes to a marker without the encoder descending, so
+        the per-level mark check never saw the mark and it reached the wire.
+
+        Since 2026-08-17 the container stays known, so the encoder descends and
+        the per-level check meets the mark directly. Two different routes to the
+        same refusal, and the refusal is the point -- which is why the assertion
+        on the container's own flag is inverted here while the `raises` below is
+        untouched.
+        """
         from pyvider.cty.codec import cty_to_msgpack
         from pyvider.cty.exceptions import CtyMarksSerializationError
 
@@ -439,7 +448,7 @@ class TestFixesThatHadNoTest:
             (CtyTuple(element_types=(CtyString(),)), [CtyValue.unknown(CtyString()).mark(SENSITIVE)]),
         ):
             value = cty_type.validate(raw)
-            assert value.is_unknown, "container takes its unknown-ness from the element"
+            assert not value.is_unknown, "a container holding an unknown element is itself known"
             with pytest.raises(CtyMarksSerializationError):
                 cty_to_msgpack(value, cty_type)
 

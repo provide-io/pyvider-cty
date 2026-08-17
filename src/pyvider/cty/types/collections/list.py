@@ -83,8 +83,13 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                 new_path = CtyPath(steps=(IndexStep(i), *(e.path.steps if e.path else ())))
                 raise CtyListValidationError(e.message, value=item, path=new_path, original_exception=e) from e
 
-        is_unknown = any(v.is_unknown for v in validated_elements)
-        return CtyValue(vtype=self, value=tuple(validated_elements), is_unknown=is_unknown)
+        # A list holding an unknown element is a *known* list. go-cty draws this
+        # line at `IsKnown` vs `IsWhollyKnown`, and the distinction is the whole
+        # value: the length is known, every known element is known, and only the
+        # one element is undecided. Hoisting the element's unknownness onto the
+        # container threw all of that away -- `["a", unknown]` encoded to the
+        # wire as a bare unknown, losing "a" and the length with it.
+        return CtyValue(vtype=self, value=tuple(validated_elements))
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
         from pyvider.cty.values import CtyValue

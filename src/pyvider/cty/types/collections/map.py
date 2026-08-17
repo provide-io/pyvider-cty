@@ -76,8 +76,8 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 new_path = CtyPath(steps=(KeyStep(normalized_key), *(e.path.steps if e.path else ())))
                 raise CtyMapValidationError(e.message, value=v, path=new_path, original_exception=e) from e
 
-        is_unknown = any(v.is_unknown for v in validated_map.values())
-        return CtyValue(vtype=self, value=FrozenDict(validated_map), is_unknown=is_unknown)
+        # Known map, undecided element -- see the note in CtyList.validate.
+        return CtyValue(vtype=self, value=FrozenDict(validated_map))
 
     def get(
         self,

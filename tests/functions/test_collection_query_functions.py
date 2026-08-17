@@ -150,14 +150,20 @@ class TestContainsUnknownHandling:
         """Built through `validate`, as a caller would.
 
         These cases used to hand-build the CtyValue, which hid something: a
-        list reports itself unknown as soon as any element is unknown, and
-        `contains` used to return on that flag before looking at the elements
-        at all. So the behaviour asserted here was unreachable through the
-        public API, and the real answer for every list was "unknown".
+        list flagged *itself* unknown as soon as any element was, and
+        `contains` returned on that flag before looking at the elements at all.
+        So the behaviour asserted here was unreachable through the public API,
+        and the real answer for every such list was "unknown".
+
+        Since 2026-08-17 the container no longer takes its unknown-ness from
+        its elements, matching go-cty, so this now exercises the scan it was
+        always meant to. The answer is unchanged -- an unknown element could
+        still turn out to be `"zzz"` -- but it is now reached by looking.
         """
         collection = CtyList(element_type=CtyString()).validate(["a", CtyValue.unknown(CtyString())])
 
-        assert collection.is_unknown, "the container flags itself unknown"
+        assert not collection.is_unknown, "a list holding an unknown element is a known list"
+        assert not collection.is_wholly_known()
         assert contains(collection, CtyString().validate("zzz")).is_unknown
 
     def test_exact_match_wins_over_an_unknown_element(self) -> None:

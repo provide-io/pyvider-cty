@@ -311,9 +311,31 @@ def _equals_item(x: Any, y: Any) -> CtyValue[Any]:
 
 
 def _equals_sequence(a_items: tuple[Any, ...], b_items: tuple[Any, ...]) -> CtyValue[Any]:
+    """Index order, and the first undecided element settles it.
+
+    Not `_combine`. go-cty walks a list or tuple by index and *returns* at the
+    first element it cannot decide, so an undecided element at a low index wins
+    over a definite difference at a higher one: `[unknown, "z"]` against
+    `["a", "b"]` is undecided, while `["z", unknown]` against the same is a
+    definite false. Measured against go-cty on 2026-08-17, deterministic across
+    runs -- unlike objects and maps, where Go's randomised map iteration makes
+    the same question a coin flip and this library deliberately answers false.
+
+    Arguably go-cty is leaving information on the floor here, since the later
+    difference is just as conclusive whichever order you find it in. But it is
+    *deterministic* about it, so matching it is well-defined and cheap, and a
+    provider that agrees with Terraform about a plan matters more than one that
+    is cleverer than it.
+    """
     if len(a_items) != len(b_items):
         return _bool(False)
-    return _combine([_equals_item(x, y) for x, y in zip(a_items, b_items, strict=True)])
+    for x, y in zip(a_items, b_items, strict=True):
+        result = _equals_item(x, y)
+        if result.is_unknown:
+            return _undecided()
+        if result.value is False:
+            return _bool(False)
+    return _bool(True)
 
 
 def _equals_mapping(a_map: dict[str, Any], b_map: dict[str, Any]) -> CtyValue[Any]:
