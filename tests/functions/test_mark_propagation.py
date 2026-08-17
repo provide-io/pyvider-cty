@@ -121,6 +121,8 @@ CALLS: dict[str, tuple[CtyValue[Any], ...]] = {
     "reverse": (STRS.validate(["a", "b"]),),
     "sethaselement": (STRSET.validate(["a"]), s("a")),
     "setintersection": (STRSET.validate(["a", "b"]), STRSET.validate(["b"])),
+    "format_fn": (s("%s"), s("a")),
+    "formatlist": (s("%s"), STRS.validate(["a"])),
     "setproduct": (STRSET.validate(["a"]), STRSET.validate(["b"])),
     "setsubtract": (STRSET.validate(["a", "b"]), STRSET.validate(["b"])),
     "setsymmetricdifference": (STRSET.validate(["a"]), STRSET.validate(["b"])),

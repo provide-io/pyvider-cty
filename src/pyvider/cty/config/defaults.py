@@ -412,6 +412,20 @@ ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"
 # Set operation error messages
 ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
 ERR_SET_OP_REQUIRES_ONE_SET = "{func}: at least one set must be provided"
+ERR_FORMAT_TOO_MANY_ARGUMENTS = "format: too many arguments; only {used} used by format string"
+ERR_FORMAT_NO_VERBS = "format: too many arguments; no verbs in format string"
+ERR_FORMAT_INVALID = "format: invalid format string at offset {offset}"
+ERR_FORMAT_UNSUPPORTED_VERB = "format: unsupported verb {verb!r} at offset {offset}"
+ERR_FORMAT_UNSUPPORTED_VALUE = "format: unsupported value for {verb!r} at {offset}: {error}"
+ERR_FORMAT_NULL_VALUE = "format: unsupported value for {verb!r} at {offset}: null value cannot be formatted"
+ERR_FORMAT_REQUIRES_INTEGER = "format: unsupported value for {verb!r} at {offset}: an integer is required"
+ERR_FORMAT_NOT_ENOUGH_ARGUMENTS = (
+    "format: not enough arguments for {verb!r} at {offset}: need index {want} but have {have} total"
+)
+ERR_FORMAT_INCONSISTENT_LENGTH = (
+    "formatlist: argument {position} has length {length}, "
+    "which is inconsistent with argument {other} of length {other_length}"
+)
 ERR_ARGUMENT_MUST_NOT_BE_NULL = "{func}: argument {position} must not be null"
 ERR_CONCAT_REQUIRES_ONE = "concat: at least one argument is required"
 ERR_CONCAT_ARG_MUST_NOT_BE_NULL = "concat: argument must not be null"

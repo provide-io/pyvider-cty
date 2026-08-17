@@ -47,6 +47,7 @@ from pyvider.cty.functions.comparison_functions import (
 from pyvider.cty.functions.conversion_functions import to_bool, to_number, to_string
 from pyvider.cty.functions.datetime_functions import formatdate, timeadd
 from pyvider.cty.functions.encoding_functions import csvdecode, jsondecode, jsonencode
+from pyvider.cty.functions.format_functions import format_fn, formatlist
 from pyvider.cty.functions.numeric_functions import (
     abs_fn,
     add,
@@ -113,7 +114,9 @@ __all__ = [
     "equal",
     "flatten",
     "floor_fn",
+    "format_fn",
     "formatdate",
+    "formatlist",
     "greater_than",
     "greater_than_or_equal_to",
     "hasindex",

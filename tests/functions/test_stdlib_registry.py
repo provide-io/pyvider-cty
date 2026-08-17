@@ -119,7 +119,7 @@ GO_CTY_STDLIB = frozenset(
 
 # Ports that have not landed yet. An entry here is a promise, so the test below
 # fails if one is implemented and left in the list.
-NOT_YET_PORTED = frozenset({"format", "formatlist"})
+NOT_YET_PORTED = frozenset({"strlen", "assertnotnull"})
 
 
 class TestTheRegistryIsComplete:
@@ -161,11 +161,13 @@ class TestTheNamesCouldNotHaveBeenPythonIdentifiers:
         `collection_functions.py` defines `slice` and does shadow the builtin;
         it only gets away with it because that module never calls the builtin.
         `range` in the same module and `max` in `numeric_functions.py` are both
-        called, so those two would break outright.
+        called, so those two would break outright. `format` joined the list when
+        it was ported, and it is the sharpest case yet: `format_functions.py`
+        calls the builtin `format` on almost every line of its number rendering.
         """
         shadowing = {name for name in STDLIB if not keyword.iskeyword(name) and hasattr(builtins, name)}
 
-        assert shadowing == {"abs", "int", "max", "min", "pow", "range", "slice"}
+        assert shadowing == {"abs", "format", "int", "max", "min", "pow", "range", "slice"}
 
     def test_most_functions_already_carry_go_ctys_name(self) -> None:
         """The mapping is the exception, not the rule: only the awkward ones differ."""
