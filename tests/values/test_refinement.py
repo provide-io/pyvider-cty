@@ -19,9 +19,10 @@ from decimal import Decimal
 
 import pytest
 
-from pyvider.cty import CtyList, CtyMap, CtyNumber, CtySet, CtyString, CtyValue
+from pyvider.cty import CtyList, CtyMap, CtyNumber, CtySet, CtyString, CtyValue, value_range
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.refinement import CtyRefinementError, refine, safe_known_prefix
+from pyvider.cty.values.equality import equals
 
 S, N = CtyString(), CtyNumber()
 LIST = CtyList(element_type=S)
@@ -173,6 +174,84 @@ def test_every_collection_kind_accepts_length_bounds(collection: object) -> None
     refined = refine(CtyValue.unknown(collection)).collection_length_lower_bound(2).new_value()
 
     assert refined.value.collection_length_lower_bound == 2
+
+
+class TestValueRange:
+    """`value_range()` — the read side, and where `equals` gets its sharpness."""
+
+    def test_a_known_value_ranges_over_itself(self) -> None:
+        """So a caller can ask the same questions of known and unknown alike."""
+        known = value_range(N.validate(5))
+
+        assert known.includes(N.validate(5)).value is True
+        assert known.includes(N.validate(6)).value is False
+        assert known.definitely_not_null()
+
+    def test_bounds_exclude_definitely(self) -> None:
+        refined = value_range(refine(CtyValue.unknown(N)).not_null().number_range_inclusive(1, 10).new_value())
+
+        assert refined.includes(N.validate(50)).value is False
+        assert refined.includes(CtyValue.null(N)).value is False
+
+    def test_being_within_the_bounds_is_not_equality(self) -> None:
+        """The distinction the whole three-valued answer exists for.
+
+        A candidate that passes every bound has only failed to be ruled out.
+        Answering `True` would claim the unknown *is* that value.
+        """
+        refined = value_range(refine(CtyValue.unknown(N)).not_null().number_range_inclusive(1, 10).new_value())
+
+        assert refined.includes(N.validate(5)).is_unknown
+
+    def test_an_unrefined_unknown_decides_nothing(self) -> None:
+        assert value_range(CtyValue.unknown(N)).includes(N.validate(5)).is_unknown
+        assert value_range(CtyValue.unknown(N)).could_be_null()
+
+    def test_a_prefix_excludes_a_non_matching_string(self) -> None:
+        ranged = value_range(refine(CtyValue.unknown(S)).string_prefix_full("abc").new_value())
+
+        assert ranged.includes(S.validate("xyz")).value is False
+        assert ranged.includes(S.validate("abcd")).is_unknown
+
+    def test_a_length_bound_excludes_a_wrong_length(self) -> None:
+        ranged = value_range(refine(CtyValue.unknown(LIST)).collection_length_lower_bound(3).new_value())
+
+        assert ranged.includes(LIST.validate(["a"])).value is False
+        assert ranged.includes(LIST.validate(["a", "b", "c"])).is_unknown
+
+    def test_asking_a_type_inappropriate_question_raises(self) -> None:
+        with pytest.raises(TypeError):
+            value_range(CtyValue.unknown(N)).string_prefix()
+        with pytest.raises(TypeError):
+            value_range(CtyValue.unknown(S)).number_lower_bound()
+
+
+class TestEqualsConsultsTheRange:
+    """The concrete payoff, and the reason `Value.Range` was worth porting.
+
+    `equality.py` recorded this as deliberately unimplemented: go-cty rules some
+    comparisons out from an unknown's bounds and pyvider could not, so everything
+    fell through to unknown.
+    """
+
+    def test_a_refined_unknown_is_definitely_not_an_excluded_value(self) -> None:
+        refined = refine(CtyValue.unknown(N)).not_null().number_range_inclusive(1, 10).new_value()
+
+        assert equals(refined, N.validate(50)).value is False
+
+    def test_a_candidate_within_the_bounds_stays_undecided(self) -> None:
+        refined = refine(CtyValue.unknown(N)).not_null().number_range_inclusive(1, 10).new_value()
+
+        assert equals(refined, N.validate(5)).is_unknown
+
+    def test_an_unrefined_unknown_is_still_undecided(self) -> None:
+        """The previous behaviour, preserved wherever the range cannot decide."""
+        assert equals(CtyValue.unknown(N), N.validate(5)).is_unknown
+
+    def test_a_prefix_rules_out_a_non_matching_string(self) -> None:
+        refined = refine(CtyValue.unknown(S)).string_prefix_full("abc").new_value()
+
+        assert equals(refined, S.validate("xyz")).value is False
 
 
 # 🌊🪢🔚
