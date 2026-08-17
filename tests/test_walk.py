@@ -54,16 +54,29 @@ class TestDeepValues:
     def test_a_list_yields_itself_then_its_elements_in_order(self) -> None:
         assert paths(STRS.validate(["a", "b"])) == ["(root)", "[0]", "[1]"]
 
-    def test_an_object_yields_its_attributes_in_declared_order(self) -> None:
-        """Driven by the type rather than the payload, so the order is stable."""
+    def test_an_object_yields_its_attributes_in_sorted_order(self) -> None:
+        """Sorted, not declared -- and the difference is stability.
+
+        This asserted declaration order on the grounds that being driven by the
+        type rather than the payload made it stable. It is stable only for a
+        given spelling of the type: the same logical object declared the other
+        way round walks the other way round. go-cty sorts, and says why -- "so
+        that results will always be stable given the same input".
+        """
         obj = CtyObject(attribute_types={"b": CtyString(), "a": CtyString()})
 
-        assert paths(obj.validate({"a": "1", "b": "2"})) == ["(root)", "b", "a"]
+        assert paths(obj.validate({"a": "1", "b": "2"})) == ["(root)", "a", "b"]
 
     def test_a_map_yields_a_key_step_per_entry(self) -> None:
         m = CtyMap(element_type=CtyString()).validate({"k": "v"})
 
         assert paths(m) == ["(root)", "['k']"]
+
+    def test_a_map_yields_its_keys_in_sorted_order(self) -> None:
+        """Insertion order is a property of how the dict was built, not of the value."""
+        m = CtyMap(element_type=CtyString()).validate({"z": "1", "a": "2"})
+
+        assert paths(m) == ["(root)", "['a']", "['z']"]
 
     def test_a_set_element_is_addressed_by_itself(self) -> None:
         """go-cty's rule: "a set element effectively acts as its own key"."""

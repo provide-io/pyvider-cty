@@ -80,14 +80,22 @@ def _child_steps(value: CtyValue[Any]) -> list[tuple[PathStep, CtyValue[Any]]]:
         return []
 
     vtype = inner.type
+    # Attribute and key order is *sorted*, which is go-cty's rule and its
+    # reason: "we iterate the keys in a predictable lexicographical order so
+    # that results will always be stable given the same input map". Declared
+    # order and insertion order are both properties of how a value was built
+    # rather than of the value, so a traversal that used them could visit the
+    # same logical value in two different orders in one process.
     if isinstance(vtype, CtyObject):
         payload = cast(Mapping[str, CtyValue[Any]], inner.value)
-        # Driven by the type's attributes rather than the payload's keys, so the
-        # order is the declared one and a stray key cannot smuggle in a step.
-        return [(GetAttrStep(name), payload[name]) for name in vtype.attribute_types if name in payload]
+        # Driven by the type's attributes rather than the payload's keys, so a
+        # stray key cannot smuggle in a step.
+        return [
+            (GetAttrStep(name), payload[name]) for name in sorted(vtype.attribute_types) if name in payload
+        ]
     if isinstance(vtype, CtyMap):
         payload = cast(Mapping[str, CtyValue[Any]], inner.value)
-        return [(KeyStep(key), payload[key]) for key in payload]
+        return [(KeyStep(key), payload[key]) for key in sorted(payload)]
     if isinstance(vtype, CtyList | CtyTuple):
         elements = cast(Sequence[CtyValue[Any]], inner.value)
         return [(IndexStep(i), element) for i, element in enumerate(elements)]
