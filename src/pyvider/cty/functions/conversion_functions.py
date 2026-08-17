@@ -63,4 +63,17 @@ def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return _to(input_val, CtyBool(), "tobool")
 
 
+@stdlib_function("assertnotnull")
+def assertnotnull(input_val: CtyValue[Any]) -> CtyValue[Any]:
+    """Return the value unchanged, having established that it is not null.
+
+    The body is the whole implementation in go-cty too (`conversion.go:114`).
+    Its parameter deliberately does not set `AllowNull`, so the function
+    framework refuses a null before `Impl` is ever reached -- the check is the
+    parameter declaration, not code. `stdlib_function` defaults the same way,
+    which is why this needs no null handling of its own.
+    """
+    return input_val
+
+
 # 🌊🪢🔚

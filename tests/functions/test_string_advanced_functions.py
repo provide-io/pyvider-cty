@@ -186,12 +186,18 @@ class TestStringAdvancedFunctions:
                 CtyString().validate("c"),
             )
 
-    def test_substr_invalid_values(self) -> None:
+    def test_substr_accepts_the_values_go_cty_accepts(self) -> None:
+        """Neither of these is invalid, though this test used to require a raise.
+
+        A negative offset counts back from the end (`string.go:163`), and any
+        negative length means "the rest" -- go-cty tests `length < 0`, not
+        `== -1`. Refusing them made calls written against go-cty fail here for
+        no reason, which is the opposite of the intended strictness.
+        """
         s = CtyString().validate("hello")
-        with pytest.raises(CtyFunctionError):
-            substr(s, CtyNumber().validate(-1), CtyNumber().validate(1))
-        with pytest.raises(CtyFunctionError):
-            substr(s, CtyNumber().validate(0), CtyNumber().validate(-2))
+
+        assert substr(s, CtyNumber().validate(-1), CtyNumber().validate(1)).value == "o"
+        assert substr(s, CtyNumber().validate(0), CtyNumber().validate(-2)).value == "hello"
 
     def test_trim(self) -> None:
         s = CtyString().validate("...hello...")

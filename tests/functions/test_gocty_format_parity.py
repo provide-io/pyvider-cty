@@ -130,19 +130,29 @@ class TestWidthAndPrecision:
     def test_precision_truncates_a_string(self) -> None:
         assert rendered("%.2s", s("hello")) == "he"
 
-    def test_width_and_precision_count_code_points_not_graphemes(self) -> None:
-        """A known divergence, pinned so it is not mistaken for correct.
+    def test_width_and_precision_count_graphemes_not_code_points(self) -> None:
+        """Both are measured the way go-cty measures them, in grapheme clusters.
 
-        go-cty measures both in grapheme clusters. NFC normalization at
-        construction hides the difference wherever a precomposed form exists,
-        which is why this needs a cluster that has none. It matters most for
-        precision: go-cty keeps the whole emoji, and this cuts it into a
-        different picture.
+        This test previously asserted the opposite, under a name that said so,
+        as a pinned divergence. NFC normalization at construction hides the
+        difference wherever a precomposed form exists, which is why it needs a
+        cluster that has none -- and precision is where it bites: truncating by
+        code point returns a different picture, not a shorter string.
         """
         family = "\U0001f468‍\U0001f469‍\U0001f467"
 
-        assert rendered("%.1s", s(family)) == "\U0001f468"
-        assert rendered("%5s|", s(family)) == f"{family}|"
+        assert rendered("%.1s", s(family)) == family
+        assert rendered("%5s|", s(family)) == f"    {family}|"
+
+    def test_a_quoted_string_keeps_its_non_ascii_characters(self) -> None:
+        """`%q` is Go's `strconv.Quote`, which escapes only what it must.
+
+        `json.dumps` defaults to `ensure_ascii=True`, which turned every
+        non-ASCII string into a wall of \\uXXXX -- still valid JSON, and not
+        what go-cty emits.
+        """
+        assert rendered("%q", s("héllo")) == '"héllo"'
+        assert rendered("%q", s('a"b')) == '"a\\"b"'
 
 
 class TestArgumentIndexing:

@@ -20,6 +20,7 @@ from pyvider.cty import (
     CtyType,
     CtyValue,
 )
+from pyvider.cty._unicode import cluster_count, iter_clusters
 from pyvider.cty.config.defaults import (
     ERR_INDENT_ARGS_MUST_BE_NUMBER_AND_STRING,
     ERR_INDENT_SPACES_MUST_BE_WHOLE,
@@ -54,11 +55,33 @@ def chomp(input_val: CtyValue[Any]) -> CtyValue[Any]:
 
 @stdlib_function("strrev")
 def strrev(input_val: CtyValue[Any]) -> CtyValue[Any]:
+    """Reverse a string by grapheme cluster, as go-cty's `Reverse` does.
+
+    Reversing by code point takes a string apart below the level of a
+    character: it turns `\\U0001F468\\u200D\\U0001F469` into a *different* emoji
+    sequence rather than reversing anything, and moves every combining mark onto
+    the wrong base. `string.go:69`.
+    """
     if not isinstance(input_val.type, CtyString):
         raise CtyFunctionError(f"strrev: input must be a string, got {input_val.type.ctype}")
     if input_val.is_null or input_val.is_unknown:
         return input_val
-    return CtyString().validate(input_val.value[::-1])  # type: ignore
+    return CtyString().validate("".join(reversed(list(iter_clusters(cast(str, input_val.value))))))
+
+
+@stdlib_function("strlen")
+def strlen(input_val: CtyValue[Any]) -> CtyValue[Any]:
+    """Length of a string in characters, where a character is a grapheme cluster.
+
+    Distinct from `length`, which go-cty refuses for a string precisely because
+    the two questions have different answers -- `length` counts collection
+    elements, and this counts what a reader would call characters. `string.go:80`.
+    """
+    if not isinstance(input_val.type, CtyString):
+        raise CtyFunctionError(f"strlen: input must be a string, got {input_val.type.ctype}")
+    if input_val.is_null or input_val.is_unknown:
+        return CtyValue.unknown(CtyNumber())
+    return CtyNumber().validate(cluster_count(cast(str, input_val.value)))
 
 
 @stdlib_function("trimspace")
@@ -123,14 +146,31 @@ def substr(input_val: CtyValue[Any], offset_val: CtyValue[Any], length_val: CtyV
         return CtyValue.unknown(CtyString())
     offset = int(cast(Decimal, offset_val.value))
     length = int(cast(Decimal, length_val.value))
+    clusters = list(iter_clusters(cast(str, input_val.value)))
+
+    # go-cty's algorithm, followed step for step rather than reimplemented,
+    # because two of its steps are surprising and would not be arrived at
+    # independently (`string.go:163-225`).
     if offset < 0:
-        raise CtyFunctionError("substr: offset must be a non-negative integer")
-    if length < -1:
-        raise CtyFunctionError("substr: length must be non-negative or -1")
-    s = cast(str, input_val.value)
-    if length == -1:
-        return CtyString().validate(s[offset:])
-    return CtyString().validate(s[offset : offset + length])
+        # A negative offset counts back from the end -- and may still be
+        # negative afterwards, in which case no seeking happens at all and the
+        # result starts from the beginning.
+        offset += len(clusters)
+    elif length == 0:
+        return CtyString().validate("")
+
+    if offset > 0:
+        clusters = clusters[offset:]
+
+    # Any negative length means "the rest". So does a zero length reached from a
+    # negative offset, because the short circuit above was skipped and go-cty's
+    # seek loop increments its counter before testing it, so it can never stop
+    # at zero and runs to the end instead. Reproduced deliberately: it is
+    # observable, and `substr(s, -3, 0)` returning the last three characters is
+    # what a caller written against go-cty will be relying on.
+    if length <= 0:
+        return CtyString().validate("".join(clusters))
+    return CtyString().validate("".join(clusters[:length]))
 
 
 @stdlib_function("trim")

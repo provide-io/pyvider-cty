@@ -122,6 +122,15 @@ def nul(spec: Any, cty_type: CtyType[Any]) -> Arg:
 
 
 # (function name, arguments). The id is derived, so adding a row is one line.
+# Strings whose grapheme clusters are not their code points. Named because the
+# literals are unreadable and the point of each is exactly which UAX#29 rule it
+# exercises.
+FAMILY = "\U0001f468‍\U0001f469‍\U0001f467‍\U0001f466"  # GB11, ZWJ sequence
+FLAGS = "\U0001f1fa\U0001f1f8\U0001f1ef\U0001f1f5"  # GB12/GB13, two flags
+THUMB_TONED = "\U0001f44d\U0001f3fd"  # GB9, skin-tone modifier
+HANGUL_JAMO = "각"  # GB6/GB7/GB8, one syllable from three jamo
+CONJUNCT = "क्ष"  # GB9c, and the one Unicode-version divergence
+
 CASES: list[tuple[str, list[Arg]]] = [
     # strings
     ("upper", [st("héllo")]),
@@ -145,7 +154,41 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("substr", [st("abcdef"), nm(1), nm(3)]),
     ("substr", [st("abcdef"), nm(1), nm(-1)]),
     ("substr", [st("héllo"), nm(0), nm(2)]),
+    # A negative offset counts from the end, and a zero length reached that way
+    # means "the rest" rather than "nothing" -- both were refused outright here
+    # until the grapheme work went through go-cty's algorithm line by line.
+    ("substr", [st("abcdef"), nm(-3), nm(2)]),
+    ("substr", [st("abcdef"), nm(-3), nm(0)]),
+    ("substr", [st("abcdef"), nm(-100), nm(2)]),
+    ("substr", [st("abcdef"), nm(0), nm(0)]),
+    ("substr", [st("abcdef"), nm(6), nm(1)]),
+    ("substr", [st("abcdef"), nm(2), nm(10)]),
     ("indent", [nm(2), st("a\nb")]),
+    ("assertnotnull", [st("x")]),
+    ("assertnotnull", [nm(1)]),
+    # Grapheme clusters. `héllo` proves nothing about segmentation -- it
+    # NFC-composes to one code point per character, which is why four functions
+    # measured in code points for as long as they did. These do not compose.
+    ("strlen", [st("abc")]),
+    ("strlen", [st(FAMILY)]),
+    ("strlen", [st(f"ab{FAMILY}cd")]),
+    ("strlen", [st(FLAGS)]),
+    ("strlen", [st(THUMB_TONED)]),
+    ("strlen", [st(HANGUL_JAMO)]),
+    ("strlen", [st(CONJUNCT)]),
+    ("strlen", [st("")]),
+    ("strrev", [st(f"ab{FAMILY}cd")]),
+    ("strrev", [st(FLAGS)]),
+    ("strrev", [st(CONJUNCT)]),
+    ("substr", [st(f"{FAMILY}xy"), nm(0), nm(1)]),
+    ("substr", [st(f"{FAMILY}xy"), nm(1), nm(1)]),
+    ("substr", [st(CONJUNCT), nm(0), nm(1)]),
+    ("format", [st("%5s|"), st(FAMILY)]),
+    ("format", [st("%-5s|"), st(FAMILY)]),
+    ("format", [st("%.1s"), st(FAMILY)]),
+    ("format", [st("%.1s"), st(CONJUNCT)]),
+    ("format", [st("%q"), st(FAMILY)]),
+    ("format", [st("%q"), st("héllo")]),
     # regexp
     ("regex", [st("a(b)c"), st("abc")]),
     ("regexall", [st("a(b)"), st("abab")]),
@@ -386,19 +429,25 @@ CASES: list[tuple[str, list[Arg]]] = [
 # that fixing one turns its entry red and forces it out of this list. Each entry
 # is a case id and why it is still here.
 KNOWN_DIVERGENCES: dict[str, str] = {
-    # go-cty measures `format`'s width and precision in *grapheme clusters*;
-    # this measures code points. NFC normalization at construction hides the
-    # difference for anything with a precomposed form, so it takes a cluster
-    # that has none to see it -- and there it matters: `%.1s` of a ZWJ family
-    # emoji truncates to the whole emoji there and to the first person in it
-    # here, which is a different picture rather than a shorter string. The
-    # same UAX#29 decision `strlen` waits on.
-    "format(%5s|,\U0001f468\u200d\U0001f469\u200d\U0001f467)": (
-        "width is measured in grapheme clusters there, code points here"
-    ),
-    "format(%.1s,\U0001f468\u200d\U0001f469\u200d\U0001f467)": (
-        "precision is measured in grapheme clusters there, code points here"
-    ),
+    # The Unicode versions differ, and this is the one string in the sweep where
+    # that is observable. GB9c -- the Indic conjunct rule, which holds
+    # `Consonant Linker Consonant` together as one cluster -- was added in
+    # Unicode 15.1. This package's tables are 16.0.0, so `\u0915\u094d\u0937` is one character
+    # here. go-cty's `cty/internal/graphemes` selects `go-textseg` v15 or v17 by
+    # *Go toolchain version*, and the oracle is built with go1.26, which takes
+    # the `!go1.27` branch and therefore v15 -- Unicode 15.0, before GB9c. So it
+    # answers two.
+    #
+    # Deliberately not matched. 15.0 is the outlier: 15.1, 16 and 17 all have
+    # GB9c, and go-cty already carries the v17 that agrees with us. Implementing
+    # a superseded rule set to match one build of the oracle would bake in
+    # something we would have to take back out. These entries are strict xfails,
+    # so rebuilding the oracle on go1.27 makes them XPASS and forces them out --
+    # which is the correct end state arriving on its own.
+    "strlen(\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
+    "strrev(\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
+    "substr(\u0915\u094d\u0937,0,1)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
+    "format(%.1s,\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
     # The numeric precision model differs, and in both directions. go-cty holds
     # a number in a 512-bit big.Float, so a non-terminating quotient comes back
     # with 155 significant digits against Decimal's 28-digit default context --
@@ -413,10 +462,7 @@ KNOWN_DIVERGENCES: dict[str, str] = {
 
 # Functions the oracle exposes that this sweep does not drive, and why. Every
 # one of them is unported; nothing implemented here belongs in this list.
-UNSWEPT: dict[str, str] = {
-    "assertnotnull": "not ported",
-    "strlen": "not ported -- blocked on UAX#29 grapheme segmentation",
-}
+UNSWEPT: dict[str, str] = {}
 
 
 def _case_id(func: str, args: list[Arg]) -> str:

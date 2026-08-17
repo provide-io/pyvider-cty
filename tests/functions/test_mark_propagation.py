@@ -131,6 +131,8 @@ CALLS: dict[str, tuple[CtyValue[Any], ...]] = {
     "slice": (STRS.validate(["a", "b", "c"]), n(0), n(2)),
     "sort": (STRS.validate(["b", "a"]),),
     "split": (s(","), s("a,b")),
+    "assertnotnull": (s("ab"),),
+    "strlen": (s("ab"),),
     "strrev": (s("ab"),),
     "substr": (s("hello"), n(1), n(2)),
     "subtract": (n(3), n(1)),
