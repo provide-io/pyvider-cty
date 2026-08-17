@@ -23,6 +23,7 @@ from pyvider.cty.exceptions import (
     CtyTypeParseError,
     CtyValidationError,
 )
+from pyvider.cty.json_codec import cty_from_json, cty_to_json, implied_json_type
 from pyvider.cty.mark_paths import PathMarks, mark_with_paths, unmark_deep_with_paths
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
@@ -80,7 +81,10 @@ __all__ = [
     "__version__",
     "conformance_errors",
     "convert",
+    "cty_from_json",
+    "cty_to_json",
     "deep_values",
+    "implied_json_type",
     "mark_with_paths",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
