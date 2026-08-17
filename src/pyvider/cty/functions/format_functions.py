@@ -37,7 +37,9 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.conversion import convert
 from pyvider.cty.exceptions import CtyConversionError, CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.functions._unknowns import unknown_not_null
+from pyvider.cty.refinement import refine
 from pyvider.cty.types import (
     CtyBool,
     CtyDynamic,
@@ -335,39 +337,109 @@ def _render(template: str, arguments: list[CtyValue[Any]]) -> str:
     return "".join(out)
 
 
-@stdlib_function("format", allow_null=True)
-def format_fn(template: CtyValue[Any], *arguments: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `FormatFunc`.
+_VARIADIC_FORMAT_ARGS = CtyParameter(
+    "args",
+    CtyDynamic(),
+    allow_null=True,
+    allow_unknown=True,
+    allow_dynamic_type=True,
+)
 
-    `allow_null` because `%v` renders a null as the literal `null`; every other
-    verb refuses one, which `_format_one` enforces per verb rather than the
-    framework enforcing it per argument. The format string itself must not be
-    null, which is checked here for the same reason.
+
+@stdlib_function(
+    "format",
+    params=[CtyParameter("format", CtyString())],
+    var_param=_VARIADIC_FORMAT_ARGS,
+    returns=CtyString(),
+    refine_result=refine_not_null,
+    description=(
+        r"Constructs a string by applying formatting verbs to a series of arguments, "
+        r"using a similar syntax to the C function \"printf\"."
+    ),
+)
+def format_fn(template: CtyValue[Any], *arguments: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `FormatFunc` (`stdlib/format.go:20`).
+
+    `allow_null` on the variadic parameter because `%v` renders a null as the
+    literal `null`; every other verb refuses one, which `_format_one` enforces
+    per verb rather than the framework enforcing it per argument. The format
+    string is declared without it, so a null there is the framework's refusal.
     """
-    if template.is_null:
-        raise CtyFunctionError(ERR_FORMAT_NULL_VALUE.format(verb="the format string", offset=0))
-    if template.is_unknown or not all(argument.is_wholly_known() for argument in arguments):
+    if not all(argument.is_wholly_known() for argument in arguments):
+        # A collection can only be rendered as JSON, and JSON needs it wholly
+        # known. The literal text before the first verb is decided either way,
+        # though, so go-cty promises that much of the answer (`format.go:44`).
+        text = str(template.value)
+        percent = text.find("%")
+        if percent > 0:
+            return refine(CtyValue.unknown(CtyString())).string_prefix(text[:percent]).new_value()
         return CtyValue.unknown(CtyString())
     return CtyString().validate(_render(str(template.value), list(arguments)))
 
 
-_UNKNOWN_LENGTH = object()
+def _is_sequence(argument: CtyValue[Any]) -> bool:
+    """Whether `formatlist` iterates this argument rather than repeating it.
 
-
-def _iteration_count(arguments: tuple[CtyValue[Any], ...]) -> Any:
-    """How many rows the sequence arguments dictate, and whether they agree.
-
-    `None` means every argument was scalar, so there is exactly one row.
+    A null sequence is not iterated: go-cty's `!arg.IsNull()` guard sends it to
+    the single-value branch, where `%v` renders it as `null` (`format.go:99`).
     """
-    iterations: int | None = None
+    return not argument.is_null and isinstance(argument.type, CtyList | CtySet | CtyTuple)
+
+
+def _has_known_length(argument: CtyValue[Any]) -> bool:
+    """Whether this sequence's element count is decided. go-cty's `Value.Length`.
+
+    A tuple's length is in its type, so it is known even when the value is not.
+    A list's is its own structure. A set's is neither: an unknown element may
+    turn out to equal another member and coalesce with it, so a set holding one
+    is only as long as it looks if there is nothing else in it to coalesce with
+    (`value_ops.go:1126`).
+    """
+    if isinstance(argument.type, CtyTuple):
+        return True
+    if argument.is_unknown:
+        return False
+    if isinstance(argument.type, CtySet):
+        return len(cast(Sized, argument.value)) == 1 or argument.is_wholly_known()
+    return True
+
+
+def _sequence_length(argument: CtyValue[Any]) -> int:
+    """How many rows this sequence dictates. go-cty's `Value.LengthInt`.
+
+    A tuple's length comes from its type rather than from its elements, so an
+    unknown tuple has one anyway (`value_ops.go:1174`).
+    """
+    if isinstance(argument.type, CtyTuple):
+        return len(argument.type.element_types)
+    return len(cast(Sized, argument.value))
+
+
+def _iteration_plan(arguments: tuple[CtyValue[Any], ...]) -> tuple[int, bool]:
+    """The number of rows, and whether any argument leaves them all undecided.
+
+    go-cty's first pass over `FormatListFunc`'s arguments (`format.go:96`). `-1`
+    rows means every argument was scalar, so there is exactly one row.
+
+    An argument whose length is undecided does not end the pass: go-cty
+    deliberately falls through so that the *later* arguments still have their
+    lengths checked against each other, and an inconsistent length is reported
+    even when an earlier argument is unknown.
+    """
+    iterations = -1
     chooser = 0
+    undecided = False
     for position, argument in enumerate(arguments):
-        if argument.is_unknown or isinstance(argument.type, CtyDynamic):
-            return _UNKNOWN_LENGTH
-        length = _sequence_length(argument)
-        if length is None:
+        if not _is_sequence(argument):
+            # go-cty's `arg == cty.DynamicVal`: a value of no decided type
+            # cannot even be classified as a sequence yet.
+            undecided = undecided or (argument.is_unknown and isinstance(argument.type, CtyDynamic))
             continue
-        if iterations is None:
+        if not _has_known_length(argument):
+            undecided = True
+            continue
+        length = _sequence_length(argument)
+        if iterations == -1:
             iterations, chooser = length, position
         elif length != iterations:
             raise CtyFunctionError(
@@ -375,14 +447,11 @@ def _iteration_count(arguments: tuple[CtyValue[Any], ...]) -> Any:
                     position=position + 1, length=length, other=chooser + 1, other_length=iterations
                 )
             )
-    return iterations
-
-
-def _sequence_length(argument: CtyValue[Any]) -> int | None:
-    """The number of iterations this argument dictates, or None if it is scalar."""
-    if argument.is_null or not isinstance(argument.type, CtyList | CtySet | CtyTuple):
-        return None
-    return len(cast(Sized, argument.value))
+        if argument.is_unknown:
+            # An unknown tuple got this far for the length check above, which is
+            # all it can contribute -- its elements are not there to iterate.
+            undecided = True
+    return iterations, undecided
 
 
 def _elements_of(argument: CtyValue[Any]) -> list[CtyValue[Any]]:
@@ -398,44 +467,53 @@ def _elements_of(argument: CtyValue[Any]) -> list[CtyValue[Any]]:
     return list(cast(Iterable[CtyValue[Any]], argument.value))
 
 
-@stdlib_function("formatlist", allow_null=True)
-def formatlist(template: CtyValue[Any], *arguments: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `FormatListFunc`: `format` once per element, in lockstep.
+@stdlib_function(
+    "formatlist",
+    params=[CtyParameter("format", CtyString())],
+    var_param=_VARIADIC_FORMAT_ARGS,
+    returns=CtyList(element_type=CtyString()),
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description=(
+        r"Constructs a list of strings by applying formatting verbs to a series of arguments, "
+        r"using a similar syntax to the C function \"printf\"."
+    ),
+)
+def formatlist(template: CtyValue[Any], *arguments: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `FormatListFunc` (`stdlib/format.go:58`): `format` per element, in lockstep.
 
     Sequence arguments are iterated together and must agree on length; anything
     else is reused unchanged on every iteration.
     """
-    result_type = CtyList(element_type=CtyString())
-    if template.is_null:
-        raise CtyFunctionError(ERR_FORMAT_NULL_VALUE.format(verb="the format string", offset=0))
-    if template.is_unknown:
-        return CtyValue.unknown(result_type)
-
-    iterations = _iteration_count(arguments)
-    if iterations is _UNKNOWN_LENGTH:
-        return CtyValue.unknown(result_type)
+    iterations, undecided = _iteration_plan(arguments)
+    if undecided:
+        return CtyValue.unknown(return_type)
 
     if iterations == 0:
-        return cast(CtyValue[Any], result_type.validate([]))
+        return return_type.validate([])
 
     rows: list[CtyValue[Any]] = []
-    for index in range(1 if iterations is None else iterations):
+    for index in range(1 if iterations == -1 else iterations):
         row: list[CtyValue[Any]] = []
         for argument in arguments:
-            if _sequence_length(argument) is None:
-                row.append(argument)
-            else:
+            if _is_sequence(argument):
                 row.append(_elements_of(argument)[index])
+            else:
+                row.append(argument)
         if not all(element.is_wholly_known() for element in row):
             # One unresolved row does not make the others unresolvable. The row
             # is refined not-null because formatting always produces a string:
             # whatever the argument turns out to be, this element will not be
             # null, and go-cty says so on the wire (ext 12 rather than a bare
             # `d4 00 00`). Terraform can act on that during a plan.
+            #
+            # `refine_result` does not cover this: it refines the *list*, which
+            # here is known, and says nothing about an element inside it.
+            # go-cty spells this one out per row too (`format.go:174`).
             rows.append(unknown_not_null(CtyString()))
             continue
         rows.append(CtyString().validate(_render(str(template.value), row)))
-    return cast(CtyValue[Any], result_type.validate(rows))
+    return return_type.validate(rows)
 
 
 # 🌊🪢🔚

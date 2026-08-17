@@ -3,15 +3,55 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+"""go-cty's `stdlib/collection.go` and `stdlib/sequence.go`, declared rather than re-derived.
+
+Every function here carries the `Spec` go-cty gives it: the per-parameter null,
+unknown, dynamic and mark policy, the `Type` callback that decides the return
+type before the values are known, and the `RefineResult` that says what stays
+true of the answer even when the answer is unknown. `collection.go` is the
+densest file in go-cty's stdlib for that declared policy -- fifteen
+`RefineResult`, sixteen `AllowMarked`, six `AllowDynamicType`, four
+`AllowUnknown` and three `AllowNull` -- and none of it was expressible before
+`_function.py` existed.
+
+Two deliberate departures, both recorded rather than accidental:
+
+**Parameter types are widened where this package already accepted more than
+go-cty does.** go-cty declares four of these parameters concretely -- `distinct`
+and `chunklist` take `list(dynamic)`, `compact` and `sort` take `list(string)` --
+and relies on its caller (HCL) to convert an argument to the parameter type
+before the call. Nothing converts here, so declaring those types verbatim would
+turn `sort` of a `list(number)`, `compact` of a set and `chunklist` of a tuple
+from working calls into type errors. The precedent is `chunklist`'s tuple
+support, which `tests/functions/test_gocty_stdlib_parity.py` documents as "a
+deliberate superset". So the parameter is declared `dynamic` and go-cty's shape
+check moves into the `Type` callback, which is where it can still refuse an
+*unknown* of the wrong type. Every such widening is named at the function.
+
+`zipmap`'s keys are the one concrete parameter kept verbatim, because there the
+element type is load-bearing rather than incidental: the keys become map keys or
+object attribute names, and a widened parameter admitted a `list(dynamic)` of
+containers that `str()` then turned into a map keyed by a Python repr.
+
+**`flatten` and `length` do not take `AllowMarked`, though go-cty gives it to
+them.** go-cty's `flattener` propagates only the marks of the *sequences* it
+unwraps, and `Value.Length()` only the collection's own top-level marks, so in
+go-cty a mark on an inner element stays on that element (`flatten`) or is
+dropped entirely (`length`). This package's rule is the framework default --
+collect marks from anywhere inside the argument and re-apply their union to the
+result -- and `tests/functions/test_mark_propagation.py` pins it for exactly
+these two functions. Matching go-cty there would move a sensitivity flag off the
+top level of a result, which is a declassification and not a decision to take
+while migrating. The other fourteen `AllowMarked` parameters are declared and
+handled as go-cty handles them.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence, Sized
 from decimal import Decimal
 from itertools import product
 from typing import Any, cast
-
-from provide.foundation.errors import error_boundary
 
 from pyvider.cty import (
     CtyBool,
@@ -32,74 +72,53 @@ from pyvider.cty.config.defaults import (
     ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE,
     ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE,
     ERR_CHUNKLIST_TUPLE_NOT_UNIFIABLE,
-    ERR_CONCAT_ARG_MUST_NOT_BE_NULL,
     ERR_CONCAT_ARGS_MUST_BE_SEQUENCES,
     ERR_CONCAT_REQUIRES_ONE,
-    ERR_DISTINCT_ELEMENT_NOT_HASHABLE,
     ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE,
     ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE,
     ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT,
     ERR_LENGTH_INPUT_MUST_BE_COLLECTION,
     ERR_MERGE_ALL_ARGS_MUST_BE_MAPS_OBJECTS,
     ERR_RANGE_ARG_COUNT,
-    ERR_RANGE_ARGS_MUST_BE_NUMBERS,
     ERR_RANGE_END_MUST_BE_GREATER,
     ERR_RANGE_END_MUST_BE_LESS,
     ERR_RANGE_STEP_MUST_NOT_BE_ZERO,
     ERR_RANGE_TOO_MANY_VALUES,
     ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION,
-    ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL,
     ERR_SETPRODUCT_REQUIRES_TWO,
     ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE,
     ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
     MAX_RANGE_LENGTH,
 )
 from pyvider.cty.conversion import convert
-from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions._args import whole_number
+from pyvider.cty.exceptions import CtyError, CtyFunctionError
+from pyvider.cty.functions._args import INT64_MAX, whole_number
 from pyvider.cty.functions._framework import stdlib_function
-from pyvider.cty.functions._unknowns import unknown_not_null
+from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.refinement import refine
 from pyvider.cty.values.markers import RefinedUnknownValue
 
+# go-cty's thresholds for how far it is worth bounding a set product's length
+# (`collection.go:1036`). Named because both numbers are arbitrary in go-cty too
+# and it says so: past them it gives up and returns an unrefined unknown.
+_SETPRODUCT_MAX_ARG_LENGTH = 1024
+_SETPRODUCT_MAX_RESULT_LENGTH = 2048
 
-@stdlib_function("distinct")
-def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        error_message = ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=input_val.type.ctype)
-        raise CtyFunctionError(error_message)
-    if input_val.is_null or input_val.is_unknown:
-        return input_val
-    if isinstance(input_val.type, CtyList | CtySet):
-        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
-        element_type = collection_type.element_type
-    else:
-        element_type = CtyDynamic()
-    result_type = CtyList(element_type=element_type)
+# A cartesian product needs at least two factors (`collection.go:942`).
+_SETPRODUCT_MIN_ARGS = 2
 
-    # De-duplicating asks whether two elements are equal, and two unknowns of
-    # the same type answer "maybe" -- but a Python `set` sees them as one and
-    # drops the second, asserting they will resolve alike. The result's length
-    # is undecided for the same reason. go-cty's DistinctFunc declines the whole
-    # answer as soon as any element is not known, rather than guessing either.
-    if not input_val.is_wholly_known():
-        return unknown_not_null(result_type)
+# The lowest number of stored elements at which a set's count can be in doubt.
+_AMBIGUOUS_SET_SIZE = 2
 
-    seen = set()
-    result_elements = []
-    for cty_element in input_val.value:  # type: ignore[attr-defined]
-        try:
-            if cty_element not in seen:
-                seen.add(cty_element)
-                result_elements.append(cty_element)
-        except TypeError as e:
-            error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(type=cty_element.type.ctype, error=e)
-            raise CtyFunctionError(error_message) from e
-    return result_type.validate(result_elements)  # type: ignore[no-any-return]
+Args = Sequence[CtyValue[Any]]
 
 
 def _unwrap_dynamic(element: CtyValue[Any]) -> CtyValue[Any]:
-    """The value a CtyDynamic wrapper stands in front of."""
+    """The value a CtyDynamic wrapper stands in front of.
+
+    The framework does this to the *arguments*; this is for values found inside
+    one, which it never touches.
+    """
     while isinstance(element.type, CtyDynamic) and isinstance(element.value, CtyValue):
         element = element.value
     return element
@@ -113,11 +132,73 @@ def _sequence_elements(seq: CtyValue[Any]) -> list[CtyValue[Any]]:
     """
     if isinstance(seq.value, frozenset):
         return sorted(seq.value, key=lambda element: element._canonical_sort_key())
-    return list(cast(tuple[CtyValue[Any], ...], seq.value))
+    return list(cast("tuple[CtyValue[Any], ...]", seq.value))
+
+
+# ---------------------------------------------------------------------------
+# distinct
+# ---------------------------------------------------------------------------
+
+
+def _distinct_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `DistinctFunc.Type`: `args[0].Type()` (`collection.go:386`).
+
+    A set and a tuple reach here only because the parameter is widened; go-cty's
+    `list(dynamic)` refuses both. Each becomes the list it would have been
+    converted to.
+    """
+    collection_type = args[0].type
+    if isinstance(collection_type, CtyList):
+        return collection_type
+    if isinstance(collection_type, CtySet):
+        return CtyList(element_type=collection_type.element_type)
+    if isinstance(collection_type, CtyTuple):
+        return CtyList(element_type=CtyDynamic())
+    raise CtyFunctionError(ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=collection_type.ctype))
+
+
+@stdlib_function(
+    "distinct",
+    params=[CtyParameter("list", CtyDynamic())],
+    type_func=_distinct_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Removes any duplicate values from the given list, preserving the order of remaining elements.",
+)
+def distinct(input_val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `DistinctFunc` (`stdlib/collection.go:378`).
+
+    De-duplicating asks whether two elements are equal, and two unknowns of the
+    same type answer "maybe" -- but a Python `set` sees them as one and drops the
+    second, asserting they will resolve alike. The result's length is undecided
+    for the same reason, so go-cty declines the whole answer as soon as any
+    element is not known rather than guessing either.
+    """
+    if not input_val.is_wholly_known():
+        return CtyValue.unknown(return_type)
+
+    # go-cty compares with the three-valued `Equal`, one element at a time
+    # (`appendIfMissing`); a `set` reaches the same answer for wholly-known
+    # values in one pass instead of n². It guarded against an unhashable element
+    # until 2026-08-17, when `CtyValue.__hash__` started hashing containers --
+    # the guard's own message said "element of type {type} is not hashable",
+    # which is no longer a thing an element can be.
+    seen: set[CtyValue[Any]] = set()
+    result_elements: list[CtyValue[Any]] = []
+    for cty_element in cast("Iterable[CtyValue[Any]]", input_val.value):
+        if cty_element not in seen:
+            seen.add(cty_element)
+            result_elements.append(cty_element)
+    return return_type.validate(result_elements)
+
+
+# ---------------------------------------------------------------------------
+# flatten
+# ---------------------------------------------------------------------------
 
 
 def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
-    """go-cty's `flattener` (cty/function/stdlib/collection.go), iteratively.
+    """go-cty's `flattener` (`stdlib/collection.go:542`), iteratively.
 
     Descends into any element that is itself a sequence, at any depth, and
     passes everything else through untouched -- including nulls, which are
@@ -146,23 +227,47 @@ def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
     return out, known
 
 
-@stdlib_function("flatten")
-def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `FlattenFunc`: a sequence of sequences becomes one tuple.
+def _flatten_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `FlattenFunc.Type` (`collection.go:500`).
+
+    The wholly-known test comes *first*, as it does there, so an unknown of any
+    type answers dynamic rather than being refused for its shape -- the shape is
+    not what is in doubt.
+    """
+    collection = args[0]
+    if not collection.is_wholly_known():
+        return CtyDynamic()
+    collection_type = collection.type
+    if not isinstance(collection_type, CtyList | CtySet | CtyTuple):
+        raise CtyFunctionError(ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=collection_type.ctype))
+    elements, known = _flatten_elements(collection)
+    if not known:
+        return CtyDynamic()
+    return CtyTuple(element_types=tuple(element.type for element in elements))
+
+
+@stdlib_function(
+    "flatten",
+    params=[CtyParameter("list", CtyDynamic())],
+    type_func=_flatten_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description=(
+        "Transforms a list, set, or tuple value into a tuple by replacing any given elements that "
+        "are themselves sequences with a flattened tuple of all of the nested elements concatenated "
+        "together."
+    ),
+)
+def flatten(input_val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `FlattenFunc` (`stdlib/collection.go:491`).
 
     A tuple, not a list. Flattening a mixture of element types into a list
     would have to widen them all to dynamic to fit; a tuple carries each
     element's own type, which is why go-cty returns one.
     """
-    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        error_message = ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE.format(type=input_val.type.ctype)
-        raise CtyFunctionError(error_message)
-    if input_val.is_null or input_val.is_unknown:
-        return input_val
-
     elements, known = _flatten_elements(input_val)
     if not known:
-        return CtyValue.unknown(CtyDynamic())
+        return CtyValue.unknown(return_type)
     result_type = CtyTuple(element_types=tuple(element.type for element in elements))
     # Built directly rather than through `validate`. The result type is derived
     # from the elements' own types, so validating each element against the type
@@ -172,93 +277,106 @@ def flatten(input_val: CtyValue[Any]) -> CtyValue[Any]:
     return CtyValue(vtype=result_type, value=tuple(elements))
 
 
-@stdlib_function("sort")
-def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(input_val.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {input_val.type.ctype}")
+# ---------------------------------------------------------------------------
+# sort
+# ---------------------------------------------------------------------------
 
-    # A null list sorts to a null list.
-    if input_val.is_null:
-        return input_val
 
-    if isinstance(input_val.type, CtyList | CtySet):
-        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
+def _sort_element_type(collection_type: CtyType[Any]) -> CtyType[Any]:
+    """The element type `sort` will order, or a refusal.
+
+    go-cty's parameter is `list(string)` and nothing else; a set, a tuple and a
+    non-string element type are all this package's widening.
+    """
+    if not isinstance(collection_type, CtyList | CtySet | CtyTuple):
+        raise CtyFunctionError(f"sort: input must be a list, set, or tuple, got {collection_type.ctype}")
+    if isinstance(collection_type, CtyList | CtySet):
         element_type = collection_type.element_type
     else:
         element_type = CtyDynamic()
     if not isinstance(element_type, CtyString | CtyNumber | CtyBool | CtyDynamic):
         raise CtyFunctionError(f"sort: elements must be string, number, or bool. Found: {element_type.ctype}")
+    return element_type
 
-    # Handle a truly unknown list (where the value is not iterable).
-    if not hasattr(input_val.value, "__iter__"):
+
+def _sort_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `StaticReturnType(cty.List(cty.String))`, element type widened."""
+    return CtyList(element_type=_sort_element_type(args[0].type))
+
+
+@stdlib_function(
+    "sort",
+    params=[CtyParameter("list", CtyDynamic(), allow_unknown=True)],
+    type_func=_sort_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Applies a lexicographic sort to the elements of the given list.",
+)
+def sort(input_val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `SortFunc` (`stdlib/string.go:282`), registered here.
+
+    An unknown element and a null element are different questions, and go-cty
+    answers them differently -- this treated them alike and refused both.
+
+    An unknown element means the *ordering* is undecided, so every position
+    becomes undecided with it: go-cty refines the result to the length it already
+    knows, `[n, n]`, and that refinement collapses into a list of `n` bare
+    unknowns -- discarding even the elements it does know. That is lossier than
+    it needs to be, but it is the answer Terraform sees, and an unknown anywhere
+    wins over a null: `sort([null, unknown])` sorts rather than raising.
+    """
+    element_type = cast("CtyList[Any]", return_type).element_type
+    if not input_val.is_wholly_known():
         if input_val.is_unknown:
-            return input_val
-        raise CtyFunctionError("sort: input value is not iterable")
+            # Nothing bounds the length, so there is nothing to refine beyond
+            # the non-nullness `refine_result` already promises.
+            return CtyValue.unknown(return_type)
+        undecided = [CtyValue.unknown(element_type)] * len(cast("Sized", input_val.value))
+        return return_type.validate(undecided)
 
-    value_iterable = cast(list[CtyValue[Any]] | tuple[CtyValue[Any], ...], input_val.value)
-
-    # An unknown element and a null element are different questions, and go-cty
-    # answers them differently -- this treated them alike and refused both.
-    #
-    # An unknown element means the *ordering* is undecided, so every position
-    # becomes undecided with it: go-cty returns a list of the same length whose
-    # elements are all bare unknowns, discarding even the elements it does know.
-    # That is lossier than it needs to be, but it is the answer Terraform sees,
-    # and an unknown anywhere wins over a null -- sort([null, unknown]) sorts
-    # rather than raising.
-    #
-    # Only reachable since a list stopped taking its unknown-ness from its
-    # elements; before that this branch was never entered.
-    if any(element.is_unknown for element in value_iterable):
-        undecided: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
-            [CtyValue.unknown(element_type)] * len(value_iterable)
-        )
-        return undecided
-    for i, cty_element in enumerate(value_iterable):
+    elements = _sequence_elements(input_val)
+    for position, cty_element in enumerate(elements):
         if cty_element.is_null:
-            raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
+            raise CtyFunctionError(
+                f"sort: cannot sort list with null or unknown elements at index {position}."
+            )
+    return return_type.validate(sorted(elements, key=lambda element: cast("Any", element.value)))
 
-    result: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
-        sorted(value_iterable, key=lambda x: x.value)
+
+# ---------------------------------------------------------------------------
+# length
+# ---------------------------------------------------------------------------
+
+
+def _length_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `LengthFunc.Type` (`collection.go:123`).
+
+    `DynamicPseudoType` passes the check deliberately, so an argument of no
+    decided type leaves the answer undecided rather than refused.
+    """
+    collection_type = args[0].type
+    if not isinstance(collection_type, CtyList | CtySet | CtyTuple | CtyMap | CtyDynamic):
+        raise CtyFunctionError(ERR_LENGTH_INPUT_MUST_BE_COLLECTION.format(type=collection_type.ctype))
+    return CtyNumber()
+
+
+def _unknown_length(collection: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `valueRefineLengthResult`: the count inherits the collection's bounds.
+
+    An unknown collection has a length range even when it has no length, so the
+    count is an unknown number bounded by it -- `[0, maxint]` for a collection
+    nothing is known about, which is what go-cty answers and what this returned
+    as a bare unknown.
+    """
+    refinement = collection.value if isinstance(collection.value, RefinedUnknownValue) else None
+    lower = (refinement.collection_length_lower_bound if refinement else None) or 0
+    upper = refinement.collection_length_upper_bound if refinement else None
+    return (
+        refine(CtyValue.unknown(CtyNumber()))
+        .not_null()
+        .number_range_inclusive(lower, INT64_MAX if upper is None else upper)
+        .new_value()
     )
-    return result
-
-
-@stdlib_function("length")
-def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(
-        context={
-            "operation": "cty_function_length",
-            "input_type": str(input_val.type),
-            "input_is_null": input_val.is_null,
-            "input_is_unknown": input_val.is_unknown,
-        }
-    ):
-        # go-cty declares the parameter as DynamicPseudoType and type-checks the
-        # *resolved* type, so a dynamic standing in front of a list is counted
-        # while one standing in front of a string is refused, exactly as a bare
-        # string is. A dynamic that is unknown or null has nothing to resolve to,
-        # and go-cty lets DynamicPseudoType itself through the check so that the
-        # answer can stay undecided rather than becoming an error.
-        collection = _unwrap_dynamic(input_val)
-        undecided = isinstance(collection.type, CtyDynamic)
-        if not undecided and not isinstance(collection.type, CtyList | CtySet | CtyTuple | CtyMap):
-            raise CtyFunctionError(ERR_LENGTH_INPUT_MUST_BE_COLLECTION.format(type=collection.type.ctype))
-        if collection.is_unknown:
-            if isinstance(collection.value, RefinedUnknownValue):
-                lower = collection.value.collection_length_lower_bound
-                upper = collection.value.collection_length_upper_bound
-                if lower is not None and lower == upper:
-                    return CtyNumber().validate(lower)
-            return CtyValue.unknown(CtyNumber())
-        # go-cty raises "argument must not be null" here. Left as an unknown to
-        # move with the same deferred strictness change as `contains`.
-        if collection.is_null or undecided:
-            return CtyValue.unknown(CtyNumber())
-        stored = len(collection.value)  # type: ignore[arg-type]
-        if isinstance(collection.type, CtySet):
-            return _set_length(collection, stored)
-        return CtyNumber().validate(stored)
 
 
 def _set_length(collection: CtyValue[Any], stored: int) -> CtyValue[Any]:
@@ -279,39 +397,183 @@ def _set_length(collection: CtyValue[Any], stored: int) -> CtyValue[Any]:
     was vaguer but never wrong.
     """
     elements = cast("tuple[CtyValue[Any], ...]", collection.value)
-    if stored < 2 or not any(element.is_unknown for element in elements):
+    if stored < _AMBIGUOUS_SET_SIZE or not any(element.is_unknown for element in elements):
         return CtyNumber().validate(stored)
     return refine(CtyValue.unknown(CtyNumber())).not_null().number_range_inclusive(1, stored).new_value()
 
 
-@stdlib_function("slice")
-def slice(input_val: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(input_val.type, CtyList | CtyTuple):
-        raise CtyFunctionError(f"slice: input must be a list or tuple, got {input_val.type.ctype}")
-    if not isinstance(start_val.type, CtyNumber) or not isinstance(end_val.type, CtyNumber):
-        raise CtyFunctionError("slice: start and end must be numbers")
-    element_type = input_val.type.element_type if isinstance(input_val.type, CtyList) else CtyDynamic()
-    if (
-        input_val.is_null
-        or input_val.is_unknown
-        or start_val.is_null
-        or start_val.is_unknown
-        or end_val.is_null
-        or end_val.is_unknown
-    ):
-        return CtyValue.unknown(CtyList(element_type=element_type))
-    start, end = int(start_val.value), int(end_val.value)  # type: ignore[call-overload]
-    return CtyList(element_type=element_type).validate(input_val.value[start:end])  # type: ignore[no-any-return,index]
+@stdlib_function(
+    "length",
+    params=[CtyParameter("collection", CtyDynamic(), allow_dynamic_type=True, allow_unknown=True)],
+    type_func=_length_return_type,
+    refine_result=refine_not_null,
+    description="Returns the number of elements in the given collection.",
+)
+def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `LengthFunc` (`stdlib/collection.go:112`), which is `Value.Length()`.
+
+    A tuple is counted from its *type*, so its length is known even when its
+    value is not. `AllowMarked` is deliberately not declared; see the module
+    docstring.
+    """
+    if isinstance(input_val.type, CtyTuple):
+        return CtyNumber().validate(len(input_val.type.element_types))
+    if input_val.is_unknown:
+        return _unknown_length(input_val)
+    if isinstance(input_val.type, CtySet):
+        return _set_length(input_val, len(cast("Sized", input_val.value)))
+    return CtyNumber().validate(len(cast("Sized", input_val.value)))
 
 
-@stdlib_function("concat")
-def concat(*sequences: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `ConcatFunc`.
+# ---------------------------------------------------------------------------
+# slice
+# ---------------------------------------------------------------------------
+
+
+def _slice_indexes(
+    collection: CtyValue[Any], start_val: CtyValue[Any], end_val: CtyValue[Any]
+) -> tuple[int, int, bool]:
+    """go-cty's `sliceIndexes` (`collection.go:1206`): both ends, and whether they are known.
+
+    Every bound is checked here rather than left to Python's forgiving slice
+    syntax, which silently clamps `[0:9]` on a three-element list to the whole
+    list where go-cty refuses the call.
+    """
+    sequence, _ = collection.unmark()
+    length_known = False
+    known_length = 0
+    if isinstance(sequence.type, CtyTuple):
+        known_length = len(sequence.type.element_types)
+        length_known = True
+    elif not sequence.is_unknown:
+        known_length = len(cast("Sized", sequence.value))
+        length_known = True
+
+    start_index, end_index = 0, 0
+    start_known, end_known = False, False
+    if not start_val.is_unknown:
+        start_index = whole_number(start_val, "slice: invalid start index: {value}")
+        if start_index < 0:
+            raise CtyFunctionError("slice: start index must not be less than zero")
+        if length_known and start_index > known_length:
+            raise CtyFunctionError("slice: start index must not be greater than the length of the list")
+        start_known = True
+    if not end_val.is_unknown:
+        end_index = whole_number(end_val, "slice: invalid end index: {value}")
+        if end_index < 0:
+            raise CtyFunctionError("slice: end index must not be less than zero")
+        if length_known and end_index > known_length:
+            raise CtyFunctionError("slice: end index must not be greater than the length of the list")
+        end_known = True
+    if start_known and end_known and start_index > end_index:
+        raise CtyFunctionError("slice: start index must not be greater than end index")
+    return start_index, end_index, start_known and end_known
+
+
+def _slice_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `SliceFunc.Type` (`collection.go:1147`).
+
+    A tuple slice is a *tuple*, carrying the element types it actually kept --
+    which is why the indices have to be known before the type can be.
+    """
+    collection = args[0]
+    collection_type = collection.type
+    if isinstance(collection_type, CtySet):
+        raise CtyFunctionError(
+            "slice: cannot slice a set, because its elements do not have indices; explicitly "
+            "convert to a list if the ordering of the result is not important"
+        )
+    if not isinstance(collection_type, CtyList | CtyTuple):
+        raise CtyFunctionError(f"slice: input must be a list or tuple, got {collection_type.ctype}")
+
+    start_index, end_index, indexes_known = _slice_indexes(collection, args[1], args[2])
+    if isinstance(collection_type, CtyList):
+        return collection_type
+    if not indexes_known:
+        return CtyDynamic()
+    return CtyTuple(element_types=collection_type.element_types[start_index:end_index])
+
+
+@stdlib_function(
+    "slice",
+    params=[
+        CtyParameter("list", CtyDynamic(), allow_marked=True),
+        CtyParameter("start_index", CtyNumber()),
+        CtyParameter("end_index", CtyNumber()),
+    ],
+    type_func=_slice_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Extracts a subslice of the given list or tuple value.",
+)
+def slice(
+    input_val: CtyValue[Any],
+    start_val: CtyValue[Any],
+    end_val: CtyValue[Any],
+    *,
+    return_type: CtyType[Any],
+) -> CtyValue[Any]:
+    """go-cty's `SliceFunc` (`stdlib/collection.go:1130`).
+
+    Only the sequence's own marks are propagated; an element's marks travel with
+    the element into the result, as they do in go-cty.
+    """
+    sequence, marks = input_val.unmark()
+    start_index, end_index, _ = _slice_indexes(sequence, start_val, end_val)
+    elements = _sequence_elements(sequence)[start_index:end_index]
+    return return_type.validate(elements).with_marks(marks)
+
+
+# ---------------------------------------------------------------------------
+# concat
+# ---------------------------------------------------------------------------
+
+
+def _concat_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `ConcatFunc.Type` (`sequence.go:19`).
 
     A list when every argument is a list *and* their element types unify, and a
     tuple otherwise -- because a tuple is the only type that can carry a
     different type per position, which is what concatenating a `list(number)`
     with a `list(bool)` produces.
+    """
+    if not args:
+        raise CtyFunctionError(ERR_CONCAT_REQUIRES_ONE)
+
+    if isinstance(args[0].type, CtyList) and all(isinstance(arg.type, CtyList) for arg in args):
+        unified = unify([arg.type for arg in args])
+        if isinstance(unified, CtyList):
+            return unified
+
+    element_types: list[CtyType[Any]] = []
+    for sequence in args:
+        sequence_type = sequence.type
+        if isinstance(sequence_type, CtyTuple):
+            element_types.extend(sequence_type.element_types)
+        elif isinstance(sequence_type, CtyList):
+            if sequence.is_unknown:
+                # A tuple type has one entry per element, so it cannot be built
+                # without knowing how many elements there are.
+                return CtyDynamic()
+            element_types.extend([sequence_type.element_type] * len(cast("Sized", sequence.value)))
+        else:
+            raise CtyFunctionError(ERR_CONCAT_ARGS_MUST_BE_SEQUENCES.format(type=sequence_type.ctype))
+    return CtyTuple(element_types=tuple(element_types))
+
+
+@stdlib_function(
+    "concat",
+    var_param=CtyParameter("seqs", CtyDynamic(), allow_marked=True),
+    type_func=_concat_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description=(
+        "Concatenates together all of the given lists or tuples into a single sequence, "
+        "preserving the input order."
+    ),
+)
+def concat(*sequences: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `ConcatFunc` (`stdlib/sequence.go:11`).
 
     This used to derive the element type from the elements themselves, widening
     to dynamic at the first mismatch, so `concat(list(string), list(number))`
@@ -319,40 +581,34 @@ def concat(*sequences: CtyValue[Any]) -> CtyValue[Any]:
     `list(string)` holding `["a", "1"]`. Both halves were wrong: no unification,
     and no tuple fallback.
     """
-    if not sequences:
-        raise CtyFunctionError(ERR_CONCAT_REQUIRES_ONE)
+    marks: frozenset[Any] = frozenset()
+    unmarked: list[CtyValue[Any]] = []
     for sequence in sequences:
-        if not isinstance(sequence.type, CtyList | CtyTuple):
-            raise CtyFunctionError(ERR_CONCAT_ARGS_MUST_BE_SEQUENCES.format(type=sequence.type.ctype))
-    if any(sequence.is_null for sequence in sequences):
-        raise CtyFunctionError(ERR_CONCAT_ARG_MUST_NOT_BE_NULL)
+        stripped, sequence_marks = sequence.unmark()
+        marks |= sequence_marks
+        unmarked.append(stripped)
 
-    if all(isinstance(sequence.type, CtyList) for sequence in sequences):
-        unified = unify([sequence.type for sequence in sequences])
-        if isinstance(unified, CtyList):
-            if any(sequence.is_unknown for sequence in sequences):
-                # The type is settled even though the contents are not.
-                return CtyValue.unknown(unified)
-            converted = [
-                convert(element, unified.element_type)
-                for sequence in sequences
-                for element in cast(Iterable[CtyValue[Any]], sequence.value)
-            ]
-            return cast(CtyValue[Any], unified.validate(converted))
+    if isinstance(return_type, CtyList):
+        converted = [
+            convert(element, return_type.element_type)
+            for sequence in unmarked
+            for element in cast("Iterable[CtyValue[Any]]", sequence.value)
+        ]
+        widened: CtyValue[Any] = return_type.validate(converted)
+        return widened.with_marks(marks)
 
-    elements: list[CtyValue[Any]] = []
-    for sequence in sequences:
-        if sequence.is_unknown:
-            # A tuple type has one entry per element, so it cannot be built
-            # without knowing how many elements there are.
-            return CtyValue.unknown(CtyDynamic())
-        elements.extend(cast(Iterable[CtyValue[Any]], sequence.value))
-
+    elements = [
+        element for sequence in unmarked for element in cast("Iterable[CtyValue[Any]]", sequence.value)
+    ]
     result_type = CtyTuple(element_types=tuple(element.type for element in elements))
     # Built directly: the type is derived from the elements' own types, so
     # validating each against the type taken from it is a no-op by construction.
-    return CtyValue(vtype=result_type, value=tuple(elements))
+    return CtyValue(vtype=result_type, value=tuple(elements)).with_marks(marks)
 
+
+# ---------------------------------------------------------------------------
+# contains
+# ---------------------------------------------------------------------------
 
 # Payloads that can hide an unknown below the top level. A CtyValue holding
 # anything else is a leaf, so `is_unknown` is the complete answer for it.
@@ -370,30 +626,38 @@ def _is_known_leaf(value: CtyValue[Any]) -> bool:
     return not value.is_unknown and not value.is_null and not isinstance(value.value, _NESTING_PAYLOADS)
 
 
-@stdlib_function("contains", allow_null=(1,))
+@stdlib_function(
+    "contains",
+    params=[
+        CtyParameter("list", CtyDynamic()),
+        CtyParameter("value", CtyDynamic(), allow_null=True),
+    ],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns true if the given value is a value in the given list, tuple, or set, or false otherwise.",
+)
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `ContainsFunc` (`stdlib/collection.go:317`).
+
+    The shape check lives here rather than in a `Type` callback because go-cty's
+    does: its `Type` is `StaticReturnType(cty.Bool)`, so an unknown of the wrong
+    type short-circuits to an unknown bool instead of being refused.
+
+    A collection reports itself unknown as soon as any element is unknown, but
+    it keeps its elements. An unknown element could still turn out to be the
+    value being searched for, so a miss against a partially-unknown collection
+    is undecided rather than false. An exact match still wins outright: it
+    cannot be un-matched by whatever the unknowns resolve to.
+    """
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(
             f"contains: collection must be a list, set, or tuple, got {collection.type.ctype}"
         )
-    if collection.is_null:
-        return CtyValue.unknown(CtyBool())
 
-    # A collection reports itself unknown as soon as any element is unknown
-    # (`list.py`, `tuple.py`, `set.py`), but it keeps its elements. Returning
-    # undecided on that flag alone threw away an answer that was available: a
-    # list holding "a" and an unknown definitely contains "a", whatever the
-    # unknown turns out to be, and go-cty's ContainsFunc says so. Only a
-    # collection with nothing to scan is genuinely undecidable here.
-    elements = collection.value
-    if not isinstance(elements, (tuple, frozenset, list)):
-        return CtyValue.unknown(CtyBool())
+    elements = tuple(cast("Iterable[Any]", collection.value))
+    if not elements:
+        return CtyBool().validate(False)
 
-    # An unknown element could still turn out to be the value being searched
-    # for, so a miss against a partially-unknown collection is undecided rather
-    # than false. An exact match still wins outright: it cannot be un-matched by
-    # whatever the unknowns resolve to.
-    #
     # Comparison goes through the three-valued `equals`, as go-cty's
     # ContainsFunc does. Testing `is_unknown` on the element is not enough --
     # an object whose attribute is unknown is itself known -- and treating any
@@ -407,7 +671,7 @@ def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     # test must stay *per element* -- an is-anything-unknown pre-pass over the
     # whole collection would defeat the early exit, which is what makes finding
     # a hit near the front cost nothing.
-    hit, saw_unknown = _scan_for_value(tuple(elements), value)
+    hit, saw_unknown = _scan_for_value(elements, value)
     if hit:
         return CtyBool().validate(True)
     if saw_unknown:
@@ -437,175 +701,411 @@ def _scan_for_value(elements: tuple[Any, ...], value: CtyValue[Any]) -> tuple[bo
     return False, saw_unknown
 
 
-@stdlib_function("keys")
-def keys(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(
-        context={
-            "operation": "cty_function_keys",
-            "input_type": str(input_val.type),
-            "input_is_null": input_val.is_null,
-            "input_is_unknown": input_val.is_unknown,
-        }
-    ):
-        if not isinstance(input_val.type, CtyMap | CtyObject):
-            raise CtyFunctionError(ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT.format(type=input_val.type.ctype))
-        if isinstance(input_val.type, CtyObject):
-            # An object's attribute names are fixed by its type, so go-cty can
-            # and does give the result a tuple type with one entry per
-            # attribute rather than a list.
-            names = sorted(input_val.type.attribute_types)
-            object_type = CtyTuple(element_types=(CtyString(),) * len(names))
-            if input_val.is_null or input_val.is_unknown:
-                return CtyValue.unknown(object_type)
-            return cast(CtyValue[Any], object_type.validate(tuple(names)))
-
-        result_type = CtyList(element_type=CtyString())
-        if input_val.is_null or input_val.is_unknown:
-            return CtyValue.unknown(result_type)
-        return cast(CtyValue[Any], result_type.validate(sorted(cast(Mapping[str, Any], input_val.value))))
+# ---------------------------------------------------------------------------
+# keys and values
+# ---------------------------------------------------------------------------
 
 
-@stdlib_function("values")
-def values(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(
-        context={
-            "operation": "cty_function_values",
-            "input_type": str(input_val.type),
-            "input_is_null": input_val.is_null,
-            "input_is_unknown": input_val.is_unknown,
-        }
-    ):
-        if not isinstance(input_val.type, CtyMap | CtyObject):
-            raise CtyFunctionError(ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT.format(type=input_val.type.ctype))
+def _keys_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `KeysFunc.Type` (`collection.go:600`).
 
-        # Lexicographic by key, which is not a property of this function but of
-        # the types: "cty guarantees that these types always iterate in key
-        # lexicographical order". Returning them in insertion order meant `keys`
-        # and `values` no longer corresponded, so `zipmap(keys(m), values(m))`
-        # paired every value with the wrong key.
-        if isinstance(input_val.type, CtyObject):
-            attribute_types = input_val.type.attribute_types
-            names = sorted(attribute_types)
-            # A tuple rather than a list: an object's attributes have differing
-            # types, and a list would have to widen them all to dynamic.
-            object_type = CtyTuple(element_types=tuple(attribute_types[name] for name in names))
-            if input_val.is_null or input_val.is_unknown:
-                return CtyValue.unknown(object_type)
-            payload = cast(Mapping[str, CtyValue[Any]], input_val.value)
-            return cast(CtyValue[Any], object_type.validate(tuple(payload[name] for name in names)))
-
-        result_type = CtyList(element_type=input_val.type.element_type)
-        if input_val.is_null or input_val.is_unknown:
-            return CtyValue.unknown(result_type)
-        if not isinstance(input_val.value, dict):
-            raise CtyFunctionError(ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT.format(type=input_val.type.ctype))
-        mapping = cast(Mapping[str, CtyValue[Any]], input_val.value)
-        return cast(CtyValue[Any], result_type.validate([mapping[name] for name in sorted(mapping)]))
+    An object's attribute names are fixed by its type, so the result is a tuple
+    with one entry per attribute rather than a list.
+    """
+    mapping_type = args[0].type
+    if isinstance(mapping_type, CtyMap):
+        return CtyList(element_type=CtyString())
+    if isinstance(mapping_type, CtyObject):
+        return CtyTuple(element_types=(CtyString(),) * len(mapping_type.attribute_types))
+    raise CtyFunctionError(ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT.format(type=mapping_type.ctype))
 
 
-@stdlib_function("reverselist")
-def reverse(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(input_val.type, CtyList | CtyTuple):
-        raise CtyFunctionError("reverse: input must be a list or tuple")
-    if input_val.is_null or input_val.is_unknown:
-        return input_val
-    return input_val.type.validate(list(reversed(input_val.value)))  # type: ignore[no-any-return,call-overload]
+@stdlib_function(
+    "keys",
+    params=[CtyParameter("inputMap", CtyDynamic(), allow_unknown=True, allow_marked=True)],
+    type_func=_keys_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Returns a list of the keys of the given map in lexicographical order.",
+)
+def keys(input_val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `KeysFunc` (`stdlib/collection.go:589`).
+
+    An unknown *object* still answers: its attribute names come from its type,
+    so there is nothing undecided about them. This returned an unknown tuple.
+
+    Only the mapping's own marks reach the result. go-cty says why in as many
+    words: "since we don't mark map keys, we can throw away any nested marks,
+    which would only apply to values" -- so a sensitive value does not make its
+    key sensitive.
+    """
+    mapping, marks = input_val.unmark()
+    if isinstance(mapping.type, CtyObject):
+        names = sorted(mapping.type.attribute_types)
+        return return_type.validate(tuple(names)).with_marks(marks)
+    if mapping.is_unknown:
+        return CtyValue.unknown(return_type).with_marks(marks)
+    ordered = sorted(cast("Mapping[str, Any]", mapping.value))
+    return return_type.validate(ordered).with_marks(marks)
 
 
-@stdlib_function("hasindex")
+def _values_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `ValuesFunc.Type` (`collection.go:1262`).
+
+    A tuple for an object rather than a list: an object's attributes have
+    differing types, and a list would have to widen them all to dynamic.
+    """
+    mapping_type = args[0].type
+    if isinstance(mapping_type, CtyMap):
+        return CtyList(element_type=mapping_type.element_type)
+    if isinstance(mapping_type, CtyObject):
+        attribute_types = mapping_type.attribute_types
+        return CtyTuple(element_types=tuple(attribute_types[name] for name in sorted(attribute_types)))
+    raise CtyFunctionError(ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT.format(type=mapping_type.ctype))
+
+
+@stdlib_function(
+    "values",
+    params=[CtyParameter("mapping", CtyDynamic(), allow_marked=True)],
+    type_func=_values_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description=(
+        "Returns the values of elements of a given map, or the values of attributes of a given "
+        "object, in lexicographic order by key or attribute name."
+    ),
+)
+def values(input_val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `ValuesFunc` (`stdlib/collection.go:1253`).
+
+    Lexicographic by key, which is not a property of this function but of the
+    types: "cty guarantees that these types always iterate in key
+    lexicographical order". Returning them in insertion order meant `keys` and
+    `values` no longer corresponded, so `zipmap(keys(m), values(m))` paired
+    every value with the wrong key.
+    """
+    mapping, marks = input_val.unmark()
+    payload = cast("Mapping[str, CtyValue[Any]]", mapping.value)
+    ordered = [payload[name] for name in sorted(payload)]
+    return return_type.validate(ordered).with_marks(marks)
+
+
+# ---------------------------------------------------------------------------
+# reverselist
+# ---------------------------------------------------------------------------
+
+
+def _reverse_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `ReverseListFunc.Type` (`collection.go:890`)."""
+    collection_type = args[0].type
+    if isinstance(collection_type, CtyTuple):
+        return CtyTuple(element_types=tuple(reversed(collection_type.element_types)))
+    if isinstance(collection_type, CtyList | CtySet):
+        # A set is accepted "to mimic the usual behavior of auto-converting to
+        # list", in go-cty's own words, and comes back a list.
+        return CtyList(element_type=collection_type.element_type)
+    raise CtyFunctionError(f"reverse: can only reverse list or tuple values, not {collection_type.ctype}")
+
+
+@stdlib_function(
+    "reverselist",
+    params=[CtyParameter("list", CtyDynamic(), allow_marked=True)],
+    type_func=_reverse_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Returns the given list with its elements in reverse order.",
+)
+def reverse(input_val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `ReverseListFunc` (`stdlib/collection.go:881`).
+
+    A set is reversed into a list rather than refused, which is what go-cty
+    does; refusing it was stricter than the reference.
+    """
+    sequence, marks = input_val.unmark()
+    reversed_elements = list(reversed(_sequence_elements(sequence)))
+    return return_type.validate(reversed_elements).with_marks(marks)
+
+
+# ---------------------------------------------------------------------------
+# hasindex and index
+# ---------------------------------------------------------------------------
+
+
+def _hasindex_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `HasIndexFunc.Type` (`collection.go:29`).
+
+    A set and an object are refused: neither is indexable by go-cty's rules,
+    which name list, map and tuple only.
+    """
+    collection_type = args[0].type
+    if not isinstance(collection_type, CtyList | CtyTuple | CtyMap | CtyDynamic):
+        raise CtyFunctionError(
+            f"hasindex: collection must be a list, a map or a tuple, got {collection_type.ctype}"
+        )
+    return CtyBool()
+
+
+@stdlib_function(
+    "hasindex",
+    params=[
+        CtyParameter("collection", CtyDynamic(), allow_dynamic_type=True),
+        CtyParameter("key", CtyDynamic(), allow_dynamic_type=True),
+    ],
+    type_func=_hasindex_return_type,
+    refine_result=refine_not_null,
+    description=(
+        "Returns true if if the given collection can be indexed with the given key without "
+        "producing an error, or false otherwise."
+    ),
+)
 def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
-    if collection.is_unknown or key.is_unknown:
-        return CtyValue.unknown(CtyBool())
-    if collection.is_null:
-        return CtyBool().validate(False)
+    """go-cty's `HasIndexFunc` (`stdlib/collection.go:15`), which is `Value.HasIndex`.
+
+    A null collection used to answer False, which claims it was looked in. The
+    framework refuses it now, as go-cty's parameter spec does.
+    """
     if isinstance(collection.type, CtyList | CtyTuple):
-        if not isinstance(key.type, CtyNumber) or key.is_null:
+        if not isinstance(key.type, CtyNumber):
             return CtyBool().validate(False)
-        idx = int(key.value)  # type: ignore[call-overload]
-        return CtyBool().validate(0 <= idx < len(collection.value))  # type: ignore[arg-type]
-    if isinstance(collection.type, CtyMap | CtyObject):
-        if not isinstance(key.type, CtyString) or key.is_null:
-            return CtyBool().validate(False)
-        return CtyBool().validate(key.value in collection.value)  # type: ignore[operator]
-    raise CtyFunctionError(
-        f"hasindex: collection must be a list, tuple, map, or object, got {collection.type.ctype}"
-    )
+        idx = int(cast("Decimal", key.value))
+        return CtyBool().validate(0 <= idx < len(cast("Sized", collection.value)))
+    if not isinstance(key.type, CtyString):
+        return CtyBool().validate(False)
+    return CtyBool().validate(key.value in cast("Mapping[str, Any]", collection.value))
 
 
-@stdlib_function("index")
+def _index_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `IndexFunc.Type` (`collection.go:55`).
+
+    The element's own type, which for a tuple means the index has to be known
+    and in range before the type can be decided at all.
+    """
+    collection, key = args[0], args[1]
+    collection_type, key_type = collection.type, key.type
+    if isinstance(collection_type, CtyTuple):
+        if not isinstance(key_type, CtyNumber | CtyDynamic):
+            raise CtyFunctionError("index: key for tuple must be number")
+        if key.is_unknown:
+            # Each tuple element can have its own type, so nothing is decided.
+            return CtyDynamic()
+        position = whole_number(key, "index: invalid key for tuple: {value}")
+        element_types = collection_type.element_types
+        if not 0 <= position < len(element_types):
+            raise CtyFunctionError(f"index: key must be between 0 and {len(element_types)} inclusive")
+        return element_types[position]
+    if isinstance(collection_type, CtyList):
+        if not isinstance(key_type, CtyNumber | CtyDynamic):
+            raise CtyFunctionError("index: key for list must be number")
+        return collection_type.element_type
+    if isinstance(collection_type, CtyMap):
+        if not isinstance(key_type, CtyString | CtyDynamic):
+            raise CtyFunctionError("index: key for map must be string")
+        return collection_type.element_type
+    raise CtyFunctionError(f"index: collection must be a list, a map or a tuple, got {collection_type.ctype}")
+
+
+@stdlib_function(
+    "index",
+    params=[
+        CtyParameter("collection", CtyDynamic()),
+        CtyParameter("key", CtyDynamic(), allow_dynamic_type=True),
+    ],
+    type_func=_index_return_type,
+    description=(
+        "Returns the element with the given key from the given collection, or raises an error if "
+        "there is no such element."
+    ),
+)
 def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
-    if not hasindex(collection, key).value:
+    """go-cty's `IndexFunc` (`stdlib/collection.go:42`).
+
+    No `RefineResult`: the element may legitimately be null, so this is one of
+    the two functions in the file that promises nothing about its answer.
+    """
+    if hasindex(collection, key).is_false():
         raise CtyFunctionError("index: key does not exist in collection")
 
     key_val = key.value
     if isinstance(key.type, CtyNumber):
-        key_val = int(key_val)  # type: ignore[call-overload]
+        key_val = int(cast("Decimal", key_val))
 
     return collection[key_val]
 
 
-@stdlib_function("element")
-def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
-    with error_boundary(
-        context={
-            "operation": "cty_function_element",
-            "collection_type": str(collection.type),
-            "index_type": str(idx.type),
-            "collection_is_null": collection.is_null,
-            "collection_is_unknown": collection.is_unknown,
-        }
-    ):
-        if not isinstance(collection.type, CtyList | CtyTuple):
-            raise CtyFunctionError(f"element: collection must be a list or tuple, got {collection.type}")
-        if collection.is_null or collection.is_unknown or idx.is_null or idx.is_unknown:
-            elem_type = collection.type.element_type if isinstance(collection.type, CtyList) else CtyDynamic()
-            return CtyValue.unknown(elem_type)
-        length = len(collection.value)  # type: ignore[arg-type]
-        if length == 0:
+# ---------------------------------------------------------------------------
+# element
+# ---------------------------------------------------------------------------
+
+
+def _element_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `ElementFunc.Type` (`collection.go:149`)."""
+    collection, idx = args[0], args[1]
+    collection_type = collection.type
+    if isinstance(collection_type, CtyList):
+        return collection_type.element_type
+    if isinstance(collection_type, CtyTuple):
+        if idx.is_unknown:
+            # Each tuple element can have its own type, so the result type
+            # cannot be predicted before the index is.
+            return CtyDynamic()
+        element_types = collection_type.element_types
+        if not element_types:
             raise CtyFunctionError("element: cannot use element function with an empty list")
-        return collection.value[int(idx.value) % length]  # type: ignore[no-any-return,index,call-overload]
+        position = whole_number(idx, "element: invalid index: {value}")
+        return element_types[position % len(element_types)]
+    raise CtyFunctionError(f"element: collection must be a list or tuple, got {collection_type.ctype}")
 
 
-@stdlib_function("coalescelist", allow_null=True)
-def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
-    if any(v.is_unknown for v in args):
-        return CtyValue.unknown(CtyDynamic())
+@stdlib_function(
+    "element",
+    params=[
+        CtyParameter("list", CtyDynamic(), allow_marked=True),
+        CtyParameter("index", CtyNumber()),
+    ],
+    type_func=_element_return_type,
+    description=(
+        "Returns the element with the given index from the given list or tuple, applying the modulo "
+        "operation to the given index if it's greater than the number of elements."
+    ),
+)
+def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `ElementFunc` (`stdlib/collection.go:136`).
+
+    The sequence's own marks are re-applied to whichever element comes back; the
+    element keeps its own. go-cty does exactly this, and it is the reason the
+    parameter takes `AllowMarked` -- the alternative would put every *other*
+    element's marks on a result they say nothing about.
+
+    No `RefineResult`: an element may be null.
+    """
+    sequence, marks = collection.unmark()
+    position = whole_number(idx, "element: invalid index: {value}")
+    count = len(cast("Sized", sequence.value))
+    if count == 0:
+        raise CtyFunctionError("element: cannot use element function with an empty list")
+    chosen = _sequence_elements(sequence)[position % count]
+    return chosen.with_marks(marks)
+
+
+# ---------------------------------------------------------------------------
+# coalescelist
+# ---------------------------------------------------------------------------
+
+
+def _coalescelist_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `CoalesceListFunc.Type` (`collection.go:223`).
+
+    Mixed argument types cannot be described by any one of them, so the answer
+    is dynamic -- and so is an unknown argument, because which one wins is what
+    is unknown.
+    """
+    if not args:
+        raise CtyFunctionError("coalescelist: at least one argument is required")
+
+    argument_types: list[CtyType[Any]] = []
     for arg in args:
-        if (
-            isinstance(arg.type, CtyList | CtyTuple) and not arg.is_null and len(arg.value) > 0  # type: ignore[arg-type]
-        ):
+        if arg.is_unknown:
+            return CtyDynamic()
+        arg_type = arg.type
+        if not isinstance(arg_type, CtyList | CtyTuple):
+            raise CtyFunctionError("coalescelist: arguments must be lists or tuples")
+        argument_types.append(arg_type)
+
+    first = argument_types[0]
+    if any(not other.equal(first) for other in argument_types[1:]):
+        return CtyDynamic()
+    return first
+
+
+@stdlib_function(
+    "coalescelist",
+    var_param=CtyParameter(
+        "vals",
+        CtyDynamic(),
+        description="List or tuple values to test in the given order.",
+        allow_unknown=True,
+        allow_dynamic_type=True,
+        allow_null=True,
+    ),
+    type_func=_coalescelist_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Returns the first of the given sequences that has a length greater than zero.",
+)
+def coalescelist(*args: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `CoalesceListFunc` (`stdlib/collection.go:212`).
+
+    An unknown argument only stops the search when it is *reached*: a known,
+    non-empty argument before it has already won.
+    """
+    for arg in args:
+        if arg.is_unknown:
+            return CtyValue.unknown(return_type)
+        if arg.is_null:
+            continue
+        if len(cast("Sized", arg.value)) > 0:
             return arg
     raise CtyFunctionError("coalescelist: no non-empty list or tuple found in arguments")
 
 
-@stdlib_function("compact")
-def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
-        raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
-    if isinstance(collection.type, CtyTuple):
-        if not all(isinstance(t, CtyString) for t in collection.type.element_types):
-            raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
-    else:
-        collection_type = cast(CtyList[Any] | CtySet[Any], collection.type)  # type: ignore[redundant-cast]
+# ---------------------------------------------------------------------------
+# compact
+# ---------------------------------------------------------------------------
+
+
+def _compact_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `StaticReturnType(cty.List(cty.String))` (`collection.go:287`).
+
+    The shape check that go-cty's `list(string)` parameter would have made moves
+    here, because the parameter is widened to keep sets and tuples working.
+    """
+    collection_type = args[0].type
+    refusal = "compact: argument must be a list, set, or tuple of strings"
+    if isinstance(collection_type, CtyTuple):
+        if not all(isinstance(t, CtyString) for t in collection_type.element_types):
+            raise CtyFunctionError(refusal)
+    elif isinstance(collection_type, CtyList | CtySet):
         if not isinstance(collection_type.element_type, CtyString):
-            raise CtyFunctionError("compact: argument must be a list, set, or tuple of strings")
+            raise CtyFunctionError(refusal)
+    else:
+        raise CtyFunctionError(refusal)
+    return CtyList(element_type=CtyString())
 
-    if collection.is_null or collection.is_unknown:
-        return collection
-    # Whether an element survives depends on whether it is the empty string, and
-    # an unknown has not decided that yet -- its payload is a placeholder object,
-    # which is truthy, so it used to be kept as if it had definitely answered
-    # "not empty". go-cty's CompactFunc declines instead: the result's length is
-    # not knowable, only that it is a list and not null.
+
+@stdlib_function(
+    "compact",
+    params=[CtyParameter("list", CtyDynamic())],
+    type_func=_compact_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Removes all empty string elements from the given list of strings.",
+)
+def compact(collection: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `CompactFunc` (`stdlib/collection.go:279`).
+
+    Whether an element survives depends on whether it is the empty string, and
+    an unknown has not decided that yet -- its payload is a placeholder object,
+    which is truthy, so it used to be kept as if it had definitely answered "not
+    empty". go-cty declines instead: the result's length is not knowable, only
+    that it is a list and not null. A null element is dropped alongside the
+    empty strings, as go-cty drops it.
+    """
     if not collection.is_wholly_known():
-        return unknown_not_null(CtyList(element_type=CtyString()))
-    result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
-        [v for v in collection.value if v.value]  # type: ignore[attr-defined]
-    )
-    return result
+        return CtyValue.unknown(return_type)
+    kept = [
+        element
+        for element in cast("Iterable[CtyValue[Any]]", collection.value)
+        if not element.is_null and element.value != ""
+    ]
+    return return_type.validate(kept)
 
 
-def _chunk_element_type(collection: CtyValue[Any]) -> CtyType[Any]:
+# ---------------------------------------------------------------------------
+# chunklist
+# ---------------------------------------------------------------------------
+
+
+def _chunk_element_type(collection_type: CtyType[Any]) -> CtyType[Any]:
     """The type the chunks hold.
 
     go-cty's return type is `cty.List(args[0].Type())` -- the argument's own
@@ -614,15 +1114,15 @@ def _chunk_element_type(collection: CtyValue[Any]) -> CtyType[Any]:
     accepts one anyway and unifies the element types, which costs nothing and
     keeps a working call working.
     """
-    if isinstance(collection.type, CtyList):
-        return collection.type.element_type
+    if isinstance(collection_type, CtyList):
+        return collection_type
     # A tuple whose elements have no common type has no list form, and so
     # nothing to chunk. `unify` used to answer dynamic for that, which produced
     # a `list(dynamic)` of values that had never been converted to anything.
-    unified = unify(cast(CtyTuple, collection.type).element_types)
+    unified = unify(cast("CtyTuple", collection_type).element_types)
     if unified is None:
         raise CtyFunctionError(ERR_CHUNKLIST_TUPLE_NOT_UNIFIABLE)
-    return unified
+    return CtyList(element_type=unified)
 
 
 def _chunk_size(size: CtyValue[Any]) -> int:
@@ -633,48 +1133,133 @@ def _chunk_size(size: CtyValue[Any]) -> int:
     return count
 
 
-@stdlib_function("chunklist")
-def chunklist(collection: CtyValue[Any], size: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `ChunklistFunc`: a sequence split into fixed-size chunks."""
-    if not isinstance(collection.type, CtyList | CtyTuple) or not isinstance(size.type, CtyNumber):
+def _chunklist_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `ChunklistFunc.Type`: `cty.List(args[0].Type())` (`collection.go:431`)."""
+    collection_type = args[0].type
+    if not isinstance(collection_type, CtyList | CtyTuple):
         raise CtyFunctionError(ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER)
-    if collection.is_null or collection.is_unknown or size.is_null or size.is_unknown:
-        return CtyValue.unknown(CtyList(element_type=CtyList(element_type=CtyDynamic())))
+    return CtyList(element_type=_chunk_element_type(collection_type))
 
-    result_type = CtyList(element_type=CtyList(element_type=_chunk_element_type(collection)))
-    chunk_size = _chunk_size(size)
-    elements = list(cast(tuple[CtyValue[Any], ...], collection.value))
+
+@stdlib_function(
+    "chunklist",
+    params=[
+        CtyParameter("list", CtyDynamic(), description="The list to split into chunks.", allow_marked=True),
+        CtyParameter(
+            "size",
+            CtyNumber(),
+            description=(
+                "The maximum length of each chunk. All but the last element of the result is "
+                "guaranteed to be of exactly this size."
+            ),
+            allow_marked=True,
+        ),
+    ],
+    type_func=_chunklist_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Splits a single list into multiple lists where each has at most the given number of elements.",
+)
+def chunklist(collection: CtyValue[Any], size: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `ChunklistFunc` (`stdlib/collection.go:415`): a sequence split into fixed-size chunks.
+
+    Both arguments' own marks reach the result; marks inside the list travel
+    with the elements into their chunk, which is why go-cty calls those values
+    opaque here.
+    """
+    sequence, marks = collection.unmark()
+    size_val, size_marks = size.unmark()
+    marks |= size_marks
+
+    chunk_size = _chunk_size(size_val)
+    elements = _sequence_elements(sequence)
     if not elements:
-        return cast(CtyValue[Any], result_type.validate([]))
+        return return_type.validate([]).with_marks(marks)
     if chunk_size == 0:
         # go-cty: "if size is 0, returns a list made of the initial list".
-        return cast(CtyValue[Any], result_type.validate([elements]))
+        return return_type.validate([elements]).with_marks(marks)
     chunks = [elements[i : i + chunk_size] for i in range(0, len(elements), chunk_size)]
-    return cast(CtyValue[Any], result_type.validate(chunks))
+    return return_type.validate(chunks).with_marks(marks)
 
 
-@stdlib_function("lookup")
-def lookup(collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(collection.type, CtyMap | CtyObject):
-        raise CtyFunctionError("lookup: collection must be a map or object")
+# ---------------------------------------------------------------------------
+# lookup
+# ---------------------------------------------------------------------------
 
-    element_type = collection.type.element_type if isinstance(collection.type, CtyMap) else CtyDynamic()
 
-    if collection.is_unknown or key.is_unknown:
-        # The result is either an element or the default, so its type is
-        # whatever covers both; dynamic when nothing does, since an unknown of
-        # dynamic is a claim about nothing rather than a wrong claim.
-        return CtyValue.unknown(unify([element_type, default.type]) or CtyDynamic())
+def _lookup_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `LookupFunc.Type` (`collection.go:686`).
 
-    if (
-        collection.is_null
-        or key.is_null
-        or not isinstance(collection.value, dict)
-        or key.value not in collection.value
-    ):
-        return default
+    For a map the default has to be *convertible* to the element type, and the
+    result is that element type -- so `lookup(map(string), k, 5)` answers with
+    the string `"5"` rather than the number it was given.
+    """
+    collection, key, default = args[0], args[1], args[2]
+    collection_type = collection.type
+    if isinstance(collection_type, CtyObject):
+        if key.is_unknown:
+            return CtyDynamic()
+        name = str(key.unmark()[0].value)
+        if name in collection_type.attribute_types:
+            return collection_type.attribute_types[name]
+        return default.type
+    if isinstance(collection_type, CtyMap):
+        try:
+            convert(default.unmark()[0], collection_type.element_type)
+        except CtyError as exc:
+            raise CtyFunctionError(
+                "lookup: the default value must have the same type as the map elements"
+            ) from exc
+        return collection_type.element_type
+    raise CtyFunctionError("lookup: collection must be a map or object")
 
-    return collection.value[key.value]  # type: ignore[no-any-return]
+
+@stdlib_function(
+    "lookup",
+    params=[
+        CtyParameter("inputMap", CtyDynamic(), allow_marked=True),
+        CtyParameter("key", CtyString(), allow_marked=True),
+        CtyParameter("default", CtyDynamic(), allow_marked=True),
+    ],
+    type_func=_lookup_return_type,
+    wants_return_type=True,
+    description=(
+        "Returns the value of the element with the given key from the given map, or returns the "
+        "default value if there is no such element."
+    ),
+)
+def lookup(
+    collection: CtyValue[Any], key: CtyValue[Any], default: CtyValue[Any], *, return_type: CtyType[Any]
+) -> CtyValue[Any]:
+    """go-cty's `LookupFunc` (`stdlib/collection.go:667`).
+
+    The map's and the key's marks reach the result -- a key that is sensitive
+    discloses which entry was read, so it has to. The default is left marked and
+    carries its own.
+
+    No `RefineResult`: the element or the default may be null.
+    """
+    mapping, marks = collection.unmark()
+    key_value, key_marks = key.unmark()
+    marks |= key_marks
+    name = str(key_value.value)
+
+    if not mapping.is_wholly_known():
+        return CtyValue.unknown(return_type).with_marks(marks)
+
+    payload = cast("Mapping[str, CtyValue[Any]]", mapping.value)
+    if isinstance(mapping.type, CtyObject):
+        if name in mapping.type.attribute_types:
+            return payload[name].with_marks(marks)
+    elif name in payload:
+        return payload[name].with_marks(marks)
+
+    return convert(default, return_type).with_marks(marks)
+
+
+# ---------------------------------------------------------------------------
+# merge
+# ---------------------------------------------------------------------------
 
 
 def _merge_one(arg: CtyValue[Any], attribute_types: dict[str, CtyType[Any]]) -> tuple[CtyType[Any], bool]:
@@ -683,10 +1268,11 @@ def _merge_one(arg: CtyValue[Any], attribute_types: dict[str, CtyType[Any]]) -> 
     Returns the type this argument contributes to the all-arguments-match test,
     and whether the attribute set is still fully known after it.
     """
+    arg, _ = arg.unmark()  # Marks are attached to values; a type check ignores them.
     arg_type = arg.type
     if isinstance(arg_type, CtyObject):
-        # A null object is treated as having no attributes at all, and it
-        # compares against the other arguments as the empty object type.
+        # A null object is treated by go-cty as having no attributes at all, and
+        # it compares against the other arguments as the empty object type.
         if arg.is_null:
             return CtyObject(attribute_types={}), True
         attribute_types.update(arg_type.attribute_types)
@@ -702,20 +1288,24 @@ def _merge_one(arg: CtyValue[Any], attribute_types: dict[str, CtyType[Any]]) -> 
         return arg_type, False
 
     element_type = arg_type.element_type
-    for key in cast(Mapping[str, Any], arg.value):
+    for key in cast("Mapping[str, Any]", arg.value):
         attribute_types[key] = element_type
     return arg_type, True
 
 
-def _merge_result_type(args: tuple[CtyValue[Any], ...]) -> CtyType[Any] | None:
-    """The type go-cty's MergeFunc declares for these arguments.
+def _merge_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `MergeFunc.Type` (`collection.go:770`).
 
-    None stands for go-cty's DynamicPseudoType, which it uses both when an
+    Dynamic stands for go-cty's `DynamicPseudoType`, which it uses both when an
     argument's own type is dynamic and when a mix of unknown maps leaves the
     attribute set unknowable.
     """
+    # No arguments gives an empty object: there are no key-value types to read.
+    if not args:
+        return CtyObject(attribute_types={})
+
     attribute_types: dict[str, CtyType[Any]] = {}
-    first: CtyType[Any] | None = None
+    first: CtyType[Any] = CtyDynamic()
     matching = True
     attributes_known = True
 
@@ -724,7 +1314,7 @@ def _merge_result_type(args: tuple[CtyValue[Any], ...]) -> CtyType[Any] | None:
         # at the first dynamic argument and so never reaches a later argument
         # that would have been rejected outright.
         if isinstance(arg.type, CtyDynamic):
-            return None
+            return CtyDynamic()
         arg_type, known = _merge_one(arg, attribute_types)
         attributes_known = attributes_known and known
         if index == 0:
@@ -737,40 +1327,50 @@ def _merge_result_type(args: tuple[CtyValue[Any], ...]) -> CtyType[Any] | None:
     if matching:
         return first
     if not attributes_known:
-        return None
+        return CtyDynamic()
     return CtyObject(attribute_types=attribute_types)
 
 
-@stdlib_function("merge", allow_null=True)
-def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
-    # No arguments gives an empty object: there are no key-value types to read.
-    if not args:
-        return cast(CtyValue[Any], CtyObject(attribute_types={}).validate({}))
+@stdlib_function(
+    "merge",
+    var_param=CtyParameter("maps", CtyDynamic(), allow_null=True, allow_dynamic_type=True, allow_marked=True),
+    type_func=_merge_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description=(
+        "Merges all of the elements from the given maps into a single map, or the attributes from "
+        "given objects into a single object."
+    ),
+)
+def merge(*args: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `MergeFunc` (`stdlib/collection.go:760`).
 
-    # Unwrapped first, because dynamic means two different things in the two
-    # packages: in go-cty a known value never carries DynamicPseudoType, so its
-    # rules for a dynamic argument are rules about a value whose type is not yet
-    # settled. Here a dynamic wrapper routinely stands in front of a perfectly
-    # concrete map or object, and that inner type is the one go-cty would see.
-    args = tuple(_unwrap_dynamic(arg) for arg in args)
-
-    result_type = _merge_result_type(args)
-    if any(arg.is_unknown for arg in args):
-        return CtyValue.unknown(result_type if result_type is not None else CtyDynamic())
-
+    A later argument's key wins over an earlier one's. Each argument's own marks
+    reach the result; the values keep theirs, being copied across verbatim.
+    """
     merged: dict[str, CtyValue[Any]] = {}
+    marks: frozenset[Any] = frozenset()
     for arg in args:
-        if not arg.is_null:
-            merged.update(cast(Mapping[str, CtyValue[Any]], arg.value))
+        if arg.is_null:
+            continue
+        unmarked, arg_marks = arg.unmark()
+        marks |= arg_marks
+        merged.update(cast("Mapping[str, CtyValue[Any]]", unmarked.value))
 
-    if result_type is None:
+    result_type = return_type
+    if isinstance(result_type, CtyDynamic):
         # go-cty declares dynamic here but still returns a concrete ObjectVal,
         # so the value describes itself even though the signature could not.
         result_type = CtyObject(attribute_types={name: value.type for name, value in merged.items()})
-    return cast(CtyValue[Any], result_type.validate(merged))
+    return result_type.validate(merged).with_marks(marks)
 
 
-def _setproduct_element_type(arg: CtyValue[Any]) -> tuple[CtyType[Any], bool]:
+# ---------------------------------------------------------------------------
+# setproduct
+# ---------------------------------------------------------------------------
+
+
+def _setproduct_element_type(arg: CtyValue[Any], position: int) -> tuple[CtyType[Any], bool]:
     """One argument's contribution to the result element type, and whether it is ordered."""
     arg_type = arg.type
     if isinstance(arg_type, CtySet):
@@ -788,76 +1388,248 @@ def _setproduct_element_type(arg: CtyValue[Any]) -> tuple[CtyType[Any], bool]:
         if unified is None:
             raise CtyFunctionError(ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE)
         return unified, True
+    del position  # go-cty reports the argument index; the message here does not.
     raise CtyFunctionError(ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION.format(type=arg_type.ctype))
 
 
-@stdlib_function("setproduct")
-def setproduct(*args: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `SetProductFunc`.
+def _setproduct_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `SetProductFunc.Type` (`collection.go:941`).
 
-    The result is a **list** when every argument is ordered, and a set only when
-    one of them is a set (`collection.go:975`). This always built a set, so the
-    ordering a caller asked for by passing lists was discarded -- and the
-    function's own docstring in go-cty is that lists and tuples "preserve the
-    input ordering".
+    A **list** when every argument is ordered, and a set only when one of them
+    is a set. This always built a set, so the ordering a caller asked for by
+    passing lists was discarded -- and go-cty's own parameter documentation is
+    that lists and tuples "preserve the input ordering".
     """
-    if len(args) < 2:
+    if len(args) < _SETPRODUCT_MIN_ARGS:
         raise CtyFunctionError(ERR_SETPRODUCT_REQUIRES_TWO)
 
     element_types: list[CtyType[Any]] = []
     ordered = 0
-    for arg in args:
-        element_type, is_ordered = _setproduct_element_type(arg)
+    for position, arg in enumerate(args):
+        element_type, is_ordered = _setproduct_element_type(arg, position)
         element_types.append(element_type)
         ordered += is_ordered
 
     tuple_type = CtyTuple(element_types=tuple(element_types))
-    result_type: CtyType[Any] = (
-        CtyList(element_type=tuple_type) if ordered == len(args) else CtySet(element_type=tuple_type)
+    if ordered == len(args):
+        return CtyList(element_type=tuple_type)
+    return CtySet(element_type=tuple_type)
+
+
+def _setproduct_length_known(arg: CtyValue[Any]) -> bool:
+    """go-cty's `arg.IsKnown() && arg.Length().IsKnown()` (`collection.go:994`).
+
+    A set holding an unknown element has an unknown length: the unknown may
+    still turn out to equal another member and coalesce with it.
+    """
+    if arg.is_unknown:
+        return False
+    if isinstance(arg.type, CtySet):
+        elements = cast("tuple[CtyValue[Any], ...]", arg.value)
+        return len(elements) < _AMBIGUOUS_SET_SIZE or not any(element.is_unknown for element in elements)
+    return True
+
+
+def _length_upper_bound(arg: CtyValue[Any]) -> int | None:
+    """go-cty's `ValueRange.LengthUpperBound` (`value_range.go:233`).
+
+    None stands for its `math.MaxInt`, which is what an unknown collection with
+    no length refinement reports -- and it is also what a *known* collection
+    whose length is unknown reports, because `Range` synthesises `[0, maxint]`
+    for one (`value_range.go:66`). A known collection whose length is known
+    synthesises `[len, len]`, so it bounds the product exactly.
+    """
+    if isinstance(arg.type, CtyTuple):
+        return len(arg.type.element_types)
+    if arg.is_unknown:
+        refinement = arg.value if isinstance(arg.value, RefinedUnknownValue) else None
+        return refinement.collection_length_upper_bound if refinement else None
+    if not _setproduct_length_known(arg):
+        return None
+    return len(cast("Sized", arg.value))
+
+
+def _setproduct_unknown(args: Sequence[CtyValue[Any]], return_type: CtyType[Any]) -> CtyValue[Any]:
+    """An unknown product, bounded where the arguments' lengths allow (`collection.go:1005`)."""
+    unknown = CtyValue.unknown(return_type)
+    max_length = 1
+    for arg in args:
+        bound = _length_upper_bound(arg)
+        # go-cty imposes both thresholds out of pragmatism: an unrefined
+        # collection's upper bound is maxint, and multiplying those overflows.
+        if bound is None or bound > _SETPRODUCT_MAX_ARG_LENGTH:
+            return unknown
+        max_length *= bound
+        if max_length > _SETPRODUCT_MAX_RESULT_LENGTH:
+            return unknown
+
+    if max_length == 0:
+        # Typically collapses the unknown into a known empty collection.
+        return refine(unknown).not_null().collection_length(0).new_value()
+    # A nonzero maximum means set element coalescing cannot reduce the result
+    # below one element.
+    return (
+        refine(unknown)
+        .not_null()
+        .collection_length_lower_bound(1)
+        .collection_length_upper_bound(max_length)
+        .new_value()
     )
 
-    # The result type is computable from the argument types alone, so an
-    # unknown argument makes the value unknown without making the type dynamic.
-    if any(arg.is_unknown for arg in args):
-        return CtyValue.unknown(result_type)
 
-    # A null argument used to be dropped, which changed the arity of the result
-    # tuple according to which arguments happened to be null. go-cty refuses it
-    # outright, and so does this -- a type that varies with the data is a
-    # different fault from the null-argument policy question.
-    if any(arg.is_null for arg in args):
-        raise CtyFunctionError(ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL)
+@stdlib_function(
+    "setproduct",
+    var_param=CtyParameter(
+        "sets",
+        CtyDynamic(),
+        description=(
+            "The sets to consider. Also accepts lists and tuples, and if all arguments are of list "
+            "or tuple type then the result will preserve the input ordering"
+        ),
+        allow_unknown=True,
+        allow_marked=True,
+    ),
+    type_func=_setproduct_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description="Calculates the cartesian product of two or more sets.",
+)
+def setproduct(*args: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `SetProductFunc` (`stdlib/collection.go:931`).
 
-    iterables = [list(cast(Iterable[Any], arg.value)) for arg in args]
+    Every argument is walked even after one turns out to have an unknown length,
+    so that no argument's marks are missed on the way out.
+    """
+    marks: frozenset[Any] = frozenset()
+    unmarked: list[CtyValue[Any]] = []
+    unknown_length = False
+    total = 1
+    for arg in args:
+        stripped, arg_marks = arg.unmark()
+        marks |= arg_marks
+        unmarked.append(stripped)
+        if not _setproduct_length_known(stripped):
+            unknown_length = True
+            continue
+        total *= len(cast("Sized", stripped.value))
+
+    if unknown_length:
+        return _setproduct_unknown(unmarked, return_type).with_marks(marks)
+
+    if total == 0:
+        # Any empty argument makes the whole product empty.
+        return return_type.validate([]).with_marks(marks)
+
+    iterables = [_sequence_elements(arg) for arg in unmarked]
     result_tuples = [tuple(item) for item in product(*iterables)]
+    return return_type.validate(result_tuples).with_marks(marks)
 
-    return result_type.validate(result_tuples)
+
+# ---------------------------------------------------------------------------
+# zipmap
+# ---------------------------------------------------------------------------
 
 
-@stdlib_function("zipmap")
-def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(keys.type, CtyList | CtyTuple) or not isinstance(values.type, CtyList | CtyTuple):
-        raise CtyFunctionError("zipmap: arguments must be lists or tuples")
-    if keys.is_unknown or values.is_unknown:
-        return CtyValue.unknown(CtyMap(element_type=CtyDynamic()))
-    if keys.is_null or values.is_null:
-        return CtyMap(element_type=CtyDynamic()).validate({})  # type: ignore[no-any-return]
+def _zipmap_key_names(keys_val: CtyValue[Any]) -> list[CtyValue[Any]]:
+    """The key elements, unmarked individually.
 
-    val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
-    # An unknown *value* is no obstacle -- it goes into the map as an unknown
-    # entry, and go-cty builds exactly that map. An unknown *key* is: there is
-    # no name to file its entry under, so go-cty's ZipmapFunc gives up on the
-    # whole map. This used to hand the placeholder to `CtyMap.validate`, which
-    # refused it as a non-string key and raised out of the function.
-    if not keys.is_wholly_known():
-        return unknown_not_null(CtyMap(element_type=val_elem_type))
+    A map key cannot carry a mark, so go-cty takes each key's marks off and
+    accumulates them onto the result instead.
+    """
+    unmarked, _ = keys_val.unmark()
+    return [element.unmark()[0] for element in _sequence_elements(unmarked)]
 
-    key_list = [k.value for k in keys.value]  # type: ignore[attr-defined]
-    val_list = list(values.value)  # type: ignore[call-overload]
 
-    result_map = {key_list[i]: val_list[i] for i in range(min(len(key_list), len(val_list)))}
+def _zipmap_return_type(args: Args) -> CtyType[Any]:
+    """go-cty's `ZipmapFunc.Type` (`collection.go:1336`).
 
-    return CtyMap(element_type=val_elem_type).validate(result_map)  # type: ignore[no-any-return]
+    A tuple of values produces an **object**, one attribute per key, because
+    only an object can give each entry its own type. This returned
+    `map(dynamic)` for that case, discarding every value's type.
+
+    Nothing here checks the *keys*: their parameter is declared `list(string)`,
+    so the framework's conformance check has already refused anything else.
+    """
+    keys_val, values_val = args[0], args[1]
+    values_type = values_val.type
+
+    if isinstance(values_type, CtyList):
+        return CtyMap(element_type=values_type.element_type)
+    if isinstance(values_type, CtyTuple):
+        if not keys_val.is_wholly_known():
+            # An object needs all of its attribute names before it has a type.
+            return CtyDynamic()
+        names = _zipmap_key_names(keys_val)
+        value_types = values_type.element_types
+        if len(names) != len(value_types):
+            raise CtyFunctionError(
+                f"zipmap: number of keys ({len(names)}) does not match number of values ({len(value_types)})"
+            )
+        attribute_types: dict[str, CtyType[Any]] = {}
+        for position, name in enumerate(names):
+            if name.is_null:
+                raise CtyFunctionError(f"zipmap: keys list has null value at index {position}")
+            attribute_types[str(name.value)] = value_types[position]
+        return CtyObject(attribute_types=attribute_types)
+    raise CtyFunctionError("zipmap: values argument must be a list or tuple value")
+
+
+@stdlib_function(
+    "zipmap",
+    params=[
+        # go-cty's own `cty.List(cty.String)`, kept verbatim rather than widened
+        # like the rest of this module: the keys become map keys or object
+        # attribute names, and a key that is not a string has no name to become.
+        # Widening it let a `list(dynamic)` of containers through to `str()`,
+        # which produced a map keyed by a Python repr.
+        CtyParameter("keys", CtyList(element_type=CtyString()), allow_marked=True),
+        CtyParameter("values", CtyDynamic(), allow_marked=True),
+    ],
+    type_func=_zipmap_return_type,
+    refine_result=refine_not_null,
+    wants_return_type=True,
+    description=(
+        "Constructs a map from a list of keys and a corresponding list of values, which must both "
+        "be of the same length."
+    ),
+)
+def zipmap(keys: CtyValue[Any], values: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any]:
+    """go-cty's `ZipmapFunc` (`stdlib/collection.go:1322`).
+
+    An unknown *value* is no obstacle -- it goes into the map as an unknown
+    entry, and go-cty builds exactly that map. An unknown *key* is: there is no
+    name to file its entry under, so the whole map is undecided. This used to
+    hand the placeholder to `CtyMap.validate`, which refused it as a non-string
+    key and raised out of the function.
+
+    Mismatched lengths are an error rather than a truncation: zipping two lists
+    of different lengths silently dropped entries.
+    """
+    key_list, marks = keys.unmark()
+    value_list, value_marks = values.unmark()
+    marks |= value_marks
+
+    if not key_list.is_wholly_known():
+        return CtyValue.unknown(return_type).with_marks(marks)
+
+    names = _sequence_elements(key_list)
+    entries = _sequence_elements(value_list)
+    if len(names) != len(entries):
+        raise CtyFunctionError(
+            f"zipmap: number of keys ({len(names)}) does not match number of values ({len(entries)})"
+        )
+
+    output: dict[str, CtyValue[Any]] = {}
+    for name, entry in zip(names, entries, strict=True):
+        unmarked_name, name_marks = name.unmark()
+        marks |= name_marks
+        output[str(unmarked_name.value)] = entry
+    return return_type.validate(output).with_marks(marks)
+
+
+# ---------------------------------------------------------------------------
+# range
+# ---------------------------------------------------------------------------
 
 
 def _range_bounds(numbers: list[Decimal]) -> tuple[Decimal, Decimal, Decimal]:
@@ -877,18 +1649,16 @@ def _range_bounds(numbers: list[Decimal]) -> tuple[Decimal, Decimal, Decimal]:
             raise CtyFunctionError(ERR_RANGE_ARG_COUNT)
 
 
-@stdlib_function("range")
+@stdlib_function(
+    "range",
+    var_param=CtyParameter("params", CtyNumber()),
+    returns=CtyList(element_type=CtyNumber()),
+    refine_result=refine_not_null,
+    description="Returns a list of numbers spread evenly over a particular range.",
+)
 def range_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `RangeFunc`. Named with a suffix to leave the builtin alone."""
-    for arg in args:
-        if not isinstance(arg.type, CtyNumber):
-            raise CtyFunctionError(ERR_RANGE_ARGS_MUST_BE_NUMBERS.format(type=arg.type.ctype))
-        if arg.is_null:
-            raise CtyFunctionError(ERR_RANGE_ARGS_MUST_BE_NUMBERS.format(type="null"))
-    if any(arg.is_unknown for arg in args):
-        return CtyValue.unknown(CtyList(element_type=CtyNumber()))
-
-    start, end, step = _range_bounds([cast(Decimal, arg.value) for arg in args])
+    """go-cty's `RangeFunc` (`stdlib/sequence.go:141`). Named with a suffix to leave the builtin alone."""
+    start, end, step = _range_bounds([cast("Decimal", arg.value) for arg in args])
     if step == 0:
         # go-cty checks this with `step == cty.Zero`, which compares two structs
         # holding different big.Float pointers and so never fires: a zero step
@@ -910,7 +1680,8 @@ def range_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
             raise CtyFunctionError(ERR_RANGE_TOO_MANY_VALUES.format(limit=MAX_RANGE_LENGTH))
         numbers.append(current)
         current += step
-    return cast(CtyValue[Any], CtyList(element_type=CtyNumber()).validate(numbers))
+    generated: CtyValue[Any] = CtyList(element_type=CtyNumber()).validate(numbers)
+    return generated
 
 
 # 🌊🪢🔚

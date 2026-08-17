@@ -9,7 +9,8 @@ import pytest
 
 from pyvider.cty import BytesCapsule, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import byteslen, bytesslice
+from pyvider.cty.functions import SIGNATURES, byteslen, bytesslice
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 # Helper functions for creating CtyValues to improve test readability
@@ -38,6 +39,22 @@ class TestBytesFunctions:
         assert bytesslice(BytesCapsule.validate(b"hello"), N(1), N(4)).value == b"ello"
         assert bytesslice(BytesCapsule.validate(b"hello"), N(0), N(5)).value == b"hello"
         assert bytesslice(BytesCapsule.validate(b"hello"), N(5), N(0)).value == b""
+
+    def test_bytesslice_refuses_a_fraction(self) -> None:
+        """go-cty reads both numbers into a Go `int`, which refuses a fraction.
+
+        Added 2026-08-17. `gocty.FromCtyValue(args[1], &offset)`
+        (`stdlib/bytes.go:77`) is what turns the argument into an index, and the
+        oracle answers `value must be a whole number, between
+        -9223372036854775808 and 9223372036854775807`. `int(Decimal("0.5"))`
+        truncated to 0 instead and sliced from the start of the buffer, so
+        `bytesslice(b"hello", 0.5, 2)` returned `b"he"` where go-cty refuses.
+        """
+        buf = BytesCapsule.validate(b"hello")
+
+        for offset, length in (("0.5", "2"), ("1", "2.5"), (2**70, "1")):
+            with pytest.raises(CtyFunctionError, match="whole number"):
+                bytesslice(buf, N(offset), N(length))
 
     def test_bytesslice_bounds_are_checked_not_clamped(self) -> None:
         """Python slicing accepts everything; go-cty refuses.
@@ -79,6 +96,37 @@ class TestBytesFunctions:
         with pytest.raises(CtyFunctionError):
             bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber()))
         assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.unknown(CtyNumber())).is_unknown
+
+
+class TestBytesUnknownAnswers:
+    """An unknown answer is typed by the return type, and refined not-null.
+
+    Added 2026-08-17. Both functions declare `RefineResult: refineNonNull`
+    (`stdlib/bytes.go:42` and `70`) and this package declared neither, so an
+    unknown answer said only "unknown" where go-cty's says "unknown, and not
+    null". The type was also wider than it needed to be: `byteslen` returned an
+    unknown of *dynamic* type from its own body, where the declared return type
+    settles it as a number without any value being known.
+    """
+
+    def test_byteslen_of_an_unknown_buffer_is_an_unknown_number(self) -> None:
+        result = byteslen(CtyValue.unknown(BytesCapsule))
+
+        assert result.type == CtyNumber()
+        assert result.value == RefinedUnknownValue(is_known_null=False)
+
+    def test_bytesslice_of_an_unknown_buffer_is_an_unknown_buffer(self) -> None:
+        result = bytesslice(CtyValue.unknown(BytesCapsule), N(0), N(1))
+
+        assert result.type.equal(BytesCapsule)
+        assert result.value == RefinedUnknownValue(is_known_null=False)
+
+    def test_the_signatures_predict_the_return_types(self) -> None:
+        """A capsule type stands in a parameter and a return slot like any other."""
+        assert SIGNATURES["byteslen"].return_type([BytesCapsule]) == CtyNumber()
+        assert (
+            SIGNATURES["bytesslice"].return_type([BytesCapsule, CtyNumber(), CtyNumber()]).equal(BytesCapsule)
+        )
 
 
 # 🌊🪢🔚

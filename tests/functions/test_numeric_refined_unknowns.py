@@ -3,13 +3,35 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""Test suite for numeric functions with refined unknown values.
+"""What the numeric stdlib functions answer for a *refined* unknown argument.
 
-This test suite focuses on achieving 100% coverage of refined unknown arithmetic
-operations in numeric_functions.py, particularly:
-- Lines 35-41, 46-52, 63, 98-104 (addition refinement propagation)
-- Lines in subtraction, multiplication, division refinement logic
-- Edge cases with bounds, inclusive/exclusive flags, and special values"""
+Until 2026-08-17 this file asserted that they narrowed one: that
+`add(5, unknown >= 10)` came back as `unknown >= 15`, that
+`abs(unknown in [-15, 10])` came back as `unknown in [0, 15]`, and so on across
+`add`, `subtract`, `multiply`, `divide`, `negate` and `abs`. It does not, and
+neither does go-cty.
+
+The reason is one declared flag. `cty.Value.Add`, `Value.Multiply` and
+`Value.Absolute` really do narrow a refined operand -- `value_ops.go:623`, `683`
+and `802` -- but reaching that code needs the *function* to let an unknown
+through to its implementation, and in `stdlib/number.go` no arithmetic function
+does. `AllowUnknown: true` appears exactly four times in that file, on
+`GreaterThanFunc` (208), `GreaterThanOrEqualToFunc` (233), `LessThanFunc` (258)
+and `LessThanOrEqualToFunc` (283) -- the comparisons, which live in
+`comparison_functions.py` and do still resolve from bounds. Every arithmetic
+function short-circuits in `Function.Call` before `Impl` runs (`function.go:314`)
+and returns `cty.UnknownVal(cty.Number)` carrying only `RefineResult`, which for
+all twenty functions in the file is `refineNonNull`.
+
+Verified against the live oracle rather than read off the source. Given a
+refined unknown, `soup-go cty call` answers `{"is_known_null": false}` and
+nothing else for `abs`, `add`, `negate` and `multiply` alike.
+
+So the narrowing is not lost, it is in the wrong place: `cty.Value`'s arithmetic
+operators are where go-cty keeps it, and this package has no equivalent surface
+yet. The argument shapes the old tests drove are kept below, now asserting the
+answer go-cty gives for each.
+"""
 
 from decimal import Decimal
 
@@ -28,7 +50,6 @@ from pyvider.cty.functions import (
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-# Helper functions
 def N(v):
     """Create a known CtyNumber value."""
     return CtyNumber().validate(v)
@@ -41,424 +62,94 @@ def UnknownN(**refinements):
     return CtyValue.unknown(CtyNumber())
 
 
-class TestAdditionRefinedUnknowns:
-    """Test addition with refined unknown values - covers lines 35-67."""
-
-    def test_add_known_with_refined_lower_bound(self) -> None:
-        """Test: known + refined_unknown with lower bound (lines 35-39)."""
-        # val_a is known (5), ref_b has lower bound >= 10 (inclusive)
-        a = N(5)
-        b = UnknownN(number_lower_bound=(Decimal("10"), True))
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result should be >= 15 (5 + 10)
-        assert result.value.number_lower_bound == (Decimal("15"), True)
-
-    def test_add_known_with_refined_upper_bound(self) -> None:
-        """Test: known + refined_unknown with upper bound (lines 40-44)."""
-        a = N(5)
-        b = UnknownN(number_upper_bound=(Decimal("20"), False))
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result should be < 25 (5 + 20, exclusive)
-        assert result.value.number_upper_bound == (Decimal("25"), False)
-
-    def test_add_refined_with_known_lower_bound(self) -> None:
-        """Test: refined_unknown + known (lines 46-50)."""
-        a = UnknownN(number_lower_bound=(Decimal("10"), True))
-        b = N(3)
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result should be >= 13
-        assert result.value.number_lower_bound == (Decimal("13"), True)
-
-    def test_add_refined_with_known_upper_bound(self) -> None:
-        """Test: refined_unknown + known with upper bound (lines 51-55)."""
-        a = UnknownN(number_upper_bound=(Decimal("100"), True))
-        b = N(50)
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        assert result.value.number_upper_bound == (Decimal("150"), True)
-
-    def test_add_two_refined_lower_bounds(self) -> None:
-        """Test: refined + refined with both lower bounds (lines 57-61)."""
-        a = UnknownN(number_lower_bound=(Decimal("5"), True))
-        b = UnknownN(number_lower_bound=(Decimal("10"), False))
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Lower bound: 5 + 10 = 15, inclusive=False (True AND False)
-        assert result.value.number_lower_bound == (Decimal("15"), False)
-
-    def test_add_two_refined_upper_bounds(self) -> None:
-        """Test: refined + refined with both upper bounds (lines 62-66)."""
-        a = UnknownN(number_upper_bound=(Decimal("20"), True))
-        b = UnknownN(number_upper_bound=(Decimal("30"), True))
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Upper bound: 20 + 30 = 50, inclusive=True (True AND True)
-        assert result.value.number_upper_bound == (Decimal("50"), True)
-
-    def test_add_both_refined_with_all_bounds(self) -> None:
-        """Test: Both refined unknowns with lower and upper bounds."""
-        a = UnknownN(
-            number_lower_bound=(Decimal("5"), True),
-            number_upper_bound=(Decimal("10"), False),
-        )
-        b = UnknownN(
-            number_lower_bound=(Decimal("2"), False),
-            number_upper_bound=(Decimal("8"), True),
-        )
-        result = add(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Lower: 5 + 2 = 7 (inclusive=False)
-        assert result.value.number_lower_bound == (Decimal("7"), False)
-        # Upper: 10 + 8 = 18 (inclusive=False because 10 is exclusive)
-        assert result.value.number_upper_bound == (Decimal("18"), False)
-
-
-class TestSubtractionRefinedUnknowns:
-    """Test subtraction with refined unknowns - covers lines 70-108."""
-
-    def test_subtract_refined_minus_known_lower_bound(self) -> None:
-        """Test: refined - known with lower bound (lines 76-80)."""
-        a = UnknownN(number_lower_bound=(Decimal("20"), True))
-        b = N(5)
-        result = subtract(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result >= 15 (20 - 5)
-        assert result.value.number_lower_bound == (Decimal("15"), True)
-
-    def test_subtract_refined_minus_known_upper_bound(self) -> None:
-        """Test: refined - known with upper bound (lines 81-85)."""
-        a = UnknownN(number_upper_bound=(Decimal("100"), False))
-        b = N(10)
-        result = subtract(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result < 90 (100 - 10)
-        assert result.value.number_upper_bound == (Decimal("90"), False)
-
-    def test_subtract_known_minus_refined_upper_bound(self) -> None:
-        """Test: known - refined with upper bound creates lower bound (lines 87-91)."""
-        a = N(50)
-        b = UnknownN(number_upper_bound=(Decimal("20"), True))
-        result = subtract(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result >= 30 (50 - 20)
-        assert result.value.number_lower_bound == (Decimal("30"), True)
-
-    def test_subtract_known_minus_refined_lower_bound(self) -> None:
-        """Test: known - refined with lower bound creates upper bound (lines 92-96)."""
-        a = N(50)
-        b = UnknownN(number_lower_bound=(Decimal("10"), False))
-        result = subtract(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result <= 40 (50 - 10)
-        assert result.value.number_upper_bound == (Decimal("40"), False)
-
-    def test_subtract_both_refined_lower_bound(self) -> None:
-        """Test: refined - refined with bounds (lines 98-102)."""
-        a = UnknownN(number_lower_bound=(Decimal("30"), True))
-        b = UnknownN(number_upper_bound=(Decimal("10"), True))
-        result = subtract(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result >= 20 (30 - 10)
-        assert result.value.number_lower_bound == (Decimal("20"), True)
-
-    def test_subtract_both_refined_upper_bound(self) -> None:
-        """Test: refined - refined upper bound (lines 103-107)."""
-        a = UnknownN(number_upper_bound=(Decimal("50"), False))
-        b = UnknownN(number_lower_bound=(Decimal("5"), True))
-        result = subtract(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result < 45 (50 - 5), exclusive because a is exclusive
-        assert result.value.number_upper_bound == (Decimal("45"), False)
-
-
-class TestMultiplicationRefinedUnknowns:
-    """Test multiplication with refined unknowns - covers lines 111-140."""
-
-    def test_multiply_known_positive_with_refined_lower(self) -> None:
-        """Test: positive known * refined (lines 118-123)."""
-        a = N(2)
-        b = UnknownN(number_lower_bound=(Decimal("10"), True))
-        result = multiply(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result >= 20 (2 * 10)
-        assert result.value.number_lower_bound == (Decimal("20"), True)
-
-    def test_multiply_known_positive_with_refined_upper(self) -> None:
-        """Test: positive known * refined with upper bound (lines 124-128)."""
-        a = N(3)
-        b = UnknownN(number_upper_bound=(Decimal("15"), False))
-        result = multiply(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result < 45 (3 * 15)
-        assert result.value.number_upper_bound == (Decimal("45"), False)
-
-    def test_multiply_known_negative_with_refined_bounds(self) -> None:
-        """Test: negative known * refined (bounds flip) (lines 129-139)."""
-        a = N(-2)
-        b = UnknownN(
-            number_lower_bound=(Decimal("10"), True),
-            number_upper_bound=(Decimal("20"), False),
-        )
-        result = multiply(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Bounds flip for negative multiplier
-        # New lower: upper * -2 = 20 * -2 = -40 (exclusive)
-        assert result.value.number_lower_bound == (Decimal("-40"), False)
-        # New upper: lower * -2 = 10 * -2 = -20 (inclusive)
-        assert result.value.number_upper_bound == (Decimal("-20"), True)
-
-    def test_multiply_refined_with_known_positive(self) -> None:
-        """Test: refined * positive known."""
-        a = UnknownN(number_lower_bound=(Decimal("5"), True))
-        b = N(4)
-        result = multiply(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        assert result.value.number_lower_bound == (Decimal("20"), True)
-
-    def test_multiply_by_zero_known(self) -> None:
-        """Test: multiply by zero (early return in multiply function)."""
-        a = UnknownN(number_lower_bound=(Decimal("10"), True))
-        b = N(0)
-        result = multiply(a, b)
-
-        # Should return exactly zero, not unknown
-        assert not result.is_unknown
-        assert result.value == Decimal("0")
-
-
-class TestDivisionRefinedUnknowns:
-    """Test division with refined unknowns - covers lines 143-169."""
-
-    def test_divide_refined_by_known_positive(self) -> None:
-        """Test: refined / positive known (lines 147-157)."""
-        a = UnknownN(number_lower_bound=(Decimal("20"), True))
-        b = N(2)
-        result = divide(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result >= 10 (20 / 2)
-        assert result.value.number_lower_bound == (Decimal("10"), True)
-
-    def test_divide_refined_by_known_positive_upper_bound(self) -> None:
-        """Test: refined / positive known with upper bound (lines 153-157)."""
-        a = UnknownN(number_upper_bound=(Decimal("100"), False))
-        b = N(5)
-        result = divide(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Result < 20 (100 / 5)
-        assert result.value.number_upper_bound == (Decimal("20"), False)
-
-    def test_divide_refined_by_known_negative(self) -> None:
-        """Test: refined / negative known (bounds flip) (lines 158-168)."""
-        a = UnknownN(
-            number_lower_bound=(Decimal("10"), True),
-            number_upper_bound=(Decimal("20"), True),
-        )
-        b = N(-2)
-        result = divide(a, b)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Bounds flip for negative divisor
-        # New lower: upper / -2 = 20 / -2 = -10
-        assert result.value.number_lower_bound == (Decimal("-10"), True)
-        # New upper: lower / -2 = 10 / -2 = -5
-        assert result.value.number_upper_bound == (Decimal("-5"), True)
-
-    def test_divide_by_zero_with_unknown(self) -> None:
-        """Test: division by zero still raises error even with unknowns."""
-        a = UnknownN(number_lower_bound=(Decimal("10"), True))
-        b = N(0)
-        with pytest.raises(CtyFunctionError, match="divide by zero"):
-            divide(a, b)
-
-
-class TestNegateRefinedUnknowns:
-    """Test negate with refined unknowns - covers lines 263-280."""
-
-    def test_negate_refined_with_both_bounds(self) -> None:
-        """Test: negate refined unknown (bounds swap and flip sign)."""
-        a = UnknownN(
-            number_lower_bound=(Decimal("5"), True),
-            number_upper_bound=(Decimal("10"), False),
-        )
-        result = negate(a)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Lower becomes -upper: -10 (exclusive)
-        assert result.value.number_lower_bound == (Decimal("-10"), False)
-        # Upper becomes -lower: -5 (inclusive)
-        assert result.value.number_upper_bound == (Decimal("-5"), True)
-
-    def test_negate_refined_only_lower(self) -> None:
-        """Test: negate with only lower bound."""
-        a = UnknownN(number_lower_bound=(Decimal("7"), False))
-        result = negate(a)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Only upper bound in result: -7 (exclusive)
-        assert result.value.number_upper_bound == (Decimal("-7"), False)
-        assert result.value.number_lower_bound is None
-
-    def test_negate_refined_only_upper(self) -> None:
-        """Test: negate with only upper bound."""
-        a = UnknownN(number_upper_bound=(Decimal("15"), True))
-        result = negate(a)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Only lower bound in result: -15 (inclusive)
-        assert result.value.number_lower_bound == (Decimal("-15"), True)
-        assert result.value.number_upper_bound is None
-
-    def test_negate_unrefined_unknown(self) -> None:
-        """Test: negate unknown without refinements."""
-        a = UnknownN()
-        result = negate(a)
-
-        assert result.is_unknown
-        # Should return plain unknown, not refined
-        assert not isinstance(result.value, RefinedUnknownValue)
-
-
-class TestAbsRefinedUnknowns:
-    """Test abs_fn with refined unknowns - covers lines 292-317."""
-
-    def test_abs_refined_all_positive(self) -> None:
-        """Test: abs(refined) where lower >= 0 (returns input unchanged)."""
-        a = UnknownN(
-            number_lower_bound=(Decimal("5"), True),
-            number_upper_bound=(Decimal("10"), False),
-        )
-        result = abs_fn(a)
-
-        assert result.is_unknown
-        # Should return the input unchanged
-        assert result.value == a.value
-
-    def test_abs_refined_all_negative(self) -> None:
-        """Test: abs(refined) where upper <= 0 (flip both bounds)."""
-        a = UnknownN(
-            number_lower_bound=(Decimal("-10"), True),
-            number_upper_bound=(Decimal("-5"), False),
-        )
-        result = abs_fn(a)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Lower: -upper = -(-5) = 5 (exclusive)
-        assert result.value.number_lower_bound == (Decimal("5"), False)
-        # Upper: -lower = -(-10) = 10 (inclusive)
-        assert result.value.number_upper_bound == (Decimal("10"), True)
-
-    def test_abs_refined_crosses_zero(self) -> None:
-        """Test: abs(refined) where range crosses zero (lines 304-308)."""
-        a = UnknownN(
-            number_lower_bound=(Decimal("-15"), True),
-            number_upper_bound=(Decimal("10"), False),
-        )
-        result = abs_fn(a)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # Lower becomes 0 (inclusive)
-        assert result.value.number_lower_bound == (Decimal("0"), True)
-        # Upper becomes max(abs(-15), abs(10)) = 15
-        assert result.value.number_upper_bound == (Decimal("15"), True)
-
-    def test_abs_refined_only_lower_positive(self) -> None:
-        """Test: abs with only lower bound >= 0 (lines 309-310)."""
-        a = UnknownN(number_lower_bound=(Decimal("8"), True))
-        result = abs_fn(a)
-
-        assert result.is_unknown
-        # Should return unchanged
-        assert result.value == a.value
-
-    def test_abs_refined_only_upper_negative(self) -> None:
-        """Test: abs with only upper bound <= 0 (lines 311-312)."""
-        a = UnknownN(number_upper_bound=(Decimal("-3"), False))
-        result = abs_fn(a)
-
-        assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        # New lower: -upper = 3 (exclusive)
-        assert result.value.number_lower_bound == (Decimal("3"), False)
+def assert_only_not_null(result) -> None:
+    """The whole answer go-cty gives: an unknown number, promised non-null.
+
+    Asserted as the *complete* refinement rather than as "not null is present",
+    so a bound that reappeared would fail here instead of passing unnoticed.
+    """
+    assert result.is_unknown
+    assert isinstance(result.type, CtyNumber), "the short-circuit is typed by the return type"
+    assert result.value == RefinedUnknownValue(is_known_null=False)
+
+
+LOWER_10 = {"number_lower_bound": (Decimal("10"), True)}
+UPPER_20 = {"number_upper_bound": (Decimal("20"), False)}
+BOTH_10_20 = {**LOWER_10, "number_upper_bound": (Decimal("20"), True)}
+
+# Every argument shape the narrowing tests used to drive, one per row.
+CASES = [
+    ("add(5, >=10)", lambda: add(N(5), UnknownN(**LOWER_10))),
+    ("add(5, <20)", lambda: add(N(5), UnknownN(**UPPER_20))),
+    ("add(>=10, 3)", lambda: add(UnknownN(**LOWER_10), N(3))),
+    ("add(>=10, >=10)", lambda: add(UnknownN(**LOWER_10), UnknownN(**LOWER_10))),
+    ("add([10,20], [10,20])", lambda: add(UnknownN(**BOTH_10_20), UnknownN(**BOTH_10_20))),
+    ("add(unknown, unknown)", lambda: add(UnknownN(), UnknownN())),
+    ("subtract([10,20], 5)", lambda: subtract(UnknownN(**BOTH_10_20), N(5))),
+    ("subtract(50, <20)", lambda: subtract(N(50), UnknownN(**UPPER_20))),
+    ("subtract(>=10, >=10)", lambda: subtract(UnknownN(**LOWER_10), UnknownN(**LOWER_10))),
+    ("multiply(2, >=10)", lambda: multiply(N(2), UnknownN(**LOWER_10))),
+    ("multiply([10,20], -2)", lambda: multiply(UnknownN(**BOTH_10_20), N(-2))),
+    ("divide([10,20], 2)", lambda: divide(UnknownN(**BOTH_10_20), N(2))),
+    ("divide([10,20], -2)", lambda: divide(UnknownN(**BOTH_10_20), N(-2))),
+    ("negate([10,20])", lambda: negate(UnknownN(**BOTH_10_20))),
+    ("negate(>=10)", lambda: negate(UnknownN(**LOWER_10))),
+    ("negate(unknown)", lambda: negate(UnknownN())),
+    ("abs([10,20])", lambda: abs_fn(UnknownN(**BOTH_10_20))),
+    ("abs(>=10)", lambda: abs_fn(UnknownN(**LOWER_10))),
+    ("abs(<20)", lambda: abs_fn(UnknownN(**UPPER_20))),
+    (
+        "abs([-15,10])",
+        lambda: abs_fn(
+            UnknownN(
+                number_lower_bound=(Decimal("-15"), True),
+                number_upper_bound=(Decimal("10"), False),
+            )
+        ),
+    ),
+    ("abs(unknown)", lambda: abs_fn(UnknownN())),
+]
+
+
+@pytest.mark.parametrize(("label", "call"), CASES, ids=[label for label, _ in CASES])
+def test_an_unknown_operand_discards_its_refinements(label: str, call) -> None:
+    """Each of these narrowed the result until 2026-08-17. See the module docstring."""
+    assert_only_not_null(call())
+
+
+class TestKnownArgumentsThatUsedToShortCircuit:
+    """Two answers the old propagation reached without computing anything."""
+
+    def test_multiplying_by_a_known_zero_is_still_unknown(self) -> None:
+        """This asserted a known `0` until 2026-08-17.
+
+        `cty.Value.Multiply` does answer zero for a zero factor, but only on the
+        branch it takes when the *other* factor is unknown (`value_ops.go:679`) --
+        and `MultiplyFunc` never reaches its implementation with an unknown
+        argument, so that branch is unreachable through the function. Verified
+        against go-cty: `multiply(0, unknown)` is an unknown number.
+
+        The distinction is real rather than pedantic: the other factor could turn
+        out to be an infinity, and `0 * Infinity` is an error, not zero.
+        """
+        assert_only_not_null(multiply(UnknownN(**LOWER_10), N(0)))
+        assert_only_not_null(multiply(N(0), UnknownN()))
+
+    def test_dividing_a_refined_unknown_by_zero_is_unknown_not_an_error(self) -> None:
+        """This asserted a "divide by zero" refusal until 2026-08-17.
+
+        Neither half of that survives: go-cty does not refuse a zero divisor at
+        all -- it answers an infinity -- and with an unknown dividend it never
+        looks at the divisor, because the result is undecided either way.
+        """
+        assert_only_not_null(divide(UnknownN(**LOWER_10), N(0)))
 
 
 class TestEdgeCases:
-    """Additional edge cases for comprehensive mutation testing."""
-
-    def test_add_unrefined_unknowns(self) -> None:
-        """Test: adding two plain unknowns returns plain unknown."""
-        a = UnknownN()
-        b = UnknownN()
-        result = add(a, b)
-
-        assert result.is_unknown
-        # Should return plain unknown (no refinements)
-        assert not isinstance(result.value, RefinedUnknownValue)
-
-    def test_multiply_refined_by_zero_boundary(self) -> None:
-        """Test: multiply when known_val equals POSITIVE_BOUNDARY."""
-        # This tests the boundaries of the conditionals in multiply
-        a = N(0)  # Exactly at zero boundary
-        b = UnknownN(number_lower_bound=(Decimal("10"), True))
-        result = multiply(a, b)
-
-        # Should return zero (early exit in multiply)
-        assert not result.is_unknown
-        assert result.value == Decimal("0")
-
     def test_type_errors_with_refined_unknowns(self) -> None:
-        """Test: type errors still raised for refined unknowns."""
-        a = UnknownN(number_lower_bound=(Decimal("5"), True))
-        b = CtyString().validate("not a number")
-
+        """A wrongly typed argument is refused before the refinement is consulted."""
         with pytest.raises(CtyFunctionError):
-            add(a, b)
+            add(UnknownN(**LOWER_10), CtyString().validate("not a number"))
 
     def test_a_null_is_refused_even_beside_a_refined_unknown(self) -> None:
         """This used to assert that a null "propagates to unknown".
@@ -468,7 +159,31 @@ class TestEdgeCases:
         ever consulted.
         """
         with pytest.raises(CtyFunctionError):
-            add(CtyValue.null(CtyNumber()), UnknownN(number_lower_bound=(Decimal("10"), True)))
+            add(CtyValue.null(CtyNumber()), UnknownN(**LOWER_10))
+
+    def test_a_marked_unknown_loses_its_mark(self) -> None:
+        """Pinned because it is a mark leak, and it is go-cty's mark leak.
+
+        `abs` and `negate` set `AllowMarked`, which means the framework does not
+        collect their arguments' marks for re-application -- the implementation
+        is expected to, and `cty.Value.Absolute` does. But when the argument is
+        *unknown* the implementation never runs: `Function.Call` short-circuits
+        and returns `cty.UnknownVal(expectedType).WithMarks(resultMarks...)` with
+        `resultMarks` empty (`function.go:339`). Verified against the oracle,
+        which reports no marks for `abs` of a marked unknown and
+        `["sensitive"]` for `abs` of a marked known.
+
+        Recorded here rather than fixed. Diverging from go-cty on which values
+        carry a sensitivity mark is not a decision this migration gets to make on
+        its own, and a silent difference is worse than a documented one.
+        """
+        from pyvider.cty.marks import CtyMark
+
+        sensitive = CtyMark("sensitive")
+
+        assert abs_fn(N(-3).mark(sensitive)).marks == frozenset({sensitive})
+        assert abs_fn(UnknownN().mark(sensitive)).marks == frozenset()
+        assert negate(UnknownN().mark(sensitive)).marks == frozenset()
 
 
 # 🌊🪢🔚

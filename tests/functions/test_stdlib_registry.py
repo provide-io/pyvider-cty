@@ -126,6 +126,21 @@ NOT_YET_PORTED: frozenset[str] = frozenset()
 
 
 class TestTheRegistryIsComplete:
+    def test_every_registered_function_declares_its_signature(self) -> None:
+        """`unmigrated()` stays empty, and the count proves the population.
+
+        The empty list alone cannot prove completeness: a module that fails to
+        import registers nothing, and an empty registry has nothing unmigrated.
+        The count is the other half of the claim -- it was measured at 83 when
+        the migration finished on 2026-08-17, and go-cty gaining a function
+        should fail here so the addition is a decision rather than a drift.
+        """
+        from pyvider.cty.functions._framework import SIGNATURES, unmigrated
+
+        assert unmigrated() == []
+        assert len(STDLIB) == 83
+        assert len(SIGNATURES) == 83
+
     def test_every_exported_function_is_registered(self) -> None:
         """A function reachable by import but not by name is half-published.
 
@@ -133,7 +148,22 @@ class TestTheRegistryIsComplete:
         from it is invisible to a caller dispatching by name.
         """
         registered = {fn.__name__ for fn in STDLIB.values()}
-        exported = set(F.__all__) - {"STDLIB"}
+        # The framework's own names are exported alongside the functions since
+        # 2026-08-17. They are declarations *about* functions, not functions, so
+        # they have no place in a registry of go-cty stdlib names.
+        framework_exports = {
+            "SIGNATURES",
+            "STDLIB",
+            "CtyArgumentError",
+            "CtyFunction",
+            "CtyFunctionPanicError",
+            "CtyFunctionSpec",
+            "CtyParameter",
+            "refine_not_null",
+            "static_return_type",
+            "unpredictable",
+        }
+        exported = set(F.__all__) - framework_exports
 
         assert exported - registered == set()
 
@@ -198,12 +228,24 @@ class TestTheRegistryIsUsable:
 class TestTheRegistryRefusesAClash:
     def test_two_functions_cannot_claim_one_name(self) -> None:
         """The failure this guards is silent otherwise: last one registered wins."""
-        from pyvider.cty.functions._framework import stdlib_function
+        from pyvider.cty import CtyString
+        from pyvider.cty.functions._framework import CtyParameter, stdlib_function
 
         with pytest.raises(ValueError, match="are declared as the stdlib function"):
 
-            @stdlib_function("upper")
+            @stdlib_function("upper", params=[CtyParameter("s", CtyString())], returns=CtyString())
             def definitely_not_upper() -> None: ...
+
+    def test_a_declaration_without_parameters_is_refused(self) -> None:
+        """Since 2026-08-17 there is no pre-framework fallback: a declaration
+        that names no parameters has nothing to say about what it accepts, which
+        is the state the framework exists to end."""
+        from pyvider.cty.functions._framework import stdlib_function
+
+        with pytest.raises(ValueError, match="declares its parameters"):
+
+            @stdlib_function("upper")
+            def parameterless() -> None: ...
 
 
 # 🌊🪢🔚

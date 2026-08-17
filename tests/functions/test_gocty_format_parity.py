@@ -32,10 +32,18 @@ from pyvider.cty import (
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions import format_fn, formatlist
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 def s(text: str) -> CtyValue[Any]:
     return CtyString().validate(text)
+
+
+def _refinement(value: CtyValue[Any]) -> RefinedUnknownValue:
+    """What an unknown result promises about itself."""
+    assert value.is_unknown
+    assert isinstance(value.value, RefinedUnknownValue)
+    return value.value
 
 
 def n(value: Any) -> CtyValue[Any]:
@@ -226,6 +234,72 @@ class TestFormatList:
         assert result.is_unknown
         assert result.type.equal(CtyList(element_type=CtyString()))
 
+    def test_an_unknown_scalar_still_produces_a_list_of_the_right_length(self) -> None:
+        """An undecided scalar decides no lengths, so only the rows are undecided.
+
+        This asserted nothing until 2026-08-17 because the package answered a
+        wholly unknown list for any unknown argument at all. go-cty classifies
+        each argument first (`format.go:96`): a scalar -- unknown or not -- goes
+        to `singleVals` and is reused on every iteration, and only a *sequence*
+        of undecided length can make the whole list unknown. So the list's
+        length is still whatever the sequence arguments say, and each row that
+        reads an undecided value is individually unknown.
+
+        Verified against the oracle: `formatlist("%s%s", ["a","b"], unknown)`
+        answers a known two-element list of unknowns refined not-null.
+        """
+        result = formatlist(s("%s%s"), strings(["a", "b"]), CtyValue.unknown(CtyString()))
+
+        assert not result.is_unknown
+        rows = list(result.value)
+        assert len(rows) == 2
+        assert all(_refinement(row).is_known_null is False for row in rows)
+
+    def test_an_unknown_scalar_alone_produces_one_undecided_row(self) -> None:
+        result = formatlist(s("%s!"), CtyValue.unknown(CtyString()))
+
+        assert not result.is_unknown
+        (row,) = result.value
+        assert _refinement(row).is_known_null is False
+
+    def test_a_set_holding_an_unknown_defers_the_whole_list(self) -> None:
+        """A set's length is not its element count while an element is undecided.
+
+        Asserted the opposite direction until 2026-08-17: this package read
+        `len()` off the stored frozenset and formatted two rows. go-cty refuses
+        to iterate such a set at all (`format.go:101` calling `Value.Length`,
+        `value_ops.go:1126`), because an unknown element may turn out to equal
+        another member and coalesce with it -- so the *number* of rows is not
+        yet decided, and a known list of the wrong length would be worse than
+        no answer. A store of exactly one element is the exception: there is
+        nothing else in it to coalesce with.
+        """
+        partial = CtySet(element_type=CtyString()).validate(["z", CtyValue.unknown(CtyString())])
+
+        assert formatlist(s("<%s>"), partial).is_unknown
+
+        lone = CtySet(element_type=CtyString()).validate([CtyValue.unknown(CtyString())])
+        single_row = formatlist(s("<%s>"), lone)
+
+        assert not single_row.is_unknown
+        assert len(list(single_row.value)) == 1
+
+    def test_a_length_disagreement_is_reported_even_behind_an_unknown(self) -> None:
+        """The length checks run against every argument, undecided ones included.
+
+        Until 2026-08-17 the first unknown argument ended the pass and the call
+        answered unknown, hiding a mistake in the arguments that follow it.
+        go-cty deliberately falls through to keep checking (`format.go:104`),
+        and the oracle reports the inconsistency for this very call.
+        """
+        with pytest.raises(CtyFunctionError, match="inconsistent"):
+            formatlist(
+                s("%s%s%s"),
+                CtyValue.unknown(CtyList(element_type=CtyString())),
+                strings(["a", "b"]),
+                strings(["1"]),
+            )
+
 
 class TestEdges:
     """Paths a well-behaved format string never reaches."""
@@ -238,9 +312,18 @@ class TestEdges:
             format_fn(s("%"), n(1))
 
     def test_a_null_format_string_is_refused(self) -> None:
-        with pytest.raises(CtyFunctionError):
+        """Since 2026-08-17 the refusal comes from the declaration, not the body.
+
+        Both functions declare their format parameter without `AllowNull`
+        (`format.go:22`, `format.go:62`), so the framework refuses the null
+        before either body runs and says `argument 0 must not be null` -- which
+        is what go-cty's own message is. It used to be raised by hand as
+        `unsupported value for the format string at 0`; the variadic arguments
+        still allow a null, because `%v` renders one.
+        """
+        with pytest.raises(CtyFunctionError, match="must not be null"):
             format_fn(CtyValue.null(CtyString()), s("a"))
-        with pytest.raises(CtyFunctionError):
+        with pytest.raises(CtyFunctionError, match="must not be null"):
             formatlist(CtyValue.null(CtyString()), s("a"))
 
     def test_rounding_that_carries_bumps_the_exponent(self) -> None:
@@ -311,6 +394,40 @@ class TestUnknowns:
         partial = CtyObject(attribute_types={"a": CtyString()}).validate({"a": CtyValue.unknown(CtyString())})
 
         assert format_fn(s("%v"), partial).is_unknown
+
+    def test_the_result_is_refined_not_null_even_when_it_is_unknown(self) -> None:
+        """Both functions carry `RefineResult: refineNonNull` (`format.go:34`, `format.go:73`).
+
+        New on 2026-08-17: this package carried no refinement at all, so it
+        answered "unknown" where go-cty answers "unknown, and not null" --
+        information Terraform acts on during a plan.
+        """
+        deferred = format_fn(s("%s"), CtyValue.unknown(CtyString()))
+        listed = formatlist(s("%s"), CtyValue.unknown(CtyList(element_type=CtyString())))
+
+        assert _refinement(deferred).is_known_null is False
+        assert _refinement(listed).is_known_null is False
+
+    def test_the_literal_text_before_the_first_verb_is_promised(self) -> None:
+        """go-cty refines the deferred string with the template's literal prefix.
+
+        New on 2026-08-17, from `format.go:44`: declining to format does not
+        make the leading characters undecided, and a consumer can act on them.
+
+        The promise here is one character shorter than go-cty's, which answers
+        `"hi "`. go-cty's `ctystrings.SafeKnownPrefix` keeps a trailing
+        delimiter -- space is in its allowlist of characters that cannot combine
+        with what follows (`ctystrings/prefix.go:140`) -- while this package's
+        `safe_known_prefix` always drops the final grapheme cluster. That is a
+        weaker promise rather than a wrong one, and `refinement.py` is where it
+        would be closed.
+        """
+        deferred = format_fn(s("hi %s"), CtyValue.unknown(CtyString()))
+
+        assert _refinement(deferred).string_prefix == "hi"
+
+    def test_no_prefix_is_promised_when_a_verb_comes_first(self) -> None:
+        assert _refinement(format_fn(s("%s!"), CtyValue.unknown(CtyString()))).string_prefix is None
 
 
 # 🌊🪢🔚

@@ -11,11 +11,15 @@ written -- notably that `formatdate` uses go-cty's own YYYY-MM-DD dialect and
 not Go's 2006-01-02 layout, which is what this package used to implement.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 
-from pyvider.cty import CtyString
+from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
-from pyvider.cty.functions import formatdate, timeadd
+from pyvider.cty.functions import SIGNATURES, formatdate, timeadd
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 
 def S(v: str) -> object:
@@ -246,6 +250,54 @@ class TestTimeAdd:
         """
         with pytest.raises(CtyFunctionError):
             timeadd(S("2020-01-01T00:00:00Z"), S(duration))
+
+
+class TestTheDeclaredSignatures:
+    """What each function accepts and promises, taken from its `function.Spec`."""
+
+    def test_both_return_a_string_before_any_value_is_known(self) -> None:
+        assert SIGNATURES["formatdate"].return_type([CtyString(), CtyString()]) == CtyString()
+        assert SIGNATURES["timeadd"].return_type([CtyString(), CtyString()]) == CtyString()
+
+    @pytest.mark.parametrize("position", [0, 1])
+    @pytest.mark.parametrize("function", [formatdate, timeadd])
+    def test_neither_parameter_accepts_a_null(
+        self, function: Callable[..., CtyValue[Any]], position: int
+    ) -> None:
+        """Changed on 2026-08-17: both used to answer *unknown* for a null.
+
+        Neither declaration sets `AllowNull` (`datetime.go:16`,
+        `datetime.go:211`), so go-cty refuses the call outright -- and it must,
+        because a null is a value that is definitely absent rather than one
+        nobody knows yet, and answering unknown for it invites a plan that can
+        never apply. The message is now the framework's, matching go-cty's own
+        `argument must not be null`.
+        """
+        arguments = [S("YYYY") if function is formatdate else S(UTC_NOON), S("1h")]
+        arguments[position] = CtyValue.null(CtyString())
+
+        with pytest.raises(CtyFunctionError, match="must not be null"):
+            function(*arguments)
+
+    def test_formatdate_promises_a_non_null_answer_and_timeadd_does_not(self) -> None:
+        """The asymmetry is go-cty's, and it is transcribed rather than tidied.
+
+        `FormatDateFunc` carries `RefineResult: refineNonNull`
+        (`datetime.go:27`) and `TimeAddFunc` carries no `RefineResult` at all
+        (`datetime.go:209`). Nothing in go-cty explains why -- `timeadd` always
+        produces a timestamp -- but the oracle answers exactly this: an
+        unknown-and-not-null string from `formatdate`, a bare unknown from
+        `timeadd`. A refinement invented here would be a promise Terraform acts
+        on with nothing behind it.
+
+        New on 2026-08-17; before it, neither function refined anything.
+        """
+        deferred_format = formatdate(CtyValue.unknown(CtyString()), S(UTC_NOON))
+        deferred_add = timeadd(CtyValue.unknown(CtyString()), S("1h"))
+
+        assert isinstance(deferred_format.value, RefinedUnknownValue)
+        assert deferred_format.value.is_known_null is False
+        assert not isinstance(deferred_add.value, RefinedUnknownValue)
 
 
 # 🌊🪢🔚

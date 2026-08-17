@@ -308,14 +308,30 @@ class TestRegexReplace:
             regexreplace(s("x"), s("("), s("y"))
 
     @pytest.mark.parametrize("index", [0, 1, 2])
-    def test_a_null_or_unknown_argument_yields_unknown(self, index: int) -> None:
-        """go-cty raises "argument must not be null" instead. Left as unknown
-        to move with the same deferred strictness change as `contains` and
-        `length`, rather than one function at a time."""
+    def test_an_unknown_argument_yields_unknown(self, index: int) -> None:
         args = [s("ab"), s("b"), s("c")]
         args[index] = CtyValue.unknown(CtyString())
 
         assert regexreplace(*args).is_unknown
+
+    @pytest.mark.parametrize("index", [0, 1, 2])
+    def test_a_null_argument_is_refused(self, index: int) -> None:
+        """Was folded in with the unknown case above until 2026-08-17.
+
+        The old docstring said go-cty raises "argument must not be null" here
+        and that this was "left as unknown to move with the same deferred
+        strictness change as `contains` and `length`". That change has now
+        arrived for the whole module: `RegexReplaceFunc` declares three
+        parameters with `AllowNull` unset (`stdlib/string_replace.go:47`), so
+        the framework refuses a null before the body runs. An unknown is a value
+        nobody knows yet; a null is one that is definitely absent, and treating
+        them alike is what let a null reach a computation at all.
+        """
+        args = [s("ab"), s("b"), s("c")]
+        args[index] = CtyValue.null(CtyString())
+
+        with pytest.raises(CtyFunctionError):
+            regexreplace(*args)
 
 
 # 🌊🪢🔚

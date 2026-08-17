@@ -8,7 +8,17 @@ from __future__ import annotations
 
 # pyvider-cty/src/pyvider/cty/functions/__init__.py
 # This file makes the 'functions' module a package.
-from pyvider.cty.functions._framework import STDLIB
+from pyvider.cty.functions._framework import SIGNATURES, STDLIB
+from pyvider.cty.functions._function import (
+    CtyArgumentError,
+    CtyFunction,
+    CtyFunctionPanicError,
+    CtyFunctionSpec,
+    CtyParameter,
+    refine_not_null,
+    static_return_type,
+    unpredictable,
+)
 from pyvider.cty.functions.bool_functions import and_fn, not_fn, or_fn
 from pyvider.cty.functions.bytes_functions import byteslen, bytesslice
 from pyvider.cty.functions.collection_functions import (
@@ -99,7 +109,13 @@ from pyvider.cty.functions.string_functions import (
 from pyvider.cty.functions.structural_functions import coalesce
 
 __all__ = [
+    "SIGNATURES",
     "STDLIB",
+    "CtyArgumentError",
+    "CtyFunction",
+    "CtyFunctionPanicError",
+    "CtyFunctionSpec",
+    "CtyParameter",
     "abs_fn",
     "add",
     "and_fn",
@@ -152,6 +168,7 @@ __all__ = [
     "parseint_fn",
     "pow_fn",
     "range_fn",
+    "refine_not_null",
     "regex",
     "regexall",
     "regexreplace",
@@ -167,6 +184,7 @@ __all__ = [
     "slice",
     "sort",
     "split",
+    "static_return_type",
     "strlen",
     "strrev",
     "substr",
@@ -180,6 +198,7 @@ __all__ = [
     "trimprefix",
     "trimspace",
     "trimsuffix",
+    "unpredictable",
     "upper",
     "values",
     "zipmap",

@@ -97,14 +97,35 @@ class TestFinalCoverageSuite:
         assert _ext_hook(99, b"some-data") is UNREFINED_UNKNOWN
 
     # --- Coverage for: src/pyvider/cty/functions/structural_functions.py ---
-    def test_coalesce_with_unknown(self) -> None:
-        """Covers coalesce returning the first non-null, non-unknown value."""
+    def test_coalesce_stops_at_an_unknown(self) -> None:
+        """Until 2026-08-17 this asserted the unknown was skipped over.
+
+        The comment said "the presence of an unknown value before the real value
+        should not prevent the real value from being found", and preventing that
+        is exactly the function's job. go-cty's `CoalesceFunc` returns
+        `cty.UnknownVal(retType)` the moment it meets an argument that is not
+        known (`stdlib/general.go:85`), because whatever the unknown resolves to
+        wins unless it is null -- so the later argument cannot be claimed as the
+        answer, and skipping ahead committed to a value a later apply could
+        contradict. Verified against go-cty: `coalesce(null, unknown, "hello")`
+        is an unknown string refined not-null, and so is the two-argument
+        `coalesce(unknown, "b")`.
+
+        A null is different, and the loop's next line is the distinction: a null
+        is definitely absent, so moving past it is sound -- verified the same
+        way, `coalesce(null, "b")` is `"b"`.
+        """
         null_val = CtyValue.null(CtyString())
         unknown_val = CtyValue.unknown(CtyString())
         real_val = CtyString().validate("hello")
-        # The presence of an unknown value before the real value should not
-        # prevent the real value from being found.
-        assert coalesce(null_val, unknown_val, real_val) == real_val
+
+        result = coalesce(null_val, unknown_val, real_val)
+
+        assert result.is_unknown
+        assert result.type.equal(CtyString())
+        # `refineNonNull` still applies on the short-circuit path
+        # (`general.go:82`): the answer is undecided, its non-nullness is not.
+        assert result.value.is_known_null is False
 
 
 # 🌊🪢🔚

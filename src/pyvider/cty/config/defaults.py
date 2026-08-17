@@ -165,8 +165,6 @@ SECONDS_PER_SECOND = 1
 # =================================
 # Zero/null/boundary values
 # =================================
-ZERO_VALUE = 0
-POSITIVE_BOUNDARY = 0
 ONE_VALUE = 1
 TWO_VALUE = 2
 
@@ -195,8 +193,6 @@ ERR_VALUE_FOR_MAP = "Value for CtyMap must be a dict"
 ERR_VALUE_FOR_LIST_SET = "Value for CtyList or CtySet must be iterable"
 ERR_VALUE_FOR_TUPLE = "Value for CtyTuple must be a tuple"
 ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE = "Object of type {type_name} is not MessagePack serializable"
-ERR_CANNOT_COMPARE = "Cannot compare {type1} with {type2}"
-ERR_ALL_ARGS_SAME_TYPE = "All arguments to {op} must be of the same type (all numbers or all strings)"
 ERR_MIN_ONE_ARG = "{op} requires at least one argument"
 ERR_CANNOT_INFER_FROM_CTY_TYPE = "Cannot infer data type from a CtyType instance: {type_name}"
 ERR_CANNOT_INFER_FROM_CTY_VALUE = "Cannot infer data type from a CtyValue instance: {type_name}"
@@ -246,20 +242,38 @@ ERR_VALUE_TYPE_NOT_COMPARABLE = "Value of type {type} is not comparable"
 ERR_VALUE_TYPE_NO_LEN = "Value of type {type_name} has no len()"
 ERR_VALUE_TYPE_NOT_ITERABLE = "Value of type {type_name} is not iterable"
 ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE = "Value of type {type_name} is not subscriptable"
-ERR_UNHASHABLE_TYPE = "unhashable type: 'CtyValue[{vtype}]'"
+# ERR_UNHASHABLE_TYPE is deliberately gone as of 2026-08-17. `CtyValue.__hash__`
+# answers for every type now, containers included, so there is no longer a
+# message for refusing -- and leaving one behind would advertise a behaviour
+# this library does not have.
 
 # Conversion type error messages
 
 # Function-specific error messages
 
+# Numeric function error messages
+# go-cty reads both of these through `gocty.FromCtyValue` into a Go `int`, so a
+# fraction, an infinity or anything outside the int64 range is refused before the
+# function looks at the value.
+ERR_SIGNUM_NOT_WHOLE = "signum: number must be a whole number within the int64 range, got {value}"
+ERR_PARSEINT_BASE_NOT_WHOLE = "parseint: base must be a whole number within the int64 range, got {value}"
+
 # String function error messages
-ERR_INDENT_ARGS_MUST_BE_NUMBER_AND_STRING = "indent: arguments must be a number of spaces and a string"
 ERR_INDENT_SPACES_MUST_BE_WHOLE = "indent: spaces must be a whole number within the int64 range, got {value}"
 ERR_INDENT_SPACES_MUST_NOT_BE_NEGATIVE = "indent: spaces must not be negative, got {spaces}"
+# go-cty's own wording, from `gocty.FromCtyValue` reading `substr`'s offset and
+# length into a Go `int`. Left unprefixed because that is the text a caller
+# comparing the two implementations sees.
+ERR_SUBSTR_ARG_MUST_BE_WHOLE = (
+    "value must be a whole number, between -9223372036854775808 and 9223372036854775807"
+)
+# go-cty's `JoinFunc` is variadic, so it numbers the lists from 1 -- argument 0
+# is the separator -- and words the single-list case without a list number.
+ERR_JOIN_AT_LEAST_ONE_LIST = "at least one list is required"
+ERR_JOIN_ELEMENT_IS_NULL = "element {element} is null; cannot concatenate null values"
+ERR_JOIN_ELEMENT_OF_LIST_IS_NULL = "element {element} of list {list} is null; cannot concatenate null values"
 
 # Regular expression error messages
-ERR_REGEX_ARGS_MUST_BE_STRINGS = "regex: both arguments must be strings"
-ERR_REGEXALL_ARGS_MUST_BE_STRINGS = "regexall: both arguments must be strings"
 # Shared by regex and regexall, which decide their result type from the pattern
 # by the same rules. Worded as go-cty words them (cty/function/stdlib/regexp.go).
 ERR_REGEX_INVALID_PATTERN = "{func}: invalid regexp pattern: {error}"
@@ -267,7 +281,6 @@ ERR_REGEX_MIXED_CAPTURE_GROUPS = (
     "{func}: invalid regexp pattern: cannot mix both named and unnamed capture groups"
 )
 ERR_REGEX_NO_MATCH = "regex: pattern did not match any part of the given string"
-ERR_REGEXREPLACE_ALL_ARGS_MUST_BE_STRINGS = "regexreplace: all arguments must be strings"
 
 # Collection function error messages
 ERR_CHUNKLIST_ARGS_MUST_BE_LIST_AND_NUMBER = "chunklist: arguments must be a list/tuple and a number"
@@ -275,7 +288,6 @@ ERR_CHUNKLIST_SIZE_MUST_BE_POSITIVE = "chunklist: the size argument must be posi
 ERR_CHUNKLIST_TUPLE_NOT_UNIFIABLE = "chunklist: tuple elements have no common type"
 ERR_CHUNKLIST_SIZE_MUST_BE_WHOLE = "chunklist: size must be a whole number within the int64 range, got {value}"
 ERR_DISTINCT_INPUT_MUST_BE_LIST_SET_TUPLE = "distinct: input must be a list, set, or tuple, got {type}"
-ERR_DISTINCT_ELEMENT_NOT_HASHABLE = "distinct: element of type {type} is not hashable. Error: {error}"
 ERR_FLATTEN_INPUT_MUST_BE_LIST_SET_TUPLE = "flatten: can only flatten lists, sets and tuples, got {type}"
 ERR_KEYS_INPUT_MUST_BE_MAP_OBJECT = "keys: input must be a map or object, got {type}"
 ERR_LENGTH_INPUT_MUST_BE_COLLECTION = "length: input must be a collection, got {type}"
@@ -285,13 +297,8 @@ ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT = "values: input must be a map or object, go
 # Stdlib registry error messages
 ERR_STDLIB_DUPLICATE_NAME = "two functions are declared as the stdlib function {name!r}: {first} and {second}"
 
-# Logical function error messages
-ERR_BOOL_ARG_MUST_BE_BOOL = "{func}: bool required, but received {type}"
-ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"
-
 # Set operation error messages
 ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
-ERR_SET_OP_REQUIRES_ONE_SET = "{func}: at least one set must be provided"
 ERR_FORMAT_TOO_MANY_ARGUMENTS = "format: too many arguments; only {used} used by format string"
 ERR_FORMAT_NO_VERBS = "format: too many arguments; no verbs in format string"
 ERR_FORMAT_INVALID = "format: invalid format string at offset {offset}"
@@ -308,17 +315,14 @@ ERR_FORMAT_INCONSISTENT_LENGTH = (
 )
 ERR_ARGUMENT_MUST_NOT_BE_NULL = "{func}: argument {position} must not be null"
 ERR_CONCAT_REQUIRES_ONE = "concat: at least one argument is required"
-ERR_CONCAT_ARG_MUST_NOT_BE_NULL = "concat: argument must not be null"
 ERR_CONCAT_ARGS_MUST_BE_SEQUENCES = "concat: all arguments must be lists or tuples, got {type}"
 ERR_SETPRODUCT_REQUIRES_TWO = "setproduct: at least two arguments are required"
 ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE = "setproduct: all elements must be of the same type"
 ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION = "setproduct: a set or a list is required, got {type}"
-ERR_SETPRODUCT_ARG_MUST_NOT_BE_NULL = "setproduct: argument must not be null"
 ERR_SET_OP_INCOMPATIBLE_ELEMENTS = "{func}: given sets must all have compatible element types"
 
 # range() error messages
 ERR_RANGE_ARG_COUNT = "range: must have one, two, or three arguments"
-ERR_RANGE_ARGS_MUST_BE_NUMBERS = "range: arguments must be numbers, got {type}"
 ERR_RANGE_STEP_MUST_NOT_BE_ZERO = "range: step must not be zero"
 ERR_RANGE_END_MUST_BE_LESS = "range: end must be less than start when step is negative"
 ERR_RANGE_END_MUST_BE_GREATER = "range: end must be greater than start when step is positive"
@@ -330,22 +334,19 @@ ERR_RANGE_TOO_MANY_VALUES = (
 # Type conversion function error messages
 
 # Codec and JSON error messages
-ERR_CSVDECODE_ARG_MUST_BE_STRING = "csvdecode: argument must be a string, got {type}"
 ERR_CSVDECODE_FAILED = "csvdecode: failed to decode CSV: {error}"
 ERR_CSVDECODE_MISSING_HEADER = "csvdecode: missing header line"
 ERR_CSVDECODE_DUPLICATE_COLUMN = 'csvdecode: duplicate column name "{name}"'
 ERR_CSVDECODE_WRONG_FIELD_COUNT = "csvdecode: CSV parse error on line {line}: wrong number of fields"
-ERR_JSONDECODE_ARG_MUST_BE_STRING = "jsondecode: argument must be a string, got {type}"
 ERR_JSONDECODE_FAILED = "jsondecode: failed to decode JSON: {error}"
+ERR_JSONDECODE_INVALID_FIRST_CHARACTER = "a JSON document cannot begin with the character '{character}'"
 ERR_JSONENCODE_FAILED = "jsonencode: failed to encode value: {error}"
 
 # Date and time function error messages
-ERR_FORMATDATE_ARGS_MUST_BE_STRINGS = "formatdate: arguments must be strings"
 ERR_FORMATDATE_INVALID_TIMESTAMP = "formatdate: invalid timestamp format: {error}"
 ERR_FORMATDATE_INVALID_VERB = 'formatdate: invalid date format verb "{verb}"'
 ERR_FORMATDATE_INVALID_VERB_LENGTH = 'formatdate: invalid date format verb "{verb}": {expected}'
 ERR_FORMATDATE_UNTERMINATED_LITERAL = "formatdate: unterminated literal '"
-ERR_TIMEADD_ARGS_MUST_BE_STRINGS = "timeadd: arguments must be strings"
 ERR_TIMEADD_INVALID_FORMAT = "timeadd: invalid argument format: {error}"
 ERR_INVALID_DURATION_FORMAT = "Invalid duration string format: '{duration_str}'"
 ERR_INVALID_RFC3339_TIMESTAMP = "not a valid RFC3339 timestamp: {timestamp!r}"
@@ -353,8 +354,9 @@ ERR_INVALID_RFC3339_TIMESTAMP = "not a valid RFC3339 timestamp: {timestamp!r}"
 # Parsing and validation error messages
 
 # Bytes and capsule function error messages
-ERR_BYTESLEN_ARG_MUST_BE_BYTES_CAPSULE = "byteslen: argument must be a Bytes capsule, got {type}"
-ERR_BYTESSLICE_ARGS_MUST_BE_BYTES_NUMBER_NUMBER = "bytesslice: arguments must be Bytes capsule, number, number"
+ERR_BYTESSLICE_OFFSET_AND_LENGTH_MUST_BE_WHOLE = (
+    "bytesslice: offset and length must be whole numbers within the int64 range, got {value}"
+)
 ERR_BYTESSLICE_NEGATIVE = "bytesslice: offset and length must be non-negative"
 ERR_BYTESSLICE_OFFSET_PAST_END = "bytesslice: offset {offset} is greater than total buffer length {total}"
 ERR_BYTESSLICE_PAST_END = (

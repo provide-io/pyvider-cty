@@ -3,214 +3,316 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+"""go-cty's `EqualFunc`/`NotEqualFunc` and the six comparisons in `number.go`.
+
+`stdlib/general.go:11` and `stdlib/number.go:208`. The two groups declare
+opposite parameter shapes, and that contrast is the whole content of this
+module: equality is defined on *any* value including nulls, unknowns and values
+of no decided type, while an ordering comparison is defined only on numbers and
+refuses a null outright.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any, cast
 
-from pyvider.cty import CtyBool, CtyNumber, CtyString, CtyValue
-from pyvider.cty.config.defaults import (
-    COMPARISON_OPS_MAP,
-    ERR_ALL_ARGS_SAME_TYPE,
-    ERR_CANNOT_COMPARE,
-    ERR_MIN_ONE_ARG,
-)
+from pyvider.cty import CtyBool, CtyDynamic, CtyNumber, CtyValue
+from pyvider.cty.config.defaults import COMPARISON_OPS_MAP, ERR_MIN_ONE_ARG
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-@stdlib_function("equal", allow_null=True)
+def _any_value(name: str) -> CtyParameter:
+    """The parameter `equal` and `notequal` both declare twice over.
+
+    Any type, and defined on a null, on an unknown and on `cty.DynamicVal`,
+    because answering for those is the entire job: a function whose purpose is
+    to compare two values cannot short-circuit the cases where one of them is
+    not yet a value. Four of the five permissive flags in go-cty's whole stdlib
+    parameter set are on these two functions (`stdlib/general.go:13`).
+    """
+    return CtyParameter(
+        name,
+        CtyDynamic(),
+        allow_null=True,
+        allow_unknown=True,
+        allow_dynamic_type=True,
+    )
+
+
+def _number_operand(name: str) -> CtyParameter:
+    """The parameter all four ordering comparisons declare twice over.
+
+    A number, seen even when unknown or dynamically typed -- go-cty answers
+    definitely from the refinement bounds where it can -- and seen *marked*,
+    because `Value.GreaterThan` and friends propagate marks themselves rather
+    than leaving it to the framework (`stdlib/number.go:210`).
+
+    `AllowNull` is absent, so the framework refuses a null before the body runs.
+    That is the parity fix here: this package used to answer `unknown` for
+    `greaterthan(null, 1)`, which claims the comparison might yet succeed.
+    """
+    return CtyParameter(
+        name,
+        CtyNumber(),
+        allow_unknown=True,
+        allow_dynamic_type=True,
+        allow_marked=True,
+    )
+
+
+@stdlib_function(
+    "equal",
+    params=[_any_value("a"), _any_value("b")],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns true if the two given values are equal, or false otherwise.",
+)
 def equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `EqualFunc` (`stdlib/general.go:11`).
+
+    Three-valued, through `CtyValue.equals`, which is go-cty's `Value.Equals`.
+
+    One deliberate divergence lives underneath, in `values/equality.py`: for an
+    object or map holding both an unknown member and a member that definitely
+    differs, go-cty's `Equals` answers `false` or `unknown` depending on Go's
+    randomized map iteration order, and this library answers `false`
+    deterministically -- the more informative of go-cty's two answers rather
+    than a third one. Recorded in `.provide/GO-CTY-PARITY.md` rather than
+    called fixed, because matching a coin flip is not parity.
+    """
     return a.equals(b)
 
 
-@stdlib_function("notequal", allow_null=True)
+@stdlib_function(
+    "notequal",
+    params=[_any_value("a"), _any_value("b")],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns false if the two given values are equal, or true otherwise.",
+)
 def not_equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `NotEqualFunc`: `args[0].Equals(args[1]).Not()` (`general.go:57`).
+
+    `Not` of an undecided answer is still undecided, which is why the unknown
+    is returned rather than negated.
+    """
     result = a.equals(b)
     if result.is_unknown:
         return result
     return CtyBool().validate(not result.value)
 
 
-def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:  # noqa: C901
-    if a.is_null or b.is_null:
-        return CtyValue.unknown(CtyBool())
+# A bound as `(value, inclusive)`, or `None` for "no bound in that direction".
+_Bound = tuple[Decimal, bool] | None
 
-    # Handle refined unknown comparisons
+# Which certainty settles each operator, and which one refutes it. `>` is true
+# once the whole of `a` is above the whole of `b`, and false once the whole of
+# `a` is at or below it; `>=` moves the boundary into the true case, and `<`
+# and `<=` are the mirror image.
+_DECISION: dict[str, tuple[str, str]] = {
+    ">": ("gt", "le"),
+    ">=": ("ge", "lt"),
+    "<": ("lt", "ge"),
+    "<=": ("le", "gt"),
+}
+
+
+def _bounds(value: CtyValue[Any]) -> tuple[_Bound, _Bound]:
+    """A number value's range, as `(lower, upper)`. go-cty's `Value.Range`.
+
+    A known number is the degenerate range `[v, v]`, which is what lets one
+    piece of arithmetic serve both a known and an unknown operand. An unrefined
+    unknown -- and `cty.DynamicVal`, which reaches here because the parameter
+    admits it -- has no bounds at all.
+    """
+    if not value.is_unknown:
+        exact = (cast(Decimal, value.value), True)
+        return exact, exact
+    refinement = value.value if isinstance(value.value, RefinedUnknownValue) else None
+    if refinement is None:
+        return None, None
+    return refinement.number_lower_bound, refinement.number_upper_bound
+
+
+def _above(lower: _Bound, upper: _Bound) -> bool:
+    """Whether everything at or above `lower` is strictly above `upper`."""
+    if lower is None or upper is None:
+        return False
+    low, low_inclusive = lower
+    high, high_inclusive = upper
+    return low > high or (low == high and not (low_inclusive and high_inclusive))
+
+
+def _at_least(lower: _Bound, upper: _Bound) -> bool:
+    """Whether everything at or above `lower` is at or above `upper`.
+
+    Inclusivity cannot change this one: if the two bounds coincide then either
+    side being exclusive only pushes the values further apart in the direction
+    the answer already went.
+    """
+    if lower is None or upper is None:
+        return False
+    return lower[0] >= upper[0]
+
+
+def _decide(a: CtyValue[Any], b: CtyValue[Any], op: str) -> bool | None:
+    """What the two ranges settle, or `None` if they settle nothing.
+
+    go-cty's `LessThan` and `GreaterThan` each consult both `Range`s and can
+    return a *known* answer from unknown operands; `LessThanOrEqualTo` and
+    `GreaterThanOrEqualTo` are `LessThan(x).Or(Equals(x))`, the same question
+    with the boundary counted as agreement (`value_ops.go:1367`, `:1443`).
+
+    go-cty's own comment there notes it treats every bound as exclusive and is
+    therefore more conservative than it needs to be. This does not: the
+    inclusive flag each bound already carries is honoured, so `<= 10` compared
+    against `10` is decided rather than declined.
+    """
+    a_low, a_high = _bounds(a)
+    b_low, b_high = _bounds(b)
+    certain = {
+        "gt": _above(a_low, b_high),
+        "ge": _at_least(a_low, b_high),
+        "lt": _above(b_low, a_high),
+        "le": _at_least(b_low, a_high),
+    }
+    settles, refutes = _DECISION[op]
+    if certain[settles]:
+        return True
+    if certain[refutes]:
+        return False
+    return None
+
+
+def _compare(a: CtyValue[Any], b: CtyValue[Any], op: str) -> CtyValue[Any]:
+    """One ordering comparison, as go-cty's `Value` operators compute it.
+
+    Both parameters declare `AllowMarked`, so propagating marks is this
+    function's job rather than the framework's -- and go-cty's operators do it
+    by unmarking, recursing and re-applying the union (`value_ops.go:1367`). A
+    number has no nesting, so a shallow unmark here is the same thing as the
+    deep one the framework would otherwise have done.
+    """
+    if a.marks or b.marks:
+        bare_a, a_marks = a.unmark()
+        bare_b, b_marks = b.unmark()
+        return _compare(bare_a, bare_b, op).with_marks(a_marks | b_marks)
+
     if a.is_unknown or b.is_unknown:
-        ref_a = a.value if isinstance(a.value, RefinedUnknownValue) else None
-        ref_b = b.value if isinstance(b.value, RefinedUnknownValue) else None
+        decided = _decide(a, b, op)
+        if decided is None:
+            # The framework's `refine_result` supplies the `RefineNotNull` that
+            # go-cty applies to this short-circuit.
+            return CtyValue.unknown(CtyBool())
+        return CtyBool().validate(decided)
 
-        # Case 1: One is known, one is refined unknown
-        if a.is_unknown and not b.is_unknown and ref_a:
-            b_val = cast(Decimal, b.value)
-            if ref_a.number_upper_bound:
-                upper, inclusive = ref_a.number_upper_bound
-                if b_val > upper or (b_val == upper and not inclusive):
-                    if op in (">", ">="):
-                        return CtyBool().validate(False)
-                    if op in ("<", "<="):
-                        return CtyBool().validate(True)
-            if ref_a.number_lower_bound:
-                lower, inclusive = ref_a.number_lower_bound
-                if b_val < lower or (b_val == lower and not inclusive):
-                    if op in ("<", "<="):
-                        return CtyBool().validate(False)
-                    if op in (">", ">="):
-                        return CtyBool().validate(True)
-        elif b.is_unknown and not a.is_unknown and ref_b:
-            a_val = cast(Decimal, a.value)
-            if ref_b.number_upper_bound:
-                upper, inclusive = ref_b.number_upper_bound
-                if a_val > upper or (a_val == upper and not inclusive):
-                    if op in ("<", "<="):
-                        return CtyBool().validate(False)
-                    if op in (">", ">="):
-                        return CtyBool().validate(True)
-            if ref_b.number_lower_bound:
-                lower, inclusive = ref_b.number_lower_bound
-                if a_val < lower or (a_val == lower and not inclusive):
-                    if op in (">", ">="):
-                        return CtyBool().validate(False)
-                    if op in ("<", "<="):
-                        return CtyBool().validate(True)
-        # Case 2: Both are refined unknowns
-        elif a.is_unknown and b.is_unknown and ref_a and ref_b:
-            if ref_a.number_upper_bound and ref_b.number_lower_bound:
-                a_upper, a_inc = ref_a.number_upper_bound
-                b_lower, b_inc = ref_b.number_lower_bound
-                if a_upper < b_lower or (a_upper == b_lower and not (a_inc and b_inc)):
-                    if op in ("<", "<="):
-                        return CtyBool().validate(True)
-                    if op in (">", ">="):
-                        return CtyBool().validate(False)
-            if ref_a.number_lower_bound and ref_b.number_upper_bound:
-                a_lower, a_inc = ref_a.number_lower_bound
-                b_upper, b_inc = ref_b.number_upper_bound
-                if a_lower > b_upper or (a_lower == b_upper and not (a_inc and b_inc)):
-                    if op in (">", ">="):
-                        return CtyBool().validate(True)
-                    if op in ("<", "<="):
-                        return CtyBool().validate(False)
-
-        return CtyValue.unknown(CtyBool())
-
-    # Handle known value comparisons
-    if not isinstance(a.type, CtyNumber | CtyString) or not a.type.equal(b.type):
-        error_message = ERR_CANNOT_COMPARE.format(type1=a.type.ctype, type2=b.type.ctype)
-        raise CtyFunctionError(error_message)
-
-    ops = COMPARISON_OPS_MAP
-    return CtyBool().validate(ops[op](a.value, b.value))
+    return CtyBool().validate(COMPARISON_OPS_MAP[op](a.value, b.value))
 
 
-@stdlib_function("greaterthan")
+@stdlib_function(
+    "greaterthan",
+    params=[_number_operand("a"), _number_operand("b")],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns true if and only if the second number is greater than the first.",
+)
 def greater_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `GreaterThanFunc` (`stdlib/number.go:208`).
+
+    The description is go-cty's own, and it has the operands the wrong way
+    round -- the implementation is `args[0].GreaterThan(args[1])`. Copied
+    verbatim anyway: a paraphrase would be a divergence nobody checks, and the
+    place to fix the prose is upstream.
+    """
     return _compare(a, b, ">")
 
 
-@stdlib_function("greaterthanorequalto")
+@stdlib_function(
+    "greaterthanorequalto",
+    params=[_number_operand("a"), _number_operand("b")],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns true if and only if the second number is greater than or equal to the first.",
+)
 def greater_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `GreaterThanOrEqualToFunc` (`stdlib/number.go:233`)."""
     return _compare(a, b, ">=")
 
 
-@stdlib_function("lessthan")
+@stdlib_function(
+    "lessthan",
+    params=[_number_operand("a"), _number_operand("b")],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns true if and only if the second number is less than the first.",
+)
 def less_than(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `LessThanFunc` (`stdlib/number.go:258`)."""
     return _compare(a, b, "<")
 
 
-@stdlib_function("lessthanorequalto")
+@stdlib_function(
+    "lessthanorequalto",
+    params=[_number_operand("a"), _number_operand("b")],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Returns true if and only if the second number is less than or equal to the first.",
+)
 def less_than_or_equal_to(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
+    """go-cty's `LessThanOrEqualToFunc` (`stdlib/number.go:283`)."""
     return _compare(a, b, "<=")
 
 
-def _partition_args(
-    *args: CtyValue[Any],
-) -> tuple[list[CtyValue[Any]], list[CtyValue[Any]]]:
-    """Separate arguments into known and unknown values."""
-    known_args, unknown_args = [], []
-    for v in args:
-        if v.is_unknown:
-            unknown_args.append(v)
-        elif not v.is_null:
-            known_args.append(v)
-    return known_args, unknown_args
+def _numeric_key(value: CtyValue[Any]) -> Decimal:
+    return cast(Decimal, value.value)
 
 
-def _validate_homogeneous_types(known_args: list[CtyValue[Any]], op: str) -> None:
-    """Ensure all known arguments have compatible types."""
-    if not known_args:
-        return
-    is_all_numbers = all(isinstance(v.type, CtyNumber) for v in known_args)
-    is_all_strings = all(isinstance(v.type, CtyString) for v in known_args)
-    if not (is_all_numbers or is_all_strings):
-        error_message = ERR_ALL_ARGS_SAME_TYPE.format(op=op)
-        raise CtyFunctionError(error_message)
+def _extreme(args: Sequence[CtyValue[Any]], op: str) -> CtyValue[Any]:
+    """The greatest or the smallest of the given numbers.
 
+    go-cty seeds with an infinity and replaces it only when an argument
+    *strictly* beats the incumbent, so a tie keeps the earliest argument --
+    which is exactly what Python's `max`/`min` with a key already do
+    (`stdlib/number.go:335`).
 
-def _find_extreme_value(known_args: list[CtyValue[Any]], op: str) -> CtyValue[Any] | None:
-    """Find the extreme (min/max) value among known arguments."""
-    if not known_args:
-        return None
-    if op == "max":
-        result: CtyValue[Any] = max(known_args, key=lambda v: v.value)  # type: ignore[arg-type,return-value]
-        return result
-    else:
-        result = min(known_args, key=lambda v: v.value)  # type: ignore[arg-type,return-value]
-        return result
-
-
-def _filter_dominated_unknowns(
-    unknown_args: list[CtyValue[Any]], extreme_known: CtyValue[Any], op: str
-) -> list[CtyValue[Any]]:
-    """Remove unknown values that are definitely dominated by the extreme known value."""
-    remaining_unknowns = []
-    extreme_val = cast(Decimal, extreme_known.value)
-    for unk in unknown_args:
-        if isinstance(unk.value, RefinedUnknownValue):
-            ref = unk.value
-            if op == "max":
-                if ref.number_upper_bound and (extreme_val >= ref.number_upper_bound[0]):
-                    continue
-            elif op == "min" and ref.number_lower_bound and (extreme_val <= ref.number_lower_bound[0]):
-                continue
-        remaining_unknowns.append(unk)
-    return remaining_unknowns
-
-
-def _multi_compare(*args: CtyValue[Any], op: str) -> CtyValue[Any]:
+    Every argument is a known, non-null number by the time this runs: the
+    variadic parameter declares neither `AllowNull` nor `AllowUnknown`, so the
+    framework has already refused the one and short-circuited the other.
+    """
     if not args:
-        error_message = ERR_MIN_ONE_ARG.format(op=op)
-        raise CtyFunctionError(error_message)
-
-    known_args, unknown_args = _partition_args(*args)
-
-    if not known_args and not unknown_args:
-        return CtyValue.null(args[0].type)
-
-    _validate_homogeneous_types(known_args, op)
-    extreme_known = _find_extreme_value(known_args, op)
-
-    if extreme_known:
-        unknown_args = _filter_dominated_unknowns(unknown_args, extreme_known, op)
-
-    if not unknown_args:
-        return extreme_known if extreme_known else CtyValue.null(args[0].type)
-    if not known_args and len(unknown_args) == 1:
-        return unknown_args[0]
-    return CtyValue.unknown(args[0].type)
+        raise CtyFunctionError(ERR_MIN_ONE_ARG.format(op=op))
+    if op == "max":
+        return max(args, key=_numeric_key)
+    return min(args, key=_numeric_key)
 
 
-@stdlib_function("max")
+@stdlib_function(
+    "max",
+    var_param=CtyParameter("numbers", CtyNumber(), allow_dynamic_type=True),
+    returns=CtyNumber(),
+    refine_result=refine_not_null,
+    description="Returns the numerically greatest of all of the given numbers.",
+)
 def max_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
-    return _multi_compare(*args, op="max")
+    """go-cty's `MaxFunc` (`stdlib/number.go:351`)."""
+    return _extreme(args, "max")
 
 
-@stdlib_function("min")
+@stdlib_function(
+    "min",
+    var_param=CtyParameter("numbers", CtyNumber(), allow_dynamic_type=True),
+    returns=CtyNumber(),
+    refine_result=refine_not_null,
+    description="Returns the numerically smallest of all of the given numbers.",
+)
 def min_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
-    return _multi_compare(*args, op="min")
+    """go-cty's `MinFunc` (`stdlib/number.go:325`)."""
+    return _extreme(args, "min")
 
 
 # 🌊🪢🔚

@@ -54,23 +54,34 @@ def refined_unknown_list(lower_bound: int | None = None, upper_bound: int | None
 class TestRefinedUnknownsIntegration:
     """Tests that standard functions correctly use refinement data."""
 
-    def test_max_fn_with_refined_unknown(self) -> None:
-        # An unknown number that is definitely less than 10
+    def test_max_fn_defers_to_an_unknown_however_refined(self) -> None:
+        """Until 2026-08-17 this asserted `max(unknown < 10, 20)` is `20`.
+
+        go-cty's `MaxFunc` variadic parameter sets only `AllowDynamicType`
+        (`stdlib/number.go:354`) -- not `AllowUnknown` -- so the framework
+        returns an unknown of the declared return type without calling `Impl`,
+        and no refinement is consulted. The old answer was sound but is not
+        go-cty's, and Terraform reports "known after apply" here. The ordering
+        comparisons below keep their bound-aware answers, because go-cty
+        consults the ranges there (`value_ops.go:1367`).
+        """
         unknown_lt_10 = refined_unknown_num(upper_bound=(Decimal("10"), False))
         known_20 = CtyNumber().validate(20)
-        # max(unknown < 10, 20) should resolve to 20.
         result = max_fn(unknown_lt_10, known_20)
-        assert result.is_unknown is False
-        assert result.value == 20
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
 
-    def test_min_fn_with_refined_unknown(self) -> None:
-        # An unknown number that is definitely greater than 100
+    def test_min_fn_defers_to_an_unknown_however_refined(self) -> None:
+        """Until 2026-08-17 this asserted `min(unknown > 100, 50)` is `50`.
+
+        Same declaration as `max` above: `MinFunc`'s variadic parameter does not
+        admit an unknown either (`stdlib/number.go:328`).
+        """
         unknown_gt_100 = refined_unknown_num(lower_bound=(Decimal("100"), False))
         known_50 = CtyNumber().validate(50)
-        # min(unknown > 100, 50) should resolve to 50.
         result = min_fn(unknown_gt_100, known_50)
-        assert result.is_unknown is False
-        assert result.value == 50
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
 
     def test_less_than_with_refined_unknown(self) -> None:
         # An unknown number that is definitely less than 10
@@ -105,29 +116,28 @@ class TestRefinedUnknownsIntegration:
 
 
 class TestRefinedUnknownsNumericIntegration:
-    """Tests that numeric functions leverage refinements."""
+    """The arithmetic functions defer to an unknown; they do not narrow it.
 
-    def test_add_two_positive_refined_unknowns_is_positive(self) -> None:
-        """
-        Adding two unknown numbers, both known to be > 0, should result
-        in an unknown number also known to be > 0.
-        """
+    Until 2026-08-17 this class asserted bound propagation -- `add(>0, >0)`
+    is `>0`, `multiply([10,20], 2)` is `[20,40]`. go-cty's arithmetic function
+    parameters do not set `AllowUnknown` (`stdlib/number.go`), so the framework
+    returns an unknown of the return type without calling the implementation
+    (`function.go:314`) and no bound arithmetic happens. go-cty does propagate
+    bounds -- but on `cty.Value`'s operators, a surface this package does not
+    have; the stdlib functions never see the refinement.
+    """
+
+    def test_add_defers_to_an_unknown_however_refined(self) -> None:
         unknown_pos_1 = refined_unknown_num(lower_bound=(Decimal("0"), False))
         unknown_pos_2 = refined_unknown_num(lower_bound=(Decimal("0"), False))
 
         result = add(unknown_pos_1, unknown_pos_2)
 
         assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        assert result.value.number_lower_bound == (Decimal("0"), False)
-        assert result.value.number_upper_bound is None
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_multiply_refined_unknown_by_positive_preserves_bounds(self) -> None:
-        """
-        Multiplying an unknown number with a known range by a known positive
-        number should scale the bounds of the result.
-        """
-        # An unknown number known to be between 10 and 20.
+    def test_multiply_defers_to_an_unknown_however_refined(self) -> None:
         unknown_10_20 = refined_unknown_num(
             lower_bound=(Decimal("10"), True), upper_bound=(Decimal("20"), True)
         )
@@ -136,9 +146,8 @@ class TestRefinedUnknownsNumericIntegration:
         result = multiply(unknown_10_20, known_2)
 
         assert result.is_unknown
-        assert isinstance(result.value, RefinedUnknownValue)
-        assert result.value.number_lower_bound == (Decimal("20"), True)
-        assert result.value.number_upper_bound == (Decimal("40"), True)
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
 
 class TestRefinedUnknownsComparisonCoverage:

@@ -3,8 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""TDD: This suite adds targeted tests for all unexercised branches in the
-refined unknown propagation logic of numeric and comparison functions."""
+"""Until 2026-08-17 this suite asserted that numeric functions narrow
+results from refinement bounds on unknown arguments. As of that date the
+stdlib numeric functions were migrated onto a port of go-cty's
+`cty/function` framework, and go-cty's arithmetic function parameters do
+not set `AllowUnknown` (`cty/function/stdlib/number.go`). The framework
+short-circuits before `Impl` runs whenever an argument is unknown
+(`function.go:314`), returning an unknown of the declared return type with
+no refinement carried over. This suite now asserts that deferral instead.
+The comparison tests in this file are unaffected -- go-cty's comparison
+functions do carry bound-based short-circuits inside their `Impl`, so
+those still narrow."""
 
 from decimal import Decimal
 
@@ -31,69 +40,138 @@ def refined_unknown_num(
 
 
 class TestRefinedUnknownsCoverage:
-    def test_multiply_by_zero_is_zero(self) -> None:
-        """TDD: unknown * 0 should be a known 0."""
+    def test_multiply_defers_even_when_zero_would_decide_it(self) -> None:
+        """Until 2026-08-17 this asserted multiply(unknown, 0) is a known 0.
+
+        go-cty's MultiplyFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown = refined_unknown_num(lower_bound=(Decimal("10"), True))
         known_zero = CtyNumber().validate(0)
         result = multiply(unknown, known_zero)
-        assert not result.is_unknown
-        assert result.value == 0
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_multiply_by_negative_inverts_bounds(self) -> None:
-        """TDD: (unknown in [10, 20]) * -2 should be (unknown in [-40, -20])."""
+    def test_multiply_defers_instead_of_inverting_bounds(self) -> None:
+        """Until 2026-08-17 this asserted (unknown in [10, 20]) * -2 narrows
+        to (unknown in [-40, -20]).
+
+        go-cty's MultiplyFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown_10_20 = refined_unknown_num(
             lower_bound=(Decimal("10"), True), upper_bound=(Decimal("20"), True)
         )
         known_neg_2 = CtyNumber().validate(-2)
         result = multiply(unknown_10_20, known_neg_2)
-        assert result.is_unknown
-        assert result.value.number_lower_bound == (Decimal("-40"), True)
-        assert result.value.number_upper_bound == (Decimal("-20"), True)
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_divide_by_negative_inverts_bounds(self) -> None:
-        """TDD: (unknown in [10, 20]) / -2 should be (unknown in [-10, -5])."""
+    def test_divide_defers_instead_of_inverting_bounds(self) -> None:
+        """Until 2026-08-17 this asserted (unknown in [10, 20]) / -2 narrows
+        to (unknown in [-10, -5]).
+
+        go-cty's DivideFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown_10_20 = refined_unknown_num(
             lower_bound=(Decimal("10"), True), upper_bound=(Decimal("20"), True)
         )
         known_neg_2 = CtyNumber().validate(-2)
         result = divide(unknown_10_20, known_neg_2)
-        assert result.is_unknown
-        assert result.value.number_lower_bound == (Decimal("-10"), True)
-        assert result.value.number_upper_bound == (Decimal("-5"), True)
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_negate_with_only_one_bound(self) -> None:
-        """TDD: -(unknown > 10) should be (unknown < -10)."""
+    def test_negate_defers_even_with_only_one_bound(self) -> None:
+        """Until 2026-08-17 this asserted -(unknown > 10) narrows to
+        (unknown < -10).
+
+        go-cty's NegateFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown_gt_10 = refined_unknown_num(lower_bound=(Decimal("10"), False))
         result = negate(unknown_gt_10)
-        assert result.is_unknown
-        assert result.value.number_lower_bound is None
-        assert result.value.number_upper_bound == (Decimal("-10"), False)
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_abs_with_range_crossing_zero(self) -> None:
-        """TDD: abs(unknown in [-10, 20]) should be (unknown in [0, 20])."""
+    def test_abs_defers_even_when_range_crosses_zero(self) -> None:
+        """Until 2026-08-17 this asserted abs(unknown in [-10, 20]) narrows
+        to (unknown in [0, 20]).
+
+        go-cty's AbsoluteFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown_neg_pos = refined_unknown_num(
             lower_bound=(Decimal("-10"), True), upper_bound=(Decimal("20"), True)
         )
         result = abs_fn(unknown_neg_pos)
-        assert result.is_unknown
-        assert result.value.number_lower_bound == (Decimal("0"), True)
-        assert result.value.number_upper_bound == (Decimal("20"), True)
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_abs_with_only_lower_bound_positive(self) -> None:
-        """TDD: abs(unknown > 10) should be unchanged."""
+    def test_abs_defers_even_with_only_lower_bound_positive(self) -> None:
+        """Until 2026-08-17 this asserted abs(unknown > 10) is unchanged.
+
+        go-cty's AbsoluteFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown_gt_10 = refined_unknown_num(lower_bound=(Decimal("10"), True))
         result = abs_fn(unknown_gt_10)
-        assert result.is_unknown
-        assert result.value.number_lower_bound == (Decimal("10"), True)
-        assert result.value.number_upper_bound is None
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
-    def test_abs_with_only_upper_bound_negative(self) -> None:
-        """TDD: abs(unknown < -10) should be (unknown > 10)."""
+    def test_abs_defers_even_with_only_upper_bound_negative(self) -> None:
+        """Until 2026-08-17 this asserted abs(unknown < -10) narrows to
+        (unknown > 10).
+
+        go-cty's AbsoluteFunc parameters do not set AllowUnknown
+        (`stdlib/number.go`), so the framework returns an unknown of the
+        declared return type without calling Impl, and no bound arithmetic
+        happens (`function.go:314`). The old answer was sound but is not
+        go-cty's; the bound propagation this pinned lived in the stdlib
+        function where go-cty puts it on Value's operators, which this
+        package does not have.
+        """
         unknown_lt_neg_10 = refined_unknown_num(upper_bound=(Decimal("-10"), True))
         result = abs_fn(unknown_lt_neg_10)
-        assert result.is_unknown
-        assert result.value.number_lower_bound == (Decimal("10"), True)
-        assert result.value.number_upper_bound is None
+        assert result.is_unknown is True
+        assert result.type.equal(CtyNumber())
+        assert result.value == RefinedUnknownValue(is_known_null=False)
 
     def test_compare_refined_to_known_upper_bound(self) -> None:
         """TDD: (unknown > 100) > 50 should be True."""
