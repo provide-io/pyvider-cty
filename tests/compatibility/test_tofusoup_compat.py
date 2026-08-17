@@ -289,10 +289,11 @@ def test_both_implementations_emit_the_same_bytes(
 # optional -- and declaring it optional is not a workaround, because optionality
 # adds go-cty's third element to the wire type, so it changes the type Terraform
 # is told about.
-# Every container that now reads a null back. `list` and `list of object` were
-# xfailed here until the guard in CtyList.validate was removed; they are in this
-# list rather than deleted, because the next change to that code path is exactly
-# what they exist to catch.
+# Every container that now reads a null back. `list`, `list of object` and
+# `object attribute` were xfailed here until the guards in CtyList.validate and
+# CtyObject.validate were removed; they are in this list rather than deleted,
+# because the next change to those code paths is exactly what they exist to
+# catch.
 READS_A_NULL: list[tuple[str, CtyType[Any], Any, bytes]] = [
     ("map value", CtyMap(element_type=CtyString()), ["map", "string"], b'{"k":null}'),
     ("set element", CtySet(element_type=CtyString()), ["set", "string"], b'["a",null]'),
@@ -309,15 +310,6 @@ READS_A_NULL: list[tuple[str, CtyType[Any], Any, bytes]] = [
         ["list", ["object", {"a": "string"}]],
         b'[{"a":"x"},null]',
     ),
-]
-
-# The one still refused: a null for an object attribute not declared optional.
-# Declaring it optional is not a general workaround, because optionality adds
-# go-cty's third element to the wire type and so changes the type Terraform is
-# told about. Mostly mitigated in practice -- pyvider's schema layer marks every
-# optional or computed attribute optional -- but a required attribute that
-# arrives null still fails.
-STILL_REFUSED: list[tuple[str, CtyType[Any], Any, bytes]] = [
     (
         "object attribute",
         CtyObject(attribute_types={"a": CtyString(), "b": CtyNumber()}),
@@ -325,21 +317,6 @@ STILL_REFUSED: list[tuple[str, CtyType[Any], Any, bytes]] = [
         b'{"a":null,"b":1}',
     ),
 ]
-
-
-@pytest.mark.parametrize(
-    ("label", "cty_type", "type_spec", "json_text"),
-    STILL_REFUSED,
-    ids=[c[0] for c in STILL_REFUSED],
-)
-@pytest.mark.xfail(strict=True, reason="a null for a required object attribute is refused on read")
-def test_a_null_inside_a_container_can_be_read(
-    label: str, cty_type: CtyType[Any], type_spec: Any, json_text: bytes
-) -> None:
-    """go-cty writes these; we must be able to read them."""
-    theirs = _go_convert(json_text, type_spec, to_json=False)
-
-    cty_from_msgpack(theirs, cty_type)
 
 
 @pytest.mark.parametrize(

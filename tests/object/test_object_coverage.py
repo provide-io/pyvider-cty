@@ -42,10 +42,14 @@ def test_validate_with_cty_value_different_type() -> None:
         obj_type.validate(value)
 
 
-def test_validate_null_attribute_in_required_field() -> None:
-    obj_type = CtyObject(attribute_types={"name": CtyString()})
-    with pytest.raises(CtyAttributeValidationError, match="Attribute cannot be null"):
-        obj_type.validate({"name": None})
+def test_validate_null_attribute_at_depth() -> None:
+    """The null rule was removed at every level, not only the outermost one."""
+    inner = CtyObject(attribute_types={"name": CtyString()})
+    obj_type = CtyObject(attribute_types={"inner": inner})
+
+    value = obj_type.validate({"inner": {"name": None}})
+
+    assert value.value["inner"].value["name"].is_null
 
 
 def test_get_attribute_on_non_cty_value() -> None:

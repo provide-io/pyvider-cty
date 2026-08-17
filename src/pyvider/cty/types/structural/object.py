@@ -82,7 +82,6 @@ class CtyObject(CtyType[dict[str, object]]):
 
         if (unknown_marker := self.unknown_marker(value)) is not None:
             return unknown_marker
-        from pyvider.cty.types.structural.dynamic import CtyDynamic
 
         unknown_optionals = self.optional_attributes - set(self.attribute_types.keys())
         if unknown_optionals:
@@ -135,13 +134,14 @@ class CtyObject(CtyType[dict[str, object]]):
                     original_exception=e,
                 ) from e
 
-            if (
-                name not in self.optional_attributes
-                and validated_attr.is_null
-                and not isinstance(attr_type, CtyDynamic)
-            ):
-                raise CtyAttributeValidationError("Attribute cannot be null", value=None, path=path)
-
+            # A null is a value of every type, so there is deliberately no check
+            # here that a non-optional attribute is non-null. go-cty has none --
+            # nullability is not part of an object type there -- and Terraform
+            # relies on it: everything crossing the provider protocol is
+            # marshalled with `ImpliedType()`, which strips optional attributes
+            # recursively, so the type a provider receives has none at all and
+            # nulls arrive for unset attributes constantly. Required-ness is a
+            # schema concern and is checked by `PvsSchema.validate_config`.
             validated_attrs[name] = validated_attr
 
         # Don't mark the entire object as unknown just because some fields are unknown
