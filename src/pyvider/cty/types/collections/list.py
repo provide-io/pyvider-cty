@@ -46,7 +46,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return self.unknown_like(value)
             value = value.value
 
         if value is None:

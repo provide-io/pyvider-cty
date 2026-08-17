@@ -107,6 +107,30 @@ CASES: list[tuple[str, CtyType[Any], CtyValue[Any]]] = [
         STRINGS,
         STRINGS.validate([refine(UNKNOWN_STRING).not_null().new_value()]),
     ),
+    # An unknown's *position* is part of the bytes, so both orders are pinned.
+    # Until 2026-08-17 neither of these could be expressed: the container took
+    # its unknown-ness from the element and encoded as a bare `d4 00 00`, so
+    # every case above was really testing a wholly unknown container and
+    # agreeing with go-cty for the wrong reason.
+    ("an unknown last in a list", STRINGS, STRINGS.validate(["a", UNKNOWN_STRING])),
+    ("an unknown first in a list", STRINGS, STRINGS.validate([UNKNOWN_STRING, "a"])),
+    ("a list of nothing but unknowns", STRINGS, STRINGS.validate([UNKNOWN_STRING, UNKNOWN_STRING])),
+    (
+        "an unknown nested two deep",
+        CtyList(element_type=STRINGS),
+        CtyList(element_type=STRINGS).validate([["a", UNKNOWN_STRING]]),
+    ),
+    # Sets are the hard case: go-cty keeps two unknowns as two distinct members
+    # (`set_internals.go` -- unknowns are never equivalent to one another), and
+    # orders knowns first, then unknowns, then nulls. A frozenset payload could
+    # hold neither the multiplicity nor the order.
+    ("a set holding one unknown", STRING_SET, STRING_SET.validate(["z", UNKNOWN_STRING])),
+    ("a set holding two unknowns", STRING_SET, STRING_SET.validate([UNKNOWN_STRING, UNKNOWN_STRING])),
+    (
+        "a set holding a known, an unknown and a null",
+        STRING_SET,
+        STRING_SET.validate(["a", UNKNOWN_STRING, CtyValue.null(S)]),
+    ),
     # Ordinary containers, so the unknown cases are not the only coverage here.
     ("a list", STRINGS, STRINGS.validate(["a", "b"])),
     ("a set", STRING_SET, STRING_SET.validate(["b", "a"])),

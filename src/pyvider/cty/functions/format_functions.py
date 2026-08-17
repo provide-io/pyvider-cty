@@ -37,6 +37,7 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.conversion import convert
 from pyvider.cty.exceptions import CtyConversionError, CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._unknowns import unknown_not_null
 from pyvider.cty.types import (
     CtyBool,
     CtyDynamic,
@@ -426,8 +427,12 @@ def formatlist(template: CtyValue[Any], *arguments: CtyValue[Any]) -> CtyValue[A
             else:
                 row.append(_elements_of(argument)[index])
         if not all(element.is_wholly_known() for element in row):
-            # One unresolved row does not make the others unresolvable.
-            rows.append(CtyValue.unknown(CtyString()))
+            # One unresolved row does not make the others unresolvable. The row
+            # is refined not-null because formatting always produces a string:
+            # whatever the argument turns out to be, this element will not be
+            # null, and go-cty says so on the wire (ext 12 rather than a bare
+            # `d4 00 00`). Terraform can act on that during a plan.
+            rows.append(unknown_not_null(CtyString()))
             continue
         rows.append(CtyString().validate(_render(str(template.value), row)))
     return cast(CtyValue[Any], result_type.validate(rows))

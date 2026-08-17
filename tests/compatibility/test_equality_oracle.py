@@ -139,6 +139,66 @@ CASES: list[tuple[str, CtyType[Any], CtyValue[Any], CtyType[Any], CtyValue[Any]]
         STRINGS,
         STRINGS.validate(["a", "b"]),
     ),
+    # Order decides the answer for a sequence, and go-cty is deterministic about
+    # it: it walks by index and returns at the first element it cannot decide,
+    # so an undecided element at a low index beats a definite difference at a
+    # higher one. Both directions are pinned because a rule that only looked at
+    # "is anything definitely different" would pass one and fail the other.
+    (
+        "an undecided element before a difference",
+        STRINGS,
+        STRINGS.validate([US, "z"]),
+        STRINGS,
+        STRINGS.validate(["a", "b"]),
+    ),
+    (
+        "a difference before an undecided element",
+        STRINGS,
+        STRINGS.validate(["z", US]),
+        STRINGS,
+        STRINGS.validate(["a", "b"]),
+    ),
+    (
+        "an undecided tuple element before a difference",
+        TUPLE,
+        TUPLE.validate([US, 1]),
+        TUPLE,
+        TUPLE.validate(["a", 2]),
+    ),
+    # A refinement that *excludes* the candidate counts as a definite
+    # difference, so a later index is still reached; one that merely admits it
+    # leaves the element undecided and short-circuits.
+    (
+        "an element excluded by its prefix",
+        STRINGS,
+        STRINGS.validate([refine(US).string_prefix("ht").new_value(), "z"]),
+        STRINGS,
+        STRINGS.validate(["ftp", "b"]),
+    ),
+    (
+        "an element admitted by its prefix",
+        STRINGS,
+        STRINGS.validate([refine(US).string_prefix("ht").new_value(), "z"]),
+        STRINGS,
+        STRINGS.validate(["http", "b"]),
+    ),
+    # A set holding an unknown can never answer definitely: go-cty requires both
+    # sides wholly known, because an unknown element changes how many distinct
+    # members the set has.
+    (
+        "a set holding an unknown element",
+        STRING_SET,
+        STRING_SET.validate(["a", US]),
+        STRING_SET,
+        STRING_SET.validate(["b", "c"]),
+    ),
+    (
+        "a set holding two unknown elements",
+        STRING_SET,
+        STRING_SET.validate([US, US]),
+        STRING_SET,
+        STRING_SET.validate(["a", "b"]),
+    ),
     ("lists of different element types", STRINGS, STRINGS.validate([]), NUMBERS, NUMBERS.validate([])),
     ("equal sets", STRING_SET, STRING_SET.validate(["a", "b"]), STRING_SET, STRING_SET.validate(["b", "a"])),
     ("equal maps", STRING_MAP, STRING_MAP.validate({"a": "1"}), STRING_MAP, STRING_MAP.validate({"a": "1"})),

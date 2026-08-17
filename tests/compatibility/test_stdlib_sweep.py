@@ -47,7 +47,7 @@ from pyvider.cty import (
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.functions import STDLIB
 from pyvider.cty.types import BytesCapsule
-from tests.compatibility._oracle import soup_go
+from tests.compatibility._oracle import refinements as _refinements, soup_go
 
 pytestmark = pytest.mark.compat
 
@@ -117,6 +117,35 @@ def by(v: bytes) -> Arg:
 def nul(spec: Any, cty_type: CtyType[Any]) -> Arg:
     """A typed null. Distinct from unknown, and the two are answered differently."""
     return CtyValue.null(cty_type), {"type": spec, "null": True}
+
+
+UK = {"$unknown": True}
+
+
+def ls_uk(*elements: Any) -> Arg:
+    """A *known* list of strings holding one or more unknown elements.
+
+    The plan-time shape, and until 2026-08-17 it could not be written: the list
+    took its unknown-ness from the element and every function here was handed a
+    wholly unknown argument instead. So the sweep's 83 functions had only ever
+    been driven with arguments that were either entirely known or entirely not.
+    """
+    string_type = CtyString()
+    values = [CtyValue.unknown(string_type) if element is UK else element for element in elements]
+    return (
+        CtyList(element_type=string_type).validate(values),
+        {"type": ["list", "string"], "value": list(elements)},
+    )
+
+
+def se_uk(*elements: Any) -> Arg:
+    """The same for a set, where the *count* is what an unknown puts in doubt."""
+    string_type = CtyString()
+    values = [CtyValue.unknown(string_type) if element is UK else element for element in elements]
+    return (
+        CtySet(element_type=string_type).validate(values),
+        {"type": ["set", "string"], "value": list(elements)},
+    )
 
 
 # (function name, arguments). The id is derived, so adding a row is one line.
@@ -287,6 +316,40 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("flatten", [ls(["a"])]),
     ("chunklist", [ls(["a", "b", "c"]), nm(2)]),
     ("length", [ls(["a", "b"])]),
+    # Containers holding an unknown element. Every row below was unreachable
+    # until 2026-08-17 -- the container collapsed to a wholly unknown value on
+    # construction, so these functions had never been driven with the ordinary
+    # plan-time shape at all. A list's length is decided by its own structure;
+    # a set's is not, because an unknown element may still resolve to a value
+    # equal to another member, so go-cty answers with bounds rather than a count.
+    ("length", [ls_uk("a", UK)]),
+    ("length", [se_uk("z", UK)]),
+    ("length", [se_uk(UK, UK)]),
+    ("length", [se_uk(UK)]),
+    ("length", [se_uk("a", "b", UK)]),
+    ("contains", [ls_uk("a", UK), st("a")]),
+    ("contains", [ls_uk("a", UK), st("zzz")]),
+    ("contains", [se_uk("z", UK), st("z")]),
+    ("contains", [se_uk("z", UK), st("zzz")]),
+    ("distinct", [ls_uk("a", UK)]),
+    ("distinct", [ls_uk(UK, UK)]),
+    ("compact", [ls_uk("a", UK)]),
+    ("join", [st("-"), ls_uk("a", UK)]),
+    ("jsonencode", [ls_uk("a", UK)]),
+    ("keys", [mp({"a": "1"})]),
+    ("reverselist", [ls_uk("a", UK)]),
+    ("concat", [ls_uk("a", UK), ls(["b"])]),
+    ("slice", [ls_uk("a", UK), nm(0), nm(1)]),
+    ("element", [ls_uk("a", UK), nm(0)]),
+    ("element", [ls_uk("a", UK), nm(1)]),
+    ("flatten", [ls_uk("a", UK)]),
+    ("coalescelist", [ls_uk("a", UK), ls(["b"])]),
+    ("chunklist", [ls_uk("a", UK), nm(1)]),
+    ("zipmap", [ls(["a", "b"]), ls_uk("z", UK)]),
+    ("setunion", [se_uk("z", UK), se(["q"])]),
+    ("setintersection", [se_uk("z", UK), se(["z", "q"])]),
+    ("sort", [ls_uk("a", UK)]),
+    ("formatlist", [st("%s!"), ls_uk("a", UK)]),
     ("coalesce", [st(""), st("b")]),
     ("coalescelist", [ls([]), ls(["a"])]),
     ("range", [nm(3)]),
@@ -481,9 +544,23 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
             if not reported.get("ok"):
                 return "error", reported.get("error", "")
             if reported.get("unknown"):
-                return "unknown", None
+                # The refinements come with it. Comparing "unknown" against
+                # "unknown" only established that both sides declined to
+                # answer, not that they declined knowing the same things --
+                # and go-cty's refinements are load-bearing, so an answer
+                # refined to [1, 2] and a bare unknown are different answers
+                # that this sweep used to call identical.
+                return "unknown", reported.get("refine") or {}
             if reported.get("null"):
                 return "null", reported.get("type")
+            if "msgpack" in reported:
+                # A result the JSON codec cannot express -- a container holding
+                # an unknown element. Compared as wire bytes, which is the
+                # stricter comparison anyway and the one Terraform makes.
+                return "ok", (
+                    reported.get("type"),
+                    msgpack.unpackb(base64.b64decode(reported["msgpack"]), strict_map_key=False),
+                )
             return "ok", (reported.get("type"), reported.get("value"))
     raise AssertionError(f"{func}: harness produced no result: {completed.stderr.decode()[-400:]}")
 
@@ -502,7 +579,7 @@ def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
     except Exception as exc:  # noqa: BLE001 - any refusal is "error" for this comparison
         return "error", f"{type(exc).__name__}: {exc}"
     if result.is_unknown:
-        return "unknown", None
+        return "unknown", _refinements(result)
     if result.is_null:
         return "null", result.type._to_wire_json()
     if result.type.equal(BytesCapsule):

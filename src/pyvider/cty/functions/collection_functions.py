@@ -195,11 +195,27 @@ def sort(input_val: CtyValue[Any]) -> CtyValue[Any]:
             return input_val
         raise CtyFunctionError("sort: input value is not iterable")
 
-    # Now, iterate through the elements. A known list containing a null or
-    # unknown element must raise an error.
     value_iterable = cast(list[CtyValue[Any]] | tuple[CtyValue[Any], ...], input_val.value)
+
+    # An unknown element and a null element are different questions, and go-cty
+    # answers them differently -- this treated them alike and refused both.
+    #
+    # An unknown element means the *ordering* is undecided, so every position
+    # becomes undecided with it: go-cty returns a list of the same length whose
+    # elements are all bare unknowns, discarding even the elements it does know.
+    # That is lossier than it needs to be, but it is the answer Terraform sees,
+    # and an unknown anywhere wins over a null -- sort([null, unknown]) sorts
+    # rather than raising.
+    #
+    # Only reachable since a list stopped taking its unknown-ness from its
+    # elements; before that this branch was never entered.
+    if any(element.is_unknown for element in value_iterable):
+        undecided: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
+            [CtyValue.unknown(element_type)] * len(value_iterable)
+        )
+        return undecided
     for i, cty_element in enumerate(value_iterable):
-        if cty_element.is_null or cty_element.is_unknown:
+        if cty_element.is_null:
             raise CtyFunctionError(f"sort: cannot sort list with null or unknown elements at index {i}.")
 
     result: CtyValue[Any] = CtyList[Any](element_type=element_type).validate(
