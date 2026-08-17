@@ -27,9 +27,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import json
-import os
-from pathlib import Path
-import shutil
 import subprocess  # nosec
 from typing import Any
 
@@ -49,6 +46,7 @@ from pyvider.cty import (
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions import chunklist, flatten, indent, length, regex, regexall, regexreplace
+from tests.compatibility._oracle import soup_go
 
 pytestmark = pytest.mark.compat
 
@@ -60,20 +58,10 @@ TUPLE_TWO_LISTS = ["tuple", [["list", "string"], ["list", "string"]]]
 TUPLE_NESTED = ["tuple", [["tuple", [["tuple", ["string"]]]]]]
 
 
-def _soup_go() -> str:
-    candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or "/tmp/soup-go"  # nosec
-    if not Path(candidate).exists():
-        pytest.skip(
-            f"soup-go harness not found at {candidate}. Build it from "
-            "tofusoup/src/tofusoup/harness/go/soup-go, or set SOUP_GO_BIN."
-        )
-    return candidate
-
-
 def _go_call(func: str, args: list[str]) -> dict[str, Any]:
     """Run go-cty's own implementation and return its reported result."""
     result = subprocess.run(  # nosec
-        [_soup_go(), "cty", "call", func, *args], capture_output=True, check=False
+        [soup_go(), "cty", "call", func, *args], capture_output=True, check=False
     )
     for line in result.stdout.decode().splitlines():
         if line.startswith("{"):

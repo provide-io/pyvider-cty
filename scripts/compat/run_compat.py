@@ -22,8 +22,20 @@ BINARY = Path("/tmp/soup-go-compat")  # nosec
 
 
 def ensure_harness() -> Path | None:
-    if BINARY.exists():
-        return BINARY
+    """Rebuild the harness from source, every run.
+
+    The rebuild used to be skipped whenever the binary already existed, which
+    made the oracle age out of date without saying so: the harness grew whole-
+    stdlib coverage and a `cty unify` command, and the suite went on asking a
+    binary built the day before, whose answer to two thirds of the sweep was
+    "unknown function". An oracle that is not rebuilt is not an oracle, it is a
+    fixture with a compiler. `go build` is incremental, so paying for it on
+    every run costs about a second and removes the failure mode.
+
+    A build failure deliberately does *not* fall back to whatever binary is
+    lying around -- that is the same staleness, chosen on purpose. Point
+    SOUP_GO_BIN at a binary and run pytest directly if you need that.
+    """
     if not HARNESS_SRC.is_dir():
         print(f"soup-go source not found at {HARNESS_SRC}; skipping cross-language checks.")
         return None
