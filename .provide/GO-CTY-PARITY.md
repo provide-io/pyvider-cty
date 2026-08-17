@@ -20,14 +20,23 @@ Living document. Updated as work lands — do not let it drift.
 | 2 | Verification infrastructure (tofusoup) | ✅ Done — go-cty 1.19 + `soup-go cty call` oracle |
 | 3 | Foundations | ✅ Done — 3 of 5 items were not gaps; `SafeKnownPrefix` deferred on the Unicode decision |
 | 4 | Marks, properly | ⬜ Not started — one item (`UnknownAsNull`, deep mark ops) |
-| 5 | Breadth | 🟨 Mostly done — `format`, `formatlist`, `unify`, the bool/set/range ports and the null policy have all landed; `strlen`, `assertnotnull` and the JSON value codec remain |
+| 5 | Breadth | 🟨 Mostly done — `format`, `formatlist`, `unify`, the bool/set/range ports and the null policy have all landed; `assertnotnull`, `strlen` and the JSON value codec remain |
 | 6 | Refinements | ⬜ Not started |
 | 7 | Architecture | 🟨 The `cty/function` framework's null policy landed; type conformance and the rest have not |
 | — | Docs (#13) | 🔄 Continuous |
 
-Phase 2 and 5 are partly done: 2's oracle exists but reaches 74 of go-cty's 83
-stdlib functions, and 5's ports landed except `format`/`formatlist`. Both are
-itemised below.
+**What is actually left**, in the order it is worth doing:
+
+1. **`assertnotnull`** — the only unblocked stdlib port, and trivial.
+2. **The Unicode decision**, which is yours and gates four things at once: `strlen`, `SafeKnownPrefix`, `format`'s two grapheme-cluster xfails, and `pyvider-components`' `length`.
+3. **Phases 4, 6 and 7** — nine unported pieces of go-cty, none of them bugs: deep mark ops, `UnknownAsNull`, the `cty/json` value codec, capsule ops gaps, the `Refine` builder, `Value.Range`, `Type.TestConformance`, the real `cty/function` framework, and a generalized `MakeToFunc`.
+4. **Worklist #8** — `pyvider-components` reimplementing 20 stdlib functions in plain Python. The largest *actual* parity win, and outside this repo.
+5. **The release gate** — 0.5.0, fourteen breaking changes, wave-ordered with `pyvider`.
+
+Three accepted divergences stay open and are itemised below rather than fixed:
+the set-with-a-null byte ordering, Python `re` not being RE2, and `CtySet` being
+unable to hold a list. Plus housekeeping: 143 unused `ERR_*` constants, the
+pyvider fixture regeneration, and the docs parity matrix.
 
 ---
 
