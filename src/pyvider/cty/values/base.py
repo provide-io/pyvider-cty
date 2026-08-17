@@ -93,6 +93,17 @@ class CtyValue(Generic[T]):
         return cty_to_native(self)  # type: ignore
 
     def _canonical_sort_key(self) -> tuple[Any, ...]:
+        """The order go-cty puts a set's elements in, which reaches the wire.
+
+        go-cty's `setRules.Less` (`cty/set_internals.go:99-110`) ranks known
+        values first, then unknown, then null -- in that order, and it checks
+        nullness *before* knownness, so an unknown sorts ahead of a null. These
+        three ranks were previously the exact inverse, which is not a
+        preference: a set holding a null re-encoded with the null first where
+        go-cty writes it last. Both decode to the same value, so only a byte
+        comparison catches it -- and Terraform compares serialized state, so it
+        was a diff that reappeared on every plan.
+        """
         from ..types import (
             CtyBool,
             CtyCapsule,
@@ -106,12 +117,12 @@ class CtyValue(Generic[T]):
         )
 
         if self.is_null:
-            return (0,)
+            return (2,)
         if self.is_unknown:
             return (1,)
 
         type_rank = self.type._type_order
-        key_prefix = (2, type_rank)
+        key_prefix = (0, type_rank)
 
         if isinstance(self.type, CtyBool | CtyNumber | CtyString):
             return (*key_prefix, self.value)

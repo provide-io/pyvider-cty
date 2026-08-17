@@ -335,15 +335,15 @@ def test_a_null_inside_these_containers_reads_back(
     assert decoded.raw_value is not None, f"{label}: decoded to nothing"
 
 
-@pytest.mark.xfail(strict=True, reason="a null sorts first here and last in go-cty, so the bytes differ")
 def test_a_set_holding_a_null_re_encodes_to_the_same_bytes() -> None:
     """Where a null sorts among a set's elements is a wire difference.
 
-    go-cty writes `["a", null]` and this package writes `[null, "a"]` for the
-    same set. Both decode to the same value, so nothing catches it except a byte
-    comparison -- and Terraform compares serialized state, so it is a diff that
-    reappears on every plan. Set ordering agrees everywhere else: it was checked
-    across case, magnitude and non-ASCII, and only a null moves it.
+    This was an xfail: go-cty wrote `["a", null]` and this package wrote
+    `[null, "a"]` for the same set. Both decode to the same value, so nothing
+    catches it except a byte comparison -- and Terraform compares serialized
+    state, so it was a diff that reappeared on every plan. Set ordering agreed
+    everywhere else, which is what made it look like a null-specific quirk
+    rather than the inverted rank it was.
     """
     cty_type = CtySet(element_type=CtyString())
     theirs = _go_convert(b'["a",null]', ["set", "string"], to_json=False)
