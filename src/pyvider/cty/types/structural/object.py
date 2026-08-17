@@ -140,8 +140,17 @@ class CtyObject(CtyType[dict[str, object]]):
             # relies on it: everything crossing the provider protocol is
             # marshalled with `ImpliedType()`, which strips optional attributes
             # recursively, so the type a provider receives has none at all and
-            # nulls arrive for unset attributes constantly. Required-ness is a
-            # schema concern and is checked by `PvsSchema.validate_config`.
+            # nulls arrive for unset attributes constantly. Restoring the check
+            # here would reject state go-cty itself writes.
+            #
+            # Required-ness is therefore the *caller's* to enforce, and cannot be
+            # delegated back: `optional_attributes` records optionality, which is
+            # a wire-format concern, and nothing in a CtyObject records intent.
+            # An earlier version of this comment named the one pyvider method
+            # that does the check, which read as a guarantee and was not one --
+            # four of pyvider's five validation paths reach this function without
+            # passing through it. cty cannot make that promise on another
+            # package's behalf, so it no longer appears to.
             validated_attrs[name] = validated_attr
 
         # Don't mark the entire object as unknown just because some fields are unknown

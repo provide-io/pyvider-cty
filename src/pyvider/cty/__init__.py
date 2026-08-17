@@ -22,6 +22,7 @@ from pyvider.cty.exceptions import (
     CtyTypeParseError,
     CtyValidationError,
 )
+from pyvider.cty.mark_paths import PathMarks, mark_with_paths, unmark_deep_with_paths
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
 from pyvider.cty.types import (
@@ -73,14 +74,17 @@ __all__ = [
     "CtyTypeParseError",
     "CtyValidationError",
     "CtyValue",
+    "PathMarks",
     "__version__",
     "convert",
     "deep_values",
+    "mark_with_paths",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
     "transform",
     "unify",
     "unknown_as_null",
+    "unmark_deep_with_paths",
     "walk",
 ]
 
