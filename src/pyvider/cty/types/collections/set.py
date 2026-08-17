@@ -29,13 +29,13 @@ def _has_marked_elements(value: CtyValue[Any]) -> bool:
     Re-validating an already-validated set was constant time until this check
     was added, and scanning every element on every call made it O(n) -- 13 ms
     for a 50k set that used to cost microseconds. `collect_marks_deep` is
-    memoized for a frozenset payload, so the overwhelmingly common answer
+    memoized for an immutable payload, so the overwhelmingly common answer
     ("nothing anywhere is marked") now costs one lookup, and only a set that
     really does carry marks pays for finding out where they are.
     """
     if not collect_marks_deep(value):
         return False
-    elements = cast("frozenset[CtyValue[Any]]", value.value)
+    elements = cast("tuple[CtyValue[Any], ...]", value.value)
     return any(collect_marks_deep(element) for element in elements)
 
 
@@ -67,7 +67,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
             if (
                 isinstance(value.type, CtySet)
                 and value.type.equal(self)
-                and isinstance(value.value, frozenset)
+                and isinstance(value.value, tuple)
                 and not _has_marked_elements(value)
             ):
                 return cast(CtyValue[tuple[T, ...]], value), value
@@ -95,6 +95,14 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
         # hashing a marked element (cty/set_internals.go) rather than trust the
         # invariant to callers.
         element_marks: frozenset[Any] = frozenset()
+        # Unknown elements are held apart from the de-duplicated ones. go-cty is
+        # explicit that "two unknown values are not equivalent for the sake of
+        # set membership" (cty/set_internals.go): its `Equivalent` compares
+        # `Equals(...) == true`, and unknown-against-unknown is undecided, so
+        # both survive. De-duplicating them would claim a cardinality the value
+        # does not have -- `toset([a.id, b.id])` at plan time is two elements,
+        # not one, and the count reaches Terraform.
+        undecided: list[CtyValue[Any]] = []
         for raw_item in value_iterable:
             try:
                 validated_item = self.element_type.validate(raw_item)
@@ -108,17 +116,30 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                     if item_marks:
                         element_marks |= item_marks
                         validated_item = _strip(validated_item)
-                key = validated_item._canonical_sort_key()
-                unique_items[key] = validated_item
+                if validated_item.is_unknown:
+                    undecided.append(validated_item)
+                else:
+                    unique_items[validated_item._canonical_sort_key()] = validated_item
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
             except Exception as e:
                 raise CtySetValidationError(f"Failed to process element for set: {e}", value=raw_item) from e
 
-        is_unknown = any(v.is_unknown for v in unique_items.values())
-        result: CtyValue[tuple[T, ...]] = CtyValue(
-            vtype=self, value=frozenset(unique_items.values()), is_unknown=is_unknown
+        # Canonical order, not a frozenset. Two unknowns of one type are `==` and
+        # hash-equal here, so a frozenset payload could not hold both however the
+        # de-duplication above was written -- the container itself was the
+        # constraint. An ordered tuple is also what `CtySet` has always declared
+        # (`CtyType[tuple[T, ...]]`), and it makes the wire order a property of
+        # the value rather than something each encoder re-derives.
+        #
+        # The sort is stable and `_canonical_sort_key` ranks known 0, unknown 1,
+        # null 2, so this reproduces go-cty's observed iteration order exactly:
+        # known elements sorted by value, then the unknowns in the order they
+        # were supplied, then nulls last.
+        elements = sorted(
+            (*unique_items.values(), *undecided), key=lambda element: element._canonical_sort_key()
         )
+        result: CtyValue[tuple[T, ...]] = CtyValue(vtype=self, value=tuple(elements))
         return result.with_marks(element_marks) if element_marks else result
 
     def equal(self, other: CtyType[Any]) -> bool:

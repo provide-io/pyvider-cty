@@ -108,7 +108,7 @@ def _strip(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[An
 
 
 def _hoist_set_marks(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[Any]:
-    elements = cast("frozenset[CtyValue[Any]]", value.value)
+    elements = cast("tuple[CtyValue[Any], ...]", value.value)
     element_marks: frozenset[Any] = frozenset()
     rebuilt = []
     for element in elements:
@@ -118,7 +118,11 @@ def _hoist_set_marks(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> C
     if not element_marks:
         return value
     found[path] = found.get(path, frozenset()) | element_marks
-    return _evolved(value, frozenset(rebuilt))
+    # A tuple, not a frozenset. The payload is canonically ordered and may hold
+    # two unknowns that compare equal to each other, so rebuilding it as a
+    # frozenset would both lose the order and silently drop one of them.
+    # Stripping marks cannot reorder it: `_canonical_sort_key` is mark-blind.
+    return _evolved(value, tuple(rebuilt))
 
 
 def _evolved(value: CtyValue[Any], payload: Any) -> CtyValue[Any]:

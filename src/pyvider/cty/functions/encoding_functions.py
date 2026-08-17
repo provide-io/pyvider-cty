@@ -16,8 +16,10 @@ from pyvider.cty import (
     CtyBool,
     CtyDynamic,
     CtyList,
+    CtyMap,
     CtyNumber,
     CtyObject,
+    CtySet,
     CtyString,
     CtyTuple,
     CtyType,
@@ -36,12 +38,41 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.conversion import cty_to_native
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._unknowns import unknown_not_null
+from pyvider.cty.refinement import refine
+
+
+def _json_unknown_prefix(vtype: CtyType[Any]) -> str | None:
+    """The first character of the JSON a value of `vtype` will encode to.
+
+    go-cty refines the declined result with this so that a downstream consumer
+    can still tell an object from an array without knowing the contents.
+    """
+    if isinstance(vtype, CtyString):
+        return '"'
+    if isinstance(vtype, CtyObject | CtyMap):
+        return "{"
+    if isinstance(vtype, CtyTuple | CtyList | CtySet):
+        return "["
+    return None
 
 
 @stdlib_function("jsonencode", allow_null=True)
 def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
-    if val.is_unknown:
-        return CtyValue.unknown(CtyString())
+    # `is_unknown` alone is not the question. A list is known while an element
+    # inside it is not, and encoding that element wrote a JSON `null` -- which
+    # is not a placeholder but a different value, and a wrong one. go-cty's
+    # JSONEncodeFunc tests `IsWhollyKnown` and declines, keeping whatever it can
+    # still promise about the answer: not null, and its opening character.
+    if not val.is_wholly_known():
+        result = unknown_not_null(CtyString())
+        prefix = _json_unknown_prefix(val.type)
+        if prefix is None:
+            return result
+        # Taken literally rather than through `safe_known_prefix`: the following
+        # character is chosen by the encoder, not the caller, and none of the
+        # ones it can emit combines with a brace, bracket or quote.
+        return refine(result).string_prefix_full(prefix).new_value()
     try:
         native_val = cty_to_native(val)
         return CtyString().validate(json.dumps(native_val))

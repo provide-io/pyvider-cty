@@ -128,7 +128,7 @@ class KeyStep(PathStep):
         from pyvider.cty.types.collections import CtySet
 
         element_type = cast(CtySet[Any], value.type).element_type
-        elements = cast("frozenset[CtyValue[Any]]", value.value)
+        elements = cast("tuple[CtyValue[Any], ...]", value.value)
         if self.key in elements:
             # The set's marks come along: cty cannot hold marks on set elements,
             # so an element's sensitivity is recorded on the set as a whole.

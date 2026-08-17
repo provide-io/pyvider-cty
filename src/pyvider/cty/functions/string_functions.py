@@ -35,6 +35,7 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._unknowns import unknown_not_null
 from pyvider.cty.values.frozen import FrozenDict
 
 
@@ -357,6 +358,13 @@ def join(separator: CtyValue[Any], elements: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError("join: arguments must be string and list/tuple")
     if separator.is_null or separator.is_unknown or elements.is_null or elements.is_unknown:
         return CtyValue.unknown(CtyString())
+    # A list is known even while one of its elements is not, so reaching the
+    # body no longer means every element has a string to contribute -- and
+    # `str()` of an unknown's placeholder would land in the result as if it
+    # were one. go-cty's JoinFunc tests `IsWhollyKnown` and declines, promising
+    # only that the answer is a string and not null.
+    if not elements.is_wholly_known():
+        return unknown_not_null(CtyString())
 
     sep_str = cast(str, separator.value)
     elements_list = cast(list[Any] | tuple[Any, ...], elements.value)
