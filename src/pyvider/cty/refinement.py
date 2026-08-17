@@ -48,6 +48,14 @@ class CtyRefinementError(CtyValidationError):
     """A refinement that contradicts the value, or an earlier refinement."""
 
 
+# go-cty's `sequenceMustEndGraphemeCluster` allowlist (`ctystrings/prefix.go:140`):
+# single code points that never combine with what follows, so a final grapheme
+# cluster that is exactly one of these is safe to keep. Deliberately verbatim —
+# growing it would promise more than go-cty promises for the same value, and a
+# refinement two implementations disagree on is a plan that disagrees with itself.
+_MUST_END_CLUSTER = frozenset("-_:;/\\,.(){}[]|?!~ \t@#$%^&*+\"'")
+
+
 def safe_known_prefix(prefix: str, /) -> str:
     """The longest prefix that cannot change when more characters are appended.
 
@@ -56,11 +64,18 @@ def safe_known_prefix(prefix: str, /) -> str:
     known prefix, since the full string could turn out to be `"hellö"` — the
     `o` was never final. Its own documentation uses that example.
 
+    One exception, matching go-cty's own heuristic: a final cluster that is a
+    single code point from a fixed allowlist of delimiters — space, punctuation,
+    the characters `format("hi %s", …)` and JSON templates actually end on — is
+    kept, because nothing can combine with it.
+
     Always NFC-normalized first, matching how cty stores strings, so the prefix
     is comparable with the values it will be checked against.
     """
     normalized = unicodedata.normalize("NFC", prefix)
     clusters = list(iter_clusters(normalized))
+    if clusters and clusters[-1] in _MUST_END_CLUSTER:
+        return normalized
     return "".join(clusters[:-1])
 
 

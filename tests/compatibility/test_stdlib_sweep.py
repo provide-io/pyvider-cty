@@ -250,6 +250,15 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("format", [st("%.1s"), st(CONJUNCT)]),
     ("format", [st("%q"), st(FAMILY)]),
     ("format", [st("%q"), st("héllo")]),
+    # Literal text *before* the first verb. These rows agree trivially when
+    # everything is known -- what they exist for is the unknown population,
+    # where the deferred result is refined with the template's literal prefix
+    # and `SafeKnownPrefix` decides whether the trailing delimiter survives
+    # (`ctystrings/prefix.go:140` keeps it; until 2026-08-17 this package
+    # dropped it, and no row could see the difference).
+    ("format", [st("hi %s"), st("x")]),
+    ("format", [st("id-%s"), st("x")]),
+    ("format", [st("ab%s"), st("x")]),
     # regexp
     ("regex", [st("a(b)c"), st("abc")]),
     ("regexall", [st("a(b)"), st("abab")]),
