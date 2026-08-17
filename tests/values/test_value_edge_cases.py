@@ -42,12 +42,16 @@ class TestCanonicalSortKey:
     """Test _canonical_sort_key for all type combinations."""
 
     def test_canonical_sort_key_null(self) -> None:
-        """Test that null values have sort key (0,)."""
+        """A null sorts last, as go-cty's `setRules.Less` puts it."""
         null_val = CtyValue.null(CtyString())
-        assert null_val._canonical_sort_key() == (0,)
+        assert null_val._canonical_sort_key() == (2,)
 
     def test_canonical_sort_key_unknown(self) -> None:
-        """Test that unknown values have sort key (1,)."""
+        """An unknown sorts after known values but *before* a null.
+
+        go-cty checks nullness before knownness (`set_internals.go:99-110`), so
+        the middle rank is the unknown's, not the null's.
+        """
         unknown_val = CtyValue.unknown(CtyString())
         assert unknown_val._canonical_sort_key() == (1,)
 
@@ -57,7 +61,7 @@ class TestCanonicalSortKey:
         set_val = set_type.validate({3, 1, 2})
         key = set_val._canonical_sort_key()
         # Should be sorted: (2, type_order, elements...)
-        assert key[0] == 2  # Not null/unknown
+        assert key[0] == 0  # a known value ranks ahead of unknown and null
         assert len(key) > 1
 
     def test_canonical_sort_key_map(self) -> None:
@@ -66,7 +70,7 @@ class TestCanonicalSortKey:
         map_val = map_type.validate({"b": "2", "a": "1"})
         key = map_val._canonical_sort_key()
         # Should be sorted by keys
-        assert key[0] == 2  # Not null/unknown
+        assert key[0] == 0  # a known value ranks ahead of unknown and null
         assert len(key) > 1
 
     def test_canonical_sort_key_object(self) -> None:
@@ -74,14 +78,14 @@ class TestCanonicalSortKey:
         obj_type = CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
         obj_val = obj_type.validate({"name": "Alice", "age": 30})
         key = obj_val._canonical_sort_key()
-        assert key[0] == 2  # Not null/unknown
+        assert key[0] == 0  # a known value ranks ahead of unknown and null
         assert len(key) > 1
 
     def test_canonical_sort_key_capsule(self) -> None:
         """Test canonical sort key for capsules."""
         capsule_val = BytesCapsule.validate(b"hello")
         key = capsule_val._canonical_sort_key()
-        assert key[0] == 2  # Not null/unknown
+        assert key[0] == 0  # a known value ranks ahead of unknown and null
         # Should use repr of value
         assert isinstance(key[-1], str)
 
@@ -221,13 +225,15 @@ class TestValueSortingAndOrdering:
         values = [val1, unknown_val, val2, null_val, val3]
         sorted_values = sorted(values, key=lambda v: v._canonical_sort_key())
 
-        # null (0) < unknown (1) < regular values (2, ...)
-        assert sorted_values[0] == null_val
-        assert sorted_values[1] == unknown_val
-        # Regular values should be sorted by their numeric value
-        assert sorted_values[2] == val2  # 1
-        assert sorted_values[3] == val3  # 2
-        assert sorted_values[4] == val1  # 3
+        # go-cty's order: known values (0, ...) < unknown (1) < null (2).
+        # This test asserted the exact reverse, which is how a set holding a
+        # null came to re-encode with the null first and differ from go-cty
+        # byte for byte on every plan.
+        assert sorted_values[0] == val2  # 1
+        assert sorted_values[1] == val3  # 2
+        assert sorted_values[2] == val1  # 3
+        assert sorted_values[3] == unknown_val
+        assert sorted_values[4] == null_val
 
 
 # 🌊🪢🔚
