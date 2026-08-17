@@ -58,6 +58,8 @@ from pyvider.cty.conversion import convert
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._unknowns import unknown_not_null
+from pyvider.cty.refinement import refine
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
@@ -68,6 +70,21 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
         raise CtyFunctionError(error_message)
     if input_val.is_null or input_val.is_unknown:
         return input_val
+    if isinstance(input_val.type, CtyList | CtySet):
+        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
+        element_type = collection_type.element_type
+    else:
+        element_type = CtyDynamic()
+    result_type = CtyList(element_type=element_type)
+
+    # De-duplicating asks whether two elements are equal, and two unknowns of
+    # the same type answer "maybe" -- but a Python `set` sees them as one and
+    # drops the second, asserting they will resolve alike. The result's length
+    # is undecided for the same reason. go-cty's DistinctFunc declines the whole
+    # answer as soon as any element is not known, rather than guessing either.
+    if not input_val.is_wholly_known():
+        return unknown_not_null(result_type)
+
     seen = set()
     result_elements = []
     for cty_element in input_val.value:  # type: ignore[attr-defined]
@@ -78,12 +95,7 @@ def distinct(input_val: CtyValue[Any]) -> CtyValue[Any]:
         except TypeError as e:
             error_message = ERR_DISTINCT_ELEMENT_NOT_HASHABLE.format(type=cty_element.type.ctype, error=e)
             raise CtyFunctionError(error_message) from e
-    if isinstance(input_val.type, CtyList | CtySet):
-        collection_type = cast(CtyList[Any] | CtySet[Any], input_val.type)  # type: ignore[redundant-cast]
-        element_type = collection_type.element_type
-    else:
-        element_type = CtyDynamic()
-    return CtyList(element_type=element_type).validate(result_elements)  # type: ignore[no-any-return]
+    return result_type.validate(result_elements)  # type: ignore[no-any-return]
 
 
 def _unwrap_dynamic(element: CtyValue[Any]) -> CtyValue[Any]:
@@ -227,7 +239,33 @@ def length(input_val: CtyValue[Any]) -> CtyValue[Any]:
         # move with the same deferred strictness change as `contains`.
         if collection.is_null or undecided:
             return CtyValue.unknown(CtyNumber())
-        return CtyNumber().validate(len(collection.value))  # type: ignore[arg-type]
+        stored = len(collection.value)  # type: ignore[arg-type]
+        if isinstance(collection.type, CtySet):
+            return _set_length(collection, stored)
+        return CtyNumber().validate(stored)
+
+
+def _set_length(collection: CtyValue[Any], stored: int) -> CtyValue[Any]:
+    """A set's length is undecided while it holds an unknown element.
+
+    Counting the stored elements would over-claim. An unknown element may still
+    resolve to a value equal to another member, and the set would then hold
+    fewer distinct values than it currently stores -- so the count is a *bound*,
+    not an answer. go-cty returns an unknown number refined to `[1, stored]`,
+    and its lower bound is 1 no matter how many definitely-distinct known
+    elements are present; it does not credit them.
+
+    The one exception is a set storing a single element: whatever that element
+    turns out to be, there is exactly one of it.
+
+    Only reachable since sets stopped flagging themselves unknown on behalf of
+    their elements -- before that this returned unknown for the whole set, which
+    was vaguer but never wrong.
+    """
+    elements = cast("tuple[CtyValue[Any], ...]", collection.value)
+    if stored < 2 or not any(element.is_unknown for element in elements):
+        return CtyNumber().validate(stored)
+    return refine(CtyValue.unknown(CtyNumber())).not_null().number_range_inclusive(1, stored).new_value()
 
 
 @stdlib_function("slice")
@@ -538,6 +576,13 @@ def compact(collection: CtyValue[Any]) -> CtyValue[Any]:
 
     if collection.is_null or collection.is_unknown:
         return collection
+    # Whether an element survives depends on whether it is the empty string, and
+    # an unknown has not decided that yet -- its payload is a placeholder object,
+    # which is truthy, so it used to be kept as if it had definitely answered
+    # "not empty". go-cty's CompactFunc declines instead: the result's length is
+    # not knowable, only that it is a list and not null.
+    if not collection.is_wholly_known():
+        return unknown_not_null(CtyList(element_type=CtyString()))
     result: CtyValue[Any] = CtyList(element_type=CtyString()).validate(
         [v for v in collection.value if v.value]  # type: ignore[attr-defined]
     )
@@ -782,12 +827,20 @@ def zipmap(keys: CtyValue[Any], values: CtyValue[Any]) -> CtyValue[Any]:
     if keys.is_null or values.is_null:
         return CtyMap(element_type=CtyDynamic()).validate({})  # type: ignore[no-any-return]
 
+    val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
+    # An unknown *value* is no obstacle -- it goes into the map as an unknown
+    # entry, and go-cty builds exactly that map. An unknown *key* is: there is
+    # no name to file its entry under, so go-cty's ZipmapFunc gives up on the
+    # whole map. This used to hand the placeholder to `CtyMap.validate`, which
+    # refused it as a non-string key and raised out of the function.
+    if not keys.is_wholly_known():
+        return unknown_not_null(CtyMap(element_type=val_elem_type))
+
     key_list = [k.value for k in keys.value]  # type: ignore[attr-defined]
     val_list = list(values.value)  # type: ignore[call-overload]
 
     result_map = {key_list[i]: val_list[i] for i in range(min(len(key_list), len(val_list)))}
 
-    val_elem_type = values.type.element_type if isinstance(values.type, CtyList) else CtyDynamic()
     return CtyMap(element_type=val_elem_type).validate(result_map)  # type: ignore[no-any-return]
 
 

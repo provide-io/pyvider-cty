@@ -68,10 +68,11 @@ def _number_to_string(raw: Any) -> str:
 def _ordered_elements(value: CtyValue[Any]) -> list[CtyValue[Any]]:
     """A sequence value's elements, as CtyValues, in a stable order.
 
-    A set has no order of its own, so it is given the one used to de-duplicate
-    it rather than whatever the frozenset happens to iterate in -- otherwise
-    converting the same set to a list twice in one process could produce two
-    different lists.
+    A set carries its canonical order in the payload itself, so it needs no
+    sorting here. It used to hold a frozenset, whose iteration order varies
+    between processes, and the sort below was what stopped converting the same
+    set to a list twice from producing two different lists. The `frozenset`
+    branch is kept because a CtyValue can still be hand-built around one.
 
     Elements are validated against the source's own element type on the way
     out, because a CtyValue can legitimately be built around a raw Python
