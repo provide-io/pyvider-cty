@@ -39,6 +39,7 @@ from pyvider.cty.types import (
     CtyTuple,
     CtyType,
 )
+from pyvider.cty.unknown import unknown_as_null
 from pyvider.cty.values import CtyValue
 from pyvider.cty.walk import deep_values, transform, walk
 
@@ -79,6 +80,7 @@ __all__ = [
     "parse_type_string_to_ctytype",
     "transform",
     "unify",
+    "unknown_as_null",
     "walk",
 ]
 

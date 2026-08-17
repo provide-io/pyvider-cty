@@ -46,7 +46,7 @@ def test_list_of_booleans_validation(value: list[bool]) -> None:
 
 @given(st.lists(st.none() | st.integers(), max_size=20))
 @settings(deadline=500)  # Increase deadline to 500ms for validation-heavy test
-def test_list_of_strings_with_invalid_types(value: list[None | int]) -> None:
+def test_list_of_strings_with_invalid_types(value: list[int | None]) -> None:
     """A non-string element is refused; a null one is not.
 
     `None` used to count as an invalid type here, which followed the code
