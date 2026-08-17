@@ -5,10 +5,11 @@
 
 """The five set operations against go-cty's `cty/function/stdlib/set.go`.
 
-The three the oracle exposes are pinned against it in the compatibility sweep.
-Here are the parts the harness cannot reach: `setsymmetricdifference` and
-`sethaselement`, which it does not expose at all, and the unknown handling,
-which is the only place these five differ from one another in substance.
+All five are pinned against the live oracle in the compatibility sweep --
+including `setsymmetricdifference` and `sethaselement`, which the harness
+gained on 2026-08-16; this module used to say it could not reach them, and
+followed `set.go` by hand instead. What stays here is the unknown handling,
+which is the only place the five differ from one another in substance.
 """
 
 import pytest
@@ -68,7 +69,7 @@ class TestSetOperations:
         assert elements_of(setsubtract(S("a", "b"), S("b"))) == {"a"}
 
     def test_symmetric_difference(self) -> None:
-        """Not exposed by the oracle harness, so this follows `set.go` directly."""
+        """Also pinned against the live oracle in the sweep since 2026-08-16."""
         assert elements_of(setsymmetricdifference(S("a", "b"), S("b", "c"))) == {"a", "c"}
 
     def test_has_element(self) -> None:

@@ -154,8 +154,6 @@ def test_a_wholly_unknown_argument_is_answered_the_same_way(func: str, args: lis
 
         theirs = _go_result(func, specs)
         ours = _our_result(func, values)
-        if ours[0] == "missing":
-            pytest.skip(f"{func} is not exported by pyvider-cty")
 
         where = f"{func} with argument {position} wholly unknown"
         assert ours[0] == theirs[0], (
@@ -163,6 +161,7 @@ def test_a_wholly_unknown_argument_is_answered_the_same_way(func: str, args: lis
         )
         if theirs[0] != "error":
             assert ours[1] == theirs[1], f"{where}: go-cty {theirs[1]}, pyvider {ours[1]}"
+            assert ours[2] == theirs[2], f"{where} marks: go-cty {theirs[2]}, pyvider {ours[2]}"
 
 
 def test_every_case_has_an_id_of_its_own() -> None:

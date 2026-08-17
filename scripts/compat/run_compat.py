@@ -47,8 +47,11 @@ def ensure_harness() -> Path | None:
         ["go", "build", "-o", str(BINARY), "./..."], cwd=HARNESS_SRC, check=False
     )
     if build.returncode != 0:
-        print("soup-go build failed; skipping cross-language checks.")
-        return None
+        # A failed build is not a missing toolchain. The machine can check and
+        # could not, and exiting 0 here made `make compat` green while checking
+        # nothing -- which is the exact reading this script exists to prevent.
+        print("soup-go build failed.")
+        raise SystemExit(1)
     return BINARY
 
 

@@ -104,6 +104,44 @@ def _commands(binary: str) -> frozenset[str]:
     return frozenset(found)
 
 
+@lru_cache(maxsize=8)
+def _misbehaves(binary: str) -> str | None:
+    """One probe per historical harness fault class, or None if all pass.
+
+    The command handshake checks *shape* -- which subcommands exist -- and a
+    binary built after the last subcommand landed but before the behaviour
+    fixes passes it while answering wrongly. Each probe here reproduces one
+    fault that actually shipped: a refinement bound past 2^64 built with a
+    default-precision big.Float came back rounded, and `SafeKnownPrefix` was
+    applied twice so "hello" answered "hel". Cheap (two calls, cached per
+    binary), and it turns "the handshake checks shape, never behaviour" from
+    an audit finding into a closed one.
+    """
+    bound = str(2**70)
+    spec = json.dumps({"$unknown": True, "$refine": {"number_lower_bound": [bound, True]}})
+    completed = subprocess.run(  # nosec
+        [binary, "cty", "rich", "--type", '"number"', spec], capture_output=True, text=True, check=False
+    )
+    try:
+        reported = json.loads(completed.stdout)
+        answered = reported["value"]["$refine"]["number_lower_bound"][0]
+    except (json.JSONDecodeError, KeyError, TypeError, IndexError):
+        return f"cty rich did not round-trip a refined unknown: {completed.stdout!r}"
+    if answered != bound:
+        return f"a refinement bound of {bound} came back as {answered} (default-precision big.Float)"
+
+    completed = subprocess.run(  # nosec
+        [binary, "cty", "safe-known-prefix", "hello"], capture_output=True, text=True, check=False
+    )
+    try:
+        prefix = json.loads(completed.stdout)["prefix"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return f"cty safe-known-prefix produced no answer: {completed.stdout!r}"
+    if prefix != "hell":
+        return f'safe-known-prefix("hello") answered {prefix!r} where go-cty answers "hell"'
+    return None
+
+
 def soup_go() -> str:
     """The harness binary, or skip. Never silently passes without it.
 
@@ -127,6 +165,12 @@ def soup_go() -> str:
             f"the soup-go harness at {candidate} is out of date: it has no {', '.join(missing)}. "
             "Rebuild it from tofusoup/src/tofusoup/harness/go/soup-go, or point SOUP_GO_BIN at a "
             "current build. `make compat` rebuilds it for you."
+        )
+    fault = _misbehaves(candidate)
+    if fault is not None:
+        raise AssertionError(
+            f"the soup-go harness at {candidate} has every command but fails a behaviour probe: "
+            f"{fault}. Rebuild it; `make compat` does."
         )
     return candidate
 
@@ -310,18 +354,31 @@ def canonical(payload: Any) -> Any:
     `{"$number": ...}`, which are the same number written two ways. Without
     this, every comparison would fail on the spelling and none of them would be
     about behaviour.
+
+    Negative zero stays text. `Decimal("-0") == Decimal("0")`, so comparing
+    zeros as Decimals erased the sign and a negative-zero divergence could not
+    be seen by anything -- the harness itself preserves `-0` faithfully, and
+    the blindness was here. A plain zero still normalizes as a Decimal; only a
+    *signed* zero refuses to, so it can never quietly equal the unsigned one.
     """
+
+    def number(text: str) -> Any:
+        value = Decimal(text)
+        if value.is_zero() and value.is_signed():
+            return "-0"
+        return value
+
     match payload:
         case bool():
             return payload
         case {"$number": str() as text}:
-            return Decimal(text)
+            return number(text)
         case dict():
             return {key: canonical(item) for key, item in payload.items()}
         case list():
             return [canonical(item) for item in payload]
         case Decimal() | int() | float():
-            return Decimal(str(payload))
+            return number(str(payload))
     return payload
 
 

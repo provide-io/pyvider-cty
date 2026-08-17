@@ -33,8 +33,10 @@ Living document. Updated as work lands — do not let it drift.
 4. **The release gate** — 0.5.0, forty-three breaking changes, wave-ordered with `pyvider`. **The only open item in this repo.**
 
 Accepted divergences, itemised below rather than fixed: the set-with-a-null byte
-ordering, Python `re` not being RE2, `CtySet` being unable to hold a list, and
-the numeric precision model. Two are strict xfails that will resolve themselves —
+ordering, Python `re` not being RE2, and the numeric precision model. (~~`CtySet`
+being unable to hold a list~~ stopped being true on 2026-08-17: `307ac08` gave
+containers canonical-key hashing, and `set(list(string))` validates — the entry
+below records it.) Two are strict xfails that will resolve themselves —
 GB9c when the oracle is rebuilt on Go 1.27, since go-cty already carries the
 `go-textseg` v17 that agrees with us. Plus housekeeping: ~~143 unused `ERR_*`
 constants~~ (deleted 2026-08-16, `c16bd8d`, with a guard that has no allowlist),
@@ -183,7 +185,7 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   Three pre-existing gaps surfaced while implementing them. None was fixed there; each is wider than that item.
   - [x] **`CtyObject.validate` refuses a null attribute** unless it is declared optional — *closed 2026-08-16 with worklist #1's object half, `fadb4f6`*. go-cty has no such rule — nullability is not part of an object type there. This was not hypothetical: a named capture group that does not participate in a match is null, so `regex("(?P<x>a)|(?P<y>z)", "a")` crashed until the result was built directly rather than through `validate`. That workaround is now unnecessary, though it is harmless and stays. Declaring the attributes optional was never the fix, because that adds go-cty's third wire element to the type.
   - [ ] **Python `re` is not RE2.** `regex(r"(a)\1", "aa")` and `regex("a(?=b)", "ab")` both succeed here and are *refused* by go-cty ("invalid escape sequence in \1", "invalid or unsupported Perl syntax in (?="). Superset, so patterns valid in both behave identically — but a provider whose pattern is only tested here can ship one Terraform then rejects.
-  - [ ] **A `CtySet` cannot hold a list**, because a `CtyValue` with a list payload is unhashable. go-cty has no such limit.
+  - [x] **A `CtySet` cannot hold a list** ~~because a `CtyValue` with a list payload is unhashable~~ — *closed 2026-08-17 by the container-hashing work (`307ac08`)*: `__hash__` hashes the canonical sort key for containers, so `set(list(string))` validates, de-duplicates and round-trips. The limit no longer exists.
 
 ## Phase 2 — verification infrastructure
 
@@ -286,7 +288,7 @@ Not user-visible. All of it unblocks later phases.
 - [x] **#14 item 6 — `SafeKnownPrefix`** — *closed 2026-08-17, `b11177c`*
   The half of `ctystrings` that was a real gap. It needed UAX#29 grapheme segmentation and was recorded here as blocking `strlen` (#9) and `StringPrefix` (#10). Both of those landed first, and this then cost nothing extra — see phase 6.
   ⚠️ Requires the Unicode-segmentation dependency decision — see below. **Deferred deliberately** (2026-08-16): nothing exports `strlen` today, so nothing is blocked by waiting.
-  **One refinement of it still open** (found 2026-08-17 by the `format` migration): this port drops the final grapheme cluster *unconditionally*, where go-cty's keeps a trailing character drawn from an allowlist of non-combining delimiters — space included (`ctystrings/prefix.go:140`). So `format("hi %s", unknown)` promises the prefix `"hi"` where go-cty promises `"hi "`. Sound but strictly weaker; the fix belongs in `refinement.py::safe_known_prefix`, and the divergence is documented in a `test_gocty_format_parity.py` docstring.
+  ~~**One refinement of it still open**~~ — **closed 2026-08-17, `734b438`** (found by the `format` migration): this port dropped the final grapheme cluster *unconditionally*, where go-cty's keeps a trailing character drawn from an allowlist of non-combining delimiters — space included (`ctystrings/prefix.go:140`). So `format("hi %s", unknown)` promised the prefix `"hi"` where go-cty promises `"hi "`. The allowlist is now transcribed verbatim into `refinement.py::safe_known_prefix`; the sweep gained three `format` rows with literal text before the first verb, because every existing row began with a verb and no unknown-population case had ever computed a non-empty prefix — the divergence was invisible to the very refinement comparison built to catch it.
 
 ## Phase 4 — marks, properly
 
@@ -311,10 +313,10 @@ Mutually independent. Parallelizable across whoever is free.
 - [x] **#9 — remaining stdlib ports** — *closed 2026-08-16*. **83 of 83 functions; `UNSWEPT` is empty.**
   - [x] **bool ops, the five set ops and `range`.** These were exactly what `tests/compatibility/test_stdlib_sweep.py` skipped, and the sweep now has no skips at all. Exported as `and_fn` / `or_fn` / `not_fn` / `range_fn`, since all four names are Python keywords or builtins — the same reason `max_fn` carries a suffix, and more fuel for the naming decision below.
     `and` and `or` deliberately do **not** short-circuit: `and(unknown, false)` is unknown, not false, because go-cty's framework returns an unknown result for any unknown argument before the implementation is reached and so never notices that one operand already settles it. Answering `false` here while Terraform answers unknown would be a plan that disagrees with itself.
-    The set ops follow go-cty's `allowUnknowns` split — only union tolerates an unknown element, because for the others learning what it is can remove elements or change the result's length. `setsymmetricdifference` and `sethaselement` are ported too, though the oracle harness does not expose them, so they are checked against `set.go` rather than against a running go-cty.
+    The set ops follow go-cty's `allowUnknowns` split — only union tolerates an unknown element, because for the others learning what it is can remove elements or change the result's length. `setsymmetricdifference` and `sethaselement` are ported too. ~~The oracle harness does not expose them, so they are checked against `set.go` rather than against a running go-cty~~ — stale as of tofusoup#2c: both are in the dispatch table and driven by the sweep (4 and 3 rows). The 2026-08-17 harness audit caught this line still claiming otherwise.
     Two deliberate divergences, both recorded below: a zero step, and mixed element types.
   - [x] **`format` and `formatlist`** — *done 2026-08-16*. See below.
-  - [ ] Still open: `assertnotnull`, `strlen` (needs ctystrings), generalized `MakeToFunc`.
+  - [x] ~~Still open: `assertnotnull`, `strlen` (needs ctystrings), generalized `MakeToFunc`.~~ Stale — caught by the 2026-08-17 audit. `assertnotnull` and `strlen` are registered, swept and oracle-checked (the registry pins 83 of 83). What "generalized `MakeToFunc`" would add is `tolist`/`toset`/`tomap`-style constructors, which are Terraform's functions rather than go-cty stdlib exports; the conversion table they would exercise is oracle-checked directly through `cty convert-value`. Not a gap in stdlib parity.
 - [x] **`unify` — ported entire, not patched** — *done 2026-08-16*
   Filed as "no primitive widening rule". It had no rules at all worth the name: a differential run against the new `soup-go cty unify` agreed on **6 of 38** cases. It now agrees on 38.
   The deeper fault was that `dynamic` served as both an answer and a failure. `unify` returned it for "these unify to dynamic" *and* for "these have nothing in common", so `setunion(set(number), set(bool))` — an error in go-cty — was a `set(dynamic)` here. It returns `None` for the latter now, matching `cty.NilType`, and each caller decides: the set operations raise, `chunklist` and `setproduct` raise on an unusable tuple, `lookup` falls back to dynamic.
