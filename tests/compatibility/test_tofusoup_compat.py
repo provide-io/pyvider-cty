@@ -53,6 +53,7 @@ from pyvider.cty import (
     CtyType,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.json_codec import cty_to_json
 
 pytestmark = pytest.mark.compat
 
@@ -107,6 +108,40 @@ def _canonical(value: Any, cty_type: CtyType[Any]) -> Any:
     if isinstance(cty_type, CtyNumber):
         return Decimal(str(value))
     return value
+
+
+def _go_canonical_json(json_text: bytes, type_spec: Any) -> bytes:
+    """go-cty's own JSON rendering of a value, for byte comparison.
+
+    A JSON-to-JSON round trip through go-cty, which is not what `_go_convert`
+    offers -- it crosses between the two formats. What is being compared here is
+    two encoders, so both sides have to start from the same document and end in
+    the same format.
+    """
+    binary = _soup_go()
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dst = Path(tmp) / "in", Path(tmp) / "out"
+        src.write_bytes(json_text)
+        result = subprocess.run(  # nosec
+            [
+                binary,
+                "cty",
+                "convert",
+                str(src),
+                str(dst),
+                "--type",
+                json.dumps(type_spec),
+                "--input-format",
+                "json",
+                "--output-format",
+                "json",
+            ],
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise AssertionError(f"go-cty refused the value: {result.stderr.decode()[-400:]}")
+        return dst.read_bytes().strip()
 
 
 def _go_convert(payload: bytes, type_spec: Any, *, to_json: bool) -> bytes:
@@ -273,6 +308,23 @@ def test_both_implementations_emit_the_same_bytes(
     """
     ours = cty_to_msgpack(cty_type.validate(native), cty_type)
     theirs = _go_convert(_as_json_text(native), type_spec, to_json=False)
+
+    assert ours == theirs, f"{label}: ours={ours!r} go-cty={theirs!r}"
+
+
+@pytest.mark.parametrize(("label", "cty_type", "type_spec", "native"), CASES, ids=[c[0] for c in CASES])
+def test_both_implementations_emit_the_same_json(
+    label: str, cty_type: CtyType[Any], type_spec: Any, native: Any
+) -> None:
+    """The same standard applied to the JSON codec, for the same reason.
+
+    Terraform state is JSON, so a value written by a provider and a value
+    written by Terraform have to agree textually and not merely decode alike.
+    Number formatting is where that bites: go-cty writes `big.Float.Text('f',
+    -1)`, which has no exponent form and no trailing zeros.
+    """
+    ours = cty_to_json(cty_type.validate(native), cty_type)
+    theirs = _go_canonical_json(_as_json_text(native), type_spec)
 
     assert ours == theirs, f"{label}: ours={ours!r} go-cty={theirs!r}"
 
