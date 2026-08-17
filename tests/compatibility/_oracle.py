@@ -236,11 +236,50 @@ def _number_text(number: Any) -> str:
     return format(decimal, "f")
 
 
+def _bound_text(number: Any) -> str:
+    """A number bound's digits the way Go's `Text('f', -1)` writes them.
+
+    `_number_text` keeps whatever trailing zeros a Decimal carries, which is
+    right for a *value* -- the wire transmits what was written -- and wrong for
+    a bound, where the harness has already reduced 1.50 to 1.5 and the two would
+    compare unequal while describing the same bound.
+    """
+    return format(Decimal(str(number)).normalize(), "f")
+
+
+GO_MAXINT = 2**63 - 1
+"""`math.MaxInt` on the 64-bit builds the harness is compiled for.
+
+An unrefined unknown collection in go-cty already reports this as its length
+upper bound, so the harness treats it as "no bound" and omits it.
+"""
+
+
 def refinements(value: CtyValue[Any]) -> dict[str, Any]:
     """What is known about an unknown, in the harness's spelling.
 
     Public because the stdlib sweep needs it too: an unknown answer is only
     comparable with go-cty's if the refinements come with it.
+
+    Normalised towards the harness rather than the other way round. The harness
+    reads go-cty's own `Value.Range()`, so its spelling *is* go-cty's answer and
+    ours is the side that has to match. Three differences between this and
+    `encodeRefinements` were spellings rather than facts, and all three are
+    settled here:
+
+      * a length lower bound of 0, and an upper bound of maxint, are what an
+        unrefined unknown collection already says. `encodeRefinements` omits
+        both (`lower != 0`, `upper != math.MaxInt`), so emitting them would
+        report as a refinement something go-cty does not consider one.
+      * an infinite number bound is the absence of a bound, and is omitted
+        there too (`!bound.AsBigFloat().IsInf()`).
+      * a bound's digits come from Go's `Text('f', -1)`, the shortest form that
+        round-trips. See `_bound_text`.
+
+    Nothing else is smoothed over. `is_known_null: true` in particular stays as
+    it is: go-cty cannot produce it, because refining an unknown as null yields
+    an actual null value, so this saying it would be a difference in behaviour
+    rather than in spelling and is exactly what the comparison should catch.
     """
     raw = value.value
     if not isinstance(raw, RefinedUnknownValue):
@@ -250,13 +289,16 @@ def refinements(value: CtyValue[Any]) -> dict[str, Any]:
         out["is_known_null"] = raw.is_known_null
     if raw.string_prefix:
         out["string_prefix"] = raw.string_prefix
-    if raw.number_lower_bound is not None:
-        out["number_lower_bound"] = [_number_text(raw.number_lower_bound[0]), raw.number_lower_bound[1]]
-    if raw.number_upper_bound is not None:
-        out["number_upper_bound"] = [_number_text(raw.number_upper_bound[0]), raw.number_upper_bound[1]]
-    if raw.collection_length_lower_bound is not None:
+    for key, bound in (
+        ("number_lower_bound", raw.number_lower_bound),
+        ("number_upper_bound", raw.number_upper_bound),
+    ):
+        if bound is None or Decimal(str(bound[0])).is_infinite():
+            continue
+        out[key] = [_bound_text(bound[0]), bound[1]]
+    if raw.collection_length_lower_bound not in (None, 0):
         out["collection_length_lower_bound"] = raw.collection_length_lower_bound
-    if raw.collection_length_upper_bound is not None:
+    if raw.collection_length_upper_bound not in (None, GO_MAXINT):
         out["collection_length_upper_bound"] = raw.collection_length_upper_bound
     return out
 
