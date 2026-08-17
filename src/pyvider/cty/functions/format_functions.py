@@ -39,7 +39,9 @@ from pyvider.cty.types import (
     CtyBool,
     CtyDynamic,
     CtyList,
+    CtyMap,
     CtyNumber,
+    CtyObject,
     CtySet,
     CtyString,
     CtyTuple,
@@ -112,15 +114,37 @@ def _json_number(number: Decimal) -> str:
 
 
 def _json_of(value: CtyValue[Any]) -> str:
-    """The value as go-cty's JSON encoding of it, which is what `%v` falls back to."""
-    from pyvider.cty.conversion import cty_to_native
+    """The value as go-cty's JSON encoding of it, which is what `%v` falls back to.
 
-    def encode(item: Any) -> Any:
-        return _json_number(item) if isinstance(item, Decimal) else str(item)
+    Assembled here rather than handed to `json.dumps`, because numbers have to
+    be written as go-cty writes them -- plain decimal, never exponent notation.
+    Routing through native Python turned a number into a float and `json.dumps`
+    then wrote Python's repr of it, so `%v` of a `list(number)` holding 0.00001
+    came out `[1e-05]` against go-cty's `[0.00001]`. Only visible one level
+    down: a bare number was already special-cased. Subclassing `float` to
+    override its repr does not work either -- `json.dumps` calls the C
+    `float.__repr__` regardless.
 
-    if isinstance(value.type, CtyNumber) and not value.is_null:
+    Keys are sorted, which is what go-cty's encoder does for both objects and
+    maps, and set elements take the canonical order used to de-duplicate them.
+    """
+    if value.is_null:
+        return "null"
+    if isinstance(value.type, CtyNumber):
         return _json_number(cast(Decimal, value.value))
-    return json.dumps(cty_to_native(value), separators=(",", ":"), default=encode)
+    if isinstance(value.type, CtyString):
+        return json.dumps(str(value.value))
+    if isinstance(value.type, CtyBool):
+        return "true" if value.value else "false"
+    if isinstance(value.type, CtyMap | CtyObject):
+        items = cast(dict[str, CtyValue[Any]], value.value)
+        rendered = ",".join(f"{json.dumps(name)}:{_json_of(item)}" for name, item in sorted(items.items()))
+        return "{" + rendered + "}"
+    if isinstance(value.type, CtyList | CtySet | CtyTuple):
+        return "[" + ",".join(_json_of(element) for element in _elements_of(value)) + "]"
+    if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
+        return _json_of(value.value)
+    return json.dumps(str(value.value))
 
 
 def _exponent_form(number: Decimal, precision: int, *, upper: bool) -> str:
