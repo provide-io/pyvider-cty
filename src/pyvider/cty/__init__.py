@@ -10,6 +10,7 @@ from provide.foundation.utils import get_version
 
 __version__ = get_version("pyvider-cty", caller_file=__file__)
 
+from pyvider.cty.conformance import ConformanceError, conformance_errors
 from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import (
     CtyAttributeValidationError,
@@ -51,6 +52,7 @@ from HashiCorp's `cty` library, providing a rich type system for the framework.
 
 __all__ = [
     "BytesCapsule",
+    "ConformanceError",
     "CtyAttributeValidationError",
     "CtyBool",
     "CtyCapsule",
@@ -76,6 +78,7 @@ __all__ = [
     "CtyValue",
     "PathMarks",
     "__version__",
+    "conformance_errors",
     "convert",
     "deep_values",
     "mark_with_paths",
