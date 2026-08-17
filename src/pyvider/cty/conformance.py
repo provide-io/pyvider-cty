@@ -89,12 +89,16 @@ def _test_object(given: CtyObject, want: CtyObject, path: str, errors: list[Conf
     # Both directions are reported. An unexpected attribute is as much a
     # non-conformance as a missing one, and a caller shown only the missing ones
     # will keep adding attributes without being told the extras are the problem.
+    #
+    # Double quotes, because go-cty uses Go's %q and these messages are written
+    # for practitioners rather than for Python. `!r` produced 'b' where go-cty
+    # produces "b", which is a difference a user comparing the two sees.
     for name in given.attribute_types:
         if name not in want.attribute_types:
-            errors.append(ConformanceError(path, f"unsupported attribute {name!r}"))
+            errors.append(ConformanceError(path, f'unsupported attribute "{name}"'))
     for name in want.attribute_types:
         if name not in given.attribute_types:
-            errors.append(ConformanceError(path, f"missing required attribute {name!r}"))
+            errors.append(ConformanceError(path, f'missing required attribute "{name}"'))
 
     for name, wanted in want.attribute_types.items():
         if name in given.attribute_types:
@@ -121,6 +125,23 @@ def _join(path: str, step: str) -> str:
 
 
 def _name(cty_type: CtyType[Any]) -> str:
+    """go-cty's `Type.FriendlyName`, for the types that reach these messages.
+
+    A collection names its element type -- "set of string", not "set" -- and an
+    object or tuple deliberately does not name its members, because go-cty's own
+    comment says there is no friendly way to write one and the compound cases
+    above exist precisely to report the specific member instead.
+
+    Not exposed as `CtyType.friendly_name`. go-cty's has a second mode for type
+    *constraints* ("any type", "any single type") with no consumer here, and
+    publishing half of an API is how this library has previously ended up with a
+    method that answers a slightly different question from the one it is named
+    for.
+    """
+    from pyvider.cty.types import CtyList, CtyMap, CtySet
+
+    if isinstance(cty_type, CtyList | CtySet | CtyMap):
+        return f"{cty_type.ctype} of {_name(cty_type.element_type)}"
     return str(cty_type.ctype or type(cty_type).__name__)
 
 

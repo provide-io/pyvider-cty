@@ -73,8 +73,11 @@ class TestObjects:
         forever without being told the extras are also wrong.
         """
         assert messages(CtyObject({"a": S, "x": S}), CtyObject({"a": S, "b": N})) == [
-            "unsupported attribute 'x'",
-            "missing required attribute 'b'",
+            # Double-quoted, as go-cty's %q writes it. These messages are read
+            # by practitioners who may be comparing them against go-cty's, and
+            # the harness comparison in tests/compatibility holds the spelling.
+            'unsupported attribute "x"',
+            'missing required attribute "b"',
         ]
 
     def test_a_shared_attribute_is_compared_by_type(self) -> None:
@@ -125,7 +128,15 @@ class TestCollections:
         assert "[0]" not in messages(CtyList(element_type=S), CtyList(element_type=N))[0]
 
     def test_different_kinds_do_not_recurse(self) -> None:
-        assert messages(CtyList(element_type=S), CtyMap(element_type=S)) == ["map required, but received list"]
+        """A collection names its element type, as go-cty's FriendlyName does.
+
+        "map required, but received list" leaves a practitioner to work out
+        which map and which list; go-cty says "map of string required, but
+        received list of string" and so does this.
+        """
+        assert messages(CtyList(element_type=S), CtyMap(element_type=S)) == [
+            "map of string required, but received list of string"
+        ]
 
     def test_nesting_composes_through_a_collection(self) -> None:
         given = CtyList(element_type=CtyObject({"a": S}))
