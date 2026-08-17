@@ -605,11 +605,15 @@ What settled it was measuring separability instead of assuming it. Grapheme clus
 
 `SafeKnownPrefix` (#14 item 6) and `StringPrefix` (#10) are no longer blocked by anything.
 
-### 5. Should CI run the differential suite? (found 2026-08-17, decision for Tim)
+### 5. Should CI run the differential suite? — **resolved 2026-08-17: yes, and it does**
 
-The entire oracle suite is developer-local. `.github/workflows/ci.yml` delegates to `provide-io/ci-tooling`'s shared Python workflow with no Go setup, and the `compat` marker is skipped without `--run-compat` — so every divergence this branch found was caught only because someone ran `make compat` at a keyboard. The guards added on 2026-08-17 (behaviour probes, hard-fail on a stale or unbuildable harness) protect the *local* run's honesty; they cannot make the run happen.
+The entire oracle suite was developer-local. `.github/workflows/ci.yml` delegated to `provide-io/ci-tooling`'s shared Python workflow with no Go setup, and the `compat` marker is skipped without `--run-compat` — so every divergence this branch found was caught only because someone ran `make compat` at a keyboard. The guards added the same day (behaviour probes, hard-fail on a stale or unbuildable harness) protect the *local* run's honesty; they cannot make the run happen.
 
-Adding a CI job means: a Go toolchain in the workflow, a checkout of `tofusoup` (cross-repo dependency — the harness source lives there), and `make compat`. That is a change to shared CI posture and belongs to the repo owner, not to this branch. Until decided, the honest statement is: **the differential guarantees in this file hold as of the last local `make compat`, not per-commit.**
+A second job now does. `tofusoup` is public, so the cross-repo checkout needs no token; the harness pins go-cty itself, so the reference version is soup-go's `go.mod` rather than anything chosen in the workflow; and `make compat` rebuilds from source every run, which is the property that matters most (a cached binary is how this suite once spent a day measuring against a harness that predated most of what it was checking). `scripts/compat/run_compat.py` gained a `SOUP_GO_SRC` override so the sibling-checkout assumption is a default rather than a requirement — the same fault class as the hardcoded path fixed in `pyvider`'s `audit_pins.py`.
+
+**The Go pin is load-bearing, and this is the part to remember.** go-cty selects `go-textseg` v15 below Go 1.27 and v17 at or above it — two different Unicode versions. The four GB9c cases are **strict** xfails against the v15 answer, so a toolchain bump to 1.27 turns them XPASS and fails the suite. The workflow pins Go 1.26 and says why; when the bump comes, the fix is to delete those four entries from `KNOWN_DIVERGENCES`, not to widen the pin. This is the first thing in this repository whose correctness depends on a toolchain version, so it is worth stating twice.
+
+**One sequencing constraint, for the release wave.** The job checks out `tofusoup`'s default branch. The harness fixes from the 2026-08-17 audit (`65f134c`, `8e0ce04`) are on `chore/suite-dependency-refresh` and unpushed, as is this branch. So the job is only as correct as what has landed on `tofusoup` main — **tofusoup's harness fixes must merge at or before this branch does**, joining `pyvider` in the wave ordering below.
 
 ---
 

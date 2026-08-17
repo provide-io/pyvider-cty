@@ -11,14 +11,29 @@ is available -- a machine without the Go toolchain should not fail the build,
 but it must say that it checked nothing.
 """
 
+import os
 from pathlib import Path
 import shutil
 import subprocess  # nosec
 import sys
 
 REPO = Path(__file__).resolve().parents[2]
-HARNESS_SRC = REPO.parent / "tofusoup" / "src" / "tofusoup" / "harness" / "go" / "soup-go"
 BINARY = Path("/tmp/soup-go-compat")  # nosec
+
+
+def harness_source() -> Path:
+    """Where the soup-go sources live.
+
+    Defaults to a sibling `tofusoup` checkout, which is the local layout.
+    `SOUP_GO_SRC` overrides it, because a layout is not a law: CI checks the
+    two repositories out wherever it likes, and a path assumed from one
+    machine's directory tree is the reason this script could not run anywhere
+    else.
+    """
+    override = os.environ.get("SOUP_GO_SRC")
+    if override:
+        return Path(override).expanduser().resolve()
+    return REPO.parent / "tofusoup" / "src" / "tofusoup" / "harness" / "go" / "soup-go"
 
 
 def ensure_harness() -> Path | None:
@@ -36,15 +51,16 @@ def ensure_harness() -> Path | None:
     lying around -- that is the same staleness, chosen on purpose. Point
     SOUP_GO_BIN at a binary and run pytest directly if you need that.
     """
-    if not HARNESS_SRC.is_dir():
-        print(f"soup-go source not found at {HARNESS_SRC}; skipping cross-language checks.")
+    harness_src = harness_source()
+    if not harness_src.is_dir():
+        print(f"soup-go source not found at {harness_src}; skipping cross-language checks.")
         return None
     if shutil.which("go") is None:
         print("Go toolchain not installed; skipping cross-language checks.")
         return None
-    print(f"Building soup-go harness from {HARNESS_SRC} ...")
+    print(f"Building soup-go harness from {harness_src} ...")
     build = subprocess.run(  # nosec
-        ["go", "build", "-o", str(BINARY), "./..."], cwd=HARNESS_SRC, check=False
+        ["go", "build", "-o", str(BINARY), "./..."], cwd=harness_src, check=False
     )
     if build.returncode != 0:
         # A failed build is not a missing toolchain. The machine can check and
