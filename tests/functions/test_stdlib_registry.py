@@ -36,6 +36,7 @@ GO_CTY_STDLIB = frozenset(
         "abs",
         "add",
         "and",
+        "assertnotnull",
         "byteslen",
         "bytesslice",
         "ceil",
@@ -99,6 +100,7 @@ GO_CTY_STDLIB = frozenset(
         "slice",
         "sort",
         "split",
+        "strlen",
         "strrev",
         "substr",
         "subtract",
@@ -118,8 +120,9 @@ GO_CTY_STDLIB = frozenset(
 )
 
 # Ports that have not landed yet. An entry here is a promise, so the test below
-# fails if one is implemented and left in the list.
-NOT_YET_PORTED = frozenset({"strlen", "assertnotnull"})
+# fails if one is implemented and left in the list. Empty since 2026-08-16:
+# every function go-cty's stdlib exposes is implemented here.
+NOT_YET_PORTED: frozenset[str] = frozenset()
 
 
 class TestTheRegistryIsComplete:

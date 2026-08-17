@@ -44,7 +44,12 @@ from pyvider.cty.functions.comparison_functions import (
     min_fn,
     not_equal,
 )
-from pyvider.cty.functions.conversion_functions import to_bool, to_number, to_string
+from pyvider.cty.functions.conversion_functions import (
+    assertnotnull,
+    to_bool,
+    to_number,
+    to_string,
+)
 from pyvider.cty.functions.datetime_functions import formatdate, timeadd
 from pyvider.cty.functions.encoding_functions import csvdecode, jsondecode, jsonencode
 from pyvider.cty.functions.format_functions import format_fn, formatlist
@@ -81,6 +86,7 @@ from pyvider.cty.functions.string_functions import (
     regexreplace,
     replace,
     split,
+    strlen,
     strrev,
     substr,
     title,
@@ -97,6 +103,7 @@ __all__ = [
     "abs_fn",
     "add",
     "and_fn",
+    "assertnotnull",
     "byteslen",
     "bytesslice",
     "ceil_fn",
@@ -160,6 +167,7 @@ __all__ = [
     "slice",
     "sort",
     "split",
+    "strlen",
     "strrev",
     "substr",
     "subtract",

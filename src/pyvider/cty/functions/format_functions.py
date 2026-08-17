@@ -17,10 +17,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sized
 from decimal import Decimal
+from itertools import islice
 import json
 import re
 from typing import Any, cast
 
+from pyvider.cty._unicode import cluster_count, iter_clusters
 from pyvider.cty.config.defaults import (
     ERR_FORMAT_INCONSISTENT_LENGTH,
     ERR_FORMAT_INVALID,
@@ -95,16 +97,19 @@ class _Verb:
 
 
 def _pad(verb: _Verb, text: str) -> str:
-    """Pad to the requested width.
+    """Pad to the requested width, measured in grapheme clusters.
 
-    go-cty measures width in *grapheme clusters*; this measures code points,
-    which is the same answer for everything outside combining marks and emoji
-    sequences. Widening that is the same UAX#29 decision `strlen` waits on, and
-    is pinned as a known divergence rather than silently approximated.
+    Width is a display concern, so go-cty counts what a reader sees rather than
+    how it is encoded (`format.go:500`). Padding a four-code-point emoji to
+    width 5 adds one space there and four here if width is measured in code
+    points -- the column that padding exists to line up would not line up.
     """
-    if verb.width is None or len(text) >= verb.width:
+    if verb.width is None:
         return text
-    padding = ("0" if verb.zero else " ") * (verb.width - len(text))
+    measured = cluster_count(text)
+    if measured >= verb.width:
+        return text
+    padding = ("0" if verb.zero else " ") * (verb.width - measured)
     return text + padding if verb.minus else padding + text
 
 
@@ -266,9 +271,16 @@ def _format_one(verb: _Verb, value: CtyValue[Any]) -> str:  # noqa: C901
     if verb.verb in ("s", "q"):
         text = str(_as(value, CtyString(), verb).value)
         if verb.precision is not None and verb.precision > 0:
-            text = text[: verb.precision]
+            # Truncation counts grapheme clusters too (`format.go:469`), so a
+            # precision never cuts a character in half -- slicing code points
+            # would emit a lone joiner or a stranded combining mark.
+            text = "".join(islice(iter_clusters(text), verb.precision))
         if verb.verb == "q":
-            text = json.dumps(text)
+            # `ensure_ascii=False`: go's `%q` is `strconv.Quote`, which keeps a
+            # printable rune as itself and escapes only what has to be escaped.
+            # Defaulting to ASCII turned every non-ASCII string into a wall of
+            # \uXXXX -- still valid JSON, and not the string go-cty produces.
+            text = json.dumps(text, ensure_ascii=False)
         return _pad(verb, text)
 
     raise CtyFunctionError(ERR_FORMAT_UNSUPPORTED_VERB.format(verb=verb.verb, offset=verb.offset))
