@@ -26,6 +26,7 @@ fail, which is what forces the list to shrink rather than rot.
 from __future__ import annotations
 
 import base64
+from decimal import Decimal
 import json
 import subprocess  # nosec
 from typing import Any
@@ -35,6 +36,7 @@ import pytest
 
 from pyvider.cty import (
     CtyBool,
+    CtyDynamic,
     CtyList,
     CtyMap,
     CtyNumber,
@@ -46,6 +48,7 @@ from pyvider.cty import (
 )
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.functions import STDLIB
+from pyvider.cty.marks import unmark_deep
 from pyvider.cty.refinement import refine
 from pyvider.cty.types import BytesCapsule
 from tests.compatibility._oracle import refinements as _refinements, soup_go
@@ -122,6 +125,13 @@ def nul(spec: Any, cty_type: CtyType[Any]) -> Arg:
 
 UK = {"$unknown": True}
 
+# go-cty's `cty.DynamicVal`: a value whose *type* is still undecided, which is
+# what every reference to an unresolved resource attribute looks like during
+# planning. Distinct from the unknown population, which replaces an argument
+# with an unknown of the argument's own declared type -- here the function's
+# type callback cannot even see what kind of thing it will be handed.
+DYNAMIC_UK: Arg = (CtyValue.unknown(CtyDynamic()), {"type": "dynamic", "unknown": True})
+
 
 def st_uk(prefix: str) -> Arg:
     """An *unknown* string already known to start with `prefix`.
@@ -144,6 +154,45 @@ def st_uk(prefix: str) -> Arg:
         refine(CtyValue.unknown(CtyString())).string_prefix_full(prefix).new_value(),
         {"type": "string", "value": {"$unknown": True, "$refine": {"string_prefix": prefix}}},
     )
+
+
+def nm_uk(lower: tuple[str, bool] | None = None, upper: tuple[str, bool] | None = None) -> Arg:
+    """An unknown number carrying range bounds, each `(bound, inclusive)`.
+
+    Added 2026-08-17, when the coverage audit found `strlen` was the *only*
+    function ever handed a refined unknown: the no-narrowing rule -- stdlib
+    functions answer a bare not-null unknown however tightly the argument is
+    bounded, because their parameters mostly do not admit unknowns at all --
+    was pinned by hand-written tests citing go-cty's source, never measured.
+    These builders make the claim measurable, and the comparison rows below
+    measure the other half: go-cty's comparisons *do* consult the ranges
+    (`value_ops.go:1367`), so `lessthan(unknown < 10, 20)` is known true.
+    """
+    builder = refine(CtyValue.unknown(CtyNumber()))
+    spec: dict[str, Any] = {}
+    if lower is not None:
+        builder = builder.number_range_lower_bound(Decimal(lower[0]), inclusive=lower[1])
+        spec["number_lower_bound"] = [lower[0], lower[1]]
+    if upper is not None:
+        builder = builder.number_range_upper_bound(Decimal(upper[0]), inclusive=upper[1])
+        spec["number_upper_bound"] = [upper[0], upper[1]]
+    return builder.new_value(), {"type": "number", "value": {"$unknown": True, "$refine": spec}}
+
+
+def ln_uk_len(lower: int | None = None, upper: int | None = None) -> Arg:
+    """An unknown list of strings whose *length* is bounded."""
+    builder = refine(CtyValue.unknown(CtyList(element_type=CtyString())))
+    spec: dict[str, Any] = {}
+    if lower is not None:
+        builder = builder.collection_length_lower_bound(lower)
+        spec["collection_length_lower_bound"] = lower
+    if upper is not None:
+        builder = builder.collection_length_upper_bound(upper)
+        spec["collection_length_upper_bound"] = upper
+    return builder.new_value(), {
+        "type": ["list", "string"],
+        "value": {"$unknown": True, "$refine": spec},
+    }
 
 
 def ls_uk(*elements: Any) -> Arg:
@@ -196,15 +245,19 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("lower", [st("ΣΣ")]),
     ("lower", [st("İ")]),
     ("title", [st("a bc")]),
+    ("title", [st("hEllo wOrld")]),
     ("strrev", [st("abc")]),
     ("strrev", [st("héllo")]),
     ("chomp", [st("a\n")]),
     ("chomp", [st("a\r\n")]),
     ("trimspace", [st("  a  ")]),
+    ("trimspace", [st("\t a \n")]),
     ("trim", [st("xxaxx"), st("x")]),
+    ("trim", [st("abc"), st("z")]),
     ("trimprefix", [st("abc"), st("a")]),
     ("trimprefix", [st("abc"), st("z")]),
     ("trimsuffix", [st("abc"), st("c")]),
+    ("trimsuffix", [st("abc"), st("z")]),
     ("replace", [st("aaa"), st("a"), st("b")]),
     ("replace", [st("abc"), st(""), st("-")]),
     ("split", [st(","), st("a,b")]),
@@ -224,6 +277,7 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("substr", [st("abcdef"), nm(6), nm(1)]),
     ("substr", [st("abcdef"), nm(2), nm(10)]),
     ("indent", [nm(2), st("a\nb")]),
+    ("indent", [nm(0), st("a\nb")]),
     ("assertnotnull", [st("x")]),
     ("assertnotnull", [nm(1)]),
     # Grapheme clusters. `héllo` proves nothing about segmentation -- it
@@ -261,11 +315,14 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("format", [st("ab%s"), st("x")]),
     # regexp
     ("regex", [st("a(b)c"), st("abc")]),
+    ("regex", [st("a(b)c"), st("zzz")]),
     ("regexall", [st("a(b)"), st("abab")]),
+    ("regexall", [st("x"), st("y")]),
     ("regexreplace", [st("-ab-axxb-"), st("a(x*)b"), st("${1}W")]),
     ("regexreplace", [st("-ab-axxb-"), st("a(x*)b"), st("$1W")]),
     # numbers
     ("abs", [nm(-3)]),
+    ("abs", [nm("3.5")]),
     ("ceil", [nm("1.2")]),
     ("ceil", [nm("-1.2")]),
     ("floor", [nm("1.8")]),
@@ -275,27 +332,73 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("int", [nm("3.9")]),
     ("int", [nm("-3.9")]),
     ("add", [nm(1), nm(2)]),
+    ("add", [nm("1.5"), nm("2.25")]),
     ("subtract", [nm(5), nm(2)]),
+    ("subtract", [nm(2), nm(5)]),
     ("multiply", [nm(3), nm(4)]),
+    ("multiply", [nm(-3), nm(4)]),
     ("divide", [nm(7), nm(2)]),
     ("divide", [nm(1), nm(3)]),
     ("modulo", [nm(7), nm(3)]),
     ("modulo", [nm(-7), nm(3)]),
     ("negate", [nm(3)]),
+    ("negate", [nm(0)]),
     ("pow", [nm(2), nm(10)]),
     ("pow", [nm(2), nm("0.5")]),
     ("log", [nm(8), nm(2)]),
     ("max", [nm(1), nm(5)]),
+    ("max", [nm(-1), nm(-5)]),
+    ("max", [nm(1), nm(2), nm(3)]),
     ("min", [nm(1), nm(5)]),
+    ("min", [nm(-1), nm(-5)]),
+    ("min", [nm(1), nm(2), nm(3)]),
     ("parseint", [st("ff"), nm(16)]),
     ("parseint", [st("-10"), nm(10)]),
-    # comparison and logic
+    # comparison and logic. Both boolean outcomes for every operator: until
+    # 2026-08-17 each had exactly one row, all of them answering true, so a
+    # comparison that always answered true would have swept clean.
     ("equal", [st("a"), st("a")]),
+    ("equal", [st("a"), st("b")]),
+    ("equal", [nm(1), nm("1.0")]),
     ("notequal", [st("a"), st("b")]),
+    ("notequal", [st("a"), st("a")]),
     ("greaterthan", [nm(2), nm(1)]),
+    ("greaterthan", [nm(1), nm(2)]),
     ("greaterthanorequalto", [nm(1), nm(1)]),
+    ("greaterthanorequalto", [nm(1), nm(2)]),
     ("lessthan", [nm(1), nm(2)]),
+    ("lessthan", [nm(2), nm(1)]),
     ("lessthanorequalto", [nm(1), nm(1)]),
+    ("lessthanorequalto", [nm(2), nm(1)]),
+    # Refined unknowns travelling *into* a function. The comparisons consult
+    # the ranges and can answer while the value stays unknown; the arithmetic
+    # and min/max rows pin the opposite -- however tight the bounds, functions
+    # whose parameters do not admit an unknown answer a bare not-null unknown,
+    # because go-cty's bound arithmetic lives on Value's operators, not here.
+    ("lessthan", [nm_uk(upper=("10", False)), nm(20)]),
+    ("lessthan", [nm_uk(lower=("10", True), upper=("20", True)), nm(15)]),
+    ("greaterthan", [nm_uk(lower=("100", False)), nm(50)]),
+    ("max", [nm_uk(upper=("10", False)), nm(20)]),
+    ("min", [nm_uk(lower=("100", False)), nm(50)]),
+    ("add", [nm_uk(lower=("0", False)), nm_uk(lower=("0", False))]),
+    ("length", [ln_uk_len(3, 3)]),
+    ("length", [ln_uk_len(1, 5)]),
+    ("length", [ln_uk_len(2, None)]),
+    ("coalescelist", [ln_uk_len(1, None), ls(["b"])]),
+    # `cty.DynamicVal` at each interesting shape: unary, variadic-first,
+    # collection position, index position, a type-callback that must unify it.
+    # go-cty stops checking arguments at the first inexactly-typed one and the
+    # framework port had this wrong for twenty functions, found by review
+    # rather than by a row -- these are the rows that would have found it.
+    ("not", [DYNAMIC_UK]),
+    ("length", [DYNAMIC_UK]),
+    ("coalesce", [DYNAMIC_UK, st("b")]),
+    ("concat", [DYNAMIC_UK, ls(["b"])]),
+    ("jsonencode", [DYNAMIC_UK]),
+    ("format", [st("%s!"), DYNAMIC_UK]),
+    ("equal", [DYNAMIC_UK, st("a")]),
+    ("merge", [mp({"a": "1"}), DYNAMIC_UK]),
+    ("element", [DYNAMIC_UK, nm(0)]),
     ("not", [bl(True)]),
     ("not", [bl(False)]),
     ("and", [bl(True), bl(False)]),
@@ -317,6 +420,7 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("element", [ls(["a", "b"]), nm(1)]),
     ("element", [ls(["a", "b"]), nm(3)]),
     ("index", [ls(["a", "b"]), st("b")]),
+    ("index", [ls(["a", "b"]), st("z")]),
     ("hasindex", [ls(["a"]), nm(0)]),
     ("hasindex", [ls(["a"]), nm(9)]),
     ("keys", [mp({"b": "1", "a": "2"})]),
@@ -359,6 +463,26 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("flatten", [ls(["a"])]),
     ("chunklist", [ls(["a", "b", "c"]), nm(2)]),
     ("length", [ls(["a", "b"])]),
+    # The empty collection, for every function whose answer's *shape* turns on
+    # it. Until 2026-08-17 sixteen collection functions had never been handed
+    # one: the interesting part is usually the result type -- an empty result
+    # still has to name an element type, and the two implementations derive it
+    # by different routes.
+    ("distinct", [ls([])]),
+    ("compact", [ls([])]),
+    ("concat", [ls([]), ls([])]),
+    ("contains", [ls([]), st("a")]),
+    ("element", [ls([]), nm(0)]),
+    ("flatten", [ls([])]),
+    ("length", [ls([])]),
+    ("lookup", [mp({}), st("a"), st("z")]),
+    ("reverselist", [ls([])]),
+    ("setintersection", [se([]), se([])]),
+    ("setsubtract", [se([]), se(["a"])]),
+    ("slice", [ls([]), nm(0), nm(0)]),
+    ("sort", [ls([])]),
+    ("zipmap", [ls([]), ls([])]),
+    ("chunklist", [ls([]), nm(2)]),
     # Containers holding an unknown element. Every row below was unreachable
     # until 2026-08-17 -- the container collapsed to a wholly unknown value on
     # construction, so these functions had never been driven with the ordinary
@@ -400,6 +524,7 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("formatlist", [st("<%s>"), se_uk("z", UK)]),
     ("formatlist", [st("%s%s"), ls_uk("a", UK), ls(["x", "y"])]),
     ("coalesce", [st(""), st("b")]),
+    ("coalesce", [st("a"), st("b")]),
     ("coalescelist", [ls([]), ls(["a"])]),
     ("range", [nm(3)]),
     ("range", [nm(-3)]),
@@ -591,8 +716,13 @@ def _case_id(func: str, args: list[Arg]) -> str:
     return f"{func}({rendered})"
 
 
-def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
-    """go-cty's answer as (kind, payload): ok / unknown / error."""
+def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any, list[str]]:
+    """go-cty's answer as (kind, payload, marks): ok / unknown / error.
+
+    Marks are the deep union, sorted -- the harness runs `UnmarkDeep` on the
+    result and reports what it collected, which is also how `Function.Call`
+    itself treats marks, so nothing positional is lost that go-cty would keep.
+    """
     completed = subprocess.run(  # nosec
         [soup_go(), "cty", "call", func, *[json.dumps(spec) for spec in specs]],
         capture_output=True,
@@ -601,8 +731,9 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
     for line in completed.stdout.decode().splitlines():
         if line.startswith("{"):
             reported = json.loads(line)
+            marks = sorted(reported.get("marks") or [])
             if not reported.get("ok"):
-                return "error", reported.get("error", "")
+                return "error", reported.get("error", ""), marks
             if reported.get("unknown"):
                 # The type and the refinements come with it. Comparing "unknown"
                 # against "unknown" only established that both sides declined to
@@ -612,50 +743,66 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
                 # sweep used to call identical. The type is here for the same
                 # reason: `flatten` deferring as list(string) and deferring as
                 # dynamic are different answers to a Terraform plan.
-                return "unknown", (reported.get("type"), reported.get("refine") or {})
+                return "unknown", (reported.get("type"), reported.get("refine") or {}), marks
             if reported.get("null"):
-                return "null", reported.get("type")
+                return "null", reported.get("type"), marks
             if "msgpack" in reported:
                 # A result the JSON codec cannot express -- a container holding
                 # an unknown element. Compared as wire bytes, which is the
                 # stricter comparison anyway and the one Terraform makes.
-                return "ok", (
-                    reported.get("type"),
-                    msgpack.unpackb(base64.b64decode(reported["msgpack"]), strict_map_key=False),
+                return (
+                    "ok",
+                    (
+                        reported.get("type"),
+                        msgpack.unpackb(base64.b64decode(reported["msgpack"]), strict_map_key=False),
+                    ),
+                    marks,
                 )
-            return "ok", (reported.get("type"), reported.get("value"))
+            return "ok", (reported.get("type"), reported.get("value")), marks
     raise AssertionError(f"{func}: harness produced no result: {completed.stderr.decode()[-400:]}")
 
 
-def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
+def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any, list[str]]:
     """The same answer from this package, routed through the wire.
 
     Compared as msgpack rather than read off the value, so what is checked is
-    what would actually reach Terraform.
+    what would actually reach Terraform. Marks are collected the way the
+    harness collects them -- the deep union, sorted -- and the payload is
+    spelled from the unmarked view, since a mark has no wire form.
     """
-    implementation = STDLIB.get(func)
-    if implementation is None:
-        return "missing", None
+    # A case row for an unregistered name is a fault in this file, not a
+    # coverage decision: until 2026-08-17 this returned a "missing" sentinel
+    # that every caller turned into pytest.skip(), so dropping a function from
+    # STDLIB while leaving its rows here would have skipped every one of them
+    # and read as a cleaner run, not a broken one.
+    assert func in STDLIB, f"{func} is in CASES but not registered in STDLIB"
+    implementation = STDLIB[func]
     try:
-        result = implementation(*values)
+        marked = implementation(*values)
     except Exception as exc:  # noqa: BLE001 - any refusal is "error" for this comparison
-        return "error", f"{type(exc).__name__}: {exc}"
+        return "error", f"{type(exc).__name__}: {exc}", []
+    result, mark_set = unmark_deep(marked)
+    marks = sorted(mark if isinstance(mark, str) else str(mark) for mark in mark_set)
     # A capsule type has no wire spelling on either side, so both ends name it
     # the way the harness does rather than each inventing an answer.
     wire_type = "bytes" if result.type.equal(BytesCapsule) else result.type._to_wire_json()
     if result.is_unknown:
-        return "unknown", (wire_type, _refinements(result))
+        return "unknown", (wire_type, _refinements(result)), marks
     if result.is_null:
-        return "null", wire_type
+        return "null", wire_type, marks
     if result.type.equal(BytesCapsule):
         # A capsule has no wire form on either side -- go-cty refuses to
         # marshal a capsule type at all -- so the harness carries the buffer as
         # base64 and this does the same. That compares the buffers, rather than
         # two different ways of declining to encode them.
-        return "ok", ("bytes", base64.b64encode(result.value).decode())
-    return "ok", (
-        result.type._to_wire_json(),
-        msgpack.unpackb(cty_to_msgpack(result, result.type), strict_map_key=False),
+        return "ok", ("bytes", base64.b64encode(result.value).decode()), marks
+    return (
+        "ok",
+        (
+            result.type._to_wire_json(),
+            msgpack.unpackb(cty_to_msgpack(result, result.type), strict_map_key=False),
+        ),
+        marks,
     )
 
 
@@ -679,9 +826,6 @@ def test_the_two_implementations_answer_the_same(func: str, args: list[Arg], req
     theirs = _go_result(func, [spec for _value, spec in args])
     ours = _our_result(func, [value for value, _spec in args])
 
-    if ours[0] == "missing":
-        pytest.skip(f"{func} is not exported by pyvider-cty")
-
     assert ours[0] == theirs[0], f"{case_id}: go-cty {theirs[0]} ({theirs[1]}), pyvider {ours[0]} ({ours[1]})"
     if theirs[0] != "error":
         # Every kind but `error` carries a payload worth comparing, and until
@@ -689,6 +833,7 @@ def test_the_two_implementations_answer_the_same(func: str, args: list[Arg], req
         # as equal to every other unknown answer, and so did every null. That is
         # the fault this file exists to catch, sitting in this file.
         assert ours[1] == theirs[1], f"{case_id}: go-cty {theirs[1]}, pyvider {ours[1]}"
+        assert ours[2] == theirs[2], f"{case_id} marks: go-cty {theirs[2]}, pyvider {ours[2]}"
 
 
 @pytest.mark.parametrize(("func", "args"), CASES, ids=[_case_id(func, args) for func, args in CASES])
@@ -722,8 +867,6 @@ def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg], re
 
         theirs = _go_result(func, specs)
         ours = _our_result(func, values)
-        if ours[0] == "missing":
-            pytest.skip(f"{func} is not exported by pyvider-cty")
 
         where = f"{func} with argument {position} null"
         assert ours[0] == theirs[0], (
@@ -731,6 +874,7 @@ def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg], re
         )
         if theirs[0] != "error":
             assert ours[1] == theirs[1], f"{where}: go-cty {theirs[1]}, pyvider {ours[1]}"
+            assert ours[2] == theirs[2], f"{where} marks: go-cty {theirs[2]}, pyvider {ours[2]}"
 
 
 def test_the_known_divergence_list_is_not_stale() -> None:

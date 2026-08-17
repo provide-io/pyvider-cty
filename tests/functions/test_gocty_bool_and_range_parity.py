@@ -6,8 +6,12 @@
 """and/or/not against `bool.go`, and range against `sequence.go`.
 
 The truth tables and the ordinary range shapes are pinned against the live
-oracle in the compatibility sweep. What is here is what the oracle harness
-cannot express: unknowns, nulls and marks.
+oracle in the compatibility sweep -- and since 2026-08-17 so are nulls,
+unknowns and marks, each a generated population over the same case table.
+This module used to say the harness could not express those; it can. What
+stays here is the combinations the populations do not generate (a mark *on*
+an unknown operand, an unsettled dynamic) and the readings of go-cty source
+that explain each answer, which a sweep can hold in place but not justify.
 """
 
 from decimal import Decimal
