@@ -21,3 +21,58 @@ jobs:
       run-security: true
       run-secret-scan: true
     secrets: inherit
+
+  # The differential suite: every claim of go-cty parity, checked against real
+  # go-cty rather than against this package's own reading of it. It is gated
+  # behind `--run-compat` and needs a Go toolchain, so the reusable Python
+  # workflow above cannot run it -- which meant that until this job existed,
+  # the strongest correctness signal in the repository ran only when someone
+  # remembered to type `make compat` at a keyboard.
+  compat:
+    name: 🔬 go-cty differential
+    runs-on: ubuntu-24.04
+    steps:
+      # This repository, into a named path so the harness checkout can sit
+      # beside it rather than inside it.
+      - name: 📥 Check out pyvider-cty
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v6
+        with:
+          path: pyvider-cty
+
+      # The oracle harness lives in another repository. It is public, so this
+      # needs no token; it pins go-cty itself, so the reference version is
+      # whatever soup-go's go.mod says rather than anything chosen here.
+      - name: 📥 Check out the soup-go harness
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v6
+        with:
+          repository: provide-io/tofusoup
+          path: tofusoup
+
+      # Pinned deliberately, and the pin is load-bearing: go-cty selects
+      # go-textseg v15 below Go 1.27 and v17 at or above it, which are two
+      # different Unicode versions. Four cases covering the GB9c Indic
+      # conjunct rule are strict xfails against the v15 answer, so a toolchain
+      # bump to 1.27 turns them XPASS and fails the suite. When that bump
+      # happens, delete those four entries from KNOWN_DIVERGENCES rather than
+      # widening this pin.
+      - name: 🐹 Set up Go 1.26
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache-dependency-path: tofusoup/src/tofusoup/harness/go/soup-go/go.sum
+
+      # uv provides the interpreter and resolves the locked dependencies.
+      - name: 🐍 Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          enable-cache: true
+
+      # `make compat` rebuilds the harness from source every run and then runs
+      # the suite against it. The rebuild is not optional: a cached binary is
+      # how this suite once spent a day measuring against a harness that
+      # predated most of what it was checking.
+      - name: 🔬 Build the harness and run the differential suite
+        run: make compat
+        working-directory: pyvider-cty
+        env:
+          SOUP_GO_SRC: ${{ github.workspace }}/tofusoup/src/tofusoup/harness/go/soup-go
