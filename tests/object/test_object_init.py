@@ -84,9 +84,20 @@ class TestCtyObjectValidation:
             obj_type.validate({"name": "Alice", "age": 30})
 
     def test_validate_null_attribute(self) -> None:
+        """A null is a value of every type, including a non-optional attribute's.
+
+        go-cty has no rule against this -- nullability is not part of an object
+        type there -- and Terraform depends on it, because `ImpliedType()`
+        strips optional attributes from everything crossing the provider
+        protocol and then sends nulls for the unset ones. Required-ness is
+        checked by the schema layer, which is the only thing that knows it.
+        """
         obj_type = CtyObject({"name": CtyString()})
-        with pytest.raises(CtyAttributeValidationError, match="Attribute cannot be null"):
-            obj_type.validate({"name": None})
+
+        value = obj_type.validate({"name": None})
+
+        assert value.value["name"].is_null
+        assert value.value["name"].type.equal(CtyString())
 
     def test_validate_attrs_object(self) -> None:
         import attr
