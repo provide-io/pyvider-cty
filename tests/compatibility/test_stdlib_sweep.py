@@ -284,6 +284,55 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("formatdate", [st("'it''s' YYYY"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("YYY"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("YYYY"), st("2020-01-02 03:04:05Z")]),
+    # format
+    ("format", [st("%s"), st("hi")]),
+    ("format", [st("%q"), st('a"b')]),
+    ("format", [st("%v"), st("hi")]),
+    ("format", [st("%v"), nm(42)]),
+    ("format", [st("%v"), nm("0.00001")]),
+    ("format", [st("%#v"), nm("0.00001")]),
+    ("format", [st("%#v"), ls(["a", "b"])]),
+    ("format", [st("%t"), bl(True)]),
+    ("format", [st("%d"), nm(42)]),
+    ("format", [st("%d"), nm("1.5")]),
+    ("format", [st("%b"), nm(5)]),
+    ("format", [st("%o"), nm(64)]),
+    ("format", [st("%x"), nm(255)]),
+    ("format", [st("%X"), nm(255)]),
+    ("format", [st("%e"), nm(42)]),
+    ("format", [st("%E"), nm("0.00001")]),
+    ("format", [st("%f"), nm("3.14159")]),
+    ("format", [st("%g"), nm("0.00001")]),
+    ("format", [st("%G"), nm("1e21")]),
+    ("format", [st("%5s|"), st("ab")]),
+    ("format", [st("%-5s|"), st("ab")]),
+    ("format", [st("%.2s"), st("hello")]),
+    ("format", [st("%05d"), nm(42)]),
+    ("format", [st("%+d"), nm(42)]),
+    ("format", [st("%08.2f"), nm(-42)]),
+    ("format", [st("%.3e"), nm(0)]),
+    ("format", [st("%.5g"), nm("0.00001")]),
+    ("format", [st("100%%")]),
+    ("format", [st("a%sb"), st("x")]),
+    ("format", [st("%s%s"), st("a"), st("b")]),
+    ("format", [st("%[2]s%[1]s"), st("a"), st("b")]),
+    ("format", [st("%s"), st("a"), st("b")]),
+    ("format", [st("hi"), st("a")]),
+    ("format", [st("%s%s"), st("a")]),
+    ("format", [st("%z"), st("a")]),
+    ("format", [st("%5s|"), st("\U0001f468\u200d\U0001f469\u200d\U0001f467")]),
+    ("format", [st("%.1s"), st("\U0001f468\u200d\U0001f469\u200d\U0001f467")]),
+    ("format", [st("%d"), st("nope")]),
+    ("format", [st("%s"), nul("string", CtyString())]),
+    ("format", [st("%v"), nul("string", CtyString())]),
+    ("formatlist", [st("%s"), ls(["a", "b"])]),
+    ("formatlist", [st("%s-%s"), ls(["a", "b"]), st("x")]),
+    ("formatlist", [st("%s%s"), ls(["a", "b"]), ls(["1", "2"])]),
+    ("formatlist", [st("%s%s"), ls(["a", "b"]), ls(["1"])]),
+    ("formatlist", [st("%s"), ls([])]),
+    ("formatlist", [st("%s"), st("a")]),
+    ("formatlist", [st("hi")]),
+    ("formatlist", [st("<%s>"), se(["a", "b"])]),
     # bytes
     ("byteslen", [by(b"hello world")]),
     ("byteslen", [by(b"")]),
@@ -329,6 +378,19 @@ CASES: list[tuple[str, list[Arg]]] = [
 # that fixing one turns its entry red and forces it out of this list. Each entry
 # is a case id and why it is still here.
 KNOWN_DIVERGENCES: dict[str, str] = {
+    # go-cty measures `format`'s width and precision in *grapheme clusters*;
+    # this measures code points. NFC normalization at construction hides the
+    # difference for anything with a precomposed form, so it takes a cluster
+    # that has none to see it -- and there it matters: `%.1s` of a ZWJ family
+    # emoji truncates to the whole emoji there and to the first person in it
+    # here, which is a different picture rather than a shorter string. The
+    # same UAX#29 decision `strlen` waits on.
+    "format(%5s|,\U0001f468\u200d\U0001f469\u200d\U0001f467)": (
+        "width is measured in grapheme clusters there, code points here"
+    ),
+    "format(%.1s,\U0001f468\u200d\U0001f469\u200d\U0001f467)": (
+        "precision is measured in grapheme clusters there, code points here"
+    ),
     # The numeric precision model differs, and in both directions. go-cty holds
     # a number in a 512-bit big.Float, so a non-terminating quotient comes back
     # with 155 significant digits against Decimal's 28-digit default context --
@@ -345,8 +407,6 @@ KNOWN_DIVERGENCES: dict[str, str] = {
 # one of them is unported; nothing implemented here belongs in this list.
 UNSWEPT: dict[str, str] = {
     "assertnotnull": "not ported",
-    "format": "not ported -- the largest remaining stdlib port",
-    "formatlist": "not ported -- same port as `format`",
     "strlen": "not ported -- blocked on UAX#29 grapheme segmentation",
 }
 

@@ -1,0 +1,233 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+"""go-cty's `format` and `formatlist`.
+
+Every expectation here was taken from a differential run against the oracle
+rather than from reading `format.go`: a 455-case matrix of 35 templates against
+13 argument values. The first run of it agreed on 420, and the 35 it did not are
+the reason the number formatting below looks the way it does -- Python and Go
+disagree about exponent width, about when `%g` switches to exponent form, and
+about where the sign goes relative to zero padding.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from pyvider.cty import (
+    CtyBool,
+    CtyList,
+    CtyNumber,
+    CtyObject,
+    CtySet,
+    CtyString,
+    CtyTuple,
+    CtyValue,
+)
+from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty.functions import format_fn, formatlist
+
+
+def s(text: str) -> CtyValue[Any]:
+    return CtyString().validate(text)
+
+
+def n(value: Any) -> CtyValue[Any]:
+    return CtyNumber().validate(value)
+
+
+def strings(values: list[str]) -> CtyValue[Any]:
+    return CtyList(element_type=CtyString()).validate(values)
+
+
+def rendered(template: str, *arguments: CtyValue[Any]) -> str:
+    return str(format_fn(s(template), *arguments).value)
+
+
+class TestVerbs:
+    @pytest.mark.parametrize(
+        ("template", "argument", "expected"),
+        [
+            ("%s", s("hi"), "hi"),
+            ("%q", s('a"b'), '"a\\"b"'),
+            ("%t", CtyBool().validate(True), "true"),
+            ("%t", CtyBool().validate(False), "false"),
+            ("%d", n(42), "42"),
+            ("%b", n(5), "101"),
+            ("%o", n(64), "100"),
+            ("%x", n(255), "ff"),
+            ("%X", n(255), "FF"),
+            ("%f", n("3.14159"), "3.141590"),
+        ],
+        ids=str,
+    )
+    def test_a_verb_renders_as_go_does(self, template: str, argument: CtyValue[Any], expected: str) -> None:
+        assert rendered(template, argument) == expected
+
+    def test_v_uses_the_type_to_choose_a_format(self) -> None:
+        """String as-is, number as `%g`, everything else as JSON."""
+        assert rendered("%v", s("hi")) == "hi"
+        assert rendered("%v", n(42)) == "42"
+        assert rendered("%v", CtyBool().validate(True)) == "true"
+        assert rendered("%v", strings(["a"])) == '["a"]'
+
+    def test_sharp_v_is_always_json(self) -> None:
+        assert rendered("%#v", s("hi")) == '"hi"'
+        assert rendered("%#v", n("0.00001")) == "0.00001"
+
+    def test_only_v_accepts_a_null(self) -> None:
+        """A null renders as the JSON keyword; anything else is an error."""
+        assert rendered("%v", CtyValue.null(CtyString())) == "null"
+
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%s"), CtyValue.null(CtyString()))
+
+    def test_an_unsupported_verb_is_refused(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%z"), s("a"))
+
+
+class TestNumberRendering:
+    """The half of this port that a reading of the source would have got wrong."""
+
+    def test_the_exponent_is_always_at_least_two_digits(self) -> None:
+        """Go writes `e+01`; Python's `Decimal.__format__` writes `e+1`."""
+        assert rendered("%e", n(42)) == "4.200000e+01"
+        assert rendered("%E", n("0.00001")) == "1.000000E-05"
+        assert rendered("%.3e", n(0)) == "0.000e+00"
+
+    def test_g_switches_to_exponent_form_the_way_go_does(self) -> None:
+        assert rendered("%g", n("0.00001")) == "1e-05"
+        assert rendered("%.5g", n("0.00001")) == "1e-05"
+        assert rendered("%G", n("1e21")) == "1E+21"
+
+    def test_the_sign_sits_outside_the_zero_padding(self) -> None:
+        """`%08.2f` of -42 is `-0042.00`; padding the signed text gives `00-42.00`."""
+        assert rendered("%08.2f", n(-42)) == "-0042.00"
+        assert rendered("%05d", n(42)) == "00042"
+        assert rendered("%+d", n(42)) == "+42"
+
+    def test_an_integer_verb_requires_a_whole_number(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%d"), n("1.5"))
+
+    def test_a_value_that_cannot_convert_is_refused(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%d"), s("nope"))
+
+
+class TestWidthAndPrecision:
+    def test_width_pads_and_minus_pads_the_other_way(self) -> None:
+        assert rendered("%5s|", s("ab")) == "   ab|"
+        assert rendered("%-5s|", s("ab")) == "ab   |"
+
+    def test_precision_truncates_a_string(self) -> None:
+        assert rendered("%.2s", s("hello")) == "he"
+
+    def test_width_and_precision_count_code_points_not_graphemes(self) -> None:
+        """A known divergence, pinned so it is not mistaken for correct.
+
+        go-cty measures both in grapheme clusters. NFC normalization at
+        construction hides the difference wherever a precomposed form exists,
+        which is why this needs a cluster that has none. It matters most for
+        precision: go-cty keeps the whole emoji, and this cuts it into a
+        different picture.
+        """
+        family = "\U0001f468‍\U0001f469‍\U0001f467"
+
+        assert rendered("%.1s", s(family)) == "\U0001f468"
+        assert rendered("%5s|", s(family)) == f"{family}|"
+
+
+class TestArgumentIndexing:
+    def test_arguments_are_consumed_in_order(self) -> None:
+        assert rendered("%s%s", s("a"), s("b")) == "ab"
+
+    def test_an_explicit_index_selects_and_then_continues_from_there(self) -> None:
+        assert rendered("%[2]s%[1]s", s("a"), s("b")) == "ba"
+
+    def test_a_doubled_percent_consumes_no_argument(self) -> None:
+        assert rendered("100%%") == "100%"
+
+    def test_too_few_arguments_is_refused(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%s%s"), s("a"))
+
+    def test_an_unused_argument_is_refused(self) -> None:
+        """The caller believes it is being printed, so silence would be worse."""
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%s"), s("a"), s("b"))
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("hi"), s("a"))
+
+
+class TestFormatList:
+    def test_sequences_are_iterated_in_lockstep(self) -> None:
+        assert [
+            element.value for element in formatlist(s("%s%s"), strings(["a", "b"]), strings(["1", "2"])).value
+        ] == [
+            "a1",
+            "b2",
+        ]
+
+    def test_a_scalar_is_reused_on_every_iteration(self) -> None:
+        result = formatlist(s("%s-%s"), strings(["a", "b"]), s("x"))
+
+        assert [element.value for element in result.value] == ["a-x", "b-x"]
+
+    def test_all_scalars_produce_exactly_one_row(self) -> None:
+        assert [element.value for element in formatlist(s("%s"), s("a")).value] == ["a"]
+        assert [element.value for element in formatlist(s("hi")).value] == ["hi"]
+
+    def test_an_empty_sequence_produces_an_empty_list(self) -> None:
+        assert list(formatlist(s("%s"), strings([])).value) == []
+
+    def test_sequences_must_agree_on_length(self) -> None:
+        with pytest.raises(CtyFunctionError, match="inconsistent"):
+            formatlist(s("%s%s"), strings(["a", "b"]), strings(["1"]))
+
+    def test_a_set_is_iterated_in_canonical_order(self) -> None:
+        """`list(frozenset)` yields whatever the hash table does.
+
+        This returned `["b", "a"]` for a set of "a" and "b", which is not
+        wrong so much as unrepeatable -- and go-cty iterates its sets in a
+        defined order.
+        """
+        result = formatlist(s("%s"), CtySet(element_type=CtyString()).validate(["a", "b"]))
+
+        assert [element.value for element in result.value] == ["a", "b"]
+
+    def test_a_tuple_is_a_sequence_too(self) -> None:
+        pair = CtyTuple(element_types=(CtyString(), CtyNumber())).validate(("a", 1))
+
+        result = formatlist(s("%s%s"), pair, s("z"))
+
+        assert [element.value for element in result.value] == ["az", "1z"]
+
+    def test_an_unknown_argument_yields_an_unknown_list(self) -> None:
+        result = formatlist(s("%s"), CtyValue.unknown(CtyList(element_type=CtyString())))
+
+        assert result.is_unknown
+        assert result.type.equal(CtyList(element_type=CtyString()))
+
+
+class TestUnknowns:
+    def test_an_unknown_argument_makes_the_result_unknown(self) -> None:
+        assert format_fn(s("%s"), CtyValue.unknown(CtyString())).is_unknown
+
+    def test_an_unknown_template_makes_the_result_unknown(self) -> None:
+        assert format_fn(CtyValue.unknown(CtyString()), s("a")).is_unknown
+
+    def test_an_unknown_nested_inside_a_collection_counts(self) -> None:
+        """`%v` prints a collection as JSON, which needs it wholly known."""
+        partial = CtyObject(attribute_types={"a": CtyString()}).validate({"a": CtyValue.unknown(CtyString())})
+
+        assert format_fn(s("%v"), partial).is_unknown
+
+
+# 🌊🪢🔚
