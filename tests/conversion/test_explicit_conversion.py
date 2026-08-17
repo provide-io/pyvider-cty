@@ -69,9 +69,13 @@ class TestConvertFunction:
                 ["a", "b"],
             ),
             (
+                # A dynamic element type in the target is the absence of a
+                # constraint, so go-cty unifies the tuple's element types rather
+                # than wrapping each element in a dynamic. Confirmed against the
+                # harness: list(string), ["a", "1"].
                 CtyValue(CtyTuple(element_types=(CtyString(), CtyNumber())), ("a", 1)),
-                CtyList(element_type=CtyDynamic()),
-                [CtyDynamic().validate("a"), CtyDynamic().validate(1)],
+                CtyList(element_type=CtyString()),
+                [CtyString().validate("a"), CtyString().validate("1")],
             ),
             (CtyValue(CtyNumber(), 42), CtyDynamic(), CtyValue(CtyNumber(), 42)),
             (CtyValue.null(CtyString()), CtyNumber(), None),
@@ -157,12 +161,22 @@ class TestConvertFunction:
         assert converted_val is list_val
 
     def test_convert_list_to_list_of_dynamic(self) -> None:
-        list_val = CtyValue(CtyList(element_type=CtyString()), ["a", "b"])
+        """`list(any)` is the absence of a constraint, not a list of dynamics.
+
+        This asserted a `list(dynamic)` result with every element wrapped.
+        go-cty resolves the element type from the source instead -- converting
+        an element to dynamic is the identity, and the list is then built from
+        what that produced -- so the answer is the `list(string)` that went in.
+        The difference reaches the wire: a provider returning `list(any)` would
+        tell Terraform nothing about its elements.
+        """
+        list_val = CtyList(element_type=CtyString()).validate(["a", "b"])
+
         converted_val = convert(list_val, CtyList(element_type=CtyDynamic()))
-        assert converted_val.type.equal(CtyList(element_type=CtyDynamic()))
+
+        assert converted_val.type.equal(CtyList(element_type=CtyString()))
         assert len(converted_val.value) == 2
-        assert converted_val.value[0].type.equal(CtyDynamic())
-        assert converted_val.value[0].value.type.equal(CtyString())
+        assert converted_val.value[0].type.equal(CtyString())
 
     def test_the_wrong_case_is_refused_differently_from_a_non_bool(self) -> None:
         """Both raise, and asserting only that hides the branch.
@@ -213,7 +227,12 @@ class TestConvertFunction:
 
         converted = convert(source, target)
 
-        assert converted.type.equal(target)
+        # The result's type is the target *without* its optionality. go-cty
+        # strips it (`WithoutOptionalAttributesDeep`), because optionality
+        # describes a constraint -- "you need not supply this" -- and a value
+        # either has the attribute or has null for it.
+        assert converted.type.equal(CtyObject({"a": CtyString(), "b": CtyNumber()}))
+        assert converted.type.optional_attributes == frozenset()
         assert converted.value["b"].is_null
 
     def test_a_required_target_attribute_absent_from_the_source_is_refused(self) -> None:

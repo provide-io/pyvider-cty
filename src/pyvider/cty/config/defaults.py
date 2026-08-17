@@ -202,6 +202,7 @@ ERR_CANNOT_INFER_FROM_CTY_TYPE = "Cannot infer data type from a CtyType instance
 ERR_CANNOT_INFER_FROM_CTY_VALUE = "Cannot infer data type from a CtyValue instance: {type_name}"
 ERR_VALUE_TYPE_NO_LEN = "Values of type {type_name} do not have a length"
 ERR_MISSING_REQUIRED_ATTRIBUTE = "Missing required attribute '{name}'"
+ERR_MAP_MISSING_REQUIRED_ATTRIBUTE = 'map has no element for required attribute "{name}"'
 
 # Conversion error messages
 ERR_CAPSULE_CANNOT_CONVERT = "Capsule type {value_type} cannot be converted to {target_type}"
