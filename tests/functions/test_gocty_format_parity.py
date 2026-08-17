@@ -414,17 +414,17 @@ class TestUnknowns:
         New on 2026-08-17, from `format.go:44`: declining to format does not
         make the leading characters undecided, and a consumer can act on them.
 
-        The promise here is one character shorter than go-cty's, which answers
-        `"hi "`. go-cty's `ctystrings.SafeKnownPrefix` keeps a trailing
-        delimiter -- space is in its allowlist of characters that cannot combine
-        with what follows (`ctystrings/prefix.go:140`) -- while this package's
-        `safe_known_prefix` always drops the final grapheme cluster. That is a
-        weaker promise rather than a wrong one, and `refinement.py` is where it
-        would be closed.
+        The trailing space is part of the promise: go-cty's
+        `ctystrings.SafeKnownPrefix` keeps a final delimiter -- space is in its
+        allowlist of characters that cannot combine with what follows
+        (`ctystrings/prefix.go:140`). Until 2026-08-17 this package's
+        `safe_known_prefix` dropped the final grapheme cluster unconditionally
+        and promised only `"hi"` -- weaker, not wrong -- and this docstring was
+        where the divergence was documented. It is closed in `refinement.py`.
         """
         deferred = format_fn(s("hi %s"), CtyValue.unknown(CtyString()))
 
-        assert _refinement(deferred).string_prefix == "hi"
+        assert _refinement(deferred).string_prefix == "hi "
 
     def test_no_prefix_is_promised_when_a_verb_comes_first(self) -> None:
         assert _refinement(format_fn(s("%s!"), CtyValue.unknown(CtyString()))).string_prefix is None

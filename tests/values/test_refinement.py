@@ -48,6 +48,39 @@ class TestSafeKnownPrefix:
     def test_a_prefix_with_nothing_to_keep_is_empty(self, text: str) -> None:
         assert safe_known_prefix(text) == ""
 
+    def test_a_trailing_delimiter_is_kept(self) -> None:
+        """`"hi "` is safe whole: a space never combines with what follows.
+
+        go-cty keeps a final grapheme cluster when it is a single code point
+        from an allowlist of delimiters (`ctystrings/prefix.go:140`) -- built
+        for exactly the `format("hi %s", unknown)` shape, where dropping the
+        space weakens the promise for no safety gained. Until 2026-08-17 this
+        package dropped the final cluster unconditionally: sound, but a
+        strictly weaker refinement than go-cty's for the same value.
+        """
+        assert safe_known_prefix("hi ") == "hi "
+        assert safe_known_prefix("a.") == "a."
+        assert safe_known_prefix("x-") == "x-"
+        assert safe_known_prefix('{"key": "') == '{"key": "'
+
+    def test_a_lone_delimiter_is_kept(self) -> None:
+        assert safe_known_prefix(" ") == " "
+
+    def test_a_delimiter_with_a_combining_mark_is_dropped_whole(self) -> None:
+        """The allowlist admits a *single-code-point* cluster only.
+
+        A combining mark can attach to a space, and the result is one
+        two-code-point cluster; go-cty's heuristic tests `RuneCountInString(s)
+        != 1` before consulting the allowlist, so such a cluster stays unsafe.
+        """
+        assert safe_known_prefix("hi ́") == "hi"
+
+    def test_a_non_delimiter_final_character_is_still_dropped(self) -> None:
+        """A newline cannot be extended either, but it is not in go-cty's
+        allowlist, and the allowlist is the contract: growing it here would
+        promise more than go-cty promises for the same value."""
+        assert safe_known_prefix("hi\n") == "hi"
+
 
 class TestRecording:
     def test_bounds_are_recorded_on_an_unknown(self) -> None:
