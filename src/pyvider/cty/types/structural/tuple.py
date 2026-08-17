@@ -69,8 +69,8 @@ class CtyTuple(CtyType[tuple[object, ...]]):
                     e.message, value=raw_element, path=new_path, original_exception=e
                 ) from e
 
-        is_unknown = any(v.is_unknown for v in validated_elements)
-        return CtyValue(self, tuple(validated_elements), is_unknown=is_unknown)
+        # Known tuple, undecided element -- see the note in CtyList.validate.
+        return CtyValue(self, tuple(validated_elements))
 
     def element_at(self, container_value: CtyValue[Any], index: int | builtins.slice) -> CtyValue[Any]:
         if not isinstance(index, int | slice):

@@ -96,8 +96,15 @@ class TestCtyMapValidation:
             }
         )
 
-        # Map itself should be marked as unknown because it contains unknown values
-        assert result.is_unknown
+        # The map itself stays *known*: its keys and its length are decided, and
+        # only the one entry is not. go-cty draws the same line, `IsKnown` vs
+        # `IsWhollyKnown`. This asserted the opposite until 2026-08-17, when the
+        # hoist that flattened such a map to a bare unknown on the wire was
+        # removed.
+        assert not result.is_unknown
+        assert not result.is_wholly_known()
+        assert result["unknown"].is_unknown
+        assert result["known"].value == 42
 
     def test_validate_fast_path_same_type(self) -> None:
         """Test: fast path when CtyValue already has correct type (line 43-44)."""

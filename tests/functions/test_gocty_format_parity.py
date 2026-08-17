@@ -286,18 +286,25 @@ class TestUnknowns:
     def test_an_unknown_template_makes_the_result_unknown(self) -> None:
         assert format_fn(CtyValue.unknown(CtyString()), s("a")).is_unknown
 
-    def test_a_sequence_holding_an_unknown_is_unknown_throughout(self) -> None:
-        """go-cty resolves this row by row; this package cannot reach that.
+    def test_a_sequence_holding_an_unknown_is_resolved_row_by_row(self) -> None:
+        """go-cty resolves this row by row, and now so does this package.
 
-        `CtyList.validate` marks the whole list unknown if any element is, so a
-        partially-known list never arrives here as one -- the per-row branch is
-        kept because a caller can still build such a value directly, and
-        removing it would make that construction crash rather than defer.
+        This asserted the opposite until 2026-08-17: `CtyList.validate` marked
+        the whole list unknown if any element was, so a partially-known list
+        never arrived here as one and the per-row branch was unreachable
+        through the public API. With the container no longer taking its
+        unknown-ness from its elements, the known rows are formatted and only
+        the undecided row stays undecided -- go-cty's `FormatList` answer.
         """
         partial = CtyList(element_type=CtyString()).validate(["a", CtyValue.unknown(CtyString())])
 
-        assert partial.is_unknown
-        assert formatlist(s("%s"), partial).is_unknown
+        assert not partial.is_unknown
+        result = formatlist(s("%s!"), partial)
+
+        assert not result.is_unknown
+        formatted, deferred = result.value
+        assert formatted.value == "a!"
+        assert deferred.is_unknown
 
     def test_an_unknown_nested_inside_a_collection_counts(self) -> None:
         """`%v` prints a collection as JSON, which needs it wholly known."""
