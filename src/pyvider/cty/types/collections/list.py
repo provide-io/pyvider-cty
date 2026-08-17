@@ -107,11 +107,22 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
                 raise CtyListValidationError(
                     f"Internal error: CtyValue of CtyList type does not wrap a list/tuple, got {type(container.value).__name__}"
                 )
+            container_value_seq = cast(list[Any] | tuple[Any, ...], container.value)  # type: ignore[redundant-cast]
+            # Inside the taxonomy, and only around the subscript, as of
+            # 2026-08-17. This used to catch `TypeError` around the validate call
+            # too and re-raise a *new bare* `TypeError` with a message about
+            # indices -- so a `TypeError` from anywhere inside element validation
+            # was relabelled as an index-type problem, the original was thrown
+            # away, and neither answer was a `CtyError` a caller could catch
+            # alongside every other validation failure.
             try:
-                container_value_seq = cast(list[Any] | tuple[Any, ...], container.value)  # type: ignore[redundant-cast]
-                return self.element_type.validate(container_value_seq[index])
+                element = container_value_seq[index]
             except TypeError as e:
-                raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}") from e
+                raise CtyListValidationError(
+                    f"List index must be an integer or slice, not {type(index).__name__}",
+                    value=index,
+                ) from e
+            return self.element_type.validate(element)
 
         raise CtyListValidationError(f"Expected CtyValue[CtyList], got {type(container).__name__}")
 

@@ -93,10 +93,16 @@ class TestCtyValueDunderMethods:
 
 class TestCtyValueOtherMethods:
     def test_hash(self) -> None:
+        """A list hashes too, as of 2026-08-17.
+
+        The second assertion was `pytest.raises(TypeError)`. Hashing a container
+        raised a bare TypeError, outside the error taxonomy, from every caller
+        that put a container into a Python set or dict -- see
+        `tests/values/test_container_hash.py`.
+        """
         val = CtyString().validate("a")
         assert isinstance(hash(val), int), f"Expected hash to be int, but got {type(hash(val))}"
-        with pytest.raises(TypeError):
-            hash(CtyList(element_type=CtyString()).validate(["a"]))
+        assert isinstance(hash(CtyList(element_type=CtyString()).validate(["a"])), int)
 
     def test_raw_value(self) -> None:
         val = CtyString().validate("a")

@@ -119,13 +119,25 @@ class TestCapsuleWithOpsContract:
 
 
 class TestValueHashingContract:
-    """
-    TDD tests for Recommendation #2: Formalize Python-Idiomatic Hashing.
-    This suite asserts that Tuples are hashable, while all other collections are not.
+    """Every CtyValue is hashable, collections included.
+
+    Reversed on 2026-08-17. This suite used to assert the opposite -- that a
+    list, set, map or object value "MUST be unhashable" -- on the Python
+    reasoning that a mutable payload cannot be hashed. A validated container's
+    payload is not mutable (a tuple, or a `FrozenDict`), and go-cty hashes
+    containers without hesitation: `makeSetHashBytes`
+    (`cty/set_internals.go:144-278`) serializes a whole value and crc32s it.
+
+    Refusing was not a formalized contract, it was a hole. It raised a *bare*
+    `TypeError`, outside `CtyError`, from ten public entry points -- `equals` on
+    any set of containers, `setunion`, `contains`, `lookup`, `zipmap`,
+    `distinct`, `in` and `without_key` on a map, and the paths `deep_values`
+    hands out -- and it reached Terraform as a provider crash. See
+    `tests/values/test_container_hash.py` for the per-entry-point tests.
     """
 
     def test_tuple_value_is_hashable(self) -> None:
-        """TDD: A CtyValue wrapping a tuple of hashable primitives MUST be hashable."""
+        """A CtyValue wrapping a tuple of hashable primitives MUST be hashable."""
         tuple_type = CtyTuple(element_types=(CtyString(),))
         tuple_val = tuple_type.validate(("hello",))
         try:
@@ -135,7 +147,7 @@ class TestValueHashingContract:
             pytest.fail("CtyValue(CtyTuple, ...) was not hashable, but should be.")
 
     @pytest.mark.parametrize(
-        "unhashable_val",
+        "collection_val",
         [
             CtyList(element_type=CtyString()).validate(["a"]),
             CtySet(element_type=CtyString()).validate({"a"}),
@@ -143,10 +155,11 @@ class TestValueHashingContract:
             CtyObject({"a": CtyString()}).validate({"a": "b"}),
         ],
     )
-    def test_collection_values_are_unhashable(self, unhashable_val: CtyValue) -> None:
-        """TDD: CtyValues wrapping lists, sets, maps, and objects MUST be unhashable."""
-        with pytest.raises(TypeError, match="unhashable type"):
-            hash(unhashable_val)
+    def test_collection_values_are_hashable(self, collection_val: CtyValue) -> None:
+        """A list, set, map or object value hashes, and agrees with `__eq__`."""
+        assert isinstance(hash(collection_val), int)
+        assert hash(collection_val) == hash(collection_val.type.validate(collection_val.value))
+        assert len({collection_val, collection_val}) == 1
 
 
 # 🌊🪢🔚
