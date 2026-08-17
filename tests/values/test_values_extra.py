@@ -70,18 +70,20 @@ def test_value_getitem() -> None:
 
 
 def test_value_hash() -> None:
-    # Test that unhashable collection types correctly raise TypeError
-    with pytest.raises(TypeError):
-        hash(CtyList(element_type=CtyString()).validate([]))
-    with pytest.raises(TypeError):
-        hash(CtySet(element_type=CtyString()).validate(set()))
-    with pytest.raises(TypeError):
-        hash(CtyMap(element_type=CtyString()).validate({}))
-    with pytest.raises(TypeError):
-        hash(CtyObject({}).validate({}))
+    """Every type hashes, containers included, as of 2026-08-17.
 
-    # NOTE: This is a known deviation from go-cty, where tuples are not hashable.
-    # This is a pragmatic choice to allow `setproduct` and sets of tuples to function.
+    These four assertions were `pytest.raises(TypeError)` until the raise was
+    removed: it was a *bare* TypeError, so it escaped `CtyError`, and it was
+    reachable from ten public entry points whenever a set's element type was
+    itself a container -- `set(object({...}))` being Terraform's nested-block
+    set. go-cty hashes containers (`cty/set_internals.go:144-278`); the note
+    below about tuples being a deviation is obsolete for the same reason.
+    """
+    assert isinstance(hash(CtyList(element_type=CtyString()).validate([])), int)
+    assert isinstance(hash(CtySet(element_type=CtyString()).validate(set())), int)
+    assert isinstance(hash(CtyMap(element_type=CtyString()).validate({})), int)
+    assert isinstance(hash(CtyObject({}).validate({})), int)
+
     tuple_val = CtyTuple(element_types=()).validate(())
     assert isinstance(hash(tuple_val), int)
 

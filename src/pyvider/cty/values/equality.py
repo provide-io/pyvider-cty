@@ -345,18 +345,91 @@ def _equals_mapping(a_map: dict[str, Any], b_map: dict[str, Any]) -> CtyValue[An
 
 
 def _equals_set(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
-    """Sets compare by membership, which needs every element decided.
+    """Sets compare by membership, in both directions, as go-cty does.
 
-    go-cty requires both sets to be wholly known before it will answer, because
-    an unknown element changes how many distinct members the set has -- two sets
-    of different apparent length can still turn out equal once it resolves.
+    go-cty (`cty/value_ops.go:332-357`) walks each set once and declines to
+    answer only when an element is unknown *at its own top level* -- because
+    that element's identity is undecided, so how many distinct members the set
+    has is undecided with it. Anything shallower than that it decides: it asks
+    `s2.Has(rv)`, whose `Equivalent` is `Equals(...) == true`
+    (`cty/set_internals.go:52-68`), so an element that merely *contains* an
+    unknown is not equivalent to anything and the sets are definitely unequal.
+
+    Two things were wrong here before 2026-08-17, both measured against the
+    harness. The guard was `is_wholly_known()`, a deep walk, so a set of objects
+    with one unknown attribute came back undecided where go-cty says a definite
+    `false` -- and `set(object({...}))` is Terraform's nested-block-set type,
+    so that is the common shape. And membership was tested one way round after a
+    length comparison, over a `frozenset` of the elements, which raised
+    `TypeError: unhashable type` for exactly those container elements.
+
+    Both directions, and no length comparison, because that is what go-cty does:
+    two payloads of different length can still each contain the other, and go-cty
+    would call them equal.
+
+    "Two unknown values are not equivalent for the sake of set membership" is
+    preserved by the same guard that go-cty uses: the moment either set holds an
+    unknown element, nothing is claimed about either set's cardinality.
     """
-    if not a.is_wholly_known() or not b.is_wholly_known():
-        return _undecided()
-    a_items, b_items = frozenset(_items(a)), frozenset(_items(b))
-    if len(a_items) != len(b_items):
-        return _bool(False)
-    return _bool(all(any(_equals_item(x, y).value is True for y in b_items) for x in a_items))
+    from pyvider.cty.values.base import CtyValue
+
+    a_items, b_items = _items(a), _items(b)
+    for element in (*a_items, *b_items):
+        if isinstance(element, CtyValue) and element.is_unknown:
+            return _undecided()
+
+    if _contains_every(a_items, b_items) and _contains_every(b_items, a_items):
+        return _bool(True)
+    return _bool(False)
+
+
+def _bucket(member: Any) -> int:
+    """A hash to group set members by, or 0 for a member that will not hash.
+
+    Only ever a *hint*, so a coarse answer costs a scan and never a wrong one.
+    The remaining refusals are the Python-protocol ones -- a mark object that is
+    itself an unhashable container -- which is why the fallback exists rather
+    than the raise being allowed through: the caller asked whether two sets are
+    equal, not whether their members are hashable.
+    """
+    from pyvider.cty.values.base import CtyValue
+
+    if not isinstance(member, CtyValue):
+        return 0
+    try:
+        return hash(member)
+    except TypeError:
+        return 0
+
+
+def _contains_every(needles: tuple[Any, ...], haystack: tuple[Any, ...]) -> bool:
+    """Whether every needle has an *equivalent* in haystack. go-cty's `Set.Has`.
+
+    Bucketed by hash, which is what go-cty's set package does and what
+    `CtyValue.__hash__` became able to support on 2026-08-17. A pure pairwise
+    scan is O(n*m), and `Value.Equals` on a nested block set is something a
+    provider does on every plan: two equal 1000-element sets cost 1.3 s that way.
+
+    The bucket is a hint and the fallback is the answer. `Equals` can call two
+    values equal that hash apart -- nulls of two different types are equal in
+    cty, and a hand-built `set(dynamic)` can hold both -- so a bucket miss
+    re-checks the whole haystack instead of concluding from the hash. That keeps
+    the result identical to the pairwise scan while paying for it at most once,
+    because the first genuine miss ends the walk.
+    """
+    buckets: dict[int, list[Any]] = {}
+    for candidate in haystack:
+        buckets.setdefault(_bucket(candidate), []).append(candidate)
+
+    def equivalent_in(candidates: Any) -> bool:
+        return any(_equals_item(needle, candidate).value is True for candidate in candidates)
+
+    for needle in needles:
+        if equivalent_in(buckets.get(_bucket(needle), ())):
+            continue
+        if not equivalent_in(haystack):
+            return False
+    return True
 
 
 # 🌊🪢🔚

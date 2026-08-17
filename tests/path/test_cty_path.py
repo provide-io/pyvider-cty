@@ -242,4 +242,43 @@ class TestCtyPathStringRepresentation:
         assert str(path) == "['config-key']"
 
 
+class TestPathSet:
+    """`set[CtyPath]` stands in for go-cty's `PathSet`, including set elements.
+
+    `CtyPath`'s own docstring rests the claim on being frozen, and
+    `.provide/GO-CTY-PARITY.md` closes go-cty's `PathSet` on it. It was false
+    until 2026-08-17 for the one shape that matters: a `KeyStep` into a *set*
+    holds the element value itself as its key (a set element is its own key, as
+    `path/base.py` explains), so putting such a path into a Python set hashes a
+    whole CtyValue -- and hashing a container raised a bare `TypeError`. Any set
+    of containers, `set(object({...}))` included, made the claim untrue.
+    """
+
+    def test_a_path_keyed_by_a_container_set_element_goes_into_a_set(self) -> None:
+        from pyvider.cty import CtySet
+
+        element = CtyList(element_type=CtyString()).validate(["x"])
+        path = CtyPath.key(element)
+
+        assert len({path}) == 1
+        # And an equal path built separately is the same member, not a second one.
+        twin = CtyPath.key(CtyList(element_type=CtyString()).validate(["x"]))
+        assert {path, twin} == {path}
+        assert (
+            path.apply_path(CtySet(element_type=CtyList(element_type=CtyString())).validate([["x"]]))
+            == element
+        )
+
+    def test_every_path_a_walk_of_a_set_of_containers_hands_out_is_hashable(self) -> None:
+        from pyvider.cty import CtySet
+        from pyvider.cty.walk import deep_values
+
+        set_of_lists = CtySet(element_type=CtyList(element_type=CtyString())).validate([["x"], ["y"]])
+
+        paths = {path for path, _ in deep_values(set_of_lists)}
+
+        # root, the two elements, and the one string inside each.
+        assert len(paths) == 5
+
+
 # 🌊🪢🔚

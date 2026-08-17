@@ -98,9 +98,11 @@ def test_set_dedup_keeps_the_mark_of_the_element_it_drops() -> None:
 def test_set_hoists_marks_from_deep_inside_an_element() -> None:
     """`SetVal` uses UnmarkDeep, not a shallow unmark.
 
-    The element type is dynamic rather than a collection because set elements
-    have to be hashable, and a set of lists is unsupported for that reason --
-    which is separate from marks.
+    The element type is dynamic only so that the mark sits one level down from
+    the set. The docstring used to claim a set of lists was "unsupported"
+    because set elements "have to be hashable"; that was never true of
+    `CtySet.validate`, which de-duplicates by canonical sort key, and since
+    2026-08-17 it is not true of `hash` either.
     """
     result = CtySet(element_type=CtyDynamic()).validate([CtyDynamic().validate(marked_string())])
 

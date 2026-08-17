@@ -25,7 +25,6 @@ from pyvider.cty.config.defaults import (
     ERR_CANNOT_GET_RAW_VALUE_UNKNOWN,
     ERR_CANNOT_INDEX_UNKNOWN_NULL_VALUE,
     ERR_CANNOT_ITERATE_UNKNOWN_VALUE,
-    ERR_UNHASHABLE_TYPE,
     ERR_VALUE_TYPE_NO_LEN,
     ERR_VALUE_TYPE_NOT_COMPARABLE,
     ERR_VALUE_TYPE_NOT_ITERABLE,
@@ -103,6 +102,19 @@ class CtyValue(Generic[T]):
         go-cty writes it last. Both decode to the same value, so only a byte
         comparison catches it -- and Terraform compares serialized state, so it
         was a diff that reappeared on every plan.
+
+        Doubles as this library's *only* notion of value identity, as of
+        2026-08-17. `CtySet.validate` de-duplicates with it and `__hash__` now
+        hashes it, which is what makes a set of containers work at all -- the
+        two used to disagree, and only one of them worked. It is the analogue of
+        go-cty's `makeSetHashBytes` (`cty/set_internals.go:144-278`), which
+        likewise serializes a whole value and is likewise mark-blind.
+
+        Total, and never raising: a member that is not a `CtyValue` is keyed by
+        its repr and a mapping is ordered by `str(key)`. Only a hand-built value
+        can hold either -- `validate` normalises members -- and both used to
+        reach `AttributeError`/`TypeError` from here, which is the same escape
+        from the error taxonomy that the bare `TypeError` in `__hash__` was.
         """
         from ..types import (
             CtyBool,
@@ -132,21 +144,25 @@ class CtyValue(Generic[T]):
             and self.value is not None
             and hasattr(self.value, "__iter__")
         ):
-            return (*key_prefix, *(v._canonical_sort_key() for v in self.value))
+            return (*key_prefix, *(_member_key(v) for v in self.value))
 
         if isinstance(self.type, CtySet) and self.value is not None and hasattr(self.value, "__iter__"):
-            sorted_elements = sorted(self.value, key=lambda v: v._canonical_sort_key())
-            return (*key_prefix, *(v._canonical_sort_key() for v in sorted_elements))
+            sorted_elements = sorted(self.value, key=_member_key)
+            return (*key_prefix, *(_member_key(v) for v in sorted_elements))
 
         if (
             isinstance(self.type, CtyMap | CtyObject)
             and self.value is not None
             and hasattr(self.value, "items")
         ):
-            sorted_items = sorted(self.value.items())
+            # Keyed on `str(name)` rather than the raw pair. A mapping payload's
+            # keys are attribute or element names and so are strings, for which
+            # this is the identical order; sorting the pairs themselves raised
+            # for a hand-built payload whose keys were not all one type.
+            sorted_items = sorted(self.value.items(), key=lambda item: str(item[0]))
             return (
                 *key_prefix,
-                *((k, v._canonical_sort_key()) for k, v in sorted_items),
+                *((k, _member_key(v)) for k, v in sorted_items),
             )
 
         if isinstance(self.type, CtyCapsule):
@@ -287,7 +303,49 @@ class CtyValue(Generic[T]):
         raise TypeError(error_message)
 
     def __hash__(self) -> int:
+        """A hash for **every** value, containers included, as of 2026-08-17.
+
+        This used to raise a bare `TypeError` for `list`, `set`, `map` and
+        `object`, on the reasoning that Python cannot hash a mutable payload.
+        The reasoning was wrong twice over. A validated container's payload is
+        immutable (a tuple, or a `FrozenDict`), and go-cty hashes containers
+        without hesitation -- `makeSetHashBytes` (`cty/set_internals.go:144`)
+        serializes a whole value and crc32s it, which is why `set(object({}))`,
+        Terraform's nested-block-set type, works there.
+
+        The raise was reachable from ten public entry points -- `Value.Equals`
+        on any set of containers, `setunion`, `contains`, `lookup`, `zipmap`,
+        `distinct`, `in` and `without_key` on a map, and the paths `deep_values`
+        hands out -- all with one trigger: a set whose element type is itself a
+        container. It survived a msgpack round-trip, so decoded wire data
+        reached it. And being a bare `TypeError` it fell outside `CtyError`, so
+        a caller's `except CtyFunctionError` missed it and it surfaced to
+        Terraform as a provider crash rather than a diagnostic.
+
+        The hash is the canonical sort key, which is the same notion of identity
+        `CtySet.validate` already de-duplicates with. Having two notions and
+        only one of them working is what produced a library that could *build*
+        a set of lists but not compare one.
+
+        Consistency with `__eq__` (`a == b` implies equal hashes) holds because
+        every field `__eq__` looks at is either in the key or hashed beside it:
+        `vtype` (no two `equal` types hash differently -- checked), `marks` --
+        which `__eq__` does compare, so they belong here -- and the payload,
+        which the key derives from structurally. The key is coarser than `__eq__`
+        in places, which only ever costs a bucket collision.
+
+        A capsule with no `hash_fn` gives one hash to every value of its type.
+        That is go-cty's own answer (`cty/set_internals.go:257-274`: "we'll just
+        generate the same hash value for every value of this type, which is
+        logically fine but less efficient for larger sets"), it is correct
+        whatever equality the capsule defines -- including a `CtyCapsuleWithOps`
+        whose `equal_fn` makes `__eq__` user-defined, where nothing generic
+        *could* derive an agreeing hash -- and it replaces a `TypeError` that
+        leaked the user's own class name for an unhashable payload. Supply
+        `hash_fn` to get bucketing back; go-cty says the same of `HashKey`.
+        """
         from pyvider.cty.types import (
+            CtyCapsule,
             CtyCapsuleWithOps,
             CtyList,
             CtyMap,
@@ -298,12 +356,15 @@ class CtyValue(Generic[T]):
         if isinstance(self.type, CtyCapsuleWithOps) and self.type.hash_fn:
             return self.type.hash_fn(self.value)
 
-        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
-            error_message = ERR_UNHASHABLE_TYPE.format(vtype=self.vtype.ctype)
-            raise TypeError(error_message)
-
         if self.is_unknown or self.is_null:
             return hash((self.vtype, self.is_unknown, self.is_null, self.marks))
+
+        if isinstance(self.vtype, CtyCapsule):
+            return hash((self.vtype, self.marks))
+
+        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
+            return hash((self.vtype, self.marks, self._canonical_sort_key()))
+
         return hash((self.vtype, self.is_unknown, self.is_null, self.marks, self.value))
 
     def equals(self, other: CtyValue[Any]) -> CtyValue[Any]:
@@ -434,6 +495,27 @@ class CtyValue(Generic[T]):
     @classmethod
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
+
+
+def _member_key(member: object) -> tuple[Any, ...]:
+    """The canonical key of a container member, which need not be a CtyValue.
+
+    `validate` normalises every member of a list, set, tuple, map or object to a
+    CtyValue, but a hand-built value can hold raw Python objects, and asking one
+    of those for `_canonical_sort_key` used to raise `AttributeError` -- from
+    inside sorting, hashing and set de-duplication alike, and outside the error
+    taxonomy. A raw member is keyed by its repr instead, which is orderable
+    against every other member's key and hashable for anything at all.
+
+    Repr is exact for anything whose repr round-trips and coarse otherwise, so a
+    malformed payload can collide where `__eq__` would separate. That is the
+    safe direction, and the supported way to build a value is `validate`.
+    """
+    if isinstance(member, CtyValue):
+        return member._canonical_sort_key()
+    # Ranked -1 so raw members sort ahead of every real type rank rather than
+    # interleaving with them, which keeps the order deterministic.
+    return (0, -1, repr(member))
 
 
 # 🌊🪢🔚

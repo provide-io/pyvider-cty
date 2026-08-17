@@ -64,4 +64,33 @@ def test_element_at_on_non_list_internal_value() -> None:
         list_type.element_at(inconsistent_value, 0)
 
 
+def test_element_at_with_a_non_index_answers_inside_the_taxonomy() -> None:
+    """A bad index is a CtyListValidationError, as of 2026-08-17.
+
+    This used to catch `TypeError` around *both* the subscript and the element
+    validation that follows it, and re-raise a brand-new **bare** `TypeError`
+    saying "list indices must be integers" -- so a TypeError from anywhere
+    inside validation was relabelled as an index problem, the original was
+    discarded, and the answer was not a `CtyError` a caller could catch beside
+    every other validation failure.
+    """
+    list_type = CtyList(element_type=CtyString())
+    value = list_type.validate(["a"])
+
+    with pytest.raises(CtyListValidationError, match="List index must be an integer or slice, not str"):
+        list_type.element_at(value, "nope")  # type: ignore[arg-type]
+
+
+def test_element_at_out_of_range_is_still_an_index_error() -> None:
+    """`IndexError` is Python's answer for a valid index that is out of range.
+
+    Pinned alongside the case above so that narrowing the `except TypeError` did
+    not quietly convert this one too.
+    """
+    list_type = CtyList(element_type=CtyString())
+
+    with pytest.raises(IndexError):
+        list_type.element_at(list_type.validate(["a"]), 5)
+
+
 # 🌊🪢🔚
