@@ -15,6 +15,7 @@ about where the sign goes relative to zero padding.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -216,12 +217,77 @@ class TestFormatList:
         assert result.type.equal(CtyList(element_type=CtyString()))
 
 
+class TestEdges:
+    """Paths a well-behaved format string never reaches."""
+
+    def test_a_malformed_verb_is_refused(self) -> None:
+        """A period with no digits after it is not a precision."""
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%.f"), n(1))
+        with pytest.raises(CtyFunctionError):
+            format_fn(s("%"), n(1))
+
+    def test_a_null_format_string_is_refused(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            format_fn(CtyValue.null(CtyString()), s("a"))
+        with pytest.raises(CtyFunctionError):
+            formatlist(CtyValue.null(CtyString()), s("a"))
+
+    def test_rounding_that_carries_bumps_the_exponent(self) -> None:
+        """9.99 to one decimal is 1.0e+01, not 10.0e+00."""
+        assert rendered("%.1e", n("9.99")) == "1.0e+01"
+        assert rendered("%.2e", n("0.0000999")) == "9.99e-05"
+
+    def test_a_sign_flag_applies_to_floats_as_well_as_integers(self) -> None:
+        assert rendered("%+.1f", n("1.5")) == "+1.5"
+        assert rendered("% .1f", n("1.5")) == " 1.5"
+        assert rendered("%+.1f", n("-1.5")) == "-1.5"
+
+    def test_zero_precision_on_g_keeps_one_significant_digit(self) -> None:
+        assert rendered("%.0g", n("123")) == "1e+02"
+
+    def test_a_non_finite_number_renders_as_itself(self) -> None:
+        assert rendered("%v", n(Decimal("Infinity"))) == "Infinity"
+        assert rendered("%g", n(Decimal("NaN"))) == "NaN"
+
+    def test_a_nested_number_renders_without_an_exponent(self) -> None:
+        """`%v` falls back to JSON, whose encoder never uses exponent form.
+
+        A bare number was special-cased from the start; one inside a collection
+        went through Python's float repr and came out `[1e-05]`.
+        """
+        assert rendered("%v", CtyList(element_type=CtyNumber()).validate(["0.00001"])) == "[0.00001]"
+        assert (
+            rendered("%v", CtyObject(attribute_types={"a": CtyNumber()}).validate({"a": "0.00001"}))
+            == '{"a":0.00001}'
+        )
+
+    def test_json_keys_are_sorted_and_sets_are_canonically_ordered(self) -> None:
+        both = CtyObject(attribute_types={"b": CtyString(), "a": CtyString()}).validate({"a": "1", "b": "2"})
+
+        assert rendered("%v", both) == '{"a":"1","b":"2"}'
+        assert rendered("%v", CtySet(element_type=CtyString()).validate(["b", "a"])) == '["a","b"]'
+
+
 class TestUnknowns:
     def test_an_unknown_argument_makes_the_result_unknown(self) -> None:
         assert format_fn(s("%s"), CtyValue.unknown(CtyString())).is_unknown
 
     def test_an_unknown_template_makes_the_result_unknown(self) -> None:
         assert format_fn(CtyValue.unknown(CtyString()), s("a")).is_unknown
+
+    def test_a_sequence_holding_an_unknown_is_unknown_throughout(self) -> None:
+        """go-cty resolves this row by row; this package cannot reach that.
+
+        `CtyList.validate` marks the whole list unknown if any element is, so a
+        partially-known list never arrives here as one -- the per-row branch is
+        kept because a caller can still build such a value directly, and
+        removing it would make that construction crash rather than defer.
+        """
+        partial = CtyList(element_type=CtyString()).validate(["a", CtyValue.unknown(CtyString())])
+
+        assert partial.is_unknown
+        assert formatlist(s("%s"), partial).is_unknown
 
     def test_an_unknown_nested_inside_a_collection_counts(self) -> None:
         """`%v` prints a collection as JSON, which needs it wholly known."""

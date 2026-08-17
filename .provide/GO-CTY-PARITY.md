@@ -46,7 +46,7 @@ further down.
 | 4 | ~~**`unify` has no primitive widening rule**~~ **Done 2026-08-16.** It had no rules at all: 6 of 38 cases agreed, now 38. | 4 strict xfails across two functions, and `concat` only surfaced because someone went looking. Expect more. | Phase 5 |
 | 5 | ~~**Numeric precision model**~~ **Decided 2026-08-16: keep as is.** The two remaining sweep xfails are this decision, not bugs. Needs a decision, not an implementation. Measured: raising the Decimal context is free for ordinary numbers — the cost is in operand width, not context. | Decision 3 |
 | 6 | ~~**`format` / `formatlist`**~~ **Done 2026-08-16.** 455-case matrix, all agreeing. | Two of the four functions the oracle exposes and this package does not have, and the largest single port left. The other two are `strlen` (blocked on UAX#29) and `assertnotnull`. | Phase 5 |
-| 7 | **Release gate** | Cap the five consumers, cut 0.5.0, thirteen breaking changes to write up. | Release gate |
+| 7 | **Release gate** | Cap the five consumers, cut 0.5.0, ~25 breaking changes to write up — **and release `pyvider` with it**, which the measurement below shows is not optional. | Release gate |
 | 8 | **pyvider-components delegating to cty** | The largest *actual* parity win: nothing in the workspace calls the cty stdlib, so this repo keeps getting more correct while the code practitioners invoke does not change. | Cross-repo |
 
 **A caveat on 3 and 8.** Both rest on the claim that the framework seam and the
@@ -249,10 +249,25 @@ Mutually independent. Parallelizable across whoever is free.
     `and` and `or` deliberately do **not** short-circuit: `and(unknown, false)` is unknown, not false, because go-cty's framework returns an unknown result for any unknown argument before the implementation is reached and so never notices that one operand already settles it. Answering `false` here while Terraform answers unknown would be a plan that disagrees with itself.
     The set ops follow go-cty's `allowUnknowns` split — only union tolerates an unknown element, because for the others learning what it is can remove elements or change the result's length. `setsymmetricdifference` and `sethaselement` are ported too, though the oracle harness does not expose them, so they are checked against `set.go` rather than against a running go-cty.
     Two deliberate divergences, both recorded below: a zero step, and mixed element types.
+  - [x] **`format` and `formatlist`** — *done 2026-08-16*. See below.
   - [ ] Still open: `assertnotnull`, `strlen` (needs ctystrings), generalized `MakeToFunc`.
-- [ ] **`unify` has no primitive widening rule** — the one gap the set ports exposed
-  go-cty unifies a mixture of primitives with `convert.UnifyUnsafe`, which widens everything to string: `setunion(set(string), set(bool))` is a `set(string)` containing `"true"`. This package's `unify` answers `dynamic` for any mixture it cannot handle structurally, and `convert` has no set→set element-wise conversion either. So the union keeps both elements at their original types in a `set(dynamic)`.
-  Not fixed inside the set operations, because `unify` is shared with `chunklist`, `concat`, `flatten` and the collection constructors, and widening it changes all of them. Pinned as two strict xfails in the sweep so it cannot be forgotten.
+- [x] **`unify` — ported entire, not patched** — *done 2026-08-16*
+  Filed as "no primitive widening rule". It had no rules at all worth the name: a differential run against the new `soup-go cty unify` agreed on **6 of 38** cases. It now agrees on 38.
+  The deeper fault was that `dynamic` served as both an answer and a failure. `unify` returned it for "these unify to dynamic" *and* for "these have nothing in common", so `setunion(set(number), set(bool))` — an error in go-cty — was a `set(dynamic)` here. It returns `None` for the latter now, matching `cty.NilType`, and each caller decides: the set operations raise, `chunklist` and `setproduct` raise on an unusable tuple, `lookup` falls back to dynamic.
+  What the port buys beyond primitive widening: dynamic has the **lowest** preference, not the highest, so `unify(string, dynamic)` is string (it is absorbing only among collections); objects with different attribute names unify as a **map**; tuples of different lengths unify as a **list**; tuples unify with lists and objects with maps.
+  Two knock-ons that were not in the plan:
+  - **`convert` had to grow the conversions unification promises.** A type nothing can reach is worse than no answer. Collections now convert elementwise — `validate` checks elements rather than converting them — tuples positionally, and an object to a map. `can_convert_unsafe` states the same table at the type level, which is what unification consults (go-cty's `GetConversionUnsafe` as a predicate).
+  - **Inference was using this function for a different question.** `raw_to_cty` asks "what type describes this raw structure"; unification asks "what can all of these convert to". go-cty unifies `{string, bool}` to string because a bool converts to a string — but nothing converts on the inference path, so inferring `list(string)` for `["a", True]` made the very next `validate` refuse the bool it was inferred from. 24 test failures, all real. Inference has its own rule now, and the two no longer share a name.
+  `concat` came with it: it derived its element type from the elements, widening to dynamic at the first mismatch. go-cty unifies the argument *types* and falls back to a **tuple** when they do not unify, since only a tuple carries a different type per position.
+- [x] **The null-argument policy moved to the framework** — *done 2026-08-16, breaking*
+  go-cty refuses a null argument before the implementation runs unless the parameter declares `AllowNull` (`function.go:169`). This package hand-rolled that check **144 times**, and the shape it reached for — `if x.is_null or x.is_unknown: return unknown` — treats a null as an unknown. They are not the same: an unknown is a value nobody knows yet, a null is one that is definitely absent, and computing with it invents a fact.
+  Measured by nulling each argument of every sweep case in turn: **109 of 138 argument positions disagreed**, every one of them go-cty raising where this package did something else — unknown in 69, a null in 19, and **an actual computed result in 21**. `lookup` on a null map returned its default as though the map had been searched. `max(null, 5)` returned 5, having filtered the null out. `hasindex(null, 0)` returned false.
+  Now declared once on `@stdlib_function`, defaulting to refusing as go-cty does. The allow-list is derived from the oracle run rather than from reading parameter specs: `coalesce`, `coalescelist`, `merge`, `equal`, `notequal`, `jsonencode`, `tostring`, `tonumber`, `tobool`, and `contains`' second argument. 109 → 0.
+  The probe became `test_a_null_argument_is_answered_the_same_way`, which nulls every argument of every case in the existing table and so stays exactly as broad as the sweep. It earned its place immediately: `convert` returned a null of the target type for *any* target, so `tostring(null_of_list)` produced a null string. Nullness is not part of a cty type — a null list is no more a string than a populated one.
+- [x] **`format` / `formatlist`** — *done 2026-08-16*
+  The largest single port left, and the one where reading the source would have gone furthest wrong. A 455-case matrix — 35 templates against 13 argument values — agreed on 420 at first run. All 35 misses were number rendering, and all systematic: Go writes a two-digit exponent where Python's `Decimal` writes one (`e+1` against `e+01`, and `%e` of zero came out `0.000000e+6` because a `Decimal` zero carries whatever scale it was built with); `%g` switches to exponent form on a different threshold than Decimal's; the sign goes **outside** zero padding, so `%08.2f` of -42 is `-0042.00` and padding the signed text gave `00-42.00`; and `%#v` is JSON, whose encoder never uses exponent notation.
+  An unused argument is an error, which is worth keeping because the caller believes it is being printed. `formatlist` iterates sets in canonical order rather than `list(frozenset)` order, which returned `["b", "a"]` for a set of "a" and "b" — not so much wrong as unrepeatable.
+  ⚠️ **One divergence kept:** width and precision are measured in code points here and in grapheme clusters in go-cty. NFC normalization at construction hides it wherever a precomposed form exists, so it takes a cluster with none — and there it matters: `%.1s` of a ZWJ family emoji gives go-cty the whole emoji and this the first person in it, which is a different picture rather than a shorter string. Same UAX#29 decision `strlen` waits on. Pinned as two strict xfails.
 - [x] **`range`'s zero-step guard, kept as a clean refusal**
   go-cty tests `step == cty.Zero`, comparing two structs holding different `big.Float` pointers, so it never fires: `range(0, 10, 0)` loops until the 1024 cap and reports *that* instead. Refused directly here with "step must not be zero". Both implementations refuse, so the sweep agrees; only the message differs. Same call already made for `indent`'s negative count.
 - [x] **Divergences the sweep found, each reproduced against the oracle** — *breaking*
@@ -265,10 +280,10 @@ Mutually independent. Parallelizable across whoever is free.
 
   Also fixed the mechanism itself: `KNOWN_DIVERGENCES` was applied with `pytest.xfail()`, which aborts the test where it stands, so a fixed divergence could never XPASS and the list could rot exactly the way it exists to prevent. It adds a strict `xfail` marker now and the body runs.
 - [x] **Public function names do not match Terraform's** — *settled by the registry, not by renaming*
-  `pyvider.cty.functions.STDLIB` maps go-cty's own name for each function onto this package's implementation, declared at the function by `@stdlib_function("...")` rather than in a table beside it. 79 entries; the only go-cty names absent are `format` and `formatlist`, which are not ported yet.
+  `pyvider.cty.functions.STDLIB` maps go-cty's own name for each function onto this package's implementation, declared at the function by `@stdlib_function("...")` rather than in a table beside it. 81 entries; the only go-cty names absent are `strlen` and `assertnotnull`.
   Renaming was considered and rejected on evidence, and the evidence is pinned as tests so it does not get re-litigated from a comment:
   - **3 names can never be Python functions.** `and`, `or`, `not` are keywords.
-  - **7 more shadow builtins the modules call.** `numeric_functions.py:315` calls builtin `max`; `collection_functions.py:555` and `:712` call builtin `range`. `slice` already shadows, and only gets away with it because that module never calls the builtin.
+  - **8 more shadow builtins the modules call.** `numeric_functions.py:315` calls builtin `max`; `collection_functions.py:555` and `:712` call builtin `range`. `slice` already shadows, and only gets away with it because that module never calls the builtin. `format` joined the list when it was ported and is the sharpest case: `format_functions.py` calls the builtin `format` on almost every line of its number rendering.
   - **The 11 that are free to rename are the ones where Terraform's spelling is worse.** `greater_than_or_equal_to` → `greaterthanorequalto`, `not_equal` → `notequal`. Renaming would make the Python API less readable to reach a name the registry supplies anyway.
   So renaming is 0-for-20: impossible, breaking, or a downgrade. 56 of 79 already carry go-cty's name; the registry covers the rest and reaches 100% where renaming tops out around 96% with breakage.
   The sweep now reads `STDLIB` instead of keeping its own `NAME_MAP` — that copy is what silently skipped fourteen functions while reporting them covered, and it no longer exists.
@@ -340,6 +355,26 @@ Every consumer in the workspace declares an **unbounded** dependency, with no `t
 
 So the moment `0.5.0` is published, all five absorb the change with no signal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
 
+### ⚠️ Every consumer run on this branch until 2026-08-16 measured the wrong thing
+
+**None of the consumer venvs resolve `pyvider.cty` to this working tree.** Each has the *published* package in its own site-packages — 0.4.0 for `pyvider`, `pyvider-components`, `pyvider-hcl` and `tofusoup`, and 0.3.31 for `plating`. So every "all seven consumers pass" line recorded above and in the changelog was a run against 0.4.0, which proves only that the published library still works. It is not evidence about this branch.
+
+Re-run properly with `PYTHONPATH=/Volumes/data/pyv/pyvider-cty/src`:
+
+| Repo | Against this branch |
+|---|---|
+| `pyvider` | 1497 passed |
+| `pyvider-hcl` | 87 passed, 1 skipped |
+| `tofusoup` | 48 passed |
+| `plating` | 217 passed |
+| `pyvider-components` | **2 failed**, 114 passed |
+
+The two failures are `CtyMarksSerializationError` and are **version skew, not a new bug**: `pyvider-components`' venv carries `pyvider` **0.4.0**, whose installed `conversion/marshaler.py` contains no unmark code at all, while pyvider's own tree has `_unmark_deep`. `pyvider` 0.4.0 combined with `pyvider-cty` 0.5.0 is an unsupported pair — which is precisely what the unbounded `>=0.4.0` floor allows anyone to install.
+
+So the cap below is not housekeeping. It is the difference between a supported upgrade and a broken one, and there is now a reproduction.
+
+*(Found by a parallel session working in `pyvider`, which noticed the floor was fiction and asked whether its failures were mine. Worth recording how it was missed: the check ran, passed, and was believed — nobody asked what it was importing.)*
+
 - [ ] **Release notes must name thirteen breaking changes**, not one:
   1. Set elements no longer carry marks; read them off the set (go-cty's `SetVal` behaviour).
   2. Serializing a marked value now raises instead of silently dropping the marks.
@@ -354,10 +389,11 @@ So the moment `0.5.0` is published, all five absorb the change with no signal. A
   11. **`formatdate` uses go-cty's format dialect, not Go's layout strings.** This is the widest of the thirteen. The old implementation translated Go's own `2006-01-02` reference layout into `strftime`; go-cty defines its own scheme — `YYYY`, `MM`, `DD`, `EEEE`, `hh`, `AA`, `ZZZZZ`, with `'...'` quoting literals — and reads digits as literal text. So `formatdate("2006-01-02", ts)` now returns the string `2006-01-02` rather than a formatted date, and `formatdate("YYYY-MM-DD", ts)`, which used to pass through unchanged, now works. Both directions fail silently: the old dialect still returns *a* string. Every call site needs rewriting.
   12. **`formatdate` and `timeadd` parse RFC3339 strictly**, where they used `datetime.fromisoformat` and so accepted a bare date, a space in place of the `T`, a lowercase `t` or `z`, and an offset without its colon. go-cty carries its own RFC3339 parser precisely so this does not vary with the host language. `timeadd` also renders a zero offset as `Z` rather than `+00:00` — same instant, different string, and Terraform compares strings.
   13. **`jsondecode`, `csvdecode` and `merge` return concrete types.** `jsondecode` gave a `dynamic` wrapper; it now returns the type the document implies, which for a JSON array is a **tuple**, not a list. `csvdecode` returns `list(object(...))` with every column a string, and now refuses a missing header line, a duplicate column name, or a ragged row, all of which it used to accept. `merge` keeps the argument type when the arguments all share one — so merging maps yields a map instead of an object — and returns an empty object for no arguments. The decoders' types cross the wire, so this is what Terraform sees.
+- [ ] **`pyvider` must release at or before `pyvider-cty` 0.5.0.** Not merely "cap the consumers": the mark-serialization change needs pyvider's unmark-at-the-wire-boundary fix on the other side of it, and the two `pyvider-components` failures above are what the gap looks like from a consumer.
 - [ ] **Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**, then bump each one deliberately.
   Not done on this branch on purpose: the consumer repos are all sitting on unrelated branches (`adminy/main`, `chore/use-reusable-release`), and a cap committed to a branch that never merges is worse than no cap, because it looks done. Apply this to whichever branch actually ships.
 - [ ] **Cut `0.4.0` → `0.5.0`**, not a patch. The set change is breaking, and the mark fixes change what `validate` returns for every marked input.
-- [ ] Only `pyvider-cty` needs a release. Nothing else in the workspace changes.
+- [ ] ~~Only `pyvider-cty` needs a release. Nothing else in the workspace changes.~~ **Wrong, corrected 2026-08-16.** `pyvider` needs one too, for the reason above. This line was written from the same bad measurement.
 
 ---
 

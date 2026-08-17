@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, cast
 
 from pyvider.cty.config.defaults import ERR_ARGUMENT_MUST_NOT_BE_NULL, ERR_STDLIB_DUPLICATE_NAME
 from pyvider.cty.exceptions import CtyFunctionError
@@ -56,11 +56,10 @@ AllowNull = bool | Sequence[int]
 
 
 def _refuses_null(allow_null: AllowNull, position: int) -> bool:
-    if allow_null is True:
-        return False
+    """Whether this position rejects a null. `allow_null=True` never reaches here."""
     if allow_null is False:
         return True
-    return position not in allow_null
+    return position not in cast(Sequence[int], allow_null)
 
 
 def _check_nulls(name: str, allow_null: AllowNull, args: tuple[Any, ...]) -> None:
@@ -90,7 +89,9 @@ def stdlib_function(name: str, *, allow_null: AllowNull = False) -> Callable[[Ca
             _check_nulls(name, allow_null, args)
             return marked(*args, **kwargs)
 
-        wrapped = guarded if allow_null is not True else marked
+        # A function that accepts a null everywhere needs no guard at all, so
+        # it keeps the bare marked wrapper rather than paying for a scan.
+        wrapped = marked if allow_null is True else guarded
         existing = STDLIB.get(name)
         # Re-importing a module re-runs its decorators, which is not a clash.
         # Two different functions claiming one name is.
