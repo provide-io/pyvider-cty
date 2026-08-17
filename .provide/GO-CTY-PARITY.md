@@ -238,8 +238,8 @@ Not user-visible. All of it unblocks later phases.
 - [x] **#14 item 6 — `NormalizeString`** — cut; the behaviour is already there
   go-cty's own docs say `Normalize` "achieves the same effect as wrapping a string in a value using `cty.StringVal` and then unwrapping it again" — i.e. cty normalizes at construction. pyvider does too, deliberately: `types/primitives/string.py:51`, `types/collections/map.py:71,98`, `conversion/raw_to_cty.py:245`. Verified: NFD `"é"` is stored as one code point, compares equal to the precomposed form, and collides with it as a map key — matching the oracle.
   The standalone helper exists in go-cty because Go has no stdlib NFC and needs `golang.org/x/text`. Python's is `unicodedata.normalize("NFC", s)`. A wrapper would add a name, not a capability.
-- [ ] **#14 item 6 — `SafeKnownPrefix`** — still open, still blocked
-  The half of `ctystrings` that is a real gap. Needs UAX#29 grapheme segmentation. Blocks `strlen` (#9) and `StringPrefix` (#10).
+- [x] **#14 item 6 — `SafeKnownPrefix`** — *closed 2026-08-17, `b11177c`*
+  The half of `ctystrings` that was a real gap. It needed UAX#29 grapheme segmentation and was recorded here as blocking `strlen` (#9) and `StringPrefix` (#10). Both of those landed first, and this then cost nothing extra — see phase 6.
   ⚠️ Requires the Unicode-segmentation dependency decision — see below. **Deferred deliberately** (2026-08-16): nothing exports `strlen` today, so nothing is blocked by waiting.
 
 ## Phase 4 — marks, properly
@@ -260,7 +260,7 @@ Not user-visible. All of it unblocks later phases.
 
 Mutually independent. Parallelizable across whoever is free.
 
-- [ ] **#9 — remaining stdlib ports**
+- [x] **#9 — remaining stdlib ports** — *closed 2026-08-16*. **83 of 83 functions; `UNSWEPT` is empty.**
   - [x] **bool ops, the five set ops and `range`.** These were exactly what `tests/compatibility/test_stdlib_sweep.py` skipped, and the sweep now has no skips at all. Exported as `and_fn` / `or_fn` / `not_fn` / `range_fn`, since all four names are Python keywords or builtins — the same reason `max_fn` carries a suffix, and more fuel for the naming decision below.
     `and` and `or` deliberately do **not** short-circuit: `and(unknown, false)` is unknown, not false, because go-cty's framework returns an unknown result for any unknown argument before the implementation is reached and so never notices that one operand already settles it. Answering `false` here while Terraform answers unknown would be a plan that disagrees with itself.
     The set ops follow go-cty's `allowUnknowns` split — only union tolerates an unknown element, because for the others learning what it is can remove elements or change the result's length. `setsymmetricdifference` and `sethaselement` are ported too, though the oracle harness does not expose them, so they are checked against `set.go` rather than against a running go-cty.
@@ -303,12 +303,14 @@ Mutually independent. Parallelizable across whoever is free.
   - **The 11 that are free to rename are the ones where Terraform's spelling is worse.** `greater_than_or_equal_to` → `greaterthanorequalto`, `not_equal` → `notequal`. Renaming would make the Python API less readable to reach a name the registry supplies anyway.
   So renaming is 0-for-20: impossible, breaking, or a downgrade. 56 of 79 already carry go-cty's name; the registry covers the rest and reaches 100% where renaming tops out around 96% with breakage.
   The sweep now reads `STDLIB` instead of keeping its own `NAME_MAP` — that copy is what silently skipped fourteen functions while reporting them covered, and it no longer exists.
-- [ ] **#7 — `format` / `formatlist`**
-  Largest single port. Hand-write the verb tokeniser from `format_fsm.rl`; do not bend Python `%`/`str.format` (no positional `%[2]s`, wrong number rendering). Verify numeric verbs against the Go harness.
-- [ ] **#11 — `cty/json` value codec**
-  `Marshal` / `Unmarshal` / `ImpliedType`. Not the same as the `jsonencode`/`jsondecode` functions.
-- [ ] **#14 item 8 — capsule ops gaps**
-  `GoString`, `TypeGoString`, `RawEquals`, `ExtensionData`, split `ConversionFrom`/`ConversionTo` (needed for the 1.16.0 capsule↔capsule fallback).
+- [x] **#7 — `format` / `formatlist`** — *closed 2026-08-16*
+  Largest single port, and the advice here held: the verb tokeniser was hand-written from `format_fsm.rl` rather than bending Python's `%`/`str.format`, which has no positional `%[2]s` and renders numbers differently. 455-case matrix against the harness, all agreeing. Width and precision were later corrected to count grapheme clusters (2026-08-16), and `%q` to stop escaping non-ASCII.
+- [x] **#11 — `cty/json` value codec** — *closed 2026-08-17, `20654df`*
+  `Marshal` / `Unmarshal` / `ImpliedType`, and as the entry warned, not the same as the `jsonencode`/`jsondecode` functions. Byte-compared against go-cty for every case in the compat table — 29 of them, via a new json-to-json path through the harness, since the existing helper only crossed between formats and comparing two *encoders* needs both sides to start and end in the same one. Unknowns, marks and infinity all raise rather than degrade. An array implies a **tuple**, because JSON promises nothing about an array's elements sharing a type.
+- [x] **#14 item 8 — capsule ops gaps** — *closed 2026-08-17, `2db77ad`*
+  Five of the six landed; the sixth was not a gap. **`GoString` and `TypeGoString` implement Go's `%#v` verb**, whose Python equivalent is `__repr__` — already defined on both capsule types. Filed here from reading go-cty's struct rather than from running pyvider, which is the failure mode this file opens by warning about; pinned now as a test asserting its own absence.
+  A real undocumented divergence surfaced while doing it: **go-cty compares a no-ops capsule by pointer identity** and pyvider used the payload's `__eq__`. `raw_equals` now defaults to identity, while still deferring to a declared `equal_fn` — a Python class defining `__eq__` has explicitly opted in, unlike a Go type, so honouring it is not a guess.
+  `convert_to_fn` (`ConversionTo`) was the missing half: without it a capsule could be converted *out of* and never *into*, which is what blocked the 1.16.0 capsule↔capsule fallback. The target's `ConversionTo` is tried before the source's `ConversionFrom`, per `convert/conversion.go:172-184` — verified by reading the precedence after a first comment claimed the opposite order.
 
 ## Phase 6 — refinements
 
@@ -326,8 +328,9 @@ Mutually independent. Parallelizable across whoever is free.
 
 - [ ] **#12 — the `cty/function` framework**
   `Function`, `Spec`, `Parameter`, `Unpredictable`, `ArgError`, `RefineResult`. Migrate stdlib behind the existing public names. Absorbs #5's decorator.
-- [ ] **#14 item 5 — `Type.TestConformance`**
-  Distinct from the existing `usable_as` (= go-cty `UsableAs`): allows `DynamicPseudoType` wildcards, returns path-tagged errors rather than a bool.
+- [x] **#14 item 5 — `Type.TestConformance`** — *closed 2026-08-17, `7cb3f37`*
+  Exported as `conformance_errors`, not `test_conformance`: a module-level `test_*` function is collected as a test case the moment any test module imports it by name. The entry's description was exactly right — `dynamic` wildcards, and path-tagged errors rather than a bool, which is the whole reason go-cty carries it alongside `UsableAs`.
+  Errors carry a display-string path rather than a `CtyPath`, because go-cty marks a collection element with an index step holding an *unknown* key and a `CtyPath` cannot express that; `[*]` keeps the meaning where `[0]` would point at an element that need not exist.
 
 ## Cross-repo follow-ups — not this repo, do not lose
 
@@ -341,7 +344,10 @@ Found while doing parity work here. Each belongs to another repository and is re
 
 - [ ] **Latent, not yet live: `pyvider`'s `cty_path_to_proto_path` will render a set-element path badly.** `pyvider/src/pyvider/protocols/tfprotov6/handlers/utils.py:385` maps a `KeyStep` to `element_key_string=str(key)`. Phase 3 gave `KeyStep` a second role — a set element keys itself — so that `key` can now be a whole `CtyValue`, and `str()` of one is its repr. Unreachable today: validation only ever builds a `KeyStep` for a map key (`types/collections/map.py:76`), and nothing yet feeds `walk`-produced paths into diagnostics. It becomes reachable the moment something does.
 
-- [ ] **143 of the 197 `ERR_*` constants in `config/defaults.py` are never used** — the function raises a hardcoded copy of the same text instead. `divide` raises `"divide by zero"` while `ERR_DIVIDE_BY_ZERO` sits unused; `upper` builds an f-string while `ERR_UPPER_MUST_BE_STRING` sits unused. Found three times now as a side effect of other work (`length`, `regexreplace` twice), each time by noticing the constant while editing the function.
+- [x] **The unused `ERR_*` constants** — *closed 2026-08-17, `c16bd8d`* — 130 of 240 deleted, and a guard added so it cannot recur.
+  The recorded figure of "143 of 197" was stale; this branch had added constants of its own. Measuring split them into three populations, which is what decided the treatment: **51** whose literal appeared verbatim at a raise site, **57** rebuilt as f-strings, and **22** with no trace anywhere. Sampling the rebuilt ones found them matching exactly — `{type_name}` against `{type(x).__name__}` — so nothing had drifted yet.
+  **Deleted rather than wired up.** A constant nobody uses is not a single source of truth, it is a second one; deleting makes the file's claim true without touching a raise site, so no message text could change in the process. Wiring up meant 108 mechanical edits to error paths for no behavioural gain, each an opportunity to alter a message a practitioner reads.
+  **The guard is the actual close.** This was found three separate times as a side effect of unrelated work — the signature of something needing a mechanism, not another fix. Both directions are checked, and there is **deliberately no allowlist**: an allowlist of 130 would be a guard that cannot fire. Proven to fire before being accepted, per the rule that came out of the dependency refresh: add an unused constant, watch it fail naming it, revert, watch it pass.
   Mechanical, no behavioural change, touches most of the stdlib — which is why it is filed rather than folded into a fix commit, where it would bury the change under noise. Worth one dedicated pass. Note the detection is crude (a name occurring once in `src/` and `tests/` is assumed dead), so verify each before deleting; the ratio is too large to be measurement error but individual entries may not be.
 
 ## Continuous
