@@ -84,7 +84,12 @@ def test_serialize_refined_unknown_value() -> None:
     assert unpacked.code == 12
 
     payload = msgpack.unpackb(unpacked.data, raw=False, strict_map_key=False)
-    assert payload == {3: [b"0", True]}
+    # A msgpack *integer*, not the UTF-8 bytes of the digits. go-cty encodes the
+    # bound as the tuple `(number, bool)` through its ordinary number
+    # marshaller, so 0 is `00` on the wire; this used to write `c4 01 30`. go-cty
+    # reads either back as 0, which is why the difference survived until the
+    # bytes themselves were compared.
+    assert payload == {3: [0, True]}
 
 
 # 🌊🪢🔚

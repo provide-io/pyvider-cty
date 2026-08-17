@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import base64
 from decimal import Decimal
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -56,13 +57,75 @@ from pyvider.cty.values.markers import RefinedUnknownValue
 __all__ = ["canonical", "dynamic_arg", "rich", "run", "soup_go", "type_spec"]
 
 
+REQUIRED_COMMANDS = frozenset(
+    {
+        # The stdlib oracle.
+        "call",
+        "functions",
+        "unify",
+        # The cty package itself, which no stdlib call reaches.
+        "rich",
+        "unknown-as-null",
+        "marks",
+        "conformance",
+        "json",
+        "range",
+        "safe-known-prefix",
+        "convert-value",
+        "walk",
+        "transform",
+        "msgpack",
+    }
+)
+"""Every `soup-go cty` subcommand this suite drives.
+
+Doubles as the index of which go-cty surfaces are compared here at all: a
+feature with no command in this list is a feature nothing checks.
+"""
+
+
+@lru_cache(maxsize=8)
+def _commands(binary: str) -> frozenset[str]:
+    """The `cty` subcommands a binary exposes, read from its own help output."""
+    completed = subprocess.run(  # nosec
+        [binary, "cty", "--help"], capture_output=True, text=True, check=False
+    )
+    found: set[str] = set()
+    listing = False
+    for line in completed.stdout.splitlines():
+        if line.startswith("Available Commands:"):
+            listing = True
+            continue
+        if listing:
+            if not line.strip():
+                break
+            found.add(line.split()[0])
+    return frozenset(found)
+
+
 def soup_go() -> str:
-    """The harness binary, or skip. Never silently passes without it."""
+    """The harness binary, or skip. Never silently passes without it.
+
+    A binary that is *present but too old* fails rather than skips. That is the
+    difference between "nothing was checked and it said so" and "something was
+    checked against last week's go-cty" -- and the second has already happened
+    here: `/tmp/soup-go` is the last-resort default, a developer running pytest
+    directly picks it up, and a day-old copy answered "unknown function" to two
+    thirds of the sweep while the suite reported a clean run.
+    """
     candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or "/tmp/soup-go"  # nosec
     if not Path(candidate).exists():
         pytest.skip(
             f"soup-go harness not found at {candidate}. Build it from "
             "tofusoup/src/tofusoup/harness/go/soup-go, or set SOUP_GO_BIN."
+        )
+
+    missing = sorted(REQUIRED_COMMANDS - _commands(candidate))
+    if missing:
+        raise AssertionError(
+            f"the soup-go harness at {candidate} is out of date: it has no {', '.join(missing)}. "
+            "Rebuild it from tofusoup/src/tofusoup/harness/go/soup-go, or point SOUP_GO_BIN at a "
+            "current build. `make compat` rebuilds it for you."
         )
     return candidate
 
