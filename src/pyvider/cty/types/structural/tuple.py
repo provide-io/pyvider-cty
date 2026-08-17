@@ -44,7 +44,7 @@ class CtyTuple(CtyType[tuple[object, ...]]):
             if isinstance(value.type, CtyTuple) and value.type.equal(self) and isinstance(value.value, tuple):
                 return cast(CtyValue[tuple[Any, ...]], value)
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return self.unknown_like(value)
             if value.is_null:
                 return CtyValue.null(self)
             value = value.value

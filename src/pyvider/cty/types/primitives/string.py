@@ -29,13 +29,13 @@ class CtyString(CtyType[str]):
         from pyvider.cty.values import CtyValue, UnknownValue
 
         if isinstance(value, UnknownValue):
-            return CtyValue.unknown(self)
+            return self.unknown_like(value)
 
         if isinstance(value, CtyValue):
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return self.unknown_like(value)
             raw_value = value.value
         else:
             raw_value = value

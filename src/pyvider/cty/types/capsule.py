@@ -49,7 +49,7 @@ class CtyCapsule(CtyType[Any]):
             if value.is_null:
                 return CtyValue.null(self)
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return self.unknown_like(value)
             val_to_check = value.value
             original_marks = value.marks
         else:

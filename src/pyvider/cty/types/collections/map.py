@@ -47,7 +47,7 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
             if value.is_null:
                 return CtyValue.null(self), value
             if value.is_unknown:
-                return CtyValue.unknown(self), value
+                return self.unknown_like(value), value
             value = value.value
         if value is None:
             return CtyValue.null(self), value

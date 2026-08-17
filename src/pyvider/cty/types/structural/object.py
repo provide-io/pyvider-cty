@@ -72,7 +72,7 @@ class CtyObject(CtyType[dict[str, object]]):
             if self.equal(value.type) and isinstance(value.value, dict):
                 return cast(CtyValue[dict[str, Any]], value)  # Fast path
             if value.is_unknown:
-                return CtyValue.unknown(self)
+                return self.unknown_like(value)
             if value.is_null:
                 return CtyValue.null(self)
             value = value.value

@@ -54,7 +54,7 @@ from pyvider.cty.conversion import encode_cty_type_to_wire_json
 from pyvider.cty.types import BytesCapsule
 from pyvider.cty.values.markers import RefinedUnknownValue
 
-__all__ = ["canonical", "dynamic_arg", "rich", "run", "soup_go", "type_spec"]
+__all__ = ["canonical", "dynamic_arg", "refinements", "rich", "run", "soup_go", "type_spec"]
 
 
 REQUIRED_COMMANDS = frozenset(
@@ -177,9 +177,9 @@ def rich(value: CtyValue[Any]) -> Any:
         return {"$marks": sorted(str(mark) for mark in marks), "$value": rich(unmarked)}
     if value.is_unknown:
         payload: dict[str, Any] = {"$unknown": True}
-        refinements = _refinements(value)
-        if refinements:
-            payload["$refine"] = refinements
+        refined = refinements(value)
+        if refined:
+            payload["$refine"] = refined
         return payload
     if value.is_null:
         return {"$null": True}
@@ -236,7 +236,12 @@ def _number_text(number: Any) -> str:
     return format(decimal, "f")
 
 
-def _refinements(value: CtyValue[Any]) -> dict[str, Any]:
+def refinements(value: CtyValue[Any]) -> dict[str, Any]:
+    """What is known about an unknown, in the harness's spelling.
+
+    Public because the stdlib sweep needs it too: an unknown answer is only
+    comparable with go-cty's if the refinements come with it.
+    """
     raw = value.value
     if not isinstance(raw, RefinedUnknownValue):
         return {}

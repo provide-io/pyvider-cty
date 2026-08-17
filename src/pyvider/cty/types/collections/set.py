@@ -57,7 +57,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
             return CtyValue.null(self), value
         if isinstance(value, CtyValue):
             if value.is_unknown:
-                return CtyValue.unknown(self), value
+                return self.unknown_like(value), value
             if value.is_null:
                 return CtyValue.null(self), value
             # The pass-through requires the value to already satisfy the
