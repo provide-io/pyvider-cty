@@ -55,10 +55,21 @@ def _bool(result: bool) -> CtyValue[Any]:
 
 
 def _undecided() -> CtyValue[Any]:
+    """ "Not yet decided", and *not null* -- which go-cty says explicitly.
+
+    `Equals` returns `UnknownVal(Bool).Refine().NotNull().NewValue()`. The
+    refinement costs nothing and is observable: a caller asking whether the
+    answer could be null gets "no" from go-cty, and used to get "possibly" here.
+    """
     from pyvider.cty.types import CtyBool
     from pyvider.cty.values.base import CtyValue
+    from pyvider.cty.values.markers import RefinedUnknownValue
 
-    return CtyValue.unknown(CtyBool())
+    return CtyValue(
+        vtype=CtyBool(),
+        value=RefinedUnknownValue(is_known_null=False),
+        is_unknown=True,
+    )
 
 
 # Payloads that can hold a nested CtyValue, and so a nested mark or unknown.
@@ -193,9 +204,18 @@ def _equals_with_unknown(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if a.is_unknown and b.is_unknown:
         return _undecided()
 
+    from pyvider.cty.value_range import value_range
+
     known, unknown = (a, b) if not a.is_unknown else (b, a)
     if known.is_null:
-        # The unknown may yet resolve to null, which would make them equal.
+        # The unknown may yet resolve to null, which would make them equal --
+        # unless it has been refined as *not* null, in which case the answer is
+        # settled without knowing anything else about it. go-cty decides this
+        # first of all (`val.IsNull() && definitelyNotNull(other)`), and without
+        # it a comparison against null stayed undecided forever no matter how
+        # much the unknown had been narrowed.
+        if value_range(unknown).definitely_not_null():
+            return _bool(False)
         return _undecided()
     if _has_dynamic(known.vtype) or _has_dynamic(unknown.vtype):
         # go-cty checks `other.ty.HasDynamicTypes()` here. An unknown of dynamic
@@ -214,8 +234,6 @@ def _equals_with_unknown(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     # out to be. go-cty asks `Value.Range().Includes` here. Only a definite
     # *exclusion* is usable -- "within the bounds" is not "equal" -- so anything
     # other than a hard false stays undecided.
-    from pyvider.cty.value_range import value_range
-
     excluded = value_range(unknown).includes(known)
     if not excluded.is_unknown and excluded.value is False:
         return _bool(False)

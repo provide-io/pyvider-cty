@@ -75,6 +75,7 @@ REQUIRED_COMMANDS = frozenset(
         "walk",
         "transform",
         "msgpack",
+        "equals",
     }
 )
 """Every `soup-go cty` subcommand this suite drives.
