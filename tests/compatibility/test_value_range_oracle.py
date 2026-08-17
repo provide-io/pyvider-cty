@@ -27,7 +27,7 @@ from typing import Any
 
 import pytest
 
-from pyvider.cty import CtyList, CtyNumber, CtyString, CtyType, CtyValue
+from pyvider.cty import CtyList, CtyMap, CtyNumber, CtySet, CtyString, CtyType, CtyValue
 from pyvider.cty.refinement import refine, safe_known_prefix
 from pyvider.cty.value_range import value_range
 from tests.compatibility._oracle import canonical, rich, run, type_spec
@@ -143,10 +143,26 @@ class TestLengthBounds:
             ("lower only", refine(CtyValue.unknown(NUMBERS)).collection_length_lower_bound(2).new_value()),
             ("exact", refine(CtyValue.unknown(NUMBERS)).collection_length(3).new_value()),
             ("known list", NUMBERS.validate([1, 2])),
+            # A set and a map, added 2026-08-17: the audit found every length
+            # bound here rode on a list, so the other two collection kinds'
+            # range plumbing was asserted only against a reading of range.go.
+            (
+                "bounded set",
+                refine(CtyValue.unknown(CtySet(element_type=CtyString())))
+                .collection_length_lower_bound(1)
+                .collection_length_upper_bound(4)
+                .new_value(),
+            ),
+            (
+                "bounded map",
+                refine(CtyValue.unknown(CtyMap(element_type=CtyNumber())))
+                .collection_length_upper_bound(2)
+                .new_value(),
+            ),
         ],
     )
     def test_length_bounds_read_back_the_same(self, label: str, value: CtyValue[Any]) -> None:
-        theirs = _range_from_harness(NUMBERS, value)
+        theirs = _range_from_harness(value.type, value)
         here = value_range(value)
 
         assert here.length_lower_bound() == theirs["length_lower_bound"], f"{label} lower"

@@ -8,8 +8,6 @@ Includes automated setup for the cross-language compatibility suite."""
 
 from collections.abc import Generator
 from pathlib import Path
-import shutil
-import subprocess  # nosec
 import sys
 import time
 
@@ -112,79 +110,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for item in items:
             if "compat" in item.keywords:
                 item.add_marker(skip_compat)
-
-
-@pytest.fixture(scope="session")
-def go_fixtures(pytestconfig: pytest.Config, log_dir: Path) -> Path:
-    """
-    A session-scoped fixture that automatically runs the Go fixture generator.
-    """
-    project_root = pytestconfig.rootpath
-    go_compat_dir = project_root / "compatibility" / "go"
-    fixture_dir = project_root / "tests" / "fixtures" / "go-cty"
-
-    if not shutil.which("go"):
-        pytest.skip("Go runtime not found, skipping cross-language compatibility tests.")
-
-    log_file_path = log_dir / "go-generate-debug.log"
-
-    reporter = pytestconfig.pluginmanager.getplugin("terminalreporter")
-
-    try:
-        subprocess.run(
-            ["go", "mod", "tidy"],
-            cwd=go_compat_dir,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
-        command = [
-            "go",
-            "run",
-            ".",
-            "generate",
-            "--directory",
-            str(fixture_dir.resolve()),
-            "--log-file",
-            str(log_file_path.resolve()),
-            "--log-level",
-            "trace",
-        ]
-
-        reporter.write_line(
-            f"\n\nInfo: Go compatibility tool logs will be saved to: {log_file_path}",
-            bold=True,
-        )
-
-        result = subprocess.run(
-            command,
-            cwd=go_compat_dir,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
-        (log_dir / "go-generate-stdout.log").write_text(result.stdout)
-        (log_dir / "go-generate-stderr.log").write_text(result.stderr)
-
-    except subprocess.CalledProcessError as e:
-        reporter.write_line(
-            f"❌ Go fixture generator failed. Logs are available at: {log_file_path}",
-            red=True,
-        )
-        pytest.fail(
-            f"Go fixture generator failed to run:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}",
-            pytrace=False,
-        )
-    except FileNotFoundError as e:
-        reporter.write_line(
-            f"❌ Go fixture generator failed. Logs are available at: {log_file_path}",
-            red=True,
-        )
-        pytest.fail(f"Go fixture generator failed to run: {e}", pytrace=False)
-
-    return fixture_dir
 
 
 @pytest.fixture(autouse=True)
