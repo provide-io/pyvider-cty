@@ -115,28 +115,65 @@ def _ext_hook(code: int, data: bytes) -> Any:
             return UNREFINED_UNKNOWN
 
 
+_UNKNOWN_EXT = msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"\x00")
+"""An unknown with nothing known about it.
+
+One data byte, whose value is irrelevant, because that makes the encoding a
+msgpack *fixext1* -- `d4 00 00`, the three bytes go-cty names in a variable and
+calls "the most compact possible representation". An empty payload is legal
+msgpack and decodes to the same value, but it is `c7 00 00`: a different
+serialization of the same unknown, and Terraform compares serialized state.
+"""
+
+_MAX_PREFIX_BYTES = 256
+"""go-cty's cap on a string-prefix refinement, and its reason: the whole
+refinement blob has to stay under the limit its own decoder enforces."""
+
+
 def _serialize_unknown(value: CtyValue[Any]) -> Any:
     if not isinstance(value.value, RefinedUnknownValue):
-        return msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"")
+        return _UNKNOWN_EXT
     payload: dict[int, Any] = {}
     if value.value.is_known_null is not None:
         payload[REFINEMENT_IS_KNOWN_NULL] = value.value.is_known_null
     if value.value.string_prefix is not None:
-        payload[REFINEMENT_STRING_PREFIX] = value.value.string_prefix
+        payload[REFINEMENT_STRING_PREFIX] = _bounded_prefix(value.value.string_prefix)
+    # Bounds go through the ordinary number serializer. They used to be written
+    # as raw UTF-8 bytes -- a msgpack *binary* string, where go-cty encodes the
+    # tuple `(number, bool)` through its normal marshaller and so writes 3 as an
+    # integer. go-cty reads our version back correctly, which is why this
+    # survived: the values agreed and the bytes did not.
     if value.value.number_lower_bound is not None:
         num, inclusive = value.value.number_lower_bound
-        payload[REFINEMENT_NUMBER_LOWER_BOUND] = [str(num).encode("utf-8"), inclusive]
+        payload[REFINEMENT_NUMBER_LOWER_BOUND] = [_serialize_decimal_value(num), inclusive]
     if value.value.number_upper_bound is not None:
         num, inclusive = value.value.number_upper_bound
-        payload[REFINEMENT_NUMBER_UPPER_BOUND] = [str(num).encode("utf-8"), inclusive]
+        payload[REFINEMENT_NUMBER_UPPER_BOUND] = [_serialize_decimal_value(num), inclusive]
     if value.value.collection_length_lower_bound is not None:
         payload[REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND] = value.value.collection_length_lower_bound
     if value.value.collection_length_upper_bound is not None:
         payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND] = value.value.collection_length_upper_bound
     if not payload:
-        return msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"")
+        return _UNKNOWN_EXT
     packed_payload = msgpack.packb(payload)
     return msgpack.ExtType(MSGPACK_EXT_TYPE_REFINED_UNKNOWN, packed_payload)
+
+
+def _bounded_prefix(prefix: str) -> str:
+    """A string prefix truncated to what the wire format allows.
+
+    Truncating mid-cluster would leave a prefix that a later character could
+    combine with, so the cut is followed by the same safe-prefix trim go-cty
+    applies -- which is the one place where "shorten it" and "keep it correct"
+    are the same operation.
+    """
+    if len(prefix.encode("utf-8")) <= _MAX_PREFIX_BYTES:
+        return prefix
+
+    from pyvider.cty.refinement import safe_known_prefix
+
+    truncated = prefix.encode("utf-8")[: _MAX_PREFIX_BYTES - 1].decode("utf-8", errors="ignore")
+    return safe_known_prefix(truncated)
 
 
 def _serialize_dynamic(value: CtyValue[Any], path: str = "") -> list[Any]:
