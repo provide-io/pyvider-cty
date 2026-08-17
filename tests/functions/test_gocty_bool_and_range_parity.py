@@ -91,9 +91,9 @@ class TestLogicalOperatorsReject:
     def test_a_null_argument(self) -> None:
         """None of these parameters is declared AllowNull, so go-cty refuses.
 
-        Several older functions in this package return unknown for a null
-        instead. That inconsistency is recorded in the tracker as strictness
-        work; these three are new, so they follow go-cty from the start.
+        This used to note that "several older functions in this package return
+        unknown for a null instead". They no longer do: the policy moved to the
+        framework, and 109 of 138 argument positions changed with it.
         """
         with pytest.raises(CtyFunctionError, match="must not be null"):
             not_fn(CtyValue.null(CtyBool()))
@@ -193,7 +193,9 @@ class TestRangeRejects:
             range_fn(CtyString().validate("3"))
 
     def test_a_null_argument(self) -> None:
-        with pytest.raises(CtyFunctionError, match="must be numbers"):
+        # The refusal now comes from the framework rather than from `range`'s
+        # own type check, so the message names the argument instead.
+        with pytest.raises(CtyFunctionError, match="must not be null"):
             range_fn(CtyValue.null(CtyNumber()))
 
     def test_an_unknown_argument_gives_an_unknown_list(self) -> None:

@@ -47,8 +47,9 @@ class TestNumericFunctions:
         with pytest.raises(CtyFunctionError):
             int_fn(S("a"))
 
-    def test_int_fn_null_unknown(self) -> None:
-        assert int_fn(CtyValue.null(CtyNumber())).is_null
+    def test_int_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            int_fn(CtyValue.null(CtyNumber()))
         assert int_fn(CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_add_numbers(self) -> None:
@@ -56,9 +57,11 @@ class TestNumericFunctions:
         assert add(CtyNumber().validate(-1), CtyNumber().validate(2)).value == 1
         assert add(CtyNumber().validate(1.5), CtyNumber().validate(2.5)).value == 4.0
 
-    def test_add_null(self) -> None:
-        assert add(CtyValue.null(CtyNumber()), CtyNumber().validate(1)).is_unknown
-        assert add(CtyNumber().validate(1), CtyValue.null(CtyNumber())).is_unknown
+    def test_add_refuses_a_null(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            add(CtyValue.null(CtyNumber()), CtyNumber().validate(1))
+        with pytest.raises(CtyFunctionError):
+            add(CtyNumber().validate(1), CtyValue.null(CtyNumber()))
 
     def test_add_unknown(self) -> None:
         assert add(CtyValue.unknown(CtyNumber()), CtyNumber().validate(1)).is_unknown
@@ -107,8 +110,9 @@ class TestNumericFunctions:
         assert abs_fn(CtyNumber().validate(0)).value == 0
         assert abs_fn(CtyNumber().validate(-5.5)).value == 5.5
 
-    def test_abs_fn_null_unknown(self) -> None:
-        assert abs_fn(CtyValue.null(CtyNumber())).is_null
+    def test_abs_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            abs_fn(CtyValue.null(CtyNumber()))
         assert abs_fn(CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_abs_fn_invalid_type(self) -> None:
@@ -121,8 +125,9 @@ class TestNumericFunctions:
         assert ceil_fn(CtyNumber().validate(5.0)).value == Decimal("5")
         assert ceil_fn(CtyNumber().validate(-5.1)).value == Decimal("-5")
 
-    def test_ceil_fn_null_unknown(self) -> None:
-        assert ceil_fn(CtyValue.null(CtyNumber())).is_null
+    def test_ceil_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            ceil_fn(CtyValue.null(CtyNumber()))
         assert ceil_fn(CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_ceil_fn_invalid_type(self) -> None:
@@ -135,8 +140,9 @@ class TestNumericFunctions:
         assert floor_fn(CtyNumber().validate(5.0)).value == Decimal("5")
         assert floor_fn(CtyNumber().validate(-5.1)).value == Decimal("-6")
 
-    def test_floor_fn_null_unknown(self) -> None:
-        assert floor_fn(CtyValue.null(CtyNumber())).is_null
+    def test_floor_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            floor_fn(CtyValue.null(CtyNumber()))
         assert floor_fn(CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_floor_fn_invalid_type(self) -> None:
@@ -147,9 +153,11 @@ class TestNumericFunctions:
         assert log_fn(CtyNumber().validate(100), CtyNumber().validate(10)).value == Decimal("2")
         assert log_fn(CtyNumber().validate(8), CtyNumber().validate(2)).value == Decimal("3")
 
-    def test_log_fn_null_unknown(self) -> None:
-        assert log_fn(CtyValue.null(CtyNumber()), CtyNumber().validate(10)).is_unknown
-        assert log_fn(CtyNumber().validate(100), CtyValue.null(CtyNumber())).is_unknown
+    def test_log_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            log_fn(CtyValue.null(CtyNumber()), CtyNumber().validate(10))
+        with pytest.raises(CtyFunctionError):
+            log_fn(CtyNumber().validate(100), CtyValue.null(CtyNumber()))
         assert log_fn(CtyValue.unknown(CtyNumber()), CtyNumber().validate(10)).is_unknown
         assert log_fn(CtyNumber().validate(100), CtyValue.unknown(CtyNumber())).is_unknown
 
@@ -171,9 +179,11 @@ class TestNumericFunctions:
         assert pow_fn(CtyNumber().validate(2), CtyNumber().validate(3)).value == 8
         assert pow_fn(CtyNumber().validate(4), CtyNumber().validate(0.5)).value == 2
 
-    def test_pow_fn_null_unknown(self) -> None:
-        assert pow_fn(CtyValue.null(CtyNumber()), CtyNumber().validate(2)).is_unknown
-        assert pow_fn(CtyNumber().validate(2), CtyValue.null(CtyNumber())).is_unknown
+    def test_pow_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            pow_fn(CtyValue.null(CtyNumber()), CtyNumber().validate(2))
+        with pytest.raises(CtyFunctionError):
+            pow_fn(CtyNumber().validate(2), CtyValue.null(CtyNumber()))
         assert pow_fn(CtyValue.unknown(CtyNumber()), CtyNumber().validate(2)).is_unknown
         assert pow_fn(CtyNumber().validate(2), CtyValue.unknown(CtyNumber())).is_unknown
 
@@ -188,8 +198,9 @@ class TestNumericFunctions:
         assert signum_fn(CtyNumber().validate(-10)).value == -1
         assert signum_fn(CtyNumber().validate(0)).value == 0
 
-    def test_signum_fn_null_unknown(self) -> None:
-        assert signum_fn(CtyValue.null(CtyNumber())).is_null
+    def test_signum_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            signum_fn(CtyValue.null(CtyNumber()))
         assert signum_fn(CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_signum_fn_invalid_type(self) -> None:
@@ -204,9 +215,11 @@ class TestNumericFunctions:
     def test_parseint_fn_null_result(self) -> None:
         assert parseint_fn(CtyString().validate("z"), CtyNumber().validate(10)).is_null
 
-    def test_parseint_fn_null_unknown(self) -> None:
-        assert parseint_fn(CtyValue.null(CtyString()), CtyNumber().validate(10)).is_null
-        assert parseint_fn(CtyString().validate("10"), CtyValue.null(CtyNumber())).is_null
+    def test_parseint_fn_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            parseint_fn(CtyValue.null(CtyString()), CtyNumber().validate(10))
+        with pytest.raises(CtyFunctionError):
+            parseint_fn(CtyString().validate("10"), CtyValue.null(CtyNumber()))
         assert parseint_fn(CtyValue.unknown(CtyString()), CtyNumber().validate(10)).is_unknown
         assert parseint_fn(CtyString().validate("10"), CtyValue.unknown(CtyNumber())).is_unknown
 

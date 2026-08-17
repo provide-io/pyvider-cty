@@ -460,14 +460,15 @@ class TestEdgeCases:
         with pytest.raises(CtyFunctionError):
             add(a, b)
 
-    def test_null_propagation_with_refined_unknowns(self) -> None:
-        """Test: null values propagate to unknown even with refinements."""
-        a = CtyValue.null(CtyNumber())
-        b = UnknownN(number_lower_bound=(Decimal("10"), True))
-        result = add(a, b)
+    def test_a_null_is_refused_even_beside_a_refined_unknown(self) -> None:
+        """This used to assert that a null "propagates to unknown".
 
-        assert result.is_unknown
-        # Null + refined = plain unknown (not refined)
+        It does not propagate to anything now -- `add` declares neither
+        parameter AllowNull, so the call is refused before the refinement is
+        ever consulted.
+        """
+        with pytest.raises(CtyFunctionError):
+            add(CtyValue.null(CtyNumber()), UnknownN(number_lower_bound=(Decimal("10"), True)))
 
 
 # 🌊🪢🔚

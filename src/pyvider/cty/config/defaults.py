@@ -412,6 +412,7 @@ ERR_BOOL_ARG_MUST_NOT_BE_NULL = "{func}: argument must not be null"
 # Set operation error messages
 ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
 ERR_SET_OP_REQUIRES_ONE_SET = "{func}: at least one set must be provided"
+ERR_ARGUMENT_MUST_NOT_BE_NULL = "{func}: argument {position} must not be null"
 ERR_CONCAT_REQUIRES_ONE = "concat: at least one argument is required"
 ERR_CONCAT_ARG_MUST_NOT_BE_NULL = "concat: argument must not be null"
 ERR_CONCAT_ARGS_MUST_BE_SEQUENCES = "concat: all arguments must be lists or tuples, got {type}"

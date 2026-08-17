@@ -21,12 +21,12 @@ from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
-@stdlib_function("equal")
+@stdlib_function("equal", allow_null=True)
 def equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     return a.equals(b)
 
 
-@stdlib_function("notequal")
+@stdlib_function("notequal", allow_null=True)
 def not_equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     result = a.equals(b)
     if result.is_unknown:

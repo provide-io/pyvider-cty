@@ -33,8 +33,9 @@ class TestDistinct:
         t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(("a", "b", "a"))
         assert distinct(t).raw_value == ["a", "b"]
 
-    def test_distinct_with_null_unknown(self) -> None:
-        assert distinct(CtyValue.null(CtyList(element_type=CtyString()))).is_null
+    def test_distinct_with_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            distinct(CtyValue.null(CtyList(element_type=CtyString())))
         assert distinct(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_distinct_with_unhashable(self) -> None:
@@ -67,8 +68,9 @@ class TestFlatten:
         ).validate([["a", "b"], ["c"]])
         assert flatten(t).raw_value == ("a", "b", "c")
 
-    def test_flatten_with_null_unknown(self) -> None:
-        assert flatten(CtyValue.null(CtyList(element_type=CtyDynamic()))).is_null
+    def test_flatten_with_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            flatten(CtyValue.null(CtyList(element_type=CtyDynamic())))
         assert flatten(CtyValue.unknown(CtyList(element_type=CtyDynamic()))).is_unknown
 
     def test_flatten_with_null_element(self) -> None:
@@ -131,8 +133,9 @@ class TestReverse:
         t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(("a", "b", "c"))
         assert reverse(t).raw_value == ("c", "b", "a")
 
-    def test_reverse_null_unknown(self) -> None:
-        assert reverse(CtyValue.null(CtyList(element_type=CtyString()))).is_null
+    def test_reverse_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            reverse(CtyValue.null(CtyList(element_type=CtyString())))
         assert reverse(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_reverse_wrong_type(self) -> None:
@@ -149,8 +152,9 @@ class TestSort:
         lst = CtyList(element_type=CtyNumber()).validate([3, 1, 2])
         assert sort(lst).raw_value == [1, 2, 3]
 
-    def test_sort_with_null_unknown(self) -> None:
-        assert sort(CtyValue.null(CtyList(element_type=CtyString()))).is_null
+    def test_sort_with_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            sort(CtyValue.null(CtyList(element_type=CtyString())))
         assert sort(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_sort_with_null_element(self) -> None:

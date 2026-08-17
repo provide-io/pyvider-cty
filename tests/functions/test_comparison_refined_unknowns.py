@@ -363,25 +363,19 @@ class TestEdgeCasesAndBoundaries:
         result = equal(unknown_num, unknown_str)
         assert result.is_unknown
 
-    def test_max_all_null_values(self) -> None:
-        """Test: max with all null values returns null (line 184)."""
-        result = max_fn(
-            CtyValue.null(CtyNumber()),
-            CtyValue.null(CtyNumber()),
-        )
+    def test_max_refuses_null_values(self) -> None:
+        """These used to return a null, and to *filter nulls out*.
 
-        assert result.is_null
+        `min(null, 10, 5)` answered 5, which is a computed result from data one
+        of whose members was definitely absent. go-cty declares neither
+        parameter AllowNull and refuses the call.
+        """
+        with pytest.raises(CtyFunctionError):
+            max_fn(CtyValue.null(CtyNumber()), CtyValue.null(CtyNumber()))
 
-    def test_min_mixed_null_and_known(self) -> None:
-        """Test: min filters out nulls, uses known values (line 130-131)."""
-        result = min_fn(
-            CtyValue.null(CtyNumber()),
-            N(10),
-            N(5),
-        )
-
-        assert not result.is_unknown
-        assert result.value == Decimal("5")
+    def test_min_refuses_a_null_among_known_values(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            min_fn(CtyValue.null(CtyNumber()), N(10), N(5))
 
     def test_max_homogeneous_type_validation(self) -> None:
         """Test: max/min type validation for mixed types (line 138-143)."""

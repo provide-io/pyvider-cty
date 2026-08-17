@@ -37,9 +37,10 @@ class TestContains:
         assert contains(t, CtyString().validate("a")).raw_value is True
         assert contains(t, CtyString().validate("c")).raw_value is False
 
-    def test_contains_null_unknown(self) -> None:
+    def test_contains_refuses_a_null_and_defers_an_unknown(self) -> None:
         CtyList(element_type=CtyString()).validate(["a", "b"])
-        assert contains(CtyValue.null(CtyList(element_type=CtyString())), CtyString().validate("a")).is_unknown
+        with pytest.raises(CtyFunctionError):
+            contains(CtyValue.null(CtyList(element_type=CtyString())), CtyString().validate("a"))
         assert contains(
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyString().validate("a"),
@@ -62,8 +63,9 @@ class TestKeysValues:
         o = CtyObject({"a": CtyString(), "b": CtyString()}).validate({"a": "x", "b": "y"})
         assert keys(o).raw_value == ("a", "b")
 
-    def test_keys_null_unknown(self) -> None:
-        assert keys(CtyValue.null(CtyMap(element_type=CtyString()))).is_unknown
+    def test_keys_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            keys(CtyValue.null(CtyMap(element_type=CtyString())))
         assert keys(CtyValue.unknown(CtyMap(element_type=CtyString()))).is_unknown
 
     def test_keys_wrong_type(self) -> None:
@@ -80,8 +82,9 @@ class TestKeysValues:
         o = CtyObject({"a": CtyString(), "b": CtyString()}).validate({"a": "x", "b": "y"})
         assert values(o).raw_value == ("x", "y")
 
-    def test_values_null_unknown(self) -> None:
-        assert values(CtyValue.null(CtyMap(element_type=CtyString()))).is_unknown
+    def test_values_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            values(CtyValue.null(CtyMap(element_type=CtyString())))
         assert values(CtyValue.unknown(CtyMap(element_type=CtyString()))).is_unknown
 
     def test_values_wrong_type(self) -> None:
@@ -102,25 +105,18 @@ class TestHasIndexIndex:
         assert hasindex(m, CtyString().validate("b")).raw_value is False
         assert hasindex(m, CtyNumber().validate(0)).raw_value is False
 
-    def test_hasindex_null_unknown(self) -> None:
+    def test_hasindex_refuses_a_null_and_defers_an_unknown(self) -> None:
+        """A null collection used to answer False, which claims it was looked in."""
         lst = CtyList(element_type=CtyString()).validate(["a"])
-        assert (
-            hasindex(
-                CtyValue.null(CtyList(element_type=CtyString())),
-                CtyNumber().validate(0),
-            ).raw_value
-            is False
-        )
-        assert hasindex(
-            CtyValue.unknown(CtyList(element_type=CtyString())),
-            CtyNumber().validate(0),
-        ).is_unknown
-        assert hasindex(lst, CtyValue.null(CtyNumber())).raw_value is False
-        assert hasindex(lst, CtyValue.unknown(CtyNumber())).is_unknown
+        zero = CtyNumber().validate(0)
 
-    def test_hasindex_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
-            hasindex(CtyString().validate("a"), CtyNumber().validate(0))
+            hasindex(CtyValue.null(CtyList(element_type=CtyString())), zero)
+        with pytest.raises(CtyFunctionError):
+            hasindex(lst, CtyValue.null(CtyNumber()))
+
+        assert hasindex(CtyValue.unknown(CtyList(element_type=CtyString())), zero).is_unknown
+        assert hasindex(lst, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_index_list(self) -> None:
         lst = CtyList(element_type=CtyString()).validate(["a", "b"])

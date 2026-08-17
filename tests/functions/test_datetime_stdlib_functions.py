@@ -40,12 +40,14 @@ class TestDateTimeFunctions:
         with pytest.raises(CtyFunctionError):
             formatdate(S("..."), CtyNumber().validate(123))
 
-    def test_formatdate_null_unknown(self) -> None:
+    def test_formatdate_refuses_a_null_and_defers_an_unknown(self) -> None:
         spec = S("YYYY")
         ts = S("2020-01-01T00:00:00Z")
-        assert formatdate(CtyValue.null(CtyString()), ts).is_unknown
+        with pytest.raises(CtyFunctionError):
+            formatdate(CtyValue.null(CtyString()), ts)
         assert formatdate(CtyValue.unknown(CtyString()), ts).is_unknown
-        assert formatdate(spec, CtyValue.null(CtyString())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            formatdate(spec, CtyValue.null(CtyString()))
         assert formatdate(spec, CtyValue.unknown(CtyString())).is_unknown
 
     def test_formatdate_invalid_timestamp(self) -> None:
@@ -58,12 +60,14 @@ class TestDateTimeFunctions:
         with pytest.raises(CtyFunctionError):
             timeadd(S("..."), CtyNumber().validate(123))
 
-    def test_timeadd_null_unknown(self) -> None:
+    def test_timeadd_refuses_a_null_and_defers_an_unknown(self) -> None:
         ts = S("2020-01-01T00:00:00Z")
         dur = S("1h")
-        assert timeadd(CtyValue.null(CtyString()), dur).is_unknown
+        with pytest.raises(CtyFunctionError):
+            timeadd(CtyValue.null(CtyString()), dur)
         assert timeadd(CtyValue.unknown(CtyString()), dur).is_unknown
-        assert timeadd(ts, CtyValue.null(CtyString())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            timeadd(ts, CtyValue.null(CtyString()))
         assert timeadd(ts, CtyValue.unknown(CtyString())).is_unknown
 
     def test_timeadd_invalid_timestamp(self) -> None:

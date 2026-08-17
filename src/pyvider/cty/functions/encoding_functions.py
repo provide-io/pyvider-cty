@@ -38,7 +38,7 @@ from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
 
 
-@stdlib_function("jsonencode")
+@stdlib_function("jsonencode", allow_null=True)
 def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
     if val.is_unknown:
         return CtyValue.unknown(CtyString())

@@ -5,27 +5,37 @@
 
 """The seam every stdlib function is declared through.
 
-Today it does two things: it registers the function under go-cty's own name for
-it, and it applies the mark policy. Both are properties of *being* a stdlib
-function, so they are declared in one place at the function rather than
+It registers the function under go-cty's own name for it, applies the mark
+policy, and enforces the null-argument policy. All three are properties of
+*being* a stdlib function, so they are declared once at the function rather than
 re-derived inside 79 function bodies -- which is how the mark bugs, and most of
 the argument-handling divergences found since, came about.
 
-It is deliberately shaped to take more later. go-cty's `cty/function` framework
-declares each parameter's type and whether it accepts null, unknown or marked
-values, and enforces that before the implementation runs. This package still
-hand-rolls those checks (146 of them at last count, no two quite alike). When
-that policy moves here it goes behind this decorator, and the function bodies
-do not change.
+On nulls specifically. go-cty's `cty/function` framework refuses a null argument
+before the implementation runs unless the parameter sets `AllowNull`
+(`function.go:169`). This package hand-rolled that check 144 times, and the
+shape it reached for -- `if x.is_null or x.is_unknown: return unknown` -- treats
+a null as an unknown, which they are not: an unknown is a value nobody knows
+yet, a null is a value that is definitely absent.
+
+Measured against the oracle by nulling each argument of every sweep case in
+turn: **109 of 138 argument positions disagreed**, every one of them go-cty
+raising where this package did something else -- unknown in 69, a *computed
+result* in 21 (`lookup` on a null map returned its default; `max(null, 5)`
+returned 5), and a null in 19. The allow-list below is derived from that run
+rather than from reading go-cty's parameter specs.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
-from pyvider.cty.config.defaults import ERR_STDLIB_DUPLICATE_NAME
+from pyvider.cty.config.defaults import ERR_ARGUMENT_MUST_NOT_BE_NULL, ERR_STDLIB_DUPLICATE_NAME
+from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._marks import preserve_marks
+from pyvider.cty.values import CtyValue
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -40,18 +50,47 @@ R = TypeVar("R")
 # that speaks Terraform.
 STDLIB: dict[str, Callable[..., Any]] = {}
 
+# Which parameters accept a null, per function. `True` means every parameter --
+# the right answer for a variadic whose whole job involves nulls.
+AllowNull = bool | Sequence[int]
 
-def stdlib_function(name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+
+def _refuses_null(allow_null: AllowNull, position: int) -> bool:
+    if allow_null is True:
+        return False
+    if allow_null is False:
+        return True
+    return position not in allow_null
+
+
+def _check_nulls(name: str, allow_null: AllowNull, args: tuple[Any, ...]) -> None:
+    for position, argument in enumerate(args):
+        if isinstance(argument, CtyValue) and argument.is_null and _refuses_null(allow_null, position):
+            raise CtyFunctionError(ERR_ARGUMENT_MUST_NOT_BE_NULL.format(func=name, position=position))
+
+
+def stdlib_function(name: str, *, allow_null: AllowNull = False) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Declare a go-cty stdlib function under the name go-cty gives it.
 
     The name lives at the function so that it cannot drift from it. A mapping
     maintained separately is exactly what the compatibility sweep used to
     carry, and it silently skipped fourteen functions while reporting them as
     covered.
+
+    `allow_null` mirrors go-cty's per-parameter `AllowNull`, defaulting to
+    refusing -- which is go-cty's default too. Pass `True` for a variadic that
+    takes nulls throughout, or the positions that accept one.
     """
 
     def decorate(fn: Callable[P, R]) -> Callable[P, R]:
-        wrapped = preserve_marks(fn)
+        marked = preserve_marks(fn)
+
+        @wraps(fn)
+        def guarded(*args: P.args, **kwargs: P.kwargs) -> R:
+            _check_nulls(name, allow_null, args)
+            return marked(*args, **kwargs)
+
+        wrapped = guarded if allow_null is not True else marked
         existing = STDLIB.get(name)
         # Re-importing a module re-runs its decorators, which is not a clash.
         # Two different functions claiming one name is.

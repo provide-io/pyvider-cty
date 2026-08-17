@@ -53,9 +53,11 @@ class TestComparisonFunctions:
         with pytest.raises(CtyFunctionError):
             min_fn(N(1), S("a"))
 
-    def test_compare_with_null(self) -> None:
-        assert greater_than(CtyValue.null(CtyNumber()), N(1)).is_unknown
-        assert greater_than(N(1), CtyValue.null(CtyNumber())).is_unknown
+    def test_compare_with_refuses_a_null(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            greater_than(CtyValue.null(CtyNumber()), N(1))
+        with pytest.raises(CtyFunctionError):
+            greater_than(N(1), CtyValue.null(CtyNumber()))
 
     def test_multi_compare_no_args(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -63,8 +65,9 @@ class TestComparisonFunctions:
         with pytest.raises(CtyFunctionError):
             min_fn()
 
-    def test_multi_compare_all_null(self) -> None:
-        assert max_fn(CtyValue.null(CtyNumber()), CtyValue.null(CtyNumber())).is_null
+    def test_multi_compare_all_refuses_a_null(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            max_fn(CtyValue.null(CtyNumber()), CtyValue.null(CtyNumber()))
 
     def test_multi_compare_mixed_types(self) -> None:
         with pytest.raises(CtyFunctionError):

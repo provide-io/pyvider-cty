@@ -58,8 +58,9 @@ class TestStringAdvancedFunctions:
         result = chomp(cty_input)
         assert result.value == expected_str
 
-    def test_chomp_null_unknown(self) -> None:
-        assert chomp(CtyValue.null(CtyString())).is_null
+    def test_chomp_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            chomp(CtyValue.null(CtyString()))
         assert chomp(CtyValue.unknown(CtyString())).is_unknown
 
     def test_chomp_wrong_type(self) -> None:
@@ -84,8 +85,9 @@ class TestStringAdvancedFunctions:
         result = strrev(cty_input)
         assert result.value == expected_str
 
-    def test_strrev_null_unknown(self) -> None:
-        assert strrev(CtyValue.null(CtyString())).is_null
+    def test_strrev_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            strrev(CtyValue.null(CtyString()))
         assert strrev(CtyValue.unknown(CtyString())).is_unknown
 
     def test_strrev_wrong_type(self) -> None:
@@ -112,8 +114,9 @@ class TestStringAdvancedFunctions:
         result = trimspace(cty_input)
         assert result.value == expected_str
 
-    def test_trimspace_null_unknown(self) -> None:
-        assert trimspace(CtyValue.null(CtyString())).is_null
+    def test_trimspace_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            trimspace(CtyValue.null(CtyString()))
         assert trimspace(CtyValue.unknown(CtyString())).is_unknown
 
     def test_trimspace_wrong_type(self) -> None:
@@ -146,13 +149,16 @@ class TestStringAdvancedFunctions:
         result = substr(s, offset, length)
         assert result.value == "world"
 
-    def test_substr_null_unknown(self) -> None:
+    def test_substr_refuses_a_null_and_defers_an_unknown(self) -> None:
         s = CtyString().validate("hello world")
         offset = CtyNumber().validate(6)
         length = CtyNumber().validate(5)
-        assert substr(CtyValue.null(CtyString()), offset, length).is_unknown
-        assert substr(s, CtyValue.null(CtyNumber()), length).is_unknown
-        assert substr(s, offset, CtyValue.null(CtyNumber())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            substr(CtyValue.null(CtyString()), offset, length)
+        with pytest.raises(CtyFunctionError):
+            substr(s, CtyValue.null(CtyNumber()), length)
+        with pytest.raises(CtyFunctionError):
+            substr(s, offset, CtyValue.null(CtyNumber()))
         assert substr(CtyValue.unknown(CtyString()), offset, length).is_unknown
         assert substr(s, CtyValue.unknown(CtyNumber()), length).is_unknown
         assert substr(s, offset, CtyValue.unknown(CtyNumber())).is_unknown
@@ -193,11 +199,13 @@ class TestStringAdvancedFunctions:
         result = trim(s, cutset)
         assert result.value == "hello"
 
-    def test_trim_null_unknown(self) -> None:
+    def test_trim_refuses_a_null_and_defers_an_unknown(self) -> None:
         s = CtyString().validate("...hello...")
         cutset = CtyString().validate(".")
-        assert trim(CtyValue.null(CtyString()), cutset).is_unknown
-        assert trim(s, CtyValue.null(CtyString())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            trim(CtyValue.null(CtyString()), cutset)
+        with pytest.raises(CtyFunctionError):
+            trim(s, CtyValue.null(CtyString()))
         assert trim(CtyValue.unknown(CtyString()), cutset).is_unknown
         assert trim(s, CtyValue.unknown(CtyString())).is_unknown
 
@@ -215,8 +223,9 @@ class TestStringAdvancedFunctions:
         result = title(s)
         assert result.value == "Hello World"
 
-    def test_title_null_unknown(self) -> None:
-        assert title(CtyValue.null(CtyString())).is_null
+    def test_title_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            title(CtyValue.null(CtyString()))
         assert title(CtyValue.unknown(CtyString())).is_unknown
 
     def test_title_wrong_type(self) -> None:
@@ -238,11 +247,13 @@ class TestStringAdvancedFunctions:
         result = trimprefix(s, prefix)
         assert result.value == "hello"
 
-    def test_trimprefix_null_unknown(self) -> None:
+    def test_trimprefix_refuses_a_null_and_defers_an_unknown(self) -> None:
         s = CtyString().validate("prefix_hello")
         prefix = CtyString().validate("prefix_")
-        assert trimprefix(CtyValue.null(CtyString()), prefix).is_unknown
-        assert trimprefix(s, CtyValue.null(CtyString())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            trimprefix(CtyValue.null(CtyString()), prefix)
+        with pytest.raises(CtyFunctionError):
+            trimprefix(s, CtyValue.null(CtyString()))
         assert trimprefix(CtyValue.unknown(CtyString()), prefix).is_unknown
         assert trimprefix(s, CtyValue.unknown(CtyString())).is_unknown
 
@@ -267,11 +278,13 @@ class TestStringAdvancedFunctions:
         result = trimsuffix(s, suffix)
         assert result.value == "hello"
 
-    def test_trimsuffix_null_unknown(self) -> None:
+    def test_trimsuffix_refuses_a_null_and_defers_an_unknown(self) -> None:
         s = CtyString().validate("hello_suffix")
         suffix = CtyString().validate("_suffix")
-        assert trimsuffix(CtyValue.null(CtyString()), suffix).is_unknown
-        assert trimsuffix(s, CtyValue.null(CtyString())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            trimsuffix(CtyValue.null(CtyString()), suffix)
+        with pytest.raises(CtyFunctionError):
+            trimsuffix(s, CtyValue.null(CtyString()))
         assert trimsuffix(CtyValue.unknown(CtyString()), suffix).is_unknown
         assert trimsuffix(s, CtyValue.unknown(CtyString())).is_unknown
 
@@ -330,10 +343,13 @@ class TestStringAdvancedFunctions:
                 CtyNumber().validate(123),
             )
 
-    def test_regexreplace_null_unknown(self) -> None:
-        assert regexreplace(CtyValue.null(CtyString()), S("a"), S("b")).is_unknown
-        assert regexreplace(S("a"), CtyValue.null(CtyString()), S("b")).is_unknown
-        assert regexreplace(S("a"), S("b"), CtyValue.null(CtyString())).is_unknown
+    def test_regexreplace_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            regexreplace(CtyValue.null(CtyString()), S("a"), S("b"))
+        with pytest.raises(CtyFunctionError):
+            regexreplace(S("a"), CtyValue.null(CtyString()), S("b"))
+        with pytest.raises(CtyFunctionError):
+            regexreplace(S("a"), S("b"), CtyValue.null(CtyString()))
         assert regexreplace(CtyValue.unknown(CtyString()), S("a"), S("b")).is_unknown
         assert regexreplace(S("a"), CtyValue.unknown(CtyString()), S("b")).is_unknown
         assert regexreplace(S("a"), S("b"), CtyValue.unknown(CtyString())).is_unknown

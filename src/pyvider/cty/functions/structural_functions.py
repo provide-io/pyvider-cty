@@ -13,7 +13,7 @@ from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
 
 
-@stdlib_function("coalesce")
+@stdlib_function("coalesce", allow_null=True)
 def coalesce(*args: CtyValue[Any]) -> CtyValue[Any]:
     if not args:
         raise CtyFunctionError("coalesce must have at least one argument")
