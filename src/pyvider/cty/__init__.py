@@ -23,6 +23,7 @@ from pyvider.cty.exceptions import (
     CtyTypeParseError,
     CtyValidationError,
 )
+from pyvider.cty.graphemes import grapheme_cluster_count, grapheme_clusters
 from pyvider.cty.json_codec import cty_from_json, cty_to_json, implied_json_type
 from pyvider.cty.mark_paths import PathMarks, mark_with_paths, unmark_deep_with_paths
 from pyvider.cty.marks import CtyMark
@@ -88,6 +89,8 @@ __all__ = [
     "cty_from_json",
     "cty_to_json",
     "deep_values",
+    "grapheme_cluster_count",
+    "grapheme_clusters",
     "implied_json_type",
     "mark_with_paths",
     "parse_tf_type_to_ctytype",

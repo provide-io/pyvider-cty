@@ -7,73 +7,82 @@
 
 Named with an `_fn` suffix because `and`, `or` and `not` are Python keywords and
 cannot be function names -- the same reason `max_fn` and `pow_fn` carry one.
+
+Every parameter here is declared `AllowMarked`, so these bodies own mark
+propagation rather than leaving it to the framework -- which is exactly what
+`cty.Value.Not`, `And` and `Or` do: unmark, compute, re-apply
+(`value_ops.go:1305`).
 """
 
 from __future__ import annotations
 
 from typing import Any, cast
 
-from pyvider.cty import CtyBool, CtyDynamic, CtyValue
-from pyvider.cty.config.defaults import (
-    ERR_BOOL_ARG_MUST_BE_BOOL,
-    ERR_BOOL_ARG_MUST_NOT_BE_NULL,
-)
-from pyvider.cty.exceptions import CtyFunctionError
+from pyvider.cty import CtyBool, CtyValue
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._function import CtyParameter, refine_not_null
 
 
-def _bool_arg(value: CtyValue[Any], func: str) -> bool | None:
-    """One boolean argument, or None if it is unknown.
-
-    Refuses a null, which is what go-cty's function framework does for any
-    parameter not declared `AllowNull` -- and none of these are. Several older
-    functions in this package return unknown for a null instead; that is
-    recorded in the tracker as strictness work rather than copied here, since
-    these three are new and have no callers to break.
-    """
-    inner = value
-    while isinstance(inner.type, CtyDynamic) and isinstance(inner.value, CtyValue):
-        inner = inner.value
-    if not isinstance(inner.type, CtyBool | CtyDynamic):
-        raise CtyFunctionError(ERR_BOOL_ARG_MUST_BE_BOOL.format(func=func, type=inner.type.ctype))
-    if inner.is_null:
-        raise CtyFunctionError(ERR_BOOL_ARG_MUST_NOT_BE_NULL.format(func=func))
-    if inner.is_unknown:
-        return None
-    return cast(bool, inner.value)
+def _answer(result: bool, marks: frozenset[Any]) -> CtyValue[Any]:
+    """A boolean result carrying the marks its operands brought."""
+    return cast(CtyValue[Any], CtyBool().validate(result).with_marks(marks))
 
 
-@stdlib_function("not")
+@stdlib_function(
+    "not",
+    params=[CtyParameter("val", CtyBool(), allow_dynamic_type=True, allow_marked=True)],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Applies the logical NOT operation to the given boolean value.",
+)
 def not_fn(val: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `NotFunc`."""
-    operand = _bool_arg(val, "not")
-    if operand is None:
-        return CtyValue.unknown(CtyBool())
-    return cast(CtyValue[Any], CtyBool().validate(not operand))
+    """go-cty's `NotFunc` (`stdlib/bool.go:8`), whose body is `args[0].Not()`."""
+    operand, marks = val.unmark()
+    return _answer(not operand.value, marks)
 
 
-@stdlib_function("and")
+@stdlib_function(
+    "and",
+    params=[
+        CtyParameter("a", CtyBool(), allow_dynamic_type=True, allow_marked=True),
+        CtyParameter("b", CtyBool(), allow_dynamic_type=True, allow_marked=True),
+    ],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Applies the logical AND operation to the given boolean values.",
+)
 def and_fn(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `AndFunc`.
+    """go-cty's `AndFunc` (`stdlib/bool.go:25`), whose body is `args[0].And(args[1])`.
 
-    No short-circuit: `and(unknown, false)` is unknown, not false. go-cty's
-    framework returns an unknown result for any unknown argument before the
-    implementation is reached, so it never gets the chance to notice that one
-    known operand already settles the answer.
+    No short-circuit: `and(false, unknown)` is unknown, not false. `cty.Value.And`
+    *does* return `False` outright when either operand is known false
+    (`value_ops.go:1332`), but neither parameter here declares `AllowUnknown`, so
+    the framework answers `unknown(bool)` before the implementation is reached
+    and that branch is unreachable through `AndFunc`. Confirmed against the
+    oracle, which answers unknown-and-not-null for `and(false, unknown)`.
+    Matching it matters because a plan that answered `false` here and `unknown`
+    in Terraform would disagree with itself.
     """
-    left, right = _bool_arg(a, "and"), _bool_arg(b, "and")
-    if left is None or right is None:
-        return CtyValue.unknown(CtyBool())
-    return cast(CtyValue[Any], CtyBool().validate(left and right))
+    left, left_marks = a.unmark()
+    right, right_marks = b.unmark()
+    return _answer(bool(left.value and right.value), left_marks | right_marks)
 
 
-@stdlib_function("or")
+@stdlib_function(
+    "or",
+    params=[
+        CtyParameter("a", CtyBool(), allow_dynamic_type=True, allow_marked=True),
+        CtyParameter("b", CtyBool(), allow_dynamic_type=True, allow_marked=True),
+    ],
+    returns=CtyBool(),
+    refine_result=refine_not_null,
+    description="Applies the logical OR operation to the given boolean values.",
+)
 def or_fn(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `OrFunc`. Does not short-circuit, for the reason `and_fn` gives."""
-    left, right = _bool_arg(a, "or"), _bool_arg(b, "or")
-    if left is None or right is None:
-        return CtyValue.unknown(CtyBool())
-    return cast(CtyValue[Any], CtyBool().validate(left or right))
+    """go-cty's `OrFunc` (`stdlib/bool.go:48`). Does not short-circuit, per `and_fn`."""
+    left, left_marks = a.unmark()
+    right, right_marks = b.unmark()
+    return _answer(bool(left.value or right.value), left_marks | right_marks)
 
 
 # 🌊🪢🔚

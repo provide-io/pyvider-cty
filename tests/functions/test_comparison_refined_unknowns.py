@@ -3,13 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""Test suite for comparison functions with refined unknown values.
+"""Comparison functions given refined unknown values.
 
-This test suite focuses on achieving 100% coverage of refined unknown comparison
-logic in comparison_functions.py, particularly:
-- Lines 66, 84-85, 92-93 (refined unknown comparison logic)
-- Lines 138, 149, 172, 194-196 (min/max with refined unknowns)
-- Edge cases with bounds, inclusive/exclusive flags, overlapping ranges"""
+The four ordering comparisons can answer definitely from the refinement bounds,
+which is go-cty's behaviour too (`value_ops.go:1367`): `LessThan` and
+`GreaterThan` consult both operands' `Range` before giving up. What is covered
+here is every shape those bounds can take -- one side known, both refined,
+bounds that touch, bounds that overlap, and the inclusive/exclusive flag on each
+of them.
+
+`min` and `max` are the opposite case and the class below says why: go-cty's
+parameters do not admit an unknown at all, so no bound can be consulted."""
 
 from decimal import Decimal
 
@@ -208,85 +212,87 @@ class TestCompareTwoRefinedUnknowns:
 
 
 class TestMinMaxWithRefinedUnknowns:
-    """Test min/max functions with refined unknowns (lines 138, 149, 172, 194-196)."""
+    """An unknown argument makes `min`/`max` undecided, however it is refined.
 
-    def test_max_known_dominates_refined_upper_bound(self) -> None:
-        """Test: max(known, refined) where known >= refined.upper (line 168-169)."""
-        # known: 50
-        # refined: x <= 40
-        # Since known >= refined.upper, known is definitely the max
+    Until 2026-08-17 these asserted the opposite for the cases a bound settles:
+    `max(50, unknown <= 40)` answered `50`, and `min(unknown >= 10)` answered
+    the argument back with its refinement intact.
+
+    go-cty's `MinFunc` and `MaxFunc` declare one variadic parameter that sets
+    only `AllowDynamicType` (`stdlib/number.go:328`, `:354`) -- no
+    `AllowUnknown` -- so the function framework returns an unknown of the
+    declared return type without ever calling `Impl`, and the body it guards is
+    written on the assumption that every argument is a known number
+    (`:335`, `:361`). There is no counterpart in go-cty to a bound-aware
+    `min`/`max` at all.
+
+    This is a *loss of precision*, and a deliberate one: the previous answers
+    were sound, just not go-cty's, and Terraform would report "known after
+    apply" where this package reported a number. The ordering comparisons keep
+    their bound-aware answers, because there go-cty consults the ranges too
+    (`value_ops.go:1367`).
+    """
+
+    def test_max_defers_even_when_a_bound_settles_the_answer(self) -> None:
         known = N(50)
         refined = UnknownN(number_upper_bound=(Decimal("40"), True))
+
         result = max_fn(known, refined)
 
-        assert not result.is_unknown
-        assert result.value == Decimal("50")
+        assert result.is_unknown
+        assert result.type.equal(CtyNumber())
 
     def test_max_refined_could_exceed_known(self) -> None:
-        """Test: max(known, refined) where refined.upper > known (line 172)."""
-        # known: 30
-        # refined: x <= 50
-        # refined could be 50 > known, so result is unknown
         known = N(30)
         refined = UnknownN(number_upper_bound=(Decimal("50"), True))
-        result = max_fn(known, refined)
 
-        assert result.is_unknown
+        assert max_fn(known, refined).is_unknown
 
-    def test_min_known_dominates_refined_lower_bound(self) -> None:
-        """Test: min(known, refined) where known <= refined.lower (line 170-171)."""
-        # known: 5
-        # refined: x >= 10
-        # Since known <= refined.lower, known is definitely the min
+    def test_min_defers_even_when_a_bound_settles_the_answer(self) -> None:
         known = N(5)
         refined = UnknownN(number_lower_bound=(Decimal("10"), True))
-        result = min_fn(known, refined)
 
-        assert not result.is_unknown
-        assert result.value == Decimal("5")
-
-    def test_min_refined_could_be_below_known(self) -> None:
-        """Test: min(known, refined) where refined.lower < known (line 172)."""
-        # known: 20
-        # refined: x >= 5
-        # refined could be 5 < known, so result is unknown
-        known = N(20)
-        refined = UnknownN(number_lower_bound=(Decimal("5"), True))
         result = min_fn(known, refined)
 
         assert result.is_unknown
+        assert result.type.equal(CtyNumber())
 
-    def test_max_multiple_unknowns_after_filtering(self) -> None:
-        """Test: max with multiple unknowns after some are filtered (line 190-196)."""
-        # known: 50
-        # refined1: x <= 40 (dominated, filtered out)
-        # refined2: y >= 45 (not dominated, remains)
+    def test_min_refined_could_be_below_known(self) -> None:
+        known = N(20)
+        refined = UnknownN(number_lower_bound=(Decimal("5"), True))
+
+        assert min_fn(known, refined).is_unknown
+
+    def test_max_with_several_unknowns_is_undecided(self) -> None:
         known = N(50)
         refined1 = UnknownN(number_upper_bound=(Decimal("40"), True))
         refined2 = UnknownN(number_lower_bound=(Decimal("45"), True))
-        result = max_fn(known, refined1, refined2)
 
-        # refined1 is filtered, but refined2 could be > 50
-        assert result.is_unknown
+        assert max_fn(known, refined1, refined2).is_unknown
 
-    def test_min_only_unknowns_remaining(self) -> None:
-        """Test: min/max with only unknowns after filtering (line 194-195)."""
-        # Only one unknown left after filtering
+    def test_the_short_circuit_discards_the_argument_refinement(self) -> None:
+        """The result is an unknown *number*, not the argument handed back.
+
+        go-cty's short-circuit is `cty.UnknownVal(retType)` refined only by the
+        function's own `RefineResult`, which here is `refineNonNull`
+        (`function.go:281`). The argument's bounds describe the argument, and
+        `min` of one number happens to coincide with it -- but `min` of two
+        would not, so the framework cannot carry them across in general and
+        go-cty does not.
+        """
         refined = UnknownN(number_lower_bound=(Decimal("10"), True))
+
         result = min_fn(refined)
 
-        # Single unknown returns that unknown
         assert result.is_unknown
-        assert result.value == refined.value
+        assert result.type.equal(CtyNumber())
+        assert result.value != refined.value
 
     def test_max_no_known_args_only_unknowns(self) -> None:
-        """Test: max with no known args, only unknowns (line 192-196)."""
         refined1 = UnknownN(number_lower_bound=(Decimal("10"), True))
         refined2 = UnknownN(number_upper_bound=(Decimal("50"), True))
-        result = max_fn(refined1, refined2)
 
-        # Multiple unknowns with no known -> unknown
-        assert result.is_unknown
+        assert max_fn(refined1, refined2).is_unknown
 
 
 class TestEqualityWithRefinedUnknowns:
@@ -392,9 +398,16 @@ class TestEdgeCasesAndBoundaries:
         with pytest.raises(CtyFunctionError):
             min_fn(CtyValue.null(CtyNumber()), N(10), N(5))
 
-    def test_max_homogeneous_type_validation(self) -> None:
-        """Test: max/min type validation for mixed types (line 138-143)."""
-        with pytest.raises(CtyFunctionError, match="same type"):
+    def test_max_refuses_a_non_number(self) -> None:
+        """The refusal now comes from the parameter, so its wording changed.
+
+        Until 2026-08-17 this matched "same type", from a body that accepted any
+        homogeneous argument list and so allowed strings. go-cty's variadic
+        parameter is `cty.Number` (`stdlib/number.go:330`), and the framework
+        reports non-conformance per argument by position rather than as a
+        statement about the list as a whole.
+        """
+        with pytest.raises(CtyFunctionError, match="number"):
             max_fn(N(10), S("string"))
 
 

@@ -86,22 +86,27 @@ class TestFinalCoveragePush:
 
     # --- Coverage for: src/pyvider/cty/functions/numeric_functions.py ---
 
-    def test_numeric_refined_propagation_coverage(self) -> None:
-        """Covers various unexercised branches in refined unknown propagation."""
-        # Case: add with one bound missing
+    def test_arithmetic_discards_a_refined_unknowns_bounds(self) -> None:
+        """`subtract(100, unknown >= 10)` carried an upper bound until 2026-08-17.
+
+        None of the arithmetic functions in go-cty's `stdlib/number.go` sets
+        `AllowUnknown`, so none of them ever reaches its implementation with an
+        unknown argument: `Function.Call` short-circuits at `function.go:314` and
+        returns `cty.UnknownVal(cty.Number)` carrying only `refineNonNull`. The
+        narrowing does exist in go-cty, on `cty.Value.Add` and friends
+        (`value_ops.go:623`), which is a surface this package does not have.
+        Verified against the oracle for `add`, `multiply`, `negate` and `abs`.
+
+        Fully covered in `tests/functions/test_numeric_refined_unknowns.py`; kept
+        here because this file drives the module by line.
+        """
         r1 = refined_unknown_num(lower_bound=(Decimal(10), True))
         r2 = refined_unknown_num(upper_bound=(Decimal(20), True))
-        res_add = add(r1, r2)
-        assert res_add.is_unknown and res_add.value.number_lower_bound is None
+        only_not_null = RefinedUnknownValue(is_known_null=False)
 
-        # Case: subtract with known minuend
-        known_100 = CtyNumber().validate(100)
-        res_sub = subtract(known_100, r1)
-        assert res_sub.is_unknown and res_sub.value.number_upper_bound is not None
-
-        # Case: multiply with two refined unknowns (currently simplified, will be unknown)
-        res_mul = multiply(r1, r2)
-        assert res_mul.is_unknown and res_mul.value.number_lower_bound is None
+        assert add(r1, r2).value == only_not_null
+        assert subtract(CtyNumber().validate(100), r1).value == only_not_null
+        assert multiply(r1, r2).value == only_not_null
 
     # --- Coverage for: src/pyvider/cty/conversion/explicit.py ---
 

@@ -46,6 +46,22 @@ class TestContains:
             CtyString().validate("a"),
         ).is_unknown
 
+    def test_contains_set_of_objects(self) -> None:
+        """A set whose elements are containers, newly reachable.
+
+        `CtySet.validate` de-duplicates by hash and `CtyValue.__hash__` refused a
+        container payload until 2026-08-17, so this shape could not be built at
+        all. go-cty's `ContainsFunc` has always answered it -- the scan compares
+        with the three-valued `Equals`, which does not care what the element is
+        made of -- and the oracle agrees: `true` for the member, `false` for the
+        non-member.
+        """
+        obj = CtyObject(attribute_types={"a": CtyString()})
+        collection = CtySet(element_type=obj).validate([obj.validate({"a": "1"})])
+
+        assert contains(collection, obj.validate({"a": "1"})).value is True
+        assert contains(collection, obj.validate({"a": "2"})).value is False
+
     def test_contains_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
             contains(CtyString().validate("a"), CtyString().validate("a"))

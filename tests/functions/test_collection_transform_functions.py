@@ -38,10 +38,19 @@ class TestDistinct:
             distinct(CtyValue.null(CtyList(element_type=CtyString())))
         assert distinct(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
-    def test_distinct_with_unhashable(self) -> None:
+    def test_distinct_de_duplicates_container_elements(self) -> None:
+        """A list of lists de-duplicates like anything else.
+
+        This asserted a "not hashable" refusal until 2026-08-17, when
+        `CtyValue.__hash__` started hashing containers. go-cty never had the
+        restriction to begin with: `DistinctFunc` de-duplicates through
+        `appendIfMissing`, which compares with the three-valued `Equal`
+        (`stdlib/collection.go:1434`) and has no notion of a hashable element.
+        Two equal inner lists are one value, so one of them goes.
+        """
         lst = CtyList(element_type=CtyList(element_type=CtyString())).validate([["a"], ["a"]])
-        with pytest.raises(CtyFunctionError, match="not hashable"):
-            distinct(lst)
+
+        assert distinct(lst).raw_value == [["a"]]
 
     def test_distinct_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):

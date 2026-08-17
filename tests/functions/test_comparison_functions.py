@@ -43,15 +43,40 @@ class TestComparisonFunctions:
 
     def test_less_than(self) -> None:
         assert less_than(N(5), N(10)).is_true()
-        assert less_than(S("a"), S("b")).is_true()
         with pytest.raises(CtyFunctionError):
             less_than(N(1), S("a"))
 
+    def test_the_orderings_are_defined_on_numbers_only(self) -> None:
+        """Until 2026-08-17 this asserted `less_than("a", "b")` is true.
+
+        go-cty's four ordering comparisons declare both parameters as
+        `cty.Number` (`stdlib/number.go:210`) and their implementations are
+        `Value.LessThan` and friends, which panic on anything else
+        (`value_ops.go:1374`). There is no string ordering in the stdlib at all,
+        so comparing two strings was an extra function this package offered
+        under a go-cty name -- and one whose answer Terraform would never
+        produce.
+        """
+        with pytest.raises(CtyFunctionError):
+            less_than(S("a"), S("b"))
+
     def test_max_min(self) -> None:
         assert max_fn(N(1), N(10), N(5)).value == 10
-        assert min_fn(S("z"), S("a"), S("m")).value == "a"
+        assert min_fn(N(1), N(10), N(5)).value == 1
         with pytest.raises(CtyFunctionError):
             min_fn(N(1), S("a"))
+
+    def test_max_and_min_are_defined_on_numbers_only(self) -> None:
+        """Until 2026-08-17 this asserted `min("z", "a", "m")` is `"a"`.
+
+        go-cty's `MinFunc` and `MaxFunc` declare one variadic parameter of type
+        `cty.Number` (`stdlib/number.go:328`), and their bodies seed with
+        `cty.PositiveInfinity`/`cty.NegativeInfinity` and compare with
+        `Value.LessThan` -- numbers throughout. This package sorted strings too,
+        by admitting any argument list that was homogeneous.
+        """
+        with pytest.raises(CtyFunctionError):
+            min_fn(S("z"), S("a"), S("m"))
 
     def test_compare_with_refuses_a_null(self) -> None:
         with pytest.raises(CtyFunctionError):

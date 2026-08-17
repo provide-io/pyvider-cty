@@ -44,7 +44,7 @@ class TestStringAdvancedFunctions:
         [
             ("hello\n", "hello"),
             ("hello\r\n", "hello"),
-            ("hello\n\r", "hello\n"),
+            ("hello\n\r", "hello"),
             ("hello", "hello"),
             ("\n", ""),
             ("\r\n", ""),
@@ -54,6 +54,17 @@ class TestStringAdvancedFunctions:
         ],
     )
     def test_chomp_various_inputs(self, input_str: str, expected_str: str) -> None:
+        """`chomp` removes every trailing line break, not one.
+
+        `"hello\\n\\r"` expected `"hello\\n"` until 2026-08-17, on the reading
+        that `chomp` strips a single line ending. go-cty's `ChompFunc` is one
+        `ReplaceAllString` against `(?:\\r\\n?|\\n)*\\z`
+        (`cty/function/stdlib/string.go:376`), and the `*` is the whole
+        difference: verified against go-cty, `chomp("hello\\n\\r")` is
+        `"hello"`. Its own description says "one or more newline characters",
+        so stopping after the first left a newline in a value the caller asked
+        to have none. More of them in test_gocty_string_parity.py.
+        """
         cty_input = CtyString().validate(input_str)
         result = chomp(cty_input)
         assert result.value == expected_str

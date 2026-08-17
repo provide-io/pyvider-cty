@@ -14,18 +14,17 @@ from typing import Any, cast
 
 from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.config.defaults import (
-    ERR_FORMATDATE_ARGS_MUST_BE_STRINGS,
     ERR_FORMATDATE_INVALID_TIMESTAMP,
     ERR_FORMATDATE_INVALID_VERB,
     ERR_FORMATDATE_INVALID_VERB_LENGTH,
     ERR_FORMATDATE_UNTERMINATED_LITERAL,
     ERR_INVALID_DURATION_FORMAT,
     ERR_INVALID_RFC3339_TIMESTAMP,
-    ERR_TIMEADD_ARGS_MUST_BE_STRINGS,
     ERR_TIMEADD_INVALID_FORMAT,
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
+from pyvider.cty.functions._function import CtyParameter, refine_not_null
 
 # go-cty deliberately keeps its own definition of RFC3339 rather than deferring
 # to whatever the host language accepts, so that these functions do not shift
@@ -332,13 +331,18 @@ def _render_verb(token: str, moment: datetime) -> str:
     return renderer(moment)
 
 
-@stdlib_function("formatdate")
+@stdlib_function(
+    "formatdate",
+    params=[CtyParameter("format", CtyString()), CtyParameter("time", CtyString())],
+    returns=CtyString(),
+    refine_result=refine_not_null,
+    description=(
+        "Formats a timestamp given in RFC 3339 syntax into another timestamp in some other "
+        "machine-oriented time syntax, as described in the format string."
+    ),
+)
 def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(spec.type, CtyString) or not isinstance(timestamp.type, CtyString):
-        raise CtyFunctionError(ERR_FORMATDATE_ARGS_MUST_BE_STRINGS)
-    if spec.is_unknown or spec.is_null or timestamp.is_unknown or timestamp.is_null:
-        return CtyValue.unknown(CtyString())
-
+    """go-cty's `FormatDateFunc` (`stdlib/datetime.go:14`)."""
     try:
         moment = _parse_rfc3339(cast(str, timestamp.value))
     except ValueError as e:
@@ -355,12 +359,25 @@ def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
     return CtyString().validate("".join(rendered))
 
 
-@stdlib_function("timeadd")
+@stdlib_function(
+    "timeadd",
+    params=[CtyParameter("timestamp", CtyString()), CtyParameter("duration", CtyString())],
+    returns=CtyString(),
+    description=(
+        "Adds the duration represented by the given duration string to the given RFC 3339 "
+        "timestamp string, returning another RFC 3339 timestamp."
+    ),
+)
 def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
-    if not isinstance(timestamp.type, CtyString) or not isinstance(duration.type, CtyString):
-        raise CtyFunctionError(ERR_TIMEADD_ARGS_MUST_BE_STRINGS)
-    if timestamp.is_unknown or timestamp.is_null or duration.is_unknown or duration.is_null:
-        return CtyValue.unknown(CtyString())
+    """go-cty's `TimeAddFunc` (`stdlib/datetime.go:209`).
+
+    No `refine_result`, and the asymmetry with `formatdate` is deliberate:
+    `FormatDateFunc` carries `refineNonNull` and this does not. Nothing in go-cty
+    explains the asymmetry and it looks like an oversight -- `timeadd` always
+    produces a timestamp string -- but a refinement this package makes and
+    go-cty does not is a promise Terraform would act on with no authority
+    behind it, so the declaration follows the source rather than the reasoning.
+    """
     try:
         moment = _parse_rfc3339(cast(str, timestamp.value))
         delta = _parse_duration(cast(str, duration.value))

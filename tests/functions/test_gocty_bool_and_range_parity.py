@@ -17,6 +17,7 @@ import pytest
 from pyvider.cty import CtyBool, CtyDynamic, CtyList, CtyNumber, CtyString, CtyValue
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions import and_fn, not_fn, or_fn, range_fn
+from pyvider.cty.values.markers import RefinedUnknownValue
 
 TRUE = CtyBool().validate(True)
 FALSE = CtyBool().validate(False)
@@ -117,10 +118,47 @@ class TestLogicalOperatorsReject:
         assert result.type == CtyBool()
 
 
+class TestLogicalOperatorRefinements:
+    """All three carry `RefineResult: refineNonNull`, and none used to.
+
+    Added 2026-08-17. `bool.go` declares it on `NotFunc` (19), `AndFunc` (42)
+    and `OrFunc` (65); this package declared none, so an unknown answer said
+    only "unknown" where go-cty's says "unknown, and not null". Confirmed
+    against the oracle, which answers `{"is_known_null": false}` for
+    `and(false, unknown)`.
+    """
+
+    def test_an_unknown_answer_is_known_not_null(self) -> None:
+        for result in (and_fn(FALSE, UNKNOWN), or_fn(TRUE, UNKNOWN), not_fn(UNKNOWN)):
+            assert result.type == CtyBool()
+            assert result.value == RefinedUnknownValue(is_known_null=False)
+
+
 class TestLogicalOperatorMarks:
     def test_marks_propagate(self) -> None:
         assert "secret" in and_fn(TRUE.with_marks({"secret"}), TRUE).marks
         assert "secret" in not_fn(TRUE.with_marks({"secret"})).marks
+
+    def test_an_unknown_operand_takes_its_mark_with_it(self) -> None:
+        """go-cty drops the mark here, and it is `AllowMarked` that makes it do so.
+
+        Added 2026-08-17, pinning something that reads like a bug. All three
+        parameters in `bool.go` set `AllowMarked: true`, which means the
+        *implementation* owns mark propagation -- and `Function.Call` collects
+        marks into `resultMarks` only for parameters that did **not** set it
+        (`function.go:298`). An unknown argument short-circuits before the
+        implementation runs (`function.go:314`), so nothing propagates the mark
+        and the unknown comes back bare. Verified against the oracle:
+        `and(unknown marked sensitive, true)` reports no marks at all.
+
+        Matched rather than improved, because a mark this package kept and
+        Terraform's own go-cty dropped would make the two disagree about whether
+        a value is sensitive -- and the fix belongs in `bool.go`, upstream.
+        """
+        result = and_fn(UNKNOWN.with_marks({"secret"}), TRUE)
+
+        assert result.is_unknown
+        assert result.marks == frozenset()
 
 
 class TestRangeDefaulting:
@@ -189,7 +227,9 @@ class TestRangeRejects:
             range_fn(N(0), N(2000))
 
     def test_a_non_number_argument(self) -> None:
-        with pytest.raises(CtyFunctionError, match="must be numbers"):
+        # The refusal moved into the framework's conformance check on
+        # 2026-08-17, which words it as go-cty's own type-check loop does.
+        with pytest.raises(CtyFunctionError, match="number required"):
             range_fn(CtyString().validate("3"))
 
     def test_a_null_argument(self) -> None:

@@ -9,6 +9,7 @@ import pytest
 
 from pyvider.cty import (
     CtyBool,
+    CtyDynamic,
     CtyList,
     CtyMap,
     CtyNumber,
@@ -286,10 +287,42 @@ class TestZipmap:
                 CtyList(element_type=CtyNumber()).validate([]),
             )
 
+    def test_zipmap_refuses_keys_that_are_not_strings(self) -> None:
+        """The keys parameter is `list(string)` and nothing else.
+
+        Since 2026-08-17 `CtyValue.__hash__` hashes containers, so a key that is
+        itself a list no longer trips over anything on the way in -- it would be
+        turned into a map key by `str()`, giving a map keyed by a Python repr.
+        go-cty declares `Type: cty.List(cty.String)` for this parameter
+        (`stdlib/collection.go:1327`) and refuses both shapes below at the
+        conformance check: "string required, but received list of string" for a
+        `list(dynamic)` of lists, "list of string required, but received tuple"
+        for a tuple.
+        """
+        inner = CtyList(element_type=CtyString())
+        values = CtyList(element_type=CtyString()).validate(["x"])
+
+        with pytest.raises(CtyFunctionError):
+            zipmap(CtyList(element_type=CtyDynamic()).validate([inner.validate(["a"])]), values)
+        with pytest.raises(CtyFunctionError):
+            zipmap(CtyTuple(element_types=(CtyString(),)).validate(("a",)), values)
+
     def test_zipmap_different_lengths(self) -> None:
+        """Mismatched lengths are an error, not a truncation.
+
+        This asserted `{"a": 1, "b": 2}` until 2026-08-17 -- the third key was
+        dropped on the floor because the map was built over
+        `range(min(len(keys), len(values)))`. go-cty's `ZipmapFunc` refuses the
+        call instead, in both its `Type` and its `Impl`: "number of keys (%d)
+        does not match number of values (%d)" (`stdlib/collection.go:1360` and
+        `:1397`). Silently discarding a key is worse than refusing, because the
+        result still type-checks and still looks like the map that was asked for.
+        """
         keys = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
         values = CtyList(element_type=CtyNumber()).validate([1, 2])
-        assert zipmap(keys, values).raw_value == {"a": 1, "b": 2}
+
+        with pytest.raises(CtyFunctionError, match="does not match number of values"):
+            zipmap(keys, values)
 
 
 class TestSliceConcat:
@@ -301,11 +334,20 @@ class TestSliceConcat:
         ]
 
     def test_slice_tuple(self) -> None:
+        """Slicing a tuple gives a tuple, carrying the types it actually kept.
+
+        This asserted a `list` result until 2026-08-17. go-cty's `SliceFunc.Type`
+        returns `cty.Tuple(argTy.TupleElementTypes()[startIndex:endIndex])` for a
+        tuple argument (`stdlib/collection.go:1172`), and only a tuple can
+        describe a slice whose elements have differing types -- a list would have
+        to widen them all to dynamic.
+        """
         t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(("a", "b", "c"))
-        assert slice(t, CtyNumber().validate(1), CtyNumber().validate(3)).raw_value == [
-            "b",
-            "c",
-        ]
+
+        result = slice(t, CtyNumber().validate(1), CtyNumber().validate(3))
+
+        assert result.type.equal(CtyTuple(element_types=(CtyString(), CtyString())))
+        assert result.raw_value == ("b", "c")
 
     def test_slice_refuses_a_null_and_defers_an_unknown(self) -> None:
         lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
