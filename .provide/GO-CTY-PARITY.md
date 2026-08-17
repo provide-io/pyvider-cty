@@ -46,7 +46,7 @@ further down.
 | 4 | ~~**`unify` has no primitive widening rule**~~ **Done 2026-08-16.** It had no rules at all: 6 of 38 cases agreed, now 38. | 4 strict xfails across two functions, and `concat` only surfaced because someone went looking. Expect more. | Phase 5 |
 | 5 | ~~**Numeric precision model**~~ **Decided 2026-08-16: keep as is.** The two remaining sweep xfails are this decision, not bugs. Needs a decision, not an implementation. Measured: raising the Decimal context is free for ordinary numbers — the cost is in operand width, not context. | Decision 3 |
 | 6 | ~~**`format` / `formatlist`**~~ **Done 2026-08-16.** 455-case matrix, all agreeing. | Two of the four functions the oracle exposes and this package does not have, and the largest single port left. The other two are `strlen` (blocked on UAX#29) and `assertnotnull`. | Phase 5 |
-| 7 | **Release gate** | Cap the five consumers, cut 0.5.0, ~25 breaking changes to write up — **and release `pyvider` with it**, which the measurement below shows is not optional. | Release gate |
+| 7 | **Release gate** | Cut 0.5.0 with ~25 breaking changes written up, released in the same wave sequence as `pyvider`. No version caps — overruled; see the gate. | Release gate |
 | 8 | **pyvider-components delegating to cty** | The largest *actual* parity win: nothing in the workspace calls the cty stdlib, so this repo keeps getting more correct while the code practitioners invoke does not change. | Cross-repo |
 
 **A caveat on 3 and 8.** Both rest on the claim that the framework seam and the
@@ -343,7 +343,7 @@ Found while doing parity work here. Each belongs to another repository and is re
 
 This branch carries a **breaking behavioural change**: `CtySet.validate` hoists element marks onto the set, so `set.value[i].marks` is now always empty and sensitivity has to be read off the set itself. go-cty behaves the same way (`SetVal`), but any consumer reading marks per element would silently conclude "not sensitive".
 
-Every consumer in the workspace declares an **unbounded** dependency, with no `tool.uv.sources` override:
+Every consumer declares a floor-only dependency, with no `tool.uv.sources` override. **Floor-only is now the deliberate policy, not an oversight** (see the ruling in the checklist below), so what follows is a record of what the policy costs and what pays for it — not a complaint:
 
 | Repo | Declares |
 |---|---|
@@ -353,7 +353,7 @@ Every consumer in the workspace declares an **unbounded** dependency, with no `t
 | `tofusoup` | `pyvider-cty>=0.4.0` |
 | `provide-workspace` | `pyvider-cty>=0.4.0` |
 
-So the moment `0.5.0` is published, all five absorb the change with no signal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
+So the moment `0.5.0` is published, all five absorb the change with no signal — which is the intended behaviour under a floor-only policy, and the reason the release waves and the sweep at each barrier have to be real rather than nominal. A security review confirmed no consumer currently reads sensitivity off collection *elements*, so today the blast radius is zero — but the pin is what makes it silent, and that outlives the audit.
 
 ### ⚠️ Every consumer run on this branch until 2026-08-16 measured the wrong thing
 
@@ -371,9 +371,13 @@ Re-run properly with `PYTHONPATH=/Volumes/data/pyv/pyvider-cty/src`:
 
 The two failures are `CtyMarksSerializationError` and are **version skew, not a new bug**: `pyvider-components`' venv carries `pyvider` **0.4.0**, whose installed `conversion/marshaler.py` contains no unmark code at all, while pyvider's own tree has `_unmark_deep`. `pyvider` 0.4.0 combined with `pyvider-cty` 0.5.0 is an unsupported pair — which is precisely what the unbounded `>=0.4.0` floor allows anyone to install.
 
-So the cap below is not housekeeping. It is the difference between a supported upgrade and a broken one, and there is now a reproduction.
+There is now a reproduction of what an unbounded floor allows someone to install. See the ruling below for what is being done about it, which is not a cap.
 
 *(Found by a parallel session working in `pyvider`, which noticed the floor was fiction and asked whether its failures were mine. Worth recording how it was missed: the check ran, passed, and was believed — nobody asked what it was importing.)*
+
+**The root cause is being fixed properly, and not here.** No repo in the suite declares `[tool.uv.workspace]` or `[tool.uv.sources]`, which is *why* validating an unreleased pairing needs a `PYTHONPATH` overlay and why a run without one silently proves nothing. The dependency-refresh spec adds `[tool.uv.sources]` path entries per repo so siblings resolve from source by default, with CI passing `--no-sources` to check the published story. uv does not propagate a dependency's sources into published metadata, so it is publish-safe. When that lands, the overlay stops being something anyone has to remember.
+
+**Correcting one thing I wrote above:** the 15 collection errors hit while overlaying `pyvider`'s `src` are *not* unrelated. They are a `grpcio` 1.80.0 / `protobuf` 6.33.6 against 1.83.0 / 7.35.1 skew — regenerated stubs that raise at import below those floors — and they are the first thing the refresh addresses.
 
 - [ ] **Release notes must name thirteen breaking changes**, not one:
   1. Set elements no longer carry marks; read them off the set (go-cty's `SetVal` behaviour).
@@ -390,8 +394,10 @@ So the cap below is not housekeeping. It is the difference between a supported u
   12. **`formatdate` and `timeadd` parse RFC3339 strictly**, where they used `datetime.fromisoformat` and so accepted a bare date, a space in place of the `T`, a lowercase `t` or `z`, and an offset without its colon. go-cty carries its own RFC3339 parser precisely so this does not vary with the host language. `timeadd` also renders a zero offset as `Z` rather than `+00:00` — same instant, different string, and Terraform compares strings.
   13. **`jsondecode`, `csvdecode` and `merge` return concrete types.** `jsondecode` gave a `dynamic` wrapper; it now returns the type the document implies, which for a JSON array is a **tuple**, not a list. `csvdecode` returns `list(object(...))` with every column a string, and now refuses a missing header line, a duplicate column name, or a ragged row, all of which it used to accept. `merge` keeps the argument type when the arguments all share one — so merging maps yields a map instead of an object — and returns an empty object for no arguments. The decoders' types cross the wire, so this is what Terraform sees.
 - [ ] **`pyvider` must release at or before `pyvider-cty` 0.5.0.** Not merely "cap the consumers": the mark-serialization change needs pyvider's unmark-at-the-wire-boundary fix on the other side of it, and the two `pyvider-components` failures above are what the gap looks like from a consumer.
-- [ ] **Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**, then bump each one deliberately.
-  Not done on this branch on purpose: the consumer repos are all sitting on unrelated branches (`adminy/main`, `chore/use-reusable-release`), and a cap committed to a branch that never merges is worse than no cap, because it looks done. Apply this to whichever branch actually ships.
+- [x] ~~**Cap the five consumers at `>=0.4,<0.5` before publishing `0.5.0`**~~ — **overruled 2026-08-16. No caps.**
+  This entry recommended an upper bound, twice, on the strength of the two `pyvider-components` failures above. **Tim ruled against it**, suite-wide: remove every hard high version pin, `>=0.5.0` floor-only. The reasoning is that a breaking change should be *caught by a test sweep and repaired in the consumer*, not fenced off by a constraint — a cap converts a loud, fixable failure into a silent refusal to upgrade, and the fence long outlives the breakage it was put up for. (Relayed by the parallel session working in `pyvider`, which put the recommendation and this evidence to him directly. Recorded here because a reversal with no reason attached is the kind of thing that gets quietly re-litigated.)
+  **The gate's substance survives the ruling** — it is met structurally instead. Ten core repos go to 0.5.0 together in six runtime-dependency waves, waves acting as barriers: foundation → (testkit | cty | rpcplugin) → **pyvider** → (plating | hcl) → (components | tofusoup) → terraform-provider-pyvider. "`pyvider` must release at or before `pyvider-cty`" is then a property of the ordering rather than of a version range, which is the stronger form of the same guarantee. Spec landed in `pyvider` at `ae0f358`.
+  So the reproduction above stops being an argument for a cap and becomes the argument for the wave ordering, and for the sweep that has to run at each barrier. It is worth keeping for exactly that.
 - [ ] **Cut `0.4.0` → `0.5.0`**, not a patch. The set change is breaking, and the mark fixes change what `validate` returns for every marked input.
 - [ ] ~~Only `pyvider-cty` needs a release. Nothing else in the workspace changes.~~ **Wrong, corrected 2026-08-16.** `pyvider` needs one too, for the reason above. This line was written from the same bad measurement.
 
