@@ -19,10 +19,10 @@ Living document. Updated as work lands — do not let it drift.
 | 1 | Correctness bugs | ✅ Done, #16 included (paired change landed in `pyvider`) |
 | 2 | Verification infrastructure (tofusoup) | ✅ Done — go-cty 1.19 + `soup-go cty call` oracle |
 | 3 | Foundations | ✅ Done — 3 of 5 items were not gaps; `SafeKnownPrefix` deferred on the Unicode decision |
-| 4 | Marks, properly | ⬜ Not started |
-| 5 | Breadth | ⬜ Not started |
+| 4 | Marks, properly | ⬜ Not started — one item (`UnknownAsNull`, deep mark ops) |
+| 5 | Breadth | 🟨 Mostly done — `format`, `formatlist`, `unify`, the bool/set/range ports and the null policy have all landed; `strlen`, `assertnotnull` and the JSON value codec remain |
 | 6 | Refinements | ⬜ Not started |
-| 7 | Architecture | ⬜ Not started |
+| 7 | Architecture | 🟨 The `cty/function` framework's null policy landed; type conformance and the rest have not |
 | — | Docs (#13) | 🔄 Continuous |
 
 Phase 2 and 5 are partly done: 2's oracle exists but reaches 74 of go-cty's 83
@@ -153,8 +153,8 @@ Wrong today. Verifiable with in-repo tests. No dependencies.
   **Measured blast radius.** Removing the guard: 3 failures of 2064 here, all pinning the guard itself; **2 failures of 1421 in `pyvider`**, both testing one feature — `PvsSchema.validate_config()` at `schema/types/schema.py:46-49`, which outsources required-null checking to cty entirely.
   **The fix, in order.** `validate_config` does the check itself first — it has the schema, so it knows which attributes are `required`; cty does not and cannot. It must carry a `CtyPath`, because `test_tdd_deep_diagnostics` depends on the attribute path, not just the error. *Then* the guard comes out here. Reverse order leaves a window where nothing checks.
   **Not needed**, recorded because it was proposed and is wrong: pyvider does not need Terraform's `ConfigType`/`ImpliedType` split. A provider never decodes HCL config — Terraform does that and sends msgpack — so pyvider only ever lives on the implied-type side. `conversion/utils.py:40` already uses `optional_attributes` correctly and none of the twelve `to_cty_type()` call sites need splitting.
-- [ ] **`contains` on a null collection returns unknown; go-cty raises**
-  `collection.go:340`, "cannot search a nil list or set". Deliberately not fixed with the above: turning a return into a raise is a behavioural break that belongs with #16's strictness work. Much weaker case than #16 — nothing leaks, the caller just gets a vaguer answer.
+- [x] **`contains` on a null collection returns unknown; go-cty raises** — *closed 2026-08-16 as a side effect*
+  `collection.go:340`, "cannot search a nil list or set". Deferred here as "a behavioural break that belongs with the strictness work", and that is exactly where it went: the framework null policy refuses argument 0 before `contains` runs. Both raise now, verified against the oracle. Worth noting as the argument *for* fixing a class rather than a case — nobody had to come back to this entry. Much weaker case than #16 — nothing leaks, the caller just gets a vaguer answer.
 - [x] **Five stdlib functions answered differently from go-cty** — *breaking*
   Found by the oracle, not by reading: `regex`, `regexall`, `indent`, `flatten`, `chunklist`.
   - `regex`/`regexall` took `(string, pattern)` where go-cty takes `(pattern, string)`. Both are strings, so a call written for one order type-checks against the other and silently returns a wrong answer.
