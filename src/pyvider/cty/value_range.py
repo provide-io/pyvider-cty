@@ -19,8 +19,20 @@ unknown's bounds, and without a range to consult, everything fell through to
 "unknown".
 
 Where go-cty panics for asking a type-inappropriate question — a string prefix
-of a number — this raises. Asking for a bound on a `dynamic` is *not* an error
-in either: nothing is known about the type yet, so the answer is the widest one.
+of a number, a range of a marked value — this raises. Asking for a bound on a
+`dynamic` is *not* an error in either: nothing is known about the type yet, so
+the answer is the widest one.
+
+Every answer here is go-cty's answer, including the ones that look imprecise.
+Three of them were originally written from `value_range.go`'s docstrings and
+disagreed with the code underneath: an unbounded number range returns an
+infinity rather than an unknown, `includes()` answers "cannot say" even for a
+known value that equals the candidate, and its undecided answer is refined
+not-null rather than a bare unknown. The first two were only found once a
+harness could ask real go-cty, and the lesson is the same each time — a
+reimplementation that is *more* decisive than its reference is still a
+divergence, because a caller porting a comparison across the two gets a
+different plan.
 """
 
 from __future__ import annotations
@@ -49,9 +61,20 @@ _COLLECTIONS = (CtyList, CtySet, CtyMap)
 _UNBOUNDED_LENGTH = -1
 """`length_upper_bound()` when nothing bounds it. go-cty uses maxint; this says so."""
 
+_NEGATIVE_INFINITY = Decimal("-Infinity")
+_POSITIVE_INFINITY = Decimal("Infinity")
+
 
 def value_range(value: CtyValue[Any], /) -> ValueRange:
-    """What is known about `value`, whether or not the value itself is."""
+    """What is known about `value`, whether or not the value itself is.
+
+    Refuses a marked value, as go-cty does. A range describes what a value
+    could be while saying nothing about the marks it carries, so answering here
+    would hand a caller a description of a sensitive value with the reason it
+    was flagged left behind.
+    """
+    if value.marks:
+        raise ValueError("value_range on a marked value; unmark it first")
     refinement = value.value if isinstance(value.value, RefinedUnknownValue) else None
     return ValueRange(value=value, refinement=refinement)
 
@@ -85,21 +108,23 @@ class ValueRange:
     def number_lower_bound(self) -> tuple[CtyValue[Any], bool]:
         """The lower bound, and whether it is inclusive.
 
-        An unknown number is returned when nothing bounds it, matching go-cty --
-        at which point the inclusive flag is meaningless.
+        Negative infinity when nothing bounds it, at which point the inclusive
+        flag is meaningless. go-cty's docstring says it returns an unknown
+        number there; `NumberLowerBound` returns `cty.NegativeInfinity`, and
+        this follows the code.
         """
         self._require_number()
         if not self.value.is_unknown and not self.value.is_null:
             return self.value, True
         bound = self.refinement.number_lower_bound if self.refinement else None
-        return self._bound(bound)
+        return self._bound(bound, _NEGATIVE_INFINITY)
 
     def number_upper_bound(self) -> tuple[CtyValue[Any], bool]:
         self._require_number()
         if not self.value.is_unknown and not self.value.is_null:
             return self.value, True
         bound = self.refinement.number_upper_bound if self.refinement else None
-        return self._bound(bound)
+        return self._bound(bound, _POSITIVE_INFINITY)
 
     # -- strings ----------------------------------------------------------
 
@@ -143,16 +168,24 @@ class ValueRange:
         range does not have -- which in a plan means reporting a difference that
         may not exist.
         """
+        from pyvider.cty.conformance import conformance_errors
+
         nullness = self._includes_by_nullness(candidate)
         if nullness is not None:
             return nullness
-        if isinstance(candidate.type, CtyDynamic) or isinstance(self.value.type, CtyDynamic):
-            # Nothing further can be tested without knowing the type.
-            return CtyValue.unknown(CtyBool())
-        if not candidate.type.equal(self.value.type):
+
+        # Conformance, not equality, and in this order: go-cty tests the
+        # candidate's type against the *constraint*, so a dynamic candidate
+        # against a concrete range is definitely not in it, while any candidate
+        # against a dynamic range still has to be tested further down. Asking
+        # `equal` instead answered "unknown" for the first of those.
+        if conformance_errors(candidate.type, self.value.type):
             return CtyBool().validate(False)
+        if isinstance(candidate.type, CtyDynamic):
+            # An unknown value of an unknown type; nothing further to test.
+            return self._undecided()
         if candidate.is_unknown:
-            return CtyValue.unknown(CtyBool())
+            return self._undecided()
         return self._includes_known(candidate)
 
     def _includes_by_nullness(self, candidate: CtyValue[Any]) -> CtyValue[Any] | None:
@@ -179,35 +212,48 @@ class ValueRange:
         return self._undecided()
 
     def _includes_number(self, candidate: CtyValue[Any]) -> CtyValue[Any]:
+        """Both bounds always hold a number now -- an infinity when unbounded.
+
+        So there is no "no bound to check" branch: a comparison against an
+        infinity excludes nothing, which is the same answer that branch gave.
+        """
         number = cast("Decimal", candidate.value)
         lower, lower_inclusive = self.number_lower_bound()
         upper, upper_inclusive = self.number_upper_bound()
-        if not lower.is_unknown:
-            limit = cast("Decimal", lower.value)
-            if number < limit or (number == limit and not lower_inclusive):
-                return CtyBool().validate(False)
-        if not upper.is_unknown:
-            limit = cast("Decimal", upper.value)
-            if number > limit or (number == limit and not upper_inclusive):
-                return CtyBool().validate(False)
+
+        low = cast("Decimal", lower.value)
+        if number < low or (number == low and not lower_inclusive):
+            return CtyBool().validate(False)
+        high = cast("Decimal", upper.value)
+        if number > high or (number == high and not upper_inclusive):
+            return CtyBool().validate(False)
         return self._undecided()
 
     def _undecided(self) -> CtyValue[Any]:
-        """Within the bounds is not the same as equal to the value.
+        """Passing every bound only means the candidate has not been ruled out.
 
-        A known value's range contains only itself, so there the answer is
-        definite; for an unknown, passing every bound only means the candidate
-        has not been ruled out.
+        Not even for a known value, whose range go-cty describes with synthetic
+        refinements rather than with the value: a known `"hello"` has the prefix
+        `"hello"`, and a candidate that starts with it has not been excluded but
+        has not been shown equal either. go-cty says as much in `Includes`'
+        docstring -- the rules "focus mainly on answering false, because
+        disproving membership tends to be more useful".
+
+        The answer is refined not-null, as go-cty's is. It costs nothing here
+        and a caller that asks whether the answer could be null gets the same
+        reply from both.
         """
-        if not self.value.is_unknown:
-            return CtyBool().validate(True)
-        return CtyValue.unknown(CtyBool())
+        return CtyValue(
+            vtype=CtyBool(),
+            value=RefinedUnknownValue(is_known_null=False),
+            is_unknown=True,
+        )
 
     # -- guards -----------------------------------------------------------
 
-    def _bound(self, bound: tuple[Decimal, bool] | None) -> tuple[CtyValue[Any], bool]:
+    def _bound(self, bound: tuple[Decimal, bool] | None, unbounded: Decimal) -> tuple[CtyValue[Any], bool]:
         if bound is None:
-            return CtyValue.unknown(CtyNumber()), False
+            return CtyNumber().validate(unbounded), False
         return CtyNumber().validate(bound[0]), bound[1]
 
     def _require_number(self) -> None:

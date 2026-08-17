@@ -183,9 +183,26 @@ class TestValueRange:
         """So a caller can ask the same questions of known and unknown alike."""
         known = value_range(N.validate(5))
 
-        assert known.includes(N.validate(5)).value is True
+        assert known.number_lower_bound() == (N.validate(5), True)
+        assert known.number_upper_bound() == (N.validate(5), True)
         assert known.includes(N.validate(6)).value is False
         assert known.definitely_not_null()
+
+    def test_even_a_known_value_does_not_confirm_membership(self) -> None:
+        """It looks like it should answer `True`, and go-cty answers "cannot say".
+
+        This asserted `True` until a harness could ask real go-cty, which is the
+        whole reason the assertion survived: it described what this library did.
+        go-cty builds a *synthetic* range for a known value -- for a number,
+        bounds of exactly 5 to 5 -- and `Includes` never concludes from bounds
+        that a candidate is the value, only that it is not. Its own docstring
+        says the rules "focus mainly on answering false".
+
+        Answering `True` here is more useful and still a divergence: a caller
+        porting a comparison between the two implementations would get a
+        different answer for the same values.
+        """
+        assert value_range(N.validate(5)).includes(N.validate(5)).is_unknown
 
     def test_bounds_exclude_definitely(self) -> None:
         refined = value_range(refine(CtyValue.unknown(N)).not_null().number_range_inclusive(1, 10).new_value())
