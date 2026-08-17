@@ -180,10 +180,18 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         if value.type.equal(target_type):
             return value
 
-        if value.is_null:
-            return CtyValue.null(target_type)
-        if value.is_unknown:
-            return CtyValue.unknown(target_type)
+        # A null or an unknown still has to be *convertible*: nullness is not
+        # part of a cty type, so "null of list(string)" is no more a string
+        # than a populated list is. This used to return a null of the target
+        # type for any target at all, so `tostring(null_of_list)` produced a
+        # null string where go-cty refuses the conversion outright.
+        if value.is_null or value.is_unknown:
+            if not can_convert_unsafe(value.type, target_type):
+                error_message = ERR_CANNOT_CONVERT_GENERAL.format(
+                    value_type=value.type, target_type=target_type
+                )
+                raise CtyConversionError(error_message, source_value=value, target_type=target_type)
+            return CtyValue.null(target_type) if value.is_null else CtyValue.unknown(target_type)
 
         # Capsule conversion with operations
         if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:

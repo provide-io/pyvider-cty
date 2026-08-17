@@ -27,8 +27,9 @@ class TestEncodingFunctionsCoverage:
         with pytest.raises(CtyFunctionError):
             jsondecode(CtyNumber().validate(123))
 
-    def test_jsondecode_null_unknown(self) -> None:
-        assert jsondecode(CtyValue.null(CtyString())).is_unknown
+    def test_jsondecode_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            jsondecode(CtyValue.null(CtyString()))
         assert jsondecode(CtyValue.unknown(CtyString())).is_unknown
 
     def test_jsondecode_invalid_json(self) -> None:
@@ -39,8 +40,9 @@ class TestEncodingFunctionsCoverage:
         with pytest.raises(CtyFunctionError):
             csvdecode(CtyNumber().validate(123))
 
-    def test_csvdecode_null_unknown(self) -> None:
-        assert csvdecode(CtyValue.null(CtyString())).is_unknown
+    def test_csvdecode_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            csvdecode(CtyValue.null(CtyString()))
         assert csvdecode(CtyValue.unknown(CtyString())).is_unknown
 
     @pytest.mark.parametrize(

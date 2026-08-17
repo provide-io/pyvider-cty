@@ -316,7 +316,7 @@ def _is_known_leaf(value: CtyValue[Any]) -> bool:
     return not value.is_unknown and not value.is_null and not isinstance(value.value, _NESTING_PAYLOADS)
 
 
-@stdlib_function("contains")
+@stdlib_function("contains", allow_null=(1,))
 def contains(collection: CtyValue[Any], value: CtyValue[Any]) -> CtyValue[Any]:
     if not isinstance(collection.type, CtyList | CtySet | CtyTuple):
         raise CtyFunctionError(
@@ -512,7 +512,7 @@ def element(collection: CtyValue[Any], idx: CtyValue[Any]) -> CtyValue[Any]:
         return collection.value[int(idx.value) % length]  # type: ignore[no-any-return,index,call-overload]
 
 
-@stdlib_function("coalescelist")
+@stdlib_function("coalescelist", allow_null=True)
 def coalescelist(*args: CtyValue[Any]) -> CtyValue[Any]:
     if any(v.is_unknown for v in args):
         return CtyValue.unknown(CtyDynamic())
@@ -680,7 +680,7 @@ def _merge_result_type(args: tuple[CtyValue[Any], ...]) -> CtyType[Any] | None:
     return CtyObject(attribute_types=attribute_types)
 
 
-@stdlib_function("merge")
+@stdlib_function("merge", allow_null=True)
 def merge(*args: CtyValue[Any]) -> CtyValue[Any]:
     # No arguments gives an empty object: there are no key-value types to read.
     if not args:

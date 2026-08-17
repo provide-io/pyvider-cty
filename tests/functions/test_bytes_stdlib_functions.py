@@ -56,8 +56,9 @@ class TestBytesFunctions:
         with pytest.raises(CtyFunctionError):
             byteslen(S("hello"))
 
-    def test_byteslen_null_unknown(self) -> None:
-        assert byteslen(CtyValue.null(BytesCapsule)).is_unknown
+    def test_byteslen_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            byteslen(CtyValue.null(BytesCapsule))
         assert byteslen(CtyValue.unknown(BytesCapsule)).is_unknown
 
     def test_bytesslice_wrong_type(self) -> None:
@@ -68,12 +69,15 @@ class TestBytesFunctions:
         with pytest.raises(CtyFunctionError):
             bytesslice(BytesCapsule.validate(b"hello"), N(0), S("1"))
 
-    def test_bytesslice_null_unknown(self) -> None:
-        assert bytesslice(CtyValue.null(BytesCapsule), N(0), N(1)).is_unknown
+    def test_bytesslice_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            bytesslice(CtyValue.null(BytesCapsule), N(0), N(1))
         assert bytesslice(CtyValue.unknown(BytesCapsule), N(0), N(1)).is_unknown
-        assert bytesslice(BytesCapsule.validate(b"hello"), CtyValue.null(CtyNumber()), N(1)).is_unknown
+        with pytest.raises(CtyFunctionError):
+            bytesslice(BytesCapsule.validate(b"hello"), CtyValue.null(CtyNumber()), N(1))
         assert bytesslice(BytesCapsule.validate(b"hello"), CtyValue.unknown(CtyNumber()), N(1)).is_unknown
-        assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.null(CtyNumber()))
         assert bytesslice(BytesCapsule.validate(b"hello"), N(0), CtyValue.unknown(CtyNumber())).is_unknown
 
 

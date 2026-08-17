@@ -77,7 +77,7 @@ class TestRegexReturnType:
         with pytest.raises(CtyFunctionError, match="cannot mix both named and unnamed"):
             regex(s("(?P<x>a)(b)"), s("ab"))
 
-    def test_a_group_that_did_not_participate_is_null(self) -> None:
+    def test_a_group_that_did_not_participate_is_refuses_a_null(self) -> None:
         """`(a)|(z)` against "a" leaves the second group unmatched.
 
         Not the empty string: a group that matched nothing and a group that
@@ -150,16 +150,17 @@ class TestRegexUnknowns:
 
     @pytest.mark.parametrize(
         ("pattern", "subject"),
-        [
-            (CtyValue.null(CtyString()), s("abc")),
-            (s("a"), CtyValue.null(CtyString())),
-            (CtyValue.unknown(CtyString()), s("abc")),
-            (s("a"), CtyValue.unknown(CtyString())),
-        ],
+        [(CtyValue.null(CtyString()), s("abc")), (s("a"), CtyValue.null(CtyString()))],
     )
-    def test_a_null_or_unknown_argument_yields_unknown(
-        self, pattern: CtyValue[Any], subject: CtyValue[Any]
-    ) -> None:
+    def test_a_null_argument_is_refused(self, pattern: CtyValue[Any], subject: CtyValue[Any]) -> None:
+        with pytest.raises(CtyFunctionError):
+            regex(pattern, subject)
+
+    @pytest.mark.parametrize(
+        ("pattern", "subject"),
+        [(CtyValue.unknown(CtyString()), s("abc")), (s("a"), CtyValue.unknown(CtyString()))],
+    )
+    def test_an_unknown_argument_yields_unknown(self, pattern: CtyValue[Any], subject: CtyValue[Any]) -> None:
         assert regex(pattern, subject).is_unknown
 
 
@@ -214,16 +215,17 @@ class TestRegexAll:
 
     @pytest.mark.parametrize(
         ("pattern", "subject"),
-        [
-            (CtyValue.null(CtyString()), s("abc")),
-            (s("a"), CtyValue.null(CtyString())),
-            (CtyValue.unknown(CtyString()), s("abc")),
-            (s("a"), CtyValue.unknown(CtyString())),
-        ],
+        [(CtyValue.null(CtyString()), s("abc")), (s("a"), CtyValue.null(CtyString()))],
     )
-    def test_a_null_or_unknown_argument_yields_unknown(
-        self, pattern: CtyValue[Any], subject: CtyValue[Any]
-    ) -> None:
+    def test_a_null_argument_is_refused(self, pattern: CtyValue[Any], subject: CtyValue[Any]) -> None:
+        with pytest.raises(CtyFunctionError):
+            regexall(pattern, subject)
+
+    @pytest.mark.parametrize(
+        ("pattern", "subject"),
+        [(CtyValue.unknown(CtyString()), s("abc")), (s("a"), CtyValue.unknown(CtyString()))],
+    )
+    def test_an_unknown_argument_yields_unknown(self, pattern: CtyValue[Any], subject: CtyValue[Any]) -> None:
         assert regexall(pattern, subject).is_unknown
 
 

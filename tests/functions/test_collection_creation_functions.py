@@ -44,14 +44,16 @@ class TestElement:
         assert element(t, CtyNumber().validate(1)).raw_value == "b"
         assert element(t, CtyNumber().validate(3)).raw_value == "a"
 
-    def test_element_null_unknown(self) -> None:
+    def test_element_refuses_a_null_and_defers_an_unknown(self) -> None:
         lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
-        assert element(CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(0)).is_unknown
+        with pytest.raises(CtyFunctionError):
+            element(CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(0))
         assert element(
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyNumber().validate(0),
         ).is_unknown
-        assert element(lst, CtyValue.null(CtyNumber())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            element(lst, CtyValue.null(CtyNumber()))
         assert element(lst, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_element_wrong_type(self) -> None:
@@ -75,7 +77,7 @@ class TestCoalesceList:
         l2 = CtyList(element_type=CtyString()).validate(["b"])
         assert coalescelist(l1, l2).raw_value == ["b"]
 
-    def test_coalescelist_with_null(self) -> None:
+    def test_coalescelist_with_refuses_a_null(self) -> None:
         l1 = CtyValue.null(CtyList(element_type=CtyString()))
         l2 = CtyList(element_type=CtyString()).validate(["b"])
         assert coalescelist(l1, l2).raw_value == ["b"]
@@ -105,8 +107,9 @@ class TestCompact:
         t = CtyTuple(element_types=(CtyString(), CtyString(), CtyString())).validate(("a", "", "b"))
         assert compact(t).raw_value == ["a", "b"]
 
-    def test_compact_null_unknown(self) -> None:
-        assert compact(CtyValue.null(CtyList(element_type=CtyString()))).is_null
+    def test_compact_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            compact(CtyValue.null(CtyList(element_type=CtyString())))
         assert compact(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_compact_wrong_type(self) -> None:
@@ -151,14 +154,16 @@ class TestChunklist:
             ["e"],
         ]
 
-    def test_chunklist_null_unknown(self) -> None:
+    def test_chunklist_refuses_a_null_and_defers_an_unknown(self) -> None:
         lst = CtyList(element_type=CtyString()).validate(["a", "b", "c", "d", "e"])
-        assert chunklist(CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(2)).is_unknown
+        with pytest.raises(CtyFunctionError):
+            chunklist(CtyValue.null(CtyList(element_type=CtyString())), CtyNumber().validate(2))
         assert chunklist(
             CtyValue.unknown(CtyList(element_type=CtyString())),
             CtyNumber().validate(2),
         ).is_unknown
-        assert chunklist(lst, CtyValue.null(CtyNumber())).is_unknown
+        with pytest.raises(CtyFunctionError):
+            chunklist(lst, CtyValue.null(CtyNumber()))
         assert chunklist(lst, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_chunklist_wrong_type(self) -> None:
@@ -194,24 +199,30 @@ class TestLookup:
         o = CtyObject({"a": CtyString()}).validate({"a": "x"})
         assert lookup(o, CtyString().validate("b"), CtyString().validate("default")).raw_value == "default"
 
-    def test_lookup_null_unknown(self) -> None:
-        m = CtyMap(element_type=CtyString()).validate({"a": "x"})
-        d = CtyString().validate("default")
-        assert (
-            lookup(
-                CtyValue.null(CtyMap(element_type=CtyString())),
-                CtyString().validate("a"),
-                d,
-            ).raw_value
-            == "default"
-        )
+    def test_lookup_refuses_a_null_and_defers_an_unknown(self) -> None:
+        """A null map used to fall through to the default, which is a value.
+
+        go-cty refuses the argument instead: a null map is not an empty map,
+        and answering "not found" for it invents a fact.
+        """
+        default = CtyString().validate("default")
+
+        for null_position in (
+            (CtyValue.null(CtyMap(element_type=CtyString())), CtyString().validate("a"), default),
+            (
+                CtyMap(element_type=CtyString()).validate({"a": "x"}),
+                CtyValue.null(CtyString()),
+                default,
+            ),
+        ):
+            with pytest.raises(CtyFunctionError):
+                lookup(*null_position)
+
         assert lookup(
             CtyValue.unknown(CtyMap(element_type=CtyString())),
             CtyString().validate("a"),
-            d,
+            default,
         ).is_unknown
-        assert lookup(m, CtyValue.null(CtyString()), d).raw_value == "default"
-        assert lookup(m, CtyValue.unknown(CtyString()), d).is_unknown
 
     def test_lookup_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -238,7 +249,7 @@ class TestMerge:
         o = CtyObject({"b": CtyString(), "c": CtyString()}).validate({"b": "z", "c": "w"})
         assert merge(m, o).raw_value == {"a": "x", "b": "z", "c": "w"}
 
-    def test_merge_with_null_unknown(self) -> None:
+    def test_merge_with_refuses_a_null_and_defers_an_unknown(self) -> None:
         m = CtyMap(element_type=CtyString()).validate({"a": "x"})
         assert merge(m, CtyValue.null(CtyMap(element_type=CtyString()))).raw_value == {"a": "x"}
         assert merge(m, CtyValue.unknown(CtyMap(element_type=CtyString()))).is_unknown
@@ -254,12 +265,18 @@ class TestZipmap:
         values = CtyList(element_type=CtyNumber()).validate([1, 2])
         assert zipmap(keys, values).raw_value == {"a": 1, "b": 2}
 
-    def test_zipmap_null_unknown(self) -> None:
+    def test_zipmap_refuses_a_null_and_defers_an_unknown(self) -> None:
+        """A null list used to zip to an empty map, silently losing the other
+        list's entries."""
         keys = CtyList(element_type=CtyString()).validate(["a", "b"])
         values = CtyList(element_type=CtyNumber()).validate([1, 2])
-        assert zipmap(keys, CtyValue.null(CtyList(element_type=CtyNumber()))).raw_value == {}
+
+        with pytest.raises(CtyFunctionError):
+            zipmap(keys, CtyValue.null(CtyList(element_type=CtyNumber())))
+        with pytest.raises(CtyFunctionError):
+            zipmap(CtyValue.null(CtyList(element_type=CtyString())), values)
+
         assert zipmap(keys, CtyValue.unknown(CtyList(element_type=CtyNumber()))).is_unknown
-        assert zipmap(CtyValue.null(CtyList(element_type=CtyString())), values).raw_value == {}
         assert zipmap(CtyValue.unknown(CtyList(element_type=CtyString())), values).is_unknown
 
     def test_zipmap_wrong_type(self) -> None:
@@ -290,22 +307,21 @@ class TestSliceConcat:
             "c",
         ]
 
-    def test_slice_null_unknown(self) -> None:
+    def test_slice_refuses_a_null_and_defers_an_unknown(self) -> None:
         lst = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
-        assert slice(
-            CtyValue.null(CtyList(element_type=CtyString())),
-            CtyNumber().validate(0),
-            CtyNumber().validate(1),
-        ).is_unknown
-        assert slice(
-            CtyValue.unknown(CtyList(element_type=CtyString())),
-            CtyNumber().validate(0),
-            CtyNumber().validate(1),
-        ).is_unknown
-        assert slice(lst, CtyValue.null(CtyNumber()), CtyNumber().validate(1)).is_unknown
-        assert slice(lst, CtyValue.unknown(CtyNumber()), CtyNumber().validate(1)).is_unknown
-        assert slice(lst, CtyNumber().validate(0), CtyValue.null(CtyNumber())).is_unknown
-        assert slice(lst, CtyNumber().validate(0), CtyValue.unknown(CtyNumber())).is_unknown
+        zero, one = CtyNumber().validate(0), CtyNumber().validate(1)
+
+        for arguments in (
+            (CtyValue.null(CtyList(element_type=CtyString())), zero, one),
+            (lst, CtyValue.null(CtyNumber()), one),
+            (lst, zero, CtyValue.null(CtyNumber())),
+        ):
+            with pytest.raises(CtyFunctionError):
+                slice(*arguments)
+
+        assert slice(CtyValue.unknown(CtyList(element_type=CtyString())), zero, one).is_unknown
+        assert slice(lst, CtyValue.unknown(CtyNumber()), one).is_unknown
+        assert slice(lst, zero, CtyValue.unknown(CtyNumber())).is_unknown
 
     def test_slice_wrong_type(self) -> None:
         with pytest.raises(CtyFunctionError):
@@ -426,8 +442,9 @@ class TestLength:
         with pytest.raises(CtyFunctionError):
             length(CtyString().validate("hello"))
 
-    def test_length_null_unknown(self) -> None:
-        assert length(CtyValue.null(CtyList(element_type=CtyString()))).is_unknown
+    def test_length_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            length(CtyValue.null(CtyList(element_type=CtyString())))
         assert length(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
     def test_length_wrong_type(self) -> None:

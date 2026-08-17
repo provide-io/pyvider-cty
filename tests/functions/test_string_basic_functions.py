@@ -41,12 +41,14 @@ class TestStringBasicFunctions:
     def test_replace(self) -> None:
         assert replace(S("a-b-c"), S("-"), S(":")).value == "a:b:c"
 
-    def test_upper_with_null_and_unknown(self) -> None:
-        assert upper(CtyValue.null(CtyString())).is_null
+    def test_upper_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            upper(CtyValue.null(CtyString()))
         assert upper(CtyValue.unknown(CtyString())).is_unknown
 
-    def test_lower_with_null_and_unknown(self) -> None:
-        assert lower(CtyValue.null(CtyString())).is_null
+    def test_lower_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            lower(CtyValue.null(CtyString()))
         assert lower(CtyValue.unknown(CtyString())).is_unknown
 
     def test_upper(self) -> None:
@@ -99,22 +101,29 @@ class TestStringBasicFunctions:
                 CtyNumber().validate(123),
             )
 
-    def test_join_null_unknown(self) -> None:
-        assert join(CtyValue.null(CtyString()), L(CtyString(), ["a"])).is_unknown
-        assert join(S(","), CtyValue.null(CtyList(element_type=CtyString()))).is_unknown
+    def test_join_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            join(CtyValue.null(CtyString()), L(CtyString(), ["a"]))
+        with pytest.raises(CtyFunctionError):
+            join(S(","), CtyValue.null(CtyList(element_type=CtyString())))
         assert join(CtyValue.unknown(CtyString()), L(CtyString(), ["a"])).is_unknown
         assert join(S(","), CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
 
-    def test_split_null_unknown(self) -> None:
-        assert split(CtyValue.null(CtyString()), S("a,b")).is_unknown
-        assert split(S(","), CtyValue.null(CtyString())).is_unknown
+    def test_split_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            split(CtyValue.null(CtyString()), S("a,b"))
+        with pytest.raises(CtyFunctionError):
+            split(S(","), CtyValue.null(CtyString()))
         assert split(CtyValue.unknown(CtyString()), S("a,b")).is_unknown
         assert split(S(","), CtyValue.unknown(CtyString())).is_unknown
 
-    def test_replace_null_unknown(self) -> None:
-        assert replace(CtyValue.null(CtyString()), S("a"), S("b")).is_unknown
-        assert replace(S("a"), CtyValue.null(CtyString()), S("b")).is_unknown
-        assert replace(S("a"), S("b"), CtyValue.null(CtyString())).is_unknown
+    def test_replace_refuses_a_null_and_defers_an_unknown(self) -> None:
+        with pytest.raises(CtyFunctionError):
+            replace(CtyValue.null(CtyString()), S("a"), S("b"))
+        with pytest.raises(CtyFunctionError):
+            replace(S("a"), CtyValue.null(CtyString()), S("b"))
+        with pytest.raises(CtyFunctionError):
+            replace(S("a"), S("b"), CtyValue.null(CtyString()))
         assert replace(CtyValue.unknown(CtyString()), S("a"), S("b")).is_unknown
         assert replace(S("a"), CtyValue.unknown(CtyString()), S("b")).is_unknown
         assert replace(S("a"), S("b"), CtyValue.unknown(CtyString())).is_unknown

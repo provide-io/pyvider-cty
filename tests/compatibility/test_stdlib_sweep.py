@@ -377,6 +377,8 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
                 return "error", reported.get("error", "")
             if reported.get("unknown"):
                 return "unknown", None
+            if reported.get("null"):
+                return "null", reported.get("type")
             return "ok", (reported.get("type"), reported.get("value"))
     raise AssertionError(f"{func}: harness produced no result: {completed.stderr.decode()[-400:]}")
 
@@ -396,6 +398,8 @@ def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
         return "error", f"{type(exc).__name__}: {exc}"
     if result.is_unknown:
         return "unknown", None
+    if result.is_null:
+        return "null", result.type._to_wire_json()
     if result.type.equal(BytesCapsule):
         # A capsule has no wire form on either side -- go-cty refuses to
         # marshal a capsule type at all -- so the harness carries the buffer as
@@ -434,6 +438,44 @@ def test_the_two_implementations_answer_the_same(func: str, args: list[Arg], req
     assert ours[0] == theirs[0], f"{case_id}: go-cty {theirs[0]} ({theirs[1]}), pyvider {ours[0]} ({ours[1]})"
     if theirs[0] == "ok":
         assert ours[1] == theirs[1], f"{case_id}: go-cty {theirs[1]}, pyvider {ours[1]}"
+
+
+@pytest.mark.parametrize(("func", "args"), CASES, ids=[_case_id(func, args) for func, args in CASES])
+def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg]) -> None:
+    """Every argument of every case, nulled in turn.
+
+    The argument table is reused rather than hand-written, so this is exactly as
+    broad as the sweep itself -- which is the point. A one-off run of this shape
+    found **109 of 138 argument positions disagreeing**, every one of them
+    go-cty raising where this package did something else: unknown in 69 of them,
+    a *computed result* in 21 (`lookup` on a null map returned its default,
+    `max(null, 5)` returned 5), and a null in 19.
+
+    All of it was one fault repeated: the hand-rolled guard
+    `if x.is_null or x.is_unknown: return unknown` treats a null as an unknown.
+    They are not the same. An unknown is a value nobody knows yet; a null is a
+    value that is definitely absent, and computing with it invents a fact.
+    """
+    for position in range(len(args)):
+        specs = [
+            {"type": spec["type"], "null": True} if i == position else spec
+            for i, (_value, spec) in enumerate(args)
+        ]
+        values = [
+            CtyValue.null(value.type) if i == position else value for i, (value, _spec) in enumerate(args)
+        ]
+
+        theirs = _go_result(func, specs)
+        ours = _our_result(func, values)
+        if ours[0] == "missing":
+            pytest.skip(f"{func} is not exported by pyvider-cty")
+
+        where = f"{func} with argument {position} null"
+        assert ours[0] == theirs[0], (
+            f"{where}: go-cty {theirs[0]} ({theirs[1]}), pyvider {ours[0]} ({ours[1]})"
+        )
+        if theirs[0] == "ok":
+            assert ours[1] == theirs[1], f"{where}: go-cty {theirs[1]}, pyvider {ours[1]}"
 
 
 def test_the_known_divergence_list_is_not_stale() -> None:

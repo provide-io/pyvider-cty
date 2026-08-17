@@ -115,16 +115,17 @@ class TestIndent:
 
     @pytest.mark.parametrize(
         ("spaces", "text"),
-        [
-            (CtyValue.null(CtyNumber()), s("a")),
-            (n(2), CtyValue.null(CtyString())),
-            (CtyValue.unknown(CtyNumber()), s("a")),
-            (n(2), CtyValue.unknown(CtyString())),
-        ],
+        [(CtyValue.null(CtyNumber()), s("a")), (n(2), CtyValue.null(CtyString()))],
     )
-    def test_a_null_or_unknown_argument_yields_unknown(
-        self, spaces: CtyValue[Any], text: CtyValue[Any]
-    ) -> None:
+    def test_a_null_argument_is_refused(self, spaces: CtyValue[Any], text: CtyValue[Any]) -> None:
+        with pytest.raises(CtyFunctionError):
+            indent(spaces, text)
+
+    @pytest.mark.parametrize(
+        ("spaces", "text"),
+        [(CtyValue.unknown(CtyNumber()), s("a")), (n(2), CtyValue.unknown(CtyString()))],
+    )
+    def test_an_unknown_argument_yields_unknown(self, spaces: CtyValue[Any], text: CtyValue[Any]) -> None:
         assert indent(spaces, text).is_unknown
 
 
@@ -217,7 +218,8 @@ class TestFlatten:
             flatten(s("hello"))
 
     def test_a_null_or_unknown_input_passes_through(self) -> None:
-        assert flatten(CtyValue.null(CtyList(element_type=CtyDynamic()))).is_null
+        with pytest.raises(CtyFunctionError):
+            flatten(CtyValue.null(CtyList(element_type=CtyDynamic())))
         assert flatten(CtyValue.unknown(CtyList(element_type=CtyDynamic()))).is_unknown
 
 
@@ -287,16 +289,17 @@ class TestChunklist:
 
     @pytest.mark.parametrize(
         ("collection", "size"),
-        [
-            (CtyValue.null(STRS), n(2)),
-            (CtyValue.unknown(STRS), n(2)),
-            (STRS.validate(["a"]), CtyValue.null(CtyNumber())),
-            (STRS.validate(["a"]), CtyValue.unknown(CtyNumber())),
-        ],
+        [(CtyValue.null(STRS), n(2)), (STRS.validate(["a"]), CtyValue.null(CtyNumber()))],
     )
-    def test_a_null_or_unknown_argument_yields_unknown(
-        self, collection: CtyValue[Any], size: CtyValue[Any]
-    ) -> None:
+    def test_a_null_argument_is_refused(self, collection: CtyValue[Any], size: CtyValue[Any]) -> None:
+        with pytest.raises(CtyFunctionError):
+            chunklist(collection, size)
+
+    @pytest.mark.parametrize(
+        ("collection", "size"),
+        [(CtyValue.unknown(STRS), n(2)), (STRS.validate(["a"]), CtyValue.unknown(CtyNumber()))],
+    )
+    def test_an_unknown_argument_yields_unknown(self, collection: CtyValue[Any], size: CtyValue[Any]) -> None:
         assert chunklist(collection, size).is_unknown
 
 
@@ -370,7 +373,8 @@ class TestLength:
         strictness change already deferred for `contains`, and the two should
         move together rather than one at a time.
         """
-        assert length(CtyValue.null(CtyList(element_type=CtyString()))).is_unknown
+        with pytest.raises(CtyFunctionError):
+            length(CtyValue.null(CtyList(element_type=CtyString())))
 
     def test_an_unknown_collection_is_unknown(self) -> None:
         assert length(CtyValue.unknown(CtyList(element_type=CtyString()))).is_unknown
@@ -461,10 +465,17 @@ class TestKeysAndValues:
         with pytest.raises(CtyFunctionError):
             keys(bad)
 
-    @pytest.mark.parametrize("kind", ["null", "unknown"], ids=str)
-    def test_a_null_or_unknown_mapping_yields_unknown(self, kind: str) -> None:
-        m = CtyMap(element_type=CtyString())
-        arg = CtyValue.null(m) if kind == "null" else CtyValue.unknown(m)
+    def test_a_null_mapping_is_refused(self) -> None:
+        """A null map has no keys to list, and saying it has none is a claim."""
+        arg = CtyValue.null(CtyMap(element_type=CtyString()))
+
+        with pytest.raises(CtyFunctionError):
+            values(arg)
+        with pytest.raises(CtyFunctionError):
+            keys(arg)
+
+    def test_an_unknown_mapping_yields_unknown(self) -> None:
+        arg = CtyValue.unknown(CtyMap(element_type=CtyString()))
 
         assert values(arg).is_unknown
         assert keys(arg).is_unknown

@@ -45,19 +45,19 @@ def _to(value: CtyValue[Any], target_type: CtyType[Any], func: str) -> CtyValue[
         raise CtyFunctionError(error_message) from e
 
 
-@stdlib_function("tostring")
+@stdlib_function("tostring", allow_null=True)
 def to_string(input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `MakeToFunc(cty.String)`."""
     return _to(input_val, CtyString(), "tostring")
 
 
-@stdlib_function("tonumber")
+@stdlib_function("tonumber", allow_null=True)
 def to_number(input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `MakeToFunc(cty.Number)`."""
     return _to(input_val, CtyNumber(), "tonumber")
 
 
-@stdlib_function("tobool")
+@stdlib_function("tobool", allow_null=True)
 def to_bool(input_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `MakeToFunc(cty.Bool)`."""
     return _to(input_val, CtyBool(), "tobool")
