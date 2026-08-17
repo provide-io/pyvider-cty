@@ -31,6 +31,10 @@ its result carrying a type constraint where go-cty produces a concrete type.**
 A fifth was in the harness. `GetConversionUnsafe(string, string)` returns nil --
 identical types need no conversion function -- and reading that as "not
 convertible" made the most ordinary case in the table look like a divergence.
+
+The `CASES` table below is the agreement half. The last section of this module
+is the one conversion in the table's neighbourhood that is deliberately *not*
+matched -- a set whose length is unknown, converted to a list.
 """
 
 from __future__ import annotations
@@ -55,7 +59,8 @@ from pyvider.cty import (
 )
 from pyvider.cty.conversion import can_convert_unsafe, convert
 from pyvider.cty.exceptions import CtyConversionError
-from tests.compatibility._oracle import canonical, rich, run, type_spec
+from pyvider.cty.functions import length
+from tests.compatibility._oracle import canonical, refinements, rich, run, type_spec
 
 pytestmark = pytest.mark.compat
 
@@ -66,6 +71,7 @@ D = CtyDynamic()
 LS = CtyList(element_type=S)
 LN = CtyList(element_type=N)
 SS = CtySet(element_type=S)
+SN = CtySet(element_type=N)
 MS = CtyMap(element_type=S)
 MN = CtyMap(element_type=N)
 TSS = CtyTuple(element_types=(S, S))
@@ -223,6 +229,207 @@ def test_a_conversion_result_never_carries_optional_attributes() -> None:
     assert isinstance(converted.type, CtyObject)
     assert converted.type.optional_attributes == frozenset()
     assert converted.value["b"].is_null
+
+
+# --------------------------------------------------------------------------- #
+# A set whose length is unknown, converted to a list. Deliberately not matched.
+# --------------------------------------------------------------------------- #
+#
+# The trigger is narrower than "a set holding an unknown", and the boundary
+# tests below pin each edge of it, because a later attempt to match go-cty here
+# would most likely start by widening one of them:
+#
+#   - the source must be a **set**, since a known list, map, tuple or object has
+#     a known length whatever its elements are;
+#   - the set's store must hold **more than one** element, at least one of them
+#     not wholly known, because that is when coalescing becomes possible and
+#     `Value.Length` stops being exact (`cty/value_ops.go:1127-1145`);
+#   - the source must not be **wholly** unknown, which is handled earlier and
+#     correctly, against the target type (`cty/convert/conversion.go:36-47`);
+#   - the target must be a **list**, because only `conversionCollectionToList`
+#     carries the short-circuit.
+
+SET_WITH_UNKNOWN_LENGTH = SN.validate([N.validate(1), CtyValue.unknown(N)])
+"""A `set(number)` whose store holds `1` and an unknown: length 1 or 2, not both."""
+
+
+def test_a_set_with_an_unknown_converts_to_a_list_of_the_target_element_type() -> None:
+    """Deliberately not matched, 2026-08-17.
+
+    **go-cty** returns a wholly-unknown value typed `list(number)` -- the
+    *source* element type -- from `Convert(v, cty.List(cty.String))`.
+    `cty/convert/conversion_collection.go:16-22` short-circuits on an unknown
+    input length and builds its answer from `val.Type().ElementType()`, while the
+    target element type sits unused in the enclosing `ety` parameter::
+
+        if !val.Length().IsKnown() {
+            return cty.UnknownVal(cty.List(val.Type().ElementType())), nil
+        }
+
+    **This library** returns a `list(string)`, the type that was asked for.
+
+    **Why not matched.** `Convert(v, T)` returning a value that is not of type
+    `T` is a contract violation, not a behaviour: every caller of `convert` --
+    unification, msgpack encoding against a schema, a provider handing state
+    back to Terraform -- reads the result's type as the answer to the question it
+    asked. The element types have to *differ* for the fault to be observable at
+    all, which is why this case is `set(number)` to `list(string)` and not the
+    `set(string)` to `list(string)` that the agreement table already covers.
+    """
+    theirs = _theirs(SN, SET_WITH_UNKNOWN_LENGTH, LS)
+
+    assert theirs["ok"] is True, theirs
+    assert theirs["type"] == ["list", "number"], "go-cty stopped returning the source element type"
+    assert theirs["value"] == {"$unknown": True}, "go-cty stopped collapsing the whole value"
+
+    here = convert(SET_WITH_UNKNOWN_LENGTH, LS)
+
+    assert json.loads(type_spec(here.type)) == ["list", "string"]
+    assert here.is_unknown is False
+
+
+def test_the_divergent_result_type_reaches_an_enclosing_conversion() -> None:
+    """Deliberately not matched, 2026-08-17. The same fault, one level up.
+
+    **go-cty** converts `object({s = set(number)})` to
+    `object({s = list(string)})` and hands back a value typed
+    `object({s = list(number)})`. The inner short-circuit at
+    `cty/convert/conversion_collection.go:16-22` decides the attribute's type,
+    and `conversionObjectToObject` assembles whatever its element conversions
+    returned, so the requested target type is not merely decorated -- it is
+    absent from the answer.
+
+    **This library** returns `object({s = list(string)})`.
+
+    **Why not matched.** This is the case that makes it a contract violation
+    rather than a debatable choice about unknowns: a provider decoding config
+    into its schema object gets back an object that does not conform to that
+    schema, and the wire encoder is then asked to write a `number` where the
+    schema says `string`. Pinned separately from the flat case because the flat
+    one could be waved away as "the result is unknown, so its type hardly
+    matters" -- here the result is a *known* object.
+    """
+    source_type = CtyObject(attribute_types={"s": SN})
+    target_type = CtyObject(attribute_types={"s": LS})
+    value = source_type.validate({"s": SET_WITH_UNKNOWN_LENGTH})
+
+    theirs = _theirs(source_type, value, target_type)
+
+    assert theirs["ok"] is True, theirs
+    assert theirs["type"] == ["object", {"s": ["list", "number"]}]
+    assert theirs["type"] != json.loads(type_spec(target_type)), "go-cty now honours the target type"
+
+    here = convert(value, target_type)
+
+    assert json.loads(type_spec(here.type)) == json.loads(type_spec(target_type))
+
+
+def test_a_set_to_list_conversion_here_keeps_the_length_the_store_reports() -> None:
+    """The half of go-cty's answer that is *right*, and is not reproduced.
+
+    go-cty's short-circuit exists for a real reason, stated in its own comment:
+    "we can't predict how many elements the resulting list should have". A set
+    store holding `1` and an unknown becomes a one-element set if the unknown
+    resolves to `1`, so no list of a definite length is a correct answer.
+
+    **go-cty** therefore defers the whole value, and is not wrong about length --
+    only about type. **This library** converts elementwise and returns a
+    two-element list, which hardens a `[1, 2]` bound into an exact `2`. Its own
+    `length` says as much about the source and then contradicts itself about the
+    result, which is asserted below so the inconsistency is a fact on the record
+    rather than a reading of the code.
+
+    Not a divergence this module is defending: the strictly correct answer is
+    neither side's -- an *unknown* `list(string)` refined to
+    `collection_length in [1, 2]`, which keeps go-cty's deferral and this
+    library's target type. Recorded 2026-08-17, when it was found while
+    re-verifying the type divergence above. Changing it is a deliberate
+    improvement and should turn this test red; widening it is not.
+    """
+    source_length = length(SET_WITH_UNKNOWN_LENGTH)
+
+    assert source_length.is_unknown, "a set holding an unknown has a bounded, not exact, length"
+    assert refinements(source_length)["number_lower_bound"] == ["1", True]
+    assert refinements(source_length)["number_upper_bound"] == ["2", True]
+
+    here = convert(SET_WITH_UNKNOWN_LENGTH, LS)
+
+    assert canonical(rich(here)) == canonical(["1", {"$unknown": True}])
+    assert length(here).value == 2
+
+
+def test_a_wholly_unknown_set_converts_to_the_target_type_on_both_sides() -> None:
+    """The boundary below the divergence: go-cty is right here, and is matched.
+
+    A wholly unknown source never reaches `conversionCollectionToList` at all.
+    `cty/convert/conversion.go:36-47` intercepts it and builds the result from
+    `out` -- the target -- via `prepareUnknownResult`, which is exactly the
+    behaviour the case above is missing. Pinned so that "go-cty types the result
+    from the source" is not read as a general claim about unknowns and used to
+    justify breaking this.
+    """
+    value = CtyValue.unknown(SN)
+
+    theirs = _theirs(SN, value, LS)
+
+    assert theirs["ok"] is True, theirs
+    assert theirs["type"] == ["list", "string"]
+
+    here = convert(value, LS)
+
+    assert json.loads(type_spec(here.type)) == ["list", "string"]
+    assert here.is_unknown is True
+
+
+def test_a_one_element_set_holding_an_unknown_converts_the_same_way_on_both_sides() -> None:
+    """The boundary at the other edge: one stored element, so the length is exact.
+
+    `Value.Length` in `cty/value_ops.go:1133-1140` returns the store count for a
+    set whose store holds a single element even when that element is unknown,
+    because there is nothing for it to coalesce with. So `set(number)` holding
+    one unknown has a *known* length of 1, the short-circuit does not fire, and
+    both implementations convert elementwise to `list(string)`.
+
+    This is the case that makes the two-element case above necessary: written
+    with one element, the divergence is invisible and the test passes for the
+    wrong reason.
+    """
+    value = SN.validate([CtyValue.unknown(N)])
+
+    theirs = _theirs(SN, value, LS)
+
+    assert theirs["ok"] is True, theirs
+    assert theirs["type"] == ["list", "string"]
+    assert theirs["value"] == [{"$unknown": True}]
+
+    here = convert(value, LS)
+
+    assert json.loads(type_spec(here.type)) == ["list", "string"]
+    assert canonical(rich(here)) == canonical(theirs["value"])
+
+
+def test_a_set_target_is_unaffected_and_agrees() -> None:
+    """Only the list target carries the short-circuit.
+
+    `conversionCollectionToSet` (`cty/convert/conversion_collection.go:76-121`)
+    has no `val.Length().IsKnown()` check -- a set's stored element count is not
+    a claim about its length, so there is nothing to be unable to predict -- and
+    it converts elementwise. Both implementations return
+    `set(string)` holding `"1"` and an unknown.
+
+    Pinned because it is the reason the tracker entry names *lists*: a fix that
+    took the short-circuit as a general rule about unknown-holding sets would
+    break a conversion the two already agree on.
+    """
+    theirs = _theirs(SN, SET_WITH_UNKNOWN_LENGTH, SS)
+
+    assert theirs["ok"] is True, theirs
+    assert theirs["type"] == ["set", "string"]
+
+    here = convert(SET_WITH_UNKNOWN_LENGTH, SS)
+
+    assert json.loads(type_spec(here.type)) == ["set", "string"]
+    assert canonical(rich(here)) == canonical(theirs["value"])
 
 
 # 🌊🪢🔚

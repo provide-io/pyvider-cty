@@ -46,6 +46,7 @@ from pyvider.cty import (
 )
 from pyvider.cty.codec import cty_to_msgpack
 from pyvider.cty.functions import STDLIB
+from pyvider.cty.refinement import refine
 from pyvider.cty.types import BytesCapsule
 from tests.compatibility._oracle import refinements as _refinements, soup_go
 
@@ -122,6 +123,29 @@ def nul(spec: Any, cty_type: CtyType[Any]) -> Arg:
 UK = {"$unknown": True}
 
 
+def st_uk(prefix: str) -> Arg:
+    """An *unknown* string already known to start with `prefix`.
+
+    The one row whose answer turns on a refinement travelling *into* a function
+    rather than out of one. `strlen`'s implementation reads its argument's
+    `StringPrefix` and refines the result's lower bound to the number of grapheme
+    clusters in it, so a bare unknown answers `n >= 0` where this answers `n >= 3`
+    -- and nothing else in the table can tell those two apart.
+
+    `string_prefix_full`, not `string_prefix`. The harness builds its side with
+    `StringPrefixFull` and stores the prefix as given; `string_prefix` matches
+    go-cty's `StringPrefix`, which runs `SafeKnownPrefix` first and drops the last
+    character in case the next one combines with it. Written the obvious way this
+    row held "abc" in Go and "ab" here, and reported `n >= 3` against `n >= 2` as
+    a divergence in `strlen` when the two sides had simply been handed different
+    arguments.
+    """
+    return (
+        refine(CtyValue.unknown(CtyString())).string_prefix_full(prefix).new_value(),
+        {"type": "string", "value": {"$unknown": True, "$refine": {"string_prefix": prefix}}},
+    )
+
+
 def ls_uk(*elements: Any) -> Arg:
     """A *known* list of strings holding one or more unknown elements.
 
@@ -162,6 +186,15 @@ CASES: list[tuple[str, list[Arg]]] = [
     # strings
     ("upper", [st("héllo")]),
     ("lower", [st("HÉLLO")]),
+    # Case mappings that are not one code point to one code point. `héllo` and
+    # `HÉLLO` map 1:1 in both directions, so the sweep could not tell Go's simple
+    # per-rune mapping from Python's full mapping: `str.upper()` expands ß to SS
+    # and ﬁ to FI, `str.lower()` picks the final sigma for a trailing Σ, and
+    # `İ`.lower() adds a combining dot. go-cty does none of those.
+    ("upper", [st("straße")]),
+    ("upper", [st("ﬁ")]),
+    ("lower", [st("ΣΣ")]),
+    ("lower", [st("İ")]),
     ("title", [st("a bc")]),
     ("strrev", [st("abc")]),
     ("strrev", [st("héllo")]),
@@ -204,6 +237,7 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("strlen", [st(HANGUL_JAMO)]),
     ("strlen", [st(CONJUNCT)]),
     ("strlen", [st("")]),
+    ("strlen", [st_uk("abc")]),
     ("strrev", [st(f"ab{FAMILY}cd")]),
     ("strrev", [st(FLAGS)]),
     ("strrev", [st(CONJUNCT)]),
@@ -350,6 +384,12 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("setintersection", [se_uk("z", UK), se(["z", "q"])]),
     ("sort", [ls_uk("a", UK)]),
     ("formatlist", [st("%s!"), ls_uk("a", UK)]),
+    # A set holding an unknown element has an undecided *length* -- the unknown
+    # may coalesce with a member -- so go-cty defers the whole list where a
+    # list-typed argument only defers the affected rows. Both shapes measured
+    # as divergences on 2026-08-17.
+    ("formatlist", [st("<%s>"), se_uk("z", UK)]),
+    ("formatlist", [st("%s%s"), ls_uk("a", UK), ls(["x", "y"])]),
     ("coalesce", [st(""), st("b")]),
     ("coalescelist", [ls([]), ls(["a"])]),
     ("range", [nm(3)]),
@@ -520,6 +560,17 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     "pow(2,0.5)": "numeric precision model: go-cty computes in float64, Decimal is more precise",
 }
 
+# The same, for the nulled-argument population. A list of its own rather than a
+# share of the one above, because the two populations disagree about different
+# cases: `contains` with an unknown element answered a refined unknown correctly
+# for one and not the other, and one shared list would have marked a case xfail
+# in the population where it passes -- which, being strict, fails.
+#
+# Empty, and kept: four `contains` entries lived here for the afternoon it took
+# the refinement migration to reach that function, and the next unknown-payload
+# divergence in this population has somewhere to go.
+KNOWN_NULL_DIVERGENCES: dict[str, str] = {}
+
 
 # Functions the oracle exposes that this sweep does not drive, and why. Every
 # one of them is unported; nothing implemented here belongs in this list.
@@ -544,13 +595,15 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any]:
             if not reported.get("ok"):
                 return "error", reported.get("error", "")
             if reported.get("unknown"):
-                # The refinements come with it. Comparing "unknown" against
-                # "unknown" only established that both sides declined to
-                # answer, not that they declined knowing the same things --
-                # and go-cty's refinements are load-bearing, so an answer
-                # refined to [1, 2] and a bare unknown are different answers
-                # that this sweep used to call identical.
-                return "unknown", reported.get("refine") or {}
+                # The type and the refinements come with it. Comparing "unknown"
+                # against "unknown" only established that both sides declined to
+                # answer, not that they declined knowing the same things -- and
+                # go-cty's refinements are load-bearing, so an answer refined to
+                # [1, 2] and a bare unknown are different answers that this
+                # sweep used to call identical. The type is here for the same
+                # reason: `flatten` deferring as list(string) and deferring as
+                # dynamic are different answers to a Terraform plan.
+                return "unknown", (reported.get("type"), reported.get("refine") or {})
             if reported.get("null"):
                 return "null", reported.get("type")
             if "msgpack" in reported:
@@ -578,10 +631,13 @@ def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any]:
         result = implementation(*values)
     except Exception as exc:  # noqa: BLE001 - any refusal is "error" for this comparison
         return "error", f"{type(exc).__name__}: {exc}"
+    # A capsule type has no wire spelling on either side, so both ends name it
+    # the way the harness does rather than each inventing an answer.
+    wire_type = "bytes" if result.type.equal(BytesCapsule) else result.type._to_wire_json()
     if result.is_unknown:
-        return "unknown", _refinements(result)
+        return "unknown", (wire_type, _refinements(result))
     if result.is_null:
-        return "null", result.type._to_wire_json()
+        return "null", wire_type
     if result.type.equal(BytesCapsule):
         # A capsule has no wire form on either side -- go-cty refuses to
         # marshal a capsule type at all -- so the harness carries the buffer as
@@ -618,12 +674,16 @@ def test_the_two_implementations_answer_the_same(func: str, args: list[Arg], req
         pytest.skip(f"{func} is not exported by pyvider-cty")
 
     assert ours[0] == theirs[0], f"{case_id}: go-cty {theirs[0]} ({theirs[1]}), pyvider {ours[0]} ({ours[1]})"
-    if theirs[0] == "ok":
+    if theirs[0] != "error":
+        # Every kind but `error` carries a payload worth comparing, and until
+        # 2026-08-17 only `ok` was compared -- so every unknown answer counted
+        # as equal to every other unknown answer, and so did every null. That is
+        # the fault this file exists to catch, sitting in this file.
         assert ours[1] == theirs[1], f"{case_id}: go-cty {theirs[1]}, pyvider {ours[1]}"
 
 
 @pytest.mark.parametrize(("func", "args"), CASES, ids=[_case_id(func, args) for func, args in CASES])
-def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg]) -> None:
+def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg], request: Any) -> None:
     """Every argument of every case, nulled in turn.
 
     The argument table is reused rather than hand-written, so this is exactly as
@@ -638,6 +698,10 @@ def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg]) ->
     They are not the same. An unknown is a value nobody knows yet; a null is a
     value that is definitely absent, and computing with it invents a fact.
     """
+    case_id = _case_id(func, args)
+    if case_id in KNOWN_NULL_DIVERGENCES:
+        request.node.add_marker(pytest.mark.xfail(reason=KNOWN_NULL_DIVERGENCES[case_id], strict=True))
+
     for position in range(len(args)):
         specs = [
             {"type": spec["type"], "null": True} if i == position else spec
@@ -656,7 +720,7 @@ def test_a_null_argument_is_answered_the_same_way(func: str, args: list[Arg]) ->
         assert ours[0] == theirs[0], (
             f"{where}: go-cty {theirs[0]} ({theirs[1]}), pyvider {ours[0]} ({ours[1]})"
         )
-        if theirs[0] == "ok":
+        if theirs[0] != "error":
             assert ours[1] == theirs[1], f"{where}: go-cty {theirs[1]}, pyvider {ours[1]}"
 
 
@@ -670,6 +734,9 @@ def test_the_known_divergence_list_is_not_stale() -> None:
 
     assert not (KNOWN_DIVERGENCES.keys() - ids), (
         f"KNOWN_DIVERGENCES names cases that no longer exist: {KNOWN_DIVERGENCES.keys() - ids}"
+    )
+    assert not (KNOWN_NULL_DIVERGENCES.keys() - ids), (
+        f"KNOWN_NULL_DIVERGENCES names cases that no longer exist: {KNOWN_NULL_DIVERGENCES.keys() - ids}"
     )
 
 
