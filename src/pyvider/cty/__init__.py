@@ -27,6 +27,7 @@ from pyvider.cty.json_codec import cty_from_json, cty_to_json, implied_json_type
 from pyvider.cty.mark_paths import PathMarks, mark_with_paths, unmark_deep_with_paths
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
+from pyvider.cty.refinement import CtyRefinementError, refine, safe_known_prefix
 from pyvider.cty.types import (
     BytesCapsule,
     CtyBool,
@@ -67,6 +68,7 @@ __all__ = [
     "CtyMark",
     "CtyNumber",
     "CtyObject",
+    "CtyRefinementError",
     "CtySet",
     "CtySetValidationError",
     "CtyString",
@@ -88,6 +90,8 @@ __all__ = [
     "mark_with_paths",
     "parse_tf_type_to_ctytype",
     "parse_type_string_to_ctytype",
+    "refine",
+    "safe_known_prefix",
     "transform",
     "unify",
     "unknown_as_null",
