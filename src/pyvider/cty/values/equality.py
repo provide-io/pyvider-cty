@@ -17,10 +17,12 @@ wrong, because `is_unknown` answers only for the top level and the containers
 disagree with each other about propagating it -- a list built from an unknown
 element reports itself unknown, an object with an unknown attribute does not.
 
-Deliberately not implemented: go-cty disqualifies some comparisons early using
-the refinement bounds on an unknown (`Value.Range().Includes`). pyvider.cty has
-only partial refinement support, so those cases return unknown here instead of
-`False`. That is the safe direction -- vaguer, never wrong.
+Refinements are consulted, as of 2026-08-17: go-cty disqualifies some
+comparisons early from the bounds on an unknown (`Value.Range().Includes`), and
+so does this -- an unknown number refined to [1, 10] is definitely not 50. Only
+a hard *exclusion* is usable. Passing every bound is not equality, so anything
+short of a definite false stays undecided, which keeps the previous safe
+direction wherever the range cannot decide.
 """
 
 from __future__ import annotations
@@ -205,6 +207,17 @@ def _equals_with_unknown(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     if not known.vtype.equal(unknown.vtype):
         # No null comparison is in play, so mismatched types can never be equal
         # however the unknown resolves.
+        return _bool(False)
+
+    # The unknown's refinements may rule the known value out entirely: an
+    # unknown number refined to [1, 10] is definitely not 50, whatever it turns
+    # out to be. go-cty asks `Value.Range().Includes` here. Only a definite
+    # *exclusion* is usable -- "within the bounds" is not "equal" -- so anything
+    # other than a hard false stays undecided.
+    from pyvider.cty.value_range import value_range
+
+    excluded = value_range(unknown).includes(known)
+    if not excluded.is_unknown and excluded.value is False:
         return _bool(False)
     return _undecided()
 

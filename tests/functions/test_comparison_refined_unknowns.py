@@ -290,23 +290,38 @@ class TestMinMaxWithRefinedUnknowns:
 
 
 class TestEqualityWithRefinedUnknowns:
-    """Test equality operations with refined unknowns."""
+    """Equality consults the refinement bounds, as go-cty's does.
 
-    def test_equal_with_refined_unknown(self) -> None:
-        """Test: equality with refined unknown always returns unknown."""
+    These asserted "always returns unknown" until `Value.Range` landed, which is
+    what the bounds are *for*: an unknown constrained below 20 is definitely not
+    25, however it resolves. Only an exclusion is usable -- passing the bounds is
+    not equality -- so the within-bounds case below is still undecided.
+    """
+
+    def test_a_candidate_inside_the_bounds_stays_unknown(self) -> None:
+        """15 satisfies `>= 10`, so it is not ruled out -- and not confirmed."""
         refined = UnknownN(number_lower_bound=(Decimal("10"), True))
-        known = N(15)
-        result = equal(refined, known)
 
-        assert result.is_unknown
+        assert equal(refined, N(15)).is_unknown
 
-    def test_not_equal_with_refined_unknown(self) -> None:
-        """Test: not_equal with refined unknown returns unknown."""
+    def test_a_candidate_the_bounds_exclude_is_definitely_unequal(self) -> None:
+        """`< 20` rules out 25, so `not_equal` is definitely true.
+
+        Note the bound is *exclusive*, which this also exercises: the pair
+        `(20, False)` means strictly less than 20.
+        """
         refined = UnknownN(number_upper_bound=(Decimal("20"), False))
-        known = N(25)
-        result = not_equal(refined, known)
 
-        assert result.is_unknown
+        result = not_equal(refined, N(25))
+
+        assert not result.is_unknown
+        assert result.value is True
+
+    def test_the_exclusive_bound_itself_is_excluded(self) -> None:
+        """`< 20` means 20 is not a candidate either."""
+        refined = UnknownN(number_upper_bound=(Decimal("20"), False))
+
+        assert equal(refined, N(20)).value is False
 
 
 class TestEdgeCasesAndBoundaries:

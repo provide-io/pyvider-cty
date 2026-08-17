@@ -44,6 +44,7 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.unknown import unknown_as_null
+from pyvider.cty.value_range import ValueRange, value_range
 from pyvider.cty.values import CtyValue
 from pyvider.cty.walk import deep_values, transform, walk
 
@@ -80,6 +81,7 @@ __all__ = [
     "CtyValidationError",
     "CtyValue",
     "PathMarks",
+    "ValueRange",
     "__version__",
     "conformance_errors",
     "convert",
@@ -96,6 +98,7 @@ __all__ = [
     "unify",
     "unknown_as_null",
     "unmark_deep_with_paths",
+    "value_range",
     "walk",
 ]
 
