@@ -55,15 +55,59 @@ class CtyJsonError(CtyValidationError):
     """A value or document that JSON cannot represent."""
 
 
+class _RawNumber(Decimal):
+    """A `Decimal` that remembers the digits it was written with.
+
+    `json.loads`' number hooks receive the literal token, and go-cty's decoder
+    needs it: unmarshalling a JSON number into a `string` yields *the token*, so
+    `1.50` becomes `"1.50"` and `1e2` becomes `"1e2"`. Reconstructing that from
+    the parsed number is not possible -- both would come back as `100` or `1.5` --
+    so the text is carried alongside rather than recovered.
+    """
+
+    __slots__ = ("text",)
+
+    text: str
+
+    def __new__(cls, text: str) -> _RawNumber:
+        number = super().__new__(cls, text)
+        number.text = text
+        return number
+
+
+def _loads(payload: bytes | str) -> Any:
+    text = payload.decode() if isinstance(payload, bytes) else payload
+    return json.loads(text, parse_float=_RawNumber, parse_int=_RawNumber)
+
+
 def cty_to_json(value: CtyValue[Any], cty_type: CtyType[Any], /) -> bytes:
-    """Serialize `value` as go-cty's `json.Marshal` does."""
+    """Serialize `value` as go-cty's `json.Marshal` does.
+
+    A value that does not conform to `cty_type` is converted first, which is
+    go-cty's documented behaviour: the type is "used to attempt automatic
+    conversions of any non-conformant types in the given value".
+
+    Marks are checked *before* that conversion, deeply. Conversion rebuilds a
+    value, and a rebuilt value that quietly lost a mark would then serialize
+    without complaint -- which is the silent declassification this refusal
+    exists to prevent, arrived at by a different route.
+    """
+    from pyvider.cty.conformance import conformance_errors
+    from pyvider.cty.marks import collect_marks_deep
+
+    if collect_marks_deep(value):
+        raise CtyJsonError("value has marks, so it cannot be serialized as JSON")
+
+    if conformance_errors(value.type, cty_type):
+        from pyvider.cty.conversion import convert
+
+        value = convert(value, cty_type)
     return _marshal(value, cty_type, "").encode()
 
 
 def cty_from_json(payload: bytes | str, cty_type: CtyType[Any], /) -> CtyValue[Any]:
     """Decode JSON against a known type, as go-cty's `json.Unmarshal` does."""
-    text = payload.decode() if isinstance(payload, bytes) else payload
-    return _unmarshal(json.loads(text, parse_float=Decimal, parse_int=Decimal), cty_type, "")
+    return _unmarshal(_loads(payload), cty_type, "")
 
 
 def implied_json_type(payload: bytes | str, /) -> CtyType[Any]:
@@ -72,8 +116,7 @@ def implied_json_type(payload: bytes | str, /) -> CtyType[Any]:
     An array implies a **tuple**, not a list: JSON gives no guarantee that an
     array's elements share a type, and a list would have to invent one.
     """
-    text = payload.decode() if isinstance(payload, bytes) else payload
-    return _implied(json.loads(text, parse_float=Decimal, parse_int=Decimal))
+    return _implied(_loads(payload))
 
 
 def _marshal(value: CtyValue[Any], cty_type: CtyType[Any], path: str) -> str:
@@ -99,7 +142,7 @@ def _marshal(value: CtyValue[Any], cty_type: CtyType[Any], path: str) -> str:
 def _marshal_by_type(value: CtyValue[Any], cty_type: CtyType[Any], path: str) -> str:
     """Dispatch on the target type, once the universal cases are out of the way."""
     if isinstance(cty_type, CtyString):
-        return json.dumps(str(value.value), ensure_ascii=False)
+        return _marshal_string(str(value.value))
     if isinstance(cty_type, CtyNumber):
         return _marshal_number(value, path)
     if isinstance(cty_type, CtyBool):
@@ -117,6 +160,29 @@ def _marshal_by_type(value: CtyValue[Any], cty_type: CtyType[Any], path: str) ->
     # object with no JSON spelling, and inventing one would produce a document
     # that cannot be read back.
     raise CtyJsonError(f"{path or 'value'}: cannot serialize {cty_type.ctype} as JSON")
+
+
+_HTML_ESCAPES = {
+    "<": "\\u003c",
+    ">": "\\u003e",
+    "&": "\\u0026",
+    "\u2028": "\\u2028",
+    "\u2029": "\\u2029",
+}
+"""What Go's `encoding/json` escapes and Python's `json` does not.
+
+Go escapes these by default so that the output is safe to embed in HTML or in a
+JavaScript source file. The bytes differ, and these bytes end up in state files
+that are compared textually, so a `<` written two ways is a diff on every plan.
+Non-ASCII is *not* in this table: Go writes it raw, as `ensure_ascii=False` does.
+"""
+
+
+def _marshal_string(text: str) -> str:
+    encoded = json.dumps(text, ensure_ascii=False)
+    for character, escape in _HTML_ESCAPES.items():
+        encoded = encoded.replace(character, escape)
+    return encoded
 
 
 def _marshal_number(value: CtyValue[Any], path: str) -> str:
@@ -154,7 +220,7 @@ def _marshal_tuple(value: CtyValue[Any], cty_type: CtyTuple, path: str) -> str:
 def _marshal_map(value: CtyValue[Any], element_type: CtyType[Any], path: str) -> str:
     items = cast("dict[str, CtyValue[Any]]", value.value or {})
     rendered = [
-        f"{json.dumps(key, ensure_ascii=False)}:{_marshal(item, element_type, f'{path}[{key!r}]')}"
+        f"{_marshal_string(key)}:{_marshal(item, element_type, f'{path}[{key!r}]')}"
         for key, item in sorted(items.items())
     ]
     return f"{{{','.join(rendered)}}}"
@@ -163,7 +229,7 @@ def _marshal_map(value: CtyValue[Any], element_type: CtyType[Any], path: str) ->
 def _marshal_object(value: CtyValue[Any], cty_type: CtyObject, path: str) -> str:
     items = cast("dict[str, CtyValue[Any]]", value.value or {})
     rendered = [
-        f"{json.dumps(name, ensure_ascii=False)}:{_marshal(items[name], attribute_type, f'{path}.{name}')}"
+        f"{_marshal_string(name)}:{_marshal(items[name], attribute_type, f'{path}.{name}')}"
         for name, attribute_type in sorted(cty_type.attribute_types.items())
         if name in items
     ]
@@ -187,7 +253,69 @@ def _unmarshal(raw: Any, cty_type: CtyType[Any], path: str) -> CtyValue[Any]:
         return _unmarshal_sequence(raw, cty_type, path)
     if isinstance(cty_type, CtyMap | CtyObject):
         return _unmarshal_mapping(raw, cty_type, path)
+    return _unmarshal_primitive(raw, cty_type, path)
+
+
+def _unmarshal_primitive(raw: Any, cty_type: CtyType[Any], path: str) -> CtyValue[Any]:
+    """go-cty's `unmarshalPrimitive`, coercions included.
+
+    `Unmarshal`'s contract is that "type conversions will be done where possible
+    to make the result conformant even if the types given in JSON are not
+    exactly correct", and for primitives that is a small explicit table rather
+    than a general conversion:
+
+      - a `string` type accepts a JSON string, a number (as its literal text) or
+        a bool (as `"true"` / `"false"`)
+      - a `number` type accepts a JSON number or a string holding one
+      - a `bool` type accepts a JSON bool or a string holding one
+
+    Every other combination is refused. Refusing the lot instead -- which this
+    module did -- rejects state and plan JSON that go-cty reads without
+    complaint, and a decoder is exactly where being stricter than the reference
+    stops being conservative.
+    """
+    where = path or "value"
+    if isinstance(cty_type, CtyBool):
+        return _unmarshal_bool(raw, cty_type, where)
+    if isinstance(cty_type, CtyNumber):
+        return _unmarshal_number(raw, cty_type, where)
+    if isinstance(cty_type, CtyString):
+        return _unmarshal_string(raw, cty_type, where)
     return cty_type.validate(raw)
+
+
+def _unmarshal_bool(raw: Any, cty_type: CtyType[Any], where: str) -> CtyValue[Any]:
+    if isinstance(raw, bool | str):
+        return _coerced(raw, cty_type, where, "bool")
+    raise CtyJsonError(f"{where}: bool is required")
+
+
+def _unmarshal_number(raw: Any, cty_type: CtyType[Any], where: str) -> CtyValue[Any]:
+    # bool first: in Python a bool *is* an int, and go-cty refuses one here.
+    if not isinstance(raw, bool) and isinstance(raw, Decimal | int | float | str):
+        return _coerced(raw, cty_type, where, "number")
+    raise CtyJsonError(f"{where}: number is required")
+
+
+def _unmarshal_string(raw: Any, cty_type: CtyType[Any], where: str) -> CtyValue[Any]:
+    if isinstance(raw, bool):
+        return cty_type.validate("true" if raw else "false")
+    if isinstance(raw, _RawNumber):
+        # The token, not the parsed number: go-cty hands over the digits as they
+        # were written, so 1.50 stays "1.50" and 1e2 stays "1e2".
+        return cty_type.validate(raw.text)
+    if isinstance(raw, Decimal | int | float):
+        return cty_type.validate(_number_to_string(raw))
+    if isinstance(raw, str):
+        return cty_type.validate(raw)
+    raise CtyJsonError(f"{where}: string is required")
+
+
+def _coerced(raw: Any, cty_type: CtyType[Any], where: str, wanted: str) -> CtyValue[Any]:
+    try:
+        return cty_type.validate(raw)
+    except CtyValidationError as error:
+        raise CtyJsonError(f"{where}: {wanted} is required") from error
 
 
 def _unmarshal_dynamic(raw: Any, path: str) -> CtyValue[Any]:
@@ -230,13 +358,25 @@ def _unmarshal_mapping(raw: Any, cty_type: CtyMap[Any] | CtyObject, path: str) -
     if not isinstance(raw, dict):
         raise CtyJsonError(f"{path or 'value'}: an object is required for {cty_type.ctype}")
     if isinstance(cty_type, CtyObject):
+        # An attribute the type does not declare is an error, and one the
+        # document omits becomes null. Both are go-cty's rules and this module
+        # had them the other way round: it dropped unexpected attributes without
+        # a word -- so a typo in a state file read back as the attribute simply
+        # not being set -- and refused documents with an attribute missing,
+        # which is how every optional attribute is written.
+        for name in raw:
+            if name not in cty_type.attribute_types:
+                raise CtyJsonError(f'{path or "value"}: unsupported attribute "{name}"')
         return cast(
             "CtyValue[Any]",
             cty_type.validate(
                 {
-                    name: _unmarshal(raw[name], attribute_type, f"{path}.{name}")
+                    name: (
+                        _unmarshal(raw[name], attribute_type, f"{path}.{name}")
+                        if name in raw
+                        else CtyValue.null(attribute_type)
+                    )
                     for name, attribute_type in cty_type.attribute_types.items()
-                    if name in raw
                 }
             ),
         )
