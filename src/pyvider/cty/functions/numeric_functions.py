@@ -30,11 +30,19 @@ not-null. Confirmed against the live oracle, which answers
 `multiply` given a refined unknown.
 
 The one deliberate divergence left in place is precision. go-cty holds a number
-in a 512-bit `big.Float` and computes `log`/`pow` in `float64` first; this
-package holds a `Decimal` in a 28-digit context. `log` is transcribed through
-`float64` because go-cty's answer *is* the `float64` one, infinities included;
-`pow` is left in `Decimal`, where this package is the more accurate of the two.
-Both directions are recorded as xfails in `tests/compatibility/test_stdlib_sweep.py`.
+in a 512-bit `big.Float` and computes `log` and `pow` in `float64` first; this
+package holds a `Decimal` in a 28-digit context. Both of those two are therefore
+transcribed *through* `float64`, because go-cty's answer for them is the
+`float64` one -- infinities, range refusals and rounding artefacts included --
+and a more accurate answer is a different answer. `divide` stays in `Decimal`,
+where neither side is reading a `float64` and the two contexts simply differ.
+
+Two residues of that are recorded as xfails in
+`tests/compatibility/test_stdlib_sweep.py`: a number this package computed in
+`float64` is written to the wire as text where go-cty writes a `float64`, because
+a `Decimal` does not record that it came from one; and Go's `math.Pow` is not
+correctly rounded where the libm behind Python's is, which puts them three ULPs
+apart at `pow(10, 308)`.
 """
 
 from __future__ import annotations
@@ -114,6 +122,42 @@ def _go_quotient(numerator: float, denominator: float) -> float:
     if numerator == 0.0 or math.isnan(numerator):
         return math.nan
     return math.copysign(math.inf, numerator) * math.copysign(1.0, denominator)
+
+
+def _odd_integer(number: float) -> bool:
+    """Whether Go's `math.Pow` would treat this exponent as an odd integer.
+
+    Go's contract distinguishes those from every other exponent in four of its
+    special cases, all of them about the *sign* of a zero or an infinity:
+    "Pow(±0, y) = ±Inf for y an odd integer < 0".
+    """
+    return math.isfinite(number) and number == int(number) and int(number) % 2 != 0
+
+
+def _go_pow(base: float, exponent: float) -> float:
+    """Go's `math.Pow`, which answers where Python's raises.
+
+    Two families, told apart here rather than by the exception, because CPython
+    reports the second and third as the same `ValueError`:
+
+      * A finite result too large for a `float64`. Go returns an infinity of the
+        matching sign; CPython raises `OverflowError`. This is the case that used
+        to reach callers as an unhandled `decimal.Overflow`.
+      * A zero base under a negative exponent. Go: an infinity, negative only
+        for a negative zero raised to an odd integer power.
+      * A finite negative base under a finite non-integer exponent. Go: NaN,
+        which `_number_from_float` then turns into the refusal go-cty reaches by
+        recovering the `Float.SetFloat64(NaN)` panic.
+    """
+    try:
+        return math.pow(base, exponent)
+    except OverflowError:
+        return -math.inf if base < 0.0 and _odd_integer(exponent) else math.inf
+    except ValueError:
+        if base == 0.0:
+            negative = math.copysign(1.0, base) < 0.0 and _odd_integer(exponent)
+            return -math.inf if negative else math.inf
+        return math.nan
 
 
 def _number_from_float(result: float, what: str) -> CtyValue[Any]:
@@ -438,23 +482,23 @@ def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
 def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `PowFunc` (`stdlib/number.go:492`).
 
-    Left in `Decimal` where `log` is transcribed into `float64`, because here the
-    two models give the same *shape* of answer and differ only in how many digits
-    of it are right -- and this package's are. `pow(2, 0.5)` is the recorded
-    divergence, xfailed in the sweep with that reasoning. `Decimal` also agrees
-    with `math.Pow` on the edges that matter: `0 ** -1` is `+Inf` and a negative
-    base under a fractional power is a refusal.
+    Read through `float64` exactly as `log` is, because go-cty's `Impl` reads
+    both arguments with `gocty.FromCtyValue` into a `float64` and returns
+    `cty.NumberFloatVal(math.Pow(...))`. Nothing in that path is a `big.Float`
+    computation, so keeping `pow` in `Decimal` was not a more-precise version of
+    go-cty's answer but a different function, and it diverged in three ways at
+    once. Verified against v1.19.0:
+
+        pow(10, 308) -> 10000000000000006...  (the float64 value, not 1e308)
+        pow(10, 400) -> +Inf                  (Decimal: exactly 1e400)
+        pow(1e400, 2) -> the float64-range refusal, which `Decimal` never made
+
+    The third is the one that mattered: `pow(10, 1000000)` raised
+    `decimal.Overflow`, which is not a `CtyError`, so it escaped the taxonomy as
+    a `CtyFunctionPanicError`.
     """
     num, power = _numbers(num_val, power_val)
-    if power == 0:
-        # Go's `math.Pow` special cases this first: "Pow(x, ±0) = 1 for any x".
-        # `Decimal` calls `0 ** 0` undefined and raises, which would make this the
-        # one place the two models disagree about an *answer* rather than digits.
-        return CtyNumber().validate(Decimal(1))
-    try:
-        return CtyNumber().validate(num**power)
-    except InvalidOperation as exc:
-        raise CtyFunctionError(f"pow: invalid operation: {exc}") from exc
+    return _number_from_float(_go_pow(_float64(num), _float64(power)), "pow")
 
 
 @stdlib_function(
