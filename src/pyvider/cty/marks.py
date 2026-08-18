@@ -10,6 +10,8 @@ from typing import Any
 
 from attrs import define, field
 
+from pyvider.cty.exceptions import CtyValidationError
+
 
 def _convert_details(value: Any) -> frozenset[Any] | None:
     """Converter to ensure the 'details' field is always hashable."""
@@ -233,62 +235,178 @@ def _children(value: Any) -> tuple[Any, ...] | dict[str, Any] | None:
     return None
 
 
+# Marks the point in the strip stack where a node's children are all resolved.
+_STRIP_POST = object()
+
+# Returned by `_resolve_or_children` for a node whose children must be walked.
+_DESCEND = object()
+
+
+def _already_stripped(value: Any) -> Any | None:
+    """`value`'s stripped form if it is known *without walking*, else None.
+
+    Deliberately memo-only. `collect_marks_deep` memoizes the node it was asked
+    about and not the descendants it visited -- by design, since the recursion
+    guard calls it bottom-up as it unwinds and each level memoizes itself. A
+    top-down walk gets the opposite: asking it per node re-walks each subtree
+    its parent has just walked, which made the strip O(n^2) in the depth. At
+    5000 levels that is 9.6 s of re-walking, and it was only invisible before
+    because the recursion limit stopped the walk at 330.
+
+    So the descent reads the memo directly and treats "not known" as "descend".
+    Descending into an already-clean subtree costs one visit per node; asking
+    the question properly costs a walk per node.
+    """
+    if value._deep_marks == frozenset():
+        return value
+    return value._stripped
+
+
+def _stripped_without_descending(value: Any) -> Any | None:
+    """The entry-point shortcut, which *is* allowed to walk.
+
+    Two of them, both load-bearing. A value carrying no marks anywhere is
+    already its own stripped form and is returned untouched rather than rebuilt.
+    And a rebuilt copy is memoized, under the same immutability rule as the mark
+    memo, because the function wrapper strips every marked argument on every
+    call -- without this a marked 50k-element list cost 40 ms per stdlib call
+    against 0.005 ms for the same list unmarked, and the memo that fixed the
+    unmarked path did nothing for the marked one.
+
+    The walk here is what makes the unmarked fast path free, and it is affordable
+    exactly once: the wrapper strips whole arguments, so this runs per argument
+    rather than per element.
+    """
+    if not collect_marks_deep(value):
+        return value
+    return value._stripped
+
+
 def _strip(value: Any) -> Any:
     """A copy of `value` with every mark removed, at any depth.
 
-    Two shortcuts, both load-bearing. A value carrying no marks anywhere is
-    already its own stripped form and is returned untouched rather than
-    rebuilt. And the rebuilt copy is memoized, under the same immutability rule
-    as the mark memo, because the function wrapper strips every marked argument
-    on every call -- without this a marked 50k-element list cost 40 ms per
-    stdlib call against 0.005 ms for the same list unmarked, and the memo that
-    fixed the unmarked path did nothing for the marked one.
+    Iterative, over an explicit stack, for the reason `collect_marks_deep` is:
+    the two have to agree about how deep a value can be. `_strip` and
+    `_strip_uncached` used to call each other, so every level of nesting cost two
+    Python frames against CPython's 1000-frame ceiling and the strip gave out at
+    **330 levels where validate accepts 450 and the collector survives 900+**. A
+    value this package had just accepted could not be unmarked, and it failed as
+    a bare `RecursionError` -- not a `CtyError` -- out of `length()`, `upper()`
+    and every other stdlib function, since the framework strips every argument
+    before the implementation runs.
+
+    Post-order: a node is pushed back under `_STRIP_POST` and its children on
+    top, so by the time the sentinel is reached every child has an entry in
+    `results`. Nothing is collected mid-walk -- `children_of` holds each
+    snapshot and the caller holds the root -- so keying by `id()` is safe.
     """
     from pyvider.cty.values import CtyValue
 
     if not isinstance(value, CtyValue):
         return value
 
-    if not collect_marks_deep(value):
-        return value
+    shortcut = _stripped_without_descending(value)
+    if shortcut is not None:
+        return shortcut
 
-    cached = value._stripped
-    if cached is not None:
-        return cached
+    results: dict[int, Any] = {}
+    children_of: dict[int, Any] = {}
+    # The nodes between the root and the cursor. A child already on it is a
+    # cycle, which the recursive version met as a RecursionError and an
+    # iterative one would otherwise meet as a hang.
+    on_path: set[int] = set()
+    stack: list[Any] = [value]
 
-    result = _strip_uncached(value)
+    while stack:
+        node = stack.pop()
+
+        if node is _STRIP_POST:
+            _finish(stack.pop(), children_of, results, on_path)
+            continue
+
+        node_id = id(node)
+        if node_id in results:
+            continue
+
+        resolved, children = _resolve_or_children(node)
+        if resolved is not _DESCEND:
+            results[node_id] = resolved
+            continue
+
+        if node_id in on_path:
+            raise CtyValidationError(
+                "cannot unmark a value that contains itself",
+                value=node,
+                type_name=type(node.type).__name__,
+            )
+
+        on_path.add(node_id)
+        children_of[node_id] = children
+        stack.append(node)
+        stack.append(_STRIP_POST)
+        stack.extend(children.values() if isinstance(children, dict) else children)
+
+    return results[id(value)]
+
+
+def _resolve_or_children(node: Any) -> tuple[Any, Any]:
+    """`(stripped, None)` when `node` needs no descent, else `(_DESCEND, children)`.
+
+    Returns the children rather than letting the caller ask again, so a set --
+    whose `_children` snapshot fixes the order the rebuild runs against -- is
+    read exactly once.
+    """
+    from pyvider.cty.values import CtyValue
+
+    if not isinstance(node, CtyValue):
+        return node, None
+
+    shortcut = _already_stripped(node)
+    if shortcut is not None:
+        return shortcut, None
+
+    children = _children(node)
+    if children is None:
+        return (node.unmark()[0] if node.marks else node), None
+
+    return _DESCEND, children
+
+
+def _finish(node: Any, children_of: dict[int, Any], results: dict[int, Any], on_path: set[int]) -> None:
+    """Rebuild `node` now that every child has an entry in `results`."""
+    node_id = id(node)
+    on_path.discard(node_id)
+    rebuilt = _rebuild(node, children_of[node_id], results)
+    results[node_id] = rebuilt
     # `_deep_marks` is set only for a subtree the walk proved immutable, which
     # is exactly the condition under which this copy stays valid.
-    if value._deep_marks is not None:
-        object.__setattr__(value, "_stripped", result)
-    return result
+    if node._deep_marks is not None:
+        object.__setattr__(node, "_stripped", rebuilt)
 
 
-def _strip_uncached(value: Any) -> Any:
-    """The rebuild behind `_strip`, without its shortcuts."""
+def _rebuild(value: Any, children: Any, results: dict[int, Any]) -> Any:
+    """One node reassembled from its children's already-stripped forms.
+
+    `children` is the snapshot taken when the node was pushed rather than a
+    second `_children` call, so a set is rebuilt against the order it was read
+    in.
+    """
     from attrs import evolve
 
     from pyvider.cty.values import CtyValue
 
-    if not isinstance(value, CtyValue):
-        return value
-
-    children = _children(value)
     stripped = value.unmark()[0] if value.marks else value
-
-    if children is None:
-        return stripped
 
     # "Did anything change" is decided by identity, never by ==. CtyValue.__eq__
     # delegates to a CtyCapsuleWithOps' equal_fn, which compares payloads and
     # ignores marks entirely, so an equality check reports "unchanged" for a
     # capsule whose mark was just stripped and hands the caller back the marked
-    # value. _strip returns the input object itself when it has nothing to do,
+    # value. A node with nothing to do resolves to the input object itself,
     # which makes `is` an exact test.
     if isinstance(children, dict):
         from pyvider.cty.values.frozen import FrozenDict
 
-        rebuilt_map = {k: _strip(v) for k, v in children.items()}
+        rebuilt_map = {k: results[id(v)] for k, v in children.items()}
         if all(rebuilt_map[k] is v for k, v in children.items()):
             return stripped
         # Rebuilt frozen when the source was. `_strip` memoizes and hands every
@@ -299,12 +417,12 @@ def _strip_uncached(value: Any) -> Any:
         return evolve(stripped, value=payload)
 
     if isinstance(stripped.value, CtyValue):
-        rebuilt_inner = _strip(children[0])
+        rebuilt_inner = results[id(children[0])]
         if rebuilt_inner is children[0]:
             return stripped
         return evolve(stripped, value=rebuilt_inner)
 
-    rebuilt_seq = tuple(_strip(v) for v in children)
+    rebuilt_seq = tuple(results[id(v)] for v in children)
     if all(new is old for new, old in zip(rebuilt_seq, children, strict=True)):
         return stripped
     if isinstance(stripped.value, (frozenset, set)):
