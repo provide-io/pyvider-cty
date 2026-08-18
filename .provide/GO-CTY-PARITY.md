@@ -710,6 +710,58 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 
 ---
 
+## The second review's cut list, measured
+
+Every item run on 2026-08-18 rather than reasoned about. Four were fixed the
+same day; two more came out of reviewing those fixes. **Six of the remaining
+nine were not divergences at all** — which is the same lesson as *Verify before
+filing*, one review later.
+
+### Fixed
+
+| Item | Commit | What it actually was |
+|---|---|---|
+| `index`/`hasindex` truncate a fractional key | `a340880` | Wider: a non-finite key raised `OverflowError` from the same call, and **both** branches were wrong, list and tuple |
+| `pow(10, 1000000)` raises `decimal.Overflow` | `d8ec5a2` | Wider: go-cty computes `pow` in `float64`, so the magnitude and the range refusal diverged too |
+| `format('%d', +Inf)` panics | `eaff903` | Wider: five paths had no branch for a non-finite number, and the spelling itself was Python's -- `convert(+Inf, string)` was "Infinity", not "+Inf" |
+| `cty_to_native` sorts a set by `repr` | `d5ca364` | As filed. The sort ran over the converted natives, where its `isinstance` branch is unreachable |
+| `explicit._sort_key` vs `_member_key` bare `TypeError` | `a3cda32` | Confirmed, and **found by reviewing the fix above**: consolidating two copies of the rule without noticing the third spread the fault to `adapter`, which had not had it |
+
+### Real, open
+
+| Item | Measured |
+|---|---|
+| `marks` walk recursion ceiling | **330 for `unmark_deep`, against validation's 450.** A value that validates at depth 400 kills `length()` with a bare `RecursionError` -- not a `CtyError`. `collect_marks_deep` is iterative and survives 900+; the strip was never converted. Live, and the same taxonomy escape as the three fixed above |
+| `timeadd` at the datetime range ends | **Confirmed.** `timeadd("9999-12-31T23:59:59Z", "1h")` is `CtyFunctionPanicError: date value out of range`; go-cty answers `10000-01-01T00:59:59Z`. Same at the low end. Python's `datetime` is hard-capped at years 1-9999 and Go's `time.Time` spans ±292 billion, so fixing it means not using `datetime` |
+| `mark_paths` downgrades `FrozenDict` | **Confirmed, small.** A map's payload goes in as `FrozenDict` and comes out of `mark_with_paths` as a plain `dict`. Equality holds; hashability does not |
+| `stdlib_function` leaks `return_type` | **Confirmed.** The decorator is typed as an identity, so the framework-injected kwarg reaches callers: 4 errors on `flatten`/`chunklist`. `scripts/` has 20 mypy errors across 6 files and is not in the gate, which runs `src` only |
+
+### Not a divergence — measured, not argued
+
+| Item | What the measurement said |
+|---|---|
+| Unbounded `format` width | **go-cty is equally unbounded.** `strings.Repeat` allocates whatever is asked; at `%99999999999999999999s` go-cty panics with `makeslice: len out of range` and this raises `OverflowError`. A shared robustness property, not a gap |
+| Validation depth 496 -> 449 | **Already fixed and documented.** The constant derives from the real stack budget with an env override; measured constant 449, real ceiling 450 |
+| `validate` accepts an explicit `None` for a required attribute | **Matches go-cty.** A null is a legal value for any attribute there, and required-ness moved to `pyvider` deliberately. A *missing key* still raises, which is also go-cty's answer |
+| `mark_paths._apply` ignores a set `KeyStep` | **Moot.** `CtySet.validate` hoists element marks onto the set, so there is no per-element path to record -- the path is the root, and the round-trip is exact |
+| `json_codec`/`convert` normalise where msgpack does not | **All three agree, and agree with go-cty.** `1.50`->`1.5`, `1e2`->`100`, `0.1`->the string `"0.1"`, byte-identical to the oracle |
+| Four copies of `_unwrap_dynamic` | **No live fault.** A marked dynamic wrapper survives `collect_marks_deep`, `walk` and a stdlib call. One copy carries marks and three do not; a maintenance hazard, not a bug |
+| `can_convert_unsafe` duplicates `convert`'s matrix | **0 disagreements in 81 type pairs.** 86 lines mirroring 264. A maintenance hazard, not a bug |
+
+### Will not be fixed
+
+- **`pow`'s last ULP.** Go's `math.Pow` is not correctly rounded; the platform libm behind Python's is. Reproducing Go's rounding error is not parity worth having.
+- **The float64 wire spelling.** Recording that a number came from a `float64` is a change to how every number is stored, and the naive version is the bug `codec.py:296` exists to prevent.
+- **`divide`'s precision.** Needs a 512-bit binary float as the number representation. See decision 3.
+
+### Housekeeping, unchanged
+
+Four test files over the 500-line mark: `test_stdlib_sweep.py` (1001),
+`test_validate_preserves_marks.py` (540), `test_numeric_functions.py` (503),
+`test_conversion_oracle.py` (503). No gate in this repository enforces a cap.
+
+---
+
 ## Changelog
 
 | Date | Change |
