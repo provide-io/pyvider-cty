@@ -15,7 +15,7 @@ the full API mapping.
 
 ### Breaking Changes
 
-This release contains **43 breaking changes**. Read this list before
+This release contains **44 breaking changes**. Read this list before
 upgrading.
 
 #### Marks and value mutability
@@ -241,6 +241,18 @@ upgrading.
    go-cty's sets do. Set equality now matches go-cty: only *top-level*
    unknown elements defer, so two sets each holding a nested unknown but
    differing in a known part now answer `false`, not unknown.
+44. Converting a **set whose length is unknown** into a list now yields an
+   *unknown* list, refined `collection_length ∈ [1, store size]`, instead of
+   a known list of exactly the store's elements. A set holding an unknown may
+   coalesce — `{1, unknown}` can turn out to be one element — so a definite
+   length was a claim the data did not support, and `length()` on the source
+   and on the result openly contradicted each other. This is deliberately not
+   go-cty's answer either: go-cty returns a wholly-unknown list typed from the
+   *source's* element type, discarding the target, which yields a value that
+   does not conform to the schema the caller asked for. If you relied on the
+   converted list being known, guard on `is_unknown` or convert the elements
+   yourself.
+
 ### Added
 
 - Ported go-cty's `cty/function` framework: all 83 stdlib functions now
