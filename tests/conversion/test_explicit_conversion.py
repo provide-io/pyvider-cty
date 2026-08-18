@@ -62,7 +62,7 @@ class TestConvertFunction:
             # this conversion *is* `Text('f', -1)` (`conversion_primitive.go:16`).
             # `str(Decimal)` says "Infinity", which is a Python spelling and was
             # what this returned; confirmed against go-cty v1.19.0 by calling
-            # `stdlib.FormatFunc` with "%s" on `NumberFloatVal(math.Inf(1))`.
+            # the oracle -- `format("%s", {"$number":"Infinity"})`, a sweep row.
             (CtyValue(CtyNumber(), Decimal("Infinity")), CtyString(), "+Inf"),
             (CtyValue(CtyNumber(), Decimal("-Infinity")), CtyString(), "-Inf"),
             (CtyValue(CtyNumber(), Decimal("NaN")), CtyString(), "NaN"),

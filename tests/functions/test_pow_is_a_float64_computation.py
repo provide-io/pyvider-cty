@@ -21,9 +21,12 @@ different function, and it diverged in three ways at once. The third was a
 crash: `Decimal` raises `decimal.Overflow`, which is not a `CtyError`, so
 `pow(10, 1000000)` escaped the error taxonomy as a `CtyFunctionPanicError`.
 
-Every expectation below was read off go-cty v1.19.0, most through the soup-go
-oracle and the `-8 ** 0.5` and `-0.0 ** -1` rows through a Go program calling
-`stdlib.PowFunc` directly, since neither is expressible in the oracle's JSON.
+Every expectation below was read off go-cty v1.19.0 through the soup-go oracle,
+including `-8 ** 0.5` and `-0.0 ** -1`. An earlier version of this docstring
+said those two needed a hand-written Go program because they were "not
+expressible in the oracle's JSON" -- they are ordinary JSON numbers, and had
+been run through the oracle before that sentence was written. Both are sweep
+rows now, so the claim is checked rather than asserted.
 """
 
 from __future__ import annotations

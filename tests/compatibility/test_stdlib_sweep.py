@@ -68,6 +68,20 @@ def nm(v: Any) -> Arg:
     return CtyNumber().validate(v), {"type": "number", "value": v}
 
 
+def nm_inf(*, negative: bool = False) -> Arg:
+    """An infinite number, through the harness's rich dialect.
+
+    JSON has no spelling for one, so a plain `{"type":"number","value":...}`
+    cannot carry it -- which was believed to mean the oracle could not express
+    it at all, and the infinity work was checked against a hand-written Go
+    program instead. It can: `$number` takes the text `big.Float.Text` produces,
+    and the harness has round-tripped `Infinity` since its rich dialect landed.
+    These rows replace that program.
+    """
+    text = "-Infinity" if negative else "Infinity"
+    return CtyNumber().validate(Decimal(text)), {"type": "number", "value": {"$number": text}}
+
+
 def bl(v: bool) -> Arg:  # noqa: FBT001
     return CtyBool().validate(v), {"type": "bool", "value": v}
 
@@ -355,6 +369,7 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("pow", [nm(0), nm(0)]),
     ("pow", [nm(0), nm(-1)]),
     ("pow", [nm(-8), nm("0.5")]),
+    ("pow", [nm("-0.0"), nm(-1)]),
     ("log", [nm(8), nm(2)]),
     ("max", [nm(1), nm(5)]),
     ("max", [nm(-1), nm(-5)]),
@@ -608,6 +623,24 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("formatdate", [st("2006-01-02"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("'2006-01-02'"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("2006"), st("2020-01-02T03:04:05Z")]),
+    # An infinite number through every verb that renders one. go-cty spells it
+    # `+Inf` -- `big.Float.Text`'s answer -- where `str(Decimal)` says
+    # "Infinity", and the float verbs drop the zero flag for it while `%v` and
+    # `%s` keep it, because only the former delegate to Go's own fmt.
+    ("format", [st("%v"), nm_inf()]),
+    ("format", [st("%f"), nm_inf()]),
+    ("format", [st("%e"), nm_inf()]),
+    ("format", [st("%g"), nm_inf()]),
+    ("format", [st("%s"), nm_inf()]),
+    ("format", [st("%08.2f"), nm_inf()]),
+    ("format", [st("%08v"), nm_inf()]),
+    ("format", [st("%10.2f"), nm_inf()]),
+    ("format", [st("% f"), nm_inf()]),
+    ("format", [st("%v"), nm_inf(negative=True)]),
+    ("format", [st("%f"), nm_inf(negative=True)]),
+    ("format", [st("% f"), nm_inf(negative=True)]),
+    ("format", [st("%d"), nm_inf()]),
+    ("format", [st("%#v"), nm_inf()]),
     ("formatdate", [st("YYYY"), st("2020-01-02 03:04:05Z")]),
     # format
     ("format", [st("%s"), st("hi")]),
