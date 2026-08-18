@@ -759,6 +759,15 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # a non-terminating quotient comes back with 155 significant digits against
     # Decimal's 28-digit default context. Neither is a wrong answer.
     #
+    # **Closed as a decision on 2026-08-18, not left open.** Matching it is a
+    # representation change rather than a precision setting -- go-cty's answer
+    # ends ...335 because it is a 512-bit *binary* float printed exactly, and a
+    # decimal division ends ...333 at any precision -- so it costs a new
+    # dependency and a rewrite of CtyValue's payload. Measured the same day:
+    # nothing in the workspace consumes this function, and pyvider-components
+    # implements its own `divide` rather than delegating. Reopen on evidence of
+    # a real provider being bitten.
+    #
     # `pow(2, 0.5)` used to sit here on the same reasoning and did not belong.
     # go-cty computes `pow` in float64, so its 17 digits are not a rounder
     # version of the answer this package gave -- they *are* the answer, and being
