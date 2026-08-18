@@ -26,7 +26,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from pyvider.cty.path import CtyPath, GetAttrStep, IndexStep, KeyStep
-from pyvider.cty.types import CtyList, CtyMap, CtyObject, CtySet, CtyTuple
+from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtyObject, CtySet, CtyTuple
 from pyvider.cty.values import CtyValue
 
 __all__ = ["PathMarks", "mark_with_paths", "unmark_deep_with_paths"]
@@ -78,12 +78,32 @@ def _strip(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[An
     if payload is None:
         return value
 
+    if isinstance(value.type, CtyDynamic) and isinstance(payload, CtyValue):
+        # This package wraps a dynamic value in a CtyValue whose payload is
+        # another CtyValue; go-cty has no such wrapper. Without this branch the
+        # walk stopped at the wrapper and reported no marks for anything inside
+        # it, so a strip-serialize-restore round trip -- the reason this module
+        # exists -- handed the codec a value it then refused. The inner value's
+        # marks are recorded at this same path, because the wrapper is
+        # representation rather than structure.
+        inner = _strip(payload, path, found)
+        return value if inner is payload else _evolved(value, inner)
+
     if isinstance(value.type, CtyList | CtyTuple):
         elements = cast("tuple[CtyValue[Any], ...]", payload)
         rebuilt = tuple(
             _strip(element, path.index_step(index), found) for index, element in enumerate(elements)
         )
-        return value if rebuilt == elements else _evolved(value, rebuilt)
+        # Identity, not equality. CtyValue.__eq__ delegates to a capsule's
+        # equal_fn, which compares payloads and can ignore marks entirely, so
+        # `==` reported "unchanged" for an element whose mark had just been
+        # stripped and handed back the marked original -- while `found` recorded
+        # the mark as removed. _strip returns its input unchanged when it has
+        # nothing to do, which makes `is` exact where `==` is not.
+        unchanged = len(rebuilt) == len(elements) and all(
+            new is old for new, old in zip(rebuilt, elements, strict=True)
+        )
+        return value if unchanged else _evolved(value, rebuilt)
 
     if isinstance(value.type, CtyMap | CtyObject):
         items = cast("dict[str, CtyValue[Any]]", payload)
@@ -91,7 +111,10 @@ def _strip(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[An
         rebuilt_map = {
             key: _strip(element, path.with_step(step(key)), found) for key, element in items.items()
         }
-        return value if rebuilt_map == items else _evolved(value, rebuilt_map)
+        unchanged_map = rebuilt_map.keys() == items.keys() and all(
+            rebuilt_map[key] is items[key] for key in items
+        )
+        return value if unchanged_map else _evolved(value, rebuilt_map)
 
     if isinstance(value.type, CtySet):
         # A set's elements are not addressable by a stable path: marking one
@@ -141,6 +164,14 @@ def _apply(value: CtyValue[Any], steps: tuple[Any, ...], marks: frozenset[Any]) 
     payload = value.value
     if payload is None:
         return value
+
+    # See through the dynamic wrapper, as _strip now does. The path recorded on
+    # the way out does not mention the wrapper -- it is representation, not
+    # structure -- so the way back in has to skip it too, or a strip/restore
+    # round trip silently returns an unmarked value while reporting success.
+    if isinstance(value.type, CtyDynamic) and isinstance(payload, CtyValue):
+        rebuilt = _apply(payload, steps, marks)
+        return value if rebuilt is payload else _evolved(value, rebuilt)
 
     if isinstance(head, IndexStep) and isinstance(payload, tuple):
         if not 0 <= head.index < len(payload):
