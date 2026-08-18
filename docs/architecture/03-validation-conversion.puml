@@ -1,0 +1,165 @@
+@startuml 03-validation-conversion
+!include _theme.iuml
+
+title Two pipelines that get confused for one — validate() takes raw Python in; convert() moves an existing value between cty types
+
+skinparam ConditionEndStyle hline
+skinparam ArrowFontSize 11
+
+partition "**validate()** — a raw Python object becomes a CtyValue" {
+start
+:a raw Python object —
+dict, list, str, Decimal,
+or an existing CtyValue;
+:**CtyType.validate(value)**;
+
+if (does this type recurse?) then (**no**: bool, number,\nstring, capsule)
+  :**@preserves_marks**
+  one frame, spent once, at the
+  bottom of the descent; <<#DCE9F6>>
+else (**yes**: list, set, map,\nobject, tuple, dynamic)
+  :**@with_recursion_detection**
+  two frames per nesting level — and that
+  number is published, because the advertised
+  depth limit is derived from it; <<#FADFE5>>
+  :get_recursion_context()
+  //a thread-local RecursionContext//;
+  if (validation_path empty?) then (yes — top-level call)
+    :context.reset();
+  else (no — we are inside a descent)
+  endif
+  :push a depth marker onto validation_path;
+  if (does the guard allow this value?) then (no)
+    :**stop the whole descent.**
+    Return an unknown of the source type
+    carrying collect_marks_deep(value); <<#F5D9D9>>
+    stop
+  else (yes)
+  endif
+  note right
+    **The guard refuses for four reasons**, checked in
+    this order — a nested call has already stopped;
+    every 64th call, elapsed > max_validation_time_ms;
+    depth > max_depth_allowed; or id(value) has been
+    seen more than max_object_revisits times, which is
+    a circular reference. Primitives and flat sequences
+    of them skip the cycle counter — it is not free,
+    and neither can close a cycle.
+    ----
+    **Every refusal still carries the marks.** Stopping is
+    exactly when a value must not lose its sensitivity:
+    the caller gets an unknown either way, and an
+    unmarked unknown is the silent declassification the
+    whole mechanism exists to prevent.
+  end note
+endif
+
+:run the type's own validate body;
+note right
+  A collection validates each element through its
+  **element_type**; an object through its **attribute_types**;
+  a tuple positionally. CtyDynamic infers a concrete
+  type first and then delegates to //that// type's
+  validate — the one extra guard entry that
+  DYNAMIC_DELEGATION_RESERVE exists to pay for.
+end note
+
+if (a RecursionError escaped?) then (yes)
+  if (did the stack run out inside pyvider.cty's own frames,\n//and// is validation_path at least MIN_OWNED_OVERFLOW_DEPTH?) then (no)
+    :**re-raise.** Someone else's overflow is a broken
+    input, and turning it into an unknown would make it
+    indistinguishable from a legitimately undecided value; <<#F5D9D9>>
+    kill
+  else (yes — this descent is what exhausted the stack)
+    :degrade to an unknown carrying the deep marks; <<#F5D9D9>>
+  endif
+else (no)
+endif
+
+:**reapply_marks(source, result)**
+the rule stated once: if the input was a marked
+CtyValue, the output carries the same marks; <<#D9EDE1>>
+:pop the depth marker (in a finally); <<#E7E9EE>>
+:a **CtyValue** of this type;
+stop
+}
+
+partition "**convert()** and **unify()** — moving between cty types" {
+start
+:**convert(value, target_type)**
+//wrapped in an error_boundary recording source type,//
+//target type, nullness and unknown-ness//;
+
+if (value.type equals target,\nor target with its optional\nattributes stripped?) then (yes)
+  :return the value untouched — optionality is a
+  property of a type //constraint//, not of a value; <<#D9EDE1>>
+  stop
+else (no)
+endif
+
+if (is the value null or unknown?) then (yes)
+  if (can_convert_unsafe(source, target)?) then (no)
+    :**CtyConversionError.**
+    Nullness is not part of a cty type, so a null
+    list is no more a string than a populated one; <<#F5D9D9>>
+    kill
+  else (yes)
+    :a null, or an unknown, **of the target type**; <<#D9EDE1>>
+    stop
+  endif
+else (no — a known value)
+endif
+
+:**the conversion table, in this order**
+1. target is a capsule with convert_to_fn — the
+destination decides first, which only matters
+when both ends are capsules
+2. source is a capsule with convert_fn
+3. source is dynamic → convert what it wraps
+4. target is dynamic → the value, marks intact
+5. to string: **from number or bool only**
+6. to number: from string or number
+7. to bool: from "true"/"1"/"false"/"0", exact case
+8. collections, tuples, objects: element by element;
+
+:carry the source's marks onto the result; <<#D9EDE1>>
+:a **CtyValue** of the target type;
+stop
+}
+
+partition "the two type-level questions convert() rests on" {
+start
+:**can_convert_unsafe(source, target) : bool**
+//lru_cache(1024) — types only, no value//;
+note right
+  go-cty's GetConversionUnsafe as a predicate.
+  **"Unsafe" is go-cty's word for a conversion that depends**
+  **on the value as well as the type**: every string has a
+  number type available to it, but only some strings are
+  numbers. This library exposes the unsafe predicate
+  only — there is no safe-only variant — so the
+  safe/unsafe split shows up here as the difference
+  between what the types permit and what convert()
+  can actually pull off on the day.
+end note
+:**unify(types) : CtyType | None**
+//lru_cache(1024), via compare_types + sort_types//;
+note right
+  Decides the element type of every set operation,
+  of concat, of chunklist over a tuple, and of
+  setproduct's tuple arguments — so unifying
+  differently disagrees with go-cty across a whole
+  family of functions at once.
+  ----
+  **None, not dynamic, for "no common type".** Dynamic is
+  a real answer — it is what a group of collections
+  containing a dynamic unifies to — so using it for
+  failure made an error indistinguishable from a
+  result. _unify_by_preference then asks
+  can_convert_unsafe, which is why the two must
+  agree exactly.
+end note
+stop
+}
+
+@enduml

@@ -145,6 +145,9 @@ nav:
     - Create Custom Types: how-to/create-custom-types.md
     - Migrate from go-cty: how-to/migrate-from-go-cty.md
 
+  - Architecture:
+    - architecture/index.md
+
   - API Reference:
     - api/index.md
     - Types:
@@ -159,9 +162,11 @@ nav:
     - Functions: api/functions.md
     - Path Navigation: api/path.md
     - Validation: api/validation.md
+    - Type Parsing: api/parser.md
     - Context: api/context.md
 
   - Reference:
+    - Configuration: reference/configuration.md
     - Troubleshooting: reference/troubleshooting.md
     - Glossary: reference/glossary.md
     - go-cty Comparison: reference/go-cty-comparison.md

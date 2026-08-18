@@ -1,0 +1,161 @@
+@startuml 01-type-system
+!include _theme.iuml
+
+title The CtyType hierarchy — what each type carries, and the four questions all of them answer
+
+hide empty members
+skinparam nodesep 16
+skinparam ranksep 40
+
+abstract class "CtyType[T]" as CtyType <<core>> {
+  {static} ctype : ClassVar[str | None] = None
+  {static} _type_order : ClassVar[int] = 99
+  ..the four abstract methods..
+  {abstract} validate(value) : CtyValue[T]
+  {abstract} equal(other) : bool
+  {abstract} usable_as(other) : bool
+  {abstract} _to_wire_json() : Any
+  ..supplied for every subclass..
+  unknown_like(value) : CtyValue[T]
+  unknown_marker(value) : CtyValue[T] | None
+  is_primitive_type() / is_dynamic_type()
+  __eq__ delegates to equal()
+  __hash__ = hash(repr)
+}
+
+class CtyNumber <<primitive>> {
+  ctype "number" · order 0
+  --
+  validate: to Decimal
+  <i>@preserves_marks</i>
+  wire: "number"
+}
+class CtyString <<primitive>> {
+  ctype "string" · order 1
+  --
+  validate: NFC-normalised str
+  <i>@preserves_marks</i>
+  wire: "string"
+}
+class CtyBool <<primitive>> {
+  ctype "bool" · order 2
+  --
+  validate: bool
+  <i>@preserves_marks</i>
+  wire: "bool"
+}
+
+class "CtySet[T]" as CtySet <<collection>> {
+  **element_type** : CtyType[T]
+  ctype "set" · order 4
+  --
+  <i>@with_recursion_detection</i>
+  de-duped by canonical key
+  wire: ["set", element]
+}
+class "CtyList[T]" as CtyList <<collection>> {
+  **element_type** : CtyType[T]
+  ctype "list" · order 5
+  --
+  <i>@with_recursion_detection</i>
+  element_at(container, index)
+  wire: ["list", element]
+}
+class "CtyMap[V]" as CtyMap <<collection>> {
+  **element_type** : CtyType[V]
+  ctype "map" · order 6
+  --
+  <i>@with_recursion_detection</i>
+  get(container, key)
+  wire: ["map", element]
+}
+
+class CtyTuple <<structural>> {
+  **element_types** : tuple[CtyType,...]
+  ctype "tuple" · order 3
+  --
+  <i>@with_recursion_detection</i>
+  element_at(value, index) · slice()
+  wire: ["tuple", [elements]]
+}
+class CtyObject <<structural>> {
+  **attribute_types** : dict[str, CtyType]
+  **optional_attributes** : frozenset[str]
+  ctype "object" · order 7
+  --
+  <i>@with_recursion_detection</i>
+  get_attribute() · has_attribute()
+  wire: ["object", attrs, optional?]
+}
+
+class CtyCapsule <<capsule>> {
+  **name** : str
+  **py_type** : type
+  order 8 · ctype stays None
+  --
+  validate: isinstance(py_type)
+  <i>@preserves_marks</i>
+  wire: None — no wire form
+}
+class CtyCapsuleWithOps <<capsule>> {
+  equal_fn · raw_equals_fn
+  hash_fn · extension_data_fn
+  convert_fn · convert_to_fn
+  --
+  every op's arity checked
+  at construction, not at use
+}
+class BytesCapsule <<capsule>> {
+  the one ready-made instance:
+  CtyCapsule("Bytes", bytes)
+}
+
+class CtyDynamic <<dynamic>> {
+  carries nothing: it //is//
+  the absence of a type
+  ctype "dynamic" · order 9
+  --
+  <i>@with_recursion_detection</i>
+  validate infers a type and
+  wraps that concrete CtyValue
+  wire: "dynamic"
+}
+
+CtyType <|-- CtyNumber
+CtyType <|-- CtySet
+CtyType <|-- CtyTuple
+CtyType <|-- CtyCapsule
+CtyType <|-- CtyDynamic
+CtyType <|-- CtyString
+CtyType <|-- CtyList
+CtyType <|-- CtyObject
+CtyType <|-- CtyBool
+CtyType <|-- CtyMap
+CtyCapsule <|-- CtyCapsuleWithOps
+CtyCapsule <.. BytesCapsule : instance of
+
+CtyNumber -[hidden]down- CtyString
+CtyString -[hidden]down- CtyBool
+CtySet -[hidden]down- CtyList
+CtyList -[hidden]down- CtyMap
+CtyTuple -[hidden]down- CtyObject
+CtyObject -[hidden]down- CtyDynamic
+CtyCapsule -[hidden]down- CtyCapsuleWithOps
+CtyCapsuleWithOps -[hidden]down- BytesCapsule
+
+legend bottom
+  |<#FCEFCF> **the four abstract methods** |= |
+  | **validate** | raw Python into a CtyValue |
+  | **equal** | identity — is this the same type |
+  | **usable_as** | substitutability — may a value of this type stand in for that one |
+  | **_to_wire_json** | the tfplugin6 type constraint Terraform is sent |
+  | **_type_order** | go-cty's set-sort rank — it decides the order a set reaches the wire in |
+  |<#EFF1F5> **colour** |= |
+  |<#DCE9F6> **primitive** | a leaf — validate cannot recurse, so @preserves_marks is affordable |
+  |<#D9EDE1> **collection** | one homogeneous element_type, any number of elements |
+  |<#E9DFF6> **structural** | a fixed shape: named attributes, or a fixed number of positions |
+  |<#F7E6D3> **capsule** | an opaque native Python object — no wire form, so never serialized |
+  |<#FADFE5> **dynamic** | the type is decided when a value is validated, not when declared |
+endlegend
+
+@enduml

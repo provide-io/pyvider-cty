@@ -1,0 +1,190 @@
+' Shared look for every pyvider-cty architecture diagram.
+'
+' Included by every .puml in this directory so the eight diagrams cannot drift
+' apart. If a colour or a font needs to change, it changes here once.
+'
+' Colour policy: the docs site has a light/dark toggle, and a rendered SVG is
+' not re-themed by it. Free-floating text -- arrow labels above all -- therefore
+' has no background of its own to stay legible against. So every diagram bakes
+' in an opaque near-white "figure card" ground and dark ink on top of it: the
+' page changes colour around the figure, the figure itself does not, and every
+' glyph keeps the same 12:1 contrast in both themes.
+
+@startuml
+skinparam backgroundColor #F7F8FA
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam defaultFontColor #1F2430
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam dpi 110
+skinparam nodesep 22
+skinparam ranksep 34
+
+skinparam ArrowColor #56607A
+skinparam ArrowFontColor #333B4F
+skinparam ArrowFontSize 12
+skinparam ArrowThickness 1.1
+
+skinparam TitleFontSize 17
+skinparam TitleFontColor #1F2430
+skinparam TitleFontStyle bold
+
+skinparam NoteBackgroundColor #FFF8E2
+skinparam NoteBorderColor #D9C486
+skinparam NoteFontColor #453C22
+skinparam NoteFontSize 12
+
+skinparam LegendBackgroundColor #EFF1F5
+skinparam LegendBorderColor #B7BECD
+skinparam LegendFontSize 12
+
+' -- semantic roles, used identically in all eight diagrams ------------------
+'   primitive   bool / number / string, and anything leaf-like
+'   collection  list / set / map
+'   structural  object / tuple
+'   capsule     escape hatch to a native Python object
+'   dynamic     the undecided type, and anything about unknowns
+'   core        the central abstraction of a diagram
+'   plumbing    supporting machinery
+'   external    something outside this library
+
+skinparam class {
+  FontColor #1F2430
+  AttributeFontColor #333B4F
+  AttributeFontSize 12
+  StereotypeFontSize 11
+  StereotypeFontColor #5C6478
+
+  BackgroundColor #EFF1F5
+  BorderColor #98A0B0
+
+  BackgroundColor<<primitive>>  #DCE9F6
+  BorderColor<<primitive>>      #6E93B8
+  BackgroundColor<<collection>> #D9EDE1
+  BorderColor<<collection>>     #6BA184
+  BackgroundColor<<structural>> #E9DFF6
+  BorderColor<<structural>>     #9A81C0
+  BackgroundColor<<capsule>>    #F7E6D3
+  BorderColor<<capsule>>        #C39A6C
+  BackgroundColor<<dynamic>>    #FADFE5
+  BorderColor<<dynamic>>        #C98897
+  BackgroundColor<<core>>       #FCEFCF
+  BorderColor<<core>>           #C9A94E
+  BackgroundColor<<plumbing>>   #E7E9EE
+  BorderColor<<plumbing>>       #98A0B0
+  BackgroundColor<<external>>   #E2E4E9
+  BorderColor<<external>>       #8C93A3
+}
+
+skinparam component {
+  FontColor #1F2430
+  StereotypeFontSize 11
+  StereotypeFontColor #5C6478
+  BackgroundColor #EFF1F5
+  BorderColor #98A0B0
+  BackgroundColor<<primitive>>  #DCE9F6
+  BorderColor<<primitive>>      #6E93B8
+  BackgroundColor<<collection>> #D9EDE1
+  BorderColor<<collection>>     #6BA184
+  BackgroundColor<<structural>> #E9DFF6
+  BorderColor<<structural>>     #9A81C0
+  BackgroundColor<<capsule>>    #F7E6D3
+  BorderColor<<capsule>>        #C39A6C
+  BackgroundColor<<dynamic>>    #FADFE5
+  BorderColor<<dynamic>>        #C98897
+  BackgroundColor<<core>>       #FCEFCF
+  BorderColor<<core>>           #C9A94E
+  BackgroundColor<<plumbing>>   #E7E9EE
+  BorderColor<<plumbing>>       #98A0B0
+  BackgroundColor<<external>>   #E2E4E9
+  BorderColor<<external>>       #8C93A3
+}
+
+skinparam rectangle {
+  FontColor #1F2430
+  StereotypeFontSize 11
+  StereotypeFontColor #5C6478
+  BackgroundColor #EFF1F5
+  BorderColor #98A0B0
+  BackgroundColor<<primitive>>  #DCE9F6
+  BorderColor<<primitive>>      #6E93B8
+  BackgroundColor<<collection>> #D9EDE1
+  BorderColor<<collection>>     #6BA184
+  BackgroundColor<<structural>> #E9DFF6
+  BorderColor<<structural>>     #9A81C0
+  BackgroundColor<<capsule>>    #F7E6D3
+  BorderColor<<capsule>>        #C39A6C
+  BackgroundColor<<dynamic>>    #FADFE5
+  BorderColor<<dynamic>>        #C98897
+  BackgroundColor<<core>>       #FCEFCF
+  BorderColor<<core>>           #C9A94E
+  BackgroundColor<<plumbing>>   #E7E9EE
+  BorderColor<<plumbing>>       #98A0B0
+  BackgroundColor<<external>>   #E2E4E9
+  BorderColor<<external>>       #8C93A3
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #B7BECD
+  FontColor #333B4F
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam activity {
+  FontColor #1F2430
+  BackgroundColor #DCE9F6
+  BorderColor #6E93B8
+  DiamondBackgroundColor #FCEFCF
+  DiamondBorderColor #C9A94E
+  DiamondFontColor #1F2430
+  StartColor #56607A
+  EndColor #56607A
+  BarColor #56607A
+}
+
+skinparam sequence {
+  ArrowColor #56607A
+  ArrowFontColor #333B4F
+  LifeLineBorderColor #A6AEBF
+  LifeLineBackgroundColor #E7E9EE
+  ParticipantBackgroundColor #DCE9F6
+  ParticipantBorderColor #6E93B8
+  ParticipantFontColor #1F2430
+  ParticipantFontStyle bold
+  ActorBackgroundColor #EFF1F5
+  ActorBorderColor #98A0B0
+  BoxBackgroundColor #FFFFFF
+  BoxBorderColor #B7BECD
+  BoxFontColor #333B4F
+  GroupBackgroundColor #EFF1F5
+  GroupBorderColor #98A0B0
+  GroupHeaderFontColor #333B4F
+  GroupHeaderFontSize 12
+  GroupBodyBackgroundColor #FDFDFE
+  DividerBackgroundColor #E7E9EE
+  DividerBorderColor #98A0B0
+  DividerFontColor #333B4F
+  ReferenceBackgroundColor #FFF8E2
+}
+
+skinparam database {
+  BackgroundColor #E7E9EE
+  BorderColor #98A0B0
+  FontColor #1F2430
+}
+
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #B7BECD
+  FontColor #333B4F
+}
+
+skinparam queue {
+  BackgroundColor #E7E9EE
+  BorderColor #98A0B0
+  FontColor #1F2430
+}
+@enduml

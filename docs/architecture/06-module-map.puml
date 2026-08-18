@@ -1,0 +1,114 @@
+@startuml 06-module-map
+!include _theme.iuml
+
+title The packages under src/pyvider/cty, and which way the imports actually point
+
+skinparam nodesep 18
+skinparam ranksep 32
+skinparam rectangleFontSize 12
+
+rectangle "**functions/**   //the top of the library//\nthe framework: _function.py — CtyFunction, CtyFunctionSpec,\nCtyParameter, RefineResult · _args · _marks · _unknowns · _framework\nthe stdlib: 83 functions over bool, bytes, collection, comparison,\nconversion, datetime, encoding, format, numeric, set, string, structural" as FUNCS <<core>>
+
+rectangle "**pyvider.cty**   //the public surface//\nre-exports the types, CtyValue, convert and unify, both codecs,\nthe parser, refine, the mark and path helpers, walk, conformance" as ROOT <<core>>
+
+rectangle "**the wire modules**\ncodec.py — msgpack\njson_codec.py — cty/json" as WIRE <<capsule>>
+
+rectangle "**the value-level modules**\nmarks.py · mark_paths.py · walk.py · unknown.py\nvalue_range.py · conformance.py · refinement.py\nparser.py · graphemes.py" as VMODS <<capsule>>
+
+rectangle "**conversion/**\nexplicit — convert, can_convert_unsafe\nunify · raw_to_cty · adapter\ntype_encoder · inference_cache" as CONV <<plumbing>>
+
+rectangle "**types/**\nbase · primitives · collections\nstructural · capsule" as TYPES <<structural>>
+
+rectangle "**path/**\nCtyPath · GetAttrStep\nIndexStep · KeyStep" as PATH <<structural>>
+
+rectangle "**validation/**\nrecursion — the guard\nmarks — preserves_marks" as VALID <<collection>>
+
+rectangle "**values/**\nbase — CtyValue\nmarkers — UnknownValue, RefinedUnknownValue\nequality · frozen" as VALUES <<primitive>>
+
+rectangle "**exceptions/**\nbase · validation · conversion · encoding\n//no runtime cty imports at all//" as EXC <<plumbing>>
+rectangle "**config/**\ndefaults · runtime\n//every constant lives here//" as CONFIG <<plumbing>>
+rectangle "**_unicode/**\ncase · grapheme\n+ generated tables" as UNI <<plumbing>>
+rectangle "**context/**\nvalidation_context" as CTX <<plumbing>>
+
+FUNCS --> ROOT
+ROOT --> WIRE
+ROOT --> VMODS
+ROOT --> CONV
+ROOT --> TYPES
+ROOT --> VALUES
+
+WIRE --> CONV
+WIRE --> VMODS
+WIRE --> TYPES
+WIRE --> VALUES
+
+VMODS --> TYPES
+VMODS --> VALUES
+VMODS --> PATH
+VMODS --> UNI
+
+CONV --> TYPES
+CONV --> VALUES
+CONV --> EXC
+CONV --> CONFIG
+
+TYPES --> VALID
+TYPES --> VALUES
+TYPES --> EXC
+TYPES -[#C08787]-> PATH
+PATH -[#C08787]-> TYPES
+TYPES -[#C08787]-> CONV
+
+PATH --> VALUES
+PATH --> EXC
+VALUES --> CONFIG
+VALID --> CONFIG
+CTX --> CONFIG
+VALUES -[#98A0B0,dashed]-> TYPES
+
+note left of VALUES
+  **values sits below types, and that is deliberate.**
+  values/ imports types/ **nowhere** at module scope —
+  only under TYPE_CHECKING, and from inside 21
+  function bodies. types/ imports values/ at module
+  scope and freely. The dashed edge is the lazy
+  direction, and CtyValue's own source says why:
+  "base.py keeps CtyValue as a TYPE_CHECKING-only
+  forward reference to avoid an import cycle, so the
+  name does not exist at runtime."
+end note
+
+note right of PATH
+  **Two module-scope cycles do exist**, drawn in red.
+  types/ imports path/ from list, map, object and
+  tuple — for the CtyPath in a validation error —
+  while path/base.py imports CtyType and CtyValue
+  straight back. Separately, types/structural/
+  object.py imports conversion/_utils while
+  conversion imports types wholesale.
+  ----
+  Both survive because the types package binds
+  CtyType before it imports the subpackages that
+  reach back. Every subpackage still imports cleanly
+  as an entry point on its own — checked, one fresh
+  interpreter each.
+end note
+
+note right of FUNCS
+  **functions/ is the only package that imports from**
+  **the package root**, and it does so 11 times.
+  Everything else imports the specific module it
+  needs. That is the layering rule the code actually
+  obeys: the stdlib sits on top of the whole library,
+  and nothing sits on top of the stdlib.
+end note
+
+legend bottom
+  |= |= reading the arrows |
+  | **solid** | a module-scope import, taken at load time — the arrow points the way the dependency runs. |
+  | **dashed grey** | reached only under TYPE_CHECKING, or from inside a function body. No load-time dependency. |
+  | **red** | a module-scope cycle between two packages. |
+  | | The two group boxes — the wire modules, the value-level modules — are top-level .py files\nrather than packages, collected so the graph stays about packages; their arrows are the union of\nthe group's real imports. Everything here came from the AST of every file under src/pyvider/cty,\nnot from the docstrings, counting TYPE_CHECKING and function-local imports separately. |
+endlegend
+
+@enduml

@@ -1,0 +1,88 @@
+@startuml 04-function-call-sequence
+!include _theme.iuml
+
+title CtyFunction.call() — go-cty's order of operations, step for step
+
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 260
+skinparam BoxPadding 6
+
+actor "caller" as C
+participant "**CtyFunction**\ncall()" as F <<core>>
+participant "_prepare() and\n_check_argument()" as P
+participant "spec.type_func\nspec.impl" as S
+participant "conformance\n_errors()" as K
+participant "_refine()\nRefinementBuilder" as R
+
+C -> F : call(args)
+activate F
+F -> P : _prepare(args)
+activate P
+
+== 1 · arity ==
+P -> P : fixed: len(args) != len(params)\nvariadic: len(args) < len(params)\neither -> **CtyFunctionError**  //[i]//
+
+== 2 · every argument, left to right ==
+loop for index, arg in enumerate(args)
+  P -> P : **a.** _unwrap_dynamic(arg)  //[ii]//
+  P -> P : **b.** _strip unless param.allow_marked  //[iii]//
+  P -> P : **c.** null and not allow_null\n-> **CtyArgumentError(index)**
+  P -> P : **d.** still dynamically typed?\nvague = not param.allow_dynamic_type
+  P -> K : **e.** conformance_errors(value.type, param.type)
+  K --> P : error -> **CtyArgumentError(index, errors[0])**
+end
+group#F5D9D9 the early return, at the **first** vague argument  //[iv]//
+  P -[#C08787]> P : unwrap the rest, **check none of them**,\nand answer (CtyDynamic(), dynamically_typed=True)
+end
+
+== 3 · the type callback ==
+P -> S : spec.type_func(prepared)  //[v]//
+S --> P : return_type
+P --> F : (return_type, dynamically_typed, prepared)
+deactivate P
+
+== 4 · mark collection, over **every** argument ==
+loop for index, value in enumerate(prepared)
+  F -> F : not allow_marked and _arg_marks(**args[index]**)?\n  result_marks |= marks\n  arguments[index] = _strip(value)  //[vi]//
+  F -> F : value.is_unknown and not allow_unknown?\n  return_unknown = True
+end
+
+alt **return_unknown** — dynamically_typed, or an unknown\nwhose parameter does not admit unknowns
+  F -[#6E93B8]> R : _refine(CtyValue.unknown(**return_type**)\n  .with_marks(result_marks))  //[vii]//
+  R --> F : an unknown **of the declared return type**
+
+else the implementation runs
+  == 5 · implementation ==
+  F -> S : spec.impl(arguments, return_type)
+  S --> F : result
+  == 6 · re-mark ==
+  F -> F : if result_marks:\n  result = result.with_marks(result_marks)
+  == 7 · result conformance ==
+  F -> K : conformance_errors(result.type, return_type)
+  K --> F : error -> **CtyFunctionPanicError**  //[viii]//
+end
+
+== 8 · RefineResult, reached on **both** paths ==
+F -> R : _refine(value)
+R -> R : refine_result is None -> the value, unchanged
+R -[#C08787]> R : **unknown, and its type is exactly CtyDynamic**\n**-> skip the refinement**  //[ix]//
+R -> R : otherwise\nrefine_result(refine(value)).new_value()  //[x]//
+R --> F : refined result
+F --> C : result
+deactivate F
+
+legend bottom
+  |= |= why each step is the way it is |
+  | **[i]** | The two messages differ on purpose: "N required" for a fixed-arity\nfunction, "at least N required" for a variadic one. |
+  | **[ii]** | Representation, not policy — so it is unconditional and **not** governed by\nallow_dynamic_type. go-cty has no wrapper around a dynamic-typed value, so the\nwrapper has to come off before any type check, or the check asks a different\nquestion from go-cty's. Each removed wrapper's marks move onto what it wrapped:\nin go-cty those marks would already be on the value, so dropping them here would\ndeclassify a value merely for arriving through a dynamic slot. |
+  | **[iii]** | The marks are discarded here because the call collects them separately in\nstep 4, and a Type callback that consulted marks would make the return type\ndepend on sensitivity. Note also: **allow_unknown is not consulted in step 2**\nat all. A return type has to be computable from unknown values, which is\nthe whole point of computing it separately from the answer. |
+  | **[iv]** | go-cty returns the moment it meets an inexactly typed argument.\n**The later arguments are never checked at all**, so a null or a mistyped value\n//after// a DynamicVal is not an error — the call is already decided to be\nDynamicVal. Checking them anyway failed 20 of the 83 stdlib functions on\nf(DynamicVal, null), a call Terraform accepts. |
+  | **[v]** | A CtyError, CtyValidationError or RecursionError out of type_func passes\n**straight through**: that is the function answering. Anything else becomes\n**CtyFunctionPanicError**, so a bare TypeError cannot escape a caller's\nexcept CtyFunctionError and reach Terraform as a provider crash. spec.impl is\nguarded identically. |
+  | **[vi]** | Marks are read off the **original** argument, not the prepared one, and are\ncollected even when the answer is already known to be unknown. Losing a mark is\na silent declassification, and an unknown value is still sensitive. |
+  | **[vii]** | The short-circuit returns an unknown **of the declared return type**, which\nis what makes upper(unknown) an unknown //string// rather than an unknown\ndynamic. The implementation never runs. |
+  | **[viii]** | go-cty panics here rather than returning an error: a result that does not\nmatch the type its own Type callback promised is a bug in the function, not in\nthe call, and callers are entitled not to handle it. |
+  | **[ix]** | There is no type yet for a refinement to be about, and the gate is on the\n**result**, not the arguments: jsondecode of an unknown string returns an unknown\n//dynamic// from perfectly concrete arguments, and refining it anyway was measured\nas a divergence against regex, concat, merge and csvdecode. |
+  | **[x]** | Refinement runs on the known path too. Refining a known value is a claim the\nbuilder **checks**, not information it records — which is what makes an\ninconsistent declaration fail loudly instead of only on the day an argument\nhappens to be unknown. |
+endlegend
+
+@enduml

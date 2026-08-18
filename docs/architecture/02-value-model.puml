@@ -1,0 +1,154 @@
+@startuml 02-value-model
+!include _theme.iuml
+
+title CtyValue — one class, three mutually exclusive states, and marks orthogonal to all three
+
+hide empty members
+skinparam nodesep 18
+skinparam ranksep 30
+
+class "CtyValue[T]" as CtyValue <<core>> {
+  **vtype** : CtyType[T]
+  **value** : object | None = None
+  **is_unknown** : bool = False
+  **is_null** : bool = False
+  **marks** : frozenset[Any] = frozenset()
+  ..derived; excluded from init, eq, hash and repr..
+  - _deep_marks : frozenset | None
+  - _stripped : Any
+  ..constructors..
+  {static} CtyValue.unknown(vtype, value=UNREFINED_UNKNOWN)
+  {static} CtyValue.null(vtype)
+  ..queries..
+  equals(other) : CtyValue <i>— three-valued</i>
+  is_wholly_known() : bool
+  has_mark / mark / with_marks / unmark
+}
+
+note right of CtyValue
+  **The post-init hook enforces three invariants,**
+  and they are why the states below cannot overlap:
+  # a dynamic wrapper adopts its inner value's
+  unknown-ness and null-ness — a wrapper never
+  disagrees with what it wraps
+  # unknown **and** null → null is forced off;
+  unknown wins
+  # null with a payload → the payload is discarded
+  ----
+  The two memo fields are filled only once a walk
+  has **proved the subtree immutable**. A memo taken
+  over a dict or a list could later under-report
+  marks, and a value that has become sensitive
+  answering "not sensitive" is a silent
+  declassification.
+end note
+
+note left of CtyValue
+  **Marks are orthogonal to the states.**
+  A value in any of the three may carry any
+  set of marks. A frozenset and not a bool,
+  because marks compose: a value can be both
+  sensitive and ephemeral.
+  ----
+  unmark() returns the pair (value, marks) so
+  nothing is dropped by accident, and marks
+  take part in equality and hashing — two
+  values that differ only in their marks are
+  not the same value.
+end note
+
+class "state: known" as SKnown <<primitive>> {
+  is_unknown = False
+  is_null = False
+  --
+  **value** holds the payload:
+  Decimal, str, bool, a tuple of
+  CtyValues, a FrozenDict of them
+}
+
+class "state: null" as SNull <<plumbing>> {
+  is_unknown = False
+  is_null = True
+  --
+  **value** is always None — the
+  post-init discards anything else
+  --
+  there is exactly one null per type
+}
+
+class "state: unknown" as SUnknown <<dynamic>> {
+  is_unknown = True
+  is_null = False
+  --
+  **value** holds an UnknownValue
+  marker, never a payload — the
+  marker is where a refinement lives
+}
+
+CtyValue ..> SKnown
+CtyValue ..> SNull
+CtyValue ..> SUnknown
+SKnown -[hidden]right- SNull
+SNull -[hidden]right- SUnknown
+
+class UnknownValue <<plumbing>> {
+  the marker base class; it lives in
+  values/markers.py purely to break
+  an import cycle
+}
+class UnrefinedUnknownValue <<plumbing>> {
+  no refinement at all
+  --
+  UNREFINED_UNKNOWN is the
+  single shared instance
+}
+class RefinedUnknownValue <<dynamic>> {
+  **is_known_null** : bool | None
+  **string_prefix** : str | None
+  **number_lower_bound** : (Decimal, bool) | None
+  **number_upper_bound** : (Decimal, bool) | None
+  **collection_length_lower_bound** : int | None
+  **collection_length_upper_bound** : int | None
+  ..
+  the bool in each number bound says
+  whether it is inclusive; all six
+  fields narrow independently
+}
+
+SUnknown ..> UnknownValue : value holds one of >
+UnknownValue <|-- UnrefinedUnknownValue
+UnknownValue <|-- RefinedUnknownValue
+UnrefinedUnknownValue -[hidden]right- RefinedUnknownValue
+
+class RefinementBuilder <<core>> {
+  refine(value) opens one
+  ..narrowing only; a widening raises CtyRefinementError..
+  not_null() · null()
+  number_range_lower_bound(min, inclusive=)
+  number_range_upper_bound(max, inclusive=)
+  number_range_inclusive(min, max)
+  collection_length_lower_bound(n)
+  collection_length_upper_bound(n)
+  collection_length(n)
+  string_prefix(p) <i>— trimmed to a safe prefix</i>
+  string_prefix_full(p) <i>— taken literally</i>
+  ..
+  **new_value()** : CtyValue
+}
+
+RefinementBuilder .up.> RefinedUnknownValue : builds >
+
+note bottom of RefinementBuilder
+  **A refinement can produce a known value.**
+  new_value() collapses when the bounds leave exactly one
+  possibility: refined-null becomes the null; a number bounded
+  inclusively to [5, 5] becomes 5; a collection refined to
+  length 0 becomes the empty collection.
+  ----
+  Refining a value that is already known is a claim the builder
+  **checks**, not information it records. That is what makes an
+  inconsistent declaration fail at refine time rather than only
+  on the day an argument happens to be unknown.
+end note
+
+@enduml
