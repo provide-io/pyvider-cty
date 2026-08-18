@@ -13,9 +13,14 @@ had no branch for it, so three different things went wrong at once:
     format("%e", +Inf)  -> "Infinitye+01"
     format("%#v", +Inf) -> "Infinity", which is not JSON
 
-Every expectation here was read off go-cty v1.19.0 by calling
-`stdlib.FormatFunc` from Go, because `cty.NumberFloatVal(math.Inf(1))` is not
-expressible in the oracle's JSON input:
+Every expectation here was read off go-cty v1.19.0, and **every one of them is
+now a row in the differential sweep**. JSON has no spelling for an infinity, so
+a plain `{"type":"number","value":...}` cannot carry one -- which was taken to
+mean the oracle could not express it at all, and these were first checked
+against a hand-written Go program. That was wrong: the harness's rich dialect
+takes `{"$number":"Infinity"}`, the text `big.Float.Text` itself produces, and
+has round-tripped it since the dialect landed. The sweep rows replace the
+program, and they agree:
 
     +Inf  %v     -> "+Inf"      +Inf  %08.2f  -> "    +Inf"
     +Inf  %f     -> "+Inf"      +Inf  %08v    -> "0000+Inf"
