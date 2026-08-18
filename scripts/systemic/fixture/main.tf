@@ -46,6 +46,25 @@ locals {
   // signature: this `format` takes a template and a *list*, deliberately, and
   // is not variadic like Terraform's builtin of the same name.
   formatted = provider::pyvider::format("%05.2f|%s", [3.14159, "ok"])
+
+  // %v is the default verb, and it picks between exponent and fixed notation on
+  // a threshold Go fixes at 6 regardless of how many digits it prints. Deriving
+  // that threshold from the value's own significant digits rendered nearly every
+  // round number exponentially: 10 came out as "1e+01" and 250000 as "2.5e+05",
+  // while 1234567 came out fixed where Go gives "1.234567e+06". Both directions
+  // are asserted, because a fix that only stops the exponent form would be just
+  // as wrong the other way.
+  v_round      = provider::pyvider::format("%v", [250000])
+  v_big        = provider::pyvider::format("%v", [1234567])
+
+  // `-` has to cancel zero-padding. Left-padding 42 with zeros on the right
+  // produced "42000", which does not read as a padded 42 but as another number
+  // entirely -- the kind of value that reaches state and is never questioned.
+  minus_zero = provider::pyvider::format("%-05d|", [42])
+
+  // Precision and the alternate form were both parsed and then never read.
+  precise_int = provider::pyvider::format("%.5d", [42])
+  alt_hex     = provider::pyvider::format("%#x", [42])
 }
 
 check "functions_answer_what_they_should" {
@@ -68,6 +87,26 @@ check "functions_answer_what_they_should" {
   assert {
     condition     = local.formatted == "03.14|ok"
     error_message = "format() should render printf verbs, got ${local.formatted}"
+  }
+  assert {
+    condition     = local.v_round == "250000"
+    error_message = "format(%v) of a round number should not be exponential, got ${local.v_round}"
+  }
+  assert {
+    condition     = local.v_big == "1.234567e+06"
+    error_message = "format(%v) of 1234567 should be exponential, got ${local.v_big}"
+  }
+  assert {
+    condition     = local.minus_zero == "42   |"
+    error_message = "format(%-05d) should pad right with spaces, got ${local.minus_zero}"
+  }
+  assert {
+    condition     = local.precise_int == "00042"
+    error_message = "format(%.5d) should zero-fill to the precision, got ${local.precise_int}"
+  }
+  assert {
+    condition     = local.alt_hex == "0x2a"
+    error_message = "format(%#x) should carry the base prefix, got ${local.alt_hex}"
   }
 }
 

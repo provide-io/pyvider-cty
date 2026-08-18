@@ -50,11 +50,30 @@ def terraform() -> str:
     raise SystemExit("neither `terraform` nor `tofu` is on PATH")
 
 
+# Terraform reports a failed `check` block assertion as a WARNING and still
+# exits 0. Every assertion in the fixture was therefore advisory: the run went
+# green with a deliberately false condition, which is worse than having no
+# assertions at all, because the green was being read as proof. The output is
+# captured and scanned so a violated assertion fails the run.
+ASSERTION_FAILED = "Check block assertion failed"
+
+
 def run(*args: str, cwd: Path = FIXTURE, check: bool = True) -> subprocess.CompletedProcess[str]:
     print(f"\n$ {' '.join(Path(a).name if '/' in a else a for a in args)}")
-    result = subprocess.run(args, cwd=cwd, text=True, check=False)  # nosec
+    result = subprocess.run(  # nosec
+        args, cwd=cwd, text=True, check=False, capture_output=True
+    )
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="")
     if check and result.returncode != 0:
         raise SystemExit(f"failed ({result.returncode}): {' '.join(args)}")
+    if ASSERTION_FAILED in (result.stdout or "") + (result.stderr or ""):
+        raise SystemExit(
+            "a check block assertion failed -- see the warning above. "
+            "Terraform exits 0 on these, so this is checked explicitly."
+        )
     return result
 
 

@@ -39,7 +39,7 @@ classifiers = [
 dependencies = [
     "attrs>=25.3.0",
     "msgpack>=1.1.0",
-    "provide-foundation>=0.5.0",
+    "provide-foundation>=0.4.0",
 ]
 
 [project.urls]
@@ -52,10 +52,10 @@ Issues = "https://github.com/provide-io/pyvider-cty/issues"
 dev = [
     "hypothesis>=6.148.8",
     "memray>=1.0; sys_platform != 'emscripten'",
-    "provide-testkit[standard]>=0.5.0",
+    "provide-testkit[standard]>=0.4.0",
 ]
 docs = [
-    "provide-testkit[docs]>=0.5.0",
+    "provide-testkit[docs]>=0.4.0",
 ]
 
 # In-suite siblings resolve from source. Without this, a floor of >=0.5.0 is
