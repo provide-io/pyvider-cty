@@ -215,8 +215,15 @@ def _children(value: Any) -> tuple[Any, ...] | dict[str, Any] | None:
     # whether an element was marked. A genuinely unknown value holds a marker
     # object rather than a container, and falls through the type tests below.
     inner = value.value
-    if isinstance(inner, tuple):
-        return inner
+    # `list` as well as `tuple`. `validate` is routinely handed a raw list whose
+    # elements are already-validated marked values, and a directly-constructed
+    # CtyValue keeps it. _walk_marks already descended into lists, so the two
+    # halves of unmark_deep disagreed about what a container is: it reported
+    # marks it had not removed, and equality -- which trusts unmark_deep to have
+    # cleaned both sides -- then hit a still-marked element and raised a bare
+    # ValueError out of value_range.
+    if isinstance(inner, tuple | list):
+        return tuple(inner)
     if isinstance(inner, (frozenset, set)):
         return tuple(inner)
     if isinstance(inner, dict):

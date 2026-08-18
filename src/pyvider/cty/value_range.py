@@ -145,9 +145,35 @@ class ValueRange:
             return 0
         self._require_collection()
         if not self.value.is_unknown and not self.value.is_null:
-            return len(cast("Any", self.value.value or ()))
+            return self._known_length_lower_bound()
         lower = self.refinement.collection_length_lower_bound if self.refinement else None
         return lower or 0
+
+    def _known_length_lower_bound(self) -> int:
+        """How short a known collection could still turn out to be.
+
+        For a list or a map, exactly as long as it is: an unknown element does
+        not change the count. A SET is different, because it holds distinct
+        values -- an unknown element may resolve to something already in the set
+        and collapse into it. Reporting the stored count as an exact length let
+        `equals` answer a definite False for two sets that may well be
+        identical, where go-cty answers undecided, and a provider comparing
+        planned against prior state plans a replacement on the strength of it.
+
+        The upper bound needs no such care: every element resolving to something
+        distinct is already the largest the set can be.
+        """
+        from pyvider.cty.types import CtySet
+
+        elements = cast("Any", self.value.value or ())
+        if not isinstance(self.value.type, CtySet):
+            return len(elements)
+        known = sum(1 for element in elements if not element.is_unknown)
+        if known == len(elements):
+            return known
+        # Every unknown could collapse into a known one, but a set holding only
+        # unknowns still has at least one element.
+        return max(known, 1)
 
     def length_upper_bound(self) -> int:
         if isinstance(self.value.type, CtyDynamic):
@@ -205,10 +231,20 @@ class ValueRange:
         if isinstance(self.value.type, CtyNumber):
             return self._includes_number(candidate)
         if isinstance(self.value.type, _COLLECTIONS):
-            length = len(cast("Any", candidate.value or ()))
+            # The candidate's length is itself a range, not a point: a known set
+            # holding unknown elements may be shorter than it looks, because an
+            # unknown can resolve to a value already present and collapse into
+            # it. Comparing the stored count against this range excluded sets
+            # that overlap it perfectly well, and equality reported a definite
+            # difference where go-cty stays undecided.
+            candidate_range = value_range(candidate)  # defined below in this module
+            candidate_low = candidate_range.length_lower_bound()
+            candidate_high = candidate_range.length_upper_bound()
             upper = self.length_upper_bound()
-            outside = length < self.length_lower_bound() or (upper != _UNBOUNDED_LENGTH and length > upper)
-            return CtyBool().validate(False) if outside else self._undecided()
+            disjoint = candidate_high < self.length_lower_bound() or (
+                upper != _UNBOUNDED_LENGTH and candidate_low > upper
+            )
+            return CtyBool().validate(False) if disjoint else self._undecided()
         return self._undecided()
 
     def _includes_number(self, candidate: CtyValue[Any]) -> CtyValue[Any]:

@@ -75,9 +75,26 @@ class _RawNumber(Decimal):
         return number
 
 
+def _reject_constant(literal: str) -> Any:
+    """`NaN`, `Infinity` and `-Infinity` are Python extensions, not JSON.
+
+    Go's encoding/json refuses them outright -- "invalid character 'N' looking
+    for beginning of value" -- and accepting them produced a value this module's
+    own encoder then refused ("cannot serialize infinity as JSON"), while the
+    msgpack encoder wrote the *string* "NaN" into a number slot. A document that
+    only one of two codecs will accept is worse than one that neither will.
+    """
+    raise CtyJsonError(f"invalid character in JSON document: {literal} is a Python literal, not valid JSON")
+
+
 def _loads(payload: bytes | str) -> Any:
     text = payload.decode() if isinstance(payload, bytes) else payload
-    return json.loads(text, parse_float=_RawNumber, parse_int=_RawNumber)
+    return json.loads(
+        text,
+        parse_float=_RawNumber,
+        parse_int=_RawNumber,
+        parse_constant=_reject_constant,
+    )
 
 
 def cty_to_json(value: CtyValue[Any], cty_type: CtyType[Any], /) -> bytes:
