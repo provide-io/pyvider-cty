@@ -17,6 +17,31 @@ from pyvider.cty.config.defaults import (
 """Internal conversion utilities to avoid circular dependencies."""
 
 
+def non_finite_text(number: Any) -> str | None:
+    """Go's spelling of a non-finite number, or `None` if it is finite.
+
+    `big.Float.Text` writes `+Inf` and `-Inf`, with the sign always present --
+    including on the positive one -- and Go's `strconv` writes `NaN` unsigned.
+    `str(Decimal)` says `Infinity`, `-Infinity` and `NaN`, so every place that
+    spells a number for go-cty parity has to translate: the string conversion
+    (`f.Text('f', -1)`, `convert/conversion_primitive.go:16`), `%v`
+    (`bf.Text('g', -1)`, `stdlib/format.go:377`) and the float verbs, which
+    delegate to Go's own `fmt`.
+
+    go-cty cannot hold a NaN at all -- `big.Float.SetFloat64` panics on one --
+    so the `NaN` spelling is Go's rather than go-cty's. A `Decimal` NaN reaches
+    this package from arithmetic go-cty performs in `float64`, so it needs *an*
+    answer, and Go's is the only one with a claim on being right.
+    """
+    from decimal import Decimal
+
+    if not isinstance(number, Decimal) or number.is_finite():
+        return None
+    if number.is_nan():
+        return "NaN"
+    return "-Inf" if number < 0 else "+Inf"
+
+
 def canonical_sort_key(member: Any) -> Any:
     """The order a set's elements are put in, for a member that may not be one.
 

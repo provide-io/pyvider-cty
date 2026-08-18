@@ -339,8 +339,17 @@ class TestEdges:
     def test_zero_precision_on_g_keeps_one_significant_digit(self) -> None:
         assert rendered("%.0g", n("123")) == "1e+02"
 
-    def test_a_non_finite_number_renders_as_itself(self) -> None:
-        assert rendered("%v", n(Decimal("Infinity"))) == "Infinity"
+    def test_a_non_finite_number_renders_the_way_go_spells_it(self) -> None:
+        """`+Inf`, not `Infinity`, which is `str(Decimal)` and nothing to do with Go.
+
+        This used to assert `Infinity`, pinning the old behaviour as though it
+        were parity. It was never checked: `bf.Text` writes `+Inf`, and calling
+        `stdlib.FormatFunc` on `cty.NumberFloatVal(math.Inf(1))` from Go returns
+        `"+Inf"` for `%v`, `%f`, `%e` and `%g` alike. The full matrix is in
+        `test_format_of_a_non_finite_number.py`.
+        """
+        assert rendered("%v", n(Decimal("Infinity"))) == "+Inf"
+        assert rendered("%v", n(Decimal("-Infinity"))) == "-Inf"
         assert rendered("%g", n(Decimal("NaN"))) == "NaN"
 
     def test_a_nested_number_renders_without_an_exponent(self) -> None:

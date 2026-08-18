@@ -26,7 +26,7 @@ from pyvider.cty.config.defaults import (
     ERR_SOURCE_OBJECT_NOT_DICT,
     ERR_TUPLE_LENGTH_MISMATCH,
 )
-from pyvider.cty.conversion._utils import canonical_sort_key
+from pyvider.cty.conversion._utils import canonical_sort_key, non_finite_text
 from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
 from pyvider.cty.refinement import refine
 from pyvider.cty.types import (
@@ -62,10 +62,14 @@ def _number_to_string(raw: Any) -> str:
     keeps the trailing zeros of `1.50` where a `big.Float` never had them.
     `normalize()` strips the zeros, and `format(..., "f")` undoes the exponent
     that normalizing an integral value introduces.
+
+    `Text` has a spelling for an infinity too, and it is not `str(Decimal)`'s:
+    `convert(+Inf, string)` is "+Inf", which is also what `format("%s", +Inf)`
+    prints, since that verb is this conversion.
     """
     if isinstance(raw, Decimal) and raw.is_finite():
         return format(raw.normalize(), "f")
-    return str(raw)
+    return non_finite_text(raw) or str(raw)
 
 
 def _ordered_elements(value: CtyValue[Any]) -> list[CtyValue[Any]]:
