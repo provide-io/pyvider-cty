@@ -16,8 +16,10 @@ class TestEncodingFunctionsCoverage:
         assert jsonencode(CtyValue.unknown(CtyString())).is_unknown
 
     def test_jsonencode_error(self, mocker) -> None:
+        # jsonencode marshals through json_codec now, matching go-cty's
+        # `json.Marshal(val, val.Type())`, so that is the call that can fail.
         mocker.patch(
-            "pyvider.cty.functions.encoding_functions.cty_to_native",
+            "pyvider.cty.functions.encoding_functions.cty_to_json",
             side_effect=Exception("test error"),
         )
         with pytest.raises(CtyFunctionError):

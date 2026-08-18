@@ -540,6 +540,21 @@ CASES: list[tuple[str, list[Arg]]] = [
     # encoding and time
     ("jsonencode", [ls(["a"])]),
     ("jsonencode", [nm(1)]),
+    # jsonencode had four cases here, and its only known-value list case was
+    # ["a"] -- a single element, which cannot show a separator. Go writes
+    # `["a","b"]` and Python `["a", "b"]`; go sorts object keys and escapes
+    # `<`, `>`, `&` while leaving non-ASCII alone, and Python does the reverse
+    # on both. Every one of those lands in state and is compared as text.
+    ("jsonencode", [ls(["a", "b"])]),
+    ("jsonencode", [ob({"b": "x", "a": "y"})]),
+    ("jsonencode", [mp({"z": "1", "a": "2"})]),
+    ("jsonencode", [st("a<b>&c")]),
+    ("jsonencode", [st("héllo")]),
+    ("jsonencode", [st('a"b\\c')]),
+    ("jsonencode", [nm("0.00001")]),
+    ("jsonencode", [nm("1e21")]),
+    ("jsonencode", [bl(True)]),
+    ("jsonencode", [ln(["1", "2"])]),
     ("jsondecode", [st('{"a":1}')]),
     ("jsondecode", [st("[1,2]")]),
     ("jsondecode", [st('[1,"a",true]')]),
@@ -567,6 +582,32 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("format", [st("%q"), st('a"b')]),
     ("format", [st("%v"), st("hi")]),
     ("format", [st("%v"), nm(42)]),
+    # %v is the default verb and picks between %e and %f on a threshold Go fixes
+    # at 6 regardless of how many digits it is about to print. Deriving it from
+    # the value's own significant digits rendered every round number
+    # exponentially -- 10 as "1e+01" -- and 1234567 non-exponentially.
+    ("format", [st("%v"), nm(10)]),
+    ("format", [st("%v"), nm(100)]),
+    ("format", [st("%v"), nm(1500)]),
+    ("format", [st("%v"), nm(250000)]),
+    ("format", [st("%v"), nm(1234567)]),
+    ("format", [st("%v"), nm(12345678)]),
+    # Integer flags: precision and the alternate form were parsed and never
+    # read, and `-` did not cancel zero-padding, so %-05d of 42 gave "42000".
+    ("format", [st("%-05d"), nm(42)]),
+    ("format", [st("%0-5d"), nm(42)]),
+    ("format", [st("%-08d"), nm(42)]),
+    ("format", [st("%.5d"), nm(42)]),
+    ("format", [st("%05.2d"), nm(42)]),
+    ("format", [st("%.5x"), nm(42)]),
+    ("format", [st("%-05x"), nm(255)]),
+    ("format", [st("%#x"), nm(42)]),
+    ("format", [st("%#X"), nm(255)]),
+    ("format", [st("%#o"), nm(42)]),
+    ("format", [st("%#b"), nm(42)]),
+    ("format", [st("%+d"), nm(42)]),
+    ("format", [st("%10t"), bl(True)]),
+    ("format", [st("%-10t"), bl(False)]),
     ("format", [st("%v"), nm("0.00001")]),
     ("format", [st("%#v"), nm("0.00001")]),
     ("format", [st("%#v"), ls(["a", "b"])]),

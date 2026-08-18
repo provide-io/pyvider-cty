@@ -35,10 +35,10 @@ from pyvider.cty.config.defaults import (
     ERR_JSONDECODE_INVALID_FIRST_CHARACTER,
     ERR_JSONENCODE_FAILED,
 )
-from pyvider.cty.conversion import cty_to_native
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
-from pyvider.cty.functions._function import CtyArgumentError, CtyParameter, refine_not_null
+from pyvider.cty.functions._function import CtyArgumentError, CtyParameter, _unwrap_dynamic, refine_not_null
+from pyvider.cty.json_codec import cty_to_json
 from pyvider.cty.refinement import refine
 from pyvider.cty.values.markers import RefinedUnknownValue
 
@@ -107,9 +107,19 @@ def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
         # character is chosen by the encoder, not the caller, and none of the
         # ones it can emit combines with a brace, bracket or quote.
         return refine(result).string_prefix_full(prefix).new_value()
+    # go-cty's JSONEncode is `json.Marshal(val, val.Type())`, so this defers to
+    # the marshaller in json_codec rather than reaching for cty_to_native and
+    # json.dumps. Python's encoder differs from Go's in five ways that all reach
+    # Terraform state, where the value is compared as text: it emits `, ` and
+    # `: ` separators, leaves object keys in insertion order rather than sorted,
+    # renders small numbers in exponent form (`1e-05` for 0.00001), escapes
+    # non-ASCII while leaving `<`, `>` and `&` unescaped -- Go does the opposite
+    # on both counts -- and, worst of the five, routes numbers through float64,
+    # silently truncating a 39-digit decimal to 17. Each one is a permanent plan
+    # diff against real Terraform.
+    concrete = _unwrap_dynamic(val)
     try:
-        native_val = cty_to_native(val)
-        return CtyString().validate(json.dumps(native_val))
+        return CtyString().validate(cty_to_json(concrete, concrete.type).decode())
     except Exception as e:
         raise CtyFunctionError(ERR_JSONENCODE_FAILED.format(error=e)) from e
 
