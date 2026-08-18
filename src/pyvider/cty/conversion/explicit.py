@@ -43,6 +43,7 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.markers import RefinedUnknownValue, UnknownValue
 
 """
 Implementation of the public `convert` function and its type-level companion
@@ -364,13 +365,36 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # than a populated list is. This used to return a null of the target
         # type for any target at all, so `tostring(null_of_list)` produced a
         # null string where go-cty refuses the conversion outright.
+        # Converting *into* dynamic is a no-op in go-cty: DynamicPseudoType
+        # imposes no constraint, so the value passes through with its own type,
+        # its marks and its refinement intact. This has to precede the
+        # null/unknown branch below, which would otherwise answer first and
+        # replace a refined unknown with a bare one.
+        if isinstance(target_type, CtyDynamic):
+            return value
+
         if value.is_null or value.is_unknown:
             if not can_convert_unsafe(value.type, target_type):
                 error_message = ERR_CANNOT_CONVERT_GENERAL.format(
                     value_type=value.type, target_type=target_type
                 )
                 raise CtyConversionError(error_message, source_value=value, target_type=target_type)
-            return CtyValue.null(target_type) if value.is_null else CtyValue.unknown(target_type)
+            # Marks are re-applied here for the same reason every other return in
+            # this function re-applies them: dropping them declassifies a value
+            # that the codec would otherwise refuse to serialize, and conversion
+            # runs during unification and schema coercion where nobody is looking.
+            marks = set(value.marks)
+            if value.is_null:
+                return CtyValue.null(target_type).with_marks(marks)
+            # The refinement is narrowed rather than discarded. go-cty carries
+            # not-null across a type change, and equality reads exactly that bit
+            # to decide `unknown == null`, so throwing it away turns an answer
+            # go-cty gives into an undecided one.
+            marker = value.value
+            ported = marker.for_type(target_type) if isinstance(marker, RefinedUnknownValue) else marker
+            if isinstance(ported, UnknownValue):
+                return CtyValue.unknown(target_type, value=ported).with_marks(marks)
+            return CtyValue.unknown(target_type).with_marks(marks)
 
         # Into a capsule that declares how to receive a value. The target's
         # `ConversionTo` is tried before the source's `ConversionFrom`, which is
@@ -416,10 +440,10 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
             if not isinstance(value.value, CtyValue):
                 error_message = ERR_DYNAMIC_VALUE_NOT_CTYVALUE
                 raise CtyConversionError(error_message, source_value=value)
-            return convert(value.value, target_type)
-
-        if isinstance(target_type, CtyDynamic):
-            return value.with_marks(set(value.marks))
+            # The wrapper's own marks are not the inner value's. Unwrapping and
+            # forgetting them is the same silent declassification the null and
+            # unknown branch above used to perform.
+            return convert(value.value, target_type).with_marks(set(value.marks))
 
         # String conversion. go-cty's table (cty/convert/conversion_primitive.go)
         # defines exactly two conversions to string -- from number and from bool

@@ -27,6 +27,15 @@ T_co = TypeVar("T_co", covariant=True)
 T = TypeVar("T")
 
 
+def _ported(marker: object, target: object) -> object:
+    """A bare unknown marker's refinement, narrowed to what `target` can carry."""
+    from pyvider.cty.values.markers import RefinedUnknownValue
+
+    if isinstance(marker, RefinedUnknownValue):
+        return marker.for_type(target)
+    return marker
+
+
 @runtime_checkable
 class CtyTypeProtocol(Protocol[T_co]):
     """Protocol defining the essential interface of a CtyType."""
@@ -97,7 +106,12 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
         from pyvider.cty.values.markers import UnknownValue
 
         if isinstance(value, UnknownValue):
-            return CtyValue.unknown(self, value=value)
+            # A bare marker carries no type of its own, but the refinement inside
+            # it does: it was written against whatever type produced the bytes.
+            # Forwarding it unchecked put a string prefix on a number, and
+            # re-encoding that emits a payload go-cty rejects outright rather
+            # than a value it merely disagrees with.
+            return CtyValue.unknown(self, value=_ported(value, self))
         if isinstance(value, CtyValue):
             payload = value.value
             # Only a genuine marker is carried across. A hand-built unknown can
@@ -106,6 +120,8 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
             # rather than preserving one.
             if isinstance(payload, UnknownValue) and self.equal(value.type):
                 return CtyValue.unknown(self, value=payload)
+            if isinstance(payload, UnknownValue):
+                return CtyValue.unknown(self, value=_ported(payload, self))
         return CtyValue.unknown(self)
 
     def unknown_marker(self, value: object) -> CtyValue[T] | None:
