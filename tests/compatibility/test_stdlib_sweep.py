@@ -602,6 +602,12 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("formatdate", [st("HH:mm aa Z"), st("2020-11-22T13:04:05-08:00")]),
     ("formatdate", [st("'it''s' YYYY"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("YYY"), st("2020-01-02T03:04:05Z")]),
+    # A Go reference layout, which go-cty returns as literal text and this
+    # package refuses. The one place it declines something go-cty answers --
+    # see KNOWN_DIVERGENCES for why. The quoted form is the escape, and agrees.
+    ("formatdate", [st("2006-01-02"), st("2020-01-02T03:04:05Z")]),
+    ("formatdate", [st("'2006-01-02'"), st("2020-01-02T03:04:05Z")]),
+    ("formatdate", [st("2006"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("YYYY"), st("2020-01-02 03:04:05Z")]),
     # format
     ("format", [st("%s"), st("hi")]),
@@ -772,6 +778,17 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     #
     # Strict, so replacing datetime later forces these entries out rather than
     # leaving a stale note behind.
+    # The one deliberate refusal of something go-cty answers, and the reasoning
+    # is about which failure a caller can act on. `formatdate("2006-01-02", ts)`
+    # returns the string "2006-01-02" there: not an error, not a date, and
+    # shaped exactly like the answer the caller wanted -- the worst of the
+    # forty-three breaking changes in 0.5.0, since a test asserting "the output
+    # looks like a date" passes and the wrong value reaches Terraform state.
+    # Every other silent break in that list either raises or produces visibly
+    # wrong output. Strict, so removing the refusal forces this entry out.
+    "formatdate(2006-01-02,2020-01-02T03:04:05Z)": (
+        "deliberate: a Go reference layout is refused here and returned as literal text there"
+    ),
     "timeadd(9999-12-31T23:59:59Z,1h)": "calendar range: Go's time.Time runs past year 9999, datetime does not",
     "timeadd(0001-01-01T00:00:00Z,-1s)": "calendar range: Go's time.Time runs before year 1, datetime does not",
     # Two divergences left by transcribing `pow` through float64, neither of them

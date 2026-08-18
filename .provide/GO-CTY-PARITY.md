@@ -748,6 +748,55 @@ filing*, one review later.
 | Four copies of `_unwrap_dynamic` | **No live fault.** A marked dynamic wrapper survives `collect_marks_deep`, `walk` and a stdlib call. One copy carries marks and three do not; a maintenance hazard, not a bug |
 | `can_convert_unsafe` duplicates `convert`'s matrix | **0 disagreements in 81 type pairs.** 86 lines mirroring 264. A maintenance hazard, not a bug |
 
+### The one deliberate refusal — `formatdate` and a Go reference layout
+
+Decided 2026-08-18. This package refuses `formatdate("2006-01-02", ts)`; go-cty
+returns the string `"2006-01-02"`. It is the only place parity is broken on
+purpose, and the reasoning is about which failure a caller can act on.
+
+Before 0.5.0 this package translated Go's own reference layout into `strftime`,
+so that call returned a formatted date. go-cty defines its own scheme -- `YYYY`,
+`MM`, `DD`, `hh`, `mm`, `ss`, `EEEE`, `MMMM`, `AA`, `ZZZZZ` -- and reads digits
+as literal text. So the change is **the worst of the forty-three breaking
+changes in 0.5.0**: not an error, not a date, and shaped exactly like the answer
+the caller wanted. A test asserting "the output looks like a date" passes and
+the wrong value reaches Terraform state. Every other silent break in the list
+either raises or produces visibly wrong output.
+
+Measured before deciding, since "silent" was asserted about several of them and
+was only true of some:
+
+| Change | Behaviour | Silent? |
+|---|---|---|
+| `formatdate` dialect | returns the format string as the answer | **yes, and plausible** |
+| `regexreplace` backrefs | `\1X` renders as the literal `\1X` | yes, but visibly wrong |
+| `regex` argument order | usually raises `pattern did not match` | mostly no |
+| `keys`/`values` order | now correspond correctly | undetectable, but it *fixes* a mispairing |
+| set element marks | mark hoists to the set | undetectable |
+
+So the CHANGELOG's lead was wrong: it called `regex` "the only change here with
+no failure mode to warn the caller", which over-claims for `regex` and
+under-claims for `formatdate`.
+
+**The trigger is narrow on purpose:** `2006` *plus* a second reference token.
+A bare `2006` still renders as the literal it is. go-cty already refuses any
+letter it does not know as a verb, so the false-positive surface is a format of
+digits and punctuation only, carrying both tokens, meant literally -- and those
+keep working through quoting, which the refusal message names. Only the
+unquoted text is examined; the first version of the guard refused its own escape.
+
+**`regexreplace` was considered in the same breath and rejected.** In Go's
+dialect `\1` is *valid input meaning a literal backslash-one*, which go-cty
+passes through by design. Refusing it would make this package less
+go-cty-compatible, which is the opposite of the point. Documented, not refused.
+
+**Cost:** +0.3-0.4%. `formatdate` is 11.6-16.1 us per call and the guard's fast
+path -- `"2006" not in spec` -- is ~48 ns. Every realistic go-cty format takes
+it, since the dialect has no digits.
+
+Held by a strict xfail in the sweep, so removing the refusal forces the entry
+out.
+
 ### Replacing `datetime` — measured, and the year range is the least of it
 
 Asked on 2026-08-18: what would it buy beyond the extended year range? Three
