@@ -79,3 +79,6 @@ bin/
 
 # Local act CI config (machine-specific)
 .actrc
+
+# Systemic-test stack: built wheels and a throwaway environment
+.systemic/
