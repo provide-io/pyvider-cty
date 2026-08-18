@@ -89,6 +89,21 @@ def _as_set_of(value: CtyValue[Any], element_type: CtyType[Any], func: str) -> f
         raise CtyFunctionError(ERR_SET_OP_INCOMPATIBLE_ELEMENTS.format(func=func)) from e
 
 
+def _ordered_elements(value: CtyValue[Any], element_type: CtyType[Any], func: str) -> list[CtyValue[Any]]:
+    """`_as_set_of` without the frozenset, so element order is the caller's.
+
+    The set semantics are applied by CtySet.validate, which is the only place
+    that knows two unknowns are not interchangeable.
+    """
+    elements = cast(Iterable[CtyValue[Any]], value.value or ())
+    if cast(CtySet[Any], value.type).element_type.equal(element_type):
+        return list(elements)
+    try:
+        return [convert(element, element_type) for element in elements]
+    except CtyConversionError as e:
+        raise CtyFunctionError(ERR_SET_OP_INCOMPATIBLE_ELEMENTS.format(func=func)) from e
+
+
 def _set_operation(
     func: str,
     combine: Callable[[frozenset[CtyValue[Any]], frozenset[CtyValue[Any]]], frozenset[CtyValue[Any]]],
@@ -108,6 +123,31 @@ def _set_operation(
 
     if not allow_unknowns and not all(arg.is_wholly_known() for arg in args):
         return CtyValue.unknown(return_type)
+
+    if allow_unknowns:
+        # Union is the only operation that admits unknown elements, and a Python
+        # frozenset is the wrong container for them twice over.
+        #
+        # It de-duplicates through CtyValue.__eq__/__hash__, under which any two
+        # unknowns of a type are the same object -- so `setunion` collapsed
+        # distinct unknowns that CtySet.validate deliberately keeps apart, and a
+        # for_each derived from a union came out short. go-cty keeps them: a set
+        # built from ["a", unknown, unknown] encodes three elements.
+        #
+        # It also iterates in an order derived from PYTHONHASHSEED, and because
+        # every unknown ties at rank 1 in the canonical sort, that order survived
+        # into the element tuple and out onto the wire. Six single-element sets
+        # unioned under four seeds produced four different msgpack payloads,
+        # where go-cty is deterministic run to run -- a plan diff that reappears
+        # in a new shape after every provider restart.
+        #
+        # Concatenating in argument order and letting validate do the work is
+        # both correct and deterministic: it de-duplicates knowns by canonical
+        # key and preserves every unknown in the order supplied.
+        merged: list[CtyValue[Any]] = []
+        for arg in args:
+            merged.extend(_ordered_elements(arg, element_type, func))
+        return return_type.validate(merged)
 
     combined = _as_set_of(args[0], element_type, func)
     for arg in args[1:]:

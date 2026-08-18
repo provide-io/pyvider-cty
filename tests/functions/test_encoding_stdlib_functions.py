@@ -22,7 +22,10 @@ class TestEncodingFunctions:
         from pyvider.cty.functions import jsonencode
 
         val = M(CtyString(), {"a": "b"})
-        assert jsonencode(val).value == '{"a": "b"}'
+        # Go's encoding/json emits no spaces after `:` or `,`; Python's does.
+        # jsonencode output lands in Terraform state and is compared as text, so
+        # the separators are part of the answer, not formatting.
+        assert jsonencode(val).value == '{"a":"b"}'
 
     def test_jsondecode(self) -> None:
         from pyvider.cty.functions import jsondecode

@@ -72,6 +72,11 @@ _INTEGER_VERBS = frozenset("bdoxX")
 _FLOAT_VERBS = frozenset("eEfgG")
 
 
+# Integer verbs, where a precision means "at least this many digits" and so
+# supersedes zero-padding entirely.
+_PRECISION_CANCELS_ZERO = frozenset("bdoxX")
+
+
 class _Verb:
     """One `%` sequence, parsed."""
 
@@ -88,6 +93,11 @@ class _Verb:
 
     @property
     def zero(self) -> bool:
+        # Go ignores the zero flag outright when a precision is given: the
+        # precision has already fixed the digit count, so the remaining width is
+        # filled with spaces. `%05.2d` of 42 is "   42", not "00042".
+        if self.precision is not None and self.verb in _PRECISION_CANCELS_ZERO:
+            return False
         return "0" in self.flags
 
     @property
@@ -97,6 +107,10 @@ class _Verb:
     @property
     def sharp(self) -> bool:
         return "#" in self.flags
+
+
+# The base prefix each verb gets under the alternate (`#`) form.
+_ALTERNATE_PREFIX = {"x": "0x", "X": "0X", "o": "0", "b": "0b"}
 
 
 def _pad(verb: _Verb, text: str) -> str:
@@ -112,7 +126,11 @@ def _pad(verb: _Verb, text: str) -> str:
     measured = cluster_count(text)
     if measured >= verb.width:
         return text
-    padding = ("0" if verb.zero else " ") * (verb.width - measured)
+    # Go drops the zero flag when minus is present ("if both are set, 0 is
+    # ignored"), and it matters far more than a spacing nit: padding 42 on the
+    # right with zeros produced "42000", which does not read as a padded 42 at
+    # all but as a different number.
+    padding = ("0" if verb.zero and not verb.minus else " ") * (verb.width - measured)
     return text + padding if verb.minus else padding + text
 
 
@@ -174,6 +192,10 @@ def _exponent_form(number: Decimal, precision: int, *, upper: bool) -> str:
     return f"{sign}{rendered}{marker}{'+' if exponent >= 0 else '-'}{abs(exponent):02d}"
 
 
+# Go's strconv uses eprec = 6 for the shortest-form %e/%f decision.
+_SHORTEST_EXPONENT_THRESHOLD = 6
+
+
 def _general_form(number: Decimal, precision: int | None, *, upper: bool) -> str:
     """Go's `%g`: exponent form for large and small exponents, plain otherwise.
 
@@ -184,11 +206,22 @@ def _general_form(number: Decimal, precision: int | None, *, upper: bool) -> str
         return str(number)
     magnitude = abs(number)
     exponent = magnitude.adjusted() if magnitude else 0
+    shortest = precision is None
     significant = precision if precision is not None else max(len(number.normalize().as_tuple()[1]), 1)
     if precision == 0:
         significant = 1
 
-    if exponent < -4 or exponent >= significant:
+    # Go decides between %e and %f on the exponent alone, and in shortest mode it
+    # compares against a FIXED 6 rather than against the digit count it is about
+    # to print (`strconv/ftoa.go`: "if precision was the shortest possible, use
+    # precision 6 for this decision"). Comparing against the value's own
+    # significant digits instead made every round number exponential -- 10 came
+    # out as "1e+01" and 250000 as "2.5e+05" -- and 1234567 came out fixed where
+    # Go gives "1.234567e+06". %v is the default verb, so this reached every
+    # format() of a number and every collection containing one.
+    threshold = _SHORTEST_EXPONENT_THRESHOLD if shortest else significant
+
+    if exponent < -4 or exponent >= threshold:
         rendered = _exponent_form(number, max(significant - 1, 0), upper=upper)
         mantissa, marker, tail = rendered.partition("E" if upper else "e")
         if "." in mantissa:
@@ -222,7 +255,20 @@ def _format_integer(verb: _Verb, number: Decimal) -> str:
     whole = int(number)
     rendered = format(abs(whole), {"b": "b", "d": "d", "o": "o", "x": "x", "X": "X"}[verb.verb])
     sign = "-" if whole < 0 else ("+" if "+" in verb.flags else (" " if " " in verb.flags else ""))
-    if verb.zero and verb.width is not None and not verb.minus:
+
+    # Precision on an integer verb is a MINIMUM DIGIT COUNT, zero-filled
+    # (`%.5d` of 42 is "00042"). It was parsed and then never read, so every
+    # precision on an integer was silently discarded.
+    if verb.precision is not None:
+        rendered = rendered.rjust(verb.precision, "0")
+
+    # The alternate form's base prefix, likewise parsed and never read.
+    if verb.sharp:
+        rendered = _ALTERNATE_PREFIX.get(verb.verb, "") + rendered
+
+    # Go ignores the zero flag when a precision is given -- the precision has
+    # already said how many digits there are, so width is padded with spaces.
+    if verb.zero and verb.width is not None and not verb.minus and verb.precision is None:
         rendered = rendered.rjust(max(0, verb.width - len(sign)), "0")
     return _pad(verb, sign + rendered)
 
@@ -263,7 +309,10 @@ def _format_one(verb: _Verb, value: CtyValue[Any]) -> str:  # noqa: C901
         return _pad(verb, _json_of(value))
 
     if verb.verb == "t":
-        return _pad(verb, "true" if _as(value, CtyBool(), verb).value else "false")
+        # go-cty returns before padding for %t, so a width is accepted and then
+        # ignored: `%10t` is "true", not "      true". This differs from Go's own
+        # fmt, and the oracle is what this package tracks.
+        return "true" if _as(value, CtyBool(), verb).value else "false"
 
     if verb.verb in _INTEGER_VERBS:
         return _format_integer(verb, cast(Decimal, _as(value, CtyNumber(), verb).value))
