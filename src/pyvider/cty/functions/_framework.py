@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar, cast
+from typing import Any, Literal, ParamSpec, TypeVar, cast, overload
 
 from pyvider.cty.config.defaults import ERR_STDLIB_DUPLICATE_NAME
 from pyvider.cty.functions._function import (
@@ -138,6 +138,34 @@ def _coerce(
     return tuple(coerced)
 
 
+@overload
+def stdlib_function(
+    name: str,
+    *,
+    params: Sequence[CtyParameter] = ...,
+    var_param: CtyParameter | None = ...,
+    returns: CtyType[Any] | None = ...,
+    type_func: TypeFunc | None = ...,
+    refine_result: RefineResult | None = ...,
+    wants_return_type: Literal[True],
+    description: str = ...,
+) -> Callable[[Callable[..., R]], Callable[..., R]]: ...
+
+
+@overload
+def stdlib_function(
+    name: str,
+    *,
+    params: Sequence[CtyParameter] = ...,
+    var_param: CtyParameter | None = ...,
+    returns: CtyType[Any] | None = ...,
+    type_func: TypeFunc | None = ...,
+    refine_result: RefineResult | None = ...,
+    wants_return_type: Literal[False] = ...,
+    description: str = ...,
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
 def stdlib_function(
     name: str,
     *,
@@ -148,7 +176,7 @@ def stdlib_function(
     refine_result: RefineResult | None = None,
     wants_return_type: bool = False,
     description: str = "",
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]] | Callable[[Callable[..., R]], Callable[..., R]]:
     """Declare a go-cty stdlib function under the name go-cty gives it.
 
     The name lives at the function so that it cannot drift from it. A mapping
@@ -162,6 +190,17 @@ def stdlib_function(
     `type_func` for one computed from the arguments. `refine_result` is go-cty's
     `Spec.RefineResult` -- what stays true of the answer even when the answer is
     unknown.
+
+    Overloaded on `wants_return_type` because the decorator is not an identity
+    when it is set. The framework supplies `return_type` itself, so the callable
+    it returns takes the implementation's parameters *minus* that one -- a
+    subtraction Python's type system cannot express. Typed as an identity, the
+    injected keyword leaked into every caller's view: `flatten(x)` and `sort(x)`
+    were type errors demanding an argument nobody is allowed to pass, on
+    thirteen public functions. `...` is the accurate statement instead -- these
+    arguments are not statically checkable -- and it costs argument checking
+    only for those thirteen, where the alternative was a false error on every
+    call.
     """
     if not params and var_param is None:
         raise ValueError(f"{name}: a stdlib function declares its parameters")
