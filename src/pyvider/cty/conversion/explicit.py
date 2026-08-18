@@ -26,6 +26,7 @@ from pyvider.cty.config.defaults import (
     ERR_SOURCE_OBJECT_NOT_DICT,
     ERR_TUPLE_LENGTH_MISMATCH,
 )
+from pyvider.cty.conversion._utils import canonical_sort_key
 from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
 from pyvider.cty.refinement import refine
 from pyvider.cty.types import (
@@ -95,8 +96,9 @@ def _ordered_elements(value: CtyValue[Any]) -> list[CtyValue[Any]]:
     ]
 
 
-def _sort_key(element: Any) -> Any:
-    return element._canonical_sort_key() if isinstance(element, CtyValue) else (0, str(element))
+# One copy of the canonical order, in `_utils` so `adapter` can share it: the two
+# used to hold the same rule twice and one of them had drifted.
+_sort_key = canonical_sort_key
 
 
 # The lowest number of stored elements at which a set's count can be in doubt.
