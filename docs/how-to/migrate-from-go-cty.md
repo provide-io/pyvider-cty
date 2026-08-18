@@ -154,23 +154,30 @@ send_to_go_service(py_encoded)
 
 ## Type Parsing
 
-### Terraform Type Strings
+### Terraform Type Constraints
 
-**go-cty (Go):**
+go-cty itself has no type-string parser; parsing the HCL type-constraint syntax (`list(string)`) is the job of the separate `github.com/hashicorp/hcl/v2/ext/typeexpr` package, whose `GetType` function walks a parsed HCL expression into a `cty.Type`:
+
+**go-cty + typeexpr (Go):**
 ```go
-import "github.com/hashicorp/hcl/v2/hclsyntax"
+import (
+    "github.com/hashicorp/hcl/v2/hclsyntax"
+    "github.com/hashicorp/hcl/v2/ext/typeexpr"
+)
 
 // Parse type string
 expr, diags := hclsyntax.ParseExpression([]byte("list(string)"), "", hcl.Pos{})
-valType, diags := convert.GetType(expr, nil)
+valType, diags := typeexpr.GetType(expr, nil, false)
 ```
+
+pyvider.cty's parser instead consumes Terraform's *JSON* type-constraint representation (the nested-list encoding Terraform sends over the plugin protocol, e.g. `["list", "string"]`), not the HCL string syntax:
 
 **pyvider.cty (Python):**
 ```python
 from pyvider.cty.parser import parse_tf_type_to_ctytype
 
-# Parse type string
-val_type = parse_tf_type_to_ctytype("list(string)")
+# Parse a JSON type constraint
+val_type = parse_tf_type_to_ctytype(["list", "string"])
 ```
 
 ## Common Patterns
@@ -219,7 +226,7 @@ for val in list_val:
     # process val
 
 # Object iteration
-for key in obj_val.attribute_names():
+for key in obj_val.type.attribute_types:
     val = obj_val[key]
     # process key, val
 
@@ -271,7 +278,7 @@ unmarked, removed_marks = val.unmark()
 ```bash
 uv add pyvider-cty
 # or
-uv add pyvider-cty
+pip install pyvider-cty
 ```
 
 ### Step 2: Update Type Definitions
@@ -395,11 +402,16 @@ if val.is_null: ...
 
 **Both support unknown values, but creation differs:**
 
-```python
-# pyvider.cty
-from pyvider.cty.values import UnknownValue
+**Go uses a package-level constructor:**
+```go
+unknownVal := cty.UnknownVal(cty.String)
+```
 
-unknown_val = UnknownValue(CtyString())
+**Python constructs it from the type itself, via `CtyValue.unknown`:**
+```python
+from pyvider.cty import CtyString, CtyValue
+
+unknown_val = CtyValue.unknown(CtyString())
 ```
 
 ## Example Migration

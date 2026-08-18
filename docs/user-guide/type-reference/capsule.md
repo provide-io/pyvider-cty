@@ -4,26 +4,28 @@ The `CtyCapsule` type is a special type in `pyvider.cty` that allows you to enca
 
 ## The `CtyCapsule` Type
 
-To create a `CtyCapsule` type, you must provide a name for the type:
+To create a `CtyCapsule` type, you must provide a name for the type and the
+Python type it is allowed to wrap:
 
 ```python
 from pyvider.cty import CtyCapsule
 
-file_handle_type = CtyCapsule("FileHandle")
+class FileHandle:
+    def __init__(self, path):
+        self.path = path
+
+file_handle_type = CtyCapsule("FileHandle", FileHandle)
 ```
 
-This creates a new `CtyCapsule` type that can be used to encapsulate file handle objects.
+This creates a new `CtyCapsule` type that can be used to encapsulate
+`FileHandle` objects specifically -- `validate` checks the wrapped value
+against `py_type` with `isinstance`, so it refuses any other kind of object.
 
 ## Encapsulating and Accessing Data
 
 You can encapsulate a foreign data type in a `CtyCapsule` value using the `validate` method:
 
 ```python
-# Create a dummy file handle object
-class FileHandle:
-    def __init__(self, path):
-        self.path = path
-
 file_handle = FileHandle("/path/to/file")
 
 # Encapsulate the file handle in a CtyCapsule value
@@ -50,6 +52,16 @@ except Exception as e:
 ```
 
 This type safety ensures that you can't accidentally mix up different types of encapsulated data.
+
+## Capsules in Sets
+
+A `CtyCapsule` value is hashable, so it can be an element type for `CtySet`.
+Without a custom `hash_fn` (see `CtyCapsuleWithOps` for supplying one), every
+value of a given capsule type hashes the same way -- capsules hash *per
+type*, not per wrapped object, which mirrors go-cty's own default. That is a
+statement about hash bucketing, not equality: two distinct `FileHandle`
+instances placed in the same set both land in it, since neither has told cty
+how to tell them apart.
 
 ## See Also
 

@@ -47,13 +47,13 @@ Or start with the **[documentation index](https://github.com/provide-io/pyvider-
 uv sync
 
 # Run common tasks
-we run test       # Run tests
-we run lint       # Check code
-we run format     # Format code
-we tasks          # See all available commands
+make test         # Run tests
+make lint         # Check code
+make format       # Format code
+make help         # See all available targets
 ```
 
-See [CLAUDE.md](https://github.com/provide-io/pyvider-cty/blob/main/CLAUDE.md) for detailed development instructions and architecture information.
+See [AGENTS.md](https://github.com/provide-io/pyvider-cty/blob/main/AGENTS.md) for detailed development instructions and architecture information.
 
 ## Contributing
 

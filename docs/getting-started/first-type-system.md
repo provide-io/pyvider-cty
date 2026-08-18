@@ -162,7 +162,7 @@ try:
     post_value = post_type.validate(invalid_data)
 except Exception as e:
     print(f"Error: {e}")
-    # Output: Error: Attribute 'published': expected CtyBool, got str
+    # Output: Error: At published: Boolean validation error: Cannot convert str to bool.
 ```
 
 ## Next Steps

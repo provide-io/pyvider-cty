@@ -7,14 +7,14 @@
 Terraform uses the `go-cty` type system internally for all type checking and value handling. `pyvider.cty` implements the same type system in Python with full cross-language compatibility, allowing you to:
 
 - **Build Terraform Providers in Python**: Create custom providers using the Terraform Plugin Framework
-- **Parse Terraform Type Strings**: Convert Terraform type syntax to pyvider.cty types
+- **Parse Terraform Wire Types**: Convert the JSON type constraints Terraform's plugin protocol sends to pyvider.cty types
 - **Exchange Data with Terraform**: Use MessagePack for binary-compatible serialization
 - **Validate Terraform Configurations**: Type-check variables, resources, and modules
 - **Manipulate Terraform State**: Read and modify state files safely
 
 ## Type String Parsing
 
-Terraform represents types as strings like `list(string)` or `object({name=string})`. The `parse_tf_type_to_ctytype` function converts these to pyvider.cty types.
+Terraform's plugin protocol encodes a type constraint as JSON, not as the `list(string)` syntax you write in HCL — a primitive is a bare string (`"string"`), and everything else is a two- or three-element array such as `["list", "string"]` or `["object", {"name": "string"}]`. The `parse_tf_type_to_ctytype` function parses exactly that wire format, not HCL syntax; there is no HCL parser in this package. The optional third element on an object array names attributes that may be omitted, which is how Terraform reports an object type with optional attributes.
 
 ### Basic Type Parsing
 
@@ -27,56 +27,49 @@ number_type = parse_tf_type_to_ctytype("number")
 bool_type = parse_tf_type_to_ctytype("bool")
 
 # Collection types
-list_type = parse_tf_type_to_ctytype("list(string)")
-map_type = parse_tf_type_to_ctytype("map(number)")
-set_type = parse_tf_type_to_ctytype("set(string)")
+list_type = parse_tf_type_to_ctytype(["list", "string"])
+map_type = parse_tf_type_to_ctytype(["map", "number"])
+set_type = parse_tf_type_to_ctytype(["set", "string"])
 ```
 
 ### Complex Type Parsing
 
 ```python
 # Object types
-person_type = parse_tf_type_to_ctytype("""
-    object({
-        name = string,
-        age = number,
-        active = bool
-    })
-""")
-
-# Nested collections
-nested_type = parse_tf_type_to_ctytype("""
-    list(object({
-        id = string,
-        tags = map(string)
-    }))
-""")
-
-# Tuple types
-tuple_type = parse_tf_type_to_ctytype("tuple([string, number, bool])")
-```
-
-### Alternative Format: JSON Arrays
-
-Terraform also represents types as JSON arrays:
-
-```python
-# ["list", "string"] format
-list_type = parse_tf_type_to_ctytype(["list", "string"])
-
-# ["object", {...}] format
-object_type = parse_tf_type_to_ctytype([
+person_type = parse_tf_type_to_ctytype([
     "object",
-    {
-        "name": "string",
-        "age": "number"
-    }
+    {"name": "string", "age": "number", "active": "bool"},
 ])
 
-# Verify equivalence
-from pyvider.cty import CtyList, CtyString
+# Nested collections
+nested_type = parse_tf_type_to_ctytype([
+    "list",
+    ["object", {"id": "string", "tags": ["map", "string"]}],
+])
 
-assert list_type == CtyList(element_type=CtyString())
+# Tuple types
+tuple_type = parse_tf_type_to_ctytype(["tuple", ["string", "number", "bool"]])
+```
+
+### Object Types with Optional Attributes
+
+The third element of an `["object", {...}, [...]]` array names attributes the
+sender may omit — this is how Terraform tells you an object attribute is
+optional without changing the attribute's declared type:
+
+```python
+optional_type = parse_tf_type_to_ctytype([
+    "object",
+    {"name": "string", "nickname": "string"},
+    ["nickname"],
+])
+
+from pyvider.cty import CtyObject, CtyString
+
+assert optional_type == CtyObject(
+    attribute_types={"name": CtyString(), "nickname": CtyString()},
+    optional_attributes=frozenset({"nickname"}),
+)
 ```
 
 ## MessagePack Serialization
@@ -347,14 +340,12 @@ def update_resource_state(state_file, resource_address, new_attributes):
 #     enable_dns = bool
 #   })
 # }
+# Terraform reports this type to a provider as JSON, not the HCL above:
 
-vpc_var_type = parse_tf_type_to_ctytype("""
-    object({
-        cidr = string,
-        name = string,
-        enable_dns = bool
-    })
-""")
+vpc_var_type = parse_tf_type_to_ctytype([
+    "object",
+    {"cidr": "string", "name": "string", "enable_dns": "bool"},
+])
 
 # Validate variable value
 vpc_value = vpc_var_type.validate({
@@ -411,18 +402,14 @@ final_config = apply_defaults(minimal, defaults)
 ```python
 # Define module interface
 module_inputs = {
-    "network": parse_tf_type_to_ctytype("""
-        object({
-            vpc_cidr = string,
-            availability_zones = list(string)
-        })
-    """),
-    "compute": parse_tf_type_to_ctytype("""
-        object({
-            instance_count = number,
-            instance_type = string
-        })
-    """)
+    "network": parse_tf_type_to_ctytype([
+        "object",
+        {"vpc_cidr": "string", "availability_zones": ["list", "string"]},
+    ]),
+    "compute": parse_tf_type_to_ctytype([
+        "object",
+        {"instance_count": "number", "instance_type": "string"},
+    ]),
 }
 
 def validate_module_inputs(inputs):
@@ -452,6 +439,8 @@ validated_inputs = validate_module_inputs(user_inputs)
 ### Module Output Types
 
 ```python
+from pyvider.cty import CtyList
+
 # Define output schema
 module_outputs = {
     "vpc_id": CtyString(),
@@ -484,13 +473,9 @@ unknown_string = CtyValue.unknown(CtyString())
 if unknown_string.is_unknown:
     print("Value will be computed during apply")
 
-# Validate data with unknown values
-config_with_unknown = {
-    "name": "server-1",
-    "ip_address": None  # Will be unknown
-}
-
-# Create schema allowing unknowns
+# A raw Python None passed through validate() always becomes null, never
+# unknown -- there is no way to spell "unknown" inside a plain dict. An
+# unknown can only be constructed directly with CtyValue.unknown().
 schema = CtyObject(
     attribute_types={
         "name": CtyString(),
@@ -498,21 +483,16 @@ schema = CtyObject(
     }
 )
 
-# For unknowns, use CtyValue.unknown
-from pyvider.cty import CtyObject, CtyString
-
-validated = CtyObject(
-    attribute_types={
-        "name": CtyString(),
-        "ip_address": CtyString()
-    }
-).validate({
+validated = schema.validate({
     "name": "server-1",
-    "ip_address": None  # Becomes null
+    "ip_address": None  # Becomes null, not unknown
 })
+assert validated["ip_address"].is_null
 
-# To create actual unknowns:
+# To represent an attribute that is not yet known -- typically because
+# Terraform sent one during planning -- build it as an unknown explicitly:
 unknown_val = CtyValue.unknown(schema)
+assert unknown_val.is_unknown
 ```
 
 ### Null vs Unknown
@@ -557,12 +537,22 @@ unmarked, removed_marks = marked_password.unmark()
 
 ### Provider Mark Handling
 
+To mark a single attribute of an object, apply the mark to that attribute's
+value *before* it goes through `validate()` — `validate()` now preserves a
+mark already present on an element instead of stripping it, so a pre-marked
+attribute value comes out marked and the object itself stays unmarked:
+
 ```python
+from pyvider.cty import CtyObject, CtyString
+
+sensitive_mark = CtyMark("sensitive")
+schema = CtyObject(attribute_types={"username": CtyString(), "password": CtyString()})
+
+marked_password = CtyString().validate("hunter2").with_marks({sensitive_mark})
+config_value = schema.validate({"username": "alice", "password": marked_password})
+
 def handle_sensitive_config(config_value):
     """Process configuration with sensitive values."""
-    sensitive_mark = CtyMark("sensitive")
-
-    # Identify sensitive fields
     for attr_name in config_value.type.attribute_types.keys():
         attr_value = config_value[attr_name]
 
@@ -572,20 +562,55 @@ def handle_sensitive_config(config_value):
         else:
             # Safe to log
             print(f"{attr_name}: {attr_value.raw_value}")
+
+handle_sensitive_config(config_value)
+# username: alice
+# password: <sensitive>
 ```
+
+### Marked Values Cannot Be Serialized
+
+`cty_to_msgpack` refuses a value carrying marks — matching go-cty, which has
+no wire representation for a mark. Attempting it raises
+`CtyMarksSerializationError` rather than silently writing the value with its
+sensitivity dropped:
+
+```python
+from pyvider.cty.codec import cty_to_msgpack
+from pyvider.cty.marks import unmark_deep
+
+try:
+    cty_to_msgpack(config_value, schema)
+except Exception as e:
+    print(f"{type(e).__name__}: {e}")
+    # CtyMarksSerializationError: value has marks, so it cannot be serialized
+
+# Strip marks deeply before serializing; track sensitivity out-of-band
+# (for example in the provider schema, as Terraform itself does).
+unmarked_value, _removed = unmark_deep(config_value)
+msgpack_bytes = cty_to_msgpack(unmarked_value, schema)
+```
+
+Sensitivity reaches Terraform through the provider schema's `sensitive` flag,
+not through the value on the wire — `DynamicValue` in the plugin protocol
+carries only the encoded bytes and has no channel for marks. A provider
+re-applies marks after decoding, from the schema, rather than expecting them
+to survive a round trip through `cty_to_msgpack`/`cty_from_msgpack`.
 
 ## Best Practices
 
 ### 1. Cache Parsed Schemas
 
 ```python
+configs = [{"name": "a"}, {"name": "b"}]
+
 # Bad: Parse on every validation
 for config in configs:
-    schema = parse_tf_type_to_ctytype("object({...})")
+    schema = parse_tf_type_to_ctytype(["object", {"name": "string"}])
     schema.validate(config)
 
 # Good: Parse once, reuse
-schema = parse_tf_type_to_ctytype("object({...})")
+schema = parse_tf_type_to_ctytype(["object", {"name": "string"}])
 for config in configs:
     schema.validate(config)
 ```
@@ -660,9 +685,9 @@ class TerraformValidator:
     def __init__(self):
         self.schemas = {}
 
-    def register(self, name, type_string):
-        """Register a schema."""
-        self.schemas[name] = parse_tf_type_to_ctytype(type_string)
+    def register(self, name, type_spec):
+        """Register a schema from a Terraform wire type (a string or a JSON array)."""
+        self.schemas[name] = parse_tf_type_to_ctytype(type_spec)
 
     def validate(self, name, data):
         """Validate data against schema."""
@@ -670,7 +695,7 @@ class TerraformValidator:
 
 # Usage
 validator = TerraformValidator()
-validator.register("vpc", "object({cidr=string,name=string})")
+validator.register("vpc", ["object", {"cidr": "string", "name": "string"}])
 vpc = validator.validate("vpc", {"cidr": "10.0.0.0/16", "name": "main"})
 ```
 

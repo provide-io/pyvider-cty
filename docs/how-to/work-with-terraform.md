@@ -1,10 +1,14 @@
 # How to Work with Terraform Types
 
-This guide shows you how to use pyvider.cty with Terraform, including parsing Terraform type strings and working with Terraform data structures.
+This guide shows you how to use pyvider.cty with Terraform, including parsing Terraform's JSON type constraints and working with Terraform data structures.
 
-## Parsing Terraform Type Strings
+## Parsing Terraform Type Constraints
 
-Terraform uses type strings like `list(string)` or `object({name=string,age=number})`. pyvider.cty can parse these:
+Terraform's provider protocol encodes type constraints as JSON, not as the
+`list(string)` syntax you write in HCL: a primitive is its bare name
+(`"string"`), and a collection or structural type is a `[kind, spec]` list —
+`["list", "string"]`, `["object", {"name": "string", "age": "number"}]`, and
+so on. `parse_tf_type_to_ctytype` parses that JSON-shaped form:
 
 ```python
 from pyvider.cty.parser import parse_tf_type_to_ctytype
@@ -15,19 +19,23 @@ number_type = parse_tf_type_to_ctytype("number")
 bool_type = parse_tf_type_to_ctytype("bool")
 
 # Parse collection types
-list_type = parse_tf_type_to_ctytype("list(string)")
-map_type = parse_tf_type_to_ctytype("map(number)")
-set_type = parse_tf_type_to_ctytype("set(string)")
+list_type = parse_tf_type_to_ctytype(["list", "string"])
+map_type = parse_tf_type_to_ctytype(["map", "number"])
+set_type = parse_tf_type_to_ctytype(["set", "string"])
 
 # Parse complex object types
 object_type = parse_tf_type_to_ctytype(
-    "object({name=string,age=number,active=bool})"
+    ["object", {"name": "string", "age": "number", "active": "bool"}]
 )
 
 # Use the parsed type
 data = {"name": "Alice", "age": 30, "active": True}
 value = object_type.validate(data)
 ```
+
+An object type may carry a third element listing attribute names that are
+allowed to be omitted — `["object", {"a": "string", "b": "string"}, ["b"]]` —
+matching what Terraform sends for a schema with optional attributes.
 
 ## Common Terraform Patterns
 
@@ -36,16 +44,16 @@ value = object_type.validate(data)
 ```python
 from pyvider.cty.parser import parse_tf_type_to_ctytype
 
-def validate_terraform_variable(var_type_string, var_value):
+def validate_terraform_variable(var_type_spec, var_value):
     """Validate a Terraform variable against its type."""
     try:
-        var_type = parse_tf_type_to_ctytype(var_type_string)
+        var_type = parse_tf_type_to_ctytype(var_type_spec)
         return var_type.validate(var_value)
     except Exception as e:
         raise ValueError(f"Variable validation failed: {e}")
 
 # Example
-vpc_config_type = "object({cidr=string,subnets=list(string)})"
+vpc_config_type = ["object", {"cidr": "string", "subnets": ["list", "string"]}]
 vpc_config_data = {
     "cidr": "10.0.0.0/16",
     "subnets": ["10.0.1.0/24", "10.0.2.0/24"]
@@ -58,14 +66,14 @@ validated = validate_terraform_variable(vpc_config_type, vpc_config_data)
 
 ```python
 # Define a resource schema matching Terraform
-resource_schema = parse_tf_type_to_ctytype("""
-object({
-  name = string,
-  instance_type = string,
-  ami = string,
-  tags = map(string)
-})
-""")
+resource_schema = parse_tf_type_to_ctytype(
+    ["object", {
+        "name": "string",
+        "instance_type": "string",
+        "ami": "string",
+        "tags": ["map", "string"],
+    }]
+)
 
 # Validate resource configuration
 resource_config = {
@@ -91,9 +99,9 @@ from pyvider.cty.parser import parse_tf_type_to_ctytype
 # Parse module variable types
 module_vars = {
     "vpc_cidr": parse_tf_type_to_ctytype("string"),
-    "availability_zones": parse_tf_type_to_ctytype("list(string)"),
+    "availability_zones": parse_tf_type_to_ctytype(["list", "string"]),
     "enable_nat": parse_tf_type_to_ctytype("bool"),
-    "tags": parse_tf_type_to_ctytype("map(string)")
+    "tags": parse_tf_type_to_ctytype(["map", "string"])
 }
 
 # Validate module inputs
@@ -113,13 +121,13 @@ for var_name, var_type in module_vars.items():
 
 ```python
 # Define output types
-output_schema = parse_tf_type_to_ctytype("""
-object({
-  vpc_id = string,
-  subnet_ids = list(string),
-  nat_gateway_id = string
-})
-""")
+output_schema = parse_tf_type_to_ctytype(
+    ["object", {
+        "vpc_id": "string",
+        "subnet_ids": ["list", "string"],
+        "nat_gateway_id": "string",
+    }]
+)
 
 # Validate module outputs
 module_outputs = {
@@ -137,22 +145,22 @@ validated_outputs = output_schema.validate(module_outputs)
 
 ```python
 # Parse complex nested structure
-nested_type = parse_tf_type_to_ctytype("""
-object({
-  network = object({
-    vpc_id = string,
-    subnets = list(object({
-      id = string,
-      cidr = string,
-      az = string
-    }))
-  }),
-  compute = object({
-    instance_type = string,
-    count = number
-  })
-})
-""")
+nested_type = parse_tf_type_to_ctytype(
+    ["object", {
+        "network": ["object", {
+            "vpc_id": "string",
+            "subnets": ["list", ["object", {
+                "id": "string",
+                "cidr": "string",
+                "az": "string",
+            }]],
+        }],
+        "compute": ["object", {
+            "instance_type": "string",
+            "count": "number",
+        }],
+    }]
+)
 
 # Validate nested data
 infrastructure = {
@@ -207,14 +215,14 @@ assert minimal_instance['key_name'].is_null
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
 # Define resource state schema
-state_schema = parse_tf_type_to_ctytype("""
-object({
-  id = string,
-  name = string,
-  status = string,
-  created_at = string
-})
-""")
+state_schema = parse_tf_type_to_ctytype(
+    ["object", {
+        "id": "string",
+        "name": "string",
+        "status": "string",
+        "created_at": "string",
+    }]
+)
 
 # Create and serialize state
 state_data = {
@@ -239,20 +247,17 @@ restored_state = cty_from_msgpack(state_msgpack, state_schema)
 # Define provider schema
 provider_schema = {
     "resources": {
-        "example_instance": parse_tf_type_to_ctytype("""
-            object({
-              name = string,
-              size = string,
-              region = string,
-              tags = map(string)
-            })
-        """),
-        "example_network": parse_tf_type_to_ctytype("""
-            object({
-              cidr = string,
-              name = string
-            })
-        """)
+        "example_instance": parse_tf_type_to_ctytype(
+            ["object", {
+                "name": "string",
+                "size": "string",
+                "region": "string",
+                "tags": ["map", "string"],
+            }]
+        ),
+        "example_network": parse_tf_type_to_ctytype(
+            ["object", {"cidr": "string", "name": "string"}]
+        ),
     }
 }
 
@@ -316,20 +321,20 @@ hcl_data = {
 
 # Extract and validate resource config
 resource_config = hcl_data["resource"]["aws_instance"]["web"]
-instance_schema = parse_tf_type_to_ctytype("""
-    object({
-      ami = string,
-      instance_type = string,
-      tags = map(string)
-    })
-""")
+instance_schema = parse_tf_type_to_ctytype(
+    ["object", {
+        "ami": "string",
+        "instance_type": "string",
+        "tags": ["map", "string"],
+    }]
+)
 
 validated = instance_schema.validate(resource_config)
 ```
 
 ## Best Practices
 
-1. **Parse type strings once**: Cache parsed type schemas
+1. **Parse type constraints once**: Cache parsed type schemas
 2. **Validate early**: Check types before Terraform execution
 3. **Use MessagePack**: For Terraform provider communication
 4. **Handle optional fields**: Many Terraform attributes are optional
@@ -347,9 +352,9 @@ class TerraformConfigValidator:
     def __init__(self):
         self.schemas = {}
 
-    def register_schema(self, name, type_string):
+    def register_schema(self, name, type_spec):
         """Register a schema for validation."""
-        self.schemas[name] = parse_tf_type_to_ctytype(type_string)
+        self.schemas[name] = parse_tf_type_to_ctytype(type_spec)
 
     def validate(self, schema_name, data):
         """Validate data against a registered schema."""
@@ -361,8 +366,8 @@ class TerraformConfigValidator:
 
 # Usage
 validator = TerraformConfigValidator()
-validator.register_schema("vpc", "object({cidr=string,name=string})")
-validator.register_schema("subnet", "object({cidr=string,vpc_id=string})")
+validator.register_schema("vpc", ["object", {"cidr": "string", "name": "string"}])
+validator.register_schema("subnet", ["object", {"cidr": "string", "vpc_id": "string"}])
 
 vpc_config = validator.validate("vpc", {
     "cidr": "10.0.0.0/16",
@@ -373,9 +378,9 @@ vpc_config = validator.validate("vpc", {
 ### Type Introspection
 
 ```python
-def describe_terraform_type(type_string):
+def describe_terraform_type(type_spec):
     """Describe a Terraform type in detail."""
-    cty_type = parse_tf_type_to_ctytype(type_string)
+    cty_type = parse_tf_type_to_ctytype(type_spec)
 
     # Get type information
     info = {
@@ -390,7 +395,7 @@ def describe_terraform_type(type_string):
     return info
 
 # Usage
-type_info = describe_terraform_type("object({name=string,count=number})")
+type_info = describe_terraform_type(["object", {"name": "string", "count": "number"}])
 print(type_info)
 ```
 

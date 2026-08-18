@@ -1,75 +1,27 @@
-# Project Status
+# Release Notes
 
-This document provides current status and release readiness information for the `pyvider.cty` library.
+This page orients you to what a release changes from a caller's point of view. For the complete, itemized list of every change — the canonical record — see [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) in the repository root. This page will not duplicate that list; it explains the shape of it.
 
-> **Version History**: For a complete changelog of all releases, see [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md).
+## 0.5.0
 
-## Documentation
+This release brings `pyvider.cty` to feature parity with go-cty `v1.19.0`. All 83 of go-cty's stdlib functions are implemented and declared through a full Python port of go-cty's own `cty/function` framework (`CtyFunction`, `CtyFunctionSpec`, `CtyParameter`, `CtyArgumentError`, `SIGNATURES`, `STDLIB`), rather than through hand-rolled null/unknown checks that had drifted apart function by function. Alongside the function port, this release adds a refinement builder (`refine()`, `value_range()`, `safe_known_prefix()`), deep traversal (`walk()`, `deep_values()`, `transform()`), grapheme-cluster-aware string handling, and a long list of correctness fixes — most of them in mark handling, null handling, and set semantics.
 
-✅ **Documentation Status: Excellent**
+Every change was verified against a live go-cty oracle — the `soup-go` differential test harness — rather than against go-cty's documentation. That means this release corrects a number of long-standing behaviors that never matched go-cty in the first place, alongside adopting genuinely new go-cty v1.19.0 behavior. See [Comparison with go-cty](go-cty-comparison.md) for the parity matrix this release achieves, function by function and surface by surface.
 
-The documentation has been completely restructured to align with provide.io ecosystem patterns:
-- New getting started guides with 5-minute quick start
-- Comprehensive user guide organized by topic
-- Complete API reference with mkdocstrings integration
-- Material for MkDocs theme with modern navigation
-- All examples updated and organized by category
+**This is a breaking release**, with 43 catalogued breaking changes. They fall into a handful of themes:
 
-## Code Quality
+- **Marks and value mutability.** A `CtySet`'s marks live on the set, not on its elements. Serializing a marked value raises instead of silently dropping the marks. `value.value` is no longer mutable in place.
+- **Nulls inside containers.** A `CtyList` and object attributes now accept an explicit `null` where they used to refuse it on read — state real Terraform writes constantly. The flip side is that `CtyObject.validate()` no longer treats "attribute is present but null" as a validation failure; only a genuinely *missing* required key is refused.
+- **Stdlib function signatures and return types.** A cluster of individual functions — `regex`/`regexall` (argument order), `indent`, `flatten`, `chunklist`, `regexreplace`, `keys`/`values` ordering, `formatdate`/`timeadd`, the JSON/CSV decoders, `merge`, and string functions that now measure in grapheme clusters rather than code points — changed to match go-cty's actual behavior. Several of these fail silently rather than raising, so they need a manual audit rather than a test-suite run.
+- **The function framework itself.** Every stdlib function now validates its arguments the way go-cty's `cty/function` framework does. The single widest consequence: roughly 35 functions that used to return an unknown for a null argument now raise `CtyArgumentError` instead, since inventing an unknown from a null invents a fact the null doesn't have.
+- **Conversion and the value model.** A conversion result's type now reflects the converted value rather than carrying over a stale constraint. A container holding an unknown element is now itself a known container — a fix, since the old behavior degraded a perfectly good value to a bare unknown on the wire. Refinements now survive `validate()` and a msgpack round-trip. Wire bytes changed in a few places to match go-cty exactly, which matters because Terraform compares serialized state, not just decoded values.
 
-✅ **Code Quality: Excellent**
+## Who is affected, and what to do
 
-- **Type Checking**: All mypy checks pass with strict mode enabled
-- **Code Style**: Follows ruff formatting and linting standards
-- **Test Coverage**: Comprehensive test suite covering core functionality
-- **Security**: Bandit security analysis passes
+If you call `pyvider.cty` only through `validate()`, basic type construction, and straightforward stdlib calls with known, non-null arguments, most of this release is invisible to you. The changes concentrate in three places: **code that passes `null` to stdlib functions** (audit call sites — the new behavior is a raised `CtyArgumentError`, not a returned unknown), **code that parses `formatdate`/`regex`/`regexreplace` format strings or patterns** (these fail silently on the wrong dialect, so re-test rather than trust an absence of exceptions), and **code with byte-exact expectations of serialized output** (msgpack fixtures for unknown or refined-unknown values need regenerating).
 
-## Feature Parity with `go-cty`
+Read the full breaking-changes list in [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) before upgrading — each entry there carries its own migration note. For the underlying rationale and the complete function-by-function and surface-by-surface parity status, see [Comparison with go-cty](go-cty-comparison.md).
 
-The following is a feature comparison matrix between `go-cty` and `pyvider.cty`.
+## Earlier releases
 
-| Feature | `go-cty` | `pyvider.cty` | Notes |
-|---|---|---|---|
-| **Language** | Go | Python | The most obvious difference is the language. `go-cty` is written in Go, while `pyvider.cty` is written in Python. |
-| **API** | The `go-cty` API is designed to be idiomatic Go. | The `pyvider.cty` API is designed to be idiomatic Python. | This means that the two APIs are not directly compatible, but the underlying concepts are the same. |
-| **Extensibility** | `go-cty` can be extended with custom types and functions. | `pyvider.cty` can also be extended with custom types and functions. | The mechanism for extension is different in the two libraries. |
-| **Performance** | `go-cty` is a compiled language, so it is generally faster than `pyvider.cty`. | `pyvider.cty` is an interpreted language, so it is generally slower than `go-cty`. | However, `pyvider.cty` is still fast enough for most use cases. |
-| **Primitive Types** | Yes | Yes | |
-| **Collection Types** | Yes | Yes | |
-| **Structural Types** | Yes | Yes | |
-| **Dynamic Types** | Yes | Yes | |
-| **Capsule Types** | Yes | Yes | |
-| **Marks** | Yes | Yes | |
-| **Functions** | Yes | Yes | `pyvider.cty` has a comprehensive set of built-in functions that is comparable to `go-cty`. |
-| **Serialization** | Yes | Yes | `pyvider.cty` supports Msgpack serialization, which is compatible with `go-cty`. |
-| **Path Navigation** | Yes | Yes | |
-| **Terraform Interoperability** | Yes | Yes | `pyvider.cty` can parse Terraform type strings. |
-
-## Current Release
-
-**Version**: 0.0.1000 (Released: 2025-10-17)
-**Status**: Alpha - Production-focused
-**Development Status**: Active
-
-### Release Highlights
-
-- **Type System**: Complete implementation of primitives, collections, structural, dynamic, and capsule types
-- **Cross-Language Compatibility**: Full MessagePack serialization compatible with go-cty
-- **Comprehensive Functions**: 60+ built-in functions for string, numeric, collection, and data manipulation
-- **Strong Type Safety**: 100% type coverage with mypy strict mode
-- **Test Coverage**: 94% code coverage with 922+ passing tests
-- **Documentation**: Complete user guide, API reference, and how-to guides
-
-### Next Release
-
-See [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) for notes on potential changes in the next release (subject to change).
-
-## Production Readiness
-
-✅ **The `pyvider.cty` library is production-focused**
-
-- Documentation is comprehensive and well-organized
-- Code quality meets high standards with strict type checking
-- Feature set is comparable to go-cty with full cross-language compatibility
-- All critical functionality is implemented and tested
-- Examples demonstrate all features with working code
+See [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) for the history before 0.5.0.

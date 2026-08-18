@@ -151,6 +151,8 @@ vpc_value = vpc_type.validate(vpc_data)
 ### Parsing Resource Schemas
 
 ```python
+from pyvider.cty.parser import parse_tf_type_to_ctytype
+
 # Terraform resource schema
 resource_schema_json = [
     "object",
@@ -213,6 +215,9 @@ schema = parse_tf_type_to_ctytype(type_spec)
 ### Dynamic Schema Loading
 
 ```python
+from pyvider.cty import CtyType
+from pyvider.cty.parser import parse_tf_type_to_ctytype
+
 def load_schema(schema_name: str) -> CtyType:
     """Load a schema by name from configuration."""
     schemas = {

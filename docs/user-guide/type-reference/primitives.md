@@ -65,9 +65,15 @@ bool_type = CtyBool()
 cty_true = bool_type.validate(True)
 assert cty_true.raw_value is True
 
+# CtyBool also accepts the values Terraform's wire format uses for a
+# boolean: the strings "true"/"false" (case-insensitively) and the
+# numbers 0 and 1.
+assert bool_type.validate("true").raw_value is True
+assert bool_type.validate(0).raw_value is False
+
 # Validate an invalid value (will raise a ValidationError)
 try:
-    bool_type.validate(1)
+    bool_type.validate(2)
 except Exception as e:
     print(f"Validation failed: {e}")
 ```

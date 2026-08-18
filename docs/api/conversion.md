@@ -6,7 +6,7 @@ Key functions:
 - **`convert(value, target_type)`** - Convert a `CtyValue` to a different type when possible (e.g., number to string, string to number)
 - **`unify(types)`** - Find the most specific type that can represent all given types (type unification)
 
-**Conversion vs Validation**: Conversion is more flexible than validation - it attempts to transform values between compatible types, while validation strictly checks conformance to a type schema. For example, `convert(CtyString().validate("123"), CtyNumber())` succeeds and returns the number 123, while `CtyNumber().validate("123")` fails because the input is not already a number.
+**Conversion vs Validation**: Conversion is more flexible than validation - it attempts to transform values between compatible types, while validation strictly checks conformance to a type schema. For example, `convert(CtyNumber().validate(123), CtyString())` succeeds and returns the string `"123"`, while `CtyString().validate(CtyNumber().validate(123))` fails because a `CtyString` will not accept an already-typed `Decimal` payload.
 
 Type conversion is essential for building flexible APIs that accept multiple input formats and for implementing polymorphic functions that work across different types.
 

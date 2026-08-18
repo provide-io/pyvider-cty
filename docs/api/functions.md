@@ -11,7 +11,18 @@ Functions are organized into categories:
 - **Encoding** - Serialization (jsonencode, jsondecode, csvdecode)
 - **Date/Time** - Timestamp operations (formatdate, timeadd)
 
-All functions perform proper null and unknown value handling, propagating these special states through operations as appropriate.
+Every function is built on the `cty/function` framework (`CtyFunction`, `CtyFunctionSpec`, `CtyParameter`) and declares each parameter's null and unknown policy up front, matching go-cty's own `Spec` exactly. Unknown values propagate: the result is an unknown of the correct return type, refined wherever go-cty's stdlib refines it (`upper(unknown_string)` is an unknown *string*, not a bare unknown `dynamic`). Null values do **not** uniformly propagate — most parameters refuse a null argument outright, raising `CtyArgumentError` (`"<func>: argument N must not be null"`), and only the handful of parameters go-cty itself marks `AllowNull` (for example `coalesce`, `merge`, `tostring`) accept one.
+
+```python
+from pyvider.cty import CtyString
+from pyvider.cty.functions import upper
+
+null_val = CtyString().validate(None)
+try:
+    upper(null_val)
+except Exception as e:
+    print(f"{type(e).__name__}: {e}")  # CtyArgumentError: upper: argument 0 must not be null
+```
 
 For a complete overview with descriptions, see: **[User Guide: Functions](../user-guide/advanced/functions.md)**
 

@@ -10,7 +10,22 @@ Key functions:
 
 **JSON Support**: For JSON encoding/decoding, use the `jsonencode()` and `jsondecode()` functions from `pyvider.cty.functions`. These operate on `CtyValue` objects and return `CtyValue` objects containing JSON strings, rather than providing direct serialization/deserialization.
 
-**Type Preservation**: MessagePack serialization preserves type information, null values, unknown values, and marks, ensuring complete fidelity when round-tripping data.
+**Type Preservation**: MessagePack serialization preserves type information, null values, unknown values (including refinements on a refined unknown), and unmarked containers with unknown elements, ensuring complete fidelity when round-tripping data.
+
+**Marks Are Not Serializable**: A marked value cannot cross the wire. `cty_to_msgpack()` raises `CtyMarksSerializationError` for any value carrying a mark anywhere in it, matching go-cty's own encoder — marks exist to track things like sensitivity in memory, and silently dropping them on the way to disk or across a process boundary would be the actual bug. Use `unmark_deep()` from `pyvider.cty.marks` to strip marks (and get back the set of marks that were removed) before serializing, and reapply them after decoding if the caller still needs them:
+
+```python
+from pyvider.cty import CtyString
+from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+from pyvider.cty.marks import unmark_deep
+
+string_type = CtyString()
+value = string_type.validate("secret").mark("sensitive")
+
+unmarked_value, marks = unmark_deep(value)
+data = cty_to_msgpack(unmarked_value, string_type)
+restored = cty_from_msgpack(data, string_type).with_marks(marks)
+```
 
 For detailed serialization documentation, see: **[User Guide: Serialization](../user-guide/advanced/serialization.md)**
 

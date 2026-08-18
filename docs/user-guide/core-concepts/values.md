@@ -75,21 +75,23 @@ Refined unknowns allow you to specify partial information about an unknown value
 - String prefix/suffix constraints
 - Collection length constraints
 
-```python
-from pyvider.cty.values import UnknownValue, RefinedUnknownValue
-from pyvider.cty import CtyNumber, CtyString
+You build a refined unknown by calling `refine()` on an existing unknown value and chaining constraints onto the `RefinementBuilder` it returns. Each call checks the new constraint against both the value and any refinement already recorded, so a contradictory refinement raises `CtyRefinementError` immediately rather than being silently accepted.
 
-# Create a basic unknown value
-basic_unknown = UnknownValue(CtyNumber())
+```python
+from pyvider.cty import CtyNumber, CtyValue, refine
+
+# Create a basic unknown value.
+basic_unknown = CtyValue.unknown(CtyNumber())
 print(f"Basic unknown: {basic_unknown.is_unknown}")  # True
 
-# Create a refined unknown value (advanced usage)
-# Note: RefinedUnknownValue is typically used internally by the type system
-# or in advanced scenarios like Terraform provider development
-refined_unknown = RefinedUnknownValue(
-    vtype=CtyNumber(),
-    refinement=None  # Refinement constraints (implementation-specific)
-)
+# Narrow it to a range and a definite non-null answer.
+bounded = refine(basic_unknown).not_null().number_range_lower_bound(0).number_range_upper_bound(100).new_value()
+print(f"Bounded: is_unknown={bounded.is_unknown}")  # True — still unknown, now constrained
+
+# Refining can pin the value down completely: an inclusive range of
+# exactly one number collapses the unknown into that known number.
+exact = refine(CtyValue.unknown(CtyNumber())).not_null().number_range_inclusive(5, 5).new_value()
+print(f"Exact: is_unknown={exact.is_unknown}, value={exact.value}")  # False, 5
 ```
 
 **When to use refined unknowns:**
@@ -97,7 +99,7 @@ refined_unknown = RefinedUnknownValue(
 - **Validation**: When you need to validate that constraints will be satisfied even though the actual value is unknown
 - **Type propagation**: In function implementations where unknowns need to propagate with refinements
 
-**Note**: Most users will work with regular unknown values via `CtyValue.unknown()`. Refined unknowns are an advanced feature primarily used in infrastructure-as-code scenarios and by library implementers.
+**Note**: Most users will work with regular unknown values via `CtyValue.unknown()`. Building refinements by hand with `refine()` is an advanced feature primarily used in infrastructure-as-code scenarios and by library implementers; the standard library functions apply their own refinements to results automatically. To read a refinement back off a value rather than build one, use `pyvider.cty.value_range()`.
 
 ## Immutable Updates with Helper Methods
 
