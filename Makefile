@@ -28,6 +28,14 @@ format: ## Format code
 compat: ## Cross-language wire checks against real go-cty (needs the soup-go harness)
 	uv run python scripts/compat/run_compat.py
 
+.PHONY: diagrams
+diagrams: ## Re-render docs/architecture/*.puml to SVG (add PNG=1 to also render PNGs)
+	uv run python scripts/render_diagrams.py $(if $(PNG),--png,)
+
+.PHONY: diagrams-check
+diagrams-check: ## Fail if any committed architecture SVG is stale against its .puml source
+	uv run python scripts/render_diagrams.py --check
+
 .PHONY: perf-report
 perf-report: ## Compare hot-path performance against a baseline ref (report only, never fails)
 	uv run python scripts/perf/perf_report.py --base $(or $(BASE),gh-origin/main)

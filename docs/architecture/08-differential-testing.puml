@@ -1,0 +1,89 @@
+@startuml 08-differential-testing
+!include _theme.iuml
+
+title How correctness is established here — a live Go binary, not a folder of recorded answers
+
+skinparam nodesep 16
+skinparam ranksep 28
+skinparam rectangleFontSize 12
+
+rectangle "**make compat**   ->   uv run python scripts/compat/run_compat.py" as MAKE <<core>>
+
+rectangle "**run_compat.py**\n# **go build -o /tmp/soup-go-compat ./...** in the tofusoup checkout (SOUP_GO_SRC\noverrides where that is), on **every** run.\nA failed build exits 1 — it never falls back to the binary already sitting there\n# then: uv run pytest -q, no header, **--run-compat**, over tests/compatibility/,\nwith **SOUP_GO_BIN** pointing at what it has just built" as RUNNER <<plumbing>>
+
+rectangle "**tests/compatibility/ — 14 modules**\nevery one carries pytestmark = pytest.mark.compat, and conftest\nskips the marker unless --run-compat is passed" as SUITE <<core>>
+
+rectangle "**the sweep — one shared argument table**\n**CASES** in test_stdlib_sweep.py: **373 rows over 83 functions**, each row\nholding the pyvider value and the harness JSON spec, written once.\nThe other two sweep modules **import** the table and the helpers\n(_case_id, _go_result, _our_result) rather than copying them, so\nevery population is exactly as broad as the sweep itself." as CASES <<collection>>
+
+rectangle "**known**\nthe table\nas written\n//stdlib_sweep//" as POP1 <<collection>>
+rectangle "**nulled**\neach position in\nturn replaced by a\nnull of its own type\n//stdlib_sweep//" as POP2 <<collection>>
+rectangle "**wholly unknown**\neach position in turn\nreplaced by an unknown\nof its own type\n//stdlib_unknown_sweep//" as POP3 <<collection>>
+rectangle "**marked**\neach position in turn\nwrapped in the\nsensitive mark\n//stdlib_marked_sweep//" as POP4 <<collection>>
+
+rectangle "**the per-surface oracle modules**\nconversion · msgpack · json_codec · conformance · equality · value_range\nwalk · mark_paths · unknown_as_null · stdlib · tofusoup_compat\n----\nEach drives one go-cty surface through its own subcommand and compares\nthe answers: kind, payload, refinements **and the deep mark union**." as SURFACES <<structural>>
+
+rectangle "**_oracle.py** — the bridge, and the only module that knows where the harness lives\n**soup_go()** resolves the binary: **SOUP_GO_BIN** -> shutil.which(soup-go) -> /tmp/soup-go\n**run(*args)** shells out — argv in, one JSON object on stdout, parsed with Decimal\n**rich(v)** · **type_spec(t)** · **dynamic_arg(v)** · **refinements(v)** translate into the harness dialect\n**canonical(payload)** normalises both sides' numbers before anything is compared" as ORACLE <<capsule>>
+
+rectangle "**the two-stage staleness handshake**\n**shape** — parse soup-go cty --help, require every name in REQUIRED_COMMANDS\n**behaviour** — two probes: cty rich must round-trip a number bound of 2^70\nwithout rounding it through a default-precision big.Float, and\ncty safe-known-prefix hello must answer hell\n----\n**A missing binary skips the test. A stale one raises AssertionError.**\nThe behaviour probes are what catch a binary with every command but stale,\npre-fix answers." as HANDSHAKE <<dynamic>>
+
+rectangle "**soup-go** — a Go binary from the tofusoup repo\nsrc/tofusoup/harness/go/soup-go, linking **github.com/zclconf/go-cty v1.19.0**\n(reference checkout v1.19.0-1-g0d1eb26)\n----\nthe 15 subcommands this suite requires:\n**call · functions · unify** — the stdlib oracle\n**rich · unknown-as-null · marks · conformance · json · range · safe-known-prefix**\n**· convert-value · walk · transform · msgpack · equals** — the cty package\nitself, which no stdlib call can reach" as SOUPGO <<external>>
+
+rectangle "**real go-cty**\nexecuted, not remembered" as GOCTY <<external>>
+
+MAKE --> RUNNER
+RUNNER --> SUITE
+SUITE --> CASES
+SUITE --> SURFACES
+CASES --> POP1
+CASES --> POP2
+CASES --> POP3
+CASES --> POP4
+POP1 --> ORACLE
+POP2 --> ORACLE
+POP3 --> ORACLE
+POP4 --> ORACLE
+SURFACES --> ORACLE
+ORACLE --> HANDSHAKE
+HANDSHAKE --> SOUPGO
+ORACLE --> SOUPGO : argv in, JSON out
+SOUPGO --> GOCTY
+
+note right of CASES
+  **The two guards that keep the instrument honest.**
+  **Coverage** — the denominator is soup-go cty functions
+  itself, read at test time, not a threshold typed in by
+  hand — a hardcoded number measures coverage against the
+  wrong denominator the moment the harness adds a function.
+  Every function the harness exposes must be swept, or
+  named in UNSWEPT with a reason.
+  **Divergences** — recorded as **strict xfails**, added through
+  add_marker rather than pytest.xfail(), so on the day one
+  is fixed the test XPASSes and **fails**.
+end note
+
+note right of ORACLE
+  **The rich value dialect.** A cty call argument can only say
+  unknown, null or marked about a **whole** value — enough for a
+  function's answer, useless for the cty-package surfaces. So
+  values cross as JSON sentinels: $marks with $value, $unknown
+  with $refine, $null, $number, $bytes, $dynamic. cty rich
+  round-trips the dialect so it is proven rather than assumed,
+  and a map key that would collide with a sentinel is an **error**
+  rather than an approximation — an oracle that quietly renders
+  a value as something else still passes the comparison.
+end note
+
+note bottom of SOUPGO
+  **There are no oracle files.** The checked-in fixture trees were deleted on purpose: ten of the
+  seventeen had been written with a trailing newline, and by then nothing read either tree.
+  Every answer in this suite is produced by **executing the binary at test time** — which is why
+  the harness is rebuilt on every run, and why the handshake exists at all.
+  ----
+  Two things worth knowing about the instrument itself. **unify** is in REQUIRED_COMMANDS but no
+  standing test drives it; it was measured by a 38-case differential run instead.
+  **And this runs in CI on a pinned Go toolchain** — a job checks out the harness repo beside
+  this one and runs make compat. The pin is load-bearing: go-cty picks go-textseg v15 below
+  Go 1.27 and v17 at or above it, and four GB9c cases are strict xfails against the v15 answer.
+end note
+
+@enduml

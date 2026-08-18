@@ -1,0 +1,71 @@
+@startuml 07-terraform-context
+!include _theme.iuml
+
+title Where pyvider-cty sits — and why sensitivity travels in the schema, never in the value
+
+skinparam nodesep 18
+skinparam ranksep 26
+skinparam rectangleFontSize 12
+
+rectangle "**Terraform** (or OpenTofu)\nplans, applies, and stores state" as TF <<external>>
+
+rectangle "**tfplugin6, over gRPC**\n**Schema.Attribute.sensitive** (field 7) — the //only// channel sensitivity has\n**DynamicValue** — two fields, msgpack and json, and nothing else" as PROTO <<external>>
+
+rectangle "**pyvider** — the provider framework\nhandlers: ValidateResourceConfig · PlanResourceChange · ApplyResourceChange · ReadResource\nconversion/marshaler.py — marshal and unmarshal, at the wire boundary" as PYVIDER <<capsule>>
+
+rectangle "**pyvider-cty**   //this library//\nCtyType and CtyValue · validate · convert · unify · the marks machinery\ncty_to_msgpack / cty_from_msgpack · cty_to_json / cty_from_json · the 83-function stdlib" as CTY <<core>>
+
+rectangle "**resource and data-source code**\nsees ctx.config_cty — and it is **marked**" as RES <<collection>>
+
+TF <-down-> PROTO : Configure · Validate · Plan · Apply · Read
+PROTO <-down-> PYVIDER : a DynamicValue **and** the Schema it belongs to
+PYVIDER <-down-> CTY : CtyValue in one direction, bytes in the other
+PYVIDER -right-> RES : ctx.config_cty
+
+rectangle "**INBOUND** — Terraform to the resource\n# a DynamicValue arrives: msgpack bytes, plus the schema\n# **cty_from_msgpack(bytes, schema_type)** rebuilds a CtyValue.\nNothing in those bytes says sensitive; there is no channel for it\n# the handler **re-derives the marks from the schema** and applies\nthem, so the value handed to resource code as ctx.config_cty is\nmarked in exactly the places the schema calls sensitive\n# resource code sees a marked value, and any stdlib call keeps the\nmark — the function framework unions every argument's marks\nonto the result" as INB <<collection>>
+
+rectangle "**OUTBOUND** — the resource back to Terraform\n# resource code hands back a value that may still be marked,\nbecause it was built out of ctx.config_cty\n# **marshal unmarks at the wire boundary.** That is the provider's\njob, not the codec's\n# **cty_to_msgpack refuses a marked value outright**, naming the path\nto the offending mark. It does not drop the mark and carry on\n# Terraform re-derives sensitivity on its own side, from the very\nsame schema" as OUT <<capsule>>
+
+CTY -down-> INB
+CTY -down-> OUT
+INB -[hidden]right- OUT
+
+note bottom of OUT
+  **Why a refusal, and not a silent unmark.**
+  Marks have no wire representation. Serializing a marked
+  value would hand Terraform a sensitive value it no longer
+  knows is sensitive — and dropping a mark is not a
+  degradation the caller can detect, so it has to be an
+  error rather than a silent success. go-cty refuses
+  identically: "value has marks, so it cannot be serialized".
+end note
+
+note bottom of INB
+  **The consequence that surprises people.**
+  Because sensitivity is re-derived from the schema on both
+  sides, a mark is a purely **in-process** notion. It exists
+  inside pyvider, and it exists inside Terraform, and it does
+  not exist on the wire between them. A provider that marks a
+  value and then serializes it is not being careful — it is
+  about to crash. Unmark at the boundary, which is exactly
+  where pyvider does it.
+end note
+
+note right of CTY
+  **This library never talks to gRPC.** It has no
+  protobuf dependency and no knowledge of
+  tfplugin6 beyond the shape of the bytes and
+  the type-constraint JSON that _to_wire_json()
+  produces. Terraform, tfplugin6 and pyvider are
+  all somebody else's repository.
+end note
+
+legend bottom
+  |= |= who owns what |
+  | **Terraform** | owns the plan, and re-derives sensitivity from the schema it was handed. |
+  | **tfplugin6** | carries the schema (with its sensitive flags) and the values (with none). Two separate messages. |
+  | **pyvider** | owns marks: applies them inbound from the schema, strips them outbound at the marshaller. |
+  | **pyvider-cty** | owns types, values, conversion and the wire encoding — and **refuses** to serialize a marked value. |
+endlegend
+
+@enduml
