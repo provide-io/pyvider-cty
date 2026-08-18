@@ -54,9 +54,24 @@ def canonical_sort_key(member: Any) -> Any:
     `CtyValue` here is a cycle -- `types.structural.object` imports this module --
     and doing it inside the function would put an import on a path that runs once
     per element of every set this package converts or serializes.
+
+    A member that cannot produce a key is handed to `_member_key`, which is the
+    same fallback hashing and de-duplication use. It has to be the same one: its
+    key is `(0, -1, repr(member))` and a real value's is `(0, <rank>, ...)`, so
+    the two are comparable only because the raw one keeps the arity and puts an
+    int where an int is expected. The `(0, str(member))` this used to return was
+    a two-tuple whose second element is a string, and sorting a set holding both
+    kinds compared an int against a str and raised a bare `TypeError` -- from
+    inside `cty_to_native`, and outside the error taxonomy. That import is on the
+    rare path: only a hand-built value can hold a member `validate` did not
+    normalise.
     """
     key = getattr(member, "_canonical_sort_key", None)
-    return key() if key is not None else (0, str(member))
+    if key is not None:
+        return key()
+    from pyvider.cty.values.base import _member_key
+
+    return _member_key(member)
 
 
 def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
