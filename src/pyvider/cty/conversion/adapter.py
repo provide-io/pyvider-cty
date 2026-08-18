@@ -9,6 +9,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, cast
 
+# Local imports to break the circular dependency cycle.
+from pyvider.cty.conversion._utils import canonical_sort_key
 from pyvider.cty.types import (
     CtyDynamic,
     CtyList,
@@ -17,8 +19,6 @@ from pyvider.cty.types import (
     CtySet,
     CtyTuple,
 )
-
-# Local imports to break the circular dependency cycle.
 from pyvider.cty.values import CtyValue
 
 # Module-level sentinel to avoid per-call allocation
@@ -85,12 +85,14 @@ def cty_to_native(value: CtyValue[Any] | Any) -> Any:  # noqa: C901
                 list_val = cast(list[Any], val_to_process.value)
                 results[val_id] = [results[id(item)] for item in list_val]
             elif isinstance(val_to_process.type, CtySet):
-                # Use _canonical_sort_key for consistent sorting of set elements
+                # Sorted by the ELEMENTS, not by what they converted into. The
+                # sort used to run over the natives, where every member is a
+                # plain int, str or dict -- so its `isinstance(v, CtyValue)`
+                # branch was unreachable and every set came out ordered by
+                # `repr`. `{10, 2, 9}` converted to [10, 2, 9], because "10"
+                # sorts before "2".
                 set_val = cast(set[Any], val_to_process.value)
-                results[val_id] = sorted(
-                    [results[id(item)] for item in set_val],
-                    key=lambda v: v._canonical_sort_key() if isinstance(v, CtyValue) else repr(v),
-                )
+                results[val_id] = [results[id(item)] for item in sorted(set_val, key=canonical_sort_key)]
             elif isinstance(val_to_process.type, CtyTuple):
                 tuple_val = cast(tuple[Any, ...], val_to_process.value)
                 results[val_id] = tuple(results[id(item)] for item in tuple_val)

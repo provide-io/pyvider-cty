@@ -17,6 +17,21 @@ from pyvider.cty.config.defaults import (
 """Internal conversion utilities to avoid circular dependencies."""
 
 
+def canonical_sort_key(member: Any) -> Any:
+    """The order a set's elements are put in, for a member that may not be one.
+
+    `CtyValue._canonical_sort_key` is total and never raises, so the fallback
+    here is only for a member of a *hand-built* value -- `validate` normalises
+    every member into a `CtyValue`. Shared rather than restated: this rule
+    decides de-duplication, hashing, and the byte order of every serialized set,
+    so two callers sorting a set two ways is a diff Terraform sees.
+    """
+    # Local import to prevent a circular dependency at module load time.
+    from pyvider.cty.values import CtyValue
+
+    return member._canonical_sort_key() if isinstance(member, CtyValue) else (0, str(member))
+
+
 def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
     """
     Safely converts an attrs instance to a dict, raising TypeError for CTY
