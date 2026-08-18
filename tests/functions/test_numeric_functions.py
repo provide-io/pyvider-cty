@@ -268,17 +268,23 @@ class TestNumericFunctions:
         `gocty.FromCtyValue` truncates precision silently but will not let a
         finite number become an infinity on the way in (`gocty/out.go:207`).
         Without it `log(1e400, 2)` answers `+Inf` here where go-cty errors, which
-        is the silent infinity that comment is about. `pow` does not carry the
-        gate, because `pow` is not read through `float64` here -- see the module
-        docstring on the precision model.
+        is the silent infinity that comment is about. `pow` carries the same gate
+        for the same reason, and is checked here beside it: both read their
+        arguments with `gocty.FromCtyValue`.
         """
         with pytest.raises(CtyFunctionError, match="value must be between"):
             log_fn(N(Decimal("1e400")), N(2))
         with pytest.raises(CtyFunctionError, match="value must be between"):
             log_fn(N(2), N(Decimal("1e400")))
 
+        with pytest.raises(CtyFunctionError, match="value must be between"):
+            pow_fn(N(Decimal("1e400")), N(2))
+        with pytest.raises(CtyFunctionError, match="value must be between"):
+            pow_fn(N(2), N(Decimal("1e400")))
+
         # An argument that already *is* an infinity converts exactly, so it passes.
         assert log_fn(N(Decimal("Infinity")), N(2)).value == Decimal("Infinity")
+        assert pow_fn(N(Decimal("Infinity")), N(2)).value == Decimal("Infinity")
 
     def test_pow_fn(self) -> None:
         assert pow_fn(CtyNumber().validate(2), CtyNumber().validate(3)).value == 8
@@ -287,16 +293,16 @@ class TestNumericFunctions:
     def test_pow_of_a_zero_exponent_is_one_for_any_base(self) -> None:
         """Go's `math.Pow` special cases this before anything else.
 
-        "Pow(x, ±0) = 1 for any x", including zero and an infinity. `Decimal`
-        calls `0 ** 0` undefined and raises, which was the one input where the
-        two numeric models disagreed about an *answer* rather than about digits.
-        Verified against go-cty: `pow(0, 0)` is 1.
+        "Pow(x, ±0) = 1 for any x", including zero and an infinity. Reading `pow`
+        through `float64` inherits all of those special cases rather than
+        restating any of them, which is why the hand-written `power == 0` guard
+        this used to need is gone. Verified against go-cty: `pow(0, 0)` is 1.
         """
         for base in (0, 2, -3, Decimal("Infinity"), Decimal("-Infinity")):
             assert pow_fn(N(base), N(0)).value == 1
 
     def test_pow_agrees_with_math_pow_on_the_infinite_edges(self) -> None:
-        """`Decimal`'s exponentiation follows IEEE here, so no transcription is needed."""
+        """The `float64` transcription carries Go's zero and infinity contract."""
         assert pow_fn(N(0), N(-1)).value == Decimal("Infinity")
         assert pow_fn(N(Decimal("Infinity")), N(-1)).value == 0
         assert pow_fn(N(Decimal("0.5")), N(Decimal("Infinity"))).value == 0

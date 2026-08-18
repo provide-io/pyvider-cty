@@ -345,6 +345,16 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("negate", [nm(0)]),
     ("pow", [nm(2), nm(10)]),
     ("pow", [nm(2), nm("0.5")]),
+    # go-cty computes `pow` in float64, so its answer carries that type's
+    # rounding, its overflow to an infinity and its range refusal.
+    ("pow", [nm("1.1"), nm(2)]),
+    ("pow", [nm(10), nm(308)]),
+    ("pow", [nm(10), nm(400)]),
+    ("pow", [nm(10), nm(1000000)]),
+    ("pow", [nm(10), nm(-1000000)]),
+    ("pow", [nm(0), nm(0)]),
+    ("pow", [nm(0), nm(-1)]),
+    ("pow", [nm(-8), nm("0.5")]),
     ("log", [nm(8), nm(2)]),
     ("max", [nm(1), nm(5)]),
     ("max", [nm(-1), nm(-5)]),
@@ -730,15 +740,40 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     "strrev(\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
     "substr(\u0915\u094d\u0937,0,1)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
     "format(%.1s,\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
-    # The numeric precision model differs, and in both directions. go-cty holds
-    # a number in a 512-bit big.Float, so a non-terminating quotient comes back
-    # with 155 significant digits against Decimal's 28-digit default context --
-    # but its transcendental functions run in float64 first, so `pow(2, 0.5)`
-    # comes back with 17, and there this package is the *more* accurate of the
-    # two. Neither is a wrong answer; they are different models. Matching go-cty
-    # means reproducing its float64 step, which is a decision, not a fix.
+    # The numeric precision model differs where go-cty computes in a big.Float:
+    # a non-terminating quotient comes back with 155 significant digits against
+    # Decimal's 28-digit default context. Neither is a wrong answer.
+    #
+    # `pow(2, 0.5)` used to sit here on the same reasoning and did not belong.
+    # go-cty computes `pow` in float64, so its 17 digits are not a rounder
+    # version of the answer this package gave -- they *are* the answer, and being
+    # more precise than it was a different function. `pow` is transcribed through
+    # float64 now, and the rows above pin the three ways that changes things.
     "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
-    "pow(2,0.5)": "numeric precision model: go-cty computes in float64, Decimal is more precise",
+    # Two divergences left by transcribing `pow` through float64, neither of them
+    # about `pow`.
+    #
+    # The first is a *spelling* gap in the wire codec, and the digits now agree:
+    # both sides answer 1.4142135623730951. go-cty holds that as a big.Float of
+    # precision 53 built by `SetFloat64`, so `Float64()` is exact and msgpack
+    # writes a float64 (`msgpack/marshal.go:92`). This package holds the shortest
+    # decimal that names the same float, which is not *exactly* that float, so
+    # the codec correctly declines the float64 branch and writes the text. Both
+    # spellings are right about the number and only one is right about the bytes.
+    # Fixing it means recording that a number came from a float64 computation,
+    # which is a change to how every number is stored -- and the naive version,
+    # comparing against `str(float(d))`, is the bug the comment at
+    # `codec.py:296` exists to prevent.
+    "pow(2,0.5)": "wire spelling: go-cty writes a float64-derived number as a float64, this writes its text",
+    "pow(1.1,2)": "wire spelling: go-cty writes a float64-derived number as a float64, this writes its text",
+    # The second will not be fixed. Go's `math.Pow` is a pure-Go implementation
+    # and is not correctly rounded; the platform libm behind Python's `math.pow`
+    # is. At 10^308 they are three ULPs apart -- Go answers the float whose
+    # shortest spelling is 1.0000000000000006e+308, and this answers the one
+    # nearest to 10^308. Reproducing Go's rounding error is not parity worth
+    # having, and the row stays so the difference is recorded rather than found
+    # again.
+    "pow(10,308)": "Go's math.Pow is not correctly rounded; the platform libm behind math.pow is",
 }
 
 # The same, for the nulled-argument population. A list of its own rather than a
