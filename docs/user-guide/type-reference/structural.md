@@ -60,6 +60,24 @@ except Exception as e:
     print(f"\nValidation failed as expected: {e}")
 ```
 
+That "missing" check is about the key being absent from the input mapping,
+not about its value. A *non-optional* attribute is still free to be
+explicitly `null` -- `CtyObject.validate` accepts that:
+
+```python
+# A required attribute may still be given an explicit null. Terraform sends
+# exactly this shape constantly: it strips optional-attribute markers before
+# a value crosses the provider protocol, so every unset attribute -- required
+# or not, from cty's point of view -- arrives as an explicit null rather than
+# as a missing key.
+cty_with_null_age = user_type.validate({"name": "Carol", "age": None, "is_active": True})
+assert cty_with_null_age["age"].is_null
+
+# Enforcing "this attribute must be non-null" is the caller's job, not
+# CtyObject's -- a CtyObject only records which attributes are *optional*
+# (a wire-format concept), not which are required to be non-null.
+```
+
 ## `CtyTuple`
 
 The `CtyTuple` type represents a sequence of elements with a fixed length, where each element can have a different type.

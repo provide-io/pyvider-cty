@@ -8,7 +8,7 @@ MessagePack is a binary serialization format that:
 - Is more compact than JSON
 - Preserves type information precisely
 - Is compatible with go-cty for cross-language interoperability
-- Handles all cty types including marks and unknown values
+- Handles unknown values, but refuses to serialize a marked value (see [Working with Marks](#working-with-marks))
 
 ## Basic Serialization
 
@@ -154,11 +154,11 @@ assert restored['phone'].is_null == True
 
 ## Working with Marks
 
-Marks (metadata) are preserved during serialization:
+Marks (metadata such as sensitivity) are *not* carried across the wire: serializing a marked value raises `CtyMarksSerializationError` rather than silently dropping the marks. If a value might be marked, strip the marks with `unmark_deep()` before serializing and reapply them after deserializing, keeping the mark set alongside the bytes:
 
 ```python
 from pyvider.cty import CtyString
-from pyvider.cty.marks import CtyMark
+from pyvider.cty.marks import CtyMark, unmark_deep
 
 # Create a mark
 sensitive_mark = CtyMark("sensitive")
@@ -170,12 +170,15 @@ password_value = password_type.validate("secret123")
 # Add mark
 marked_password = password_value.with_marks({sensitive_mark})
 
-# Serialize preserves marks
-msgpack_bytes = cty_to_msgpack(marked_password, password_type)
+# Serializing a marked value raises CtyMarksSerializationError -- strip the
+# marks first and track them separately from the bytes
+unmarked_password, collected_marks = unmark_deep(marked_password)
+msgpack_bytes = cty_to_msgpack(unmarked_password, password_type)
 restored = cty_from_msgpack(msgpack_bytes, password_type)
 
-# Mark is preserved
-assert sensitive_mark in restored.marks
+# Reapply the marks after deserializing
+restored_with_marks = restored.with_marks(collected_marks)
+assert sensitive_mark in restored_with_marks.marks
 ```
 
 ## Batch Serialization
@@ -200,11 +203,12 @@ def deserialize_batch(msgpack_list, schema):
     return values
 
 # Usage
-values = [
-    (person1, person_type),
-    (person2, person_type),
-    (person3, person_type)
+people_data = [
+    {"name": "Alice", "age": 30},
+    {"name": "Bob", "age": 25},
+    {"name": "Carol", "age": 40},
 ]
+values = [(person_type.validate(data), person_type) for data in people_data]
 
 serialized_batch = serialize_batch(values)
 # ... save, transmit, etc.

@@ -24,7 +24,7 @@ print(result.raw_value)  # "hello"
 try:
     string_type.validate(123)
 except CtyValidationError as e:
-    print(f"Error: {e}")  # Error: expected CtyString, got int
+    print(f"Error: {e}")  # Error: String validation error: Cannot convert int to string.
 ```
 
 ## Validation vs Direct Construction
@@ -56,13 +56,13 @@ The `validate()` method provides:
 - Special handling: Unicode normalization (NFC)
 
 **CtyNumber**
-- Accepts: `int`, `float`, `Decimal`
-- Rejects: Non-numeric types
+- Accepts: `int`, `float`, `Decimal`, and numeric strings (`"95000"`, `"12.5"` all coerce)
+- Rejects: Non-numeric types and non-numeric strings
 - Special handling: Preserves precision with `Decimal`
 
 **CtyBool**
-- Accepts: `bool` values (`True`, `False`)
-- Rejects: Non-boolean types (including truthy/falsy values like `1`, `0`, `""`)
+- Accepts: `bool` values, the numbers `1`/`0` (also `1.0`/`0.0`), and the strings `"true"`/`"false"` (case-insensitive) — all coerce to `True`/`False`
+- Rejects: Any other value, including other numbers and other strings (`""`, `"yes"`, `2`)
 
 ### Collections
 
@@ -87,7 +87,11 @@ The `validate()` method provides:
 - Accepts: `dict` with specific attributes
 - Attribute validation: Each attribute validated against its type
 - Optional attributes: Missing optional attributes become null values
-- Required attributes: Must be present (unless optional)
+- Required attributes: The key must be present in the `dict` (unless optional) — but a
+  required attribute whose value is explicitly `None` is accepted and becomes a null
+  `CtyValue`, matching go-cty. `validate()` only enforces that the *key* is present; it
+  has no notion of "this attribute must be non-null", so a schema layer that needs that
+  rule has to check it itself.
 
 **CtyTuple**
 - Accepts: `list`, `tuple`, or iterables
@@ -126,7 +130,8 @@ company_data = {
 }
 
 company = company_type.validate(company_data)
-# If Bob's salary was "95000" (string), validation would fail
+# CtyNumber coerces numeric strings, so a salary of "95000" (string) would still
+# validate. If Bob's salary was "ninety-five thousand", validation would fail
 # at the path: employees[1].salary
 ```
 
@@ -172,10 +177,15 @@ try:
         "age": "thirty"  # Wrong type!
     })
 except CtyAttributeValidationError as e:
-    print(e.attribute_name)  # "age"
-    print(e.path)            # Path to error location
-    print(e)                 # Full error message
+    print(e.path)                        # CtyPath(steps=(GetAttrStep(name='age'),))
+    print(e.context["cty.path"])         # "age"
+    print(e)                             # At age: Number validation error: ...
 ```
+
+There is no `.attribute_name` or `.index` shortcut on these exceptions — the
+failing attribute or index lives in `.path` (a `CtyPath`) and is also mirrored
+into `.context["cty.path"]` as a plain string (`"age"` for an attribute,
+`"[1]"` for a list index), and it's baked into the message text itself.
 
 ### Exception Hierarchy
 
@@ -183,10 +193,11 @@ except CtyAttributeValidationError as e:
 CtyValidationError (base)
 ├── CtyTypeMismatchError
 ├── CtyAttributeValidationError
-├── CtyListValidationError
-├── CtyMapValidationError
-├── CtySetValidationError
-└── CtyTupleValidationError
+└── CtyCollectionValidationError
+    ├── CtyListValidationError
+    ├── CtyMapValidationError
+    ├── CtySetValidationError
+    └── CtyTupleValidationError
 ```
 
 Catch specific exceptions for targeted error handling:
@@ -196,10 +207,10 @@ try:
     value = schema.validate(data)
 except CtyAttributeValidationError as e:
     # Handle object attribute errors
-    log.error(f"Attribute {e.attribute_name} is invalid")
+    log.error(f"Attribute {e.context['cty.path']} is invalid: {e}")
 except CtyListValidationError as e:
     # Handle list validation errors
-    log.error(f"List validation failed at index {e.index}")
+    log.error(f"List validation failed at {e.context['cty.path']}: {e}")
 except CtyValidationError as e:
     # Catch-all for other validation errors
     log.error(f"Validation failed: {e}")
@@ -321,13 +332,15 @@ Validation and type conversion work together:
 ```python
 from pyvider.cty import convert, CtyString, CtyNumber
 
-# Validation: Strict type checking
-number_type = CtyNumber()
-number_type.validate("123")  # ❌ Raises error: expected number, got str
+# Validation: Strict about the *type* of the position, though CtyNumber and
+# CtyBool both coerce a handful of natural spellings (see above) -- CtyString
+# does not, so a non-string always fails validate().
+string_type = CtyString()
+string_type.validate(123)  # ❌ Raises CtyValidationError: not a string
 
-# Conversion: Flexible type transformation
-string_val = CtyString().validate("123")
-number_val = convert(string_val, CtyNumber())  # ✅ Converts "123" to 123
+# Conversion: Flexible type transformation between compatible types
+number_val = CtyNumber().validate(123)
+string_val = convert(number_val, CtyString())  # ✅ Converts 123 to "123"
 ```
 
 ## See Also

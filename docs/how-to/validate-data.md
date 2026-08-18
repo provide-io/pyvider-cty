@@ -176,7 +176,15 @@ print(scores_value["alice"].raw_value)  # 95
 Validation errors provide detailed information about what went wrong:
 
 ```python
+from pyvider.cty import CtyObject, CtyString, CtyNumber
 from pyvider.cty.exceptions import CtyValidationError
+
+user_type = CtyObject(
+    attribute_types={
+        "name": CtyString(),
+        "age": CtyNumber()
+    }
+)
 
 try:
     user_value = user_type.validate({
@@ -185,7 +193,7 @@ try:
     })
 except CtyValidationError as e:
     print(f"Validation error: {e}")
-    # Output: Attribute 'age': expected CtyNumber, got str
+    # Output: Validation error: At age: Number validation error: Cannot represent str value 'thirty' as Decimal
 ```
 
 ### Validate Multiple Items
@@ -231,7 +239,7 @@ flexible_type = CtyObject(
         "name": CtyString(),
         "data": CtyDynamic()  # Can be any type
     }
-})
+)
 
 # The 'data' field can hold any type
 example1 = flexible_type.validate({

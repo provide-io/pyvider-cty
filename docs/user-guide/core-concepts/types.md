@@ -24,7 +24,7 @@ The `validate` method is the most important method of a `cty` type. It takes a r
 cty_value = my_type.validate(raw_python_value)
 ```
 
-If the validation is successful, `validate` returns a new `cty` value. If the validation fails, it raises a `ValidationError` with detailed information about what went wrong.
+If the validation is successful, `validate` returns a new `cty` value. If the validation fails, it raises a `CtyValidationError` with detailed information about what went wrong.
 
 ## Categories of Types
 

@@ -117,33 +117,88 @@ reconstructed = cty_from_msgpack(msgpack_bytes, user_type)
 assert reconstructed["age"].is_null
 ```
 
-### Preserving Marks
+### Unknown and Refined Values
 
-Marks (metadata) are preserved during serialization:
+An unknown value serializes to its own MessagePack extension type (a bare unknown is the two-byte fixext1 `d4 00 00`) and decodes back to an unknown of the same type:
+
+```python
+from pyvider.cty import CtyString, CtyValue
+from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+
+unknown_value = CtyValue.unknown(CtyString())
+msgpack_bytes = cty_to_msgpack(unknown_value, CtyString())
+assert msgpack_bytes.hex() == "d40000"
+
+reconstructed = cty_from_msgpack(msgpack_bytes, CtyString())
+assert reconstructed.is_unknown
+```
+
+A *refined* unknown — one built with `pyvider.cty.refinement.refine` to carry a constraint such as "not null" or a numeric range — keeps that refinement across the wire instead of flattening to a bare unknown. It uses a different extension type (12) to carry the extra payload:
+
+```python
+from pyvider.cty import CtyString, CtyValue
+from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+from pyvider.cty.refinement import refine
+
+refined = refine(CtyValue.unknown(CtyString())).not_null().new_value()
+msgpack_bytes = cty_to_msgpack(refined, CtyString())
+
+reconstructed = cty_from_msgpack(msgpack_bytes, CtyString())
+assert reconstructed.is_unknown
+
+# A refined unknown's constraints live on .value, as a RefinedUnknownValue,
+# rather than flattening to a plain marker the way a bare unknown does.
+assert reconstructed.value.is_known_null is False
+```
+
+### Marked Values Must Be Unmarked First
+
+Unlike the other value kinds, a value carrying marks **cannot** be serialized directly — `cty_to_msgpack` raises rather than silently dropping the marks, matching go-cty's own `marshal.go` ("value has marks, so it cannot be serialized"):
 
 ```python
 from pyvider.cty import CtyString
 from pyvider.cty.marks import CtyMark
-from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+from pyvider.cty.codec import cty_to_msgpack
+from pyvider.cty.exceptions import CtyMarksSerializationError
 
 string_type = CtyString()
 sensitive_mark = CtyMark("sensitive")
 
-# Create a marked value
 password = string_type.validate("secret123")
 marked_password = password.with_marks({sensitive_mark})
 
-# Serialize and deserialize
-msgpack_bytes = cty_to_msgpack(marked_password, string_type)
-reconstructed = cty_from_msgpack(msgpack_bytes, string_type)
+try:
+    cty_to_msgpack(marked_password, string_type)
+except CtyMarksSerializationError as e:
+    print(f"refused: {e}")
+```
 
-# Marks are preserved
-assert sensitive_mark in reconstructed.marks
+The reason is the same one Terraform's own wire format follows: marks like "sensitive" never travel on the value itself — `DynamicValue` on the wire carries only the msgpack bytes, with sensitivity tracked separately by the schema. To serialize a marked value, strip its marks first with `unmark_deep` and carry them out of band; re-apply them with `with_marks` once you have the value back:
+
+```python
+from pyvider.cty import CtyString
+from pyvider.cty.marks import CtyMark, unmark_deep
+from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
+
+string_type = CtyString()
+sensitive_mark = CtyMark("sensitive")
+marked_password = string_type.validate("secret123").with_marks({sensitive_mark})
+
+unmarked, collected_marks = unmark_deep(marked_password)
+msgpack_bytes = cty_to_msgpack(unmarked, string_type)
+
+reconstructed = cty_from_msgpack(msgpack_bytes, string_type)
+rehydrated = reconstructed.with_marks(collected_marks)
+assert sensitive_mark in rehydrated.marks
 ```
 
 ## JSON Support
 
-For JSON workflows, `pyvider.cty` provides the `jsonencode()` and `jsondecode()` functions in the `pyvider.cty.functions` module. These work with JSON strings as `CtyValue` objects:
+`pyvider.cty` has two distinct ways to work with JSON, and they answer different questions.
+
+### `jsonencode` / `jsondecode`: JSON as a Terraform Language Feature
+
+These are stdlib functions in `pyvider.cty.functions`, the same ones the Terraform language exposes. They operate on `CtyValue`s and produce or consume a JSON document held as a `CtyValue` string — useful when a JSON blob is itself one attribute among others:
 
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
@@ -160,16 +215,41 @@ json_string_value = jsonencode(user_value)
 json_str = json_string_value.raw_value  # Get the actual JSON string
 
 print(f"JSON: {json_str}")
-# Output: JSON: {"name":"Alice","age":30}
+# Output: JSON: {"name": "Alice", "age": 30}
 
 # Decode from JSON string
 json_input = CtyString().validate('{"name":"Bob","age":25}')
 decoded_value = jsondecode(json_input)
 
-# Note: jsondecode returns dynamic data, may need type conversion
+# jsondecode infers a concrete type from the document, not a dynamic
+# wrapper: an object stays an object, and a JSON array decodes as a
+# tuple (a list would have to invent one shared element type).
+assert decoded_value.type == CtyObject(attribute_types={"name": CtyString(), "age": CtyNumber()})
 ```
 
-**Key Difference**: Unlike MessagePack serialization which is designed for storage and transmission, `jsonencode`/`jsondecode` are for working with JSON data as strings within the cty type system.
+### `cty_to_json` / `cty_from_json`: the Value Codec
+
+For storage and transmission, use the JSON *value codec* in `pyvider.cty.json_codec` — the JSON counterpart to the MessagePack codec above, and the form Terraform itself uses wherever a value has to be human-readable, such as state files and `terraform show -json`. Like the MessagePack codec, it is type-directed: you supply the `CtyType` you expect, both to serialize and to parse.
+
+```python
+from pyvider.cty import CtyObject, CtyString, cty_to_json, cty_from_json
+
+schema = CtyObject(attribute_types={"note": CtyString()})
+value = schema.validate({"note": "<draft>"})
+
+document = cty_to_json(value, schema)
+print(document)
+# b'{"note":"\\u003cdraft\\u003e"}'
+
+reconstructed = cty_from_json(document, schema)
+assert reconstructed == value
+```
+
+Note the escaping: `cty_to_json` escapes `<`, `>` and `&` the way Go's `encoding/json` does, so the bytes match what a Go-based tool would produce for the same value — a plain `json.dumps` would leave those characters alone. Decoding is stricter than you might expect from a generic JSON parser, too: an attribute the schema doesn't declare is a hard error rather than a silently dropped key, an attribute the document omits decodes as null rather than being refused, and a JSON number or bool in a string-typed position converts to its literal text (`1.50` decodes to the string `"1.50"`, matching how the document was written, not how the number would print).
+
+Like the MessagePack codec, `cty_to_json` cannot represent an unknown value (there is no JSON spelling for "not yet decided") or a marked one — both raise. Unmark with `unmark_deep` first, exactly as with MessagePack.
+
+**Which to use**: `jsonencode`/`jsondecode` when JSON is data flowing through your `CtyValue`s, as Terraform configuration would produce or consume it. `cty_to_json`/`cty_from_json` when you're persisting or transmitting a whole `CtyValue` and want JSON instead of MessagePack — typically for human-readable output, since MessagePack remains the more complete and more compact format for that role.
 
 ## Cross-Language Compatibility
 
@@ -195,21 +275,23 @@ msgpack_data = cty_to_msgpack(value, schema)
 ### Saving to File
 
 ```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
 
 config_type = CtyObject(attribute_types={"setting": CtyString()})
 config_value = config_type.validate({"setting": "production"})
 
-# Serialize and save
-msgpack_bytes = cty_to_msgpack(config_value, config_type)
-with open("config.msgpack", "wb") as f:
-    f.write(msgpack_bytes)
+with TemporaryDirectory() as directory:
+    path = Path(directory) / "config.msgpack"
 
-# Load and deserialize
-with open("config.msgpack", "rb") as f:
-    loaded_bytes = f.read()
-loaded_value = cty_from_msgpack(loaded_bytes, config_type)
+    # Serialize and save
+    path.write_bytes(cty_to_msgpack(config_value, config_type))
+
+    # Load and deserialize
+    loaded_value = cty_from_msgpack(path.read_bytes(), config_type)
 
 assert loaded_value == config_value
 ```
@@ -265,25 +347,27 @@ msgpack_bytes = cty_to_msgpack(data, data_type)
 
 ## Error Handling
 
+`cty_to_msgpack` raises `SerializationError` (or the more specific `CtyMarksSerializationError` for marked values); `cty_from_msgpack` raises `DeserializationError` for the failure modes it specifically detects, such as a malformed refined-unknown or dynamic-type payload:
+
 ```python
 from pyvider.cty import CtyObject, CtyString
-from pyvider.cty.codec import cty_to_msgpack, cty_from_msgpack
-from pyvider.cty.exceptions import SerializationError, DeserializationError
+from pyvider.cty.codec import cty_from_msgpack
+from pyvider.cty.exceptions import DeserializationError
+import msgpack
 
 schema = CtyObject(attribute_types={"key": CtyString()})
 
-try:
-    value = schema.validate({"key": "value"})
-    msgpack_bytes = cty_to_msgpack(value, schema)
-except SerializationError as e:
-    print(f"Serialization failed: {e}")
+# A refined-unknown extension payload (ext type 12) that is itself invalid
+# msgpack. This is the shape of corruption cty_from_msgpack recognizes.
+corrupted = msgpack.packb(msgpack.ExtType(12, b"\xff\xff\xff"))
 
 try:
-    # Attempt to deserialize potentially corrupted data
-    reconstructed = cty_from_msgpack(msgpack_bytes, schema)
+    cty_from_msgpack(corrupted, CtyString())
 except DeserializationError as e:
     print(f"Deserialization failed: {e}")
 ```
+
+`DeserializationError` is not a catch-all for arbitrary corrupted bytes, though — data that is invalid in some other way surfaces as whatever raised it: `msgpack`'s own exceptions for malformed msgpack, or a `CtyValidationError` subclass when the bytes decode but don't conform to the schema you supplied. If you're deserializing data from an untrusted or unreliable source, catch `pyvider.cty.exceptions.CtyError` (the common base) alongside `msgpack.exceptions.UnpackException` rather than `DeserializationError` alone.
 
 ## Related Topics
 

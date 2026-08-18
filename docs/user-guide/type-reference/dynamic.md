@@ -43,9 +43,10 @@ point_data = ("GPS", 37.7749, -122.4194, {"accuracy": 10})
 # 3. Validate the data.
 validated_tuple = coordinate_type.validate(point_data)
 
-# 4. Access the dynamic element.
+# 4. Access the dynamic element (the tuple's raw value is a Python
+# tuple of CtyValue elements, so index into it to reach element 3).
 # CtyDynamic.validate infers the most specific type, which is CtyObject here.
-metadata_val = validated_tuple
+metadata_val = validated_tuple.value[3]
 print(f"Metadata Type (inferred): {metadata_val.value.type}")
 print(f"Metadata is an object: {isinstance(metadata_val.value.type, CtyObject)}")
 print(f"Metadata accuracy: {metadata_val.value['accuracy'].raw_value}")

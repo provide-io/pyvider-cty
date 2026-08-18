@@ -65,21 +65,39 @@ The standard library is extensive. Below is a categorized overview with function
 | `split` | Split string by separator into list |
 | `replace` | Replace occurrences of substring |
 | `substr` | Extract substring by position and length |
+| `strlen` | Return the length of a string, in grapheme clusters |
+| `format_fn` | Render a printf-style template (go-cty's dialect) |
+| `formatlist` | Render a printf-style template once per element of its list arguments |
 | `regex` | Match string against regular expression |
 | `regexall` | Find all regex matches in string |
 | `regexreplace` | Replace regex matches in string |
+
+`regex` and `regexall` take the pattern first and the subject string second — `regex(pattern, string)`, matching go-cty rather than Python's `re` module. Both arguments are strings, so a call written with the arguments the other way round still type-checks; it just matches against the wrong thing. `regex` returns the capture groups rather than the whole match — a tuple for unnamed groups, an object for named ones, or the whole match itself when the pattern has no groups — and raises if the pattern does not match rather than returning an empty string:
+
+```python
+from pyvider.cty import CtyString
+from pyvider.cty.functions import regex
+
+email = CtyString().validate("bob@example.com")
+pattern = CtyString().validate(r"(\w+)@([\w.]+)")
+user, domain = regex(pattern, email).value
+assert user.value == "bob"
+assert domain.value == "example.com"
+```
+
+`indent` takes a *number of spaces*, not a prefix string, and only indents lines after the first — it exists to line a multi-line value up under something already on the line above it, not to indent a block uniformly.
 
 ### Collection Functions
 
 | Function | Description |
 |----------|-------------|
-| `length` | Return number of elements in collection |
+| `length` | Return number of elements in a collection; refuses a string, use `strlen` for that |
 | `slice` | Extract subset of list elements |
 | `concat` | Concatenate multiple lists |
 | `contains` | Check if collection contains value |
 | `reverse` | Reverse order of list elements |
 | `distinct` | Remove duplicate elements from list |
-| `flatten` | Flatten nested lists into single list |
+| `flatten` | Flatten nested sequences into a single tuple, recursing through every level |
 | `sort` | Sort list elements |
 | `keys` | Get keys from map or object |
 | `values` | Get values from map or object |
@@ -93,6 +111,25 @@ The standard library is extensive. Below is a categorized overview with function
 | `coalescelist` | Return first non-empty list |
 | `index` | Find index of value in list |
 | `hasindex` | Check if collection has element at index |
+| `range_fn` | Generate a list of numbers over a range, like Python's `range` |
+
+### Set Functions
+
+| Function | Description |
+|----------|-------------|
+| `setunion` | Union of two or more sets |
+| `setintersection` | Intersection of two or more sets |
+| `setsubtract` | Elements in the first set but not the second |
+| `setsymmetricdifference` | Elements in exactly one of two or more sets |
+| `sethaselement` | Check if a set contains a value |
+
+### Boolean Functions
+
+| Function | Description |
+|----------|-------------|
+| `and_fn` | Logical AND of two booleans |
+| `or_fn` | Logical OR of two booleans |
+| `not_fn` | Logical negation of a boolean |
 
 ### Comparison Functions
 
@@ -119,7 +156,7 @@ The standard library is extensive. Below is a categorized overview with function
 |----------|-------------|
 | `jsonencode` | Encode value as JSON string |
 | `jsondecode` | Decode JSON string to value |
-| `csvdecode` | Decode CSV string to list of maps |
+| `csvdecode` | Decode CSV string to a list of objects, one per row, with every column typed as a string |
 
 ### Date/Time Functions
 
@@ -140,5 +177,6 @@ The standard library is extensive. Below is a categorized overview with function
 | Function | Description |
 |----------|-------------|
 | `coalesce` | Return first non-null value from arguments |
+| `assertnotnull` | Return the value unchanged, or raise if it is null |
 
 For complete API documentation with detailed signatures and examples, see the **[Functions API Reference](../../api/functions.md)**.

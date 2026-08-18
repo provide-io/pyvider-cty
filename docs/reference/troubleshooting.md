@@ -24,7 +24,7 @@ This guide helps you diagnose and resolve common issues when using `pyvider.cty`
 - [Missing Required Attributes](#scenario-1-missing-required-attributes)
 - [Type Conversion Issues](#scenario-2-type-conversion-issues)
 - [Null vs Missing Attributes](#scenario-3-null-vs-missing-attributes)
-- [Accessing Null Values](#scenario-4-accessing-null-values)
+- [Accessing Null and Unknown Values](#scenario-4-accessing-null-and-unknown-values)
 - [Recursion Depth Exceeded](#scenario-5-recursion-depth-exceeded)
 
 **Resources:**
@@ -45,14 +45,14 @@ CtyError (base exception)
 │   ├── CtyTypeMismatchError
 │   ├── CtyTypeValidationError
 │   ├── CtyAttributeValidationError
-│   ├── CtyListValidationError
-│   ├── CtyMapValidationError
-│   ├── CtySetValidationError
-│   ├── CtyTupleValidationError
 │   ├── CtyStringValidationError
 │   ├── CtyNumberValidationError
 │   ├── CtyBoolValidationError
 │   └── CtyCollectionValidationError
+│       ├── CtyListValidationError
+│       ├── CtyMapValidationError
+│       ├── CtySetValidationError
+│       └── CtyTupleValidationError
 │
 ├── CtyConversionError
 │   ├── CtyTypeConversionError
@@ -60,17 +60,20 @@ CtyError (base exception)
 │
 ├── CtyFunctionError
 │
-└── EncodingError
-    ├── SerializationError
-    │   ├── JsonEncodingError
-    │   └── MsgPackEncodingError
-    ├── DeserializationError
-    ├── WireFormatError
-    ├── DynamicValueError
-    ├── InvalidTypeError
-    ├── AttributePathError
-    └── TransformationError
+├── EncodingError
+│   ├── SerializationError
+│   │   └── DynamicValueError
+│   ├── JsonEncodingError
+│   ├── MsgPackEncodingError
+│   └── DeserializationError
+│
+├── InvalidTypeError
+├── AttributePathError
+└── TransformationError
+    └── WireFormatError
 ```
+
+Note: `CtyListValidationError`, `CtyMapValidationError`, `CtySetValidationError` and `CtyTupleValidationError` are all `CtyCollectionValidationError`, which is itself a `CtyValidationError` — catching `CtyCollectionValidationError` catches all four. `JsonEncodingError` and `MsgPackEncodingError` are siblings of `SerializationError` under `EncodingError`, not its subclasses.
 
 **Import Path:** All exceptions can be imported from `pyvider.cty.exceptions`
 
@@ -117,6 +120,7 @@ except CtyValidationError as e:
 **Example**:
 ```python
 from pyvider.cty import CtyObject, CtyString, CtyNumber
+from pyvider.cty.exceptions import CtyValidationError
 
 user_type = CtyObject(
     attribute_types={"name": CtyString(), "age": CtyNumber()}
@@ -150,6 +154,7 @@ except CtyValidationError as e:
 **Example**:
 ```python
 from pyvider.cty import CtyObject, CtyString
+from pyvider.cty.exceptions import CtyAttributeValidationError
 
 person_type = CtyObject(attribute_types={"name": CtyString()})
 
@@ -179,6 +184,7 @@ except CtyAttributeValidationError as e:
 **Example**:
 ```python
 from pyvider.cty import CtyList, CtyString
+from pyvider.cty.exceptions import CtyListValidationError
 
 tags_type = CtyList(element_type=CtyString())
 
@@ -208,12 +214,16 @@ except CtyListValidationError as e:
 **Example**:
 ```python
 from pyvider.cty import CtyMap, CtyNumber
+from pyvider.cty.exceptions import CtyMapValidationError
 
 config_type = CtyMap(element_type=CtyNumber())
 
-# This will raise CtyMapValidationError - "three" is not a number
+# This will raise CtyMapValidationError - "three" is not a number.
+# Note that a numeric *string* like "3" is not an error here: CtyNumber
+# accepts wire-friendly string forms, so only a genuinely non-numeric
+# value fails.
 try:
-    config = config_type.validate({"one": 1, "two": 2, "three": "3"})
+    config = config_type.validate({"one": 1, "two": 2, "three": "not-a-number"})
 except CtyMapValidationError as e:
     print(f"Map validation failed: {e}")
 ```
@@ -237,6 +247,7 @@ except CtyMapValidationError as e:
 **Example**:
 ```python
 from pyvider.cty import CtySet, CtyString
+from pyvider.cty.exceptions import CtySetValidationError
 
 unique_tags_type = CtySet(element_type=CtyString())
 
@@ -266,8 +277,9 @@ except CtySetValidationError as e:
 **Example**:
 ```python
 from pyvider.cty import CtyTuple, CtyString, CtyNumber
+from pyvider.cty.exceptions import CtyTupleValidationError
 
-point_type = CtyTuple(element_types=[CtyString(), CtyNumber(), CtyNumber()])
+point_type = CtyTuple(element_types=(CtyString(), CtyNumber(), CtyNumber()))
 
 # This will raise CtyTupleValidationError - wrong number of elements
 try:
@@ -285,29 +297,31 @@ except CtyTupleValidationError as e:
 
 #### `CtyTypeMismatchError`
 
-**Description**: Raised when value type doesn't match expected type.
+**Description**: Raised by the low-level type API (`CtyObject.get_attribute()`, `CtyMap`'s internal `get`, and similar helpers) when it is called with something other than a `CtyValue` of the expected shape. Ordinary `.validate()` calls do not raise this — a wrong-shaped value passed to `.validate()` raises the type-specific error instead (`CtyStringValidationError`, `CtyNumberValidationError`, and so on, all subclasses of `CtyValidationError`).
 
 **Common Causes**:
-- Passing completely wrong type (e.g., dict instead of list)
-- Type confusion in nested structures
+- Calling a type's low-level accessor method directly with a raw Python value instead of a `CtyValue`
+- Passing something other than a dict to a method that expects an object's internal representation
 
 **Example**:
 ```python
-from pyvider.cty import CtyString
+from pyvider.cty import CtyObject, CtyString
+from pyvider.cty.exceptions import CtyTypeMismatchError
 
-string_type = CtyString()
+person_type = CtyObject(attribute_types={"name": CtyString()})
 
-# This will raise CtyTypeMismatchError
+# get_attribute() is the low-level type API: it requires an actual
+# CtyValue, not a raw Python dict.
 try:
-    value = string_type.validate(123)  # Number instead of string
+    person_type.get_attribute({"name": "Bob"}, "name")
 except CtyTypeMismatchError as e:
     print(f"Type mismatch: {e}")
 ```
 
 **How to Fix**:
-- Verify the data type matches the schema
-- Check for type confusion (list vs dict, string vs number)
-- Use type conversion if appropriate
+- Go through `.validate()` and indexing (`value["name"]`) instead of calling the type's low-level accessors directly
+- If you do need the low-level API, pass a `CtyValue`, not a raw Python value
+- For an ordinary "wrong type passed to `.validate()`" case, catch the type-specific `CtyValidationError` subclass instead (see above)
 
 ---
 
@@ -325,6 +339,7 @@ except CtyTypeMismatchError as e:
 **Example**:
 ```python
 from pyvider.cty import CtyString, CtyNumber, convert
+from pyvider.cty.exceptions import CtyConversionError
 
 string_val = CtyString().validate("not-a-number")
 
@@ -345,21 +360,22 @@ except CtyConversionError as e:
 
 #### `CtyTypeParseError`
 
-**Description**: Raised when parsing a type string fails.
+**Description**: A `CtyConversionError` subclass reserved for type-string parsing failures. It is part of the exception hierarchy but `parse_tf_type_to_ctytype()` does not currently raise it itself — an invalid type specification raises `CtyValidationError` instead. Catch `CtyValidationError` for a parse failure today; `CtyTypeParseError` is exported for callers building their own parsers on top of `pyvider.cty`.
 
-**Common Causes**:
-- Invalid Terraform type string syntax
+**Common Causes** (of the `CtyValidationError` that `parse_tf_type_to_ctytype()` actually raises):
+- Invalid or unrecognized Terraform type string syntax
 - Unsupported type in string
-- Malformed type expression
+- Malformed type expression (e.g. an object spec that is not a dict)
 
 **Example**:
 ```python
 from pyvider.cty import parse_tf_type_to_ctytype
+from pyvider.cty.exceptions import CtyValidationError
 
-# This will raise CtyTypeParseError - invalid syntax
+# This will raise CtyValidationError - invalid syntax
 try:
     parsed_type = parse_tf_type_to_ctytype("invalid[type{syntax")
-except CtyTypeParseError as e:
+except CtyValidationError as e:
     print(f"Parse error: {e}")
 ```
 
@@ -407,32 +423,32 @@ except SerializationError as e:
 
 #### `DeserializationError`
 
-**Description**: Raised when deserializing MessagePack data fails.
+**Description**: Raised in a handful of inner decode paths — a malformed refined-unknown payload, a malformed dynamic-value type spec — when deserializing MessagePack data fails. It is not (yet) a catch-all: bytes that are not valid MessagePack at all surface the underlying `msgpack` library's own exception (for example `msgpack.exceptions.ExtraData` or a bare `ValueError`) rather than `DeserializationError`, so a caller wanting to catch every decode failure should catch `Exception` around `cty_from_msgpack()`, not just `DeserializationError`.
 
 **Common Causes**:
-- Corrupted MessagePack data
-- Schema mismatch between serialization and deserialization
-- Invalid MessagePack format
+- Corrupted or truncated MessagePack data (raises a `msgpack` library exception today, not `DeserializationError`)
+- A malformed refinement or dynamic-type payload inside otherwise well-formed MessagePack (raises `DeserializationError`)
+- Schema mismatch between serialization and deserialization (raises a `CtyValidationError` subclass, since the decoded shape is checked against the type you pass in)
 
 **Example**:
 ```python
 from pyvider.cty import CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack
-from pyvider.cty.exceptions import DeserializationError
 
 schema = CtyObject(attribute_types={"key": CtyString()})
 
-# This will raise DeserializationError - invalid data
+# Not valid MessagePack at all: raises the underlying msgpack exception.
 try:
     value = cty_from_msgpack(b"invalid msgpack data", schema)
-except DeserializationError as e:
-    print(f"Deserialization failed: {e}")
+except Exception as e:
+    print(f"Deserialization failed: {type(e).__name__}: {e}")
 ```
 
 **How to Fix**:
 - Verify the MessagePack data is not corrupted
 - Ensure the same schema is used for serialization and deserialization
 - Check data was actually serialized with cty_to_msgpack
+- Catch `Exception` (or both `DeserializationError` and the `msgpack` package's exceptions) if you need to handle every decode failure uniformly
 
 ---
 
@@ -507,22 +523,24 @@ value = schema.validate({"name": "Alice", "age": 30})  # Works!
 
 **Problem**:
 ```python
-from pyvider.cty import CtyNumber
+from pyvider.cty import CtyNumber, CtyString
 
-number_type = CtyNumber()
-value = number_type.validate("123")  # Raises CtyTypeMismatchError
+number_val = CtyNumber().validate(123)
+value = CtyString().validate(number_val)  # Raises CtyStringValidationError
 ```
+
+Note that `CtyNumber().validate("123")` is *not* an example of this problem — `CtyNumber` accepts a numeric string directly and returns the number `123`. The failure above comes from handing an already-typed `CtyValue` of one primitive type to a different primitive type's `.validate()`, which does not cross types for you.
 
 **Solution**:
 ```python
 # Option 1: Use conversion
-from pyvider.cty import CtyString, convert
+from pyvider.cty import CtyNumber, CtyString, convert
 
-string_val = CtyString().validate("123")
-number_val = convert(string_val, CtyNumber())  # Works!
+number_val = CtyNumber().validate(123)
+string_val = convert(number_val, CtyString())  # Works! -> "123"
 
-# Option 2: Provide correct type
-value = number_type.validate(123)  # Works!
+# Option 2: Provide the correct type up front
+value = CtyString().validate("123")  # Works!
 ```
 
 ---
@@ -558,9 +576,10 @@ print(value2["nickname"].is_null)  # True
 
 ---
 
-### Scenario 4: Accessing Null Values
+### Scenario 4: Accessing Null and Unknown Values
 
-**Problem**:
+**Problem**: It is tempting to assume `.raw_value` needs a null check because it *looks* like the kind of access that would fail on a missing value. It does not — `.raw_value` on a null value simply returns `None`.
+
 ```python
 from pyvider.cty import CtyObject, CtyString
 
@@ -570,17 +589,36 @@ schema = CtyObject(
 )
 
 value = schema.validate({})
-name = value["name"].raw_value  # Raises error - can't get raw_value of null
+name = value["name"].raw_value  # Returns None -- does NOT raise
+print(name)  # None
+```
+
+What *does* raise is reading `.raw_value` off an **unknown** value, since there is no Python value to hand back yet:
+
+```python
+from pyvider.cty import CtyString, CtyValue
+
+unknown_val = CtyValue.unknown(CtyString())
+try:
+    unknown_val.raw_value
+except ValueError as e:
+    print(f"Cannot read an unknown value's raw_value: {e}")
 ```
 
 **Solution**:
 ```python
-# Check for null before accessing
+# Check .is_null when you need to tell "genuinely null" apart from other
+# cases, even though .raw_value itself will not raise for it:
 value = schema.validate({})
 if value["name"].is_null:
     print("Name is not provided")
 else:
     print(f"Name: {value['name'].raw_value}")
+
+# Check .is_unknown before reading .raw_value off a value that might be
+# unknown -- that is the case that actually raises.
+if not value["name"].is_unknown:
+    print(value["name"].raw_value)
 ```
 
 ---
@@ -604,7 +642,7 @@ for i in range(1000):
 from pyvider.cty.config.defaults import MAX_VALIDATION_DEPTH
 
 # The limit is derived from sys.getrecursionlimit(), because each level of
-# nesting costs two Python frames: 480 at the default limit of 1000.
+# nesting costs two Python frames: 449 at the default limit of 1000.
 # Validating at exactly this depth is guaranteed to work; one level past it
 # returns a controlled `unknown` rather than raising.
 #

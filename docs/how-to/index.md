@@ -22,7 +22,7 @@ Practical, task-oriented guides for common use cases with pyvider.cty.
 
 ### Terraform Integration
 - **[Work with Terraform Types](work-with-terraform.md)** - Parse and work with Terraform type systems
-  - Parse Terraform type strings
+  - Parse Terraform's JSON type constraints
   - Validate Terraform configurations
   - Module input/output handling
   - Provider development patterns

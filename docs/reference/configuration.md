@@ -85,14 +85,14 @@ PYVIDER_CTY_ENABLE_TYPE_INFERENCE_CACHE=true
 
 `MAX_VALIDATION_DEPTH` is **derived from the interpreter's recursion limit**, and it is runtime-configurable.
 
-Each level of nesting costs two Python frames — the recursion guard's wrapper, then the `validate` it wraps — so the deliverable depth is bounded by `sys.getrecursionlimit()`. It was previously a flat `500`, which could not be honoured: the real ceiling was 496, so input nested 497–500 deep came back as a silent `unknown` while sitting inside the documented limit. Deriving it keeps the number true.
+Each level of nesting costs two Python frames — the recursion guard's wrapper, then the `validate` it wraps — so the deliverable depth is bounded by `sys.getrecursionlimit()`. Deriving the limit this way keeps the documented ceiling and the real one the same number, rather than letting a hardcoded figure drift away from what the interpreter can actually honour.
 
 ```python
 import sys
 from pyvider.cty.config.defaults import MAX_VALIDATION_DEPTH
 
 print(sys.getrecursionlimit())   # 1000
-print(MAX_VALIDATION_DEPTH)      # 480  == (1000 - 40) // 2
+print(MAX_VALIDATION_DEPTH)      # 449  == (1000 - 100) // 2 - 1
 ```
 
 Raising the recursion limit raises the depth with it; validation nested exactly `MAX_VALIDATION_DEPTH` deep is guaranteed to validate, and one level past it is a controlled `unknown` rather than a `RecursionError`.

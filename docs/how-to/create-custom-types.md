@@ -71,7 +71,8 @@ resource_type = CtyObject(
 
 ## Validation Wrappers
 
-Wrap types with additional validation:
+A type used standalone — called directly, never embedded in a schema — can be
+any object with a `validate()` method:
 
 ```python
 from pyvider.cty import CtyString, CtyNumber
@@ -100,19 +101,28 @@ email_type = EmailString()
 valid_email = email_type.validate("user@example.com")
 ```
 
+That's fine here because `email_type.validate()` is called directly. But
+`CtyObject.attribute_types` checks that every attribute's type is an actual
+`CtyType` instance — a wrapper object with a matching `validate()` method
+doesn't satisfy it and raises `InvalidTypeError`. To use a custom validator as
+an attribute type, **subclass** the base `CtyType` instead of wrapping it. The
+built-in types are frozen `attrs` classes, so extra fields go through
+`attrs.field()` the same way:
+
 ## Range-Constrained Numbers
 
 ```python
-class RangeNumber:
+from attrs import define, field
+
+@define(frozen=True)
+class RangeNumber(CtyNumber):
     """Number type with min/max constraints."""
 
-    def __init__(self, min_value=None, max_value=None):
-        self.base_type = CtyNumber()
-        self.min_value = min_value
-        self.max_value = max_value
+    min_value: float | None = field(default=None)
+    max_value: float | None = field(default=None)
 
     def validate(self, value):
-        cty_value = self.base_type.validate(value)
+        cty_value = super().validate(value)
         num = float(cty_value.raw_value)
 
         if self.min_value is not None and num < self.min_value:
@@ -142,19 +152,18 @@ person = CtyObject(
 ## Pattern-Validated Strings
 
 ```python
-class PatternString:
+@define(frozen=True)
+class PatternString(CtyString):
     """String type with regex pattern validation."""
 
-    def __init__(self, pattern, error_message=None):
-        self.base_type = CtyString()
-        self.pattern = re.compile(pattern)
-        self.error_message = error_message or f"Must match pattern: {pattern}"
+    pattern: str = field(default=r".*")
+    error_message: str | None = field(default=None)
 
     def validate(self, value):
-        cty_value = self.base_type.validate(value)
+        cty_value = super().validate(value)
 
-        if not self.pattern.match(cty_value.raw_value):
-            raise CtyValidationError(self.error_message)
+        if not re.match(self.pattern, cty_value.raw_value):
+            raise CtyValidationError(self.error_message or f"Must match pattern: {self.pattern}")
 
         return cty_value
 
@@ -285,7 +294,8 @@ class TypeRegistry:
 
 # Usage
 registry = TypeRegistry()
-registry.register("email", EmailString)
+registry.register("string", CtyString)
+registry.register("email", lambda: PatternString(r'^[\w\.-]+@[\w\.-]+\.\w+$', "Invalid email format"))
 registry.register("age", lambda: RangeNumber(0, 150))
 registry.register("phone", lambda: PatternString(r'^\+?1?\d{10,14}$'))
 
@@ -296,6 +306,10 @@ user_schema = registry.create_object({
     "age": "age"
 })
 ```
+
+Register a `CtyType` subclass or a zero-argument factory returning one — not
+a plain wrapper class like the first `EmailString` above, since `get()` feeds
+straight into `CtyObject.attribute_types`.
 
 ## Best Practices
 
@@ -332,12 +346,14 @@ class ResourceARNType:
 ### Versioned Schemas
 
 ```python
+email_pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+
 def UserSchemaV1():
     """User schema version 1."""
     return CtyObject(
         attribute_types={
             "name": CtyString(),
-            "email": EmailString()
+            "email": PatternString(email_pattern, "Invalid email format")
         }
     )
 
@@ -346,7 +362,7 @@ def UserSchemaV2():
     return CtyObject(
         attribute_types={
             "name": CtyString(),
-            "email": EmailString(),
+            "email": PatternString(email_pattern, "Invalid email format"),
             "phone": PatternString(r'^\+?1?\d{10,14}$'),
             "created_at": TimestampType()
         }

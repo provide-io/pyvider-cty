@@ -4,14 +4,18 @@ Type conversion in pyvider.cty allows you to transform values from one type to a
 
 ## Conversion vs Validation
 
-**Validation** is strict - it checks that data matches a type exactly:
+**Validation** is strict about the *shape* of a position, though a couple of
+primitive types coerce a handful of natural spellings on the way in
+(`CtyNumber` accepts a numeric string, `CtyBool` accepts `1`/`0` and
+`"true"`/`"false"`). `CtyString` does not coerce at all, so it is the clean
+example of validation refusing anything but its own type:
 
 ```python
-from pyvider.cty import CtyNumber
+from pyvider.cty import CtyString
 
-number_type = CtyNumber()
-number_type.validate("123")  # ❌ Raises CtyValidationError
-number_type.validate(123)     # ✅ Returns CtyValue(123)
+string_type = CtyString()
+string_type.validate(123)     # ❌ Raises CtyValidationError
+string_type.validate("123")   # ✅ Returns CtyValue("123")
 ```
 
 **Conversion** is flexible - it transforms values between compatible types:
@@ -79,43 +83,61 @@ str_val = CtyString().validate("true")
 bool_val = convert(str_val, CtyBool())
 print(bool_val.raw_value)  # True
 
-# Accepts: "true", "false" (case-insensitive)
-# Rejects: Other strings
+# Accepts (case-sensitively!): "true", "1", "false", "0"
+# Any other casing of "true"/"false" (e.g. "TRUE", "True") raises with a
+# message telling you to lowercase it; any other string raises outright.
 ```
 
-**Number → Bool**
-```python
-# Non-zero → True, Zero → False
-num_val = CtyNumber().validate(1)
-bool_val = convert(num_val, CtyBool())
-print(bool_val.raw_value)  # True
-```
+Note that `CtyBool().validate(1)` accepts a bare Python `int` directly (see
+[Validation](validation.md)), but `convert()` has no Number → Bool entry at
+all — go-cty has none either, so `convert(CtyNumber().validate(1), CtyBool())`
+raises `CtyConversionError`. Validation's coercion and conversion's table are
+two different mechanisms and do not always agree.
 
 ### Collection Conversions
+
+`CtyList`, `CtySet` and `CtyMap` all take their element type as the keyword
+argument `element_type` — there is no positional form.
 
 **List → Set**
 ```python
 from pyvider.cty import CtyList, CtySet, CtyString
 
-list_val = CtyList(CtyString()).validate(["a", "b", "a"])
-set_val = convert(list_val, CtySet(CtyString()))
-print(set_val.raw_value)  # {"a", "b"} - duplicates removed
+list_val = CtyList(element_type=CtyString()).validate(["a", "b", "a"])
+set_val = convert(list_val, CtySet(element_type=CtyString()))
+print(set_val.raw_value)  # ['a', 'b'] - duplicates removed
 ```
+
+`raw_value` on a set is a plain Python `list`, not a `set` or `frozenset` —
+`CtySet`'s own payload is an ordered tuple internally (go-cty's canonical
+element order), and `raw_value` renders that as a list.
 
 **Set → List**
 ```python
-set_val = CtySet(CtyString()).validate({"x", "y", "z"})
-list_val = convert(set_val, CtyList(CtyString()))
-# Order may vary (sets are unordered)
+set_val = CtySet(element_type=CtyString()).validate({"x", "y", "z"})
+list_val = convert(set_val, CtyList(element_type=CtyString()))
+# Order follows the set's canonical order, not insertion order.
 ```
 
-**List → Tuple**
+**List → Tuple is not a supported conversion**
+
+go-cty has no List → Tuple entry in its conversion table — a collection's
+length is a property of the *value*, while a tuple's length is part of its
+*type*, and the two are not interchangeable that way. `convert()` matches
+that exactly, so this raises `CtyConversionError`:
+
 ```python
 from pyvider.cty import CtyTuple
 
-list_val = CtyList(CtyString()).validate(["a", "b", "c"])
-tuple_val = convert(list_val, CtyTuple([CtyString(), CtyString(), CtyString()]))
+list_val = CtyList(element_type=CtyString()).validate(["a", "b", "c"])
+# convert(list_val, CtyTuple((CtyString(), CtyString(), CtyString())))  # ❌ raises
+
+# Build the tuple directly instead:
+tuple_val = CtyTuple((CtyString(), CtyString(), CtyString())).validate(["a", "b", "c"])
 ```
+
+`CtyTuple` takes a genuine Python `tuple` of element types (not a `list`) —
+`CtyTuple([CtyString()])` raises `CtyTupleValidationError`.
 
 ### Converting to Dynamic
 
@@ -127,8 +149,10 @@ from pyvider.cty import CtyDynamic
 string_val = CtyString().validate("hello")
 dynamic_val = convert(string_val, CtyDynamic())
 
-# The dynamic value wraps the original type
-print(dynamic_val.wrapped_type)  # CtyString
+# CtyDynamic marks a *position* that accepts any type; converting into it is a
+# no-op that hands the value back with its own concrete type intact -- it is
+# not re-wrapped, and there is no `wrapped_type` attribute to unwrap it with.
+print(dynamic_val.type)  # string
 ```
 
 ### Converting Element Types
@@ -139,23 +163,39 @@ Convert collections by converting their elements:
 from pyvider.cty import CtyList, CtyString, CtyNumber
 
 # List of strings
-str_list = CtyList(CtyString()).validate(["1", "2", "3"])
+str_list = CtyList(element_type=CtyString()).validate(["1", "2", "3"])
 
 # Convert to list of numbers
-num_list = convert(str_list, CtyList(CtyNumber()))
-print(num_list.raw_value)  # [Decimal('1'), Decimal('2'), Decimal('3')]
+num_list = convert(str_list, CtyList(element_type=CtyNumber()))
+print(num_list.raw_value)  # [1, 2, 3]
 ```
+
+Each element is a `CtyNumber` backed by `Decimal` internally (see
+[Values](values.md)), but `raw_value` renders whole numbers as plain Python
+`int`, not `Decimal`.
 
 ## The `unify()` Function
 
-Type unification finds a common type that can represent multiple types:
+Type unification finds the single type every input type can convert *to* —
+not the vaguest type that could describe them all. `unify()` ports go-cty's
+own algorithm, and returns `None` (not `CtyDynamic`) when the given types
+have nothing in common — `None` is unambiguously "no common type", where
+`CtyDynamic` is also a legitimate unification result in its own right (for a
+group of collections that each hold a dynamic element, for instance), so
+using it for "no answer" as well made failure indistinguishable from success.
+
+`CtyString` is the one supertype among the primitives — every primitive
+value has a string form, so string is the common type whenever a string is
+in the mix. Number and bool, on the other hand, have no supertype between
+them at all (there is no number ↔ bool conversion; see above), so unifying
+those two returns `None`:
 
 ```python
 from pyvider.cty import unify, CtyString, CtyNumber
 
-# Find common type for string and number
+# String is the supertype of number
 unified_type = unify([CtyString(), CtyNumber()])
-print(unified_type)  # CtyDynamic - the most general common type
+print(unified_type)  # string
 ```
 
 **Use Cases:**
@@ -166,19 +206,21 @@ print(unified_type)  # CtyDynamic - the most general common type
 **Examples:**
 
 ```python
-from pyvider.cty import unify, CtyNumber, CtyBool
+from pyvider.cty import unify, CtyNumber, CtyBool, CtyString
 
-# Unify numbers and booleans
+# Unify numbers and booleans: neither converts to the other, so there is no
+# common type at all.
 result = unify([CtyNumber(), CtyBool()])
-# Result: CtyNumber (bools can convert to numbers)
+print(result)  # None
 
 # Unify identical types
 result = unify([CtyString(), CtyString()])
-# Result: CtyString
+print(result)  # string
 
-# Unify incompatible types
+# String, number and bool: string is still the common type, since both
+# number and bool convert to string.
 result = unify([CtyString(), CtyNumber(), CtyBool()])
-# Result: CtyDynamic (fallback to most general type)
+print(result)  # string
 ```
 
 ## Conversion with Marks
@@ -190,12 +232,13 @@ from pyvider.cty.marks import CtyMark
 
 sensitive = CtyMark("sensitive")
 
-# Mark a string value
-str_val = CtyString().validate("secret")
+# Mark a numeric string value -- convert() still has to be able to perform
+# the underlying conversion; marking a value doesn't change what it converts to.
+str_val = CtyString().validate("42")
 marked_str = str_val.with_marks({sensitive})
 
 # Convert to number (marks preserved)
-num_val = convert(marked_str, CtyNumber())  # Converts "secret" if numeric
+num_val = convert(marked_str, CtyNumber())
 print(sensitive in num_val.marks)  # True - marks preserved
 ```
 
@@ -230,13 +273,16 @@ try:
     num_val = convert(str_val, CtyNumber())
 except CtyConversionError as e:
     print(f"Conversion failed: {e}")
-    # Conversion failed: Cannot convert "hello" to CtyNumber
+    # Conversion failed: Cannot convert string to number: Number validation
+    # error: Cannot represent str value 'hello' as Decimal (...)
 ```
 
 Common conversion failures:
 - String to Number: Non-numeric strings
-- String to Bool: Strings other than "true"/"false"
-- List to Tuple: Length mismatch
+- String to Bool: Anything other than exactly `"true"`/`"1"`/`"false"`/`"0"` (a
+  differently-cased `"TRUE"`/`"False"` raises with a message telling you to
+  lowercase it)
+- List to Tuple: no such conversion exists at all now (see above)
 - Object to Object: Missing required attributes
 
 ## Type Inference
@@ -248,15 +294,15 @@ from pyvider.cty.conversion import infer_cty_type_from_raw
 
 # Infer from primitive
 inferred = infer_cty_type_from_raw("hello")
-print(inferred)  # CtyString
+print(inferred)  # string
 
 # Infer from list
 inferred = infer_cty_type_from_raw([1, 2, 3])
-print(inferred)  # CtyList(element_type=CtyNumber)
+print(inferred)  # list(number)
 
 # Infer from dict
 inferred = infer_cty_type_from_raw({"name": "Alice", "age": 30})
-print(inferred)  # CtyObject with inferred attributes
+print(inferred)  # object with attributes "name" and "age"
 ```
 
 **Type Inference Rules:**
@@ -274,9 +320,9 @@ print(inferred)  # CtyObject with inferred attributes
 Type inference can be expensive. Use caching for repeated inference:
 
 ```python
-from pyvider.cty.conversion import InferenceCacheContext
+from pyvider.cty.conversion import inference_cache_context
 
-with InferenceCacheContext():
+with inference_cache_context():
     # Repeated inference uses cache
     for data in large_dataset:
         schema = infer_cty_type_from_raw(data)
@@ -340,18 +386,20 @@ def process_config(config_data: dict) -> CtyValue:
     return convert(raw_config, normalized_config_schema)
 ```
 
-### 4. Use Type Unification Carefully
+### 4. Handle `unify()` Returning `None`
 
-Unification to `CtyDynamic` loses type safety:
+`unify()` returns `None` when the inputs share no common type, and `None`
+does not have a `.validate()` method — check for it before using the result:
 
 ```python
-# ⚠️ Use with caution
-unified = unify([CtyString(), CtyNumber(), CtyBool()])
-# Result: CtyDynamic - lost all type specificity
-
-# ✅ Better: Find more specific common type if possible
 unified = unify([CtyNumber(), CtyBool()])
-# Result: CtyNumber - more specific, maintains some type safety
+if unified is None:
+    raise ValueError("no common type for these inputs")
+
+# Where a common type does exist, it's usually string -- every primitive
+# converts to string, so mixing a string into the input all but guarantees it:
+unified = unify([CtyString(), CtyNumber(), CtyBool()])
+# Result: string
 ```
 
 ## Performance Considerations

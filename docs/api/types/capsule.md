@@ -5,7 +5,7 @@ Capsule types allow you to encapsulate opaque Python objects within the cty type
 The capsule types are:
 - **`CtyCapsule`** - Base capsule type for wrapping arbitrary Python objects with type checking
 - **`CtyCapsuleWithOps`** - Extended capsule type that supports custom operations on encapsulated data
-- **`BytesCapsule`** - Pre-defined capsule type for wrapping raw bytes data
+- **`BytesCapsule`** - A pre-built `CtyCapsule("Bytes", bytes)` instance for wrapping raw bytes data, used by the `byteslen`/`bytesslice` stdlib functions. Import it from `pyvider.cty` or `pyvider.cty.types`; it lives in `pyvider.cty.types.capsule_types`, a sibling module to `pyvider.cty.types.capsule` (documented below), so it is not part of the auto-generated reference on this page.
 
 Capsule types provide type safety by validating that encapsulated objects match the expected Python type. They preserve the opaque nature of the data while allowing it to participate in the cty type system for validation, serialization, and other operations.
 
