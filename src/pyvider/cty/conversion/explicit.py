@@ -27,6 +27,7 @@ from pyvider.cty.config.defaults import (
     ERR_TUPLE_LENGTH_MISMATCH,
 )
 from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
+from pyvider.cty.refinement import refine
 from pyvider.cty.types import (
     CtyBool,
     CtyCapsule,
@@ -95,6 +96,73 @@ def _ordered_elements(value: CtyValue[Any]) -> list[CtyValue[Any]]:
 
 def _sort_key(element: Any) -> Any:
     return element._canonical_sort_key() if isinstance(element, CtyValue) else (0, str(element))
+
+
+# The lowest number of stored elements at which a set's count can be in doubt.
+# Whatever a single stored element turns out to be, there is one of it; two may
+# turn out to be equal and coalesce. The same constant, for the same reason,
+# governs `length` in `functions/collection_functions.py`, and the two have to
+# agree -- a conversion that reports a length its own `length` contradicts is
+# the fault this rule exists to prevent.
+_AMBIGUOUS_SET_SIZE = 2
+
+
+def _set_length_is_unknown(source: CtyType[Any], elements: list[CtyValue[Any]]) -> bool:
+    """Whether a set value's length is a *bound* rather than a count.
+
+    go-cty's `Value.Length` for a set (`cty/value_ops.go:1127-1145`), which this
+    package's `length` already implements: a stored unknown may still resolve to
+    a value equal to another member, so the set would then hold fewer distinct
+    values than it currently stores. Only a set can be in this position -- a
+    known list, map, tuple or object has a known length whatever its elements
+    are.
+    """
+    if not isinstance(source, CtySet):
+        return False
+    return len(elements) >= _AMBIGUOUS_SET_SIZE and any(element.is_unknown for element in elements)
+
+
+def _list_of_unknown_length(target: CtyList[Any], stored: int, source: CtyValue[Any]) -> CtyValue[Any]:
+    """A set whose length is undecided, converted to a list.
+
+    **Deliberately more correct than go-cty, which is wrong here in one half of
+    its answer and right in the other.** `conversionCollectionToList`
+    (`cty/convert/conversion_collection.go:16-22`) short-circuits an unknown
+    input length and returns `cty.UnknownVal(cty.List(val.Type().ElementType()))`
+    -- built from the *source* element type, with the target `ety` left unused.
+    Deferring is right: the comment above it says "we can't predict how many
+    elements the resulting list should have", and a store of `{1, unknown}` that
+    coalesces really does become a one-element list. Typing the result from the
+    source is not: `Convert(v, T)` handing back a value that is not of type `T`
+    is a contract violation, and it propagates -- converting
+    `object({s = set(number)})` to `object({s = list(string)})` yields a *known*
+    object typed `object({s = list(number)})`, which the caller's own schema then
+    rejects.
+
+    Converting elementwise, which is what this package used to do, is the
+    opposite trade: the target type is honoured and the length is invented. It
+    hardens the source's `[1, n]` bound into an exact `n`, so `length` on the
+    source and on the result openly contradict each other.
+
+    So the answer is neither side's: an unknown list of the **target** element
+    type, refined `collection_length in [1, stored]`. It keeps go-cty's deferral
+    and this package's type, and it is the only one of the three that no caller
+    can catch out. Not-null as well, which is not a judgement call either -- the
+    source is a known, non-null set, so whatever the length turns out to be
+    there is definitely a list.
+
+    Marks come from the set alone because a set is where its elements' marks
+    already are: `CtySet.validate` hoists them onto the container, as go-cty's
+    `SetVal` does, so nothing is left behind when the elements are dropped.
+    """
+    refined = (
+        refine(CtyValue.unknown(target))
+        .not_null()
+        .collection_length_lower_bound(1)
+        .collection_length_upper_bound(stored)
+        .new_value()
+    )
+    return refined.with_marks(set(source.marks))
 
 
 @lru_cache(maxsize=1024)
@@ -418,8 +486,18 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # `convert` performs, or unification promises a type nothing can reach.
         if isinstance(target_type, CtySet | CtyList) and isinstance(value.type, CtyList | CtySet | CtyTuple):
             collection = _collection_target(target_type, value.type)
+            source_elements = _ordered_elements(value)
+            # A set whose length is undecided cannot become a list of any
+            # definite length, so the result is deferred rather than counted.
+            # Only a list target: a set's stored element count is not a claim
+            # about its length, so `conversionCollectionToSet` has nothing it is
+            # unable to predict and neither has this. See
+            # `_list_of_unknown_length` for why the answer is neither go-cty's
+            # nor the elementwise one.
+            if isinstance(collection, CtyList) and _set_length_is_unknown(value.type, source_elements):
+                return _list_of_unknown_length(collection, len(source_elements), value)
             element_type = collection.element_type
-            elements = [convert(element, element_type) for element in _ordered_elements(value)]
+            elements = [convert(element, element_type) for element in source_elements]
             converted: CtyValue[Any] = collection.validate(elements).with_marks(set(value.marks))
             return converted
 
