@@ -30,12 +30,16 @@ Living document. Updated as work lands — do not let it drift.
 1. ~~**`assertnotnull`**~~ and ~~**the Unicode decision**~~ — both closed 2026-08-16. **The stdlib is now 83 of 83 functions and `UNSWEPT` is empty.**
 2. ~~**Phases 4, 6 and 7**~~ — **all eight landed by 2026-08-17.** The `cty/function` framework (#12) closed last, with every one of the 83 stdlib functions declared through it. **No code items remain in this repo.**
 3. ~~**Worklist #8**~~ — **done 2026-08-17** in `pyvider-components` (`160dfa2b`): the sixteen Terraform-shadowing functions now answer what Terraform answers, measured against the harness and `terraform console`. The audit found the real count was 25 registered functions, and that `format` — shipping printf verbs to state as literal text — was worse than the famous `length` case. Two decisions remain there for Tim; see the cross-repo entry.
-4. **The release gate** — 0.5.0, forty-four breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there. **The only thing left in this repo.**
+4. **The release gate** — 0.5.0, forty-four breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there. **The only thing left in this repo**, alongside the adversarial review that gates it.
 
-   Everything else closed on 2026-08-17. The harness audit took `safe_known_prefix`'s trailing delimiter, the sweep's four missing coverage axes, the harness's own fourth fault and the dead fixture trees. The documentation pass took #13's parity matrix, the release notes, and about sixty inaccuracies found by executing every code block rather than reading it — including a README that told contributors to run a command that does not exist. The sort-key investigation and `pyvider`'s latent `KeyStep` bug are closed. CI runs the differential suite (decision 5). What remains is a release, three decisions listed below, and one upstream issue to file.
+   Two release-mechanics questions sit with it, both found 2026-08-18: `chore/use-reusable-release` is unmerged on the remote and rewires `release.yml` through ci-tooling's `python-release.yml@v0.4.2`, so cutting 0.5.0 without it runs the old inline pipeline; and that branch pins a fixed tag where `ci.yml` calls the floating `@v0`, which is two conventions in one repository.
+
+   Everything else closed on 2026-08-17. The harness audit took `safe_known_prefix`'s trailing delimiter, the sweep's four missing coverage axes, the harness's own fourth fault and the dead fixture trees. The documentation pass took #13's parity matrix, the release notes, and about sixty inaccuracies found by executing every code block rather than reading it — including a README that told contributors to run a command that does not exist. The sort-key investigation and `pyvider`'s latent `KeyStep` bug are closed. CI runs the differential suite (decision 5). **Every open decision in this repo closed on 2026-08-18** -- decision 3 in both halves, the `timeadd` calendar range as an accepted divergence, and the `formatdate` refusal. What remains is a release, the adversarial review, and one upstream issue to file.
 
 Accepted divergences, itemised below rather than fixed: the set-with-a-null byte
-ordering, Python `re` not being RE2, and the numeric precision model. (~~`CtySet`
+ordering, Python `re` not being RE2, the `divide` precision model (decision 3,
+**closed 2026-08-18**), the calendar range in `timeadd`, and the one deliberate
+refusal -- a Go reference layout in `formatdate`. (~~`CtySet`
 being unable to hold a list~~ stopped being true on 2026-08-17: `307ac08` gave
 containers canonical-key hashing, and `set(list(string))` validates — the entry
 below records it.) Two are strict xfails that will resolve themselves —
@@ -583,7 +587,7 @@ What is still hand-rolled is the argument policy — **146 null/unknown checks a
 
 **Status: resolved, 2026-08-17 — landed, and before 0.5.0.** The full framework port is in (`functions/_function.py`), all 83 functions declare their `Spec` through `@stdlib_function`, the pre-framework path is deleted, and the sub-decision resolved itself the right way round: one breaking release, not two. See the #12 entry in Phase 7 for what the migration and its adversarial review found.
 
-### 3. Numeric precision model
+### 3. Numeric precision model — **resolved 2026-08-18, both halves**
 
 Found by the stdlib sweep, and it differs in *both* directions.
 
@@ -617,7 +621,13 @@ The alternative — matching exactly — means adopting a 512-bit binary float (
 
 **What to do now, cheaply:** state the boundary in the numeric docs with these measured figures, and keep the two strict xfails — they are the living record, and they will fail the moment anyone changes the arithmetic in either direction.
 
-**Status:** `pow`/`log` decided 2026-08-18 and implemented, for reasons that turned out not to be about precision. `divide` unchanged: recommendation recorded 2026-08-17, awaiting Tim. All three are held as strict xfails in the sweep so they stay visible.
+**Status: resolved 2026-08-18, both halves, Tim's call.**
+
+**`pow` and `log`: ratified as implemented** (`d8ec5a2`). Read through `float64`, because go-cty reads them through `float64` -- the change was never about digits. Three of its four effects were a crash outside the error taxonomy (`decimal.Overflow` from `pow(10, 1000000)`), a wrong magnitude (exactly `1e400` against `+Inf`), and a missing range refusal that `log` already made on identical input. The fourth, `pow(2, 0.5)` answering seventeen digits instead of twenty-eight, is what the earlier recommendation had been protecting -- and the measurement in this same section had already shown Terraform answers seventeen.
+
+**`divide`: closed as keep-and-revisit-on-evidence.** Not deferred -- decided. The rewrite costs a new dependency, replacing the most-used value type, and reimplementing Go's shortest-round-trip formatting, to fix a case with **no consumer anywhere in the workspace**: `pyvider`, `pyvider-hcl` and `provide-workspace` have zero call sites, `tofusoup` one, and `pyvider-components` implements its own `divide` rather than delegating (measured 2026-08-18). Nor is there a loud-failure lever -- nothing can detect that a value is about to be compared against Terraform's own arithmetic -- so documentation is the whole instrument. Reopen if a real provider is bitten.
+
+All of it is held by strict xfails in the sweep, which fail the day anyone changes the arithmetic in either direction. Leaving this open was itself a cost: it read as unfinished work when it was a decided trade.
 
 ### 4. Null arguments: raise or return unknown?
 
@@ -697,6 +707,7 @@ primitives · List/Map/Set · Object/Tuple · Dynamic · Capsule (base) · optio
 
 | Item | Phase |
 |---|---|
+| 2026-08-18 | **Decision 3 closed, both halves, and four more measured items landed.** `pow`/`log` ratified as read-through-`float64` (`d8ec5a2`): three of the four effects were a crash outside the error taxonomy, a wrong magnitude and a missing range refusal `log` already made -- not digits. `divide` closed as keep-and-revisit, on the measurement that **no consumer in the workspace calls it** and there is no loud-failure lever to add. `timeadd` past the calendar boundary is now an accepted divergence with the panic removed (`0260810`) -- `OverflowError` is not a `CtyError`, so it was escaping the taxonomy; the divergence itself is two strict xfails. Asked what replacing `datetime` would buy and measured it: the year range is the *least* of it, nanosecond resolution is real but unrenderable by either side, and the duration limit was already correct. `formatdate` now refuses a Go reference layout (`b1b042f`) -- the one place this package declines something go-cty answers, taken after measuring which of the forty-three breaking changes are actually silent: only `formatdate` returns a *plausible* wrong answer, and `regex` mostly raises, so the CHANGELOG's lead was wrong. `regexreplace` was considered alongside it and rejected, because `\1` is valid go-cty input meaning a literal. The mark strip is iterative (`fd4f33a`): it gave out at 330 levels where validate accepts 450, as a bare `RecursionError`, and removing the ceiling exposed an O(n^2) that is now linear -- 9.6 s to 0.020 s at depth 5000. Plus the `FrozenDict` downgrade in `mark_paths` (`81a79a2`), the decorator leaking its injected `return_type` into thirteen public signatures (`e5d264d`), and a canonical-key fallback that raised a bare `TypeError` -- that last one **found by reviewing my own consolidation**, which had spread it to a caller that did not have it (`a3cda32`). In `pyvider`: import carries resource identity (`7da260a`), the one lifecycle RPC that had none, with no new hook -- and the derivation it needed already existed twice, so it is now once. |
 | 1. `PathSet` | 3 |
 | 2. `Value.Range` / `ValueRange` | 6 |
 | 3. `UnknownAsNull` | 4 |
