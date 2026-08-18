@@ -348,6 +348,9 @@ ERR_FORMATDATE_INVALID_VERB = 'formatdate: invalid date format verb "{verb}"'
 ERR_FORMATDATE_INVALID_VERB_LENGTH = 'formatdate: invalid date format verb "{verb}": {expected}'
 ERR_FORMATDATE_UNTERMINATED_LITERAL = "formatdate: unterminated literal '"
 ERR_TIMEADD_INVALID_FORMAT = "timeadd: invalid argument format: {error}"
+ERR_TIMEADD_OUT_OF_RANGE = (
+    "timeadd: result is outside the representable range: the year must be between 1 and 9999"
+)
 ERR_INVALID_DURATION_FORMAT = "Invalid duration string format: '{duration_str}'"
 ERR_INVALID_RFC3339_TIMESTAMP = "not a valid RFC3339 timestamp: {timestamp!r}"
 

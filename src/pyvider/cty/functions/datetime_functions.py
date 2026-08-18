@@ -21,6 +21,7 @@ from pyvider.cty.config.defaults import (
     ERR_INVALID_DURATION_FORMAT,
     ERR_INVALID_RFC3339_TIMESTAMP,
     ERR_TIMEADD_INVALID_FORMAT,
+    ERR_TIMEADD_OUT_OF_RANGE,
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
@@ -377,13 +378,31 @@ def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     produces a timestamp string -- but a refinement this package makes and
     go-cty does not is a promise Terraform would act on with no authority
     behind it, so the declaration follows the source rather than the reasoning.
+
+    **A recorded divergence at the ends of the range.** Go's `time.Time` spans
+    to year 292277026596; Python's `datetime` stops at 9999, so
+    `timeadd("9999-12-31T23:59:59Z", "1h")` is `10000-01-01T00:59:59Z` in go-cty
+    and a refusal here. Matching it means not using `datetime` -- an integer
+    nanosecond count plus civil-calendar conversion, which is what Go holds --
+    and the case is unreachable from Terraform, whose `timestamp()` cannot
+    produce a year near the boundary. Held as strict xfails in the sweep so it
+    stays visible rather than becoming folklore.
+
+    What is *not* acceptable is the shape of the refusal. `datetime` signals the
+    boundary with `OverflowError`, which is not a `CtyError`, so it escaped the
+    taxonomy as a `CtyFunctionPanicError` -- an unhandled Python exception
+    reaching a provider from a function whose contract is to answer or refuse.
     """
     try:
         moment = _parse_rfc3339(cast(str, timestamp.value))
         delta = _parse_duration(cast(str, duration.value))
     except ValueError as e:
         raise CtyFunctionError(ERR_TIMEADD_INVALID_FORMAT.format(error=e)) from e
-    return CtyString().validate(_format_rfc3339(moment + delta))
+    try:
+        shifted = moment + delta
+    except OverflowError as e:
+        raise CtyFunctionError(ERR_TIMEADD_OUT_OF_RANGE) from e
+    return CtyString().validate(_format_rfc3339(shifted))
 
 
 # 🌊🪢🔚

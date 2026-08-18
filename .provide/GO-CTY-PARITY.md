@@ -732,7 +732,7 @@ filing*, one review later.
 | Item | Measured |
 |---|---|
 | `marks` walk recursion ceiling | **330 for `unmark_deep`, against validation's 450.** A value that validates at depth 400 kills `length()` with a bare `RecursionError` -- not a `CtyError`. `collect_marks_deep` is iterative and survives 900+; the strip was never converted. Live, and the same taxonomy escape as the three fixed above |
-| `timeadd` at the datetime range ends | **Confirmed.** `timeadd("9999-12-31T23:59:59Z", "1h")` is `CtyFunctionPanicError: date value out of range`; go-cty answers `10000-01-01T00:59:59Z`. Same at the low end. Python's `datetime` is hard-capped at years 1-9999 and Go's `time.Time` spans ±292 billion, so fixing it means not using `datetime` |
+| ~~`timeadd` at the datetime range ends~~ | **Closed 2026-08-18 as an accepted divergence, Tim's call.** The *panic* is gone -- `datetime` signals the boundary with `OverflowError`, not a `CtyError`, so it escaped the taxonomy; it is an ordinary `CtyFunctionError` now. The divergence itself stays and is held by two strict xfails, so replacing `datetime` later forces them out. See *Replacing datetime* below for what that would actually buy |
 | `mark_paths` downgrades `FrozenDict` | **Confirmed, small.** A map's payload goes in as `FrozenDict` and comes out of `mark_with_paths` as a plain `dict`. Equality holds; hashability does not |
 | `stdlib_function` leaks `return_type` | **Confirmed.** The decorator is typed as an identity, so the framework-injected kwarg reaches callers: 4 errors on `flatten`/`chunklist`. `scripts/` has 20 mypy errors across 6 files and is not in the gate, which runs `src` only |
 
@@ -747,6 +747,47 @@ filing*, one review later.
 | `json_codec`/`convert` normalise where msgpack does not | **All three agree, and agree with go-cty.** `1.50`->`1.5`, `1e2`->`100`, `0.1`->the string `"0.1"`, byte-identical to the oracle |
 | Four copies of `_unwrap_dynamic` | **No live fault.** A marked dynamic wrapper survives `collect_marks_deep`, `walk` and a stdlib call. One copy carries marks and three do not; a maintenance hazard, not a bug |
 | `can_convert_unsafe` duplicates `convert`'s matrix | **0 disagreements in 81 type pairs.** 86 lines mirroring 264. A maintenance hazard, not a bug |
+
+### Replacing `datetime` — measured, and the year range is the least of it
+
+Asked on 2026-08-18: what would it buy beyond the extended year range? Three
+candidates, and only two survive contact with the oracle.
+
+**1. The calendar range — real.** `datetime` caps at years 1-9999; Go's
+`time.Time` runs to 292277026596. This is the `timeadd` divergence above.
+
+**2. Nanosecond resolution — real, and far narrower than it sounds.** `datetime`
+resolves to microseconds and Go keeps nanoseconds, but **neither implementation
+can ever render sub-second precision**: go-cty's `formatdate` verb set stops at
+`s`/`ss`, and both write RFC3339 without a fractional part. So the difference
+only escapes at a *carry* boundary — 7-9 fractional digits, plus a
+sub-microsecond duration, plus a rollover:
+
+    2026-01-01T00:00:00.999999999Z + 1ns   go-cty 00:00:01Z   this 00:00:00Z
+    2026-01-01T00:00:00.123456789Z + 1s    both   00:00:01Z   (agree)
+
+**3. Duration range — not a benefit; already correct.** Go's `time.Duration` is
+int64 nanoseconds (±292 years) and this package's parser enforces the same
+limit rather than inheriting `timedelta`'s much wider one. The cutoff matches
+exactly: both accept `2560000h`, both refuse `2570000h`. Pinned in the sweep so
+a rewrite cannot lose it.
+
+**What the replacement looks like**, confined to `datetime_functions.py`:
+represent an instant as an integer nanosecond count plus civil-calendar
+conversion (`days_from_civil` / `civil_from_days`, ~8 and ~10 lines, proleptic
+Gregorian and no leap seconds, which is exactly Go's model); stop converting the
+duration to a `timedelta` at the end of `_parse_duration`, since it is already
+integer nanoseconds; make addition integer addition; render nanos -> civil. The
+RFC3339 grammar, the duration grammar and the verb dispatch all stay. Roughly
+120-150 lines. No timezone database is needed — RFC3339 carries fixed offsets
+only.
+
+**Risks if it is ever done:** calendar math is easy to get subtly wrong and
+needs a differential sweep over a wide date range, and `datetime`'s free
+validation of month 13 / day 32 would have to be reimplemented.
+
+**Decision: not for 0.5.0.** Both reachable benefits need inputs Terraform
+cannot produce.
 
 ### Will not be fixed
 
