@@ -10,16 +10,24 @@ from typing import TYPE_CHECKING, Any
 
 from provide.foundation.errors import ValidationError as FoundationValidationError
 
+from pyvider.cty.exceptions.base import CtyError
+
 if TYPE_CHECKING:
     from pyvider.cty.path import CtyPath
     from pyvider.cty.types import CtyType
 
 
-class CtyValidationError(FoundationValidationError):
+class CtyValidationError(CtyError, FoundationValidationError):
     """Base exception for all validation errors.
 
-    Inherits from foundation's ValidationError for enhanced diagnostics
-    and automatic retry/circuit breaker support where applicable.
+    Both roots, deliberately. CtyError documents itself as "the root exception
+    for all errors that occur within the cty type system", which callers take at
+    face value and write `except CtyError` against -- but this branch descended
+    only from foundation's ValidationError, so twelve of the package's
+    twenty-eight exception classes escaped it, including every type-validation
+    failure a caller is most likely to meet. FoundationValidationError is kept
+    for the diagnostics and retry behaviour that motivated it. Both share
+    FoundationError, so the two linearize without ambiguity.
     """
 
     def __init__(
