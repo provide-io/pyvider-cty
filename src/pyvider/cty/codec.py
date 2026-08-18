@@ -67,14 +67,41 @@ def _decode_number_value(val: Any) -> Decimal:
     return Decimal(val)
 
 
+def _checked(value: Any, expected: type, what: str) -> Any:
+    """A refinement field, checked against the type the protocol gives it.
+
+    These bytes come from whatever is on the other end of the wire, and this is
+    the one refinement path that does not go through RefinementBuilder -- whose
+    stated purpose is to refuse an inconsistent refinement rather than record
+    one. Unchecked, a malformed field was stored verbatim and surfaced later as
+    an AttributeError from inside the encoder: outside the CtyError taxonomy, so
+    a provider's `except CtyError` missed it and bad input read as a crash.
+    go-cty rejects these at the door -- "string prefix refinement is not
+    string".
+    """
+    # bool is a subclass of int in Python, so an int field would accept True and
+    # a bool field would accept 1 without this.
+    if isinstance(value, bool) != (expected is bool) or not isinstance(value, expected):
+        raise DeserializationError(f"{what} refinement is not {expected.__name__}")
+    return value
+
+
+def _checked_length(value: Any, what: str) -> int:
+    """A collection-length bound: an integer, and not a negative one."""
+    length = _checked(value, int, what)
+    if length < 0:
+        raise DeserializationError(f"{what} refinement is negative")
+    return cast(int, length)
+
+
 def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]:
     """Extract refinement data from a msgpack payload."""
     refinements = {}
 
     if REFINEMENT_IS_KNOWN_NULL in payload:
-        refinements["is_known_null"] = payload[REFINEMENT_IS_KNOWN_NULL]
+        refinements["is_known_null"] = _checked(payload[REFINEMENT_IS_KNOWN_NULL], bool, "is known null")
     if REFINEMENT_STRING_PREFIX in payload:
-        refinements["string_prefix"] = payload[REFINEMENT_STRING_PREFIX]
+        refinements["string_prefix"] = _checked(payload[REFINEMENT_STRING_PREFIX], str, "string prefix")
     if REFINEMENT_NUMBER_LOWER_BOUND in payload:
         refinements["number_lower_bound"] = (
             _decode_number_value(payload[REFINEMENT_NUMBER_LOWER_BOUND][0]),
@@ -86,9 +113,13 @@ def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]
             payload[REFINEMENT_NUMBER_UPPER_BOUND][1],
         )
     if REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND in payload:
-        refinements["collection_length_lower_bound"] = payload[REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND]
+        refinements["collection_length_lower_bound"] = _checked_length(
+            payload[REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND], "collection length lower bound"
+        )
     if REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND in payload:
-        refinements["collection_length_upper_bound"] = payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND]
+        refinements["collection_length_upper_bound"] = _checked_length(
+            payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND], "collection length upper bound"
+        )
 
     return refinements
 

@@ -176,8 +176,23 @@ class CtyValue(Generic[T]):
             return NotImplemented
         from ..types import CtyCapsuleWithOps
 
-        if isinstance(self.type, CtyCapsuleWithOps) and self.type.equal(other.type) and self.type.equal_fn:
-            return self.type.equal_fn(self.value, other.value)
+        # A capsule's equal_fn is written against its payload type, and a null or
+        # unknown has no payload -- self.value is None or an unknown marker. It
+        # was being handed those anyway, so comparing two nulls of a capsule type
+        # raised AttributeError out of user code, where cty requires them to be
+        # equal. Nullness, unknown-ness and marks are decided by cty; only two
+        # known payloads are the capsule's business.
+        both_present = not (self.is_null or self.is_unknown or other.is_null or other.is_unknown)
+        if (
+            isinstance(self.type, CtyCapsuleWithOps)
+            and self.type.equal(other.type)
+            and self.type.equal_fn
+            and both_present
+        ):
+            # Marks are still cty's concern: a sensitive value is not equal to
+            # the same payload unmarked, and __hash__ already counts them, so
+            # ignoring them here made equal values hash differently.
+            return self.marks == other.marks and self.type.equal_fn(self.value, other.value)
 
         return (
             self.type.equal(other.type)
@@ -353,19 +368,47 @@ class CtyValue(Generic[T]):
             CtySet,
         )
 
-        if isinstance(self.type, CtyCapsuleWithOps) and self.type.hash_fn:
-            return self.type.hash_fn(self.value)
-
+        # Ordered before the capsule dispatch for the same reason as __eq__: a
+        # null or unknown has no payload to hand a user-supplied hash_fn, and
+        # doing so raised AttributeError out of their code.
         if self.is_unknown or self.is_null:
             return hash((self.vtype, self.is_unknown, self.is_null, self.marks))
+
+        if isinstance(self.type, CtyCapsuleWithOps) and self.type.hash_fn:
+            # hash_fn wins outright, as documented. Marks are deliberately not
+            # folded in: __eq__ does distinguish them, and unequal values are
+            # allowed to share a hash -- only the reverse would break the
+            # contract.
+            return self.type.hash_fn(self.value)
 
         if isinstance(self.vtype, CtyCapsule):
             return hash((self.vtype, self.marks))
 
         if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
-            return hash((self.vtype, self.marks, self._canonical_sort_key()))
+            # Hash the elements' own hashes rather than the canonical sort key.
+            # That key renders a capsule payload with repr(), which for a class
+            # without a defined __repr__ is its memory address -- so two lists
+            # holding equal capsule payloads compared equal and hashed
+            # differently, and a set kept both. Element hashing routes each
+            # capsule back through its hash_fn, which is the whole point of
+            # supplying one.
+            return hash((self.vtype, self.marks, self._payload_hash()))
 
         return hash((self.vtype, self.is_unknown, self.is_null, self.marks, self.value))
+
+    def _payload_hash(self) -> int:
+        """A container payload's hash, built from its elements' hashes."""
+        payload = self.value
+        if isinstance(payload, dict):
+            # A frozenset rather than a sort: map keys are not guaranteed to be
+            # mutually orderable (a malformed payload can mix str and int), and
+            # sorting them raised TypeError out of __hash__.
+            return hash(frozenset((key, hash(item)) for key, item in payload.items()))
+        if isinstance(payload, frozenset):
+            return hash(tuple(sorted(hash(item) for item in payload)))
+        if isinstance(payload, tuple | list):
+            return hash(tuple(hash(item) for item in payload))
+        return hash(payload)
 
     def equals(self, other: CtyValue[Any]) -> CtyValue[Any]:
         """Whether this equals `other`: true, false, or **unknown**.

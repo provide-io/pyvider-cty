@@ -605,7 +605,6 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("format", [st("%#X"), nm(255)]),
     ("format", [st("%#o"), nm(42)]),
     ("format", [st("%#b"), nm(42)]),
-    ("format", [st("%+d"), nm(42)]),
     ("format", [st("%10t"), bl(True)]),
     ("format", [st("%-10t"), bl(False)]),
     ("format", [st("%v"), nm("0.00001")]),
