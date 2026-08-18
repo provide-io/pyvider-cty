@@ -344,6 +344,13 @@ ERR_JSONENCODE_FAILED = "jsonencode: failed to encode value: {error}"
 
 # Date and time function error messages
 ERR_FORMATDATE_INVALID_TIMESTAMP = "formatdate: invalid timestamp format: {error}"
+ERR_FORMATDATE_GO_LAYOUT = (
+    "formatdate: {spec!r} looks like Go's reference layout, which this function does not use. "
+    "go-cty defines its own scheme -- YYYY, MM, DD, hh, mm, ss, EEEE, MMMM, AA, ZZZZZ -- and "
+    "reads digits as literal text, so this would return the format string itself rather than a "
+    "formatted date. Rewrite it (2006-01-02 becomes YYYY-MM-DD), or quote it to keep the digits "
+    "as literal text: '{spec}'."
+)
 ERR_FORMATDATE_INVALID_VERB = 'formatdate: invalid date format verb "{verb}"'
 ERR_FORMATDATE_INVALID_VERB_LENGTH = 'formatdate: invalid date format verb "{verb}": {expected}'
 ERR_FORMATDATE_UNTERMINATED_LITERAL = "formatdate: unterminated literal '"

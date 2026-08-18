@@ -103,14 +103,19 @@ class TestFormatDateLiterals:
     def test_non_letters_are_literal(self) -> None:
         assert formatdate(S("YYYY-MM-DD"), S("2020-01-02T03:04:05Z")).value == "2020-01-02"
 
-    def test_digits_are_literal_so_a_go_layout_passes_straight_through(self) -> None:
-        """The dialect is go-cty's, not Go's.
+    def test_digits_are_literal(self) -> None:
+        """The dialect is go-cty's, not Go's: every digit is literal text.
 
-        `2006-01-02` is Go's own reference layout, and this package used to
-        translate it. Under go-cty's rules every character of it is a literal,
-        so the format string comes back unchanged.
+        Shown through the quoted form, because the *unquoted* Go reference
+        layout is now refused rather than returned -- the one place this package
+        declines something go-cty answers, on the grounds that a wrong answer
+        shaped like a right one is worse than a refusal. The reasoning and the
+        full matrix are in `test_formatdate_refuses_a_go_layout.py`; this file
+        keeps the parity claim the refusal is built on, which is that go-cty
+        would hand the digits straight back.
         """
-        assert formatdate(S("2006-01-02"), S("2020-02-03T04:05:06Z")).value == "2006-01-02"
+        assert formatdate(S("'2006-01-02'"), S("2020-02-03T04:05:06Z")).value == "2006-01-02"
+        assert formatdate(S("2006"), S("2020-02-03T04:05:06Z")).value == "2006"
 
     def test_quoted_text_is_not_interpreted(self) -> None:
         assert formatdate(S("'today is' YYYY"), S("2020-01-02T03:04:05Z")).value == "today is 2020"

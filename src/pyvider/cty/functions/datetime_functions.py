@@ -14,6 +14,7 @@ from typing import Any, cast
 
 from pyvider.cty import CtyString, CtyValue
 from pyvider.cty.config.defaults import (
+    ERR_FORMATDATE_GO_LAYOUT,
     ERR_FORMATDATE_INVALID_TIMESTAMP,
     ERR_FORMATDATE_INVALID_VERB,
     ERR_FORMATDATE_INVALID_VERB_LENGTH,
@@ -332,6 +333,57 @@ def _render_verb(token: str, moment: datetime) -> str:
     return renderer(moment)
 
 
+# Go's reference layout, which go-cty's dialect deliberately does not use: it
+# defines YYYY/MM/DD/hh/mm/ss and reads digits as literal text. `2006` is the
+# unmistakable token -- a format carrying it *alongside* another of these is a
+# call written against the pre-0.5.0 implementation, which translated Go layouts
+# into strftime.
+_GO_LAYOUT_YEAR = "2006"
+_GO_LAYOUT_TOKENS = ("01", "02", "03", "04", "05", "15", "Jan", "Mon", "MST", "PM", "-0700", "Z07:00")
+
+
+def _is_go_reference_layout(spec: str) -> bool:
+    """Whether `spec` is a Go layout rather than a go-cty format.
+
+    This package refuses those, where go-cty returns them as literal text. The
+    only place it declines something go-cty answers, and the reasoning is about
+    which failure a caller can act on.
+
+    `formatdate("2006-01-02", ts)` returns the string `"2006-01-02"` in go-cty:
+    not an error, not a date, and shaped exactly like the answer the caller
+    wanted. It is the worst of the forty-three breaking changes in 0.5.0 -- a
+    test asserting "the output looks like a date" passes, and the wrong value
+    reaches Terraform state. Every other silent break in that list either raises
+    or produces visibly wrong output.
+
+    The trigger is narrow on purpose. `2006` alone still formats as the literal
+    it is, since a year is a plausible thing to write; it takes a *second*
+    reference token to make the intent unmistakable. go-cty already refuses any
+    letter it does not know as a verb -- `"Version 2006.01"` is
+    `invalid date format verb "V"` there -- so the false-positive surface is a
+    format of digits and punctuation only, carrying both tokens, meant
+    literally. Those keep working through the quoting the message names:
+    `'2006-01-02'` renders as `2006-01-02` on both sides, checked against
+    v1.19.0 -- which is why only the unquoted text is examined.
+    """
+    if _GO_LAYOUT_YEAR not in spec:
+        return False
+
+    # Only the *unquoted* text counts. Quoting is what the refusal tells the
+    # caller to reach for, so a check that fires on `'2006-01-02'` makes the
+    # message a lie -- which is what the first version of this did.
+    try:
+        unquoted = "".join(token for token in _split_date_format(spec) if token[0] != "'")
+    except CtyFunctionError:
+        # A malformed format is not this function's problem; the ordinary path
+        # is about to report it properly.
+        return False
+
+    if _GO_LAYOUT_YEAR not in unquoted:
+        return False
+    return any(token in unquoted for token in _GO_LAYOUT_TOKENS)
+
+
 @stdlib_function(
     "formatdate",
     params=[CtyParameter("format", CtyString()), CtyParameter("time", CtyString())],
@@ -343,14 +395,22 @@ def _render_verb(token: str, moment: datetime) -> str:
     ),
 )
 def formatdate(spec: CtyValue[Any], timestamp: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `FormatDateFunc` (`stdlib/datetime.go:14`)."""
+    """go-cty's `FormatDateFunc` (`stdlib/datetime.go:14`).
+
+    **A deliberate divergence, and the only one in this package that refuses
+    something go-cty answers.** See `_is_go_reference_layout` for why.
+    """
+    spec_text = cast(str, spec.value)
+    if _is_go_reference_layout(spec_text):
+        raise CtyFunctionError(ERR_FORMATDATE_GO_LAYOUT.format(spec=spec_text))
+
     try:
         moment = _parse_rfc3339(cast(str, timestamp.value))
     except ValueError as e:
         raise CtyFunctionError(ERR_FORMATDATE_INVALID_TIMESTAMP.format(error=e)) from e
 
     rendered: list[str] = []
-    for token in _split_date_format(cast(str, spec.value)):
+    for token in _split_date_format(spec_text):
         if token[0] == "'":
             rendered.append(_render_quoted(token))
         elif _starts_verb(token[0]):
