@@ -423,6 +423,13 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("index", [ls(["a", "b"]), st("z")]),
     ("hasindex", [ls(["a"]), nm(0)]),
     ("hasindex", [ls(["a"]), nm(9)]),
+    # A key `big.Float.Int64()` cannot read exactly names no position, so it is
+    # a False rather than a truncation. `index` then refuses it.
+    ("hasindex", [ls(["a", "b", "c"]), nm(1.5)]),
+    ("hasindex", [ls(["a", "b", "c"]), nm(-1)]),
+    ("hasindex", [ls(["a", "b", "c"]), nm(1e30)]),
+    ("index", [ls(["a", "b", "c"]), nm(1.5)]),
+    ("index", [ls(["a", "b", "c"]), nm(1)]),
     ("keys", [mp({"b": "1", "a": "2"})]),
     ("values", [mp({"b": "1", "a": "2"})]),
     ("values", [mp({})]),
