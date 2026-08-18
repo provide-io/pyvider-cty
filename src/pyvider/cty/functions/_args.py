@@ -24,6 +24,26 @@ INT64_MIN = -(2**63)
 INT64_MAX = 2**63 - 1
 
 
+def exact_int64(value: CtyValue[Any]) -> int | None:
+    """A number argument as go-cty's `big.Float.Int64()` reads it, or `None`.
+
+    `Int64` truncates towards zero and reports whether it had to, which is how
+    go-cty rejects a fraction, a magnitude past the int64 range and an infinity
+    in the single test `accuracy != big.Exact` (`cty/value_ops.go:994`). A
+    `Decimal` NaN joins them for the same reason: it names no integer.
+
+    Separate from `whole_number` because the two callers need different answers
+    to the same question. `hasindex` has to report "no such position" as a
+    `False`, and `whole_number` has to raise -- but if they read the number
+    differently then `index` refuses keys `hasindex` accepts, which is the
+    contradiction those two functions exist to not have.
+    """
+    raw = cast(Decimal, value.value)
+    if not raw.is_finite() or raw != raw.to_integral_value() or not INT64_MIN <= raw <= INT64_MAX:
+        return None
+    return int(raw)
+
+
 def whole_number(value: CtyValue[Any], error: str) -> int:
     """A number argument as a Python `int`, or a refusal.
 
@@ -36,10 +56,10 @@ def whole_number(value: CtyValue[Any], error: str) -> int:
 
     `error` is a format string taking `{value}`.
     """
-    raw = cast(Decimal, value.value)
-    if not raw.is_finite() or raw != raw.to_integral_value() or not INT64_MIN <= raw <= INT64_MAX:
-        raise CtyFunctionError(error.format(value=raw))
-    return int(raw)
+    position = exact_int64(value)
+    if position is None:
+        raise CtyFunctionError(error.format(value=cast(Decimal, value.value)))
+    return position
 
 
 # 🌊🪢🔚

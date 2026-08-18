@@ -92,7 +92,7 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.conversion import convert
 from pyvider.cty.exceptions import CtyError, CtyFunctionError
-from pyvider.cty.functions._args import INT64_MAX, whole_number
+from pyvider.cty.functions._args import INT64_MAX, exact_int64, whole_number
 from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.refinement import refine
@@ -863,12 +863,20 @@ def hasindex(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
 
     A null collection used to answer False, which claims it was looked in. The
     framework refuses it now, as go-cty's parameter spec does.
+
+    A key that names no position is a False rather than an error, and go-cty
+    decides which those are by whether `big.Float.Int64()` converted exactly.
+    Truncating instead -- `int(Decimal("1.5"))` -- made `index(list, 1.5)`
+    return the element at 1, and a non-finite key escaped as an unhandled
+    `OverflowError` from the same call.
     """
     if isinstance(collection.type, CtyList | CtyTuple):
         if not isinstance(key.type, CtyNumber):
             return CtyBool().validate(False)
-        idx = int(cast("Decimal", key.value))
-        return CtyBool().validate(0 <= idx < len(cast("Sized", collection.value)))
+        idx = exact_int64(key)
+        if idx is None or idx < 0:
+            return CtyBool().validate(False)
+        return CtyBool().validate(idx < len(cast("Sized", collection.value)))
     if not isinstance(key.type, CtyString):
         return CtyBool().validate(False)
     return CtyBool().validate(key.value in cast("Mapping[str, Any]", collection.value))
@@ -927,6 +935,8 @@ def index(collection: CtyValue[Any], key: CtyValue[Any]) -> CtyValue[Any]:
 
     key_val = key.value
     if isinstance(key.type, CtyNumber):
+        # Safe: hasindex has already refused every key Int64 could not read
+        # exactly, so what is left is a whole number inside the int64 range.
         key_val = int(cast("Decimal", key_val))
 
     return collection[key_val]
