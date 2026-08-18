@@ -1,7 +1,8 @@
 """Memory profiling tests for type validation."""
 
 import pytest
-from wrknv.memray.runner import run_memray_stress
+
+from tests.memray._runner import run_memray_stress
 
 pytestmark = [pytest.mark.memray, pytest.mark.slow]
 

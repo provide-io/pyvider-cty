@@ -44,6 +44,9 @@ perf-report: ## Compare hot-path performance against a baseline ref (report only
 	uv run python scripts/perf/perf_report.py --base $(or $(BASE),gh-origin/main)
 
 .PHONY: memray
+memray-test: ## Check allocation counts against tests/memray/baselines.json
+	uv run pytest tests/memray -m memray
+
 memray: ## Run memray memory stress tests (all subsystems)
 	@mkdir -p memray-output
 	uv run python scripts/memray/run_memray_stress.py
