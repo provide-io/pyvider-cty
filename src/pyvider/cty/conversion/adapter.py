@@ -9,7 +9,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, cast
 
-# Local imports to break the circular dependency cycle.
 from pyvider.cty.conversion._utils import canonical_sort_key
 from pyvider.cty.types import (
     CtyDynamic,
