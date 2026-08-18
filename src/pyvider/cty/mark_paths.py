@@ -28,6 +28,7 @@ from typing import Any, cast
 from pyvider.cty.path import CtyPath, GetAttrStep, IndexStep, KeyStep
 from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtyObject, CtySet, CtyTuple
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.frozen import FrozenDict
 
 __all__ = ["PathMarks", "mark_with_paths", "unmark_deep_with_paths"]
 
@@ -114,7 +115,13 @@ def _strip(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[An
         unchanged_map = rebuilt_map.keys() == items.keys() and all(
             rebuilt_map[key] is items[key] for key in items
         )
-        return value if unchanged_map else _evolved(value, rebuilt_map)
+        if unchanged_map:
+            return value
+        # Rebuilt frozen when the source was, the same rule `marks._rebuild`
+        # follows. This is the half that matters: the stripped value is what
+        # goes to the serializer, and a plain dict there fails the immutability
+        # test `collect_marks_deep` requires before taking its memo.
+        return _evolved(value, FrozenDict(rebuilt_map) if isinstance(payload, FrozenDict) else rebuilt_map)
 
     if isinstance(value.type, CtySet):
         # A set's elements are not addressable by a stable path: marking one
@@ -186,7 +193,12 @@ def _apply(value: CtyValue[Any], steps: tuple[Any, ...], marks: frozenset[Any]) 
             return value
         updated = dict(payload)
         updated[key] = _apply(updated[key], rest, marks)
-        return _evolved(value, updated)
+        # Rebuilt frozen when the source was, as `marks._rebuild` does. A plain
+        # dict here fails the immutability test `collect_marks_deep` requires
+        # before taking its memo, so a round trip through here silently cost
+        # every later mark question a full re-walk -- and it re-opened the
+        # mapping to `value.value[k] = x`, which 0.5.0 closes deliberately.
+        return _evolved(value, FrozenDict(updated) if isinstance(payload, FrozenDict) else updated)
 
     return value
 
