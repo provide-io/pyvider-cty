@@ -466,7 +466,7 @@ def log_fn(num_val: CtyValue[Any], base_val: CtyValue[Any]) -> CtyValue[Any]:
 
     An argument too large for a `float64` is the other refusal, and it comes from
     reading the argument rather than from the arithmetic: see `_float64`. `pow`
-    does not have it, because `pow` is not read through `float64` here.
+    reads its arguments the same way and so makes the same refusal.
     """
     num, base = _numbers(num_val, base_val)
     return _number_from_float(_go_quotient(_go_log(_float64(num)), _go_log(_float64(base))), "log")
