@@ -58,6 +58,14 @@ class TestConvertFunction:
             (CtyValue(CtyNumber(), Decimal("1e2")), CtyString(), "100"),
             (CtyValue(CtyNumber(), Decimal("1.50")), CtyString(), "1.5"),
             (CtyValue(CtyNumber(), Decimal("1e-7")), CtyString(), "0.0000001"),
+            # `big.Float.Text` spells an infinity `+Inf`, sign always shown, and
+            # this conversion *is* `Text('f', -1)` (`conversion_primitive.go:16`).
+            # `str(Decimal)` says "Infinity", which is a Python spelling and was
+            # what this returned; confirmed against go-cty v1.19.0 by calling
+            # `stdlib.FormatFunc` with "%s" on `NumberFloatVal(math.Inf(1))`.
+            (CtyValue(CtyNumber(), Decimal("Infinity")), CtyString(), "+Inf"),
+            (CtyValue(CtyNumber(), Decimal("-Infinity")), CtyString(), "-Inf"),
+            (CtyValue(CtyNumber(), Decimal("NaN")), CtyString(), "NaN"),
             (
                 CtyValue(CtyList(element_type=CtyString()), ["a", "b"]),
                 CtySet(element_type=CtyString()),

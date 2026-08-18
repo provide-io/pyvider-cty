@@ -35,6 +35,7 @@ from pyvider.cty.config.defaults import (
     ERR_FORMAT_UNSUPPORTED_VERB,
 )
 from pyvider.cty.conversion import convert
+from pyvider.cty.conversion._utils import non_finite_text
 from pyvider.cty.exceptions import CtyConversionError, CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.functions._function import CtyParameter, refine_not_null
@@ -113,13 +114,20 @@ class _Verb:
 _ALTERNATE_PREFIX = {"x": "0x", "X": "0X", "o": "0", "b": "0b"}
 
 
-def _pad(verb: _Verb, text: str) -> str:
+def _pad(verb: _Verb, text: str, *, allow_zero: bool = True) -> str:
     """Pad to the requested width, measured in grapheme clusters.
 
     Width is a display concern, so go-cty counts what a reader sees rather than
     how it is encoded (`format.go:500`). Padding a four-code-point emoji to
     width 5 adds one space there and four here if width is measured in code
     points -- the column that padding exists to line up would not line up.
+
+    `allow_zero=False` is for text that is not a number and so cannot be
+    zero-padded, which in practice means an infinity or a NaN under a float
+    verb. That is Go's rule and not go-cty's own, which is why it is a caller's
+    decision here: `%08.2f` of an infinity is "    +Inf" because the float verbs
+    delegate to Go's `fmt`, while `%08v` of the same value is "0000+Inf" because
+    `%v` pads through go-cty's `formatPadWidth`, which honours the flag.
     """
     if verb.width is None:
         return text
@@ -130,16 +138,29 @@ def _pad(verb: _Verb, text: str) -> str:
     # ignored"), and it matters far more than a spacing nit: padding 42 on the
     # right with zeros produced "42000", which does not read as a padded 42 at
     # all but as a different number.
-    padding = ("0" if verb.zero and not verb.minus else " ") * (verb.width - measured)
+    zero = allow_zero and verb.zero and not verb.minus
+    padding = ("0" if zero else " ") * (verb.width - measured)
     return text + padding if verb.minus else padding + text
 
 
-def _json_number(number: Decimal) -> str:
-    """A number as go-cty's JSON encoder writes it: plain decimal, no exponent."""
-    return format(number.normalize(), "f") if number.is_finite() else str(number)
+def _json_number(number: Decimal, verb: _Verb) -> str:
+    """A number as go-cty's JSON encoder writes it: plain decimal, no exponent.
+
+    An infinity has no JSON form and go-cty says so rather than inventing one
+    (`cty/json/marshal.go:45`). This wrote the bare token `Infinity`, which is a
+    Python spelling that no JSON parser accepts -- so `%#v` of an infinity
+    produced a document that could not be read back.
+    """
+    if not number.is_finite():
+        raise CtyFunctionError(
+            ERR_FORMAT_UNSUPPORTED_VALUE.format(
+                verb=verb.raw, offset=verb.offset, error="cannot serialize infinity as JSON"
+            )
+        )
+    return format(number.normalize(), "f")
 
 
-def _json_of(value: CtyValue[Any]) -> str:
+def _json_of(value: CtyValue[Any], verb: _Verb) -> str:
     """The value as go-cty's JSON encoding of it, which is what `%v` falls back to.
 
     Assembled here rather than handed to `json.dumps`, because numbers have to
@@ -157,19 +178,21 @@ def _json_of(value: CtyValue[Any]) -> str:
     if value.is_null:
         return "null"
     if isinstance(value.type, CtyNumber):
-        return _json_number(cast(Decimal, value.value))
+        return _json_number(cast(Decimal, value.value), verb)
     if isinstance(value.type, CtyString):
         return json.dumps(str(value.value))
     if isinstance(value.type, CtyBool):
         return "true" if value.value else "false"
     if isinstance(value.type, CtyMap | CtyObject):
         items = cast(dict[str, CtyValue[Any]], value.value)
-        rendered = ",".join(f"{json.dumps(name)}:{_json_of(item)}" for name, item in sorted(items.items()))
+        rendered = ",".join(
+            f"{json.dumps(name)}:{_json_of(item, verb)}" for name, item in sorted(items.items())
+        )
         return "{" + rendered + "}"
     if isinstance(value.type, CtyList | CtySet | CtyTuple):
-        return "[" + ",".join(_json_of(element) for element in _elements_of(value)) + "]"
+        return "[" + ",".join(_json_of(element, verb) for element in _elements_of(value)) + "]"
     if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
-        return _json_of(value.value)
+        return _json_of(value.value, verb)
     return json.dumps(str(value.value))
 
 
@@ -234,10 +257,13 @@ def _general_form(number: Decimal, precision: int | None, *, upper: bool) -> str
 
 
 def _number_text(number: Decimal) -> str:
-    """A number the way Go renders `%v` for one: the shortest `%g` that round-trips."""
-    if not number.is_finite():
-        return str(number)
-    return _general_form(number, None, upper=False)
+    """A number the way Go renders `%v` for one: the shortest `%g` that round-trips.
+
+    go-cty spells this with `bf.Text('g', -1)` (`format.go:377`), and `Text` has
+    its own answer for a non-finite value -- `+Inf`, not `str(Decimal)`'s
+    `Infinity`.
+    """
+    return non_finite_text(number) or _general_form(number, None, upper=False)
 
 
 def _as(value: CtyValue[Any], target: CtyType[Any], verb: _Verb) -> CtyValue[Any]:
@@ -250,7 +276,12 @@ def _as(value: CtyValue[Any], target: CtyType[Any], verb: _Verb) -> CtyValue[Any
 
 
 def _format_integer(verb: _Verb, number: Decimal) -> str:
-    if number != number.to_integral_value():
+    # `bf.Int(nil)` reports an inexact conversion for an infinity as well as for
+    # a fraction, so go-cty answers "an integer is required" for both
+    # (`format.go:434`). Checked before the equality test, which an infinity
+    # passes -- `Decimal("Infinity").to_integral_value()` is itself -- leaving
+    # `int()` to raise `OverflowError` out of the function's own body.
+    if not number.is_finite() or number != number.to_integral_value():
         raise CtyFunctionError(ERR_FORMAT_REQUIRES_INTEGER.format(verb=verb.raw, offset=verb.offset))
     whole = int(number)
     rendered = format(abs(whole), {"b": "b", "d": "d", "o": "o", "x": "x", "X": "X"}[verb.verb])
@@ -273,7 +304,28 @@ def _format_integer(verb: _Verb, number: Decimal) -> str:
     return _pad(verb, sign + rendered)
 
 
+def _format_non_finite(verb: _Verb, number: Decimal) -> str:
+    """Go's `fmt` on an infinity or a NaN (`fmt/format.go`, `fmtFloat`).
+
+    Three departures from the finite path, all because the text is not a number:
+    the precision is ignored, there being no digits to round; the zero flag is
+    dropped ("Special handling for infinities and NaN, which don't look like a
+    number so shouldn't be padded with '0'"); and the sign is decided by what
+    the value is rather than by the digits, so an unsigned infinity shows a `+`
+    and an unsigned NaN shows nothing.
+    """
+    text = cast(str, non_finite_text(number))
+    sign, bare = (text[0], text[1:]) if text[0] in "+-" else ("+", text)
+    if sign == "+" and " " in verb.flags and "+" not in verb.flags:
+        sign = " "
+    if bare == "NaN" and " " not in verb.flags and "+" not in verb.flags:
+        sign = ""
+    return _pad(verb, sign + bare, allow_zero=False)
+
+
 def _format_float(verb: _Verb, number: Decimal) -> str:
+    if not number.is_finite():
+        return _format_non_finite(verb, number)
     upper = verb.verb in "EG"
     if verb.verb in "gG":
         rendered = _general_form(number, verb.precision, upper=upper)
@@ -306,7 +358,7 @@ def _format_one(verb: _Verb, value: CtyValue[Any]) -> str:  # noqa: C901
                 return _pad(verb, str(value.value))
             if isinstance(value.type, CtyNumber):
                 return _pad(verb, _number_text(cast(Decimal, value.value)))
-        return _pad(verb, _json_of(value))
+        return _pad(verb, _json_of(value, verb))
 
     if verb.verb == "t":
         # go-cty returns before padding for %t, so a width is accepted and then
