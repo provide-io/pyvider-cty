@@ -588,6 +588,15 @@ CASES: list[tuple[str, list[Arg]]] = [
     ("timeadd", [st("2020-01-01T00:00:00+02:00"), st("1h30m")]),
     ("timeadd", [st("2020-01-01T00:00:00Z"), st("-2h5m")]),
     ("timeadd", [st("2020-01-01T00:00:00Z"), st("not a duration")]),
+    # The ends of the range, where Go's time.Time keeps going and Python's
+    # datetime stops. Recorded divergences, not agreements -- see KNOWN_DIVERGENCES.
+    ("timeadd", [st("9999-12-31T23:59:59Z"), st("1h")]),
+    ("timeadd", [st("0001-01-01T00:00:00Z"), st("-1s")]),
+    # The duration overflow boundary, where the two *do* agree: Go's
+    # time.Duration is int64 nanoseconds, and this package's parser enforces the
+    # same limit rather than inheriting timedelta's much wider one.
+    ("timeadd", [st("2026-01-01T00:00:00Z"), st("2560000h")]),
+    ("timeadd", [st("2026-01-01T00:00:00Z"), st("2570000h")]),
     ("formatdate", [st("YYYY-MM-DD"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("EEEE, DD MMMM YYYY hh:mm:ss ZZZZ"), st("2020-01-02T03:04:05Z")]),
     ("formatdate", [st("HH:mm aa Z"), st("2020-11-22T13:04:05-08:00")]),
@@ -750,6 +759,21 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # more precise than it was a different function. `pow` is transcribed through
     # float64 now, and the rows above pin the three ways that changes things.
     "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
+    # The calendar range. Go's time.Time runs to year 292277026596; Python's
+    # datetime stops at 9999, so go-cty answers 10000-01-01T00:59:59Z where this
+    # refuses. Accepted as a divergence 2026-08-18 rather than fixed: matching it
+    # means replacing datetime with an integer nanosecond count plus civil
+    # calendar conversion, and no Terraform expression can reach the boundary --
+    # `timestamp()` cannot produce a year near it.
+    #
+    # The *shape* of the refusal was fixed. datetime signals the boundary with
+    # OverflowError, which is not a CtyError, so it escaped the taxonomy as a
+    # CtyFunctionPanicError; it is an ordinary CtyFunctionError now.
+    #
+    # Strict, so replacing datetime later forces these entries out rather than
+    # leaving a stale note behind.
+    "timeadd(9999-12-31T23:59:59Z,1h)": "calendar range: Go's time.Time runs past year 9999, datetime does not",
+    "timeadd(0001-01-01T00:00:00Z,-1s)": "calendar range: Go's time.Time runs before year 1, datetime does not",
     # Two divergences left by transcribing `pow` through float64, neither of them
     # about `pow`.
     #
