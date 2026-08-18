@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from pyvider.cty.config.defaults import (
@@ -33,8 +34,6 @@ def non_finite_text(number: Any) -> str | None:
     this package from arithmetic go-cty performs in `float64`, so it needs *an*
     answer, and Go's is the only one with a claim on being right.
     """
-    from decimal import Decimal
-
     if not isinstance(number, Decimal) or number.is_finite():
         return None
     if number.is_nan():
@@ -50,11 +49,14 @@ def canonical_sort_key(member: Any) -> Any:
     every member into a `CtyValue`. Shared rather than restated: this rule
     decides de-duplication, hashing, and the byte order of every serialized set,
     so two callers sorting a set two ways is a diff Terraform sees.
-    """
-    # Local import to prevent a circular dependency at module load time.
-    from pyvider.cty.values import CtyValue
 
-    return member._canonical_sort_key() if isinstance(member, CtyValue) else (0, str(member))
+    Asked of the member rather than checked with `isinstance`, because importing
+    `CtyValue` here is a cycle -- `types.structural.object` imports this module --
+    and doing it inside the function would put an import on a path that runs once
+    per element of every set this package converts or serializes.
+    """
+    key = getattr(member, "_canonical_sort_key", None)
+    return key() if key is not None else (0, str(member))
 
 
 def _attrs_to_dict_safe(inst: Any) -> dict[str, Any]:
