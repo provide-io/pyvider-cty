@@ -16,19 +16,22 @@ Always use `uv sync` to activate the development environment. This uses `uv` for
 - `uv run pytest tests/` - Run all tests
 - `uv run pytest tests/ -x --tb=short` - Run tests with early exit and short traceback
 - `uv run pytest --run-benchmarks` - Run performance benchmark tests
-- `uv run pytest --run-compat` - Run Go/Python cross-language compatibility tests
+- `uv run pytest --run-compat` - Run the Go/Python cross-language compatibility tests directly (needs `SOUP_GO_BIN` pointed at a built `soup-go` binary; see below)
+- `make compat` - Build the `soup-go` harness from a sibling `tofusoup` checkout and run the compatibility suite against it; this is the whole differential-testing story in one command, and skips cleanly (exit 0) if the sibling checkout or the Go toolchain is missing
 - `uv run pytest tests/path/to/specific_test.py::test_function` - Run specific test
 
+**Never change the tree while a suite is in flight.** No `git checkout`, `stash`, rebase or branch switch while tests are running, and especially not under `-n auto`: workers import at staggered times, so some read the old files and some the new, and the failures that produces are indistinguishable from a real nondeterministic bug. Treat any run that spanned a tree change as **void rather than as data** — discard it and re-run on a settled tree instead of investigating it. If another session shares this working directory, put one of you in a `git worktree`. (This cost one long investigation into an xdist race that never existed; see the `TestCanonicalSortKey` entry in `.provide/GO-CTY-PARITY.md`.)
+
 ### Code Quality
-- `uv run ruff format src/ tests/` - Auto-format code
-- `uv run ruff check src/ tests/` - Lint code
-- `uv run ruff check src/ tests/ --fix` - Auto-fix linting issues
+- `uv run ruff format src/ tests/ scripts/` - Auto-format code
+- `uv run ruff check src/ tests/ scripts/` - Lint code
+- `uv run ruff check src/ tests/ scripts/ --fix` - Auto-fix linting issues
 - `uv run mypy src/` - Type checking
 - `uv run bandit -ll -r src/` - Security analysis
 
 ### Build and Validation
 - `uv build` - Build package (creates wheel in `dist/`)
-- `./validate-pipeline.sh` - Run complete validation pipeline (tests, linting, type checking, build)
+- There is no single validation-pipeline script; CI runs format, lint, mypy, bandit, and the test suite as separate steps (see `.github/workflows/ci.yml`). Run `make lint`, `uv run mypy src/`, `uv run bandit -ll -r src/`, and `uv run pytest tests/` in sequence to reproduce it locally, plus `make compat` if your change touches wire format, functions, or refinements.
 
 ### Pre-commit Hooks
 - `pre-commit install` - Install git pre-commit hooks
@@ -61,8 +64,7 @@ Always use `uv sync` to activate the development environment. This uses `uv` for
 
 ### Testing Structure
 - **`tests/types/`** - Type system unit tests
-- **`tests/compatibility/`** - Cross-language compatibility tests with Go
-- **`tests/fixtures/`** - Test data and fixtures (auto-generated from Go)
+- **`tests/compatibility/`** - Cross-language compatibility tests against a live go-cty oracle (the `soup-go` harness), not checked-in fixtures
 - **Markers**: `@pytest.mark.benchmark` for performance tests, `@pytest.mark.compat` for compatibility tests
 
 ### Configuration Details
@@ -72,10 +74,11 @@ Always use `uv sync` to activate the development environment. This uses `uv` for
 - **Dev Tools**: pytest, ruff, mypy, hypothesis, bandit
 
 ### Cross-Language Compatibility
-The `compatibility/` directory contains Go and Python implementations for testing interoperability:
-- Go fixture generator creates test data consumed by Python tests
-- Tests marked with `@pytest.mark.compat` verify serialization compatibility
-- Use `--run-compat` flag to run cross-language tests (requires Go runtime)
+The `tests/compatibility/` directory runs differential checks against real go-cty rather than asserting against checked-in fixtures:
+- Tests marked with `@pytest.mark.compat` compare wire bytes, refinements, and function results against a live `soup-go` oracle binary
+- `soup-go` is a harness built from a **sibling `tofusoup` checkout** (`../tofusoup` next to this repo) — it is not part of this repository
+- Use `make compat` to build the harness and run the suite in one step (skips cleanly, exit 0, if the sibling checkout or Go toolchain is missing)
+- Or run `uv run pytest --run-compat tests/compatibility/` directly, with `SOUP_GO_BIN` pointed at an already-built `soup-go` binary
 
 ### Performance and Benchmarks
 - Performance tests marked with `@pytest.mark.benchmark`
