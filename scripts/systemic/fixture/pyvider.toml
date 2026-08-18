@@ -1,0 +1,18 @@
+# Provider configuration for the systemic test.
+#
+# The shared secret is a fixed literal on purpose: this fixture exists to be
+# reproducible, it encrypts nothing that outlives the run, and a generated
+# value would make two runs incomparable. Do not copy this file into anything
+# that stores real state.
+private_state_shared_secret = "systemic-test-fixed-secret-do-not-reuse"
+
+[logging]
+level = "WARN"
+format = "key_value"
+omit_timestamp = true
+
+[core]
+# The provider version Terraform sees. Pinned so `required_providers` in
+# main.tf can name it; without this the installer derives 0.0.0 from a
+# directory that is a fixture, not a project.
+version = "0.5.0"
