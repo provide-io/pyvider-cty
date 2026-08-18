@@ -34,6 +34,36 @@ if TYPE_CHECKING:
 
 __all__ = ["ConformanceError", "conformance_errors"]
 
+# The type classes, bound once on first use rather than imported per call.
+#
+# `conformance` sorts before `conversion` alphabetically, so a module-level
+# import of `pyvider.cty.types` lands ahead of it in the package `__init__` and
+# breaks the type/conversion import cycle. The per-call import that worked
+# around that carried a comment saying Python caches modules "so the cost is a
+# dict lookup". Measured, it is not: a six-name `from ... import` is **684 ns**
+# against **4.4 ns** for an already-bound global -- 155x -- and it ran twice for
+# every stdlib function call, about 17% of an 8 us scalar call. `_handle_fromlist`
+# was 120,001 calls in a 20,000-call profile.
+#
+# Binding once keeps the cycle broken, because nothing here runs at import time.
+_BOUND: bool = False
+_CtyDynamic: Any = None
+_CtyList: Any = None
+_CtyMap: Any = None
+_CtyObject: Any = None
+_CtySet: Any = None
+_CtyTuple: Any = None
+
+
+def _bind() -> None:
+    """Resolve the type classes into module globals, once."""
+    global _BOUND, _CtyDynamic, _CtyList, _CtyMap, _CtyObject, _CtySet, _CtyTuple
+    from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtyObject, CtySet, CtyTuple
+
+    _CtyDynamic, _CtyList, _CtyMap = CtyDynamic, CtyList, CtyMap
+    _CtyObject, _CtySet, _CtyTuple = CtyObject, CtySet, CtyTuple
+    _BOUND = True
+
 
 @define(frozen=True, slots=True)
 class ConformanceError:
@@ -60,11 +90,10 @@ def conformance_errors(given: CtyType[Any], want: CtyType[Any], /) -> list[Confo
 
 
 def _test(given: CtyType[Any], want: CtyType[Any], path: str, errors: list[ConformanceError]) -> None:
-    # Imported here rather than at module scope: `conformance` sorts before
-    # `conversion` alphabetically, so a module-level import lands ahead of it in
-    # the package __init__ and breaks the type/conversion import cycle. Python
-    # caches modules, so the cost is a dict lookup.
-    from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtyObject, CtySet, CtyTuple
+    if not _BOUND:
+        _bind()
+    CtyDynamic, CtyList, CtyMap = _CtyDynamic, _CtyList, _CtyMap
+    CtyObject, CtySet, CtyTuple = _CtyObject, _CtySet, _CtyTuple
 
     if isinstance(want, CtyDynamic):
         return  # Anything goes.
@@ -138,9 +167,10 @@ def _name(cty_type: CtyType[Any]) -> str:
     method that answers a slightly different question from the one it is named
     for.
     """
-    from pyvider.cty.types import CtyList, CtyMap, CtySet
+    if not _BOUND:
+        _bind()
 
-    if isinstance(cty_type, CtyList | CtySet | CtyMap):
+    if isinstance(cty_type, _CtyList | _CtySet | _CtyMap):
         return f"{cty_type.ctype} of {_name(cty_type.element_type)}"
     return str(cty_type.ctype or type(cty_type).__name__)
 

@@ -13,6 +13,7 @@ from typing import (
     Generic,
     Self,
     TypeVar,
+    cast,
 )
 
 from attrs import define, evolve, field
@@ -36,6 +37,52 @@ T = TypeVar("T", covariant=True)
 
 if TYPE_CHECKING:
     from pyvider.cty.types import CtyType
+
+# The type classes, bound once on first use rather than imported per call.
+#
+# `values` is imported before `types` in the package `__init__`, so a
+# module-level import here is a cycle. The per-call `from ... import` that
+# worked around it is not free: measured, a six-name one costs 684 ns against
+# 4.4 ns for an already-bound global, and `__attrs_post_init__` runs on every
+# single CtyValue construction. Binding once keeps the cycle broken, because
+# nothing below runs at import time.
+_TYPES_BOUND: bool = False
+_CtyDynamic: Any = None
+_CtyList: Any = None
+_CtyMap: Any = None
+_CtyObject: Any = None
+_CtySet: Any = None
+_CtyTuple: Any = None
+_CtyNumber: Any = None
+_CtyString: Any = None
+_CtyBool: Any = None
+_CtyCapsule: Any = None
+_CtyCapsuleWithOps: Any = None
+
+
+def _bind_types() -> None:
+    """Resolve the type classes into module globals, once."""
+    global _TYPES_BOUND, _CtyDynamic, _CtyList, _CtyMap, _CtyObject, _CtySet, _CtyTuple
+    global _CtyNumber, _CtyString, _CtyBool, _CtyCapsule, _CtyCapsuleWithOps
+    from pyvider.cty.types import (
+        CtyBool,
+        CtyCapsule,
+        CtyCapsuleWithOps,
+        CtyDynamic,
+        CtyList,
+        CtyMap,
+        CtyNumber,
+        CtyObject,
+        CtySet,
+        CtyString,
+        CtyTuple,
+    )
+
+    _CtyDynamic, _CtyList, _CtyMap, _CtyObject = CtyDynamic, CtyList, CtyMap, CtyObject
+    _CtySet, _CtyTuple, _CtyNumber = CtySet, CtyTuple, CtyNumber
+    _CtyString, _CtyBool, _CtyCapsule = CtyString, CtyBool, CtyCapsule
+    _CtyCapsuleWithOps = CtyCapsuleWithOps
+    _TYPES_BOUND = True
 
 
 @define(frozen=True, slots=True)
@@ -65,9 +112,10 @@ class CtyValue(Generic[T]):
     _stripped: Any = field(default=None, init=False, eq=False, repr=False)
 
     def __attrs_post_init__(self) -> None:
-        from pyvider.cty.types import CtyDynamic
+        if not _TYPES_BOUND:
+            _bind_types()
 
-        if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
+        if isinstance(self.vtype, _CtyDynamic) and isinstance(self.value, CtyValue):
             object.__setattr__(self, "is_unknown", self.value.is_unknown)
             object.__setattr__(self, "is_null", self.value.is_null)
 
@@ -116,17 +164,11 @@ class CtyValue(Generic[T]):
         reach `AttributeError`/`TypeError` from here, which is the same escape
         from the error taxonomy that the bare `TypeError` in `__hash__` was.
         """
-        from ..types import (
-            CtyBool,
-            CtyCapsule,
-            CtyList,
-            CtyMap,
-            CtyNumber,
-            CtyObject,
-            CtySet,
-            CtyString,
-            CtyTuple,
-        )
+        if not _TYPES_BOUND:
+            _bind_types()
+        CtyBool, CtyCapsule, CtyList = _CtyBool, _CtyCapsule, _CtyList
+        CtyMap, CtyNumber, CtyObject = _CtyMap, _CtyNumber, _CtyObject
+        CtySet, CtyString, CtyTuple = _CtySet, _CtyString, _CtyTuple
 
         if self.is_null:
             return (2,)
@@ -359,14 +401,10 @@ class CtyValue(Generic[T]):
         leaked the user's own class name for an unhashable payload. Supply
         `hash_fn` to get bucketing back; go-cty says the same of `HashKey`.
         """
-        from pyvider.cty.types import (
-            CtyCapsule,
-            CtyCapsuleWithOps,
-            CtyList,
-            CtyMap,
-            CtyObject,
-            CtySet,
-        )
+        if not _TYPES_BOUND:
+            _bind_types()
+        CtyCapsule, CtyCapsuleWithOps = _CtyCapsule, _CtyCapsuleWithOps
+        CtyList, CtyMap, CtyObject, CtySet = _CtyList, _CtyMap, _CtyObject, _CtySet
 
         # Ordered before the capsule dispatch for the same reason as __eq__: a
         # null or unknown has no payload to hand a user-supplied hash_fn, and
@@ -379,7 +417,9 @@ class CtyValue(Generic[T]):
             # folded in: __eq__ does distinguish them, and unequal values are
             # allowed to share a hash -- only the reverse would break the
             # contract.
-            return self.type.hash_fn(self.value)
+            # `cast` because the capsule class is resolved through the lazy
+            # binder above, so the isinstance narrowing carries no static type.
+            return cast("int", self.type.hash_fn(self.value))
 
         if isinstance(self.vtype, CtyCapsule):
             return hash((self.vtype, self.marks))
