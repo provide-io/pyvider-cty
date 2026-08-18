@@ -51,12 +51,24 @@ def ensure_harness() -> Path | None:
     lying around -- that is the same staleness, chosen on purpose. Point
     SOUP_GO_BIN at a binary and run pytest directly if you need that.
     """
+    # A laptop without Go should skip; CI must not. Skipping there means the one
+    # place the 2322 differential tests run reports success while running none
+    # of them, which is the same failure the build-failure branch below already
+    # guards against -- just arrived at from the other side.
+    required = os.environ.get("COMPAT_REQUIRE") == "1"
+
     harness_src = harness_source()
     if not harness_src.is_dir():
-        print(f"soup-go source not found at {harness_src}; skipping cross-language checks.")
+        message = f"soup-go source not found at {harness_src}"
+        if required:
+            raise SystemExit(f"{message}; COMPAT_REQUIRE=1, so this is a misconfiguration, not a skip.")
+        print(f"{message}; skipping cross-language checks.")
         return None
     if shutil.which("go") is None:
-        print("Go toolchain not installed; skipping cross-language checks.")
+        message = "Go toolchain not installed"
+        if required:
+            raise SystemExit(f"{message}; COMPAT_REQUIRE=1, so this is a misconfiguration, not a skip.")
+        print(f"{message}; skipping cross-language checks.")
         return None
     print(f"Building soup-go harness from {harness_src} ...")
     build = subprocess.run(  # nosec

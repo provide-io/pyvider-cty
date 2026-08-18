@@ -20,6 +20,12 @@ jobs:
       coverage-threshold: 75
       run-security: true
       run-secret-scan: true
+      # This repository points its siblings at ../<repo> as editable path
+      # dependencies so a change in one is exercised by its consumers
+      # immediately. CI checks out a single repository, so those paths do not
+      # exist here and `uv sync` cannot resolve them; the published metadata is
+      # also what CI should be verifying.
+      no-sources: true
     secrets: inherit
 
   # The differential suite: every claim of go-cty parity, checked against real
@@ -76,3 +82,13 @@ jobs:
         working-directory: pyvider-cty
         env:
           SOUP_GO_SRC: ${{ github.workspace }}/tofusoup/src/tofusoup/harness/go/soup-go
+          # Same reason as `no-sources` above: only this repository and tofusoup
+          # are checked out, so ../provide-foundation does not exist and every
+          # `uv run` under `make compat` would fail to resolve before the suite
+          # started. This is a plain job, so the environment variable reaches it.
+          UV_NO_SOURCES: "1"
+          # A missing Go toolchain or harness source means this job is
+          # misconfigured, not that the check is unavailable. Skipping quietly
+          # would make the only place these 2322 tests run report success while
+          # running none of them.
+          COMPAT_REQUIRE: "1"
