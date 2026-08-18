@@ -35,9 +35,11 @@ upgrading.
 #### Standard library: signatures and return types
 
 5. `regex` and `regexall` take `(pattern, string)`, not `(string, pattern)`.
-   Both arguments are strings, so an un-updated call keeps type-checking and
-   silently returns the wrong answer — audit every call site, don't rely on
-   an exception to find them.
+   Both arguments are strings, so an un-updated call keeps type-checking.
+   Most of them raise once they run — the subject string is rarely a valid
+   regex that also matches the pattern text — but some return a wrong answer
+   instead (measured: 5 of 7 realistic call shapes raise, 2 return silently).
+   Audit every call site rather than relying on an exception to find them all.
 6. `regex` returns capture groups (a tuple, or an object for named groups)
    rather than the whole match, and raises on a non-match rather than
    returning `""`. `regexall`'s elements have the same shape.
@@ -62,8 +64,17 @@ upgrading.
 12. `formatdate` uses go-cty's own format dialect (`YYYY`, `MM`, `DD`, `EEEE`,
    `hh`, `AA`, `ZZZZZ`, with `'...'` literal quoting), not Go's
    `2006-01-02` reference layout or Python `strftime`. Every call site's
-   format string needs rewriting; the old dialect still returns *a* string,
-   so this fails silently.
+   format string needs rewriting.
+
+   **This one is caught for you.** Under go-cty's rules a Go layout is
+   literal text, so `formatdate("2006-01-02", ts)` returns the string
+   `"2006-01-02"` — not an error, not a date, and shaped exactly like the
+   answer you wanted. It was the only change in this release whose wrong
+   answer looks right, so a Go layout is now **refused** with a message
+   naming the rewrite. This is the one place this library deliberately
+   declines something go-cty answers. A bare year still renders as the
+   literal it is, and `'2006-01-02'` renders as literal text on both sides
+   if that is what you meant.
 13. `formatdate` and `timeadd` parse RFC3339 strictly, where they previously
    used `datetime.fromisoformat` and accepted looser input (a bare date, a
    space instead of `T`, a lowercase `t`/`z`, a colonless offset). `timeadd`

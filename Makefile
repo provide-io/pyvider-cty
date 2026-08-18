@@ -33,6 +33,9 @@ diagrams: ## Re-render docs/architecture/*.puml to SVG (add PNG=1 to also render
 	uv run python scripts/render_diagrams.py $(if $(PNG),--png,)
 
 .PHONY: diagrams-check
+check-docs: ## Execute every Python block in the docs and fail on an inaccuracy
+	uv run python scripts/check_docs.py
+
 diagrams-check: ## Fail if any committed architecture SVG is stale against its .puml source
 	uv run python scripts/render_diagrams.py --check
 
