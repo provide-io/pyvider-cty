@@ -74,9 +74,11 @@ Thank you for your interest in contributing to pyvider-cty! This document provid
    # Run tests
    uv run pytest tests/
 
-   # Or use the validation script
-   ./validate-pipeline.sh
+   # Security scan
+   uv run bandit -ll -r src/
    ```
+
+   There is no single validation-pipeline script; the steps above (plus `make compat`, below, for changes touching wire format, functions, or refinements) are what CI runs.
 
 ### Code Style
 
@@ -127,7 +129,7 @@ def test_feature_name() -> None:
 uv run pytest tests/
 
 # Run specific test file
-uv run pytest tests/types/test_primitives.py
+uv run pytest tests/types/primitives/test_bool.py
 
 # Run with coverage
 uv run pytest tests/ --cov=src/pyvider/cty --cov-report=html
@@ -135,15 +137,31 @@ uv run pytest tests/ --cov=src/pyvider/cty --cov-report=html
 # Run with verbose output
 uv run pytest tests/ -v
 
-# Run specific markers
-uv run pytest tests/ -m benchmark  # Performance tests
-uv run pytest tests/ -m compat     # Cross-language compatibility
+# Run specific markers (both are skipped by default; the flag opts them in)
+uv run pytest tests/ -m benchmark --run-benchmarks  # Performance tests
+uv run pytest tests/ -m compat --run-compat          # Cross-language compatibility
 ```
+
+#### Never change the tree while a suite is in flight
+
+Don't `git checkout`, `git stash`, rebase, or switch branches while a test run is going — especially a parallel one. Workers import at staggered times, so some pick up the old files and some the new, and the resulting failures look exactly like a nondeterministic bug in code that is actually fine. A run that spanned a tree change is **void, not data**: discard it and re-run on a settled tree rather than investigating it. This has cost this project one long investigation into an xdist race that never existed (see the `TestCanonicalSortKey` entry in `.provide/GO-CTY-PARITY.md`). If two sessions share one working directory, one of them should be in a `git worktree`.
+
+#### Cross-Language Compatibility Suite
+
+The tests under `tests/compatibility/` (`@pytest.mark.compat`) don't assert against checked-in fixtures — they run a live differential comparison against real go-cty through a `soup-go` oracle binary, built from a **sibling `tofusoup` checkout** (expected at `../tofusoup` next to this repository). They are skipped unless `--run-compat` is passed, and the oracle needs `SOUP_GO_BIN` pointed at a built binary.
+
+The easiest way to run them is:
+
+```bash
+make compat
+```
+
+which builds `soup-go` from the sibling checkout and runs `pytest --run-compat tests/compatibility/` against it. If the `tofusoup` checkout or the Go toolchain isn't present, it prints a message and exits 0 rather than failing — a machine without the Go toolchain isn't expected to run this suite, but a run that checked nothing has to say so.
 
 #### Test Coverage Requirements
 
 - Minimum coverage: 75% (enforced in CI)
-- Target coverage: 90%+ (currently at 94%)
+- Target coverage: 90%+ (currently at ~93%)
 - All new features must include tests
 - Bug fixes should include regression tests
 
@@ -153,6 +171,15 @@ uv run pytest tests/ -m compat     # Cross-language compatibility
 - Update relevant guide chapters in `docs/user-guide/`
 - Add examples to `examples/` for new features
 - Keep README.md current
+
+#### Building the Docs
+
+```bash
+uv run --group docs mkdocs build --strict
+
+# Or serve locally with live reload
+uv run --group docs mkdocs serve
+```
 
 #### Docstring Format
 
@@ -265,18 +292,22 @@ pyvider-cty/
 
 (For maintainers only)
 
-1. Update VERSION file
-2. Update CHANGELOG.md
+1. Update the `VERSION` file (semantic version, e.g. `0.5.0`, no leading `v`)
+2. Update CHANGELOG.md — curated notes, written by hand, for this release
 3. Update pyproject.toml `Development Status` classifier
-4. Create release tag: `git tag v0.0.XXXX`
-5. Push tag: `git push origin v0.0.XXXX`
-6. GitHub Actions handles the rest
+4. Create a GitHub Release (tag `vX.Y.Z` to match `VERSION`) — `.github/workflows/release.yml` triggers on `release: published`, not on a tag push, so the release doesn't start until the GitHub Release is actually published. `workflow_dispatch` is available for a dry run.
+5. GitHub Actions handles the rest: build, TestPyPI publish and verify, PyPI publish, SBOM, and artifact signing.
+
+CHANGELOG.md's "Earlier releases" section covers everything before 0.4.0 and
+is frozen — it is grouped commit subjects from a period when no changelog was
+kept, and that history does not change. New releases get a curated entry at
+the top of the file, written by hand.
 
 ## Questions?
 
 - Open an issue for bugs or feature requests
 - Start a discussion for questions
-- Check existing documentation in `docs/guide/`
+- Check existing documentation in `docs/user-guide/`
 
 ## License
 
