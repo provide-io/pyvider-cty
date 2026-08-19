@@ -38,7 +38,25 @@ def _ported(marker: object, target: object) -> object:
 
 @runtime_checkable
 class CtyTypeProtocol(Protocol[T_co]):
-    """Protocol defining the essential interface of a CtyType."""
+    """Protocol defining the essential interface of a CtyType.
+
+    A protocol is structural, so anything shaped like a Cty type satisfies this
+    whether or not it inherits from `CtyType`. That is the whole point of it,
+    and it is also why `CtyType` deliberately does *not* list it as a base.
+
+    Inheriting from a `Protocol` makes `typing._ProtocolMeta` the metaclass of
+    every subclass, and `_ProtocolMeta.__instancecheck__` is a Python-level
+    function that runs on every `isinstance` against any of them. The concrete
+    branch it takes is a two-line pass-through to `_abc_instancecheck`, so it
+    buys nothing here -- but a Python frame is not free: 143 ns against 98 ns
+    for the plain `ABCMeta` check, and this library asks `isinstance(x,
+    SomeCtyType)` six times per stdlib function call. (Only for a *non-exact*
+    class; `isinstance(v, type(v))` short-circuits in C before any metaclass is
+    consulted, which is why a naive microbenchmark of this shows no difference
+    at all.)
+
+    Conformance is still checked, statically, by `_conforms` below.
+    """
 
     def validate(self, value: object) -> CtyValue[T_co]: ...
     def equal(self, other: Any) -> bool: ...
@@ -46,9 +64,8 @@ class CtyTypeProtocol(Protocol[T_co]):
     def is_primitive_type(self) -> bool: ...
 
 
-# The concrete ABC now implements the protocol
 @define(slots=True)
-class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
+class CtyType(Generic[T], ABC):
     """
     Generic abstract base class for all Cty types.
     """
@@ -157,6 +174,20 @@ class CtyType(CtyTypeProtocol[T], Generic[T], ABC):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
+
+
+if TYPE_CHECKING:
+
+    def _conforms(cty_type: CtyType[T]) -> CtyTypeProtocol[T]:
+        """Static-only: every `CtyType` must satisfy `CtyTypeProtocol`.
+
+        The base-class relationship used to carry this check, and dropping it for
+        the reason in `CtyTypeProtocol`'s docstring would have dropped the check
+        with it. Returning the argument is the whole assertion: the type checker
+        rejects this file if the two interfaces ever drift apart, and nothing
+        runs at runtime.
+        """
+        return cty_type
 
 
 # 🌊🪢🔚

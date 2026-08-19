@@ -38,7 +38,6 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
 
     @with_recursion_detection
     def validate(self, value: object) -> CtyValue[tuple[T, ...]]:  # noqa: C901
-        from pyvider.cty.values import CtyValue
 
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, tuple):
@@ -92,7 +91,6 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         return CtyValue(vtype=self, value=tuple(validated_elements))
 
     def element_at(self, container: object, index: int) -> CtyValue[T]:
-        from pyvider.cty.values import CtyValue
 
         if isinstance(container, CtyValue):
             if not isinstance(container.type, CtyList):

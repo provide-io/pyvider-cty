@@ -7,16 +7,14 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import Any, ClassVar, cast
 
 from attrs import define
 
 from pyvider.cty.exceptions import CtyValidationError, DeserializationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
-
-if TYPE_CHECKING:
-    from pyvider.cty.values import CtyValue
+from pyvider.cty.values import CtyValue
 
 
 @define(frozen=True, slots=True)
@@ -34,7 +32,6 @@ class CtyDynamic(CtyType[object]):
         """
         from pyvider.cty.conversion.raw_to_cty import infer_cty_type_from_raw
         from pyvider.cty.parser import parse_tf_type_to_ctytype
-        from pyvider.cty.values import CtyValue
 
         if isinstance(value, CtyValue):
             if isinstance(value.type, CtyDynamic):
