@@ -1,7 +1,7 @@
 # Handoff — 2026-08-19
 
-Branch `main`, pushed to `gh-origin/main` at `28dc604`. Working tree clean apart
-from untracked debris (see the checklist).
+Branch `main`, pushed to `gh-origin/main`. Working tree clean — nothing
+untracked, nothing staged.
 
 ## What was asked
 
