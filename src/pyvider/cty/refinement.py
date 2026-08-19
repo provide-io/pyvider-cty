@@ -199,12 +199,22 @@ class RefinementBuilder:
         if collapsed is not None:
             return collapsed.with_marks(self._marks)
 
+        # A refinement that rules nothing out is not recorded, because go-cty
+        # does not record it and the difference reaches the wire. An empty
+        # string prefix is true of every string and a length lower bound of 0 is
+        # true of every collection: go-cty writes a bare unknown for either
+        # (`d40000`), where this package wrote a refinement map carrying the
+        # vacuous entry, and `not_null` alongside one wrote two entries against
+        # go-cty's one. Dropped here rather than in the setters so that the
+        # consistency checks still run against a known value, and after
+        # `_collapsed` so `collection_length(0)` still yields an empty
+        # collection rather than an unrefined unknown.
         refined = RefinedUnknownValue(
             is_known_null=self._is_known_null,
-            string_prefix=self._prefix,
+            string_prefix=self._prefix or None,
             number_lower_bound=self._lower,
             number_upper_bound=self._upper,
-            collection_length_lower_bound=self._min_len,
+            collection_length_lower_bound=self._min_len or None,
             collection_length_upper_bound=self._max_len,
         )
         return CtyValue(vtype=self._value.type, value=refined, is_unknown=True, marks=self._marks)
@@ -251,9 +261,20 @@ class RefinementBuilder:
                 raise CtyRefinementError(f"refining collection of length {length} with {described}")
 
     def _check_number_bounds(self) -> None:
-        if self._lower is not None and self._upper is not None and self._lower[0] > self._upper[0]:
+        if self._lower is None or self._upper is None:
+            return
+        # Equal bounds are only satisfiable when *both* are inclusive. This used
+        # to test `>` alone, so `3 < x <= 3` -- an empty range, and just as
+        # impossible as `5 <= x <= 3`, which was already refused -- was accepted
+        # and written to the wire as a refinement no value can satisfy. go-cty
+        # is no guide here: it **panics** on the same input
+        # (`number lower bound cty.NumberIntVal(3) is greater than upper bound
+        # cty.NumberIntVal(3)`), which is not a behaviour to match.
+        empty_at_equal = self._lower[0] == self._upper[0] and not (self._lower[1] and self._upper[1])
+        if self._lower[0] > self._upper[0] or empty_at_equal:
+            relation = "excludes" if empty_at_equal else "is greater than"
             raise CtyRefinementError(
-                f"number lower bound {self._lower[0]} is greater than upper bound {self._upper[0]}"
+                f"number lower bound {self._lower[0]} {relation} upper bound {self._upper[0]}"
             )
 
     def _check_length_bounds(self) -> None:
