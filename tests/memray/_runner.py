@@ -23,10 +23,17 @@ import os
 from pathlib import Path
 import re
 import subprocess  # nosec B404 - fixed argv, no shell
+import sys
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent.parent
+# Through *this* interpreter, never a bare `memray` off PATH. Outside `uv run` --
+# a plain `pytest -m memray`, a tox env, CI with a global install -- the resolved
+# executable belongs to whichever environment owns it, and both `run` and `stats`
+# then profile a build of pyvider-cty that is not the working tree, silently,
+# because the subprocess still exits 0.
+MEMRAY = [sys.executable, "-m", "memray"]
 TOTAL_ALLOCATIONS = re.compile(r"Total allocations:\s*\n\s*([\d,]+)")
 
 # Allocation counts move with the interpreter's own behaviour -- a patch release
@@ -41,7 +48,7 @@ UPDATE = os.environ.get("PYVIDER_MEMRAY_UPDATE_BASELINES") == "1"
 def total_allocations(binfile: Path) -> int:
     """memray's own count, read from `memray stats`."""
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell
-        ["memray", "stats", str(binfile)],
+        [*MEMRAY, "stats", str(binfile)],
         capture_output=True,
         text=True,
         check=False,
@@ -65,7 +72,7 @@ def run_memray_stress(
     """Profile `script`, and fail if it allocates materially more than recorded."""
     binfile = Path(output_dir) / f"{Path(script).stem}.bin"
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell
-        ["memray", "run", "--force", "-o", str(binfile), script],
+        [*MEMRAY, "run", "--force", "-o", str(binfile), script],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -87,11 +94,19 @@ def run_memray_stress(
         f"{baseline_key} has no baseline. Record one with "
         f"PYVIDER_MEMRAY_UPDATE_BASELINES=1 rather than inventing a number."
     )
+    assert recorded > 0, (
+        f"{baseline_key} has a baseline of {recorded}, which no profiled run produces. "
+        f"Re-record it with PYVIDER_MEMRAY_UPDATE_BASELINES=1."
+    )
     ceiling = recorded * (1 + TOLERANCE)
+    # `recorded` is known positive by the assertion above, so the percentage in
+    # this message cannot divide by zero -- a ZeroDivisionError raised while
+    # *building* an assertion message replaces the regression report with a
+    # traceback that says nothing about the regression.
     assert measured <= ceiling, (
         f"{baseline_key}: {measured} allocations against a baseline of {recorded} "
         f"(+{measured / recorded - 1:.0%}, ceiling +{TOLERANCE:.0%}). "
-        f"Profile it with `memray flamegraph {binfile}` before moving the baseline."
+        f"Profile it with `{sys.executable} -m memray flamegraph {binfile}` before moving the baseline."
     )
 
 
