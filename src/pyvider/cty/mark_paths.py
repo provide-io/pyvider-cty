@@ -139,15 +139,15 @@ def _strip(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[An
 
 def _hoist_set_marks(value: CtyValue[Any], path: CtyPath, found: PathMarks) -> CtyValue[Any]:
     elements = cast("tuple[CtyValue[Any], ...]", value.value)
-    element_marks: frozenset[Any] = frozenset()
+    element_marks: set[Any] = set()
     rebuilt = []
     for element in elements:
         bare, marks = element.unmark()
-        element_marks |= marks
+        element_marks.update(marks)
         rebuilt.append(bare)
     if not element_marks:
         return value
-    found[path] = found.get(path, frozenset()) | element_marks
+    found[path] = found.get(path, frozenset()) | frozenset(element_marks)
     # A tuple, not a frozenset. The payload is canonically ordered and may hold
     # two unknowns that compare equal to each other, so rebuilding it as a
     # frozenset would both lose the order and silently drop one of them.

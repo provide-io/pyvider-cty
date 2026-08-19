@@ -118,11 +118,11 @@ def collect_marks_deep(value: Any) -> frozenset[Any]:
         # payload is immutable, so the memo is safe by the rule below.
         marks = value.marks
         object.__setattr__(value, "_deep_marks", marks)
-        return marks
+        return frozenset(marks) if marks else frozenset()
     marks, memoizable = _walk_marks(value)
     if memoizable:
         object.__setattr__(value, "_deep_marks", marks)
-    return marks
+    return frozenset(marks) if marks else frozenset()
 
 
 def _push_children(current: Any, stack: list[Any], visited: set[int]) -> bool:
@@ -160,7 +160,7 @@ def _walk_marks(root: Any) -> tuple[frozenset[Any], bool]:
      - The isinstance tuple is a module constant, not built per call.
     """
 
-    marks: frozenset[Any] = frozenset()
+    marks: set[Any] = set()
     visited: set[int] = set()
     stack: list[Any] = [root]
     memoizable = True
@@ -181,10 +181,10 @@ def _walk_marks(root: Any) -> tuple[frozenset[Any], bool]:
         cached = current._deep_marks
         if cached is not None and current is not root:
             if cached:
-                marks |= cached
+                marks.update(cached)
             continue
         if current.marks:
-            marks |= current.marks
+            marks.update(current.marks)
         inner = current.value
         if isinstance(inner, nested):
             if _is_mutable_container(inner):
@@ -197,7 +197,7 @@ def _walk_marks(root: Any) -> tuple[frozenset[Any], bool]:
             visited.add(current_id)
             stack.append(inner)
 
-    return marks, memoizable
+    return frozenset(marks) if marks else frozenset(), memoizable
 
 
 def unmark_deep(value: Any) -> tuple[Any, frozenset[Any]]:

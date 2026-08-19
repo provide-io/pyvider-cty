@@ -94,7 +94,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
         # simply overwritten and its mark lost. go-cty goes further and panics on
         # hashing a marked element (cty/set_internals.go) rather than trust the
         # invariant to callers.
-        element_marks: frozenset[Any] = frozenset()
+        element_marks: set[Any] = set()
         # Unknown elements are held apart from the de-duplicated ones. go-cty is
         # explicit that "two unknown values are not equivalent for the sake of
         # set membership" (cty/set_internals.go): its `Equivalent` compares
@@ -114,7 +114,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 if validated_item.marks or isinstance(validated_item.value, _NESTING_PAYLOADS):
                     item_marks = collect_marks_deep(validated_item)
                     if item_marks:
-                        element_marks |= item_marks
+                        element_marks.update(item_marks)
                         validated_item = _strip(validated_item)
                 if validated_item.is_unknown:
                     undecided.append(validated_item)
