@@ -344,6 +344,14 @@ upgrading.
   unsatisfiable and was accepted; `5 <= x <= 3` was already refused, so the
   check simply did not cover equal bounds where one of them excludes the value.
   `3 <= x <= 3` is still accepted and still collapses to a known `3`.
+- A NaN is no longer serialized. go-cty's number is a `big.Float`, which has no
+  NaN at all, so the msgpack string `"NaN"` this package wrote came back from
+  go-cty as `number is required` — a value it could put on the wire that
+  Terraform's own library could not read. Both codecs refuse it now, and the
+  JSON codec's message says `NaN` rather than `infinity`. Infinity is
+  unaffected: go-cty holds `+Inf`/`-Inf` and both round-trip. Constructing a NaN
+  is still allowed, since `format` spells one the way Go's `fmt` does and no
+  stdlib function produces one.
 - A value in a `dynamic` position carries its concrete type across the wire,
   whether it is known, unknown, or null. go-cty writes `[type, value]` for every
   value at `cty.DynamicPseudoType`. Two separate faults dropped it here: the

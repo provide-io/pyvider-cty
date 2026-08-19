@@ -17,6 +17,7 @@ import pytest
 
 from pyvider.cty import CtyMap, CtyNumber, CtyObject, CtyString
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.exceptions import SerializationError
 
 # Aggressive settings for security testing
 SECURITY_SETTINGS = settings(
@@ -73,12 +74,14 @@ def test_nan_comparisons_dont_crash(operation: str) -> None:  # noqa: C901
 
 
 @SECURITY_SETTINGS
-@given(special_value=st.sampled_from([float("nan"), float("inf"), float("-inf")]))
+@given(special_value=st.sampled_from([float("inf"), float("-inf")]))
 def test_special_float_serialization_roundtrip(special_value: float) -> None:
     """
     Security test: Special float values should serialize/deserialize safely.
 
-    Tests NaN, Infinity, and -Infinity for safe round-trip behavior.
+    Tests Infinity and -Infinity for safe round-trip behavior. go-cty holds both
+    in its `big.Float` and writes them as float64, so these round-trip through
+    the wire unchanged on either side.
     """
     num_type = CtyNumber()
 
@@ -93,11 +96,26 @@ def test_special_float_serialization_roundtrip(special_value: float) -> None:
     decoded = cty_from_msgpack(msgpack_bytes, num_type)
 
     # Verify round-trip
-    # Note: NaN != NaN by definition, so we handle it specially
-    if str(special_value) == "nan":
-        assert str(decoded.value) == "NaN"
-    else:
-        assert decoded.value == cty_val.value
+    assert decoded.value == cty_val.value
+
+
+def test_a_nan_is_refused_by_the_wire_rather_than_round_tripped() -> None:
+    """NaN used to serialize, as the string `"NaN"`, which go-cty cannot read.
+
+    Its number is a `big.Float` and has no NaN at all, so those bytes come back
+    from go-cty as `number is required`: a value this package could put on the
+    wire and Terraform's own library could not read. Refused at both codecs
+    since 2026-08-19. Constructing one is still allowed -- `format` spells it
+    the way Go's `fmt` does, which the tests in `tests/functions/` pin -- because
+    the wire is where the boundary has to be.
+    """
+    num_type = CtyNumber()
+    nan = num_type.validate(float("nan"))
+
+    assert str(nan.value) == "NaN", "constructing a NaN is still allowed"
+
+    with pytest.raises(SerializationError, match="NaN"):
+        cty_to_msgpack(nan, num_type)
 
 
 @SECURITY_SETTINGS
