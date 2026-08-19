@@ -32,10 +32,11 @@ compat: ## Cross-language wire checks against real go-cty (needs the soup-go har
 diagrams: ## Re-render docs/architecture/*.puml to SVG (add PNG=1 to also render PNGs)
 	uv run python scripts/render_diagrams.py $(if $(PNG),--png,)
 
-.PHONY: diagrams-check
+.PHONY: check-docs
 check-docs: ## Execute every Python block in the docs and fail on an inaccuracy
 	uv run python scripts/check_docs.py
 
+.PHONY: diagrams-check
 diagrams-check: ## Fail if any committed architecture SVG is stale against its .puml source
 	uv run python scripts/render_diagrams.py --check
 
@@ -43,10 +44,11 @@ diagrams-check: ## Fail if any committed architecture SVG is stale against its .
 perf-report: ## Compare hot-path performance against a baseline ref (report only, never fails)
 	uv run python scripts/perf/perf_report.py --base $(or $(BASE),gh-origin/main)
 
-.PHONY: memray
+.PHONY: memray-test
 memray-test: ## Check allocation counts against tests/memray/baselines.json
 	uv run pytest tests/memray -m memray
 
+.PHONY: memray
 memray: ## Run memray memory stress tests (all subsystems)
 	@mkdir -p memray-output
 	uv run python scripts/memray/run_memray_stress.py
