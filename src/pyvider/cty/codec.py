@@ -207,9 +207,16 @@ def _bounded_prefix(prefix: str) -> str:
     return safe_known_prefix(truncated)
 
 
-def _serialize_dynamic(value: CtyValue[Any], path: str = "") -> list[Any]:
+def _serialize_dynamic(value: CtyValue[Any], path: str = "") -> list[Any] | Any:
     inner_value = value.value
     if not isinstance(inner_value, CtyValue):
+        # Nothing concrete to name. A value that is unknown or null at the
+        # dynamic level itself -- rather than holding an unknown of some known
+        # type -- has no type to carry, and go-cty writes it bare.
+        if value.is_unknown:
+            return _serialize_unknown(value)
+        if value.is_null:
+            return None
         raise SerializationError(
             ERR_DYNAMIC_MALFORMED,
             value=value,
@@ -347,12 +354,20 @@ def _convert_value_to_serializable(value: CtyValue[Any], schema: CtyType[Any], p
     if not isinstance(value, CtyValue):
         value = schema.validate(value)
     _reject_marks(value, path)
+    # The dynamic branch comes *first*, including for an unknown or a null.
+    # go-cty writes the `[type, value]` envelope for every value in a dynamic
+    # position, because the concrete type is the only thing carrying it across;
+    # this checked knownness first, so an unknown-of-string went on the wire as
+    # a bare `d40000` and a null-of-string as a bare `c0`. Reading those back at
+    # a dynamic position, go-cty answers `type=dynamic` where its own bytes give
+    # `type=string` -- and deferring as `string` and deferring as `dynamic` are
+    # different answers to a Terraform plan, which is why the type is written.
+    if isinstance(schema, CtyDynamic):
+        return _serialize_dynamic(value, path)
     if value.is_unknown:
         return _serialize_unknown(value)
     if value.is_null:
         return None
-    if isinstance(schema, CtyDynamic):
-        return _serialize_dynamic(value, path)
 
     inner_val = value.value
     if isinstance(schema, CtyObject):
