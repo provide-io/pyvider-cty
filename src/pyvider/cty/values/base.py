@@ -130,8 +130,18 @@ class CtyValue(Generic[T]):
 
         if self.is_unknown and self.is_null:
             object.__setattr__(self, "is_null", False)
-        elif self.is_null and self.value is not None:
+        elif self.is_null and self.value is not None and not self._dynamic_wrapper():
+            # A null holds no payload -- except at `dynamic`, where the payload
+            # *is* the type. Clearing it there discarded the one thing a dynamic
+            # position exists to carry: `CtyDynamic().validate(null-of-string)`
+            # became an untyped dynamic null, and the msgpack codec then wrote a
+            # bare `c0` where go-cty writes `[type, value]`. Reading that back,
+            # go-cty answers `type=dynamic` against its own `type=string`.
             object.__setattr__(self, "value", None)
+
+    def _dynamic_wrapper(self) -> bool:
+        """Whether this value is a `dynamic` standing in front of a concrete one."""
+        return isinstance(self.vtype, _CtyDynamic) and isinstance(self.value, CtyValue)
 
     @property
     def type(self) -> CtyType[T]:
