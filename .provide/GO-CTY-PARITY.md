@@ -38,9 +38,11 @@ Living document. Updated as work lands — do not let it drift.
 
 Accepted divergences, itemised below rather than fixed: the set-with-a-null byte
 ordering, Python `re` not being RE2 (this is an **intentional security drift**: Python's backtracking NFA is vulnerable to ReDoS where Go's RE2 is not, but `google-re2` is a C++ extension incompatible with Pyodide WebAssembly builds, so the risk is explicitly accepted), the `divide` precision model (decision 3,
-**closed 2026-08-18**), the calendar range in `timeadd`, and the two deliberate
-refusals -- a Go reference layout in `formatdate`, and a `setproduct` whose
-result would exceed a million elements. (~~`CtySet`
+**closed 2026-08-18**), the number *width* that model implies (added
+2026-08-19: go-cty spells 154 significant digits, a `Decimal` spells all of
+them), the calendar range in `timeadd`, and the two deliberate refusals -- a Go
+reference layout in `formatdate`, and a `setproduct` whose result would exceed a
+million elements. (~~`CtySet`
 being unable to hold a list~~ stopped being true on 2026-08-17: `307ac08` gave
 containers canonical-key hashing, and `set(list(string))` validates — the entry
 below records it.) Two are strict xfails that will resolve themselves —
@@ -808,6 +810,38 @@ it, since the dialect has no digits.
 
 Held by a strict xfail in the sweep, so removing the refusal forces the entry
 out.
+
+### The width half of decision 3 — 154 significant digits
+
+Measured 2026-08-19, out of the tofusoup fixture sweep. Decision 3 closed the
+*computation* half of the numeric precision model: go-cty divides in a 512-bit
+`big.Float`, this package in a 28-digit `Decimal`, and matching it is a
+representation change rather than a setting. The same representation gap has a
+second, separate effect that nobody had measured: **how wide a number can be
+written down.**
+
+go-cty renders with `big.Float.Text('f', -1)` — the shortest decimal that reads
+back as the same float — so it can spell `floor(512 × log₁₀2) = 154` significant
+digits and writes zeros past them. A `Decimal` spells every digit it holds. The
+boundary is exact and was measured against the harness: `5**220` is 154 digits
+and the two agree; `5**221` is 155 and is the first that cannot. Magnitude does
+not decide it — `10**500` is 501 digits, one of them significant, and both spell
+it in full.
+
+**This was found only because the threshold used to be 28 rather than 154**, and
+that half *was* a bug. `_number_to_string` called `Decimal.normalize()`, which
+honours the active context and therefore rounds, so `2**100` reached Terraform
+state as `1267650600228229401496703205000` against go-cty's
+`...205376` — through `convert(number, string)`, `tostring`, `format("%s", n)`,
+`jsonencode` and the `cty/json` codec, while the msgpack codec carried every
+digit. Two codecs in one library disagreeing about one value, with the lossy one
+being what state files are written in. Fixed the same day.
+
+The sweep could not have caught it: exactly one row held a number over 28 digits
+— `hasindex`, which answers a bool, so the digits never reached a string. Seven
+rows now drive the text routes with wide numbers, and `tostring(5**221)` is a
+strict xfail holding the 154-digit boundary, so adopting a binary-float payload
+later forces it out.
 
 ### The second deliberate refusal — `setproduct` over a million elements
 

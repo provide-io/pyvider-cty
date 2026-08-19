@@ -353,6 +353,15 @@ COLLECTION_CASES: list[tuple[str, list[Arg]]] = [
     ("tostring", [nm(2**100)]),
     ("tostring", [nm("1.2345678901234567890123456789")]),
     ("tostring", [nm("-0.0")]),
+    # The boundary of go-cty's number *width*. A go-cty number is a 512-bit
+    # big.Float rendered with `Text('f', -1)` -- the shortest decimal that reads
+    # back as the same float -- so it carries floor(512 * log10 2) = 154
+    # significant digits and writes zeros past them. A Decimal carries as many
+    # as it was given. 5**220 is 154 digits and agrees; 5**221 is 155 and is the
+    # first that cannot, which KNOWN_DIVERGENCES records. Magnitude is not what
+    # decides it: 10**500 is 501 digits and one of them significant, and agrees.
+    ("tostring", [nm(5**220)]),
+    ("tostring", [nm(5**221)]),
     ("tostring", [bl(True)]),
     ("tostring", [bl(False)]),
     ("tostring", [ls(["a"])]),
