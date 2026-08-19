@@ -335,6 +335,15 @@ upgrading.
   couldn't actually deliver.
 - `contains()` treats a partially-unknown collection as undecided instead of
   giving a definite answer.
+- A refinement that rules nothing out is no longer written to the wire. An
+  empty string prefix and a collection length lower bound of 0 are true of
+  every value of their type; go-cty records neither and writes a bare unknown,
+  where this package wrote a refinement map carrying the vacuous entry. Only
+  reachable through the refinement API -- no stdlib function emits one.
+- An empty number range is refused instead of being written. `3 < x <= 3` is
+  unsatisfiable and was accepted; `5 <= x <= 3` was already refused, so the
+  check simply did not cover equal bounds where one of them excludes the value.
+  `3 <= x <= 3` is still accepted and still collapses to a known `3`.
 - Sets of composite elements serialize in go-cty's byte order. Where one
   element is a *prefix* of another -- `{["a"], ["a","c"]}`, or any set holding
   an empty element -- go-cty ranks running out of elements last and this
