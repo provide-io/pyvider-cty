@@ -37,7 +37,7 @@ Living document. Updated as work lands — do not let it drift.
    Everything else closed on 2026-08-17. The harness audit took `safe_known_prefix`'s trailing delimiter, the sweep's four missing coverage axes, the harness's own fourth fault and the dead fixture trees. The documentation pass took #13's parity matrix, the release notes, and about sixty inaccuracies found by executing every code block rather than reading it — including a README that told contributors to run a command that does not exist. The sort-key investigation and `pyvider`'s latent `KeyStep` bug are closed. CI runs the differential suite (decision 5). **Every open decision in this repo closed on 2026-08-18** -- decision 3 in both halves, the `timeadd` calendar range as an accepted divergence, and the `formatdate` refusal. What remains is a release, the adversarial review, and one upstream issue to file.
 
 Accepted divergences, itemised below rather than fixed: the set-with-a-null byte
-ordering, Python `re` not being RE2, the `divide` precision model (decision 3,
+ordering, Python `re` not being RE2 (this is an **intentional security drift**: Python's backtracking NFA is vulnerable to ReDoS where Go's RE2 is not, but `google-re2` is a C++ extension incompatible with Pyodide WebAssembly builds, so the risk is explicitly accepted), the `divide` precision model (decision 3,
 **closed 2026-08-18**), the calendar range in `timeadd`, and the one deliberate
 refusal -- a Go reference layout in `formatdate`. (~~`CtySet`
 being unable to hold a list~~ stopped being true on 2026-08-17: `307ac08` gave

@@ -776,6 +776,12 @@ def _expand_go_template(match: re.Match[str], segments: GoTemplate) -> str:
 def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `RegexReplaceFunc` (`stdlib/string_replace.go:47`).
 
+    .. warning::
+       **Security Drift**: Pyvider uses Python's `re` module instead of Go's RE2
+       to maintain Pyodide/WebAssembly compatibility. This means patterns are evaluated
+       using a backtracking NFA, which is strictly vulnerable to Regular Expression
+       Denial of Service (ReDoS). Do not evaluate untrusted patterns from remote APIs.
+
     Note the argument order differs from `regex`: go-cty takes `(str, pattern,
     replace)` here and `(pattern, string)` there. That asymmetry is go-cty's
     own, and this matches it rather than tidying it.
