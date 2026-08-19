@@ -50,6 +50,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
+from pyvider.cty.exceptions import CtyMarksSerializationError
 from pyvider.cty.refinement import refine
 from tests.compatibility._oracle import canonical, rich, run, type_spec
 
@@ -214,6 +215,27 @@ def test_a_long_string_prefix_is_truncated_the_same_way() -> None:
     assert theirs["ok"], theirs
 
     assert base64.b64encode(cty_to_msgpack(value, S)).decode() == theirs["base64"]
+
+
+def test_a_marked_value_is_refused_by_both_codecs() -> None:
+    """Both refuse to serialize a marked value, which is why marks are excluded
+    from the generated codec properties in `test_differential_properties`.
+
+    That exclusion is an assumption those properties rest on -- if either side
+    started serializing a marked value the generators would silently stop
+    covering the case rather than fail -- so it is pinned here rather than left
+    in a docstring. Refusing is the whole point: serializing a `sensitive` value
+    is a silent declassification, and go-cty makes the same call.
+    """
+    marked = S.validate("x").with_marks(frozenset({"sensitive"}))
+
+    with pytest.raises(CtyMarksSerializationError):
+        cty_to_msgpack(marked, S)
+
+    theirs = run("cty", "msgpack", "encode", "--type", type_spec(S), json.dumps(rich(marked)))
+
+    assert not theirs.get("ok")
+    assert "marks" in str(theirs.get("error"))
 
 
 # 🌊🪢🔚

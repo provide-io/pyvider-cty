@@ -108,9 +108,14 @@ conclusion — see the warnings below.
 * **The differential suite cannot see what is lost before the comparison.** It
   spells our value for the harness with `rich`/`dynamic_arg`, so when this
   package drops information at validate time, both sides get the same lossy value
-  and agree. `CtyDynamic.validate` discarding a null's concrete type is the
+  and agree. `CtyDynamic.validate` discarding a null's concrete type was the
   worked example; `test_dynamic_carries_its_type.py` builds go's side by hand
-  because of it.
+  because of it. Two guards now cover the gap without an oracle:
+  `tests/values/test_nothing_is_lost_before_the_comparison.py` (a `dynamic` must
+  keep what it wraps) and `tests/parser/test_a_type_survives_the_wire.py` (a type
+  must survive its own wire spelling, which every compat test rests on). Note
+  which one has teeth: idempotence alone does *not* catch a stably-lossy value,
+  checked by reverting the fix — only the wrapping invariant went red.
 * **Two harness-dialect limits are not divergences.** JSON infers `tuple` from an
   array in a dynamic position (use `dynamic_arg`), and a `$`-prefixed map key is
   refused as colliding with the rich sentinel. Both sides encode such a map
