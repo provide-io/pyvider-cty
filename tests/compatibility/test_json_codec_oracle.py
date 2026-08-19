@@ -78,6 +78,12 @@ MARSHAL: list[tuple[str, CtyType[Any], CtyValue[Any], Any]] = [
     ("a fraction", N, N.validate("1.5"), None),
     ("a trailing zero", N, N.validate("1.50"), None),
     ("a number past 2**53", N, N.validate("9007199254740993"), None),
+    # Past `decimal`'s default 28-digit context, where the renderer used to
+    # round. The msgpack codec carried every digit of the same value, so the
+    # two codecs in this package disagreed and the lossy one was this.
+    ("a number past the decimal context", N, N.validate(2**100), None),
+    ("a decimal past the context", N, N.validate("1.2345678901234567890123456789"), None),
+    ("a negative zero", N, N.validate("-0.0"), None),
     ("an exponent", N, N.validate("1e2"), None),
     ("a tiny number", N, N.validate("1e-7"), None),
     ("a negative fraction", N, N.validate("-0.5"), None),

@@ -190,6 +190,12 @@ COLLECTION_CASES: list[tuple[str, list[Arg]]] = [
     ("jsonencode", [st('a"b\\c')]),
     ("jsonencode", [nm("0.00001")]),
     ("jsonencode", [nm("1e21")]),
+    # A number needing more significant digits than Decimal's default context
+    # carries. Every string-producing route runs through the same renderer, and
+    # exactly one row in the whole sweep held a number this long -- hasindex,
+    # which answers a bool, so the digits never reached a string and the
+    # truncation was invisible here while go-cty printed all of them.
+    ("jsonencode", [nm(2**100)]),
     ("jsonencode", [bl(True)]),
     ("jsonencode", [ln(["1", "2"])]),
     ("jsondecode", [st('{"a":1}')]),
@@ -249,6 +255,7 @@ COLLECTION_CASES: list[tuple[str, list[Arg]]] = [
     ("formatdate", [st("YYYY"), st("2020-01-02 03:04:05Z")]),
     # format
     ("format", [st("%s"), st("hi")]),
+    ("format", [st("%s"), nm(2**100)]),
     ("format", [st("%q"), st('a"b')]),
     ("format", [st("%v"), st("hi")]),
     ("format", [st("%v"), nm(42)]),
@@ -343,6 +350,9 @@ COLLECTION_CASES: list[tuple[str, list[Arg]]] = [
     ("tostring", [st("a")]),
     ("tostring", [nm(1)]),
     ("tostring", [nm("1.5")]),
+    ("tostring", [nm(2**100)]),
+    ("tostring", [nm("1.2345678901234567890123456789")]),
+    ("tostring", [nm("-0.0")]),
     ("tostring", [bl(True)]),
     ("tostring", [bl(False)]),
     ("tostring", [ls(["a"])]),
