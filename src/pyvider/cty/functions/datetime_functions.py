@@ -339,7 +339,22 @@ def _render_verb(token: str, moment: datetime) -> str:
 # call written against the pre-0.5.0 implementation, which translated Go layouts
 # into strftime.
 _GO_LAYOUT_YEAR = "2006"
-_GO_LAYOUT_TOKENS = ("01", "02", "03", "04", "05", "15", "Jan", "Mon", "MST", "PM", "-0700", "Z07:00")
+# Split by how they have to be matched. A numeric token is only a Go token when
+# it is a *whole* run of digits, or part of one long enough to be the packed
+# `20060102150405` layout: `"2006-2015"` is a year range, and reading the `15`
+# out of `2015` refused a format go-cty returns as the literal text it is. The
+# textual ones carry their own punctuation and cannot collide that way.
+_GO_LAYOUT_NUMERIC_TOKENS = ("01", "02", "03", "04", "05", "15")
+_GO_LAYOUT_TEXT_TOKENS = ("Jan", "Mon", "MST", "PM", "-0700", "Z07:00")
+# Above this length a digit run is not a number anyone writes literally; it is
+# Go reference fields concatenated. `2006` plus `01` is the shortest of those.
+_GO_LAYOUT_PACKED_RUN = 4
+_DIGIT_RUN = re.compile(r"\d+")
+
+
+def _go_layout_numeric_token(runs: list[str], token: str) -> bool:
+    """Whether `token` appears in `runs` as a Go layout field rather than a digit."""
+    return any(run == token or (len(run) > _GO_LAYOUT_PACKED_RUN and token in run) for run in runs)
 
 
 def _is_go_reference_layout(spec: str) -> bool:
@@ -362,7 +377,10 @@ def _is_go_reference_layout(spec: str) -> bool:
     letter it does not know as a verb -- `"Version 2006.01"` is
     `invalid date format verb "V"` there -- so the false-positive surface is a
     format of digits and punctuation only, carrying both tokens, meant
-    literally. Those keep working through the quoting the message names:
+    literally. The one such format a human plausibly writes is a *year range*,
+    and `"2006-2015"` used to be refused because `2015` contains `15`; a numeric
+    token now has to be a whole digit run, or sit inside one long enough to be
+    the packed layout. Those keep working through the quoting the message names:
     `'2006-01-02'` renders as `2006-01-02` on both sides, checked against
     v1.19.0 -- which is why only the unquoted text is examined.
     """
@@ -379,9 +397,12 @@ def _is_go_reference_layout(spec: str) -> bool:
         # is about to report it properly.
         return False
 
-    if _GO_LAYOUT_YEAR not in unquoted:
+    runs = _DIGIT_RUN.findall(unquoted)
+    if not _go_layout_numeric_token(runs, _GO_LAYOUT_YEAR):
         return False
-    return any(token in unquoted for token in _GO_LAYOUT_TOKENS)
+    if any(token in unquoted for token in _GO_LAYOUT_TEXT_TOKENS):
+        return True
+    return any(_go_layout_numeric_token(runs, token) for token in _GO_LAYOUT_NUMERIC_TOKENS)
 
 
 @stdlib_function(
