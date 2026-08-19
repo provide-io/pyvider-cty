@@ -144,11 +144,17 @@ dynamic-null type loss recorded on 2026-08-19.
 2. **The release is the only substantive item left**, and it is not local:
    `pyvider` must release at or before `pyvider-cty` 0.5.0, in the wave ordering
    recorded in `GO-CTY-PARITY.md`. Nothing in this repository blocks it.
-3. **If hunting more divergences**, raise `EXAMPLES` / `NARROW_EXAMPLES` in
-   `test_differential_properties.py` and run `make compat` — that is the cheapest
-   next probe, and it is where bugs 3–7 came from. Unmined surfaces named by
-   file: `convert`/`unify` (148 table cases, never fuzzed), `Value.Equals` (94),
-   `walk`/`transform` (73), `value_range` (44), mark paths (40).
+3. **If hunting more divergences**, run
+   `PYVIDER_COMPAT_EXAMPLES=800 COMPAT_REQUIRE=1 make compat`. Both property
+   modules read that knob; the committed defaults (60, and 120 for the narrow
+   generators) are sized to keep the suite in seconds, and finding something new
+   generally means running wider than a regression guard needs to. A run at 800
+   takes about two and a half minutes and is clean as of 2026-08-19.
+
+   The semantic surfaces are now covered too — `Value.Equals` and its symmetry,
+   `convert` including refusals, `Value.Range`, and the mark-path round trip are
+   in `test_differential_semantics.py`. What is still table-only: `unify`, and
+   `walk`/`transform` beyond what the range property reaches.
 4. **Do not file upstream go-cty issues.** Decided 2026-08-19; the item is closed
    in `GO-CTY-PARITY.md`. Three findings were drafted and two of the drafts
    deleted; `UPSTREAM-GO-CTY-EQUALS-NONDETERMINISM.md` is kept as the record of

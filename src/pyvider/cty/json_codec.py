@@ -208,8 +208,12 @@ def _marshal_number(value: CtyValue[Any], path: str) -> str:
     raw = value.value
     if isinstance(raw, Decimal) and not raw.is_finite():
         # go-cty refuses too: JSON has no infinity, and the alternatives are a
-        # string (changing the type) or null (changing the value).
-        raise CtyJsonError(f"{path or 'value'}: cannot serialize infinity as JSON")
+        # string (changing the type) or null (changing the value). The infinity
+        # wording is go-cty's own and is pinned by a sweep row; a NaN says so
+        # instead, because it said "infinity" for a NaN and go-cty -- which
+        # cannot hold a NaN at all -- has no message of its own to match.
+        what = "NaN" if raw.is_nan() else "infinity"
+        raise CtyJsonError(f"{path or 'value'}: cannot serialize {what} as JSON")
     return _number_to_string(raw)
 
 

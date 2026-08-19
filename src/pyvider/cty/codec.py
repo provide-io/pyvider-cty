@@ -16,6 +16,7 @@ from pyvider.cty.config.defaults import (
     ERR_DECODE_DYNAMIC_TYPE,
     ERR_DECODE_REFINED_UNKNOWN,
     ERR_DYNAMIC_MALFORMED,
+    ERR_NAN_NOT_SERIALIZABLE,
     ERR_OBJECT_NOT_MSGPACK_SERIALIZABLE,
     ERR_VALUE_FOR_LIST_SET,
     ERR_VALUE_FOR_MAP,
@@ -282,7 +283,28 @@ def _serialize_decimal_value(decimal_val: Decimal) -> int | float | str:
 
     Returns int for integers in int64 range, str for large integers, or float for non-integers.
     For non-integers, checks if float conversion would lose precision and encodes as string if so.
+
+    A NaN is refused. go-cty's number is a `big.Float`, which has no NaN --
+    `SetFloat64` panics on one -- so `cty.NumberVal` cannot hold one and
+    `convert("NaN", number)` is refused there. A `Decimal` can hold one, and
+    this fell through to the "write the decimal text" branch below and emitted
+    the string `"NaN"`: bytes go-cty reads as `number is required`. Emitting a
+    value Terraform's own library cannot read back is worse than refusing it.
+
+    Infinity is deliberately *not* refused here: go-cty has `+Inf` and `-Inf`,
+    writes them as float64, and reads ours back. Only the JSON codec refuses an
+    infinity, because JSON has no spelling for one -- and go-cty refuses there
+    too.
+
+    Construction is left alone. No stdlib function produces a NaN any more --
+    `pow` and `log` answer `result is not a number`, `divide(0, 0)` refuses on
+    both sides -- so a NaN only arrives from a caller who built one, and
+    `format` still spells it the way Go's `fmt` does. The wire is the boundary
+    that has to hold.
     """
+    if decimal_val.is_nan():
+        raise SerializationError(ERR_NAN_NOT_SERIALIZABLE)
+
     try:
         # Check if it's a whole number
         is_integer = decimal_val % 1 == 0
