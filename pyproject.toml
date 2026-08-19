@@ -58,15 +58,9 @@ docs = [
     "provide-testkit[docs]>=0.4.0",
 ]
 
-# In-suite siblings resolve from source. Without this, a floor of >=0.5.0 is
-# unsatisfiable until every sibling is published -- and the failure is silent,
-# because an already-synced venv keeps passing while a clean install cannot
-# resolve at all. `uv lock --check` is what catches it; `uv sync` + pytest does
-# not. uv does not propagate a dependency's sources into published metadata, so
-# this is publish-safe.
-[tool.uv.sources]
-provide-foundation = { path = "../provide-foundation", editable = true }
-provide-testkit = { path = "../provide-testkit", editable = true }
+# No `[tool.uv.sources]`. Local sibling checkouts are installed with
+# `uv pip install -e ../provide-foundation` rather than pinned as a path source
+# here, so this file describes only what a published install resolves.
 
 [tool.setuptools]
 package-dir = {"" = "src"} # Specifies that packages are under src
