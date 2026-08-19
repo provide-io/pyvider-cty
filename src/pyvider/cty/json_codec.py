@@ -349,59 +349,62 @@ def _unmarshal_dynamic(raw: Any, path: str) -> CtyValue[Any]:
 def _unmarshal_sequence(raw: Any, cty_type: CtyList[Any] | CtySet[Any] | CtyTuple, path: str) -> CtyValue[Any]:
     if not isinstance(raw, list):
         raise CtyJsonError(f"{path or 'value'}: an array is required for {cty_type.ctype}")
+    if isinstance(cty_type, CtySet):
+        element_type = cty_type.element_type
+        return cast(
+            "CtyValue[Any]",
+            cty_type.validate(
+                [_unmarshal(item, element_type, f"{path}[{index}]") for index, item in enumerate(raw)]
+            ),
+        )
     if isinstance(cty_type, CtyTuple):
         expected = len(cty_type.element_types)
         if len(raw) != expected:
             raise CtyJsonError(f"{path or 'value'}: {expected} elements are required, got {len(raw)}")
-        return cast(
-            "CtyValue[Any]",
-            cty_type.validate(
-                tuple(
-                    _unmarshal(item, element_type, f"{path}[{index}]")
-                    for index, (item, element_type) in enumerate(zip(raw, cty_type.element_types, strict=True))
-                )
+        return CtyValue(
+            vtype=cty_type,
+            value=tuple(
+                _unmarshal(item, element_type, f"{path}[{index}]")
+                for index, (item, element_type) in enumerate(zip(raw, cty_type.element_types, strict=True))
             ),
         )
     element_type = cty_type.element_type
-    return cast(
-        "CtyValue[Any]",
-        cty_type.validate(
-            [_unmarshal(item, element_type, f"{path}[{index}]") for index, item in enumerate(raw)]
-        ),
+    return CtyValue(
+        vtype=cty_type,
+        value=tuple(_unmarshal(item, element_type, f"{path}[{index}]") for index, item in enumerate(raw)),
     )
 
 
 def _unmarshal_mapping(raw: Any, cty_type: CtyMap[Any] | CtyObject, path: str) -> CtyValue[Any]:
+    import unicodedata
+
+    from pyvider.cty.values.frozen import FrozenDict
+
     if not isinstance(raw, dict):
         raise CtyJsonError(f"{path or 'value'}: an object is required for {cty_type.ctype}")
     if isinstance(cty_type, CtyObject):
-        # An attribute the type does not declare is an error, and one the
-        # document omits becomes null. Both are go-cty's rules and this module
-        # had them the other way round: it dropped unexpected attributes without
-        # a word -- so a typo in a state file read back as the attribute simply
-        # not being set -- and refused documents with an attribute missing,
-        # which is how every optional attribute is written.
         for name in raw:
             if name not in cty_type.attribute_types:
                 raise CtyJsonError(f'{path or "value"}: unsupported attribute "{name}"')
-        return cast(
-            "CtyValue[Any]",
-            cty_type.validate(
-                {
-                    name: (
-                        _unmarshal(raw[name], attribute_type, f"{path}.{name}")
-                        if name in raw
-                        else CtyValue.null(attribute_type)
-                    )
-                    for name, attribute_type in cty_type.attribute_types.items()
-                }
+        return CtyValue(
+            vtype=cty_type,
+            value=FrozenDict(
+                (
+                    name,
+                    _unmarshal(raw[name], attribute_type, f"{path}.{name}")
+                    if name in raw
+                    else CtyValue.null(attribute_type),
+                )
+                for name, attribute_type in cty_type.attribute_types.items()
             ),
         )
+
     element_type = cty_type.element_type
-    return cast(
-        "CtyValue[Any]",
-        cty_type.validate(
-            {key: _unmarshal(item, element_type, f"{path}[{key!r}]") for key, item in raw.items()}
+    return CtyValue(
+        vtype=cty_type,
+        value=FrozenDict(
+            (unicodedata.normalize("NFC", str(key)), _unmarshal(item, element_type, f"{path}[{key!r}]"))
+            for key, item in raw.items()
         ),
     )
 
