@@ -1523,6 +1523,12 @@ def setproduct(*args: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]
             continue
         total *= len(cast("Sized", stripped.value))
 
+    # Safety limit: 1 million elements max to prevent OOM algorithmic DoS
+    if total > 1000000:
+        raise CtyFunctionError(
+            f"setproduct: total number of elements {total} exceeds the safety limit of 1000000"
+        )
+
     if unknown_length:
         return _setproduct_unknown(unmarked, return_type).with_marks(marks)
 
