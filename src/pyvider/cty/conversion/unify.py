@@ -320,24 +320,58 @@ def _unify_tuples(types: tuple[CtyType[Any], ...], *, has_dynamic: bool) -> CtyT
     return CtyTuple(element_types=tuple(elements))
 
 
-def _unify_tuples_as_list(types: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:
-    """Every element of every tuple, unified into one list element type."""
+def _unify_tuple_types_to_list(tuples: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:
+    """go-cty's `unifyTupleTypesToList` (`convert/unify.go:457`).
+
+    Every element of every *tuple*, unified into one list element type. Nothing
+    else contributes: a list already in the caller's set is not folded in here,
+    it is unified against the result afterwards.
+    """
     from pyvider.cty.conversion.explicit import can_convert_unsafe
 
     element_types: list[CtyType[Any]] = []
-    for candidate in types:
-        if isinstance(candidate, CtyTuple):
-            element_types.extend(candidate.element_types)
-        elif isinstance(candidate, CtyList):
-            element_types.append(candidate.element_type)
+    for candidate in tuples:
+        element_types.extend(candidate.element_types)  # type: ignore[attr-defined]
+
+    if not element_types:
+        # `unify([])` is go-cty's degenerate case and answers nothing, so an
+        # empty tuple cannot be made into a list here and the caller falls
+        # through to the general path -- which is where go-cty answers it.
+        return None
 
     element = _unify_cached(tuple(element_types))
     if element is None:
         return None
     result = CtyList(element_type=element)
-    if any(not t.equal(result) and not can_convert_unsafe(t, result) for t in types):
+    if any(not t.equal(result) and not can_convert_unsafe(t, result) for t in tuples):
         return None
     return result
+
+
+def _unify_tuples_as_list(types: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:
+    """go-cty's `unifyTuplesAsList` (`convert/unify.go:135`).
+
+    Two steps, and running them as one was the bug. This pooled every tuple's
+    elements *and* every list's element type into a single unification, so
+    `unify(tuple(list(string), number), list(dynamic))` folded the `dynamic`
+    into the pool and answered `list(dynamic)` where go-cty finds no common type
+    at all -- a container returned where real Terraform raises, so `concat` and
+    `flatten` succeeded here on arguments Terraform rejects.
+
+    go-cty unifies **only the tuples** into a list first. If that fails there is
+    no list to reach, and the caller falls through to the general path. If it
+    succeeds, each tuple is *replaced* by that list type and the whole set is
+    unified again -- so a list already present is compared against the tuples'
+    result rather than pooled with it.
+    """
+    tuples = tuple(t for t in types if isinstance(t, CtyTuple))
+    as_list = _unify_tuple_types_to_list(tuples)
+    if not isinstance(as_list, CtyList):
+        return None
+
+    listed = tuple(as_list if isinstance(t, CtyTuple) else t for t in types)
+    unified = _unify_cached(listed)
+    return unified if isinstance(unified, CtyList) else None
 
 
 # 🌊🪢🔚

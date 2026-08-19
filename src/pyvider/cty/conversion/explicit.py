@@ -226,6 +226,15 @@ def can_convert_unsafe(source: CtyType[Any], target: CtyType[Any]) -> bool:  # n
         if isinstance(source, CtyList | CtySet):
             return can_convert_unsafe(source.element_type, target.element_type)
         if isinstance(source, CtyTuple):
+            if isinstance(target.element_type, CtyDynamic):
+                # `can_convert_unsafe(anything, dynamic)` is True, so asking it
+                # per element answered yes for every tuple. go-cty asks a
+                # different question when the target element is dynamic -- see
+                # `_tuple_to_dynamic_element` -- and refuses a tuple whose own
+                # elements have no common type. `unify` then read this answer
+                # back and returned `list(dynamic)` where go-cty finds no
+                # unification at all.
+                return _tuple_to_dynamic_element(source) is not None
             return all(can_convert_unsafe(element, target.element_type) for element in source.element_types)
         return False
 
@@ -296,19 +305,47 @@ def _collection_target(
         return target
 
     if isinstance(source, CtyTuple):
-        if not source.element_types:
-            # Nothing to infer from. go-cty keeps the dynamic here too.
-            return target
-        # go-cty unifies the tuple's element types (conversion_collection.go's
-        # conversionTupleToList), and refuses when they have no common type.
-        from pyvider.cty.conversion.unify import unify
-
-        unified = unify(list(source.element_types))
-        if unified is None or isinstance(unified, CtyDynamic):
-            return target
-        return type(target)(element_type=unified)
+        element = _tuple_to_dynamic_element(source)
+        return target if element is None else type(target)(element_type=element)
 
     return type(target)(element_type=source.element_type)
+
+
+def _tuple_to_dynamic_element(source: CtyTuple) -> CtyType[Any] | None:
+    """The element type a tuple takes when converted to a `dynamic`-element collection.
+
+    go-cty's `conversionTupleToList` (`convert/conversion_collection.go:277`),
+    which is where the target's `dynamic` means "find a single type all of the
+    elements can convert to" rather than "anything goes":
+
+      * an empty tuple converts to an empty collection, whatever the element
+        type is;
+      * otherwise the tuple's element types are **unified**, and a set with no
+        common type is refused outright;
+      * and if that unification is itself `dynamic`, it only stands when every
+        element type was already `dynamic` -- a `dynamic` arrived at by
+        unification is not a type every element converts to.
+
+    Returns `None` where the conversion is refused, and the caller decides
+    whether that means "not convertible" or "leave the target alone".
+    """
+    from pyvider.cty.conversion.unify import unify
+
+    if not source.element_types:
+        return _EMPTY_TUPLE_KEEPS_TARGET
+
+    unified = unify(list(source.element_types))
+    if unified is None:
+        return None
+    if isinstance(unified, CtyDynamic) and not all(
+        isinstance(element, CtyDynamic) for element in source.element_types
+    ):
+        return None
+    return unified
+
+
+# Distinguishes "no element type to infer, keep the target's" from "refused".
+_EMPTY_TUPLE_KEEPS_TARGET: CtyType[Any] = CtyDynamic()
 
 
 def _without_optional(cty_type: CtyType[Any]) -> CtyType[Any]:
