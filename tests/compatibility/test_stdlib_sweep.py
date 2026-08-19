@@ -32,6 +32,7 @@ two halves it belongs to.
 from __future__ import annotations
 
 import base64
+from decimal import Decimal
 import json
 import subprocess  # nosec
 from typing import Any
@@ -155,6 +156,17 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # which is a change to how every number is stored -- and the naive version,
     # comparing against `str(float(d))`, is the bug the comment at
     # `codec.py:296` exists to prevent.
+    #
+    # **Confirmed at the byte level on 2026-08-19**, against go-cty v1.19.0
+    # directly rather than through this harness, because the harness cannot
+    # express it: `cty msgpack encode` parses its argument with
+    # `big.ParseFloat(text, 10, 512, ...)`, so asking it to encode the *text*
+    # "1.4142135623730951" builds a precision-512 float whose `Float64()` is
+    # inexact and which therefore marshals as text, agreeing with this package
+    # and hiding the gap. go-cty's own `stdlib.Pow` result is a precision-**53**
+    # float built by `SetFloat64`: `Float64()` is Exact and msgpack writes
+    # `cb3ff6a09e667f3bcd`, nine bytes, against this package's nineteen bytes of
+    # text. Same number, different wire.
     "pow(2,0.5)": "wire spelling: go-cty writes a float64-derived number as a float64, this writes its text",
     "pow(1.1,2)": "wire spelling: go-cty writes a float64-derived number as a float64, this writes its text",
     # The second will not be fixed. Go's `math.Pow` is a pure-Go implementation
@@ -203,7 +215,15 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any, list[s
     )
     for line in completed.stdout.decode().splitlines():
         if line.startswith("{"):
-            reported = json.loads(line)
+            # `parse_float=Decimal`, for the reason `_oracle.run` already does
+            # it: a plain `json.loads` turns every non-integer go-cty answer
+            # into a Python float, so go's 155-digit `divide(1, 3)` arrived here
+            # as 0.3333333333333333. That does not only weaken the comparison,
+            # it can *invent agreement* -- a go answer of
+            # 0.1000000000000000055511151231257827 truncates to exactly the 0.1
+            # this package would return. Integers were always safe, Python's
+            # being arbitrary precision, which is why nothing noticed.
+            reported = json.loads(line, parse_float=Decimal)
             marks = sorted(reported.get("marks") or [])
             if not reported.get("ok"):
                 return "error", reported.get("error", ""), marks
