@@ -135,6 +135,26 @@ CASES: list[tuple[str, CtyType[Any], CtyValue[Any]]] = [
     ("a list", STRINGS, STRINGS.validate(["a", "b"])),
     ("a set", STRING_SET, STRING_SET.validate(["b", "a"])),
     ("a set holding a null", STRING_SET, STRING_SET.validate(["a", CtyValue.null(S)])),
+    # Composite elements where one is a *prefix* of another. The only shape
+    # whose set ordering ever disagreed with go-cty once the null rank was
+    # fixed: a plain tuple comparison sorts a prefix first, go-cty sorts it
+    # last, and only a byte comparison sees it. The empty element is the
+    # extreme case, being a prefix of everything.
+    (
+        "a set of lists where one is a prefix of another",
+        CtySet(element_type=CtyList(element_type=S)),
+        CtySet(element_type=CtyList(element_type=S)).validate([["a"], ["a", "c"], ["b"]]),
+    ),
+    (
+        "a set of lists holding an empty one",
+        CtySet(element_type=CtyList(element_type=S)),
+        CtySet(element_type=CtyList(element_type=S)).validate([["b"], [], ["a", "c"]]),
+    ),
+    (
+        "a set of maps of differing size",
+        CtySet(element_type=CtyMap(element_type=S)),
+        CtySet(element_type=CtyMap(element_type=S)).validate([{"k": "b"}, {}, {"k": "a"}]),
+    ),
     ("a map", STRING_MAP, STRING_MAP.validate({"b": "2", "a": "1"})),
     ("an object", PAIR, PAIR.validate({"a": "x", "b": 1})),
 ]

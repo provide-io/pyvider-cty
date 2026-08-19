@@ -335,6 +335,14 @@ upgrading.
   couldn't actually deliver.
 - `contains()` treats a partially-unknown collection as undecided instead of
   giving a definite answer.
+- Sets of composite elements serialize in go-cty's byte order. Where one
+  element is a *prefix* of another -- `{["a"], ["a","c"]}`, or any set holding
+  an empty element -- go-cty ranks running out of elements last and this
+  package ranked it first, so the set re-encoded in a different order on every
+  round trip. Both spellings decode to the same value, so only a byte
+  comparison saw it, and Terraform compares serialized state. `set(object(...))`
+  is Terraform's nested-block type, so any block set whose members carry
+  different numbers of optional attributes was affected.
 - Rendering a number to text no longer rounds it to `decimal`'s default
   28-digit context. `2**100` reached `terraform show -json` as
   `1267650600228229401496703205000` rather than

@@ -412,7 +412,11 @@ class TestMalformedPayloadsDoNotEscapeTheTaxonomy:
         """
         obj = CtyObject(attribute_types={"b": S, "a": S}).validate({"a": "1", "b": "2"})
 
-        assert [name for name, _ in obj._canonical_sort_key()[2:]] == ["a", "b"]
+        # `(_PRESENT, name, member_key)` per entry, then the exhaustion
+        # terminator that makes a shorter mapping sort after a longer one.
+        entries = obj._canonical_sort_key()[2:-1]
+
+        assert [name for _present, name, _member in entries] == ["a", "b"]
 
 
 def test_a_number_hashes_as_before() -> None:
