@@ -50,6 +50,10 @@ class CtyMark:
 # iterable but incapable of carrying a mark.
 _MARK_BEARING_SEQUENCES = (list, tuple, set, frozenset)
 
+# Every payload type that can hold a mark below the top level. A CtyValue whose
+# payload is anything else is a leaf, and its own `marks` is the whole answer.
+_NESTED = (CtyValue, dict, *_MARK_BEARING_SEQUENCES)
+
 # Containers whose contents can change after a walk has looked at them. A memo
 # taken over one of these could later under-report marks, so it is not taken.
 # `FrozenDict` is deliberately excluded: map and object payloads are built as
@@ -104,8 +108,17 @@ def collect_marks_deep(value: Any) -> frozenset[Any]:
 
     if not isinstance(value, CtyValue):
         return _walk_marks(value)[0]
-    if value._deep_marks is not None:
-        return value._deep_marks
+    cached = value._deep_marks
+    if cached is not None:
+        return cached
+    if not isinstance(value.value, _NESTED):
+        # A leaf. Setting up the walk -- a frozenset, a set, a list and one
+        # iteration -- costs more than the answer, and this runs twice per
+        # argument of every stdlib call (once to collect, once to strip). A leaf
+        # payload is immutable, so the memo is safe by the rule below.
+        marks = value.marks
+        object.__setattr__(value, "_deep_marks", marks)
+        return marks
     marks, memoizable = _walk_marks(value)
     if memoizable:
         object.__setattr__(value, "_deep_marks", marks)
@@ -144,14 +157,14 @@ def _walk_marks(root: Any) -> tuple[frozenset[Any], bool]:
        cannot take part in a cycle, and leaves are nearly all of the work.
      - `marks |= ...` is guarded, because unioning an empty frozenset still
        allocates one, once per element.
-     - The isinstance tuple is built once, not per iteration.
+     - The isinstance tuple is a module constant, not built per call.
     """
 
     marks: frozenset[Any] = frozenset()
     visited: set[int] = set()
     stack: list[Any] = [root]
     memoizable = True
-    nested = (CtyValue, dict, *_MARK_BEARING_SEQUENCES)
+    nested = _NESTED
 
     while stack:
         current = stack.pop()
