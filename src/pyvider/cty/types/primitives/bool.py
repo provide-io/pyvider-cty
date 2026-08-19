@@ -6,16 +6,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 
 from attrs import define
 
 from pyvider.cty.exceptions import CtyBoolValidationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.marks import preserves_marks
-
-if TYPE_CHECKING:
-    from pyvider.cty.values import CtyValue
+from pyvider.cty.values import CtyValue, UnknownValue
 
 
 @define(frozen=True, slots=True)
@@ -25,8 +23,6 @@ class CtyBool(CtyType[bool]):
 
     @preserves_marks
     def validate(self, value: object) -> CtyValue[bool]:  # noqa: C901
-        from pyvider.cty.values import CtyValue, UnknownValue
-
         if isinstance(value, UnknownValue):
             return self.unknown_like(value)
 

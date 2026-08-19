@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from attrs import define, field
+from attrs import define, evolve, field
 
 from pyvider.cty.exceptions import CtyValidationError
+from pyvider.cty.values import CtyValue
+from pyvider.cty.values.frozen import FrozenDict
 
 
 def _convert_details(value: Any) -> frozenset[Any] | None:
@@ -57,8 +59,6 @@ _MUTABLE_CONTAINERS = (dict, list, set, bytearray)
 
 
 def _is_mutable_container(obj: Any) -> bool:
-    from pyvider.cty.values.frozen import FrozenDict
-
     return isinstance(obj, _MUTABLE_CONTAINERS) and not isinstance(obj, FrozenDict)
 
 
@@ -101,7 +101,6 @@ def collect_marks_deep(value: Any) -> frozenset[Any]:
     `dict`, and are therefore memoizable. Raw lists and plain dicts handed
     straight to `validate` remain unmemoized, because those really can change.
     """
-    from pyvider.cty.values import CtyValue
 
     if not isinstance(value, CtyValue):
         return _walk_marks(value)[0]
@@ -147,7 +146,6 @@ def _walk_marks(root: Any) -> tuple[frozenset[Any], bool]:
        allocates one, once per element.
      - The isinstance tuple is built once, not per iteration.
     """
-    from pyvider.cty.values import CtyValue
 
     marks: frozenset[Any] = frozenset()
     visited: set[int] = set()
@@ -205,7 +203,6 @@ def _children(value: Any) -> tuple[Any, ...] | dict[str, Any] | None:
     are leaves. Sets are snapshotted to a tuple so the order seen here is the
     order `_strip` rebuilds against.
     """
-    from pyvider.cty.values import CtyValue
 
     if not isinstance(value, CtyValue):
         return None
@@ -300,7 +297,6 @@ def _strip(value: Any) -> Any:
     `results`. Nothing is collected mid-walk -- `children_of` holds each
     snapshot and the caller holds the root -- so keying by `id()` is safe.
     """
-    from pyvider.cty.values import CtyValue
 
     if not isinstance(value, CtyValue):
         return value
@@ -356,7 +352,6 @@ def _resolve_or_children(node: Any) -> tuple[Any, Any]:
     whose `_children` snapshot fixes the order the rebuild runs against -- is
     read exactly once.
     """
-    from pyvider.cty.values import CtyValue
 
     if not isinstance(node, CtyValue):
         return node, None
@@ -391,10 +386,6 @@ def _rebuild(value: Any, children: Any, results: dict[int, Any]) -> Any:
     second `_children` call, so a set is rebuilt against the order it was read
     in.
     """
-    from attrs import evolve
-
-    from pyvider.cty.values import CtyValue
-
     stripped = value.unmark()[0] if value.marks else value
 
     # "Did anything change" is decided by identity, never by ==. CtyValue.__eq__
@@ -404,8 +395,6 @@ def _rebuild(value: Any, children: Any, results: dict[int, Any]) -> Any:
     # value. A node with nothing to do resolves to the input object itself,
     # which makes `is` an exact test.
     if isinstance(children, dict):
-        from pyvider.cty.values.frozen import FrozenDict
-
         rebuilt_map = {k: results[id(v)] for k, v in children.items()}
         if all(rebuilt_map[k] is v for k, v in children.items()):
             return stripped
