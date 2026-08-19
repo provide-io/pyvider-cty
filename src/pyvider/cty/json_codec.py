@@ -31,6 +31,7 @@ from __future__ import annotations
 from decimal import Decimal
 import json
 from typing import Any, cast
+import unicodedata
 
 from pyvider.cty.conversion.explicit import _number_to_string
 from pyvider.cty.exceptions import CtyValidationError
@@ -47,6 +48,7 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.frozen import FrozenDict
 
 __all__ = ["cty_from_json", "cty_to_json", "implied_json_type"]
 
@@ -376,10 +378,6 @@ def _unmarshal_sequence(raw: Any, cty_type: CtyList[Any] | CtySet[Any] | CtyTupl
 
 
 def _unmarshal_mapping(raw: Any, cty_type: CtyMap[Any] | CtyObject, path: str) -> CtyValue[Any]:
-    import unicodedata
-
-    from pyvider.cty.values.frozen import FrozenDict
-
     if not isinstance(raw, dict):
         raise CtyJsonError(f"{path or 'value'}: an object is required for {cty_type.ctype}")
     if isinstance(cty_type, CtyObject):
