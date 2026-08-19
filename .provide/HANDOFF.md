@@ -60,9 +60,10 @@ looking.
 6. **The sweep parsed go-cty's own numbers through `float64`**, so a go answer of
    `0.1000000000000000055511151231257827` truncated to exactly the `0.1` this
    package returns. It could invent agreement.
-7. **A dynamic-position value lost its concrete type when unknown.** go-cty
-   writes `[type, value]` for every value at `DynamicPseudoType`; the codec
-   checked knownness first.
+7. **A dynamic-position value lost its concrete type**, in two separate places:
+   the codec checked knownness before the dynamic branch (unknown), and
+   `CtyValue.__attrs_post_init__` cleared the payload of any null (null). go-cty
+   writes `[type, value]` for every value at `DynamicPseudoType`.
 
 ### The test suite that came out of it
 
@@ -152,10 +153,11 @@ dynamic-null type loss recorded on 2026-08-19.
    in `GO-CTY-PARITY.md`. Three findings were drafted and two of the drafts
    deleted; `UPSTREAM-GO-CTY-EQUALS-NONDETERMINISM.md` is kept as the record of
    why this library diverges deliberately, not as a thing to send.
-5. **`CtyDynamic.validate` dropping a null's concrete type** is the one known
-   open defect, held by a strict xfail in
-   `tests/compatibility/test_dynamic_carries_its_type.py`. Fixing it changes what
-   a dynamic null *is* — equality and identity, not only the wire — so it wants a
-   decision before a patch.
+5. ~~`CtyDynamic.validate` dropping a null's concrete type.~~ **Fixed
+   2026-08-19.** The loss was not in `validate` but in
+   `CtyValue.__attrs_post_init__`, which clears the payload of any null — and at
+   `dynamic` the payload is the type. The invariant now exempts a dynamic
+   standing in front of a concrete value. Blast radius turned out to be nil: the
+   full suite passed unchanged, and the strict xfail became a passing test.
 
 <!-- 🌊🪢🔚 -->

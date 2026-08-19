@@ -23,19 +23,21 @@ Deferring as `string` and deferring as `dynamic` are different answers to a
 Terraform plan; the parity file already records that as the reason refinements
 and types travel with an unknown.
 
-**The unknown half is fixed. The null half is not, and it is a different bug**
-one layer up: `CtyDynamic().validate(CtyValue.null(CtyString()))` collapses to a
-bare dynamic null, discarding the inner type before the codec is ever reached.
-The codec cannot write what it is not given, and retaining it changes what a
-dynamic null *is* -- so it is recorded here as a strict xfail rather than
-patched at the codec, which would only paper over the loss.
+Both halves are fixed, and they were two different bugs. The unknown half was
+the codec checking knownness before the dynamic branch. The null half was a
+layer up, in `CtyValue.__attrs_post_init__`: a null holds no payload, so the
+payload was cleared -- and at `dynamic` the payload *is* the type, so
+`CtyDynamic().validate(CtyValue.null(CtyString()))` became an untyped dynamic
+null before the codec was ever reached. The invariant now exempts a dynamic
+standing in front of a concrete value, which is the only place the payload of a
+null carries information.
 
-That half is also invisible to `test_differential_properties`, and instructively
+The null half was invisible to `test_differential_properties`, and instructively
 so: that suite spells our value for the harness with `rich`/`dynamic_arg`, so
 when this package drops information *before* the comparison, both sides are
 handed the same lossy value and agree. A differential suite can only see what
 survives into the value it compares. This file constructs go's side by hand for
-exactly that reason.
+exactly that reason, which is why it caught what the generated one could not.
 """
 
 from __future__ import annotations
@@ -83,23 +85,18 @@ class TestTheEnvelopeIsWritten:
 
         assert ours == "d40000"
 
+    def test_a_null_carries_its_type(self) -> None:
+        """Was a bare `c0`, which go-cty reads back as a null of *dynamic*."""
+        ours = cty_to_msgpack(DYNAMIC.validate(CtyValue.null(CtyString())), DYNAMIC).hex()
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="CtyDynamic.validate discards a null's concrete type before the codec sees it",
-)
-def test_a_null_carries_its_type() -> None:
-    """Recorded, not patched: the loss happens a layer above the codec.
+        assert ours.startswith(STRING_TYPE_ENVELOPE)
+        assert ours == go_encodes('{"$dynamic":{"type":"string","value":{"$null":true}}}')
 
-    `CtyDynamic().validate(CtyValue.null(CtyString()))` returns a value whose
-    payload is `None` rather than the string null it was handed, so there is no
-    type left to write. Fixing it means changing what a dynamic null retains,
-    which reaches equality and identity as well as the wire -- a deliberate
-    change rather than a codec patch.
-    """
-    ours = cty_to_msgpack(DYNAMIC.validate(CtyValue.null(CtyString())), DYNAMIC).hex()
+    def test_a_null_with_no_concrete_type_is_still_written_bare(self) -> None:
+        """A null *of* dynamic has nothing to name, and go-cty writes it bare."""
+        ours = cty_to_msgpack(CtyValue.null(DYNAMIC), DYNAMIC).hex()
 
-    assert ours == go_encodes('{"$dynamic":{"type":"string","value":{"$null":true}}}')
+        assert ours == "c0"
 
 
 # 🌊🪢🔚

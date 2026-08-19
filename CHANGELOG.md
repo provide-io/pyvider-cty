@@ -344,14 +344,15 @@ upgrading.
   unsatisfiable and was accepted; `5 <= x <= 3` was already refused, so the
   check simply did not cover equal bounds where one of them excludes the value.
   `3 <= x <= 3` is still accepted and still collapses to a known `3`.
-- A value in a `dynamic` position carries its concrete type across the wire
-  even when it is unknown. go-cty writes `[type, value]` for every value at
-  `cty.DynamicPseudoType`; this package checked knownness first, so an
-  unknown-of-string went out as a bare `d40000` and go-cty read it back as an
-  unknown of *dynamic*. Deferring as `string` and deferring as `dynamic` are
-  different answers to a Terraform plan. (A null in the same position still
-  loses its type, one layer higher in `CtyDynamic.validate`; that is recorded
-  as a strict xfail rather than papered over at the codec.)
+- A value in a `dynamic` position carries its concrete type across the wire,
+  whether it is known, unknown, or null. go-cty writes `[type, value]` for every
+  value at `cty.DynamicPseudoType`. Two separate faults dropped it here: the
+  codec checked knownness before the dynamic branch, so an unknown-of-string
+  went out as a bare `d40000`; and `CtyValue` cleared the payload of any null,
+  which at `dynamic` *is* the type, so a null-of-string went out as a bare `c0`.
+  go-cty read both back as `dynamic` rather than `string`, and deferring as
+  `string` and deferring as `dynamic` are different answers to a Terraform
+  plan.
 - Sets of composite elements serialize in go-cty's byte order. Where one
   element is a *prefix* of another -- `{["a"], ["a","c"]}`, or any set holding
   an empty element -- go-cty ranks running out of elements last and this
