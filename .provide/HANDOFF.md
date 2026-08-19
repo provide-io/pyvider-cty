@@ -135,11 +135,11 @@ dynamic-null type loss recorded on 2026-08-19.
 
 ## Checklist for the next session
 
-1. **Decide the debris.** Ten `patch_*.py` in the repository root are one-shot
-   string-replacement scripts from the 2026-08-18 perf work, already applied and
-   superseded; `scratch/` is a three-file Go probe module, 12K. Both are
-   untracked and neither is referenced by anything. Recommend deleting both;
-   *not* done here because they were not created in this session.
+1. ~~Decide the debris.~~ **Done 2026-08-19.** Ten `patch_*.py` in the
+   repository root (one-shot string-replacement scripts from the 2026-08-18 perf
+   work, already applied and superseded) and `scratch/` (a three-file Go probe
+   module) are deleted. All eleven were untracked and referenced by nothing, so
+   nothing in the build or the suite moved with them.
 2. **The release is the only substantive item left**, and it is not local:
    `pyvider` must release at or before `pyvider-cty` 0.5.0, in the wave ordering
    recorded in `GO-CTY-PARITY.md`. Nothing in this repository blocks it.
