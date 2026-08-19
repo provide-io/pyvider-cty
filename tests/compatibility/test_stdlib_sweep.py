@@ -96,6 +96,25 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # more precise than it was a different function. `pow` is transcribed through
     # float64 now, and the rows above pin the three ways that changes things.
     "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
+    # The *width* half of the same representation gap, and it is not about
+    # computing anything. go-cty renders a number with `big.Float.Text('f', -1)`
+    # -- the shortest decimal that reads back as the same 512-bit float -- so it
+    # can spell floor(512 * log10 2) = 154 significant digits and writes zeros
+    # past them. A Decimal spells every digit it holds.
+    #
+    # Measured 2026-08-19, and the boundary is exact: 5**220 is 154 significant
+    # digits and agrees, 5**221 is 155 and is the first that cannot. Magnitude
+    # is not what decides it -- 10**500 is 501 digits, one of them significant,
+    # and agrees. Renders through the same route as `tostring` here: `convert`,
+    # `format("%s")`, `jsonencode` and the cty/json codec.
+    #
+    # Same closed decision as `divide` above: matching it means holding numbers
+    # as a 512-bit binary float rather than a Decimal. Until 2026-08-19 the
+    # threshold was **28** digits rather than 154, which was a genuine bug --
+    # `2**100` reached Terraform state as ...205000 -- and that half is fixed.
+    "tostring(29673649205499371085853882092381116106940518230062328019624312471340650720765034871978496661785667500290711353088009272216396539079141803085803985595703125)": (
+        "number width: go-cty's 512-bit big.Float spells 154 significant digits, Decimal spells all 155"
+    ),
     # The calendar range. Go's time.Time runs to year 292277026596; Python's
     # datetime stops at 9999, so go-cty answers 10000-01-01T00:59:59Z where this
     # refuses. Accepted as a divergence 2026-08-18 rather than fixed: matching it

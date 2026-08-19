@@ -341,9 +341,12 @@ upgrading.
   `1267650600228229401496703205376`, through every text route --
   `convert(number, string)`, `tostring`, `format("%s", n)`, `jsonencode` and
   the `cty/json` codec. The msgpack codec always carried every digit, so the
-  two codecs in this package disagreed about the same value. Unrelated to the
-  `divide` precision divergence, which is about a result *computed* at 28
-  digits rather than digits discarded on the way out.
+  two codecs in this package disagreed about the same value. Numbers now match
+  go-cty up to **154 significant digits**, which is what its 512-bit
+  `big.Float` can spell; past that the two still differ, and that boundary is
+  now a recorded divergence rather than an unexamined one. Distinct from the
+  `divide` divergence, which is about a result *computed* at 28 digits rather
+  than digits discarded on the way out.
 
 ### Performance
 
