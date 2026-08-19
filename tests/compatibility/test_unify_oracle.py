@@ -16,10 +16,14 @@ The surface is load-bearing. Unification decides the element type of `concat`,
 tuple argument is usable at all. An element type that differs from go-cty's is a
 different type on the wire, not a different opinion.
 
-Sweeping every pair and triple of a representative type set finds **17 divergent
-combinations out of 969**, in two shapes, recorded below. The first version of
-this sweep used a flat type set and found four: without a nested element type or
-an empty tuple in the mix, most of the surface is unreachable.
+Sweeping every pair and triple of a representative type set found **17 divergent
+combinations out of 969**, in two shapes. All seventeen are fixed as of
+2026-08-19 and this sweep is clean; a deeper run over sizes 2-4 with the same
+types is clean too, at 2500 combinations.
+
+The first version of this sweep used a *flat* type set and found four of the
+seventeen. Without a nested element type or an empty tuple in the mix most of
+the surface is unreachable, which is the reason `TYPES` below carries both.
 
 `convert.Unify` (safe) is deliberately not compared: this package implements
 `UnifyUnsafe` only -- `unify.py` reaches for `can_convert_unsafe` throughout --
@@ -81,47 +85,21 @@ TYPES: list[tuple[str, CtyType[Any]]] = [
     ("set(list(string))", CtySet(element_type=CtyList(element_type=S))),
 ]
 
-# Every combination the two answer differently. All seventeen share three
-# ingredients: a `dynamic` (bare, or as a list's element type), a list or set,
-# and a tuple. With any two of the three the answers agree, which is why a flat
-# type set found only five of them -- the first version of this sweep had no
-# nested element types and no empty tuple, and reported four.
+# Empty, and kept. The seventeen entries that were here on 2026-08-19 are all
+# fixed; the list stays so the next divergence has somewhere to go and so a
+# regression names itself rather than appearing as a bare assertion failure.
 #
-# Two shapes, and the first is the worse one:
-#
-#   * **This package unifies where go-cty refuses.**
-#     `unify(tuple(list(string), number), list(dynamic))` is `list(dynamic)`
-#     here and *no common type* in go-cty. A caller gets a container back where
-#     real Terraform would have raised, so `concat` and `flatten` succeed here
-#     and fail there.
-#   * **This package loses a concrete element type to `dynamic`.**
-#     `unify(list(list(string)), tuple(), list(dynamic))` is `list(list(string))`
-#     in go-cty and `list(dynamic)` here.
-#
-# What makes the first shape odd is go-cty's own behaviour: adding a `dynamic`
-# -- a wildcard that conforms to anything -- *changes* its answer, from
-# `list(string)` without it to `list(number)` with it. Matching any of this
-# means reproducing `convert`'s unification order rather than patching a rule,
-# so it is recorded and not yet decided.
-KNOWN_DIVERGENCES = {
-    "dynamic + list(dynamic) + tuple(list(string),number)",
-    "dynamic + list(dynamic) + tuple(string,number)",
-    "dynamic + list(dynamic) + tuple(string,string)",
-    "dynamic + list(number) + tuple(string,number)",
-    "dynamic + list(number) + tuple(string,string)",
-    "list(dynamic) + set(string) + tuple(list(string),number)",
-    "list(dynamic) + tuple() + list(list(string))",
-    "list(dynamic) + tuple() + list(object{a:string})",
-    "list(dynamic) + tuple() + tuple(list(string),number)",
-    "list(dynamic) + tuple(list(string),number)",
-    "list(dynamic) + tuple(list(string),number) + list(list(string))",
-    "list(dynamic) + tuple(list(string),number) + list(object{a:string})",
-    "list(dynamic) + tuple(list(string),number) + set(list(string))",
-    "list(dynamic) + tuple(string,number) + tuple(list(string),number)",
-    "list(dynamic) + tuple(string,string) + tuple(list(string),number)",
-    "list(number) + list(dynamic) + tuple(list(string),number)",
-    "list(string) + list(dynamic) + tuple(list(string),number)",
-}
+# What they were, because the shape is worth remembering: every one needed a
+# `dynamic` (bare, or as a list's element type), a list or set, and a tuple
+# together, and with any two of the three the answers already agreed. Two
+# faults produced them. `_unify_tuples_as_list` pooled every tuple's elements
+# *and* every list's element type into one unification, where go-cty unifies
+# only the tuples and then re-unifies with the tuples replaced. And
+# `can_convert_unsafe` answered yes for every tuple against a
+# `dynamic`-element collection, because `can_convert_unsafe(anything, dynamic)`
+# is yes -- go-cty asks a different question there, unifying the tuple's own
+# elements and refusing when they have no common type.
+KNOWN_DIVERGENCES: set[str] = set()
 
 
 def _combinations() -> list[tuple[str, list[CtyType[Any]]]]:
