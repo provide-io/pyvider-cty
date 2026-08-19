@@ -129,11 +129,11 @@ conclusion — see the warnings below.
 
 * Gate green: `make lint`, `ruff format --check` (338 files), `mypy src/` (81
   files), `bandit -ll`, `make check-docs`, `make diagrams-check`.
-* `uv run pytest tests/` — **2815 passed**.
-* `COMPAT_REQUIRE=1 make compat` — **2604 passed, 25 xfailed, 0 XPASS**.
+* `uv run pytest tests/` — **2925 passed**.
+* `COMPAT_REQUIRE=1 make compat` — **3597 passed, 26 xfailed, 0 XPASS**.
 * `VERSION` is `0.5.0`. `CHANGELOG.md` carries 45 breaking changes.
 
-The 25 xfails are 12 distinct divergences, and **none is a bug**: four are GB9c
+The 26 xfails are 13 distinct divergences, and **none is a bug**: four are GB9c
 grapheme cases that resolve themselves when the oracle is rebuilt on Go 1.27
 (go-cty already ships the textseg version that agrees with us), five are closed
 decisions, two are the accepted `timeadd` calendar range, and one is the
@@ -158,8 +158,18 @@ dynamic-null type loss recorded on 2026-08-19.
 
    The semantic surfaces are now covered too — `Value.Equals` and its symmetry,
    `convert` including refusals, `Value.Range`, and the mark-path round trip are
-   in `test_differential_semantics.py`. What is still table-only: `unify`, and
-   `walk`/`transform` beyond what the range property reaches.
+   in `test_differential_semantics.py`, and `unify` is swept at 969 combinations
+   in `test_unify_oracle.py` — that sweep found 17 divergences on a surface
+   nothing had ever compared, all since fixed.
+
+   **The one substantial gap left**: the 83 stdlib functions are compared only
+   against 444 hand-written argument rows, an average of 5.3 each, and 31 of
+   them have two or fewer (`log` has one). No generated argument has ever
+   reached them. `SIGNATURES` carries each function's parameter types, including
+   `var_param` and the null/unknown/dynamic flags, so conforming arguments can
+   be generated per function rather than guessed. That is the same technique
+   that found every divergence on 2026-08-19, aimed at the last surface it has
+   not been aimed at.
 4. **Do not file upstream go-cty issues.** Decided 2026-08-19; the item is closed
    in `GO-CTY-PARITY.md`. Three findings were drafted and two of the drafts
    deleted; `UPSTREAM-GO-CTY-EQUALS-NONDETERMINISM.md` is kept as the record of
