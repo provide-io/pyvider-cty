@@ -116,9 +116,14 @@ def collect_marks_deep(value: Any) -> frozenset[Any]:
         # iteration -- costs more than the answer, and this runs twice per
         # argument of every stdlib call (once to collect, once to strip). A leaf
         # payload is immutable, so the memo is safe by the rule below.
-        marks = value.marks
+        # Frozen before it is stored. `CtyValue.marks` has no converter, so a
+        # directly-constructed value keeps whatever set it was handed -- and a
+        # memo holding a mutable set both breaks this function's `frozenset`
+        # contract for its second caller onwards and lets `marks.add(...)`
+        # rewrite the answer behind the memo.
+        marks = frozenset(value.marks) if value.marks else frozenset()
         object.__setattr__(value, "_deep_marks", marks)
-        return frozenset(marks) if marks else frozenset()
+        return marks
     marks, memoizable = _walk_marks(value)
     if memoizable:
         object.__setattr__(value, "_deep_marks", marks)
@@ -306,9 +311,18 @@ def _strip(value: Any) -> Any:
     before the implementation runs.
 
     Post-order: a node is pushed back under `_STRIP_POST` and its children on
-    top, so by the time the sentinel is reached every child has an entry in
-    `results`. Nothing is collected mid-walk -- `children_of` holds each
-    snapshot and the caller holds the root -- so keying by `id()` is safe.
+    top, so by the time the sentinel is reached every child that *changed* has
+    an entry in `results`. Nothing is collected mid-walk -- `children_of` holds
+    each snapshot and the caller holds the root -- so keying by `id()` is safe.
+
+    `results` records only the nodes whose stripped form is a **different
+    object**, and `_child_result` reads a missing entry as "unchanged, use the
+    node itself". A container is usually marked at its own level rather than at
+    every element, so the common shape is a 100k-element list carrying one mark:
+    an entry per node cost 108 bytes each of transient bookkeeping -- 10.8 MB to
+    strip that list, scaling linearly -- for a table that was almost entirely
+    "this element is its own answer". Each snapshot in `children_of` is dropped
+    as its node is rebuilt for the same reason.
     """
 
     if not isinstance(value, CtyValue):
@@ -339,7 +353,9 @@ def _strip(value: Any) -> Any:
 
         resolved, children = _resolve_or_children(node)
         if resolved is not _DESCEND:
-            results[node_id] = resolved
+            if resolved is not node:
+                results[node_id] = resolved
+                _memoize_stripped(node, resolved)
             continue
 
         if node_id in on_path:
@@ -355,7 +371,23 @@ def _strip(value: Any) -> Any:
         stack.append(_STRIP_POST)
         stack.extend(children.values() if isinstance(children, dict) else children)
 
-    return results[id(value)]
+    return results.get(id(value), value)
+
+
+def _memoize_stripped(node: Any, stripped: Any) -> None:
+    """Record `stripped` on `node`, when the memo is safe to keep.
+
+    `_deep_marks` is set only for a subtree the walk proved immutable, which is
+    exactly the condition under which this copy stays valid.
+
+    Both the rebuild and the resolve-without-descending path go through here.
+    The iterative rewrite memoized only in `_finish`, and a leaf never reaches
+    it: a marked scalar -- the single most common marked value Terraform sends,
+    and one the wrapper strips on every argument of every stdlib call -- was
+    rebuilt every time, at 6.6 us against 3.2 us for the same value unmarked.
+    """
+    if isinstance(node, CtyValue) and node._deep_marks is not None:
+        object.__setattr__(node, "_stripped", stripped)
 
 
 def _resolve_or_children(node: Any) -> tuple[Any, Any]:
@@ -381,15 +413,24 @@ def _resolve_or_children(node: Any) -> tuple[Any, Any]:
 
 
 def _finish(node: Any, children_of: dict[int, Any], results: dict[int, Any], on_path: set[int]) -> None:
-    """Rebuild `node` now that every child has an entry in `results`."""
+    """Rebuild `node` now that every changed child has an entry in `results`."""
     node_id = id(node)
     on_path.discard(node_id)
-    rebuilt = _rebuild(node, children_of[node_id], results)
+    # Popped, not read: the snapshot is this node's alone and a node is pushed
+    # under `_STRIP_POST` exactly once, so holding every tuple until the whole
+    # walk returns only kept memory the rebuild is finished with.
+    rebuilt = _rebuild(node, children_of.pop(node_id), results)
     results[node_id] = rebuilt
-    # `_deep_marks` is set only for a subtree the walk proved immutable, which
-    # is exactly the condition under which this copy stays valid.
-    if node._deep_marks is not None:
-        object.__setattr__(node, "_stripped", rebuilt)
+    _memoize_stripped(node, rebuilt)
+
+
+def _child_result(child: Any, results: dict[int, Any]) -> Any:
+    """A child's stripped form.
+
+    Absent from `results` means the strip left it alone, in which case it is its
+    own stripped form -- see `_strip` for why that case is not recorded.
+    """
+    return results.get(id(child), child)
 
 
 def _rebuild(value: Any, children: Any, results: dict[int, Any]) -> Any:
@@ -408,7 +449,7 @@ def _rebuild(value: Any, children: Any, results: dict[int, Any]) -> Any:
     # value. A node with nothing to do resolves to the input object itself,
     # which makes `is` an exact test.
     if isinstance(children, dict):
-        rebuilt_map = {k: results[id(v)] for k, v in children.items()}
+        rebuilt_map = {k: _child_result(v, results) for k, v in children.items()}
         if all(rebuilt_map[k] is v for k, v in children.items()):
             return stripped
         # Rebuilt frozen when the source was. `_strip` memoizes and hands every
@@ -419,12 +460,12 @@ def _rebuild(value: Any, children: Any, results: dict[int, Any]) -> Any:
         return evolve(stripped, value=payload)
 
     if isinstance(stripped.value, CtyValue):
-        rebuilt_inner = results[id(children[0])]
+        rebuilt_inner = _child_result(children[0], results)
         if rebuilt_inner is children[0]:
             return stripped
         return evolve(stripped, value=rebuilt_inner)
 
-    rebuilt_seq = tuple(results[id(v)] for v in children)
+    rebuilt_seq = tuple(_child_result(v, results) for v in children)
     if all(new is old for new, old in zip(rebuilt_seq, children, strict=True)):
         return stripped
     if isinstance(stripped.value, (frozenset, set)):
