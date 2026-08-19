@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from functools import lru_cache
 from typing import Any, cast
 
@@ -66,9 +66,26 @@ def _number_to_string(raw: Any) -> str:
     `Text` has a spelling for an infinity too, and it is not `str(Decimal)`'s:
     `convert(+Inf, string)` is "+Inf", which is also what `format("%s", +Inf)`
     prints, since that verb is this conversion.
+
+    **`normalize()` rounds.** It honours the active decimal context, whose
+    default precision is 28, so it silently truncated any number needing more
+    digits than that -- `2**100` rendered as
+    `1267650600228229401496703205000` against go-cty's
+    `1267650600228229401496703205376`, and a 29-digit decimal lost its last
+    digit. The value itself was exact: `validate` and the msgpack codec both
+    carried every digit, so the two codecs in this package disagreed about the
+    same number and the lossy one was JSON, which is what state files are
+    written in. Distinct from the accepted `divide` divergence, which is about
+    a result *computed* at 28 digits rather than one discarded on the way out.
+
+    Widening the context to the operand's own digit count keeps the operation
+    exact -- `normalize` is only asked to strip trailing zeros here, and it can
+    never need more digits than it was given.
     """
     if isinstance(raw, Decimal) and raw.is_finite():
-        return format(raw.normalize(), "f")
+        with localcontext() as ctx:
+            ctx.prec = max(len(raw.as_tuple().digits), 1)
+            return format(raw.normalize(), "f")
     return non_finite_text(raw) or str(raw)
 
 

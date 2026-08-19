@@ -335,6 +335,15 @@ upgrading.
   couldn't actually deliver.
 - `contains()` treats a partially-unknown collection as undecided instead of
   giving a definite answer.
+- Rendering a number to text no longer rounds it to `decimal`'s default
+  28-digit context. `2**100` reached `terraform show -json` as
+  `1267650600228229401496703205000` rather than
+  `1267650600228229401496703205376`, through every text route --
+  `convert(number, string)`, `tostring`, `format("%s", n)`, `jsonencode` and
+  the `cty/json` codec. The msgpack codec always carried every digit, so the
+  two codecs in this package disagreed about the same value. Unrelated to the
+  `divide` precision divergence, which is about a result *computed* at 28
+  digits rather than digits discarded on the way out.
 
 ### Performance
 
