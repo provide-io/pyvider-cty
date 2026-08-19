@@ -128,6 +128,32 @@ class TestCollectionFunctions:
         with pytest.raises(CtyFunctionError):
             setproduct()
 
+    def test_setproduct_refuses_a_product_over_the_safety_limit(self) -> None:
+        """The one place this package refuses on size rather than on meaning.
+
+        go-cty allocates whatever the arguments multiply out to; two 1024-element
+        lists are 1,048,576 tuples from a payload that fits in a plan request.
+        An accepted divergence -- see `.provide/GO-CTY-PARITY.md`.
+        """
+        big = L(CtyString(), [str(i) for i in range(1024)])
+
+        with pytest.raises(CtyFunctionError, match="safety limit"):
+            setproduct(big, big)
+
+    def test_setproduct_caps_only_a_product_it_would_materialize(self) -> None:
+        """An unknown-length argument allocates nothing, so the cap must not fire.
+
+        The cap was checked before the unknown branch, so this raised where
+        go-cty answers an unknown -- refusing the one shape that cannot be a DoS,
+        and the shape Terraform sends at plan time.
+        """
+        big = L(CtyString(), [str(i) for i in range(1024)])
+        unknown = CtyValue.unknown(CtyList(element_type=CtyString()))
+
+        result = setproduct(big, big, unknown)
+
+        assert result.is_unknown
+
     def test_setproduct_refuses_a_null_argument(self) -> None:
         """A dropped null changed the arity of the result tuple.
 

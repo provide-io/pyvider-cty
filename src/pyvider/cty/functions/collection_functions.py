@@ -86,6 +86,7 @@ from pyvider.cty.config.defaults import (
     ERR_RANGE_TOO_MANY_VALUES,
     ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION,
     ERR_SETPRODUCT_REQUIRES_TWO,
+    ERR_SETPRODUCT_TOO_LARGE,
     ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE,
     ERR_VALUES_INPUT_MUST_BE_MAP_OBJECT,
     MAX_RANGE_LENGTH,
@@ -106,6 +107,13 @@ _SETPRODUCT_MAX_RESULT_LENGTH = 2048
 
 # A cartesian product needs at least two factors (`collection.go:942`).
 _SETPRODUCT_MIN_ARGS = 2
+
+# The largest product this package will materialize. go-cty has no such cap and
+# will happily allocate whatever the arguments multiply out to, so this is a
+# deliberate divergence: six 10-element arguments are 1,000,000 tuples from a
+# payload small enough to fit in a plan request. Applied only once the length is
+# *known*, because an unknown-length product allocates nothing.
+_SETPRODUCT_MAX_TOTAL_ELEMENTS = 1_000_000
 
 # The lowest number of stored elements at which a set's count can be in doubt.
 _AMBIGUOUS_SET_SIZE = 2
@@ -1523,14 +1531,17 @@ def setproduct(*args: CtyValue[Any], return_type: CtyType[Any]) -> CtyValue[Any]
             continue
         total *= len(cast("Sized", stripped.value))
 
-    # Safety limit: 1 million elements max to prevent OOM algorithmic DoS
-    if total > 1000000:
-        raise CtyFunctionError(
-            f"setproduct: total number of elements {total} exceeds the safety limit of 1000000"
-        )
-
     if unknown_length:
+        # Before the cap, deliberately. The unknown path builds a refinement
+        # rather than a product, so there is nothing to exhaust -- and this is
+        # the shape Terraform sends at plan time, where refusing it would break
+        # the one case that cannot be a DoS.
         return _setproduct_unknown(unmarked, return_type).with_marks(marks)
+
+    if total > _SETPRODUCT_MAX_TOTAL_ELEMENTS:
+        raise CtyFunctionError(
+            ERR_SETPRODUCT_TOO_LARGE.format(total=total, limit=_SETPRODUCT_MAX_TOTAL_ELEMENTS)
+        )
 
     if total == 0:
         # Any empty argument makes the whole product empty.
