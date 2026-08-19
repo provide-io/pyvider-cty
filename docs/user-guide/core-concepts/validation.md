@@ -203,6 +203,8 @@ CtyValidationError (base)
 Catch specific exceptions for targeted error handling:
 
 ```python
+from pyvider.cty.exceptions import CtyListValidationError
+
 try:
     value = schema.validate(data)
 except CtyAttributeValidationError as e:

@@ -16,6 +16,8 @@ The `CtyObject` type represents an object with a fixed set of named attributes. 
 `CtyObject` supports two equivalent syntaxes for defining attribute types:
 
 ```python
+from pyvider.cty import CtyNumber, CtyObject, CtyString
+
 # Explicit syntax (recommended for clarity and consistency)
 user_type = CtyObject(
     attribute_types={"name": CtyString(), "age": CtyNumber()},

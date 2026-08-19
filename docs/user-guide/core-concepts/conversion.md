@@ -336,6 +336,8 @@ with inference_cache_context():
 Use `convert()` for known conversions, not as a substitute for proper schemas:
 
 ```python
+from pyvider.cty import CtyNumber, CtyObject
+
 # ✅ GOOD: Define explicit schema
 config_schema = CtyObject(
     attribute_types={
