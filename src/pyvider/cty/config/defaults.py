@@ -319,6 +319,7 @@ ERR_CONCAT_ARGS_MUST_BE_SEQUENCES = "concat: all arguments must be lists or tupl
 ERR_SETPRODUCT_REQUIRES_TWO = "setproduct: at least two arguments are required"
 ERR_SETPRODUCT_TUPLE_NOT_UNIFIABLE = "setproduct: all elements must be of the same type"
 ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION = "setproduct: a set or a list is required, got {type}"
+ERR_SETPRODUCT_TOO_LARGE = "setproduct: {total} elements exceeds the safety limit of {limit}"
 ERR_SET_OP_INCOMPATIBLE_ELEMENTS = "{func}: given sets must all have compatible element types"
 
 # range() error messages

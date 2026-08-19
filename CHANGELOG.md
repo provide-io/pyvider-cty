@@ -16,14 +16,14 @@ the full API mapping.
 ### Security & Performance
 
 This release includes the results of a comprehensive adversarial parity review targeting algorithmic DoS and memory exhaustion vectors, bringing the validation pipeline to enterprise scale:
-- **Algorithmic DoS in `setproduct`**: Enforced a hard cap of 1,000,000 elements on the cartesian product size, preventing a single small payload from causing instant memory exhaustion. (Pyvider is now strictly safer than `go-cty` here).
+- **Algorithmic DoS in `setproduct`**: Enforced a hard cap of 1,000,000 elements on the cartesian product size, preventing a single small payload from causing instant memory exhaustion. (Pyvider is now strictly safer than `go-cty` here.) This is a deliberate divergence and is listed as breaking change 45; it applies only where the product would be materialized, so an unknown-length argument still answers an unknown.
 - **JSON Parser Memory Exhaustion**: Eliminated 40% of the memory footprint and 66% of the parsing time during `cty_from_json` deserialization by replacing double-validation loops with direct, lazy-evaluated CtyValue constructors.
 - **Set Union Hotspot**: Fixed an $O(N^2)$ execution stall when accumulating marks in large collections (such as `CtySet` deduplication loops) by swapping immutable frozenset unions for mutable `set.update()` accumulations.
 - **ReDoS (Regex Denial of Service)**: Explicitly documented the architectural constraint that `google-re2` cannot be cross-compiled to WebAssembly for Pyodide, meaning Pyvider's `regex` family falls back to Python's backtracking NFA. Do not evaluate untrusted patterns from remote APIs.
 
 ### Breaking Changes
 
-This release contains **44 breaking changes**. Read this list before
+This release contains **45 breaking changes**. Read this list before
 upgrading.
 
 #### Marks and value mutability
@@ -271,6 +271,15 @@ upgrading.
    does not conform to the schema the caller asked for. If you relied on the
    converted list being known, guard on `is_unknown` or convert the elements
    yourself.
+45. `setproduct` **refuses a product over 1,000,000 elements**, where go-cty
+   allocates it. Two 1024-element arguments are 1,048,576 tuples, so a payload
+   that fits in an ordinary plan request is a remote memory-exhaustion vector.
+   This is the second of the two places this package deliberately declines
+   something go-cty answers, and unlike the `formatdate` refusal it raises
+   rather than returning anything, so no call site can mistake it for a result.
+   The cap applies only to a product that would actually be materialized: an
+   argument of unknown length still answers an unknown, which is the shape
+   Terraform sends at plan time. See `.provide/GO-CTY-PARITY.md`.
 
 ### Added
 

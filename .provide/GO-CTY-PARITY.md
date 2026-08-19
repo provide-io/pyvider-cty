@@ -30,7 +30,7 @@ Living document. Updated as work lands — do not let it drift.
 1. ~~**`assertnotnull`**~~ and ~~**the Unicode decision**~~ — both closed 2026-08-16. **The stdlib is now 83 of 83 functions and `UNSWEPT` is empty.**
 2. ~~**Phases 4, 6 and 7**~~ — **all eight landed by 2026-08-17.** The `cty/function` framework (#12) closed last, with every one of the 83 stdlib functions declared through it. **No code items remain in this repo.**
 3. ~~**Worklist #8**~~ — **done 2026-08-17** in `pyvider-components` (`160dfa2b`): the sixteen Terraform-shadowing functions now answer what Terraform answers, measured against the harness and `terraform console`. The audit found the real count was 25 registered functions, and that `format` — shipping printf verbs to state as literal text — was worse than the famous `length` case. Two decisions remain there for Tim; see the cross-repo entry.
-4. **The release gate** — 0.5.0, forty-four breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there. **The only thing left in this repo**, alongside the adversarial review that gates it.
+4. **The release gate** — 0.5.0, forty-five breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there. **The only thing left in this repo**, alongside the adversarial review that gates it.
 
    Two release-mechanics questions sit with it, both found 2026-08-18: `chore/use-reusable-release` is unmerged on the remote and rewires `release.yml` through ci-tooling's `python-release.yml@v0.4.2`, so cutting 0.5.0 without it runs the old inline pipeline; and that branch pins a fixed tag where `ci.yml` calls the floating `@v0`, which is two conventions in one repository.
 
@@ -38,8 +38,9 @@ Living document. Updated as work lands — do not let it drift.
 
 Accepted divergences, itemised below rather than fixed: the set-with-a-null byte
 ordering, Python `re` not being RE2 (this is an **intentional security drift**: Python's backtracking NFA is vulnerable to ReDoS where Go's RE2 is not, but `google-re2` is a C++ extension incompatible with Pyodide WebAssembly builds, so the risk is explicitly accepted), the `divide` precision model (decision 3,
-**closed 2026-08-18**), the calendar range in `timeadd`, and the one deliberate
-refusal -- a Go reference layout in `formatdate`. (~~`CtySet`
+**closed 2026-08-18**), the calendar range in `timeadd`, and the two deliberate
+refusals -- a Go reference layout in `formatdate`, and a `setproduct` whose
+result would exceed a million elements. (~~`CtySet`
 being unable to hold a list~~ stopped being true on 2026-08-17: `307ac08` gave
 containers canonical-key hashing, and `set(list(string))` validates — the entry
 below records it.) Two are strict xfails that will resolve themselves —
@@ -66,7 +67,7 @@ further down.
 | 5 | ~~**Numeric precision model**~~ **Decided 2026-08-16: keep as is.** The two remaining sweep xfails are this decision, not bugs. Needs a decision, not an implementation. Measured: raising the Decimal context is free for ordinary numbers — the cost is in operand width, not context. | Decision 3 |
 | 6 | ~~**`format` / `formatlist`**~~ **Done 2026-08-16.** 455-case matrix, all agreeing. | Two of the four functions the oracle exposes and this package does not have, and the largest single port left. The other two are `strlen` (blocked on UAX#29) and `assertnotnull`. | Phase 5 |
 | 6b | ~~**Container unknown-collapse**~~ | **Done 2026-08-17**, `8c3222a`, `fd32cc8`, `9889e42`. A list/map/set/tuple holding an unknown element flagged *itself* unknown, since 2025-07-25. Live wire data loss: `[unknown, "z"]` arrived as `92 d4 00 00 a1 7a` and left as `d4 00 00`. Removing it exposed **eleven** further bugs the collapse had been hiding — see *What the collapse was hiding*, below. | Phase 5 |
-| 7 | **Release gate** | Cut 0.5.0 with 44 breaking changes written up, released in the same wave sequence as `pyvider`. No version caps — overruled; see the gate. | Release gate |
+| 7 | **Release gate** | Cut 0.5.0 with 45 breaking changes written up, released in the same wave sequence as `pyvider`. No version caps — overruled; see the gate. | Release gate |
 | 8 | ~~**pyvider-components delegating to cty**~~ **Done 2026-08-17** (`160dfa2b` there) — not by delegating, which the protocol boundary forbids (functions receive native Python), but by fixing each function against Terraform's measured answer, reusing cty's verified printf and Unicode machinery where a native entry point existed. | The largest *actual* parity win, delivered. Both leftover decisions settled by measurement the same day: `divide(1, 0)` should return `+Inf` (Terraform's operator does, and so does pyvider-cty — components is the outlier, fix pending there), and `round` keeps banker's rounding (Terraform has no `round`, so there is nothing to diverge from). | Cross-repo |
 
 **A caveat on 3 and 8.** Both rest on the claim that the framework seam and the
@@ -759,7 +760,7 @@ filing*, one review later.
 | Four copies of `_unwrap_dynamic` | **No live fault.** A marked dynamic wrapper survives `collect_marks_deep`, `walk` and a stdlib call. One copy carries marks and three do not; a maintenance hazard, not a bug |
 | `can_convert_unsafe` duplicates `convert`'s matrix | **0 disagreements in 81 type pairs.** 86 lines mirroring 264. A maintenance hazard, not a bug |
 
-### The one deliberate refusal — `formatdate` and a Go reference layout
+### The first deliberate refusal — `formatdate` and a Go reference layout
 
 Decided 2026-08-18. This package refuses `formatdate("2006-01-02", ts)`; go-cty
 returns the string `"2006-01-02"`. It is the only place parity is broken on
@@ -807,6 +808,37 @@ it, since the dialect has no digits.
 
 Held by a strict xfail in the sweep, so removing the refusal forces the entry
 out.
+
+### The second deliberate refusal — `setproduct` over a million elements
+
+Decided 2026-08-18, out of the adversarial review. go-cty's `SetProduct` has no
+size guard: it multiplies the argument lengths and allocates that many tuples.
+Six ten-element arguments are 1,000,000 tuples, and two 1024-element arguments
+are 1,048,576 -- from a payload small enough to fit in an ordinary plan request,
+which makes it a remote memory-exhaustion vector rather than a theoretical one.
+This package raises `CtyFunctionError` past `_SETPRODUCT_MAX_TOTAL_ELEMENTS`
+where go-cty allocates.
+
+**Not silent.** Unlike the `formatdate` refusal, this one cannot be mistaken for
+an answer: it raises, with the total and the limit in the message. The cost of
+being wrong about the threshold is a loud error on a call that would otherwise
+have taken minutes and gigabytes.
+
+**Applied only to a product it would actually materialize.** The check sits
+*below* the unknown-length branch. An argument of unknown length sends the call
+to `_setproduct_unknown`, which builds a refinement rather than a product and
+allocates nothing -- and that is the shape Terraform sends at plan time. The
+first version of the guard ran before that branch and so refused the one case
+that cannot be a DoS; two tests in
+`tests/functions/test_collection_stdlib_functions.py` hold both halves.
+
+**Deliberately not a sweep row.** Every other divergence here is held by a
+strict xfail driven against the real oracle. A row for this one would have to
+ask go-cty to build a million-element product on every CI run -- performing the
+denial of service in order to record that we refuse it. The unit tests above
+stand in for it.
+
+An upstream issue against go-cty is still to be filed.
 
 ### Replacing `datetime` — measured, and the year range is the least of it
 
