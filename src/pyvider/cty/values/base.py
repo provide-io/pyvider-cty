@@ -91,7 +91,7 @@ class CtyValue(Generic[T]):
     value: object | None = field(default=None)
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
-    marks: frozenset[Any] = field(factory=frozenset)
+    marks: frozenset[Any] = field(default=frozenset())
 
     # Memo for `collect_marks_deep`, filled on first ask. Excluded from init,
     # equality, hashing and repr: it is derived state, not part of the value.
