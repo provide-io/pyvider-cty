@@ -354,10 +354,11 @@ class TestNullnessDoesNotLeakFromElementsOntoContainers:
 
         # And the member itself did take the rank, so this is not passing
         # because the null or unknown was quietly dropped on the way in. A
-        # mapping's members are `(name, member_key)` pairs; a sequence's are
-        # the member keys themselves.
+        # mapping's members are `(_PRESENT, name, member_key)` triples; a
+        # sequence's are the member keys themselves. Both end with the
+        # exhaustion terminator, which is not a member and is sliced off.
         is_mapping = isinstance(value.type, CtyMap | CtyObject)
-        member_keys = [member[1] if is_mapping else member for member in key[2:]]
+        member_keys = [member[2] if is_mapping else member for member in key[2:-1]]
         assert (expected_member_rank,) in member_keys
 
 

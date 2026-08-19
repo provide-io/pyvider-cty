@@ -94,6 +94,14 @@ MARSHAL: list[tuple[str, CtyType[Any], CtyValue[Any], Any]] = [
     ("an empty list", STRINGS, STRINGS.validate([]), None),
     ("a list holding a null", STRINGS, STRINGS.validate(["a", CtyValue.null(S)]), None),
     ("a set of strings", STRING_SET, STRING_SET.validate(["b", "a"]), None),
+    # See the msgpack oracle: a prefix sorts last in go-cty and used to sort
+    # first here, so a set of composites re-encoded in a different order.
+    (
+        "a set of lists where one is a prefix of another",
+        CtySet(element_type=STRINGS),
+        CtySet(element_type=STRINGS).validate([["a"], ["a", "c"], []]),
+        None,
+    ),
     ("a set of numbers", NUMBERS, NUMBERS.validate([3, 1, 2]), None),
     ("a map", STRING_MAP, STRING_MAP.validate({"b": "2", "a": "1"}), None),
     ("an empty map", STRING_MAP, STRING_MAP.validate({}), None),

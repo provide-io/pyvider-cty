@@ -46,6 +46,15 @@ if TYPE_CHECKING:
 # 4.4 ns for an already-bound global, and `__attrs_post_init__` runs on every
 # single CtyValue construction. Binding once keeps the cycle broken, because
 # nothing below runs at import time.
+# The rank a member key carries in its first position: 0 known, 1 unknown, 2
+# null, -1 a raw member `validate` never normalised. `_EXHAUSTED` outranks all
+# four, so a key that has run out of members sorts after one that has not --
+# go-cty's order for a sequence that is a prefix of another. `_PRESENT` is the
+# matching low rank for a mapping's entries, which need a shape a sentinel can
+# be compared against.
+_PRESENT = 0
+_EXHAUSTED: tuple[int, ...] = (3,)
+
 _TYPES_BOUND: bool = False
 _CtyDynamic: Any = None
 _CtyList: Any = None
@@ -142,6 +151,20 @@ class CtyValue(Generic[T]):
     def _canonical_sort_key(self) -> tuple[Any, ...]:
         """The order go-cty puts a set's elements in, which reaches the wire.
 
+        **Running out of elements ranks last, not first.** A plain tuple
+        comparison makes a prefix sort *before* its extension, which is the
+        opposite of go-cty: it writes `[["a","c"],["a"]]` where a shorter-first
+        rule writes `[["a"],["a","c"]]`, and an empty element goes last there
+        and first here. The `_EXHAUSTED` terminator below is what inverts it --
+        every variable-length key ends with a member that outranks any real one,
+        so comparison reaches it only when one side has run out. Measured
+        2026-08-19 against the harness over 300 generated sets: every divergence
+        was a pair where one element was a prefix of another, and none survive.
+
+        Elements of a mapping key carry `_PRESENT` for the same reason -- a
+        terminator has to be comparable with them, and a bare sentinel against a
+        `(name, ...)` pair compares an int with a str and raises.
+
         go-cty's `setRules.Less` (`cty/set_internals.go:99-110`) ranks known
         values first, then unknown, then null -- in that order, and it checks
         nullness *before* knownness, so an unknown sorts ahead of a null. These
@@ -186,11 +209,11 @@ class CtyValue(Generic[T]):
             and self.value is not None
             and hasattr(self.value, "__iter__")
         ):
-            return (*key_prefix, *(_member_key(v) for v in self.value))
+            return (*key_prefix, *(_member_key(v) for v in self.value), _EXHAUSTED)
 
         if isinstance(self.type, CtySet) and self.value is not None and hasattr(self.value, "__iter__"):
             sorted_elements = sorted(self.value, key=_member_key)
-            return (*key_prefix, *(_member_key(v) for v in sorted_elements))
+            return (*key_prefix, *(_member_key(v) for v in sorted_elements), _EXHAUSTED)
 
         if (
             isinstance(self.type, CtyMap | CtyObject)
@@ -204,7 +227,8 @@ class CtyValue(Generic[T]):
             sorted_items = sorted(self.value.items(), key=lambda item: str(item[0]))
             return (
                 *key_prefix,
-                *((k, _member_key(v)) for k, v in sorted_items),
+                *((_PRESENT, str(k), _member_key(v)) for k, v in sorted_items),
+                _EXHAUSTED,
             )
 
         if isinstance(self.type, CtyCapsule):
