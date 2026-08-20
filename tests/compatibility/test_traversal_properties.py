@@ -38,10 +38,9 @@ Two narrowings, both recorded rather than worked around:
 from __future__ import annotations
 
 from typing import Any
-import warnings
 
-from hypothesis import assume, given, settings, strategies as st
-from hypothesis.errors import NonInteractiveExampleWarning
+from hypothesis import assume, find, given, settings, strategies as st
+from hypothesis.errors import NoSuchExample
 import pytest
 
 from pyvider.cty import (
@@ -241,19 +240,17 @@ def test_the_generated_population_reaches_every_container_kind() -> None:
     Narrowing a strategy until it stops finding anything is the easy way to make
     a differential suite pass, so the population is asserted to still contain
     what it is here to exercise.
-    """
-    kinds: set[str] = set()
-    # `.example()` warns that `@given` is the better tool, and it is -- for a
-    # property. This is a census of the population itself, which `@given` cannot
-    # express: it reports one falsifying case, not what the whole draw covered.
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", NonInteractiveExampleWarning)
-        strategy = cases()
-        for _ in range(200):
-            cty_type, _ = strategy.example()
-            kinds.add(type(cty_type).__name__)
 
-    assert {"CtyList", "CtySet", "CtyMap", "CtyObject", "CtyTuple"} <= kinds, sorted(kinds)
+    `find` rather than a census built from `example()`: that method fills a pool
+    once per strategy object and draws from it shrunk, so it measures the pool
+    and not the strategy -- which produced a false CI failure in the sibling
+    module written the same day.
+    """
+    for kind in (CtyList, CtySet, CtyMap, CtyObject, CtyTuple):
+        try:
+            find(cases(), lambda case, kind=kind: isinstance(case[0], kind))
+        except NoSuchExample:  # pragma: no cover - only on a broken generator
+            pytest.fail(f"the generated population no longer contains a {kind.__name__}")
 
 
 # 🌊🪢🔚

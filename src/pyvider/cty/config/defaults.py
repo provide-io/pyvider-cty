@@ -346,6 +346,7 @@ ERR_CSVDECODE_BARE_QUOTE = 'csvdecode: CSV parse error on line {line}: bare " in
 ERR_CSVDECODE_QUOTE = 'csvdecode: CSV parse error on line {line}: extraneous or missing " in quoted-field'
 ERR_JSONDECODE_FAILED = "jsondecode: failed to decode JSON: {error}"
 ERR_JSONDECODE_INVALID_FIRST_CHARACTER = "a JSON document cannot begin with the character '{character}'"
+ERR_JSONDECODE_UNSUPPORTED_ATTRIBUTE = 'jsondecode: unsupported attribute "{name}"'
 ERR_JSONENCODE_FAILED = "jsonencode: failed to encode value: {error}"
 
 # Date and time function error messages

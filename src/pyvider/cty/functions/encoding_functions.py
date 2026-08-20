@@ -12,6 +12,7 @@ from decimal import Decimal
 import io
 import json
 from typing import Any, cast
+import unicodedata
 
 from pyvider.cty import (
     CtyBool,
@@ -35,6 +36,7 @@ from pyvider.cty.config.defaults import (
     ERR_CSVDECODE_WRONG_FIELD_COUNT,
     ERR_JSONDECODE_FAILED,
     ERR_JSONDECODE_INVALID_FIRST_CHARACTER,
+    ERR_JSONDECODE_UNSUPPORTED_ATTRIBUTE,
     ERR_JSONENCODE_FAILED,
 )
 from pyvider.cty.exceptions import CtyFunctionError
@@ -138,6 +140,27 @@ def _implied_leaf_type(native: Any) -> CtyType[Any]:
     return CtyString()
 
 
+def _refuse_an_unnormalized_attribute(name: str) -> None:
+    """go-cty refuses a JSON object key that is not already NFC-normalized.
+
+    `ImpliedType` builds the object type from the key as written and `Unmarshal`
+    then looks the attribute up by a normalized one, so the two passes disagree
+    and go-cty reports `unsupported attribute`. Measured across the cases that
+    separate the normal forms -- an NFD `e`+combining-acute, U+2126 OHM SIGN and
+    U+F900, all of which NFC changes, against a precomposed `e`-acute, the
+    U+FB01 `fi` ligature (which only NFKC touches) and plain ASCII, none of
+    which it changes -- the refusal tracks NFC exactly.
+
+    This package's `CtyObject.validate` normalizes both sides before looking an
+    attribute up, so it decoded these documents happily. Accepting one means
+    building state out of a document Terraform refuses, which is the same reason
+    `csvdecode` is as strict as Go's reader here. Found 2026-08-20 by the stdlib
+    fuzz.
+    """
+    if unicodedata.normalize("NFC", name) != name:
+        raise CtyFunctionError(ERR_JSONDECODE_UNSUPPORTED_ATTRIBUTE.format(name=name))
+
+
 def _implied_type(native: Any) -> CtyType[Any]:
     """The type a decoded JSON document implies, as go-cty's json.ImpliedType does.
 
@@ -154,6 +177,8 @@ def _implied_type(native: Any) -> CtyType[Any]:
         if isinstance(node, dict):
             if expanded:
                 names = list(node)
+                for name in names:
+                    _refuse_an_unnormalized_attribute(name)
                 element_types = [done.pop() for _ in names][::-1]
                 done.append(CtyObject(attribute_types=dict(zip(names, element_types, strict=True))))
                 continue
