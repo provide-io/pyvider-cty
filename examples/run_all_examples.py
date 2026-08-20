@@ -20,6 +20,10 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 
+# The runner itself, and the helper every example imports.
+_NOT_EXAMPLES = frozenset({"run_all_examples.py", "example_utils.py", "__init__.py"})
+
+
 def print_section(title: str) -> None:
     print("\n" + "=" * 70)
     print(f"📋 {title}")
@@ -82,18 +86,13 @@ async def main() -> None:
     overall_success = True
     results: list[tuple[str, bool, str, str, int]] = []
 
+    # Discovered rather than listed. The list was hand-maintained, so an example
+    # added and not registered was an example nobody ran -- which is the same
+    # failure mode as a test file nobody imports.
     scripts_to_run: list[dict[str, Any]] = [
-        {"file": "getting-started/quick-start.py"},
-        {"file": "types/primitives.py"},
-        {"file": "types/collections.py"},
-        {"file": "types/structural.py"},
-        {"file": "types/dynamic.py"},
-        {"file": "types/capsule.py"},
-        {"file": "advanced/marks.py"},
-        {"file": "advanced/functions.py"},
-        {"file": "advanced/serialization.py"},
-        {"file": "advanced/path-navigation.py"},
-        {"file": "advanced/terraform-interop.py"},
+        {"file": str(found.relative_to(examples_dir))}
+        for found in sorted(examples_dir.rglob("*.py"))
+        if found.name not in _NOT_EXAMPLES and not found.name.startswith("_")
     ]
 
     print_section("Running All Examples")

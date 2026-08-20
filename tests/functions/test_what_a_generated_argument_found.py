@@ -18,8 +18,6 @@ expectation was read from the oracle rather than from go-cty's source.
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 import pytest
 
 from pyvider.cty import (
@@ -127,10 +125,14 @@ class TestTimeaddBelowAMicrosecond:
 
         assert answer.value == expected
 
-    def test_a_whole_microsecond_still_parses_exactly(self) -> None:
-        from pyvider.cty.functions.datetime_functions import _parse_duration
+    def test_a_duration_is_carried_as_whole_nanoseconds(self) -> None:
+        """No longer rounded to a `timedelta` on the way in -- 1500ns is 1500ns,
+        and `timeadd` rounds nothing at all now that the instant carries its own
+        nanoseconds. See `test_timeadd_is_exact_to_the_nanosecond.py`."""
+        from pyvider.cty.functions.datetime_functions import _parse_duration_nanoseconds
 
-        assert _parse_duration("1500ns") == timedelta(microseconds=1)
+        assert _parse_duration_nanoseconds("1500ns") == 1500
+        assert _parse_duration_nanoseconds("-1500ns") == -1500
 
 
 class TestAnUnknownLeavesASetsLengthUndecided:
