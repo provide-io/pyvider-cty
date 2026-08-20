@@ -68,11 +68,20 @@ all_types = simple_types | list_types_strategy() | object_types_strategy() | st.
 
 @settings(deadline=1000, max_examples=200)
 @given(cty_type=all_types)
-def test_unify_single_type_returns_same_type(cty_type: CtyType) -> None:
-    """unify({T}) = T. The one property that survived the port unchanged."""
+def test_unify_single_type_returns_the_same_type_without_its_optionals(cty_type: CtyType) -> None:
+    """unify({T}) = T, *stripped of optional attributes*.
+
+    It was `unify({T}) = T` flat until 2026-08-20, which held only because no
+    generated type here carried an optional attribute. go-cty strips them even
+    for a single argument -- optionality describes a constraint and `unify`
+    answers with a type for values -- and this property was one of the two
+    places that let an argument through untouched.
+    """
+    from pyvider.cty.conversion.explicit import _without_optional
+
     result = unify([cty_type])
     assert result is not None
-    assert result.equal(cty_type)
+    assert result.equal(_without_optional(cty_type))
 
 
 @settings(deadline=1000, max_examples=200)
