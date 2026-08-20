@@ -94,6 +94,27 @@ def _bind_types() -> None:
     _TYPES_BOUND = True
 
 
+def _payload_pairs(left: Any, right: Any) -> tuple[tuple[Any, Any], ...] | None:
+    """Two payloads compared without descending into any `CtyValue` they hold.
+
+    A container's payload is a tuple (list, set, tuple) or a mapping (map,
+    object) of `CtyValue`s, and comparing those with `==` is what put a Python
+    frame on the stack for every level of nesting. Anything else is a leaf
+    payload -- a string, a `Decimal`, an unknown marker -- and decides here.
+    """
+    if isinstance(left, tuple) and isinstance(right, tuple):
+        if len(left) != len(right):
+            return None
+        return tuple(zip(left, right, strict=True))
+    left_items = getattr(left, "items", None)
+    right_items = getattr(right, "items", None)
+    if left_items is not None and right_items is not None and not isinstance(left, str | bytes):
+        if left.keys() != right.keys():
+            return None
+        return tuple((value, right[key]) for key, value in left_items())
+    return () if left == right else None
+
+
 @define(frozen=True, slots=True)
 class CtyValue(Generic[T]):
     vtype: CtyType[T] = field()
@@ -246,8 +267,33 @@ class CtyValue(Generic[T]):
         return (*key_prefix, repr(self.value))
 
     def __eq__(self, other: object) -> bool:
+        """Walked, not recursed -- a value nests as deeply as its type.
+
+        This used to compare the payloads with `==`, which for a container is a
+        tuple or `FrozenDict` of `CtyValue`s and so came straight back here, one
+        level down. `CtyType.equal` had the same shape and raised
+        `RecursionError` on Python 3.11 for a value 400 deep; this is the same
+        defect one layer up, and value equality is the hotter of the two.
+
+        `_eq_shallow` decides everything about one node that is not a child
+        comparison and hands back the children still to compare.
+        """
         if not isinstance(other, CtyValue):
             return NotImplemented
+        children = self._eq_shallow(other)
+        if children is None:
+            return False
+        stack = list(children)
+        while stack:
+            this, that = stack.pop()
+            pairs = this._eq_shallow(that)
+            if pairs is None:
+                return False
+            stack.extend(pairs)
+        return True
+
+    def _eq_shallow(self, other: CtyValue[Any]) -> tuple[tuple[Any, Any], ...] | None:
+        """This value's equality minus its children. `None` means unequal."""
         from ..types import CtyCapsuleWithOps
 
         # A capsule's equal_fn is written against its payload type, and a null or
@@ -266,15 +312,16 @@ class CtyValue(Generic[T]):
             # Marks are still cty's concern: a sensitive value is not equal to
             # the same payload unmarked, and __hash__ already counts them, so
             # ignoring them here made equal values hash differently.
-            return self.marks == other.marks and self.type.equal_fn(self.value, other.value)
+            return () if (self.marks == other.marks and self.type.equal_fn(self.value, other.value)) else None
 
-        return (
+        if not (
             self.type.equal(other.type)
             and self.is_unknown == other.is_unknown
             and self.is_null == other.is_null
             and self.marks == other.marks
-            and self.value == other.value
-        )
+        ):
+            return None
+        return _payload_pairs(self.value, other.value)
 
     def _check_comparable(self, other: object) -> CtyValue[Any]:
         from ..types import CtyNumber, CtyString
@@ -432,7 +479,53 @@ class CtyValue(Generic[T]):
         *could* derive an agreeing hash -- and it replaces a `TypeError` that
         leaked the user's own class name for an unhashable payload. Supply
         `hash_fn` to get bucketing back; go-cty says the same of `HashKey`.
+
+        **Folded rather than recursed, as of 2026-08-20.** A container's payload
+        hash was built by calling `hash` on each element, which came straight
+        back here one level down -- the same defect `__eq__` above had, and
+        leaving it while fixing `__eq__` would have been the third half-fix of
+        this shape in one codebase. The walk below is an explicit post-order:
+        every node's hash is computed once, after its children's, and each node
+        reads theirs out of `computed` rather than asking for them.
         """
+        order: list[CtyValue[Any]] = []
+        stack: list[CtyValue[Any]] = [self]
+        while stack:
+            node = stack.pop()
+            order.append(node)
+            stack.extend(node._hash_descendants())
+        computed: dict[int, int] = {}
+        for node in reversed(order):
+            computed[id(node)] = node._hash_node(computed)
+        return computed[id(self)]
+
+    def _hash_descendants(self) -> tuple[CtyValue[Any], ...]:
+        """The child values this one's hash is built from, and only those.
+
+        Mirrors the branches in `_hash_node` exactly: a null, an unknown, a
+        capsule and a leaf all decide without consulting a child, so descending
+        into them would compute hashes nothing reads.
+        """
+        if not _TYPES_BOUND:
+            _bind_types()
+        if self.is_unknown or self.is_null:
+            return ()
+        if isinstance(self.type, _CtyCapsuleWithOps) and self.type.hash_fn:
+            return ()
+        if isinstance(self.vtype, _CtyCapsule):
+            return ()
+        if not isinstance(self.vtype, _CtyList | _CtyMap | _CtyObject | _CtySet | _CtyTuple):
+            return ()
+        payload = self.value
+        items: tuple[Any, ...] = ()
+        if isinstance(payload, dict):
+            items = tuple(payload.values())
+        elif isinstance(payload, tuple | list | frozenset):
+            items = tuple(payload)
+        return tuple(item for item in items if isinstance(item, CtyValue))
+
+    def _hash_node(self, computed: dict[int, int]) -> int:
+        """This value's hash, given its children's."""
         if not _TYPES_BOUND:
             _bind_types()
         CtyCapsule, CtyCapsuleWithOps = _CtyCapsule, _CtyCapsuleWithOps
@@ -456,7 +549,14 @@ class CtyValue(Generic[T]):
         if isinstance(self.vtype, CtyCapsule):
             return hash((self.vtype, self.marks))
 
-        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject):
+        # `CtyTuple` belongs here and was missing, which is a second bug in one
+        # line: a tuple's payload is a tuple of `CtyValue`s, so it fell through
+        # to the leaf branch and was hashed by Python's own tuple hash. That
+        # asks each element for `hash()` -- recursing, which is why this test
+        # found it -- and it also skips the element-hashing the comment below
+        # exists for, so two tuples holding equal capsule payloads hashed apart
+        # exactly as two lists used to.
+        if isinstance(self.vtype, CtyList | CtySet | CtyMap | CtyObject | _CtyTuple):
             # Hash the elements' own hashes rather than the canonical sort key.
             # That key renders a capsule payload with repr(), which for a class
             # without a defined __repr__ is its memory address -- so two lists
@@ -464,22 +564,32 @@ class CtyValue(Generic[T]):
             # differently, and a set kept both. Element hashing routes each
             # capsule back through its hash_fn, which is the whole point of
             # supplying one.
-            return hash((self.vtype, self.marks, self._payload_hash()))
+            return hash((self.vtype, self.marks, self._payload_hash(computed)))
 
         return hash((self.vtype, self.is_unknown, self.is_null, self.marks, self.value))
 
-    def _payload_hash(self) -> int:
-        """A container payload's hash, built from its elements' hashes."""
+    def _payload_hash(self, computed: dict[int, int]) -> int:
+        """A container payload's hash, built from its elements' hashes.
+
+        An element's hash comes out of `computed` when the fold in `__hash__`
+        has already produced it, which is every `CtyValue` element. Anything
+        else is a raw payload member and hashes itself.
+        """
+
+        def element(item: Any) -> int:
+            found = computed.get(id(item))
+            return hash(item) if found is None else found
+
         payload = self.value
         if isinstance(payload, dict):
             # A frozenset rather than a sort: map keys are not guaranteed to be
             # mutually orderable (a malformed payload can mix str and int), and
             # sorting them raised TypeError out of __hash__.
-            return hash(frozenset((key, hash(item)) for key, item in payload.items()))
+            return hash(frozenset((key, element(item)) for key, item in payload.items()))
         if isinstance(payload, frozenset):
-            return hash(tuple(sorted(hash(item) for item in payload)))
+            return hash(tuple(sorted(element(item) for item in payload)))
         if isinstance(payload, tuple | list):
-            return hash(tuple(hash(item) for item in payload))
+            return hash(tuple(element(item) for item in payload))
         return hash(payload)
 
     def equals(self, other: CtyValue[Any]) -> CtyValue[Any]:

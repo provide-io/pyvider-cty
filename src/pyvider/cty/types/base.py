@@ -72,6 +72,88 @@ def equal_iteratively(left: Any, right: Any) -> bool:
     return True
 
 
+def usable_as_iteratively(left: Any, right: Any) -> bool:
+    """`usable_as`, walked rather than recursed.
+
+    A separate driver from `equal_iteratively` because it is a separate
+    relation: it is directional, `dynamic` accepts anything on the right, and an
+    object is usable as one asking for *fewer* attributes. Only the traversal is
+    shared, and only the traversal was the problem.
+    """
+    children = left._usable_shallow(right)
+    if children is None:
+        return False
+    stack = list(children)
+    while stack:
+        this, that = stack.pop()
+        pairs = this._usable_shallow(that)
+        if pairs is None:
+            return False
+        stack.extend(pairs)
+    return True
+
+
+def render_iteratively(root: Any) -> str:
+    """A type's `str()`, without a frame per level of nesting.
+
+    Display would not be worth walking on its own. Error messages are: a
+    conversion refusal spells the type it refused into its message, so a
+    `RecursionError` here turns a clean refusal into an unhandled exception
+    reaching a provider -- the same failure `modulo` had when `DivisionImpossible`
+    escaped the taxonomy.
+
+    A node whose `_render` answers `None` spells itself with `str()` and its
+    children are not consulted. `CtyObject` is the one that does: it names its
+    attributes rather than describing their types, so it already terminated.
+    """
+    order: list[Any] = []
+    stack: list[Any] = [root]
+    while stack:
+        node = stack.pop()
+        order.append(node)
+        structure = node._structure()
+        if structure is not None:
+            stack.extend(structure[1])
+    spelled: dict[int, str] = {}
+    for node in reversed(order):
+        structure = node._structure()
+        children = [spelled[id(child)] for child in structure[1]] if structure is not None else []
+        rendered = node._render(children)
+        spelled[id(node)] = str(node) if rendered is None else rendered
+    return spelled[id(root)]
+
+
+def hash_iteratively(root: Any) -> int:
+    """A structural hash of a type, without a frame per level of nesting.
+
+    The same problem `equal_iteratively` solves, and it has to be solved in the
+    same place: Python requires `a == b` to imply `hash(a) == hash(b)`, so a
+    hash that stops descending where equality keeps going is a hash that puts
+    two distinct types in one bucket. `CtyObject` used to do exactly that on
+    purpose -- a comment reading "for nested objects, use a simpler hash to
+    avoid recursion" -- which was a workaround for this, one level deep, in one
+    type.
+
+    The walk is a deterministic pre-order over `_structure`, and each node
+    contributes its own token and its child count, so two types with the same
+    tokens in the same shape are the same type. A leaf contributes its own hash,
+    which is O(1) and already agrees with its own equality.
+    """
+    tokens: list[Any] = []
+    stack: list[Any] = [root]
+    while stack:
+        node = stack.pop()
+        structure = node._structure()
+        if structure is None:
+            tokens.append(hash(node))
+            continue
+        token, children = structure
+        tokens.append(token)
+        tokens.append(len(children))
+        stack.extend(reversed(children))
+    return hash(tuple(tokens))
+
+
 @runtime_checkable
 class CtyTypeProtocol(Protocol[T_co]):
     """Protocol defining the essential interface of a CtyType.
@@ -193,15 +275,54 @@ class CtyType(Generic[T], ABC):
             return self.unknown_like(value)
         return None
 
+    def _structure(self) -> tuple[Any, tuple[Any, ...]] | None:
+        """This type minus its children, and its children.
+
+        `None` means "a leaf": something that decides its own equality and its
+        own hash in constant time, so neither driver has to descend into it.
+        Every type that *contains* other types answers a token and its children
+        instead -- the token carrying everything equality compares that is not a
+        child, and the children coming back in a deterministic order, because
+        both drivers rely on two equal types producing the same sequence.
+        """
+        return None
+
+    def _render(self, children: list[str]) -> str | None:
+        """How this type spells itself, given its children's spellings.
+
+        `None` means "spell me with `str()`": a leaf, or a type whose own
+        `__str__` does not descend into its children.
+        """
+        return None
+
+    def _usable_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
+        """Everything `usable_as` asks that is not a child comparison.
+
+        Same contract as `_equal_shallow`, and the same trap: a type whose
+        `usable_as` would recurse has to override this, or the default sends the
+        frames straight back.
+        """
+        return () if self.usable_as(other) else None
+
     def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
         """Everything this type's equality asks that is not a child comparison.
 
-        `None` means unequal; otherwise the child pairs still to compare. The
-        default is a leaf's answer -- `equal` decides it outright and has no
-        children to descend into. A type whose `equal` would recurse has to
-        override this instead, or it puts the frames back.
+        `None` means unequal; otherwise the child pairs still to compare.
         """
-        return () if self.equal(other) else None
+        if not isinstance(other, CtyType):
+            return None
+        mine = self._structure()
+        if mine is None:
+            # A leaf decides outright, and cannot recurse doing it.
+            return () if self.equal(other) else None
+        theirs = other._structure()
+        if theirs is None:
+            return None
+        token, children = mine
+        other_token, other_children = theirs
+        if token != other_token or len(children) != len(other_children):
+            return None
+        return tuple(zip(children, other_children, strict=True))
 
     def is_primitive_type(self) -> bool:
         return False
