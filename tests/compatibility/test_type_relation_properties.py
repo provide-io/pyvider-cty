@@ -36,7 +36,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import find, given, settings, strategies as st
+from hypothesis.errors import NoSuchExample
 import pytest
 
 from pyvider.cty import (
@@ -190,46 +191,66 @@ class TestThePopulationReachesWhatItIsFor:
     Narrowing a strategy until it stops finding anything is the easy way to make
     a differential suite pass, so what the population has to contain is asserted
     rather than assumed.
+
+    Asked with `find`, not by sampling `example()`. `example()` fills a pool once
+    per strategy object and then draws from it, heavily shrunk -- so a census
+    built that way measures the pool rather than the strategy, and this guard
+    failed on CI while passing locally for exactly that reason. It is the second
+    time `example()` has produced a false failure in this suite; `find` searches
+    for a witness instead, and says so when there is none.
     """
 
-    def _draws(self, count: int = 200) -> list[list[CtyType[Any]]]:
-        import warnings
-
-        from hypothesis.errors import NonInteractiveExampleWarning
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", NonInteractiveExampleWarning)
-            strategy = st.lists(types(), min_size=2, max_size=4)
-            return [strategy.example() for _ in range(count)]
+    def _witness(self, strategy: Any, predicate: Any, description: str) -> None:
+        try:
+            find(strategy, predicate)
+        except NoSuchExample:  # pragma: no cover - only on a broken generator
+            pytest.fail(f"the generator no longer produces {description}")
 
     def test_the_shape_every_known_divergence_needed_is_drawn(self) -> None:
         """`dynamic` + a list or set + a tuple, together in one call.
 
         Every one of the seventeen needed all three; with any two the answers
-        already agreed. If this stops being drawn, the property above is still
-        green and no longer guarding anything.
+        already agreed. If this stops being drawn, the properties above are
+        still green and no longer guarding anything.
         """
-        draws = self._draws()
-        reached = sum(
-            1
-            for candidates in draws
-            if any(_contains(one, CtyDynamic) for one in candidates)
-            and any(_contains(one, CtyList | CtySet) for one in candidates)
-            and any(_contains(one, CtyTuple) for one in candidates)
+        self._witness(
+            st.lists(types(), min_size=2, max_size=4),
+            lambda candidates: (
+                any(_contains(one, CtyDynamic) for one in candidates)
+                and any(_contains(one, CtyList | CtySet) for one in candidates)
+                and any(_contains(one, CtyTuple) for one in candidates)
+            ),
+            "a dynamic, a sequence and a tuple in one call",
         )
 
-        assert reached > 0, "no draw carried dynamic + a sequence + a tuple"
+    def test_an_empty_tuple_is_drawn(self) -> None:
+        """Where the hand-written sweep's divergences turned out to be
+        concentrated, and what its first version lacked."""
+        self._witness(
+            types(),
+            lambda drawn: isinstance(drawn, CtyTuple) and not drawn.element_types,
+            "an empty tuple",
+        )
 
-    def test_the_empty_shapes_are_drawn(self) -> None:
-        """An empty tuple and an attributeless object, both of which the first
-        version of the hand-written sweep lacked and which is where its
-        divergences turned out to be concentrated."""
-        flattened = [one for candidates in self._draws() for one in candidates]
+    def test_an_object_with_an_optional_attribute_is_drawn(self) -> None:
+        """The shape that found the divergence this module was written for."""
+        self._witness(
+            types(),
+            lambda drawn: isinstance(drawn, CtyObject) and bool(drawn.optional_attributes),
+            "an object with an optional attribute",
+        )
 
-        assert any(isinstance(one, CtyTuple) and not one.element_types for one in flattened) or any(
-            _contains(one, CtyTuple) for one in flattened
-        ), "no tuple at all"
-        assert any(_contains(one, CtyObject) for one in flattened), "no object at all"
+    def test_nesting_is_drawn(self) -> None:
+        """A flat population cannot reach the case where the *element*
+        unification is what differs."""
+        self._witness(
+            types(),
+            lambda drawn: (
+                isinstance(drawn, CtyList | CtySet)
+                and isinstance(drawn.element_type, CtyList | CtySet | CtyTuple | CtyObject)
+            ),
+            "a container inside a container",
+        )
 
 
 # 🌊🪢🔚

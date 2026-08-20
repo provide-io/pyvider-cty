@@ -422,6 +422,17 @@ these fifteen are what it found. Every one is a behavior change.
 
 ### Fixed
 
+- `jsondecode` refuses an object key that is not already NFC-normalized, as
+  go-cty does. go-cty decodes twice -- `ImpliedType` builds the object type from
+  the keys as written and `Unmarshal` looks each attribute up by a normalized
+  name -- so for a key the two passes spell differently it reports `unsupported
+  attribute`. This package normalized both sides before looking an attribute up
+  and decoded those documents happily, which means building state Terraform
+  refuses. The rule is exactly NFC, measured across the keys that separate the
+  normal forms: an NFD `e`+combining-acute, U+2126 OHM SIGN and U+F900 are
+  refused; a precomposed `e`-acute, the U+FB01 `fi` ligature (which only NFKC
+  touches) and plain ASCII are not. String *values* are normalized to NFC by
+  both implementations, which is why only keys diverged.
 - `unify` no longer answers with a type carrying optional attributes.
   Optionality describes a type used as a *constraint* -- "you need not supply
   this" -- and `unify` answers with a type for values, so go-cty strips it

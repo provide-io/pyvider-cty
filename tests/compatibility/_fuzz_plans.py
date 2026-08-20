@@ -168,22 +168,33 @@ def _format_call(draw: Any) -> list[CtyValue[Any]]:
     return [S.validate(literal + verb), *values]
 
 
+# Each format string with the number of arguments it consumes, because
+# `formatlist` is generated with its arity *matched*. Supplying more arguments
+# than the verbs use is a recorded divergence rather than a shape worth
+# generating: go-cty raises "too many arguments" from inside an iteration whose
+# arguments are unknown, and this package answers an unknown for that iteration
+# and never reaches the check. Found 2026-08-20 by this suite; see
+# `docs/reference/go-cty-comparison.md`. Narrowing here rather than accepting
+# silently, so the rest of `formatlist` -- broadcasting, length mismatch, the
+# unknown and null element paths -- stays generated.
+_FORMATLIST_VERBS = st.sampled_from([("%s", 1), ("%v", 1), ("%q", 1), ("%d-%s", 2)])
+
+
 @st.composite
 def _formatlist_call(draw: Any) -> list[CtyValue[Any]]:
     """The same, with the arguments lifted into lists of differing lengths."""
-    verb = draw(st.sampled_from(["%s", "%d-%s", "%v", "%q"]))
-    lists = draw(
-        st.lists(
+    verb, arity = draw(_FORMATLIST_VERBS)
+    arguments = [
+        draw(
             st.one_of(
                 v.lists(S, max_size=3),
                 v.lists(N, max_size=3),
                 v.scalars(),
-            ),
-            min_size=1,
-            max_size=2,
+            )
         )
-    )
-    return [S.validate(verb), *lists]
+        for _ in range(arity)
+    ]
+    return [S.validate(verb), *arguments]
 
 
 # cty's own format vocabulary. Deliberately no digits: a digit run is how Go's
