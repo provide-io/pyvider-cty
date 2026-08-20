@@ -85,10 +85,21 @@ def _examples(default: int) -> int:
 
 
 EXAMPLES = _examples(20)
-# Draws per function in the coverage guard below. Six is enough for a plan
-# that reaches its function at all, and cheap: one harness call per draw, and
-# the loop stops at the first answer.
-COVERAGE_DRAWS = 6
+# Draws per function in the coverage guard below, and the loop stops at the
+# first answer, so a healthy plan costs one harness call.
+#
+# Forty rather than six, and each from a **fresh** strategy. `example()` fills a
+# pool once per strategy object and then samples it, so repeated draws from the
+# module-level plan objects are correlated -- which is how `concat` failed this
+# guard once on a plan that answers most of the time. A fresh strategy per draw
+# makes them independent.
+#
+# The count is high because it is nearly free: the loop stops at the first
+# answer, so a healthy plan costs one harness call and only a genuinely broken
+# one pays for all forty. Measured across all 83 plans, the least likely to
+# answer is `tobool` at three draws in ten, which puts a false failure at
+# 0.7**40 -- about one run in a million.
+COVERAGE_DRAWS = 40
 
 
 def _spec(value: CtyValue[Any]) -> dict[str, Any]:
@@ -180,6 +191,18 @@ def test_a_generated_call_is_answered_the_same_way(func: str, data: st.DataObjec
     _compare(func, data.draw(arguments_for(func), label="arguments"))
 
 
+def _fresh(strategy: Any) -> Any:
+    """A distinct strategy object drawing from the same plan.
+
+    `example()` fills a pool once **per strategy object** and then samples it,
+    and the plans are module-level, so twelve draws from one of them are twelve
+    samples of one pool rather than twelve independent draws. Mapping through
+    the identity is the cheapest way to get a new object with exactly the same
+    distribution, and it is what makes the count below mean what it says.
+    """
+    return strategy.map(lambda drawn: drawn)
+
+
 @pytest.mark.filterwarnings("ignore::hypothesis.errors.NonInteractiveExampleWarning")
 def test_every_plan_reaches_the_function_it_plans_for() -> None:
     """Coverage, measured rather than assumed.
@@ -200,8 +223,10 @@ def test_every_plan_reaches_the_function_it_plans_for() -> None:
     """
     silent = []
     for func in FUNCTIONS:
-        strategy = arguments_for(func)
-        if not any(_theirs(func, strategy.example())[0] != "error" for _ in range(COVERAGE_DRAWS)):
+        answered = any(
+            _theirs(func, _fresh(arguments_for(func)).example())[0] != "error" for _ in range(COVERAGE_DRAWS)
+        )
+        if not answered:
             silent.append(func)
 
     assert not silent, f"these plans never produced a call go-cty would answer: {silent}"

@@ -471,13 +471,14 @@ def _slice_call(draw: Any) -> list[CtyValue[Any]]:
     """A sequence with indices drawn from its own length, in and out of range."""
     sequence = draw(st.one_of(v.lists(), v.tuples()))
     size = len(sequence.value)
-    start = draw(st.integers(min_value=-1, max_value=size + 1))
-    # Half the draws keep the pair in order and in range, so that the function
-    # is reached at all; the other half are free to be backwards or past the
-    # end, which is where the two implementations could refuse differently.
+    # Half the draws are a pair go-cty accepts -- 0 <= start <= end <= len -- so
+    # that the function is actually reached; the other half are free to be
+    # backwards or past the end, which is where a refusal could differ.
     if draw(st.booleans()):
-        end = draw(st.integers(min_value=min(start, size), max_value=size))
+        start = draw(st.integers(min_value=0, max_value=size))
+        end = draw(st.integers(min_value=start, max_value=size))
     else:
+        start = draw(st.integers(min_value=-1, max_value=size + 1))
         end = draw(st.integers(min_value=-1, max_value=size + 1))
     return [sequence, N.validate(Decimal(start)), N.validate(Decimal(end))]
 
@@ -491,12 +492,15 @@ def _bytes_slice_call(draw: Any) -> list[CtyValue[Any]]:
     the coverage guard is for.
     """
     buffer = draw(v.byte_buffers)
-    bound = len(buffer) + 1
-    return [
-        BytesCapsule.validate(buffer),
-        N.validate(draw(st.integers(min_value=-1, max_value=bound))),
-        N.validate(draw(st.integers(min_value=-1, max_value=bound))),
-    ]
+    size = len(buffer)
+    # Same split as `_slice_call`, for the same reason.
+    if draw(st.booleans()):
+        start = draw(st.integers(min_value=0, max_value=size))
+        end = draw(st.integers(min_value=start, max_value=size))
+    else:
+        start = draw(st.integers(min_value=-1, max_value=size + 1))
+        end = draw(st.integers(min_value=-1, max_value=size + 1))
+    return [BytesCapsule.validate(buffer), N.validate(Decimal(start)), N.validate(Decimal(end))]
 
 
 @st.composite
@@ -513,10 +517,13 @@ def _index_call(draw: Any) -> list[CtyValue[Any]]:
     collection = draw(st.one_of(v.lists(), v.maps(), v.tuples()))
     if isinstance(collection.value, dict):
         names = list(collection.value)
-        chosen = draw(st.sampled_from(names)) if names and draw(st.booleans()) else draw(v.strings)
+        chosen = draw(st.sampled_from(names)) if names else draw(v.strings)
         return [collection, S.validate(chosen)]
     size = len(collection.value)
-    position = draw(st.integers(min_value=-1, max_value=max(size, 1)))
+    if size and draw(st.booleans()):
+        position = draw(st.integers(min_value=0, max_value=size - 1))
+    else:
+        position = draw(st.integers(min_value=-1, max_value=max(size, 1)))
     return [collection, N.validate(Decimal(position))]
 
 
@@ -565,7 +572,9 @@ PLANS: dict[str, Args] = {
     "log": _args(LOG_NUMBERS.map(N.validate), LOG_BASES.map(N.validate)),
     "range": _variadic(RANGE_NUMBERS.map(N.validate), max_size=3),
     # collections
-    "length": _args(st.one_of(v.collections(), v.scalars(S))),
+    # go-cty's `length` takes "a list, a map or a tuple" and refuses a string
+    # and an object alike, so those draws never reach the function.
+    "length": _args(st.one_of(v.lists(), v.maps(), v.tuples(), v.sets())),
     # Lists and tuples: go-cty refuses to read an element from a set outright,
     # "because its elements do not have indices".
     "element": _args(st.one_of(v.lists(), v.tuples()), v.indices.map(N.validate)),
@@ -591,7 +600,8 @@ PLANS: dict[str, Args] = {
     "coalescelist": _variadic(st.one_of(v.lists(), v.tuples()), max_size=3),
     "coalesce": _coalesce_call(),
     "compact": _args(v.lists(S)),
-    "concat": _variadic(v.sequences(), max_size=3),
+    # Lists and tuples: "all arguments must be lists or tuples; got set of string".
+    "concat": _variadic(st.one_of(v.lists(), v.tuples()), max_size=3),
     "reverselist": _args(st.one_of(v.lists(), v.tuples())),
     "setproduct": _variadic(v.sets(max_size=3), max_size=3),
     # Lists and tuples only: go-cty refuses to slice a set outright, "because
@@ -619,10 +629,11 @@ PLANS: dict[str, Args] = {
     # numeric spellings -- and the near-misses Go's `big.ParseFloat` refuses --
     # are drawn on purpose. Same for the boolean spellings.
     "tonumber": _args(
-        st.one_of(v.scalars(N), NUMERIC_TEXT.map(S.validate), v.any_value()),
+        st.one_of(v.scalars(N), v.scalars(N), NUMERIC_TEXT.map(S.validate), v.any_value()),
     ),
     "tobool": _args(
         st.one_of(
+            st.booleans().map(v.B.validate),
             st.booleans().map(v.B.validate),
             st.sampled_from(["true", "false", "1", "0", "yes", ""]).map(S.validate),
             v.any_value(),
