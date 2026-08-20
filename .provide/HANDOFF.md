@@ -1,148 +1,145 @@
-# Handoff — 2026-08-19 (stdlib fuzz)
+# Handoff — 2026-08-20 (security review, CI red, and the named follow-ups)
 
-Branch `main`. Working tree clean at the point this was written.
+Branch `main`, clean at `e59104b`. Everything below is landed and pushed.
 
 ## What was asked
 
-**"do stdlib fuzzing"** — the last surface no generated input had ever reached.
-Named at the end of the previous session and picked up verbatim: the 83 stdlib
-functions were compared only against 444 hand-written argument rows, an average
-of five each, with 31 functions holding two or fewer and `log` holding one.
+A `/security-review` of the 0.5.0 branch, then — in the user's order — the
+recursion bug it led to, the `/tmp` cleanup, the four items the previous
+handoff named as future work, and an explanation of the `CtyObject`
+required-attribute question. One item is deliberately not done and needs a
+decision; it is the last section.
 
-## What was built
+## The security review
 
-Three modules, `tests/compatibility/`:
+One candidate, investigated and then filtered out as a security finding while
+still being a real defect: `convert()` into a `CtyCapsuleWithOps` declaring
+`convert_to_fn` dropped the source's marks. It was the only one of sixteen
+returns in that function that did — `convert_to_fn` hands back a raw Python
+object, so `@preserves_marks` had nothing to copy from.
 
-| file | what it is |
-|---|---|
-| `_fuzz_values.py` | the value pool, and the region it stays inside |
-| `_fuzz_plans.py` | one generated argument list per function |
-| `test_stdlib_fuzz.py` | the driver, plus two guards |
+Not exploitable — no attacker-controlled trigger, no non-test callers, capsules
+are not wire-schema-representable — but the consequence was real and measured:
+`cty_to_msgpack` emitted `b'\xc4\x07hunter2'` for a value it had been refusing.
+Fixed in `897c95b`, and the invariant is now held by a parametrized sweep over
+fifteen source/target shapes reaching every return in `convert()`, rather than
+by the comment three branches above it that had not been enough.
 
-`SIGNATURES` is what makes it cheap. Every function declares its parameters,
-its variadic one and its null/unknown/dynamic policy, so for a little over half
-the surface the argument list is **derived from the signature**. The rest
-declare a `dynamic` parameter — which in go-cty means "this function decides for
-itself" — and get a shaped plan: `flatten` wants a sequence of sequences,
-`zipmap` wants two lists whose lengths matter, `index` wants a *key* and not an
-element (go-cty's `index` is the indexing operation, not Terraform's search).
-A plan fixes the shape and never the values.
+## CI had been red on every run, for two unrelated reasons
 
-Running at 120 examples per function is ~10,000 generated calls in two minutes.
-The committed default is 20; `PYVIDER_COMPAT_EXAMPLES=120 make compat` widens
-every function at once.
+Worth stating plainly: the local gate was green throughout and nobody had looked
+at Actions.
 
-## What it found: sixteen divergences, all fixed
+**One was ours and is fixed.** `CtyTuple.equal` and `CtyObject.equal` recursed
+at two frames a level, and `equal` is on the *construction* path, so a 400-deep
+tuple could not be built. It raised on Python 3.11 and passed on 3.13 — 800
+frames against a limit of 1000 — and `requires-python` is 3.11.
 
-CHANGELOG breaking changes 46–61. Grouped by what was actually wrong:
+The collection types had met this and half-fixed it, flattening the linear chain
+of same-kind containers and recording that branching shapes were "bounded by the
+schema's own breadth". A single-element tuple nested 400 deep is not. All five
+container types now go through `base.equal_iteratively`, an explicit-stack walk,
+with each type answering `_equal_shallow` for the part of its equality that is
+not a child comparison.
 
-* **Arithmetic ran at the `Decimal` default of 28 significant digits.**
-  `add(2**100, 1)` answered `1267650600228229401496703205000` — four digits
-  invented and one dropped, in a value that goes to Terraform state. Seven
-  functions; they compute at go-cty's own 155 now (`floor(512·log₁₀2)+1`, the
-  widest a 512-bit `big.Float` spells), which agrees where go-cty is exact and
-  rounds where it rounds. `modulo` additionally raised `DivisionImpossible` out
-  of the implementation — a *panic*-class error — where go-cty answers.
-* **Set ordering was structural where go-cty's is byte-wise.** `setRules.Less`
-  compares a string, number or bool by value and **every other element type** by
-  the bytes of `makeSetHashBytes`. So `setproduct` writes the tuple `[12]`
-  before `[1]`, and a longer string can precede one it starts with. New module
-  `pyvider.cty.values.set_order` implements the byte comparison — Go's `%q` and
-  `big.Float.String()` included — and all six ordering sites use it.
-  **Membership follows from the same place**: cty finds an element by hash
-  bucket, so `toset([0, -0])` is two elements there and was one here.
-* **Six rules for the sign of a zero**, none of which a `Decimal` gives by
-  default: `negate(0)` is `-0`; `int(-0.5)`, `ceil(-0.0)`, `floor(0.5)` and a
-  zero remainder are `+0`; a zero *dividend* in `modulo` takes its sign from the
-  divisor.
-* **Two regex classes.** RE2's `\d`, `\s`, `\w`, `\b` are ASCII and Python's are
-  Unicode; and Go's `FindAll` drops an empty match sitting where the previous
-  match ended, which `finditer` keeps. Both contradicted the parity document's
-  claim that "every pattern valid in both engines behaves identically".
-* **Four output surfaces**: `%v`/`%g` rounded at 28 digits, `%q` and `%#v` did
-  not apply Go's HTML escaping, `csvdecode` had no strict mode, `jsonencode`
-  refused a `Bytes` capsule go-cty base64s.
-* **Three smaller**: `timeadd` truncated a duration's magnitude before its sign,
-  `range(0,0,0)` was refused where go-cty answers `[]`, `tonumber(" 1")` was
-  accepted because `Decimal` strips whitespace, and an object attribute named
-  `""` could not be validated at all.
+`tests/types/test_type_equality_is_iterative.py` does not depend on the
+interpreter: it lowers the recursion limit to just above the stack the test is
+standing on, so a recursive implementation fails everywhere.
 
-## Two upstream quirks, found and handled differently
+**The other is in `tofusoup` and is the open decision.** See the last section.
 
-* **`range`'s zero-step guard never fires.** It compares two structs holding
-  different `*big.Float` pointers. **Matched**, because the loop's own answer is
-  the observable one.
-* **`cty.Value.Equals` on maps is nondeterministic.** It walks Go's randomised
-  map iteration order and returns early on either a missing key (false) or an
-  undecided element (unknown), whichever it reaches first — eight calls to the
-  harness gave five and three. **Not matched**; nothing can match a coin flip.
-  The generator stays out of that shape and says so.
+## The four named follow-ups
 
-## Three comparison-channel faults, in the test suite itself
+**Generated coverage at the traversal surfaces.** `walk`, `transform`,
+`unknown_as_null` and `mark_paths` were the last four held by tables alone.
+`test_traversal_properties.py` drives all of them from `_strategies.cases()`.
 
-The fuzz found these before it found any library bug, and all three were
-*inventing* divergences:
+No library divergence — the traversals were right — but the run found a
+comparison-channel fault, the fourth here and the reason it is worth recording:
+`test_walk_oracle`'s `upper` rewrite used `str.upper()`, and Python applies full
+case mapping where Go maps one code point at a time, so the `fi` ligature
+expanded to `FI` here and stayed put there. The library's own `upper` had always
+used `simple_upper`; only the test's stand-in was wrong, and no hand-written
+table contains a ligature.
 
-* go's answer was read from JSON and ours from msgpack, so `abs(2**63)` reported
-  as an integer against text while the two write byte-identical msgpack. The
-  fuzz compares values now, and says why in its docstring; the byte question is
-  `test_differential_properties`'s, which asks it of both sides.
-* `json.loads` without `parse_int=Decimal` turned JSON `-0` into the int `0`,
-  hiding every signed-zero divergence. Fixing that is what made four of them
-  visible.
-* `splitlines()` splits on U+0085, which Go does not escape, so a result string
-  containing one arrived as unterminated JSON and read as a broken harness.
+Two normalisations were needed to ask both sides the same question: a `dynamic`
+position is unwrapped, and a result type is compared as `ImpliedType()` spells
+it. Both are written down where they are made.
 
-## The state it is in
+**Paired arguments in the stdlib fuzz.** Measured first: `setintersection`
+answered non-empty in 12% of 400 draws, `setsubtract` 16%, `equal` True in 11%.
+Sets now come from a shared pool half the time, `equal` pairs a value with a
+rebuilt copy, `merge` collides keys, `distinct` draws from a small pool.
+Re-measured at 25%, 25%, 45%. Clean at 200 examples per function.
 
-| gate | result |
-|---|---|
-| `ruff check` / `ruff format --check` | clean, 351 files |
-| `mypy src/` | clean, 82 files |
-| `bandit -ll -r src/` | exit 0 |
-| `pytest tests/` | **3018 passed** |
-| `make compat` | **3682 passed, 26 xfailed, 0 XPASS** |
-| `check_docs.py` | 51 documents, 281 blocks, 249 ok / 32 skip |
-| `render_diagrams.py --check` | 8 up to date |
-| `examples/run_all_examples.py` | 11/11 |
+**The `timeadd` residual is closed.** The instant is a whole-second `datetime`
+plus an integer nanosecond remainder, the shift is an integer nanosecond count,
+and nothing rounds. Verified against the oracle on the cases that used to
+differ.
 
-The 26 xfails are the 13 accepted divergences across two populations, unchanged
-— none of the fixes here disturbed the ledger, and none was added to hide
-anything.
+**The examples went from 11 files / 723 lines to 17 / 1491.** The gap was in the
+middle: nothing covered unknowns and refinements, nothing covered conversion or
+unification, and one file demonstrated one stdlib function out of 83. The runner
+discovers files now instead of carrying a hand-maintained list.
 
-## Documents updated
+## The `CtyObject` question, answered
 
-`CHANGELOG.md` (45 → 61 breaking changes), `docs/reference/release-notes.md`,
-`docs/reference/go-cty-comparison.md` (three claims the fuzz falsified: the set
-hashing rule, "every pattern valid in both engines behaves identically", and the
-28-digit computation limit), `.provide/GO-CTY-PARITY.md` (a section of its own),
-and both architecture diagrams that describe set ordering
-(`05-wire-codecs.puml`) and the differential suite (`08-differential-testing.puml`,
-which had `373 rows` and no generated population).
+A *missing* required attribute is still rejected (`object.py:118`). What is
+deliberately not rejected is a **present-but-null** non-optional attribute, and
+`object.py:137-152` gives the reason: go-cty has no nullability in object types,
+and everything crossing the provider protocol is marshalled with
+`ImpliedType()`, which strips optional attributes recursively — so nulls arrive
+for unset attributes constantly and restoring the check would reject state
+go-cty itself writes. The "four of five validation paths" from the review is
+about **pyvider**, not this package. Correct as written; the enforcement gap to
+chase is next door.
+
+## The one open decision, which is cross-repo
+
+The `compat` CI job cannot build the harness:
+
+```
+main.go:9:2: github.com/hashicorp/go-plugin@v1.7.0:
+  replacement directory /Users/tim/code/gh/hashicorp/go-plugin does not exist
+```
+
+tofusoup `main` carries a `replace` pointing at a laptop. The local
+`feat/tfplugin-driver` branch has already dropped it — its only `replace` is the
+relative `../../proto/kv`.
+
+Underneath that is a bigger mismatch. `cty_call.go`, `cty_ops.go`, `cty_rich.go`
+and `cty_unify.go` — 2,645 lines, the entire surface this suite calls — exist
+**only on the feature branch**. Local `make compat` (3,691 passed) measures
+against `feat/tfplugin-driver`; CI checks out a `main` from 2026-04-23 that has
+none of it.
+
+So the workflow's unpinned `provide-io/tofusoup` checkout is a symptom, not the
+cause, and pinning a SHA now would pin the wrong oracle. The order has to be:
+land the harness work on tofusoup `main` (or drop the `replace` there), then pin
+the checkout in `.github/workflows/ci.yml:54`. Both are Tim's calls.
+
+## Smaller things done on the way
+
+* The harness binary moved out of `/tmp`. `_oracle.py` used to *execute*
+  `/tmp/soup-go` as a last resort — no file created, so the sticky bit does not
+  help — and anyone on a shared machine could have planted one. Both it and
+  `run_compat.py` use `.compat/soup-go` now, gitignored.
+* `_traversal.py` holds the vocabulary two oracle modules had each copied; the
+  copies had already drifted on whether a map key's number was normalised.
+* `_oracle.examples()` replaces three copies of the example-budget helper.
+* The stale worktree at `provide-workspace/repos/pyvider-cty` was confirmed
+  merged and clean, and removed, along with the merged `feat/go-cty-parity`
+  branch.
 
 ## For the next session
 
-**The examples are thin, and always were.** Eleven files, 517 lines, covering
-types, marks, paths, serialization and Terraform interop. `advanced/functions.py`
-demonstrated exactly one stdlib function out of 83 and carried a stale note
-saying arithmetic was unsupported; it now shows the registry and predicts a
-return type, but the gap is real: examples are a getting-started surface here,
-not a coverage surface. Expanding them is worth doing on its own terms and was
-not in this session's ask.
-
-**Where the fuzz could go next**, in order of what it would likely find:
-
-1. **The `cty` package surfaces**, the way the stdlib just was. `convert`,
-   `unify` and `conformance` have generated coverage; `walk`, `transform`,
-   `mark_paths` and `unknown_as_null` are still table-only.
-2. **Two arguments at once.** Every plan draws its arguments independently
-   except where coherence was needed. Drawing a *pair* of related values —
-   the same collection at two types, a value and its own refinement — reaches
-   shapes neither side of a single draw can.
-3. **The residual in `timeadd`**: a timestamp with sub-microsecond digits is
-   still truncated, because the instant is a `datetime`. Closing it means an
-   integer nanosecond count, which is the same change the recorded calendar-range
-   divergence would need.
-
-The release is still cross-repo and still Tim's: `pyvider` releases at or before
-`pyvider-cty`, and CI checks out `tofusoup`'s default branch.
+1. **The cross-repo blocker above.** Nothing else in CI moves until it does.
+2. **The 0.5.0 release**, once CI is green. VERSION already reads `0.5.0` and the
+   CHANGELOG is closed out. Still cross-repo: `pyvider` releases at or before
+   `pyvider-cty`.
+3. **Four more recursive surfaces**, same class as the one fixed here, measured
+   at depth 400 on 3.11 and still failing: `CtyType.__eq__` (attrs-generated, so
+   it does not route through `equal`), `usable_as`, `__str__`/`__repr__`, and
+   `CtyValue.__eq__`. None is on the construction path, so none is failing CI —
+   but `usable_as` and value equality are hot, and a deeply nested value can
+   still raise from them.
