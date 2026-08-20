@@ -16,6 +16,7 @@ from pyvider.cty.marks import _strip, collect_marks_deep
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.set_order import identity_key as set_identity_key, order_key as set_order_key
 
 T = TypeVar("T")
 
@@ -119,7 +120,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
                 if validated_item.is_unknown:
                     undecided.append(validated_item)
                 else:
-                    unique_items[validated_item._canonical_sort_key()] = validated_item
+                    unique_items[set_identity_key(validated_item)] = validated_item
             except CtyValidationError as e:
                 raise CtySetValidationError(e.message, value=raw_item) from e
             except Exception as e:
@@ -136,9 +137,7 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
         # null 2, so this reproduces go-cty's observed iteration order exactly:
         # known elements sorted by value, then the unknowns in the order they
         # were supplied, then nulls last.
-        elements = sorted(
-            (*unique_items.values(), *undecided), key=lambda element: element._canonical_sort_key()
-        )
+        elements = sorted((*unique_items.values(), *undecided), key=set_order_key)
         result: CtyValue[tuple[T, ...]] = CtyValue(vtype=self, value=tuple(elements))
         return result.with_marks(element_marks) if element_marks else result
 

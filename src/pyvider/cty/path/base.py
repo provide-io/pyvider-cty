@@ -38,12 +38,22 @@ class PathStep(ABC):
 
 @define(frozen=True)
 class GetAttrStep(PathStep):
-    name: str = field()
+    """A step into an object attribute by name.
 
-    @name.validator
-    def _validate_name(self, attribute: str, value: str) -> None:
-        if not value:
-            raise ValueError("Attribute name cannot be empty")
+    Any name at all, including the empty one. go-cty puts no constraint on an
+    attribute name -- `cty.Object(map[string]cty.Type{"": cty.String})` is an
+    ordinary object type, and `merge` produces one from a map with an empty key,
+    which HCL can write as `merge({"" = "x"}, {})`.
+
+    This used to refuse an empty name, and the refusal was not confined to
+    paths: `CtyObject.validate` builds a `GetAttrStep` for every attribute it
+    checks, so *no* value of such an object type could be validated. It escaped
+    as a `ValueError` from inside a function implementation, which the framework
+    reports as `CtyFunctionPanicError` -- a panic where go-cty answers. Found
+    2026-08-19 by the stdlib fuzz, through `merge`.
+    """
+
+    name: str = field()
 
     def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:

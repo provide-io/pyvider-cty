@@ -59,6 +59,7 @@ from pyvider.cty.values.markers import (
     RefinedUnknownValue,
     UnknownValue,
 )
+from pyvider.cty.values.set_order import order_key as set_order_key
 
 
 def _decode_number_value(val: Any) -> Decimal:
@@ -257,11 +258,7 @@ def _serialize_collection_value(
     """Serialize a CtyList or CtySet value."""
     if not hasattr(inner_val, "__iter__"):
         raise TypeError(ERR_VALUE_FOR_LIST_SET)
-    items = (
-        sorted(list(inner_val), key=lambda v: v._canonical_sort_key())
-        if isinstance(schema, CtySet)
-        else inner_val
-    )
+    items = sorted(list(inner_val), key=set_order_key) if isinstance(schema, CtySet) else inner_val
     return [
         _convert_value_to_serializable(item, schema.element_type, f"{path}[{i}]")
         for i, item in enumerate(items)

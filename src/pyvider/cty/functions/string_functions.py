@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 import re
 from typing import Any, cast
 
@@ -362,9 +362,31 @@ def trimsuffix(input_val: CtyValue[Any], suffix_val: CtyValue[Any]) -> CtyValue[
     return CtyString().validate(cast(str, input_val.value).removesuffix(cast(str, suffix_val.value)))
 
 
+# An inline flag group that turns on case-insensitivity: `(?i)`, `(?is)`,
+# `(?i:...)` and so on.
+_CASE_INSENSITIVE = re.compile(r"\(\?[a-zA-Z]*i")
+
+
 def _compile_pattern(func: str, pattern: str) -> re.Pattern[str]:
+    """Compile with RE2's reading of the Perl character classes.
+
+    RE2 defines `\\d`, `\\s`, `\\w` and `\b` over **ASCII** -- `\\w` is
+    `[0-9A-Za-z_]` and nothing else -- while Python's are Unicode-aware by
+    default. So `regexall("\\w", "\u00b2")` was one match here and none in
+    go-cty: the same pattern, the same subject, two answers. Found 2026-08-19 by
+    the stdlib fuzz, and it contradicts the note in the parity document that
+    said every pattern valid in both engines behaves identically.
+
+    `re.ASCII` ties those classes to ASCII, which is exactly RE2's rule -- and
+    it also narrows *case folding* to ASCII, which is not: RE2 folds `(?i)` over
+    all of Unicode. The two cannot both be had from one flag, so the flag is
+    withheld from a pattern that asks for case-insensitivity, where folding is
+    the behaviour under test and the classes are unlikely to be. What is left is
+    the intersection nobody can reach without writing both in one pattern.
+    """
+    flags = 0 if _CASE_INSENSITIVE.search(pattern) else re.ASCII
     try:
-        return re.compile(pattern)
+        return re.compile(pattern, flags)
     except re.error as e:
         raise CtyFunctionError(ERR_REGEX_INVALID_PATTERN.format(func=func, error=e)) from e
 
@@ -510,8 +532,30 @@ def regexall(
     """
     element_type = cast(CtyList[Any], return_type).element_type
     compiled = _compile_pattern("regexall", cast(str, pattern_val.value))
-    matches = [_capture_result(match, element_type) for match in compiled.finditer(cast(str, input_val.value))]
+    matches = [
+        _capture_result(match, element_type) for match in _go_matches(compiled, cast(str, input_val.value))
+    ]
     return return_type.validate(matches)
+
+
+def _go_matches(compiled: re.Pattern[str], text: str) -> Iterator[re.Match[str]]:
+    """Every match Go's `FindAll` yields, which is not every match Python's does.
+
+    Go drops an empty match that sits exactly where the previous match ended
+    (`regexp.allMatches`), and Python's `finditer` keeps it: `regexall("a*a*",
+    "a")` is `["a"]` there and was `["a", ""]` here -- one extra element in a
+    list a caller indexes into. An empty match anywhere else is kept on both
+    sides, so `regexall("b*", "a")` is two empty strings either way.
+
+    Found 2026-08-19 by the stdlib fuzz, generating patterns rather than
+    choosing them.
+    """
+    previous_end = -1
+    for match in compiled.finditer(text):
+        empty_after_a_match = match.start() == match.end() and match.start() == previous_end
+        previous_end = match.end()
+        if not empty_after_a_match:
+            yield match
 
 
 @stdlib_function(
@@ -791,10 +835,11 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
     subject = cast(str, string.value)
 
     if "$" not in template and "\\" not in template:
-        # Inert in both dialects -- Go expands only `$`, Python only `\`. Handing
-        # it straight to `sub` keeps the whole replacement at C speed, which is
-        # the common "replace with a fixed string" case.
-        return CtyString().validate(compiled.sub(template, subject))
+        # Inert in both dialects -- Go expands only `$`, Python only `\`. Still
+        # replaced through `_go_replace` rather than `sub`, because the two
+        # engines disagree about *which* matches there are, not about how to
+        # expand them.
+        return CtyString().validate(_go_replace(compiled, subject, lambda _match: template))
 
     # A per-match Python callback, which costs about 2.7x `re.sub` on a
     # 40k-match subject. The faster shape is to rewrite the Go template into
@@ -805,7 +850,28 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
     # That is a lot of new surface on the function that just shipped a silent
     # wrong answer, to save 8 ms on an input size no provider produces.
     segments = _parse_go_template(template)
-    return CtyString().validate(compiled.sub(lambda match: _expand_go_template(match, segments), subject))
+    return CtyString().validate(
+        _go_replace(compiled, subject, lambda match: _expand_go_template(match, segments))
+    )
+
+
+def _go_replace(compiled: re.Pattern[str], text: str, expand: Callable[[re.Match[str]], str]) -> str:
+    """`re.sub` over the matches Go would have found.
+
+    `sub` finds its own, and Python keeps an empty match that sits exactly where
+    the previous match ended where Go drops it: `regexreplace(" ", " *", "Z")`
+    is `"Z"` in go-cty and was `"ZZ"` here -- a replacement applied twice at the
+    same position. Same rule as `_go_matches`, which `regexall` needed for the
+    same reason. Found 2026-08-19 by the stdlib fuzz.
+    """
+    out: list[str] = []
+    cursor = 0
+    for match in _go_matches(compiled, text):
+        out.append(text[cursor : match.start()])
+        out.append(expand(match))
+        cursor = match.end()
+    out.append(text[cursor:])
+    return "".join(out)
 
 
 # 🌊🪢🔚

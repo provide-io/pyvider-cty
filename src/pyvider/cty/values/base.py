@@ -159,37 +159,35 @@ class CtyValue(Generic[T]):
         return cty_to_native(self)  # type: ignore
 
     def _canonical_sort_key(self) -> tuple[Any, ...]:
-        """The order go-cty puts a set's elements in, which reaches the wire.
+        """This library's notion of value identity. `__hash__` and `__eq__` rest on it.
 
-        **Running out of elements ranks last, not first.** A plain tuple
-        comparison makes a prefix sort *before* its extension, which is the
-        opposite of go-cty: it writes `[["a","c"],["a"]]` where a shorter-first
-        rule writes `[["a"],["a","c"]]`, and an empty element goes last there
-        and first here. The `_EXHAUSTED` terminator below is what inverts it --
-        every variable-length key ends with a member that outranks any real one,
-        so comparison reaches it only when one side has run out. Measured
-        2026-08-19 against the harness over 300 generated sets: every divergence
-        was a pair where one element was a prefix of another, and none survive.
+        **Not the wire order any more.** It was, until 2026-08-19, and it was an
+        approximation: go-cty orders a set of composite elements by the *bytes*
+        of `makeSetHashBytes`, which is a different comparison from a structural
+        one -- see `pyvider.cty.values.set_order`, which does it exactly and is
+        what every encoder now sorts by. What is left here is identity, which
+        the hash cannot serve because it renders a number at ten significant
+        digits and would merge two elements go-cty keeps apart.
 
-        Elements of a mapping key carry `_PRESENT` for the same reason -- a
-        terminator has to be comparable with them, and a bare sentinel against a
-        `(name, ...)` pair compares an int with a str and raises.
+        **Running out of elements ranks last, not first**, which is the
+        structural echo of that byte comparison and is still the right shape for
+        a key: `_EXHAUSTED` below outranks any real member, so a comparison
+        reaches it only when one side has run out. Elements of a mapping key
+        carry `_PRESENT` for a related reason -- a terminator has to be
+        comparable with them, and a bare sentinel against a `(name, ...)` pair
+        compares an int with a str and raises.
 
-        go-cty's `setRules.Less` (`cty/set_internals.go:99-110`) ranks known
-        values first, then unknown, then null -- in that order, and it checks
-        nullness *before* knownness, so an unknown sorts ahead of a null. These
-        three ranks were previously the exact inverse, which is not a
-        preference: a set holding a null re-encoded with the null first where
-        go-cty writes it last. Both decode to the same value, so only a byte
-        comparison catches it -- and Terraform compares serialized state, so it
-        was a diff that reappeared on every plan.
+        Ranks known 0, unknown 1, null 2, which is `setRules.Less`'s order
+        (`cty/set_internals.go:99-110`): it checks nullness *before* knownness,
+        so an unknown sorts ahead of a null. These three were previously the
+        exact inverse, and a set holding a null re-encoded with the null first
+        where go-cty writes it last.
 
-        Doubles as this library's *only* notion of value identity, as of
-        2026-08-17. `CtySet.validate` de-duplicates with it and `__hash__` now
-        hashes it, which is what makes a set of containers work at all -- the
-        two used to disagree, and only one of them worked. It is the analogue of
-        go-cty's `makeSetHashBytes` (`cty/set_internals.go:144-278`), which
-        likewise serializes a whole value and is likewise mark-blind.
+        `CtySet.validate` no longer de-duplicates with this alone. It uses
+        `set_order.identity_key`, which carries the hash bucket too, because
+        go-cty finds a set element by bucket before it compares anything -- so
+        `0` and `-0` are two elements there and were one here. `__hash__` stays
+        with this key, and must, since `__eq__` calls those two values equal.
 
         Total, and never raising: a member that is not a `CtyValue` is keyed by
         its repr and a mapping is ordered by `str(key)`. Only a hand-built value

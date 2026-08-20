@@ -19,6 +19,7 @@ from pyvider.cty.conversion import convert, unify
 from pyvider.cty.exceptions import CtyConversionError, CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.functions._function import CtyParameter, TypeFunc, refine_not_null
+from pyvider.cty.values.set_order import identity_key as set_identity_key
 
 # go-cty's `cty.Set(cty.DynamicPseudoType)`, the declared type of every set
 # parameter in `set.go`. Built once: a parameter's type is read on every call.
@@ -244,7 +245,15 @@ def sethaselement(collection: CtyValue[Any], element: CtyValue[Any]) -> CtyValue
     if not element_type.equal(element.type):
         return cast(CtyValue[Any], CtyBool().validate(False))
 
-    if element in cast(Iterable[CtyValue[Any]], collection.value or ()):
+    # Membership is cty's, not Python's: `Set.Has` finds the hash bucket first
+    # and only compares inside it, so an element that hashes differently is not
+    # in the set however it compares. `sethaselement(toset([0]), -0)` is false in
+    # go-cty and was true here, for the same reason `toset([0, -0])` had one
+    # element instead of two.
+    wanted = set_identity_key(element)
+    if any(
+        set_identity_key(member) == wanted for member in cast(Iterable[CtyValue[Any]], collection.value or ())
+    ):
         # A hit cannot be un-hit by whatever any unknown element turns out to be.
         return cast(CtyValue[Any], CtyBool().validate(True))
     if not collection.is_wholly_known():

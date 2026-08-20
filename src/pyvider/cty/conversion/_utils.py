@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any
 
 from pyvider.cty.config.defaults import (
@@ -16,6 +16,28 @@ from pyvider.cty.config.defaults import (
 
 # pyvider-cty/src/pyvider/cty/conversion/_utils.py
 """Internal conversion utilities to avoid circular dependencies."""
+
+
+def exact_normalize(number: Decimal) -> Decimal:
+    """`Decimal.normalize()` without the ambient context deciding how much to keep.
+
+    `normalize` strips trailing zeros, and it honours the active context while
+    doing it -- whose default precision is 28 -- so it silently rounds anything
+    wider. Every renderer that reaches for it has to widen the context to the
+    number's own digit count first, which can never be too few: stripping zeros
+    needs no more digits than it was given.
+
+    Three renderers did not, and all three under-reported the same value:
+    `format("%v", 10**28 + 1)` came back `1e+28` where go-cty writes
+    `1.0000000000000000000000000001e+28`, and `%g` and `%#v` with it. The string
+    conversion had the same bug and was fixed on 2026-08-19; this is that fix
+    made shared, after the stdlib fuzz found the copies that had not had it.
+    """
+    if not number.is_finite():
+        return number
+    with localcontext() as ctx:
+        ctx.prec = max(len(number.as_tuple().digits), 1)
+        return number.normalize()
 
 
 def non_finite_text(number: Any) -> str | None:

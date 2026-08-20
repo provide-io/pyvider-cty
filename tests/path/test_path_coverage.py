@@ -35,8 +35,13 @@ def test_path_step_is_abstract() -> None:
 
 
 def test_getattrstep_empty_name() -> None:
-    with pytest.raises(ValueError):
-        GetAttrStep("")
+    """An empty attribute name is a name. go-cty puts no constraint on one, and
+    refusing it here meant no value of `object({"": string})` could be
+    validated at all -- `CtyObject.validate` builds a step per attribute -- so
+    `merge({"" = "x"}, {})` raised where go-cty answers."""
+    step = GetAttrStep("")
+
+    assert step.name == ""
 
 
 def test_getattr_on_non_object() -> None:

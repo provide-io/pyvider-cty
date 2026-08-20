@@ -28,6 +28,7 @@ Two things JSON cannot carry, both of which raise rather than degrade:
 
 from __future__ import annotations
 
+import base64
 from decimal import Decimal
 import json
 from typing import Any, cast
@@ -36,6 +37,7 @@ import unicodedata
 from pyvider.cty.conversion.explicit import _number_to_string
 from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.types import (
+    BytesCapsule,
     CtyBool,
     CtyDynamic,
     CtyList,
@@ -49,6 +51,7 @@ from pyvider.cty.types import (
 )
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.frozen import FrozenDict
+from pyvider.cty.values.set_order import order_key as set_order_key
 
 __all__ = ["cty_from_json", "cty_to_json", "implied_json_type"]
 
@@ -175,9 +178,19 @@ def _marshal_by_type(value: CtyValue[Any], cty_type: CtyType[Any], path: str) ->
     if isinstance(cty_type, CtyObject):
         return _marshal_object(value, cty_type, path)
 
-    # Capsules land here. go-cty refuses them too: a capsule wraps a native
-    # object with no JSON spelling, and inventing one would produce a document
-    # that cannot be read back.
+    if cty_type.equal(BytesCapsule):
+        # go-cty does *not* refuse a capsule: `cty/json/marshal.go:165` hands the
+        # encapsulated Go value to `encoding/json`, and for the `[]byte` behind
+        # `stdlib.Bytes` that is a base64 string. So `jsonencode(bytes)` is
+        # `"aGk="` there, and was an error here until 2026-08-19, when the stdlib
+        # fuzz drew a capsule argument for it.
+        return _marshal_string(base64.b64encode(cast(bytes, value.value)).decode())
+
+    # Any other capsule. go-cty would marshal whatever native value it wraps,
+    # which is a spelling only that language has -- there is no capsule type
+    # both implementations define, so there is nothing to agree with, and
+    # inventing a JSON form for an arbitrary Python payload would produce a
+    # document nothing can read back.
     raise CtyJsonError(f"{path or 'value'}: cannot serialize {cty_type.ctype} as JSON")
 
 
@@ -262,7 +275,7 @@ def _marshal_object(value: CtyValue[Any], cty_type: CtyObject, path: str) -> str
 def _ordered(value: CtyValue[Any], elements: Any) -> list[CtyValue[Any]]:
     """Set elements in the order the msgpack codec uses, so the two agree."""
     if isinstance(value.type, CtySet):
-        return sorted(elements, key=lambda element: element._canonical_sort_key())
+        return sorted(elements, key=set_order_key)
     return list(elements)
 
 

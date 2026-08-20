@@ -23,7 +23,7 @@ This release includes the results of a comprehensive adversarial parity review t
 
 ### Breaking Changes
 
-This release contains **45 breaking changes**. Read this list before
+This release contains **61 breaking changes**. Read this list before
 upgrading.
 
 #### Marks and value mutability
@@ -280,6 +280,70 @@ upgrading.
    The cap applies only to a product that would actually be materialized: an
    argument of unknown length still answers an unknown, which is the shape
    Terraform sends at plan time. See `.provide/GO-CTY-PARITY.md`.
+
+#### Found by generated arguments (2026-08-19)
+
+The 83 stdlib functions had only ever been compared against 444 hand-written
+argument rows -- an average of five each, with 31 functions holding two or
+fewer. `tests/compatibility/test_stdlib_fuzz.py` generates arguments from each
+function's declared signature and compares the answers against the live oracle;
+these fifteen are what it found. Every one is a behavior change.
+
+46. **Arithmetic computes at go-cty's width.** `add`, `subtract`, `multiply`,
+   `divide`, `modulo`, `abs` and `negate` used the ambient `Decimal` context of
+   28 significant digits, so `add(2**100, 1)` answered
+   `1267650600228229401496703205000` -- four digits invented and one dropped.
+   They compute at 155 digits now, which is what a 512-bit `big.Float` spells.
+47. **`modulo` answers where it raised.** A quotient too wide for the context
+   raised `DivisionImpossible` out of the implementation, which the framework
+   reports as `CtyFunctionPanicError`; go-cty answers.
+48. **Set element order follows go-cty's hash bytes.** A set whose elements are
+   not primitives is ordered by `makeSetHashBytes`, not by comparing the values:
+   `setproduct` writes the tuple `[12]` before `[1]`, and a longer string before
+   a shorter one it starts with when the next character is below `"`. Element
+   order reaches the wire, so this changes bytes for any `set(list)`,
+   `set(tuple)`, `set(map)`, `set(object)` or `set(set)`.
+49. **`toset([0, -0])` has two elements.** Set membership is by hash bucket in
+   cty, and a negative zero hashes differently from a positive one. The same
+   rule makes `sethaselement(toset([0]), -0)` false, as it is in go-cty.
+50. **`length` and `flatten` see unknowns at any depth.** A set's length is
+   undecided while it holds an unknown *anywhere*, not only as a direct element;
+   `flatten` now answers an unknown of dynamic type when a set it would flatten
+   has no known length, rather than a tuple whose length go-cty does not claim.
+51. **`regexall` and `regexreplace` drop an empty match** that sits where the
+   previous match ended, as Go's `FindAll` does. `regexall("a*a*", "a")` was
+   `["a", ""]` and is `["a"]`; `regexreplace(" ", " *", "Z")` was `"ZZ"`.
+52. **`\d`, `\s`, `\w` and `\b` are ASCII**, as they are in RE2. Patterns
+   compile with `re.ASCII` unless the pattern asks for case-insensitivity,
+   where RE2 folds over all of Unicode and the flag would narrow that too.
+53. **`csvdecode` refuses what Go's reader refuses**: an unterminated quoted
+   field, a quoted field followed by other text, a bare quote in a plain field,
+   and a document with no header row at all (`"\n"` was an empty table).
+54. **`timeadd` shifts by a negative nanosecond correctly.** The duration's
+   magnitude was truncated before its sign was applied, so
+   `timeadd("0002-01-01T00:00:00Z", "-1ns")` came back unchanged where go-cty
+   answers `0001-12-31T23:59:59Z`.
+55. **`jsonencode` encodes a `Bytes` capsule** as base64, which is what
+   go-cty's JSON codec does with the encapsulated `[]byte`; it used to raise.
+56. **`range(0, 0, 0)` is an empty list.** go-cty's zero-step guard never fires
+   -- it compares two structs holding different `*big.Float` pointers -- so the
+   loop decides: an empty range returns `[]` and a non-empty one reaches the
+   1024-value cap. This package refused both.
+57. **`%v` and `%g` keep every digit.** Both rounded a number at 28 significant
+   digits, so `format("%v", 10**28 + 1)` was `1e+28` against go-cty's
+   `1.0000000000000000000000000001e+28`.
+58. **`%q` escapes `<`, `>` and `&`.** go-cty's `%q` is `ctyjson.Marshal`, and
+   Go's `encoding/json` escapes those by default.
+59. **The sign of a zero follows go-cty in five functions.** `negate(0)` is
+   `-0`; `int(-0.5)`, `ceil(-0.0)` and `floor(0.5)` are `+0`; `modulo`'s zero
+   remainder is `+0`, and a zero *dividend* takes a sign from the divisor.
+60. **`tonumber` refuses surrounding whitespace.** `Decimal(" 1")` is 1 and
+   Go's `big.ParseFloat` grammar has no room for a space, so `tonumber(" 1")`
+   is an error, as it is in go-cty.
+61. **An object attribute may be named `""`.** `CtyObject.validate` builds a
+   path step per attribute and the step refused an empty name, so no value of
+   such a type could be validated -- `merge({"" = "x"}, {})` raised where
+   go-cty answers.
 
 ### Added
 

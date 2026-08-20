@@ -10,7 +10,7 @@ rectangle "**a CtyValue, and the CtyType to write it against**\nBoth codecs are 
 
   rectangle "**cty_to_msgpack(value, schema)**" as MP_ENC <<plumbing>>
   rectangle "deep mark check, once, up front\ncollect_marks_deep -> **CtyMarksSerializationError**   //[a]//" as MP_MARKS <<capsule>>
-  rectangle "**_convert_value_to_serializable(value, schema, path)**\nshallow mark check at every level, for the path\n**dynamic -> an envelope, first** //[e]// · unknown -> a marker · null -> None\nobject / map -> dict, keys sorted\nlist -> array · **set -> sorted by _canonical_sort_key**\ntuple -> array, positionally · Decimal -> //[b]//" as MP_CONV <<plumbing>>
+  rectangle "**_convert_value_to_serializable(value, schema, path)**\nshallow mark check at every level, for the path\n**dynamic -> an envelope, first** //[e]// · unknown -> a marker · null -> None\nobject / map -> dict, keys sorted\nlist -> array · **set -> sorted by set_order.order_key** //[l]//\ntuple -> array, positionally · Decimal -> //[b]//" as MP_CONV <<plumbing>>
   rectangle "**msgpack.packb(..., use_bin_type=True)**" as MP_PACK <<plumbing>>
 
   rectangle "**cty_from_msgpack(data, cty_type)**\nempty input -> a null of cty_type" as MP_DEC <<plumbing>>
@@ -23,7 +23,7 @@ rectangle "**a CtyValue, and the CtyType to write it against**\nBoth codecs are 
   rectangle "**_ext_hook(code, data)**\n**0** -> UNREFINED_UNKNOWN\n**12** -> _decode_refined_unknown_payload(data)\n**any other code** -> UNREFINED_UNKNOWN, per protocol" as EXTHOOK <<dynamic>>
 
   rectangle "**cty_to_json(value, cty_type)**\ndeep mark check, then convert() if not conformant   //[f]//" as JS_ENC <<plumbing>>
-  rectangle "**_marshal(value, cty_type, path)**\n**an unknown is an error here, not a null**   //[g]//\nstrings: ensure_ascii=False + Go's HTML escapes   //[h]//\nnumbers: infinity refused; plain decimal only\nsets: the **same** canonical order msgpack uses\nobjects: attributes sorted, only those present\ncapsules: refused — no JSON spelling exists\ndynamic: an object of value + type" as JS_MAR <<plumbing>>
+  rectangle "**_marshal(value, cty_type, path)**\n**an unknown is an error here, not a null**   //[g]//\nstrings: ensure_ascii=False + Go's HTML escapes   //[h]//\nnumbers: infinity refused; plain decimal only\nsets: the **same** hash-byte order msgpack uses //[l]//\nobjects: attributes sorted, only those present\ncapsules: a Bytes buffer as base64, any other refused\ndynamic: an object of value + type" as JS_MAR <<plumbing>>
 
   rectangle "**cty_from_json(payload, cty_type)**\nparse_float / parse_int = **_RawNumber**   //[i]//" as JS_DEC <<plumbing>>
   rectangle "**_unmarshal(raw, cty_type, path)**\nprimitives coerce through go-cty's small explicit table   //[j]//\nobject: an undeclared attribute is an **error**,\nan omitted one becomes **null**\ndynamic: an object carrying both value and type" as JS_UNM <<plumbing>>
@@ -66,6 +66,10 @@ legend bottom
   | **[i]** | A Decimal that remembers the digits it was written with. Unmarshalling a JSON number into a string yields\n//the token//, so 1.50 stays "1.50" and 1e2 stays "1e2" — neither is recoverable from the parsed number. |
   | **[j]** | string accepts a string, a number's literal text, or a bool; number accepts a number or a string holding\none; bool accepts a bool or a string holding one. Every other combination is refused. Refusing the lot\ninstead rejects state and plan JSON that go-cty reads without complaint. |
   | **[k]** | JSON gives no guarantee that an array's elements share a type, and a list would have to invent one. |
+  | **[l]** | go-cty orders a set of //primitive// elements by value and every other element type by the bytes of
+makeSetHashBytes, which is a different comparison — a set of tuples writes [12] before [1]. That order
+reaches the wire, so both codecs use it. Identity stays with _canonical_sort_key, since the hash renders a
+number at ten significant digits. |
 endlegend
 
 @enduml
