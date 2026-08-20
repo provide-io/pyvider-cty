@@ -53,6 +53,7 @@ from pyvider.cty import (
 from pyvider.cty.conversion import encode_cty_type_to_wire_json
 from pyvider.cty.types import BytesCapsule
 from pyvider.cty.values.markers import RefinedUnknownValue
+from pyvider.cty.values.set_order import order_key as set_order_key
 
 __all__ = ["canonical", "dynamic_arg", "refinements", "rich", "run", "soup_go", "type_spec"]
 
@@ -259,8 +260,11 @@ def _rich_known(value: CtyValue[Any]) -> Any:
         case CtySet():
             # Sorted the way the codec sorts, because that order is the answer:
             # a set's element order reaches the wire and go-cty's iteration
-            # order is what the harness reports back.
-            elements = sorted(value.value, key=lambda element: element._canonical_sort_key())
+            # order is what the harness reports back. `set_order_key`, which is
+            # what the codec uses -- spelling a set here with the *identity* key
+            # instead reported `setproduct` as diverging after the ordering rule
+            # was fixed, because this file had not been fixed with it.
+            elements = sorted(value.value, key=set_order_key)
             return [rich(element) for element in elements]
         case CtyMap() | CtyObject():
             return {name: rich(element) for name, element in value.value.items()}
@@ -373,6 +377,13 @@ def canonical(payload: Any) -> Any:
             return payload
         case {"$number": str() as text}:
             return number(text)
+        case {"$null": True}:
+            # `rich` spells a null member with a sentinel and `ctyjson.Marshal`
+            # writes a bare `null`, which are the same value written two ways --
+            # and comparing the two spellings reported a divergence in
+            # `jsondecode`, `reverselist` and `setunion` on the stdlib fuzz's
+            # first run, in all three cases over an answer both sides agreed on.
+            return None
         case dict():
             return {key: canonical(item) for key, item in payload.items()}
         case list():

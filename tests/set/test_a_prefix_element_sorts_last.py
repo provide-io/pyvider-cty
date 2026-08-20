@@ -24,8 +24,16 @@ the harness: 232 of 300 generated sets diverged, and **every one of them
 contained a pair where one element was a prefix of another.** Nothing else about
 set ordering disagreed.
 
-`_EXHAUSTED` in `CtyValue._canonical_sort_key` is what inverts it. The
-differential cases live in `tests/compatibility/`; these run without a Go
+**Superseded as an explanation on 2026-08-19, and kept as a guard.** The rule
+here is a structural echo of something exact: go-cty orders a set of composite
+elements by the *bytes* of `makeSetHashBytes`, and "running out sorts last" is
+what that byte comparison looks like when every character in play outranks a
+quote -- which was true of the alphabet these 300 sets were drawn from and is
+not true in general. `tests/set/test_a_composite_element_sorts_by_its_hash_bytes.py`
+states the real rule, `pyvider.cty.values.set_order` implements it, and every
+case below still holds under it.
+
+The differential cases live in `tests/compatibility/`; these run without a Go
 toolchain and state the rule directly.
 """
 
@@ -106,11 +114,11 @@ class TestTheRuleDidNotDisturbWhatWorked:
         assert elements(LISTS.validate([["b"], ["a"], ["c"]])) == [["a"], ["b"], ["c"]]
 
     def test_identity_is_unchanged(self) -> None:
-        """The terminator reorders; it must not make two equal sets unequal.
+        """The ordering rule reorders; it must not make two equal sets unequal.
 
-        `_canonical_sort_key` is this package's only notion of value identity --
-        de-duplication and `__hash__` both read it -- so a change to its layout
-        has to leave equality and hashing exactly where they were.
+        `_canonical_sort_key` is what `__hash__` and `__eq__` rest on, so a
+        change to how a set is *ordered* has to leave equality and hashing
+        exactly where they were.
         """
         one, two = LISTS.validate([["a"], ["a", "c"]]), LISTS.validate([["a", "c"], ["a"]])
 

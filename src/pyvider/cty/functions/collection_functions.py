@@ -82,7 +82,6 @@ from pyvider.cty.config.defaults import (
     ERR_RANGE_ARG_COUNT,
     ERR_RANGE_END_MUST_BE_GREATER,
     ERR_RANGE_END_MUST_BE_LESS,
-    ERR_RANGE_STEP_MUST_NOT_BE_ZERO,
     ERR_RANGE_TOO_MANY_VALUES,
     ERR_SETPRODUCT_ARG_MUST_BE_COLLECTION,
     ERR_SETPRODUCT_REQUIRES_TWO,
@@ -98,6 +97,7 @@ from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.refinement import refine
 from pyvider.cty.values.markers import RefinedUnknownValue
+from pyvider.cty.values.set_order import order_key as set_order_key
 
 # go-cty's thresholds for how far it is worth bounding a set product's length
 # (`collection.go:1036`). Named because both numbers are arbitrary in go-cty too
@@ -139,7 +139,7 @@ def _sequence_elements(seq: CtyValue[Any]) -> list[CtyValue[Any]]:
     de-duplicate it, rather than whatever the frozenset happens to iterate in.
     """
     if isinstance(seq.value, frozenset):
-        return sorted(seq.value, key=lambda element: element._canonical_sort_key())
+        return sorted(seq.value, key=set_order_key)
     return list(cast("tuple[CtyValue[Any], ...]", seq.value))
 
 
@@ -217,6 +217,8 @@ def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
     Iterative rather than recursive because the nesting it walks is the value's
     own, which can be as deep as validation allows.
     """
+    if not _flattenable_length_is_known(seq):
+        return [], False
     out: list[CtyValue[Any]] = []
     known = True
     stack: list[list[CtyValue[Any]]] = [_sequence_elements(seq)[::-1]]
@@ -230,9 +232,23 @@ def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
             known = False
         elif element.is_null or not isinstance(element.type, CtyList | CtySet | CtyTuple):
             out.append(element)
+        elif not _flattenable_length_is_known(element):
+            # go-cty's `flattener` opens with `if !flattenList.Length().IsKnown()`
+            # and gives up on the whole result there (`collection.go:549`), so a
+            # set holding an unknown makes `flatten` answer an unknown of dynamic
+            # type rather than a tuple. This descended into it and produced a
+            # tuple whose length go-cty does not claim to know.
+            known = False
         else:
             stack.append(_sequence_elements(element)[::-1])
     return out, known
+
+
+def _flattenable_length_is_known(seq: CtyValue[Any]) -> bool:
+    """Whether `flatten` can predict how many elements a sequence contributes."""
+    if not isinstance(seq.type, CtySet):
+        return True
+    return _set_length_is_known(seq, len(cast("Sized", seq.value)))
 
 
 def _flatten_return_type(args: Args) -> CtyType[Any]:
@@ -387,6 +403,22 @@ def _unknown_length(collection: CtyValue[Any]) -> CtyValue[Any]:
     )
 
 
+def _set_length_is_known(collection: CtyValue[Any], stored: int) -> bool:
+    """When a set knows how many elements it has. go-cty's `Value.Length()`.
+
+    Two conditions, and go-cty checks them in this order (`value_ops.go:1126`):
+    a store of one element knows its length whatever that element is, because
+    there is nothing for it to coalesce with; otherwise the set has to be
+    **wholly** known.
+
+    Wholly, which is the half that was wrong here until 2026-08-19: this asked
+    whether any element `is_unknown`, which is one level deep, so a set of lists
+    holding an unknown *inside* a list counted itself as known and answered a
+    length go-cty leaves undecided. Found by the stdlib fuzz.
+    """
+    return stored < _AMBIGUOUS_SET_SIZE or collection.is_wholly_known()
+
+
 def _set_length(collection: CtyValue[Any], stored: int) -> CtyValue[Any]:
     """A set's length is undecided while it holds an unknown element.
 
@@ -404,8 +436,7 @@ def _set_length(collection: CtyValue[Any], stored: int) -> CtyValue[Any]:
     their elements -- before that this returned unknown for the whole set, which
     was vaguer but never wrong.
     """
-    elements = cast("tuple[CtyValue[Any], ...]", collection.value)
-    if stored < _AMBIGUOUS_SET_SIZE or not any(element.is_unknown for element in elements):
+    if _set_length_is_known(collection, stored):
         return CtyNumber().validate(stored)
     return refine(CtyValue.unknown(CtyNumber())).not_null().number_range_inclusive(1, stored).new_value()
 
@@ -1443,8 +1474,7 @@ def _setproduct_length_known(arg: CtyValue[Any]) -> bool:
     if arg.is_unknown:
         return False
     if isinstance(arg.type, CtySet):
-        elements = cast("tuple[CtyValue[Any], ...]", arg.value)
-        return len(elements) < _AMBIGUOUS_SET_SIZE or not any(element.is_unknown for element in elements)
+        return _set_length_is_known(arg, len(cast("Sized", arg.value)))
     return True
 
 
@@ -1686,14 +1716,15 @@ def _range_bounds(numbers: list[Decimal]) -> tuple[Decimal, Decimal, Decimal]:
 def range_fn(*args: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `RangeFunc` (`stdlib/sequence.go:141`). Named with a suffix to leave the builtin alone."""
     start, end, step = _range_bounds([cast("Decimal", arg.value) for arg in args])
-    if step == 0:
-        # go-cty checks this with `step == cty.Zero`, which compares two structs
-        # holding different big.Float pointers and so never fires: a zero step
-        # loops until the 1024 cap and reports that instead. Refused cleanly
-        # here, the same call this package already makes for `indent`'s negative
-        # count. Both implementations refuse; only the message differs.
-        raise CtyFunctionError(ERR_RANGE_STEP_MUST_NOT_BE_ZERO)
-
+    # No eager refusal of a zero step. go-cty has one and it never fires -- it
+    # tests `step == cty.Zero`, comparing two structs that hold different
+    # `*big.Float` pointers -- so a zero step there runs the loop, and the loop
+    # decides: `range(0, 0, 0)` is an *empty list*, because the first iteration
+    # already stops, and `range(0, 10, 0)` is the 1024-value cap error. This
+    # package refused both, which was right about the second and wrong about the
+    # first. Found 2026-08-19 by the stdlib fuzz; deleting the check is what
+    # matches, because the loop below already answers both cases the way go-cty
+    # answers them.
     descending = step < 0
     if descending and end > start:
         raise CtyFunctionError(ERR_RANGE_END_MUST_BE_LESS)

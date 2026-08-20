@@ -328,7 +328,6 @@ ERR_SET_OP_INCOMPATIBLE_ELEMENTS = "{func}: given sets must all have compatible 
 
 # range() error messages
 ERR_RANGE_ARG_COUNT = "range: must have one, two, or three arguments"
-ERR_RANGE_STEP_MUST_NOT_BE_ZERO = "range: step must not be zero"
 ERR_RANGE_END_MUST_BE_LESS = "range: end must be less than start when step is negative"
 ERR_RANGE_END_MUST_BE_GREATER = "range: end must be greater than start when step is positive"
 ERR_RANGE_TOO_MANY_VALUES = (
@@ -343,6 +342,8 @@ ERR_CSVDECODE_FAILED = "csvdecode: failed to decode CSV: {error}"
 ERR_CSVDECODE_MISSING_HEADER = "csvdecode: missing header line"
 ERR_CSVDECODE_DUPLICATE_COLUMN = 'csvdecode: duplicate column name "{name}"'
 ERR_CSVDECODE_WRONG_FIELD_COUNT = "csvdecode: CSV parse error on line {line}: wrong number of fields"
+ERR_CSVDECODE_BARE_QUOTE = 'csvdecode: CSV parse error on line {line}: bare " in non-quoted-field'
+ERR_CSVDECODE_QUOTE = 'csvdecode: CSV parse error on line {line}: extraneous or missing " in quoted-field'
 ERR_JSONDECODE_FAILED = "jsondecode: failed to decode JSON: {error}"
 ERR_JSONDECODE_INVALID_FIRST_CHARACTER = "a JSON document cannot begin with the character '{character}'"
 ERR_JSONENCODE_FAILED = "jsonencode: failed to encode value: {error}"

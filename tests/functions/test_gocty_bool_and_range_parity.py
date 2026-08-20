@@ -209,15 +209,22 @@ class TestRangeRejects:
             range_fn(N(1), N(2), N(3), N(4))
 
     def test_a_step_of_zero(self) -> None:
-        """go-cty's own guard for this never fires.
+        """go-cty's own guard for this never fires, and the loop decides instead.
 
         It tests `step == cty.Zero`, comparing two structs that hold different
-        big.Float pointers, so a zero step loops until the 1024 cap and reports
-        that instead. Refused cleanly here -- both implementations refuse, only
-        the message differs -- the same call already made for `indent`.
+        big.Float pointers, so a zero step reaches the loop. What the loop does
+        then depends on the range: a non-empty one runs to the 1024-value cap
+        and reports *that*, and an empty one stops on its first iteration and
+        returns an empty list.
+
+        This package used to refuse both with its own message, which was right
+        about the first and wrong about the second -- `range(0, 0, 0)` is `[]`
+        in go-cty. Found 2026-08-19 by the stdlib fuzz.
         """
-        with pytest.raises(CtyFunctionError, match="step must not be zero"):
+        with pytest.raises(CtyFunctionError, match="more than 1024 values"):
             range_fn(N(0), N(10), N(0))
+
+        assert range_fn(N(0), N(0), N(0)).value == ()
 
     def test_a_step_pointing_away_from_the_end(self) -> None:
         with pytest.raises(CtyFunctionError, match="end must be less than start"):

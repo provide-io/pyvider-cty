@@ -11,14 +11,16 @@ rectangle "**make compat**   ->   uv run python scripts/compat/run_compat.py" as
 
 rectangle "**run_compat.py**\n# **go build -o /tmp/soup-go-compat ./...** in the tofusoup checkout (SOUP_GO_SRC\noverrides where that is), on **every** run.\nA failed build exits 1 — it never falls back to the binary already sitting there\n# then: uv run pytest -q, no header, **--run-compat**, over tests/compatibility/,\nwith **SOUP_GO_BIN** pointing at what it has just built" as RUNNER <<plumbing>>
 
-rectangle "**tests/compatibility/ — 14 modules**\nevery one carries pytestmark = pytest.mark.compat, and conftest\nskips the marker unless --run-compat is passed" as SUITE <<core>>
+rectangle "**tests/compatibility/ — 15 modules**\nevery one carries pytestmark = pytest.mark.compat, and conftest\nskips the marker unless --run-compat is passed" as SUITE <<core>>
 
-rectangle "**the sweep — one shared argument table**\n**CASES** in test_stdlib_sweep.py: **373 rows over 83 functions**, each row\nholding the pyvider value and the harness JSON spec, written once.\nThe other two sweep modules **import** the table and the helpers\n(_case_id, _go_result, _our_result) rather than copying them, so\nevery population is exactly as broad as the sweep itself." as CASES <<collection>>
+rectangle "**the sweep — one shared argument table**\n**CASES** in test_stdlib_sweep.py: **444 rows over 83 functions**, each row\nholding the pyvider value and the harness JSON spec, written once.\nThe other two sweep modules **import** the table and the helpers\n(_case_id, _go_result, _our_result) rather than copying them, so\nevery population is exactly as broad as the sweep itself." as CASES <<collection>>
 
 rectangle "**known**\nthe table\nas written\n//stdlib_sweep//" as POP1 <<collection>>
 rectangle "**nulled**\neach position in\nturn replaced by a\nnull of its own type\n//stdlib_sweep//" as POP2 <<collection>>
 rectangle "**wholly unknown**\neach position in turn\nreplaced by an unknown\nof its own type\n//stdlib_unknown_sweep//" as POP3 <<collection>>
 rectangle "**marked**\neach position in turn\nwrapped in the\nsensitive mark\n//stdlib_marked_sweep//" as POP4 <<collection>>
+
+rectangle "**generated — no table at all**\n**test_stdlib_fuzz.py** builds an argument list per function from its declared\nSIGNATURES entry: derived from the signature where every parameter is concrete,\nfrom a shaped plan in _fuzz_plans where one is **dynamic** and the signature\ncannot say what to generate. Values come from _fuzz_values, drawn from the\nregion where the two number models agree by construction.\n----\n**Compares the value, not the bytes** — the harness answers through ctyjson\nwhile this package encodes msgpack, and the two codecs make different choices\nabout the same number. The byte question is asked by test_differential_properties.\n----\nNo known-divergence list: a generated case has no id to key one by, so an\naccepted divergence is excluded from **generation** and said so at the generator.\nA coverage guard samples every plan and fails if go-cty never answers it, so\nnarrowing a generator is not a way to make the suite pass." as FUZZ <<dynamic>>
 
 rectangle "**the per-surface oracle modules**\nconversion · msgpack · json_codec · conformance · equality · value_range\nwalk · mark_paths · unknown_as_null · stdlib · tofusoup_compat\n----\nEach drives one go-cty surface through its own subcommand and compares\nthe answers: kind, payload, refinements **and the deep mark union**." as SURFACES <<structural>>
 
@@ -33,6 +35,7 @@ rectangle "**real go-cty**\nexecuted, not remembered" as GOCTY <<external>>
 MAKE --> RUNNER
 RUNNER --> SUITE
 SUITE --> CASES
+SUITE --> FUZZ
 SUITE --> SURFACES
 CASES --> POP1
 CASES --> POP2
@@ -42,6 +45,7 @@ POP1 --> ORACLE
 POP2 --> ORACLE
 POP3 --> ORACLE
 POP4 --> ORACLE
+FUZZ --> ORACLE
 SURFACES --> ORACLE
 ORACLE --> HANDSHAKE
 HANDSHAKE --> SOUPGO

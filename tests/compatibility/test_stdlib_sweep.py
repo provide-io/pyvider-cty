@@ -35,7 +35,7 @@ import base64
 from decimal import Decimal
 import json
 import subprocess  # nosec
-from typing import Any
+from typing import Any, cast
 
 import msgpack
 import pytest
@@ -201,19 +201,27 @@ def _case_id(func: str, args: list[Arg]) -> str:
     return f"{func}({rendered})"
 
 
-def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any, list[str]]:
-    """go-cty's answer as (kind, payload, marks): ok / unknown / error.
+def reported(func: str, specs: list[dict[str, Any]]) -> dict[str, Any]:
+    """The harness's raw answer to one call.
 
-    Marks are the deep union, sorted -- the harness runs `UnmarkDeep` on the
-    result and reports what it collected, which is also how `Function.Call`
-    itself treats marks, so nothing positional is lost that go-cty would keep.
+    Split out from `_go_result` because two suites read the same answer for
+    different questions. This one compares what reaches the *wire*, so it reads
+    go's JSON against our msgpack; `test_stdlib_fuzz` compares the *value*, and
+    reading the same dict two ways is the alternative to a second copy of the
+    subprocess call that agrees with this one today and not tomorrow.
     """
     completed = subprocess.run(  # nosec
         [soup_go(), "cty", "call", func, *[json.dumps(spec) for spec in specs]],
         capture_output=True,
         check=False,
     )
-    for line in completed.stdout.decode().splitlines():
+    # `split`, not `splitlines`: Python splits on U+0085, U+2028 and U+2029 as
+    # well as on a newline, and Go's `json.Marshal` escapes none of the three.
+    # A result string holding one of them -- `trimprefix("\x85", "")` is the
+    # example the fuzz drew -- had its JSON cut in half here and arrived as an
+    # unterminated string, which reads as a broken harness rather than as the
+    # ordinary answer it was.
+    for line in completed.stdout.decode().split("\n"):
         if line.startswith("{"):
             # `parse_float=Decimal`, for the reason `_oracle.run` already does
             # it: a plain `json.loads` turns every non-integer go-cty answer
@@ -223,36 +231,51 @@ def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any, list[s
             # 0.1000000000000000055511151231257827 truncates to exactly the 0.1
             # this package would return. Integers were always safe, Python's
             # being arbitrary precision, which is why nothing noticed.
-            reported = json.loads(line, parse_float=Decimal)
-            marks = sorted(reported.get("marks") or [])
-            if not reported.get("ok"):
-                return "error", reported.get("error", ""), marks
-            if reported.get("unknown"):
-                # The type and the refinements come with it. Comparing "unknown"
-                # against "unknown" only established that both sides declined to
-                # answer, not that they declined knowing the same things -- and
-                # go-cty's refinements are load-bearing, so an answer refined to
-                # [1, 2] and a bare unknown are different answers that this
-                # sweep used to call identical. The type is here for the same
-                # reason: `flatten` deferring as list(string) and deferring as
-                # dynamic are different answers to a Terraform plan.
-                return "unknown", (reported.get("type"), reported.get("refine") or {}), marks
-            if reported.get("null"):
-                return "null", reported.get("type"), marks
-            if "msgpack" in reported:
-                # A result the JSON codec cannot express -- a container holding
-                # an unknown element. Compared as wire bytes, which is the
-                # stricter comparison anyway and the one Terraform makes.
-                return (
-                    "ok",
-                    (
-                        reported.get("type"),
-                        msgpack.unpackb(base64.b64decode(reported["msgpack"]), strict_map_key=False),
-                    ),
-                    marks,
-                )
-            return "ok", (reported.get("type"), reported.get("value")), marks
+            # `parse_int` as well, for the sign of a negative zero: JSON's `-0`
+            # has no fraction and no exponent, so `json.loads` reads it as the
+            # Python int 0 and the sign is gone before anything can compare it.
+            # `flatten`, `reverselist`, `merge` and `log` all reported a
+            # divergence over a `-0` the two sides agreed on.
+            return cast("dict[str, Any]", json.loads(line, parse_float=Decimal, parse_int=Decimal))
     raise AssertionError(f"{func}: harness produced no result: {completed.stderr.decode()[-400:]}")
+
+
+def _go_result(func: str, specs: list[dict[str, Any]]) -> tuple[str, Any, list[str]]:
+    """go-cty's answer as (kind, payload, marks): ok / unknown / error.
+
+    Marks are the deep union, sorted -- the harness runs `UnmarkDeep` on the
+    result and reports what it collected, which is also how `Function.Call`
+    itself treats marks, so nothing positional is lost that go-cty would keep.
+    """
+    answer = reported(func, specs)
+    marks = sorted(answer.get("marks") or [])
+    if not answer.get("ok"):
+        return "error", answer.get("error", ""), marks
+    if answer.get("unknown"):
+        # The type and the refinements come with it. Comparing "unknown"
+        # against "unknown" only established that both sides declined to
+        # answer, not that they declined knowing the same things -- and
+        # go-cty's refinements are load-bearing, so an answer refined to
+        # [1, 2] and a bare unknown are different answers that this
+        # sweep used to call identical. The type is here for the same
+        # reason: `flatten` deferring as list(string) and deferring as
+        # dynamic are different answers to a Terraform plan.
+        return "unknown", (answer.get("type"), answer.get("refine") or {}), marks
+    if answer.get("null"):
+        return "null", answer.get("type"), marks
+    if "msgpack" in answer:
+        # A result the JSON codec cannot express -- a container holding
+        # an unknown element. Compared as wire bytes, which is the
+        # stricter comparison anyway and the one Terraform makes.
+        return (
+            "ok",
+            (
+                answer.get("type"),
+                msgpack.unpackb(base64.b64decode(answer["msgpack"]), strict_map_key=False),
+            ),
+            marks,
+        )
+    return "ok", (answer.get("type"), answer.get("value")), marks
 
 
 def _our_result(func: str, values: list[CtyValue[Any]]) -> tuple[str, Any, list[str]]:

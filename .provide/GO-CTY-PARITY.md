@@ -6,7 +6,7 @@ Living document. Updated as work lands — do not let it drift.
 |---|---|
 | **go-cty baseline** | `v1.19.0-1-g0d1eb26` (`/Users/tim/code/tf/go-cty`) |
 | **pyvider-cty baseline** | `main @ fa0ba5e` |
-| **Last full review** | 2026-08-17 |
+| **Last full review** | 2026-08-19 (stdlib fuzz) |
 | **Next review trigger** | go-cty tags v1.19.1+, or any phase completing |
 
 ---
@@ -51,6 +51,57 @@ GB9c when the oracle is rebuilt on Go 1.27, since go-cty already carries the
 `go-textseg` v17 that agrees with us. Plus housekeeping: ~~143 unused `ERR_*`
 constants~~ (deleted 2026-08-16, `c16bd8d`, with a guard that has no allowlist),
 the pyvider fixture regeneration, and the docs parity matrix.
+
+---
+
+## The stdlib fuzz, 2026-08-19
+
+The 83 stdlib functions had never been driven by a generated argument. The
+sweep's 444 hand-written rows average five per function and 31 functions had
+two or fewer, so what they covered was what somebody had thought to write down.
+`tests/compatibility/test_stdlib_fuzz.py` generates arguments per function from
+its declared `SIGNATURES` entry -- derived from the signature where the
+parameters are concrete, from a shaped plan where a parameter is `dynamic` --
+and compares against the live oracle. **Sixteen divergences, all fixed**, listed
+as breaking changes 46-61 in the CHANGELOG. The largest classes:
+
+* **Arithmetic at 28 significant digits.** `add(2**100, 1)` answered
+  `...205000`. Seven functions; they compute at go-cty's own 155 now. `modulo`
+  additionally raised `DivisionImpossible` out of the implementation, which the
+  framework reports as a panic, where go-cty answers.
+* **Set ordering was structural where go-cty's is byte-wise.** A set of
+  non-primitive elements is ordered by `makeSetHashBytes`, so `[12]` sorts
+  before `[1]` and a longer string can precede one it starts with. The
+  "exhaustion sorts last" rule closed on 2026-08-19 was the same phenomenon
+  seen through an alphabet where the two agree; `pyvider.cty.values.set_order`
+  now implements the byte comparison itself. **Set membership** follows from the
+  same place: cty finds an element by hash bucket, so `toset([0, -0])` is two
+  elements there and was one here.
+* **Six spellings of a signed zero**, each with its own rule, none of which a
+  `Decimal` gives by default.
+* **Two regex classes**: RE2's `\d`/`\s`/`\w`/`\b` are ASCII, and Go drops an
+  empty match adjacent to the previous one. Both contradicted the parity
+  document's claim that "every pattern valid in both engines behaves
+  identically", which is corrected.
+
+**Two upstream quirks found and deliberately not matched.** `range`'s zero-step
+guard never fires -- it compares two structs holding different `*big.Float`
+pointers -- which is now matched, because the loop's own answer is the
+observable one. And `cty.Value.Equals` on two maps walks Go's *randomised* map
+iteration order and returns early on either a missing key or an undecided
+element, so comparing `{"": null, " ": 0}` with `{"a": 0, " ": unknown}` answers
+`true` or `unknown` depending on the run -- five and three across eight calls.
+Nothing can match a coin flip; the generator stays out of that shape and says
+so.
+
+**What the fuzz deliberately does not generate** is listed at each generator,
+with the recorded divergence it avoids: numbers outside the region both number
+models hold exactly, the GB9c conjunct, NaN, marks, non-integral `pow`/`log`
+answers, non-terminating `divide` quotients, Go reference layouts in
+`formatdate`, `sort` on anything but a list, capsule equality, and `Infinity`
+as a `tonumber` input. The guard against narrowing-as-a-fix is a coverage test
+that samples each plan and fails if go-cty never answers -- it caught eight
+plans that were testing nothing.
 
 ---
 

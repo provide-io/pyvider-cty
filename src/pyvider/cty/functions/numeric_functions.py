@@ -47,8 +47,17 @@ apart at `pow(10, 308)`.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, Decimal, DivisionByZero, InvalidOperation
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from decimal import (
+    ROUND_CEILING,
+    ROUND_DOWN,
+    ROUND_FLOOR,
+    Decimal,
+    DivisionByZero,
+    InvalidOperation,
+    localcontext,
+)
 import math
 import sys
 from typing import Any, cast
@@ -75,6 +84,52 @@ _MAX_FLOAT64 = Decimal(sys.float_info.max)
 _FLOAT64_RANGE_MESSAGE = (
     f"value must be between -{_MAX_FLOAT64:f}.000000 and {_MAX_FLOAT64:f}.000000 inclusive"
 )
+
+
+# go-cty computes in the 512-bit `big.Float` it holds every number in, so
+# `add(2**100, 1)` comes back with its last digit intact. A `Decimal` computes in
+# the ambient context instead, and this package took its default of 28
+# significant digits: the same call answered 1267650600228229401496703205000
+# here -- the last four digits invented, in a value that goes straight to
+# Terraform state. `divide`, `multiply`, `subtract`, `abs` and `negate` all did
+# it, and `modulo` did something worse, raising `DivisionImpossible` out of the
+# implementation where go-cty answered. Found 2026-08-19 by the stdlib fuzz, on
+# arguments no hand-written row had ever used.
+#
+# floor(512 * log10 2) + 1 = 155 is the widest a 512-bit float can spell, so
+# computing at that width agrees with go-cty wherever go-cty is exact *and*
+# rounds where it rounds: `add(1e200, 1)` is 1e200 on both sides, because the
+# exact answer needs 201 significant digits and neither model has them. Past
+# that width the two disagree in their last digits whatever precision is set --
+# go-cty rounds in binary and a Decimal rounds in decimal -- which is the
+# representation divergence recorded against `divide(1,3)` in the sweep.
+_GO_BIG_FLOAT_DIGITS = 155
+
+
+@contextmanager
+def _at_go_width(extra: int = 0) -> Iterator[None]:
+    """Compute at the width go-cty's `big.Float` computes at.
+
+    `extra` widens it for `modulo` alone, whose `Decimal` implementation needs
+    room for the *quotient* rather than for the answer: `a % b` raises
+    `DivisionImpossible` when the integer part of `a / b` does not fit the
+    context, and raising out of a function go-cty answers is worse than
+    disagreeing with it in a digit.
+    """
+    with localcontext() as ctx:
+        ctx.prec = _GO_BIG_FLOAT_DIGITS + max(extra, 0)
+        yield
+
+
+def _quotient_width(a: Decimal, b: Decimal) -> int:
+    """How much wider than the model `a % b` needs its context to be.
+
+    The integer part of `a / b` has `a.adjusted() - b.adjusted() + 1` digits at
+    most; one more for the rounding step. Zero when that already fits.
+    """
+    if not a.is_finite() or not b.is_finite() or b == 0:
+        return 0
+    return max(a.adjusted() - b.adjusted() + 2 - _GO_BIG_FLOAT_DIGITS, 0)
 
 
 def _numbers(*values: CtyValue[Any]) -> tuple[Decimal, ...]:
@@ -233,7 +288,11 @@ def abs_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     implementation must not forget the second half.
     """
     number, marks = input_val.unmark()
-    return CtyNumber().validate(abs(cast(Decimal, number.value))).with_marks(marks)
+    # `copy_abs`, which only clears the sign. `abs` is a context operation and
+    # rounds, which is the same fault the width of `_at_go_width` exists to
+    # avoid -- and it would round *before* anything could widen the context.
+    magnitude = cast(Decimal, number.value).copy_abs()
+    return CtyNumber().validate(magnitude).with_marks(marks)
 
 
 @stdlib_function(
@@ -250,7 +309,8 @@ def add(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `AddFunc` (`stdlib/number.go:30`)."""
     a_val, b_val = _numbers(a, b)
     try:
-        return CtyNumber().validate(a_val + b_val)
+        with _at_go_width():
+            return CtyNumber().validate(a_val + b_val)
     except InvalidOperation as exc:
         # go-cty recovers `big.ErrNaN` out of `big.Float.Add` here, for exactly
         # this case, and reports it in these words (`number.go:54`).
@@ -271,7 +331,8 @@ def subtract(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """go-cty's `SubtractFunc` (`stdlib/number.go:65`)."""
     a_val, b_val = _numbers(a, b)
     try:
-        return CtyNumber().validate(a_val - b_val)
+        with _at_go_width():
+            return CtyNumber().validate(a_val - b_val)
     except InvalidOperation as exc:
         raise CtyFunctionError("can't subtract infinity from itself") from exc
 
@@ -298,7 +359,8 @@ def multiply(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """
     a_val, b_val = _numbers(a, b)
     try:
-        return CtyNumber().validate(a_val * b_val)
+        with _at_go_width():
+            return CtyNumber().validate(a_val * b_val)
     except InvalidOperation as exc:
         raise CtyFunctionError("can't multiply zero by infinity") from exc
 
@@ -325,7 +387,8 @@ def divide(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """
     a_val, b_val = _numbers(a, b)
     try:
-        return CtyNumber().validate(a_val / b_val)
+        with _at_go_width():
+            return CtyNumber().validate(a_val / b_val)
     except DivisionByZero:
         signed = a_val.is_signed() != b_val.is_signed()
         return CtyNumber().validate(Decimal("-Infinity") if signed else Decimal("Infinity"))
@@ -360,12 +423,30 @@ def modulo(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     a_val, b_val = _numbers(a, b)
     if not a_val.is_finite() or not b_val.is_finite():
         try:
-            return CtyNumber().validate(a_val * b_val)
+            with _at_go_width():
+                return CtyNumber().validate(a_val * b_val)
         except InvalidOperation as exc:
             raise CtyFunctionError("can't use modulo with zero and infinity") from exc
     if b_val == 0:
+        # go-cty returns the dividend untouched rather than raising.
         return a
-    return CtyNumber().validate(a_val % b_val)
+    if a_val.is_zero():
+        # The sign of a zero remainder is decided by IEEE, not by the dividend.
+        # go-cty computes `a - b*trunc(a/b)`, and for a zero dividend the
+        # subtrahend is a zero carrying the *divisor's* sign: `-0 - (+0)` is
+        # `-0` and `-0 - (-0)` is `+0`. So `modulo(-0.0, 1)` is `-0` and
+        # `modulo(-0.0, -1)` is `+0`, which no rule about the dividend alone
+        # produces. Found 2026-08-19 by the stdlib fuzz, twice -- the first fix
+        # here looked only at the dividend.
+        negative = a_val.is_signed() and not b_val.is_signed()
+        return CtyNumber().validate(Decimal("-0") if negative else Decimal(0))
+    with _at_go_width(_quotient_width(a_val, b_val)):
+        remainder = a_val % b_val
+    # A zero remainder is `+0`, whatever the dividend's sign. go-cty computes
+    # `a - b*trunc(a/b)`, and a `big.Float` subtraction of equal magnitudes is
+    # `+0` under round-to-nearest; `Decimal.__mod__` gives the remainder the
+    # *dividend's* sign, so `modulo(-1, 1)` was `-0` here and `0` there.
+    return CtyNumber().validate(Decimal(0) if remainder.is_zero() else remainder)
 
 
 @stdlib_function(
@@ -382,7 +463,13 @@ def negate(a: CtyValue[Any]) -> CtyValue[Any]:
     re-applies (`value_ops.go:652`), so the implementation owns the marks.
     """
     number, marks = a.unmark()
-    return CtyNumber().validate(-cast(Decimal, number.value)).with_marks(marks)
+    # `copy_negate`, not unary minus. A `big.Float` negation flips the sign bit,
+    # so go-cty's `negate(0)` is `-0`; Python's `-Decimal(0)` is the arithmetic
+    # `0 - 0`, which the decimal specification defines as `+0`. The sign of a
+    # zero survives the wire on both sides, so the two wrote different bytes for
+    # the same call. Found 2026-08-19 by the stdlib fuzz.
+    negated = cast(Decimal, number.value).copy_negate()
+    return CtyNumber().validate(negated).with_marks(marks)
 
 
 @stdlib_function(
@@ -407,9 +494,15 @@ def int_fn(val: CtyValue[Any]) -> CtyValue[Any]:
     number = cast(Decimal, val.value)
     if not number.is_finite():
         raise CtyFunctionError("can't truncate infinity to an integer")
-    if number == number.to_integral_value(rounding=ROUND_DOWN):
+    truncated = number.to_integral_value(rounding=ROUND_DOWN)
+    if number == truncated:
         return val
-    return CtyNumber().validate(number.to_integral_value(rounding=ROUND_DOWN))
+    # `+ 0` on a zero result, which is not a no-op: truncating -0.5 leaves a
+    # `Decimal("-0")`, and go-cty truncates through a `big.Int`, which has no
+    # signed zero -- `int(-0.5)` is `+0` there. Only the truncating branch; an
+    # argument that is already whole comes back untouched on both sides, `-0.0`
+    # included.
+    return CtyNumber().validate(Decimal(0) if truncated.is_zero() else truncated)
 
 
 @stdlib_function(
@@ -430,7 +523,12 @@ def ceil_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     number = cast(Decimal, input_val.value)
     if not number.is_finite():
         return input_val
-    return CtyNumber().validate(number.to_integral_value(rounding=ROUND_CEILING))
+    rounded = number.to_integral_value(rounding=ROUND_CEILING)
+    # go-cty rounds through a `big.Int` and has no signed zero there, so a
+    # zero answer is `+0` however the argument was signed -- and unlike `int`,
+    # there is no shortcut returning an already-whole argument untouched, so
+    # `ceil(-0.0)` is `0` rather than `-0` (`stdlib/number.go:418`).
+    return CtyNumber().validate(Decimal(0) if rounded.is_zero() else rounded)
 
 
 @stdlib_function(
@@ -445,7 +543,12 @@ def floor_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
     number = cast(Decimal, input_val.value)
     if not number.is_finite():
         return input_val
-    return CtyNumber().validate(number.to_integral_value(rounding=ROUND_FLOOR))
+    rounded = number.to_integral_value(rounding=ROUND_FLOOR)
+    # go-cty rounds through a `big.Int` and has no signed zero there, so a
+    # zero answer is `+0` however the argument was signed -- and unlike `int`,
+    # there is no shortcut returning an already-whole argument untouched, so
+    # `ceil(-0.0)` is `0` rather than `-0` (`stdlib/number.go:418`).
+    return CtyNumber().validate(Decimal(0) if rounded.is_zero() else rounded)
 
 
 @stdlib_function(

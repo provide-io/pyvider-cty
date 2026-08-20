@@ -27,9 +27,11 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.config.defaults import (
+    ERR_CSVDECODE_BARE_QUOTE,
     ERR_CSVDECODE_DUPLICATE_COLUMN,
     ERR_CSVDECODE_FAILED,
     ERR_CSVDECODE_MISSING_HEADER,
+    ERR_CSVDECODE_QUOTE,
     ERR_CSVDECODE_WRONG_FIELD_COUNT,
     ERR_JSONDECODE_FAILED,
     ERR_JSONDECODE_INVALID_FIRST_CHARACTER,
@@ -251,6 +253,72 @@ def jsondecode(val: CtyValue[Any], *, return_type: CtyType[Any]) -> CtyValue[Any
     return return_type.validate(_decoded(cast(str, val.value)))
 
 
+def _check_go_csv_quoting(text: str) -> None:
+    """The two quoting refusals Go's `encoding/csv` makes and Python's does not.
+
+    Python's `csv` reader has no strict mode: `'"unterminated'` comes back as a
+    one-column table and `a,"b"x` as the column `bx`, where Go's reader -- which
+    is what go-cty's `csvdecode` uses -- refuses both. A malformed document
+    silently parsed here and refused there means a provider builds state out of
+    something Terraform would have rejected, so the refusals are made here too.
+    Found 2026-08-19 by the stdlib fuzz.
+
+    Only the quoting rules; the field-count rule was already checked in
+    `_csv_rows`. Go reports the line the field began on, which is what a
+    multi-line quoted field makes worth tracking.
+    """
+    index, line, length = 0, 1, len(text)
+    while index < length:
+        field_line = line
+        if text[index] == '"':
+            index, line = _skip_quoted_field(text, index + 1, line, field_line)
+        else:
+            start = index
+            while index < length and text[index] not in ",\r\n":
+                index += 1
+            if '"' in text[start:index]:
+                raise CtyFunctionError(ERR_CSVDECODE_BARE_QUOTE.format(line=field_line))
+        if index < length:
+            if text[index] == ",":
+                index += 1
+                continue
+            index += 2 if text.startswith("\r\n", index) else 1
+            line += 1
+
+
+def _skip_quoted_field(text: str, index: int, line: int, field_line: int) -> tuple[int, int]:
+    """Past the closing quote of a quoted field, or Go's refusal.
+
+    A doubled quote is an escaped one and the field carries on; anything but a
+    delimiter, a newline or the end of the document after the closing quote is
+    `extraneous or missing " in quoted-field`, and so is running out of document
+    before the closing quote arrives.
+    """
+    length = len(text)
+    while True:
+        if index >= length:
+            raise CtyFunctionError(ERR_CSVDECODE_QUOTE.format(line=field_line))
+        char = text[index]
+        if char == '"':
+            if text.startswith('""', index):
+                index += 2
+                continue
+            index += 1
+            break
+        if char == "\n":
+            line += 1
+        index += 1
+    if index < length and text[index] not in ",\r\n":
+        raise CtyFunctionError(ERR_CSVDECODE_QUOTE.format(line=field_line))
+    return index, line
+
+
+def _csv_reader(text: str) -> Iterator[list[str]]:
+    """A reader over `text`, refusing first what Go's reader refuses."""
+    _check_go_csv_quoting(text)
+    return csv.reader(io.StringIO(text))
+
+
 def _csv_header(reader: Iterator[list[str]]) -> list[str]:
     """The header row, which is what decides the result type.
 
@@ -259,7 +327,13 @@ def _csv_header(reader: Iterator[list[str]]) -> list[str]:
     and duplicate-column refusals happen there (`csv.go:21`).
     """
     try:
-        header = next(reader)
+        # Go's reader skips a blank line rather than yielding an empty record,
+        # so a document that is nothing but newlines reaches EOF and is
+        # `missing header line` there. Python's yields `[]` for each one, and
+        # that empty record became a header with no columns -- `csvdecode("\n")`
+        # answered an empty list of objects with no attributes where go-cty
+        # refuses. Found 2026-08-19 by the stdlib fuzz.
+        header = next(row for row in reader if row)
     except StopIteration:
         raise CtyFunctionError(ERR_CSVDECODE_MISSING_HEADER) from None
     except csv.Error as e:
@@ -275,7 +349,7 @@ def _csv_header(reader: Iterator[list[str]]) -> list[str]:
 
 def _csv_rows(val_str: str) -> tuple[list[str], list[list[str]]]:
     """The header and the data rows, checked as Go's encoding/csv checks them."""
-    reader = csv.reader(io.StringIO(val_str))
+    reader = _csv_reader(val_str)
     header = _csv_header(reader)
 
     rows: list[list[str]] = []
@@ -305,7 +379,7 @@ def _csvdecode_type(args: Sequence[CtyValue[Any]]) -> CtyType[Any]:
     document = args[0]
     if document.is_unknown:
         return CtyDynamic()
-    header = _csv_header(csv.reader(io.StringIO(cast(str, document.value))))
+    header = _csv_header(_csv_reader(cast(str, document.value)))
     # Every column is a string: CSV carries no type information, so go-cty does
     # not guess one.
     return CtyList(element_type=CtyObject(attribute_types=dict.fromkeys(header, CtyString())))

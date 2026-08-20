@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, localcontext
+from decimal import Decimal
 from functools import lru_cache
 from typing import Any, cast
 
@@ -26,7 +26,7 @@ from pyvider.cty.config.defaults import (
     ERR_SOURCE_OBJECT_NOT_DICT,
     ERR_TUPLE_LENGTH_MISMATCH,
 )
-from pyvider.cty.conversion._utils import canonical_sort_key, non_finite_text
+from pyvider.cty.conversion._utils import canonical_sort_key, exact_normalize, non_finite_text
 from pyvider.cty.exceptions import CtyConversionError, CtyValidationError
 from pyvider.cty.refinement import refine
 from pyvider.cty.types import (
@@ -83,9 +83,7 @@ def _number_to_string(raw: Any) -> str:
     never need more digits than it was given.
     """
     if isinstance(raw, Decimal) and raw.is_finite():
-        with localcontext() as ctx:
-            ctx.prec = max(len(raw.as_tuple().digits), 1)
-            return format(raw.normalize(), "f")
+        return format(exact_normalize(raw), "f")
     return non_finite_text(raw) or str(raw)
 
 
@@ -525,7 +523,16 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # returned 1 where go-cty has no bool-to-number conversion at all.
         if isinstance(target_type, CtyNumber) and isinstance(value.type, CtyString | CtyNumber):
             try:
-                validated = target_type.validate(value.value)
+                # `Decimal(" 1")` is 1: the constructor strips surrounding
+                # whitespace, and Go's `big.ParseFloat` grammar has no room for
+                # any -- `tonumber(" 1")` is an error in go-cty. Refused here
+                # rather than in `validate`, which is this package's own
+                # convenience for raw Python input; the conversion is the surface
+                # go-cty defines. Found 2026-08-19 by the stdlib fuzz.
+                raw = value.value
+                if isinstance(raw, str) and raw != raw.strip():
+                    raise CtyValidationError("a number cannot carry surrounding whitespace")
+                validated = target_type.validate(raw)
                 return validated.with_marks(set(value.marks))
             except CtyValidationError as e:
                 error_message = ERR_CANNOT_CONVERT_VALIDATION.format(

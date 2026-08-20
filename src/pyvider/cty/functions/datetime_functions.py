@@ -173,12 +173,22 @@ def _parse_duration(duration_str: str) -> timedelta:
     if matched.group("sign") == "-":
         total_nanoseconds = -total_nanoseconds
 
-    seconds, nanoseconds = divmod(abs(total_nanoseconds), _NANOSECONDS_PER_SECOND)
-    magnitude_delta = timedelta(
-        seconds=seconds,
-        microseconds=nanoseconds // _NANOSECONDS_PER_MICROSECOND,
-    )
-    return -magnitude_delta if total_nanoseconds < 0 else magnitude_delta
+    # Floored on the *signed* count, not truncated on its magnitude. A
+    # `timedelta` resolves to microseconds and a `time.Duration` to nanoseconds,
+    # so a sub-microsecond duration has to land on one side or the other -- and
+    # taking the magnitude first put every negative one on the wrong side:
+    # `timeadd("0002-01-01T00:00:00Z", "-1ns")` came back unchanged where go-cty
+    # answers `0001-12-31T23:59:59Z`, a different second, a different day and a
+    # different year. Flooring keeps the shift on the side of the second
+    # boundary go-cty puts it on, for a duration of either sign.
+    #
+    # The residual is the other half of the same representation limit: a
+    # *timestamp* written with sub-microsecond digits is truncated by
+    # `_parse_rfc3339`, so `timeadd("...00.000000001Z", "-1ns")` still differs.
+    # Closing that means holding the instant as an integer nanosecond count
+    # rather than as a `datetime`, which is the same change the calendar-range
+    # divergence would need. Found 2026-08-19 by the stdlib fuzz.
+    return timedelta(microseconds=total_nanoseconds // _NANOSECONDS_PER_MICROSECOND)
 
 
 def _split_date_format(spec: str) -> list[str]:

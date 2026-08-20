@@ -16,7 +16,7 @@ precision are counted in characters rather than bytes.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sized
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from itertools import islice
 import json
 import re
@@ -35,11 +35,12 @@ from pyvider.cty.config.defaults import (
     ERR_FORMAT_UNSUPPORTED_VERB,
 )
 from pyvider.cty.conversion import convert
-from pyvider.cty.conversion._utils import non_finite_text
+from pyvider.cty.conversion._utils import exact_normalize, non_finite_text
 from pyvider.cty.exceptions import CtyConversionError, CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.functions._unknowns import unknown_not_null
+from pyvider.cty.json_codec import _marshal_string
 from pyvider.cty.refinement import refine
 from pyvider.cty.types import (
     CtyBool,
@@ -54,6 +55,7 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.set_order import order_key as set_order_key
 
 # `%` flags width .precision [argument-index] verb.
 #
@@ -157,7 +159,7 @@ def _json_number(number: Decimal, verb: _Verb) -> str:
                 verb=verb.raw, offset=verb.offset, error="cannot serialize infinity as JSON"
             )
         )
-    return format(number.normalize(), "f")
+    return format(exact_normalize(number), "f")
 
 
 def _json_of(value: CtyValue[Any], verb: _Verb) -> str:
@@ -180,7 +182,11 @@ def _json_of(value: CtyValue[Any], verb: _Verb) -> str:
     if isinstance(value.type, CtyNumber):
         return _json_number(cast(Decimal, value.value), verb)
     if isinstance(value.type, CtyString):
-        return json.dumps(str(value.value))
+        # The codec's encoder, not `json.dumps`: Go's `encoding/json` escapes
+        # `<`, `>` and `&` by default and Python's does not, so `%#v` of
+        # `a<b>&c` differed from go-cty in three characters -- the same gap
+        # `%q` had.
+        return _marshal_string(str(value.value))
     if isinstance(value.type, CtyBool):
         return "true" if value.value else "false"
     if isinstance(value.type, CtyMap | CtyObject):
@@ -204,13 +210,22 @@ def _exponent_form(number: Decimal, precision: int, *, upper: bool) -> str:
     out `0.000000e+6`.
     """
     sign = "-" if number < 0 else ""
-    magnitude = abs(number)
+    # `copy_abs`, not `abs`: taking a magnitude is a context operation too, so
+    # `abs` rounded the value to 28 significant digits before anything below
+    # could widen the context, and the widening then had nothing left to keep.
+    magnitude = number.copy_abs()
     exponent = magnitude.adjusted() if magnitude else 0
-    mantissa = magnitude.scaleb(-exponent) if magnitude else Decimal(0)
-    rendered = format(mantissa, f".{precision}f")
-    if Decimal(rendered) >= 10:  # rounding carried, as in 9.99 -> 10.0
-        exponent += 1
-        rendered = format(magnitude.scaleb(-exponent), f".{precision}f")
+    # `scaleb` is a context operation, so it rounded the mantissa to the default
+    # 28 significant digits: `%v` of 10**28 + 1 came out `1e+28` where go-cty
+    # writes `1.0000000000000000000000000001e+28`. Widened to whatever the value
+    # and the requested precision need. Found 2026-08-19 by the stdlib fuzz.
+    with localcontext() as ctx:
+        ctx.prec = max(len(magnitude.as_tuple().digits), precision + 1, 1)
+        mantissa = magnitude.scaleb(-exponent) if magnitude else Decimal(0)
+        rendered = format(mantissa, f".{precision}f")
+        if Decimal(rendered) >= 10:  # rounding carried, as in 9.99 -> 10.0
+            exponent += 1
+            rendered = format(magnitude.scaleb(-exponent), f".{precision}f")
     marker = "E" if upper else "e"
     return f"{sign}{rendered}{marker}{'+' if exponent >= 0 else '-'}{abs(exponent):02d}"
 
@@ -227,10 +242,10 @@ def _general_form(number: Decimal, precision: int | None, *, upper: bool) -> str
     """
     if not number.is_finite():
         return str(number)
-    magnitude = abs(number)
+    magnitude = number.copy_abs()
     exponent = magnitude.adjusted() if magnitude else 0
     shortest = precision is None
-    significant = precision if precision is not None else max(len(number.normalize().as_tuple()[1]), 1)
+    significant = precision if precision is not None else max(len(exact_normalize(number).as_tuple()[1]), 1)
     if precision == 0:
         significant = 1
 
@@ -380,11 +395,14 @@ def _format_one(verb: _Verb, value: CtyValue[Any]) -> str:  # noqa: C901
             # would emit a lone joiner or a stranded combining mark.
             text = "".join(islice(iter_clusters(text), verb.precision))
         if verb.verb == "q":
-            # `ensure_ascii=False`: go's `%q` is `strconv.Quote`, which keeps a
-            # printable rune as itself and escapes only what has to be escaped.
-            # Defaulting to ASCII turned every non-ASCII string into a wall of
-            # \uXXXX -- still valid JSON, and not the string go-cty produces.
-            text = json.dumps(text, ensure_ascii=False)
+            # go-cty's `%q` is not Go's. It is `ctyjson.Marshal(cty.StringVal(s))`
+            # (`stdlib/format.go:480`), so the string comes back JSON-encoded --
+            # non-ASCII kept as itself, and `<`, `>` and `&` escaped, because
+            # Go's `encoding/json` escapes those by default. `json.dumps` does
+            # not, so `format("%q", "a<b>&c")` differed from go-cty in three
+            # characters. The codec's own encoder is used rather than a second
+            # copy of the escape table. Found 2026-08-19 by the stdlib fuzz.
+            text = _marshal_string(text)
         return _pad(verb, text)
 
     raise CtyFunctionError(ERR_FORMAT_UNSUPPORTED_VERB.format(verb=verb.verb, offset=verb.offset))
@@ -564,7 +582,7 @@ def _elements_of(argument: CtyValue[Any]) -> list[CtyValue[Any]]:
     the one go-cty's own set iteration follows.
     """
     if isinstance(argument.value, frozenset):
-        return sorted(argument.value, key=lambda element: element._canonical_sort_key())
+        return sorted(argument.value, key=set_order_key)
     return list(cast(Iterable[CtyValue[Any]], argument.value))
 
 

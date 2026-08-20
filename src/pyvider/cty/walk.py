@@ -47,6 +47,7 @@ from pyvider.cty.types import (
     CtyType,
 )
 from pyvider.cty.values import CtyValue
+from pyvider.cty.values.set_order import order_key as set_order_key
 
 __all__ = ["deep_values", "transform", "walk"]
 
@@ -108,7 +109,7 @@ def _child_steps(value: CtyValue[Any]) -> list[tuple[PathStep, CtyValue[Any]]]:
         #
         # Sorted because a frozenset has no order to report, and a traversal
         # whose output changes between runs is not one you can test or diff.
-        elements = sorted(cast(Any, inner.value), key=lambda element: element._canonical_sort_key())
+        elements = sorted(cast(Any, inner.value), key=set_order_key)
         return [(KeyStep(element), element) for element in elements]
     return []
 
