@@ -36,6 +36,42 @@ def _ported(marker: object, target: object) -> object:
     return marker
 
 
+def equal_iteratively(left: Any, right: Any) -> bool:
+    """Structural type equality without a Python frame per level of nesting.
+
+    Type structure nests as deeply as the values it describes, and `equal` is
+    among the most called methods in this package, so a recursive descent
+    overflows the stack for a sufficiently nested type -- out of anything at all
+    that compares two of them, `validate` included. A tuple nested 400 deep cost
+    two frames a level and raised `RecursionError` on Python 3.11 while passing
+    on 3.13, which is the whole margin: 800 frames against a limit of 1000.
+
+    The collection types once solved their own half of this by flattening the
+    linear chain of same-kind containers, and said in a comment that branching
+    shapes were "bounded by the schema's own breadth". They are not -- a
+    single-element tuple nested 400 deep is as linear as a list of lists, and
+    overflowed in exactly the same way. This walks any shape with an explicit
+    stack instead.
+
+    Each node answers `_equal_shallow`, which decides everything that is not a
+    child comparison and hands back the child pairs still to compare, so the
+    per-type rules stay with their types.
+    """
+    children = left._equal_shallow(right)
+    if children is None:
+        return False
+    if not children:
+        return True
+    stack = list(children)
+    while stack:
+        this, that = stack.pop()
+        pairs = this._equal_shallow(that)
+        if pairs is None:
+            return False
+        stack.extend(pairs)
+    return True
+
+
 @runtime_checkable
 class CtyTypeProtocol(Protocol[T_co]):
     """Protocol defining the essential interface of a CtyType.
@@ -156,6 +192,16 @@ class CtyType(Generic[T], ABC):
         if isinstance(value, UnknownValue):
             return self.unknown_like(value)
         return None
+
+    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
+        """Everything this type's equality asks that is not a child comparison.
+
+        `None` means unequal; otherwise the child pairs still to compare. The
+        default is a leaf's answer -- `equal` decides it outright and has no
+        children to descend into. A type whose `equal` would recurse has to
+        override this instead, or it puts the frames back.
+        """
+        return () if self.equal(other) else None
 
     def is_primitive_type(self) -> bool:
         return False

@@ -55,8 +55,41 @@ from pyvider.cty.types import BytesCapsule
 from pyvider.cty.values.markers import RefinedUnknownValue
 from pyvider.cty.values.set_order import order_key as set_order_key
 
-__all__ = ["canonical", "dynamic_arg", "refinements", "rich", "run", "soup_go", "type_spec"]
+__all__ = [
+    "canonical",
+    "dynamic_arg",
+    "examples",
+    "refinements",
+    "rich",
+    "run",
+    "soup_go",
+    "type_spec",
+]
 
+
+def examples(default: int) -> int:
+    """The per-property example count, raisable for a hunt.
+
+    `PYVIDER_COMPAT_EXAMPLES=600 make compat` widens every generated population
+    at once. The committed defaults are sized to keep the differential suite in
+    the seconds it is today; finding a *new* divergence generally means running
+    wider than a regression guard needs to.
+
+    Three modules had their own copy of this, which is two more chances for the
+    environment variable to mean different things in one run.
+    """
+    override = os.environ.get("PYVIDER_COMPAT_EXAMPLES")
+    return max(1, int(override)) if override else default
+
+
+# Where `make compat` leaves the binary it builds, and so where to look when
+# `SOUP_GO_BIN` is unset and nothing is on PATH. Inside the repository rather
+# than in `/tmp`: this path is *executed*, and a shared temporary directory is
+# writable by every account on the machine, so a file planted there by another
+# user would have run as whoever ran the suite. `scripts/compat/run_compat.py`
+# builds to this same path; neither file imports the other, so they are kept in
+# step by both being repo-relative.
+DEFAULT_BINARY = Path(__file__).resolve().parents[2] / ".compat" / "soup-go"
 
 REQUIRED_COMMANDS = frozenset(
     {
@@ -149,11 +182,11 @@ def soup_go() -> str:
     A binary that is *present but too old* fails rather than skips. That is the
     difference between "nothing was checked and it said so" and "something was
     checked against last week's go-cty" -- and the second has already happened
-    here: `/tmp/soup-go` is the last-resort default, a developer running pytest
-    directly picks it up, and a day-old copy answered "unknown function" to two
-    thirds of the sweep while the suite reported a clean run.
+    here: the last-resort default is picked up by a developer running pytest
+    directly, and a day-old copy answered "unknown function" to two thirds of
+    the sweep while the suite reported a clean run.
     """
-    candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or "/tmp/soup-go"  # nosec
+    candidate = os.environ.get("SOUP_GO_BIN") or shutil.which("soup-go") or str(DEFAULT_BINARY)
     if not Path(candidate).exists():
         pytest.skip(
             f"soup-go harness not found at {candidate}. Build it from "

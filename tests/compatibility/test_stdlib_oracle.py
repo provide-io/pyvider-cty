@@ -16,11 +16,10 @@ count, `flatten` returned a list instead of a tuple -- and every test in the
 package passed the whole time, because every test asserted what the code did.
 Nothing compared the two implementations, so nothing could notice.
 
-Requires the `soup-go` harness. Point `SOUP_GO_BIN` at a built binary, or build
-it with:
-
-    cd /Volumes/data/pyv/tofusoup/src/tofusoup/harness/go/soup-go
-    go build -o /tmp/soup-go ./...
+Requires the `soup-go` harness. `make compat` builds it from a sibling
+`tofusoup` checkout into `.compat/soup-go` and runs the suite against it; set
+`SOUP_GO_SRC` if the checkout is elsewhere, or point `SOUP_GO_BIN` at a binary
+you built yourself.
 """
 
 from __future__ import annotations

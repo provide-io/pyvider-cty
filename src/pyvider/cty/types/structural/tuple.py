@@ -17,7 +17,7 @@ from pyvider.cty.exceptions import (
     CtyValidationError,
 )
 from pyvider.cty.path import CtyPath, IndexStep
-from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.base import CtyType, equal_iteratively
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
@@ -110,11 +110,14 @@ class CtyTuple(CtyType[tuple[object, ...]]):
         return self.element_types[effective_index].validate(container_value.value[effective_index])
 
     def equal(self, other: CtyType[Any]) -> bool:
+        return equal_iteratively(self, other)
+
+    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
         if not isinstance(other, CtyTuple):
-            return False
+            return None
         if len(self.element_types) != len(other.element_types):
-            return False
-        return all(t1.equal(t2) for t1, t2 in zip(self.element_types, other.element_types, strict=False))
+            return None
+        return tuple(zip(self.element_types, other.element_types, strict=True))
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic

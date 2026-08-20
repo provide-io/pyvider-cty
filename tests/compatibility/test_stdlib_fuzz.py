@@ -52,7 +52,6 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 from typing import Any
 
 from hypothesis import HealthCheck, given, settings, strategies as st
@@ -64,7 +63,7 @@ from pyvider.cty.functions import SIGNATURES, STDLIB
 from pyvider.cty.marks import unmark_deep
 from pyvider.cty.types import BytesCapsule
 from tests.compatibility._fuzz_plans import DERIVED, PLANS, arguments_for
-from tests.compatibility._oracle import canonical, refinements, rich, type_spec
+from tests.compatibility._oracle import canonical, examples, refinements, rich, type_spec
 from tests.compatibility.test_stdlib_sweep import reported
 
 pytestmark = pytest.mark.compat
@@ -72,19 +71,7 @@ pytestmark = pytest.mark.compat
 FUNCTIONS = sorted(SIGNATURES)
 
 
-def _examples(default: int) -> int:
-    """`PYVIDER_COMPAT_EXAMPLES=200 make compat` widens every function at once.
-
-    The committed default is one subprocess per example per function, which is
-    what keeps the whole differential suite in the seconds it is today. Finding
-    a *new* divergence generally means running wider than a regression guard
-    needs to.
-    """
-    override = os.environ.get("PYVIDER_COMPAT_EXAMPLES")
-    return max(1, int(override)) if override else default
-
-
-EXAMPLES = _examples(20)
+EXAMPLES = examples(20)
 # Draws per function in the coverage guard below, and the loop stops at the
 # first answer, so a healthy plan costs one harness call.
 #

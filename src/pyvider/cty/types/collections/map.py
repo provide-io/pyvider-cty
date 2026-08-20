@@ -18,7 +18,7 @@ from pyvider.cty.exceptions import (
     InvalidTypeError,
 )
 from pyvider.cty.path import CtyPath, KeyStep
-from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.base import CtyType, equal_iteratively
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.frozen import FrozenDict
@@ -104,18 +104,12 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
         return default if default is not None else CtyValue.null(self.element_type)
 
     def equal(self, other: CtyType[Any]) -> bool:
+        return equal_iteratively(self, other)
+
+    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
         if not isinstance(other, CtyMap):
-            return False
-        # The chain of same-kind containers is walked, not recursed. Type
-        # structure nests as deeply as values do, and `equal` is among the most
-        # called methods here -- a recursive descent overflowed the stack for a
-        # sufficiently nested type, out of anything that compared two of them.
-        # Only the linear part is flattened; branching shapes (tuple, object)
-        # still recurse, bounded by the schema's own breadth.
-        left, right = self.element_type, other.element_type
-        while isinstance(left, CtyMap) and isinstance(right, CtyMap):
-            left, right = left.element_type, right.element_type
-        return left.equal(right)
+            return None
+        return ((self.element_type, other.element_type),)
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic

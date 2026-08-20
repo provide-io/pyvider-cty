@@ -13,7 +13,7 @@ from attrs import define, field
 
 from pyvider.cty.exceptions import CtySetValidationError, CtyValidationError
 from pyvider.cty.marks import _strip, collect_marks_deep
-from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.base import CtyType, equal_iteratively
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.set_order import identity_key as set_identity_key, order_key as set_order_key
@@ -142,18 +142,12 @@ class CtySet(CtyType[tuple[T, ...]], Generic[T]):
         return result.with_marks(element_marks) if element_marks else result
 
     def equal(self, other: CtyType[Any]) -> bool:
+        return equal_iteratively(self, other)
+
+    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
         if not isinstance(other, CtySet):
-            return False
-        # The chain of same-kind containers is walked, not recursed. Type
-        # structure nests as deeply as values do, and `equal` is among the most
-        # called methods here -- a recursive descent overflowed the stack for a
-        # sufficiently nested type, out of anything that compared two of them.
-        # Only the linear part is flattened; branching shapes (tuple, object)
-        # still recurse, bounded by the schema's own breadth.
-        left, right = self.element_type, other.element_type
-        while isinstance(left, CtySet) and isinstance(right, CtySet):
-            left, right = left.element_type, right.element_type
-        return left.equal(right)
+            return None
+        return ((self.element_type, other.element_type),)
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic
