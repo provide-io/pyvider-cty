@@ -422,6 +422,17 @@ these fifteen are what it found. Every one is a behavior change.
 
 ### Fixed
 
+- `unify` no longer answers with a type carrying optional attributes.
+  Optionality describes a type used as a *constraint* -- "you need not supply
+  this" -- and `unify` answers with a type for values, so go-cty strips it
+  (`WithoutOptionalAttributesDeep`) even when unifying a single type. Two paths
+  here did not, and both are the ones that hand back an *argument* rather than
+  building a result: a single type, and several types that are all equal. Every
+  other path constructs from unified children and was already correct, which is
+  why unifying an optional object with a required one agreed with go-cty and
+  unifying it with *itself* did not. It reaches the wire -- the optional set is
+  part of a type's serialization, and unification decides the element type of
+  `concat`, `flatten` and every set operation.
 - `timeadd` is exact to the nanosecond in both arguments. A `datetime` resolves
   to microseconds and Go's `time.Time` to nanoseconds, and the two met twice on
   the way through -- once parsing the timestamp's fraction, once turning the

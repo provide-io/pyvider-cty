@@ -286,6 +286,64 @@ def nested(draw: Any) -> Case:
     return CtyDynamic(), CtyDynamic().validate(inner)
 
 
+ATTRIBUTE_NAMES = st.sampled_from(["a", "b", "c", "name", ""])
+
+
+def types(*, max_leaves: int = 8) -> st.SearchStrategy[CtyType[Any]]:
+    """Generated *types*, with no value attached.
+
+    `cases()` above draws a type together with a value it can hold, which is
+    what the codec and semantic properties need. Two surfaces ask about types
+    alone -- `unify` and `TestConformance` -- and a type drawn to carry a value
+    is the wrong population for them: it never produces an empty tuple, an
+    object with no attributes, or a `dynamic` buried three levels down, and
+    those are exactly the shapes where unification has been wrong.
+
+    Every one of the seventeen `unify` divergences found on 2026-08-19 needed a
+    `dynamic`, a list or set, and a tuple *together*; with any two of the three
+    the answers already agreed. So `dynamic` is a leaf here rather than an
+    afterthought, and containers recurse into each other freely.
+
+    Objects carry an optional set sometimes, because optionality is part of a
+    type's identity for equality and unification while `TestConformance`
+    ignores it entirely -- a divergence in either direction is worth reaching.
+    """
+
+    def with_optionals(attributes: dict[str, CtyType[Any]]) -> st.SearchStrategy[CtyType[Any]]:
+        if not attributes:
+            return st.just(CtyObject(attribute_types={}))
+        return st.sets(st.sampled_from(sorted(attributes)), max_size=len(attributes)).map(
+            lambda optional: CtyObject(attribute_types=attributes, optional_attributes=frozenset(optional))
+        )
+
+    def branches(children: st.SearchStrategy[CtyType[Any]]) -> st.SearchStrategy[CtyType[Any]]:
+        tuples = st.lists(children, max_size=3).map(lambda inner: CtyTuple(element_types=tuple(inner)))
+        objects = st.dictionaries(ATTRIBUTE_NAMES, children, max_size=3).flatmap(with_optionals)
+        # `one_of` samples its branches uniformly, and a tuple or an object
+        # spends more of the leaf budget than a list does -- so drawn evenly they
+        # were 4% of the population between them, in the very shapes the
+        # divergences lived. Listed twice each, they are about a third.
+        return st.one_of(
+            children.map(lambda inner: CtyList(element_type=inner)),
+            children.map(lambda inner: CtySet(element_type=inner)),
+            children.map(lambda inner: CtyMap(element_type=inner)),
+            tuples,
+            tuples,
+            objects,
+            objects,
+        )
+
+    return st.recursive(
+        # The empty tuple and the empty object are drawn as leaves rather than
+        # left to a zero-length draw, which is rare enough to miss: both are
+        # where `unify` went wrong, and `tuple()` in particular unifies with
+        # everything or nothing depending on the rule.
+        st.sampled_from([S, N, B, CtyDynamic(), CtyTuple(element_types=()), CtyObject(attribute_types={})]),
+        branches,
+        max_leaves=max_leaves,
+    )
+
+
 def cases() -> st.SearchStrategy[Case]:
     """Every shape, weighted toward the ones that have actually been wrong."""
     return st.one_of(

@@ -186,14 +186,25 @@ def unify(types: Iterable[CtyType[Any]]) -> CtyType[Any] | None:
 
 @lru_cache(maxsize=1024)
 def _unify_cached(types: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:  # noqa: C901
+    from pyvider.cty.conversion.explicit import _without_optional
+
     if not types:
         return None
+    # Both shortcuts hand back an *input* type, and an input can carry optional
+    # attributes where a unified type must not: optionality describes a
+    # constraint ("you need not supply this") and `unify` answers with a type
+    # for values. go-cty strips it -- `unify(object({a=string}, optional=[a]))`
+    # is `object({a=string})` there even for a single argument -- and the
+    # difference reaches the wire, because the optional set is part of the type
+    # a collection declares. Every other path here builds its result from
+    # unified children and so is already stripped; these two were passing the
+    # argument straight through. Found 2026-08-20 by the generated unify sweep.
     if len(types) == 1:
-        return types[0]
+        return _without_optional(types[0])
 
     first = types[0]
     if all(other.equal(first) for other in types[1:]):
-        return first
+        return _without_optional(first)
 
     # Same-kind groups first. In unsafe mode the general path below can convert
     # an object type to a *subset* of itself, which is a legal conversion and a
