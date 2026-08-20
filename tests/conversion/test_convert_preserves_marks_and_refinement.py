@@ -12,13 +12,21 @@ what Terraform plans on, and `not_null` in particular is the bit equality reads
 to decide `unknown == null`.
 """
 
+from typing import Any
+
 import pytest
 
 from pyvider.cty import (
+    CtyCapsuleWithOps,
     CtyDynamic,
     CtyList,
+    CtyMap,
     CtyNumber,
+    CtyObject,
+    CtySet,
     CtyString,
+    CtyTuple,
+    CtyType,
     CtyValue,
 )
 from pyvider.cty.codec import cty_to_msgpack
@@ -26,6 +34,13 @@ from pyvider.cty.conversion.explicit import convert
 from pyvider.cty.exceptions import CtyMarksSerializationError
 from pyvider.cty.marks import collect_marks_deep
 from pyvider.cty.refinement import refine
+
+
+class Payload:
+    """A capsule payload, so a capsule can be converted out of as well as into."""
+
+    def __init__(self, text: str) -> None:
+        self.text = text
 
 
 def test_converting_a_marked_unknown_keeps_its_marks() -> None:
@@ -80,3 +95,108 @@ def test_not_null_survives_a_type_change_and_a_string_prefix_does_not() -> None:
     assert result.type.equal(CtyNumber())
     assert result.value.is_known_null is False
     assert result.value.string_prefix is None
+
+
+class TestNoReturnLaundersAMark:
+    """The invariant stated once, over the whole branch space.
+
+    `convert` is one long function with sixteen returns, and the rule that each
+    of them re-applies the source's marks is enforced only by every author
+    remembering it. One did not: the `convert_to_fn` branch handed back
+    `target_type.validate(received)`, and because `received` is a raw Python
+    object rather than a `CtyValue`, `@preserves_marks` had nothing to copy
+    from. A marked value converted into such a capsule came out clean, which is
+    the one thing the codec's refusal exists to prevent.
+
+    The sweep below reaches every return, so a new branch that forgets has to
+    also be a shape none of these cases takes.
+    """
+
+    SECRET = CtyCapsuleWithOps("Secret", bytes, convert_to_fn=lambda value, _: value.value.encode())
+    OUTWARD = CtyCapsuleWithOps(
+        "Outward",
+        Payload,
+        convert_fn=lambda raw, target: (
+            CtyString().validate(raw.text) if isinstance(target, CtyString) else None
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        ("label", "source", "target"),
+        [
+            ("identity", CtyString().validate("x"), CtyString()),
+            ("into dynamic", CtyString().validate("x"), CtyDynamic()),
+            ("out of dynamic", CtyDynamic().validate("x"), CtyString()),
+            ("a null", CtyValue.null(CtyNumber()), CtyString()),
+            ("an unknown", CtyValue.unknown(CtyNumber()), CtyString()),
+            ("number to string", CtyNumber().validate(1), CtyString()),
+            ("string to number", CtyString().validate("1"), CtyNumber()),
+            (
+                "list to set",
+                CtyList(element_type=CtyString()).validate(["a"]),
+                CtySet(element_type=CtyString()),
+            ),
+            (
+                "set to list",
+                CtySet(element_type=CtyString()).validate(["a"]),
+                CtyList(element_type=CtyString()),
+            ),
+            (
+                "tuple to list",
+                CtyTuple(element_types=(CtyString(),)).validate(["a"]),
+                CtyList(element_type=CtyString()),
+            ),
+            (
+                "map to object",
+                CtyMap(element_type=CtyString()).validate({"k": "v"}),
+                CtyObject(attribute_types={"k": CtyString()}),
+            ),
+            (
+                "object to map",
+                CtyObject(attribute_types={"k": CtyString()}).validate({"k": "v"}),
+                CtyMap(element_type=CtyString()),
+            ),
+            (
+                "element retyped",
+                CtyList(element_type=CtyNumber()).validate([1]),
+                CtyList(element_type=CtyString()),
+            ),
+            ("into a capsule", CtyString().validate("x"), SECRET),
+            ("out of a capsule", OUTWARD.validate(Payload("x")), CtyString()),
+        ],
+    )
+    def test_the_source_marks_come_out_the_other_side(
+        self, label: str, source: CtyValue[Any], target: CtyType[Any]
+    ) -> None:
+        marked = source.with_marks({"sensitive"})
+
+        assert collect_marks_deep(convert(marked, target)) >= frozenset({"sensitive"}), label
+
+
+class TestConvertingIntoACapsuleKeepsTheMark:
+    """The regression in the terms that make it a security defect.
+
+    `convert_to_fn` is provider-supplied, so this is what a provider coercing a
+    sensitive config attribute into its own internal representation got: a value
+    the wire had been refusing, now accepted.
+    """
+
+    SECRET = CtyCapsuleWithOps("Secret", bytes, convert_to_fn=lambda value, _: value.value.encode())
+
+    def test_the_mark_survives_the_conversion(self) -> None:
+        marked = CtyString().validate("hunter2").with_marks({"sensitive"})
+
+        assert convert(marked, self.SECRET).marks == frozenset({"sensitive"})
+
+    def test_and_the_codec_goes_on_refusing_it(self) -> None:
+        """Unmarked, the payload is `b'\\xc4\\x07hunter2'` -- the secret in the
+        clear. That is what the dropped mark was producing."""
+        marked = CtyString().validate("hunter2").with_marks({"sensitive"})
+
+        converted = convert(marked, self.SECRET)
+
+        with pytest.raises(CtyMarksSerializationError):
+            cty_to_msgpack(converted, self.SECRET)
+
+
+# 🌊🪢🔚

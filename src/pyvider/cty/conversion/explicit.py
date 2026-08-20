@@ -461,7 +461,10 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         if isinstance(target_type, CtyCapsuleWithOps) and target_type.convert_to_fn:
             received = target_type.convert_to_fn(value, target_type)
             if received is not None:
-                return target_type.validate(received)
+                # `received` is a raw Python object rather than a CtyValue, so
+                # `@preserves_marks` on `validate` has nothing to copy from and
+                # the marks have to be carried across by hand.
+                return target_type.validate(received).with_marks(set(value.marks))
 
         # Capsule conversion with operations
         if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
