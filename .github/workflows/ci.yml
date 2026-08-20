@@ -48,10 +48,21 @@ jobs:
       # The oracle harness lives in another repository. It is public, so this
       # needs no token; it pins go-cty itself, so the reference version is
       # whatever soup-go's go.mod says rather than anything chosen here.
+      #
+      # Pinned to a commit, not a branch, and the pin is the whole point: the
+      # oracle decides what "parity" means, so a differential suite measuring
+      # against a moving harness is a suite whose answers change without anyone
+      # changing this repository. It is also the only place the cty commands
+      # exist -- `cty call`, `cty rich`, `cty unify` and the rest are on
+      # feat/tfplugin-driver and not yet on the default branch, so an unpinned
+      # checkout landed on a harness that answered "unknown command" to
+      # everything. Move the pin when that branch lands; do not widen it to a
+      # branch name.
       - name: 📥 Check out the soup-go harness
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: provide-io/tofusoup
+          ref: 9d31249896f05e26ca9cdc521cb0617cc4a7e049
           path: tofusoup
 
       # Pinned deliberately, and the pin is load-bearing: go-cty selects
