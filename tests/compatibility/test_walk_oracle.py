@@ -19,7 +19,6 @@ traversal rebuilds*, with the rewrite held fixed.
 
 from __future__ import annotations
 
-from decimal import Decimal
 import json
 from typing import Any
 
@@ -36,9 +35,9 @@ from pyvider.cty import (
     CtyType,
     CtyValue,
 )
-from pyvider.cty.path import GetAttrStep, IndexStep, KeyStep
 from pyvider.cty.walk import deep_values, transform, walk
-from tests.compatibility._oracle import canonical, rich, run, type_spec
+from tests.compatibility._oracle import canonical, rich, type_spec
+from tests.compatibility._traversal import REWRITES, traversal_answer, visit_form
 
 pytestmark = pytest.mark.compat
 
@@ -52,31 +51,6 @@ NESTED = CtyObject(attribute_types={"inner": STRINGS})
 TUPLE = CtyTuple(element_types=(S, N))
 
 SENSITIVE = frozenset({"sensitive"})
-
-
-def _step_form(step: Any) -> Any:
-    match step:
-        case GetAttrStep(name=name):
-            return {"attr": name}
-        case IndexStep(index=index):
-            return {"index": Decimal(index)}
-        case KeyStep(key=key):
-            return {"index": canonical(rich(key)) if isinstance(key, CtyValue) else key}
-    raise AssertionError(f"no structural form for {step!r}")
-
-
-def _visit(path: Any, value: CtyValue[Any]) -> dict[str, Any]:
-    return {
-        "path": [_step_form(step) for step in path.steps],
-        "value": canonical(rich(value)),
-        "type": json.loads(type_spec(value.type)),
-    }
-
-
-def _theirs(command: str, cty_type: CtyType[Any], value: CtyValue[Any], *extra: str) -> dict[str, Any]:
-    result = run("cty", command, "--type", type_spec(cty_type), json.dumps(rich(value)), *extra)
-    assert result["ok"], result
-    return result
 
 
 CASES: list[tuple[str, CtyType[Any], CtyValue[Any]]] = [
@@ -119,9 +93,9 @@ IDS = [case[0] for case in CASES]
 
 @pytest.mark.parametrize(("label", "cty_type", "value"), CASES, ids=IDS)
 def test_the_visit_order_and_paths_agree(label: str, cty_type: CtyType[Any], value: CtyValue[Any]) -> None:
-    theirs = _theirs("walk", cty_type, value)
+    theirs = traversal_answer("walk", cty_type, value)
 
-    here = [_visit(path, visited) for path, visited in deep_values(value)]
+    here = [visit_form(path, visited) for path, visited in deep_values(value)]
     assert here == [canonical(visit) for visit in theirs["visits"]], label
 
 
@@ -135,12 +109,12 @@ def test_declining_to_descend_stops_at_the_same_place(
     there. A walk that ignores the answer visits values the caller asked not to
     see -- and for a sensitive subtree, "asked not to see" can be the point.
     """
-    theirs = _theirs("walk", cty_type, value, "--prune-depth", "1")
+    theirs = traversal_answer("walk", cty_type, value, "--prune-depth", "1")
 
     here: list[dict[str, Any]] = []
 
     def visit(path: Any, visited: CtyValue[Any]) -> bool:
-        here.append(_visit(path, visited))
+        here.append(visit_form(path, visited))
         return len(path.steps) < 1
 
     walk(value, visit)
@@ -153,28 +127,12 @@ def test_declining_to_descend_stops_at_the_same_place(
 def test_transform_rebuilds_the_same_value(
     op: str, label: str, cty_type: CtyType[Any], value: CtyValue[Any]
 ) -> None:
-    theirs = _theirs("transform", cty_type, value, "--op", op)
+    theirs = traversal_answer("transform", cty_type, value, "--op", op)
 
-    here = transform(value, _REWRITES[op])
+    here = transform(value, REWRITES[op])
 
     assert canonical(rich(here)) == canonical(theirs["value"]), f"{label} / {op}"
     assert json.loads(type_spec(here.type)) == theirs["type"], f"{label} / {op}: result type"
-
-
-def _upper(_path: Any, value: CtyValue[Any]) -> CtyValue[Any]:
-    """Uppercase a known, non-null string, keeping its marks."""
-    if not isinstance(value.type, CtyString) or value.is_null or value.is_unknown:
-        return value
-    return CtyString().validate(str(value.value).upper()).with_marks(value.marks)
-
-
-def _unknown_to_null(_path: Any, value: CtyValue[Any]) -> CtyValue[Any]:
-    if not value.is_unknown:
-        return value
-    return CtyValue.null(value.type).with_marks(value.marks)
-
-
-_REWRITES = {"upper": _upper, "unknown-to-null": _unknown_to_null}
 
 
 def test_transform_reaches_the_same_answer_as_unknown_as_null() -> None:
@@ -188,7 +146,7 @@ def test_transform_reaches_the_same_answer_as_unknown_as_null() -> None:
 
     value = NESTED.validate({"inner": ["a", CtyValue.unknown(S)]})
 
-    assert transform(value, _unknown_to_null) == unknown_as_null(value)
+    assert transform(value, REWRITES["unknown-to-null"]) == unknown_as_null(value)
 
 
 # 🌊🪢🔚

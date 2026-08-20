@@ -9,7 +9,7 @@ skinparam rectangleFontSize 12
 
 rectangle "**make compat**   ->   uv run python scripts/compat/run_compat.py" as MAKE <<core>>
 
-rectangle "**run_compat.py**\n# **go build -o /tmp/soup-go-compat ./...** in the tofusoup checkout (SOUP_GO_SRC\noverrides where that is), on **every** run.\nA failed build exits 1 — it never falls back to the binary already sitting there\n# then: uv run pytest -q, no header, **--run-compat**, over tests/compatibility/,\nwith **SOUP_GO_BIN** pointing at what it has just built" as RUNNER <<plumbing>>
+rectangle "**run_compat.py**\n# **go build -o .compat/soup-go ./...** in the tofusoup checkout (SOUP_GO_SRC\noverrides where that is), on **every** run.\nA failed build exits 1 — it never falls back to the binary already sitting there\n# then: uv run pytest -q, no header, **--run-compat**, over tests/compatibility/,\nwith **SOUP_GO_BIN** pointing at what it has just built" as RUNNER <<plumbing>>
 
 rectangle "**tests/compatibility/ — 15 modules**\nevery one carries pytestmark = pytest.mark.compat, and conftest\nskips the marker unless --run-compat is passed" as SUITE <<core>>
 
@@ -24,7 +24,7 @@ rectangle "**generated — no table at all**\n**test_stdlib_fuzz.py** builds an 
 
 rectangle "**the per-surface oracle modules**\nconversion · msgpack · json_codec · conformance · equality · value_range\nwalk · mark_paths · unknown_as_null · stdlib · tofusoup_compat\n----\nEach drives one go-cty surface through its own subcommand and compares\nthe answers: kind, payload, refinements **and the deep mark union**." as SURFACES <<structural>>
 
-rectangle "**_oracle.py** — the bridge, and the only module that knows where the harness lives\n**soup_go()** resolves the binary: **SOUP_GO_BIN** -> shutil.which(soup-go) -> /tmp/soup-go\n**run(*args)** shells out — argv in, one JSON object on stdout, parsed with Decimal\n**rich(v)** · **type_spec(t)** · **dynamic_arg(v)** · **refinements(v)** translate into the harness dialect\n**canonical(payload)** normalises both sides' numbers before anything is compared" as ORACLE <<capsule>>
+rectangle "**_oracle.py** — the bridge, and the only module that knows where the harness lives\n**soup_go()** resolves the binary: **SOUP_GO_BIN** -> shutil.which(soup-go) -> .compat/soup-go\n**run(*args)** shells out — argv in, one JSON object on stdout, parsed with Decimal\n**rich(v)** · **type_spec(t)** · **dynamic_arg(v)** · **refinements(v)** translate into the harness dialect\n**canonical(payload)** normalises both sides' numbers before anything is compared" as ORACLE <<capsule>>
 
 rectangle "**the two-stage staleness handshake**\n**shape** — parse soup-go cty --help, require every name in REQUIRED_COMMANDS\n**behaviour** — two probes: cty rich must round-trip a number bound of 2^70\nwithout rounding it through a default-precision big.Float, and\ncty safe-known-prefix hello must answer hell\n----\n**A missing binary skips the test. A stale one raises AssertionError.**\nThe behaviour probes are what catch a binary with every command but stale,\npre-fix answers." as HANDSHAKE <<dynamic>>
 

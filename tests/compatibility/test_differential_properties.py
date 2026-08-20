@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 from typing import Any
 
 from hypothesis import given, settings
@@ -52,35 +51,23 @@ import pytest
 from pyvider.cty import CtyDynamic, CtyType, CtyValue
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
 from pyvider.cty.json_codec import CtyJsonError, cty_to_json
-from tests.compatibility._oracle import canonical, dynamic_arg, rich, run, type_spec
+from tests.compatibility._oracle import canonical, dynamic_arg, examples, rich, run, type_spec
 from tests.compatibility._strategies import cases, refined_unknowns, sets_of_sequences
 
 pytestmark = pytest.mark.compat
-
-
-def _examples(default: int) -> int:
-    """The per-property example count, raisable for a hunt.
-
-    `PYVIDER_COMPAT_EXAMPLES=600 make compat` widens every property at once. The
-    committed defaults are sized to keep the differential suite in the seconds it
-    is today; finding a *new* divergence generally means running wider than a
-    regression guard needs to.
-    """
-    override = os.environ.get("PYVIDER_COMPAT_EXAMPLES")
-    return max(1, int(override)) if override else default
 
 
 # One subprocess per property per example. Enough to have caught all three of
 # the 2026-08-19 bugs (the set ordering rule showed inside 60 sets once the
 # generator was biased toward prefix-related elements) without turning a
 # seconds-long suite into a minutes-long one.
-EXAMPLES = _examples(60)
+EXAMPLES = examples(60)
 # The narrow generators -- sets of sequences, refinements -- get their own
 # budget. Both are shapes where a divergence needs a specific *combination*
 # (two prefix-related elements; a bound that rules nothing out), which a
 # general strategy reaches too rarely to be a guard. Verified by mutation:
 # reverting each of the three 2026-08-19 fixes turns the matching property red.
-NARROW_EXAMPLES = _examples(120)
+NARROW_EXAMPLES = examples(120)
 
 
 def _b64(payload: bytes) -> str:

@@ -19,7 +19,7 @@ from pyvider.cty.exceptions import (
     InvalidTypeError,
 )
 from pyvider.cty.path import CtyPath, GetAttrStep
-from pyvider.cty.types.base import CtyType
+from pyvider.cty.types.base import CtyType, equal_iteratively
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.frozen import FrozenDict
@@ -175,13 +175,18 @@ class CtyObject(CtyType[dict[str, object]]):
         return name in self.attribute_types
 
     def equal(self, other: CtyType[Any]) -> bool:
+        return equal_iteratively(self, other)
+
+    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
         if not isinstance(other, CtyObject):
-            return False
+            return None
         if self.optional_attributes != other.optional_attributes:
-            return False
+            return None
         if self.attribute_types.keys() != other.attribute_types.keys():
-            return False
-        return all(self.attribute_types[key].equal(other.attribute_types[key]) for key in self.attribute_types)
+            return None
+        return tuple(
+            (attr_type, other.attribute_types[name]) for name, attr_type in self.attribute_types.items()
+        )
 
     def usable_as(self, other: CtyType[Any]) -> bool:
         from pyvider.cty.types.structural import CtyDynamic

@@ -47,6 +47,9 @@ docs/.shared-theme/
 result.json
 *-cty-*.json
 
+# The go-cty oracle binary, built by `make compat`
+.compat/
+
 # Mutation testing
 mutants/
 

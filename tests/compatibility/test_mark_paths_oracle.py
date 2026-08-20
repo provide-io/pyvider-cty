@@ -25,7 +25,6 @@ which is why this library hoists such marks onto the set instead, covered by
 
 from __future__ import annotations
 
-from decimal import Decimal
 import json
 from typing import Any
 
@@ -42,8 +41,9 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.mark_paths import mark_with_paths, unmark_deep_with_paths
-from pyvider.cty.path import CtyPath, GetAttrStep, IndexStep, KeyStep
+from pyvider.cty.path import CtyPath
 from tests.compatibility._oracle import canonical, rich, run, type_spec
+from tests.compatibility._traversal import step_form
 
 pytestmark = pytest.mark.compat
 
@@ -54,18 +54,6 @@ NESTED = CtyObject(attribute_types={"inner": STRINGS})
 TUPLE = CtyTuple(element_types=(CtyString(), CtyNumber()))
 
 SENSITIVE = frozenset({"sensitive"})
-
-
-def _step_form(step: Any) -> dict[str, Any]:
-    """One pyvider path step in the harness's structural form."""
-    match step:
-        case GetAttrStep(name=name):
-            return {"attr": name}
-        case IndexStep(index=index):
-            return {"index": Decimal(index)}
-        case KeyStep(key=key):
-            return {"index": rich(key) if isinstance(key, CtyValue) else key}
-    raise AssertionError(f"no structural form for {step!r}")
 
 
 def _ordered(entries: Any) -> list[str]:
@@ -82,7 +70,7 @@ def _paths_here(value: CtyValue[Any]) -> list[str]:
     _, found = unmark_deep_with_paths(value)
     return _ordered(
         {
-            "path": [canonical(_step_form(step)) for step in path.steps],
+            "path": [step_form(step) for step in path.steps],
             "marks": sorted(str(mark) for mark in marks),
         }
         for path, marks in found.items()

@@ -18,7 +18,14 @@ import subprocess  # nosec
 import sys
 
 REPO = Path(__file__).resolve().parents[2]
-BINARY = Path("/tmp/soup-go-compat")  # nosec
+# Built inside the repository rather than into `/tmp`. A shared temporary
+# directory is writable by every account on the machine, and the last-resort
+# default in `tests/compatibility/_oracle.py` *executes* whatever it finds at
+# its path -- so a binary planted there by another user would have run as
+# whoever ran the suite. `.compat/` is gitignored, and `_oracle.py` falls back
+# to this same path, so the two agree without either importing the other.
+BUILD_DIR = REPO / ".compat"
+BINARY = BUILD_DIR / "soup-go"
 
 
 def harness_source() -> Path:
@@ -71,6 +78,7 @@ def ensure_harness() -> Path | None:
         print(f"{message}; skipping cross-language checks.")
         return None
     print(f"Building soup-go harness from {harness_src} ...")
+    BUILD_DIR.mkdir(parents=True, exist_ok=True)
     build = subprocess.run(  # nosec
         ["go", "build", "-o", str(BINARY), "./..."], cwd=harness_src, check=False
     )

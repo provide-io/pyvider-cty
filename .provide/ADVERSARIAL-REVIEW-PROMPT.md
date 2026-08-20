@@ -14,7 +14,7 @@ Base: `gh-origin/main`
 
 Reference implementation: a `go-cty` checkout at `/Users/tim/code/tf/go-cty`, at `v1.19.0-1-g0d1eb26`. This project aims to be a Python implementation of it.
 
-**There is a live oracle.** `/tmp/soup-go cty call <function> '<arg-json>' ...` runs the real go-cty and prints its answer as JSON. `/tmp/soup-go cty call --help` documents the argument format, which can express unknown, null and marked values. Use it constantly — it settles behavioural questions that reading cannot. The compat suite runs with `SOUP_GO_BIN=/tmp/soup-go uv run pytest tests/compatibility/ -q --run-compat`.
+**There is a live oracle.** `.compat/soup-go cty call <function> '<arg-json>' ...` runs the real go-cty and prints its answer as JSON. `.compat/soup-go cty call --help` documents the argument format, which can express unknown, null and marked values. Use it constantly — it settles behavioural questions that reading cannot. The compat suite runs with `SOUP_GO_BIN=.compat/soup-go uv run pytest tests/compatibility/ -q --run-compat`.
 
 Start with `git log --oneline gh-origin/main..HEAD` and `git diff gh-origin/main...HEAD`.
 

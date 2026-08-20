@@ -21,11 +21,10 @@ msgpack bytes -- so the test could not have passed, and nothing noticed because
 it only runs under `--run-compat`. Generating the comparison from the live
 harness means there is no fixture to rot.
 
-Requires the `soup-go` harness. Point `SOUP_GO_BIN` at a built binary, or build
-it with:
-
-    cd /Volumes/data/pyv/tofusoup/src/tofusoup/harness/go/soup-go
-    go build -o /tmp/soup-go ./...
+Requires the `soup-go` harness. `make compat` builds it from a sibling
+`tofusoup` checkout into `.compat/soup-go` and runs the suite against it; set
+`SOUP_GO_SRC` if the checkout is elsewhere, or point `SOUP_GO_BIN` at a binary
+you built yourself.
 """
 
 from __future__ import annotations
