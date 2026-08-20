@@ -94,29 +94,37 @@ go-cty itself writes. The "four of five validation paths" from the review is
 about **pyvider**, not this package. Correct as written; the enforcement gap to
 chase is next door.
 
-## The one open decision, which is cross-repo
+## The cross-repo blocker, closed
 
-The `compat` CI job cannot build the harness:
+CI is green for the first time, differential job included: **3,691 passed, 26
+xfailed** on the runner, matching the local number exactly.
 
-```
-main.go:9:2: github.com/hashicorp/go-plugin@v1.7.0:
-  replacement directory /Users/tim/code/gh/hashicorp/go-plugin does not exist
-```
+Two things were wrong and the unpinned checkout was hiding the second.
 
-tofusoup `main` carries a `replace` pointing at a laptop. The local
-`feat/tfplugin-driver` branch has already dropped it — its only `replace` is the
-relative `../../proto/kv`.
+`soup-go`'s `go.mod` carried `replace github.com/hashicorp/go-plugin =>
+/Users/tim/code/gh/hashicorp/go-plugin`, a module path pointing at one laptop,
+so `go build` succeeded there and nowhere else. The replaced checkout was v1.7.0
+plus three upstream chore commits and one *uncommitted* six-line patch to
+`server.go` — extracting a server certificate from a custom TLSProvider so
+AutoMTLS clients can use one. Nothing in the `cty` commands touches it; it is
+the tfplugin driver's path. Stashed (`stash@{0}` on branch
+`fixing-up-cert-handling`) rather than forked, on Tim's call, and upstream
+v1.7.0 builds clean with `go test ./...` passing. Fixed in tofusoup `9d31249`.
 
-Underneath that is a bigger mismatch. `cty_call.go`, `cty_ops.go`, `cty_rich.go`
-and `cty_unify.go` — 2,645 lines, the entire surface this suite calls — exist
-**only on the feature branch**. Local `make compat` (3,691 passed) measures
-against `feat/tfplugin-driver`; CI checks out a `main` from 2026-04-23 that has
-none of it.
+Underneath: `cty_call.go`, `cty_ops.go`, `cty_rich.go` and `cty_unify.go` —
+2,645 lines, every command this suite drives — exist only on
+`feat/tfplugin-driver`. So CI had been pointed at an April harness that could
+not have answered the suite even if it had compiled, while local runs measured
+against a working one. **The two were never checking the same thing.**
 
-So the workflow's unpinned `provide-io/tofusoup` checkout is a symptom, not the
-cause, and pinning a SHA now would pin the wrong oracle. The order has to be:
-land the harness work on tofusoup `main` (or drop the `replace` there), then pin
-the checkout in `.github/workflows/ci.yml:54`. Both are Tim's calls.
+`.github/workflows/ci.yml` now pins `ref: 9d31249896f05e26ca9cdc521cb0617cc4a7e049`.
+A commit, not a branch, for the reason the Go version pin beside it gives: the
+oracle decides what parity *means*, so a suite measuring against a moving
+harness has answers that change without anyone changing this repository.
+
+**The one thing still owed**: that pin names a commit on a feature branch. When
+`feat/tfplugin-driver` lands on tofusoup's default branch, move the pin to a
+commit on `main`. Do not widen it back to a branch name.
 
 ## Smaller things done on the way
 
@@ -133,10 +141,11 @@ the checkout in `.github/workflows/ci.yml:54`. Both are Tim's calls.
 
 ## For the next session
 
-1. **The cross-repo blocker above.** Nothing else in CI moves until it does.
-2. **The 0.5.0 release**, once CI is green. VERSION already reads `0.5.0` and the
-   CHANGELOG is closed out. Still cross-repo: `pyvider` releases at or before
-   `pyvider-cty`.
+1. **The 0.5.0 release.** Nothing blocks it now: VERSION reads `0.5.0`, the
+   CHANGELOG is closed out, and CI is green end to end. Still cross-repo —
+   `pyvider` releases at or before `pyvider-cty` — so the ordering is Tim's.
+2. **Move the harness pin** once `feat/tfplugin-driver` lands on tofusoup's
+   default branch.
 3. **Done, on 2026-08-20**: the five further recursive surfaces are closed —
    `CtyType.__eq__`, `CtyType.__hash__`, `usable_as`, `__str__`, and both
    `__eq__` and `__hash__` on `CtyValue`. Only `__repr__` is left recursive, on
