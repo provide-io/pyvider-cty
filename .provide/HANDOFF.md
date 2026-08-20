@@ -1,6 +1,8 @@
 # Handoff — 2026-08-20 (security review, CI red, and the named follow-ups)
 
-Branch `main`, clean at `e59104b`. Everything below is landed and pushed.
+Branch `main`, clean at `a958ad2`, **CI green end to end** — differential job
+included, for the first time. tofusoup's `main` is green too. Everything below
+is landed and pushed.
 
 ## What was asked
 
@@ -144,12 +146,31 @@ now). tofusoup's CI is green.
 * The stale worktree at `provide-workspace/repos/pyvider-cty` was confirmed
   merged and clean, and removed, along with the merged `feat/go-cty-parity`
   branch.
+* Two generated coverage guards were measuring a `example()` pool rather than
+  the strategy behind it -- one passed locally and failed on CI for exactly
+  that reason. Both use `find` now. That is the second false failure
+  `example()` has produced in this suite; there are none left.
+* `unify` and `jsondecode` each gave up a real divergence to the new generated
+  suites, on their first and second runs respectively: a unified type carrying
+  optional attributes, and an object key that go-cty refuses unless it is
+  already NFC-normalized.
 
 ## For the next session
 
-1. **The 0.5.0 release.** Nothing blocks it now: VERSION reads `0.5.0`, the
-   CHANGELOG is closed out, and CI is green end to end. Still cross-repo —
-   `pyvider` releases at or before `pyvider-cty` — so the ordering is Tim's.
+1. **The 0.5.0 release.** Nothing in this repository blocks it: VERSION reads
+   `0.5.0`, the CHANGELOG is closed out, CI is green end to end, and the
+   release runs off a published GitHub Release for tag `v0.5.0`. The gate is
+   cross-repo — `pyvider` releases at or before `pyvider-cty`, and `pyvider`
+   sits on `feature/tfprotov6-11-upgrade`, 96 ahead and 1 behind `main`, with
+   an outside contributor's PR (`3d07c0a`) on main to reconcile. That merge is
+   its own piece of work.
+
+   **Open, and worth deciding before or soon after release**: `formatlist` does
+   not raise "too many arguments" for an iteration whose arguments are unknown,
+   where go-cty does. Recorded in `docs/reference/go-cty-comparison.md` with
+   what is and is not pinned down; the generator matches arity so the rest of
+   the surface stays covered. Plain `format` agrees with go-cty in every arity
+   case measured, so this is the iterating wrapper alone.
 2. **Bump the harness pin** when the oracle gains a command or a fix worth
    measuring against -- deliberately, with whatever it reveals.
 3. **Done, on 2026-08-20**: the five further recursive surfaces are closed —
