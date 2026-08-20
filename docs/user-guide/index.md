@@ -34,6 +34,7 @@ Advanced features and use cases:
 - **[Serialization](advanced/serialization.md)** - MessagePack encoding/decoding
 - **[Path Navigation](advanced/path-navigation.md)** - Navigate nested structures
 - **[Terraform Interoperability](advanced/terraform-interop.md)** - Work with Terraform
+- **[Going from Python](advanced/going-from-python.md)** - Where a correct-looking Python instinct gives a different answer from Terraform
 
 ## How to Use This Guide
 
