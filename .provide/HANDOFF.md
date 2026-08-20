@@ -137,9 +137,9 @@ the checkout in `.github/workflows/ci.yml:54`. Both are Tim's calls.
 2. **The 0.5.0 release**, once CI is green. VERSION already reads `0.5.0` and the
    CHANGELOG is closed out. Still cross-repo: `pyvider` releases at or before
    `pyvider-cty`.
-3. **Four more recursive surfaces**, same class as the one fixed here, measured
-   at depth 400 on 3.11 and still failing: `CtyType.__eq__` (attrs-generated, so
-   it does not route through `equal`), `usable_as`, `__str__`/`__repr__`, and
-   `CtyValue.__eq__`. None is on the construction path, so none is failing CI —
-   but `usable_as` and value equality are hot, and a deeply nested value can
-   still raise from them.
+3. **Done, on 2026-08-20**: the five further recursive surfaces are closed —
+   `CtyType.__eq__`, `CtyType.__hash__`, `usable_as`, `__str__`, and both
+   `__eq__` and `__hash__` on `CtyValue`. Only `__repr__` is left recursive, on
+   purpose and with a test saying so. Folding the value hash also turned up a
+   live bug: a tuple was not counted as a container there, so its payload
+   skipped the element-hashing that routes a capsule through its `hash_fn`.
