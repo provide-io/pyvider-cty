@@ -12,7 +12,13 @@ from attrs import define, field
 
 from pyvider.cty.exceptions import CtyListValidationError, CtyValidationError
 from pyvider.cty.path import CtyPath, IndexStep
-from pyvider.cty.types.base import CtyType, equal_iteratively
+from pyvider.cty.types.base import (
+    CtyType,
+    equal_iteratively,
+    hash_iteratively,
+    render_iteratively,
+    usable_as_iteratively,
+)
 from pyvider.cty.types.structural import CtyDynamic
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
@@ -127,23 +133,37 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
     def equal(self, other: CtyType[Any]) -> bool:
         return equal_iteratively(self, other)
 
-    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
+    def _structure(self) -> tuple[Any, tuple[Any, ...]] | None:
+        return ((self.ctype,), (self.element_type,))
+
+    def __eq__(self, other: object) -> bool:
+        # Written out rather than left to attrs, which generates a field-by-field
+        # comparison that recurses once per level of nesting. `equal` walks.
+        # attrs' `auto_detect` leaves both of these alone because they are here.
+        return self.equal(other) if isinstance(other, CtyType) else NotImplemented
+
+    def __hash__(self) -> int:
+        return hash_iteratively(self)
+
+    def usable_as(self, other: CtyType[Any]) -> bool:
+        return usable_as_iteratively(self, other)
+
+    def _usable_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
+
+        if isinstance(other, CtyDynamic):
+            return ()
         if not isinstance(other, CtyList):
             return None
         return ((self.element_type, other.element_type),)
 
-    def usable_as(self, other: CtyType[Any]) -> bool:
-        if isinstance(other, CtyDynamic):
-            return True
-        if not isinstance(other, CtyList):
-            return False
-        return self.element_type.usable_as(other.element_type)
-
     def _to_wire_json(self) -> Any:
         return [self.ctype, self.element_type._to_wire_json()]
 
+    def _render(self, children: list[str]) -> str:
+        return f"list({children[0]})"
+
     def __str__(self) -> str:
-        return f"list({self.element_type})"
+        return render_iteratively(self)
 
     def __repr__(self) -> str:
         return f"CtyList(element_type={self.element_type!r})"

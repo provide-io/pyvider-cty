@@ -17,7 +17,13 @@ from pyvider.cty.exceptions import (
     CtyValidationError,
 )
 from pyvider.cty.path import CtyPath, IndexStep
-from pyvider.cty.types.base import CtyType, equal_iteratively
+from pyvider.cty.types.base import (
+    CtyType,
+    equal_iteratively,
+    hash_iteratively,
+    render_iteratively,
+    usable_as_iteratively,
+)
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 
@@ -112,23 +118,31 @@ class CtyTuple(CtyType[tuple[object, ...]]):
     def equal(self, other: CtyType[Any]) -> bool:
         return equal_iteratively(self, other)
 
-    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
+    def _structure(self) -> tuple[Any, tuple[Any, ...]] | None:
+        return ((self.ctype, len(self.element_types)), tuple(self.element_types))
+
+    def __eq__(self, other: object) -> bool:
+        # Written out rather than left to attrs, which generates a field-by-field
+        # comparison that recurses once per level of nesting. `equal` walks.
+        # attrs' `auto_detect` leaves both of these alone because they are here.
+        return self.equal(other) if isinstance(other, CtyType) else NotImplemented
+
+    def __hash__(self) -> int:
+        return hash_iteratively(self)
+
+    def usable_as(self, other: CtyType[Any]) -> bool:
+        return usable_as_iteratively(self, other)
+
+    def _usable_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
+        from pyvider.cty.types.structural import CtyDynamic
+
+        if isinstance(other, CtyDynamic):
+            return ()
         if not isinstance(other, CtyTuple):
             return None
         if len(self.element_types) != len(other.element_types):
             return None
         return tuple(zip(self.element_types, other.element_types, strict=True))
-
-    def usable_as(self, other: CtyType[Any]) -> bool:
-        from pyvider.cty.types.structural import CtyDynamic
-
-        if isinstance(other, CtyDynamic):
-            return True
-        if not isinstance(other, CtyTuple):
-            return False
-        if len(self.element_types) != len(other.element_types):
-            return False
-        return all(t1.usable_as(t2) for t1, t2 in zip(self.element_types, other.element_types, strict=False))
 
     def _to_wire_json(self) -> Any:
         elems_json = [elem_type._to_wire_json() for elem_type in self.element_types]
@@ -137,11 +151,11 @@ class CtyTuple(CtyType[tuple[object, ...]]):
     def __getitem__(self, index: int | builtins.slice) -> CtyType[Any] | CtyTuple | tuple[CtyType[Any], ...]:
         return self.element_types[index]
 
+    def _render(self, children: list[str]) -> str:
+        return f"tuple([{', '.join(children)}])"
+
     def __str__(self) -> str:
-        if not self.element_types:
-            return "tuple([])"
-        elements = ", ".join(str(vtype) for vtype in self.element_types)
-        return f"tuple([{elements}])"
+        return render_iteratively(self)
 
     def slice(
         self,

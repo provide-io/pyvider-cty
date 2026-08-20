@@ -19,7 +19,12 @@ from pyvider.cty.exceptions import (
     InvalidTypeError,
 )
 from pyvider.cty.path import CtyPath, GetAttrStep
-from pyvider.cty.types.base import CtyType, equal_iteratively
+from pyvider.cty.types.base import (
+    CtyType,
+    equal_iteratively,
+    hash_iteratively,
+    usable_as_iteratively,
+)
 from pyvider.cty.validation.recursion import with_recursion_detection
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.frozen import FrozenDict
@@ -38,20 +43,6 @@ class CtyObject(CtyType[dict[str, object]]):
                 raise InvalidTypeError(
                     f"Attribute '{name}' must be a CtyType, but got {type(attr_type).__name__}"
                 )
-
-    def __hash__(self) -> int:
-        # Use a recursive hashing approach that safely handles nested objects
-        def safe_hash_type(cty_type: CtyType[Any]) -> int:
-            if hasattr(cty_type, "ctype") and cty_type.ctype == "object":
-                # For nested objects, use a simpler hash to avoid recursion
-                obj_type = cast(CtyObject, cty_type)
-                return hash((obj_type.ctype, tuple(sorted(obj_type.attribute_types.keys()))))
-            return hash(cty_type)
-
-        attr_hashes = tuple(
-            (name, safe_hash_type(attr_type)) for name, attr_type in sorted(self.attribute_types.items())
-        )
-        return hash((self.ctype, attr_hashes, self.optional_attributes))
 
     def __repr__(self) -> str:
         # Provide a safe representation that doesn't recurse infinitely
@@ -177,35 +168,44 @@ class CtyObject(CtyType[dict[str, object]]):
     def equal(self, other: CtyType[Any]) -> bool:
         return equal_iteratively(self, other)
 
-    def _equal_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
-        if not isinstance(other, CtyObject):
-            return None
-        if self.optional_attributes != other.optional_attributes:
-            return None
-        if self.attribute_types.keys() != other.attribute_types.keys():
-            return None
-        return tuple(
-            (attr_type, other.attribute_types[name]) for name, attr_type in self.attribute_types.items()
+    def _structure(self) -> tuple[Any, tuple[Any, ...]] | None:
+        # Sorted, because the token has to be the same for two equal objects and
+        # declaration order is a property of how each was written.
+        names = tuple(sorted(self.attribute_types))
+        return (
+            (self.ctype, names, self.optional_attributes),
+            tuple(self.attribute_types[name] for name in names),
         )
 
+    def __eq__(self, other: object) -> bool:
+        # Written out rather than left to attrs, which generates a field-by-field
+        # comparison that recurses once per level of nesting. `equal` walks.
+        # attrs' `auto_detect` leaves both of these alone because they are here.
+        return self.equal(other) if isinstance(other, CtyType) else NotImplemented
+
+    def __hash__(self) -> int:
+        return hash_iteratively(self)
+
     def usable_as(self, other: CtyType[Any]) -> bool:
+        return usable_as_iteratively(self, other)
+
+    def _usable_shallow(self, other: Any) -> tuple[tuple[Any, Any], ...] | None:
         from pyvider.cty.types.structural import CtyDynamic
 
         if isinstance(other, CtyDynamic):
-            return True
+            return ()
         if not isinstance(other, CtyObject):
-            return False
+            return None
         other_attrs = set(other.attribute_types.keys())
         self_attrs = set(self.attribute_types.keys())
         if not other_attrs.issubset(self_attrs):
-            return False
+            return None
         self_required = self_attrs - self.optional_attributes
         other_required = other_attrs - other.optional_attributes
         if not other_required.issubset(self_required):
-            return False
-        return all(
-            self.attribute_types[name].usable_as(other_type)
-            for name, other_type in other.attribute_types.items()
+            return None
+        return tuple(
+            (self.attribute_types[name], other_type) for name, other_type in other.attribute_types.items()
         )
 
     def _to_wire_json(self) -> Any:

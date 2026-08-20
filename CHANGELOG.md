@@ -19,7 +19,40 @@ This release includes the results of a comprehensive adversarial parity review t
 - **Algorithmic DoS in `setproduct`**: Enforced a hard cap of 1,000,000 elements on the cartesian product size, preventing a single small payload from causing instant memory exhaustion. (Pyvider is now strictly safer than `go-cty` here.) This is a deliberate divergence and is listed as breaking change 45; it applies only where the product would be materialized, so an unknown-length argument still answers an unknown.
 - **JSON Parser Memory Exhaustion**: Eliminated 40% of the memory footprint and 66% of the parsing time during `cty_from_json` deserialization by replacing double-validation loops with direct, lazy-evaluated CtyValue constructors.
 - **Set Union Hotspot**: Fixed an $O(N^2)$ execution stall when accumulating marks in large collections (such as `CtySet` deduplication loops) by swapping immutable frozenset unions for mutable `set.update()` accumulations.
-- **`RecursionError` from comparing two deeply nested types.** `CtyTuple.equal` and `CtyObject.equal` recursed at two Python frames per level of nesting, and `equal` is on the *construction* path -- `validate` compares an element's type against the one its container declares -- so a 400-deep tuple could not be built at all. It raised on Python 3.11 and passed on 3.13, on nothing but where each interpreter puts its frames: 800 frames against a limit of 1000. `requires-python` is 3.11, and CI runs it, so this was red on every platform. The collection types had met the same thing and half-fixed it, flattening the linear chain of same-kind containers while recording that branching shapes were bounded by schema breadth -- a single-element tuple nested 400 deep is not. All five container types now compare through one explicit-stack walk.
+- **`RecursionError` from anything asked of a deeply nested type or value.**
+  `CtyTuple.equal` and `CtyObject.equal` recursed at two Python frames per level
+  of nesting, and `equal` is on the *construction* path -- `validate` compares
+  an element's type against the one its container declares -- so a 400-deep
+  tuple could not be built at all. It raised on Python 3.11 and passed on 3.13,
+  on nothing but where each interpreter puts its frames: 800 frames against a
+  limit of 1000. `requires-python` is 3.11, and CI runs it.
+
+  Measuring rather than reading found five more surfaces with the same shape,
+  none of them on the construction path and so none of them failing anything
+  visibly: a type's `__eq__` (attrs-generated per subclass, so it never routed
+  through `equal`), `__hash__`, `usable_as`, `__str__`, and both `__eq__` and
+  `__hash__` on `CtyValue`. All of them walk now, off a single decomposition --
+  `_structure`, which each container answers once and which equality, hashing
+  and rendering all read.
+
+  Two workarounds for this defect are gone with it. The collection types
+  flattened the linear chain of same-kind containers and recorded that branching
+  shapes were "bounded by the schema's own breadth" -- a single-element tuple
+  nested 400 deep is not. And `CtyObject.__hash__` hashed a nested object by its
+  attribute *names* only, "to avoid recursion", so two objects differing solely
+  in a nested attribute's type shared a bucket; the hash now descends as far as
+  equality does.
+
+  One real bug surfaced on the way: `CtyValue.__hash__` did not treat a tuple as
+  a container, so a tuple's payload was hashed by Python's own tuple hash rather
+  than by its elements' hashes. Besides recursing, that skipped the
+  element-hashing that routes a capsule payload through its `hash_fn` -- so two
+  tuples holding equal capsule payloads hashed apart, exactly as two lists used
+  to before that was fixed for lists.
+
+  `__repr__` is deliberately left recursive: it is a debugger surface and
+  reaches no error path, since a refusal spells its type with `str()`.
+
 - **Mark laundering through a capsule conversion**: `convert()` into a `CtyCapsuleWithOps` declaring `convert_to_fn` dropped the source value's marks, because `convert_to_fn` hands back a raw Python object and `@preserves_marks` has nothing to copy from. A sensitive value coerced into a provider's own capsule type came out unmarked, so the codec's refusal to serialize a marked value never fired and the payload reached the msgpack wire in the clear. `convert_to_fn` is new in this release, so no published version is affected. Every return in `convert()` now re-applies the source's marks, and a parametrized sweep over the whole branch space holds the invariant.
 - **ReDoS (Regex Denial of Service)**: Explicitly documented the architectural constraint that `google-re2` cannot be cross-compiled to WebAssembly for Pyodide, meaning Pyvider's `regex` family falls back to Python's backtracking NFA. Do not evaluate untrusted patterns from remote APIs.
 
