@@ -117,14 +117,20 @@ Underneath: `cty_call.go`, `cty_ops.go`, `cty_rich.go` and `cty_unify.go` —
 not have answered the suite even if it had compiled, while local runs measured
 against a working one. **The two were never checking the same thing.**
 
-`.github/workflows/ci.yml` now pins `ref: 9d31249896f05e26ca9cdc521cb0617cc4a7e049`.
-A commit, not a branch, for the reason the Go version pin beside it gives: the
-oracle decides what parity *means*, so a suite measuring against a moving
-harness has answers that change without anyone changing this repository.
+`feat/tfplugin-driver` has since landed on tofusoup `main` (PR #3, merge commit
+`32c0a10`), and `.github/workflows/ci.yml` pins that. A commit, not a branch,
+for the reason the Go version pin beside it gives: the oracle decides what
+parity *means*, so a suite measuring against a moving harness has answers that
+change with no commit here to say which. Bump it deliberately, together with
+whatever divergence a new harness reveals.
 
-**The one thing still owed**: that pin names a commit on a feature branch. When
-`feat/tfplugin-driver` lands on tofusoup's default branch, move the pin to a
-commit on `main`. Do not widen it back to a branch name.
+Two things had to be fixed in tofusoup before that merge, and neither had ever
+been seen because its CI triggers only on `main`/`develop` and PRs to them --
+so twenty commits had accumulated without CI once running on them. `uv sync`
+failed outright on the sibling path dependencies (`no-sources: true` now, the
+same flag and the same reason as here), and bandit failed the Security job on a
+hardcoded `/tmp` fallback for a subprocess's `TMPDIR` (`tempfile.gettempdir()`
+now). tofusoup's CI is green.
 
 ## Smaller things done on the way
 
@@ -144,8 +150,8 @@ commit on `main`. Do not widen it back to a branch name.
 1. **The 0.5.0 release.** Nothing blocks it now: VERSION reads `0.5.0`, the
    CHANGELOG is closed out, and CI is green end to end. Still cross-repo —
    `pyvider` releases at or before `pyvider-cty` — so the ordering is Tim's.
-2. **Move the harness pin** once `feat/tfplugin-driver` lands on tofusoup's
-   default branch.
+2. **Bump the harness pin** when the oracle gains a command or a fix worth
+   measuring against -- deliberately, with whatever it reveals.
 3. **Done, on 2026-08-20**: the five further recursive surfaces are closed —
    `CtyType.__eq__`, `CtyType.__hash__`, `usable_as`, `__str__`, and both
    `__eq__` and `__hash__` on `CtyValue`. Only `__repr__` is left recursive, on

@@ -52,17 +52,14 @@ jobs:
       # Pinned to a commit, not a branch, and the pin is the whole point: the
       # oracle decides what "parity" means, so a differential suite measuring
       # against a moving harness is a suite whose answers change without anyone
-      # changing this repository. It is also the only place the cty commands
-      # exist -- `cty call`, `cty rich`, `cty unify` and the rest are on
-      # feat/tfplugin-driver and not yet on the default branch, so an unpinned
-      # checkout landed on a harness that answered "unknown command" to
-      # everything. Move the pin when that branch lands; do not widen it to a
-      # branch name.
+      # changing this repository -- and there would be no commit here to say
+      # which answer changed. Bump this deliberately, together with whatever
+      # divergence the new harness reveals; do not widen it to a branch name.
       - name: 📥 Check out the soup-go harness
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: provide-io/tofusoup
-          ref: 9d31249896f05e26ca9cdc521cb0617cc4a7e049
+          ref: 32c0a10d9683a0cfa5c717f5cfd98de0a9f90fb0  # tofusoup main
           path: tofusoup
 
       # Pinned deliberately, and the pin is load-bearing: go-cty selects
