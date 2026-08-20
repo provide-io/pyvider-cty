@@ -94,8 +94,19 @@ _WEEKDAY_NAMES = (
 )
 
 
-def _parse_rfc3339(timestamp: str) -> datetime:
-    """Parse an RFC3339 timestamp, by go-cty's rules rather than Python's."""
+def _parse_rfc3339_parts(timestamp: str) -> tuple[datetime, int]:
+    """An RFC3339 timestamp as a whole-second instant and its nanoseconds.
+
+    Split rather than folded into one `datetime` because a `datetime` resolves
+    to microseconds and Go's `time.Time` to nanoseconds, so the last three
+    digits of a nine-digit fraction have nowhere to go. Keeping them separate
+    lets `timeadd` do its arithmetic at Go's resolution and only then come back
+    to the calendar, which is the whole of what the sub-microsecond divergence
+    was.
+
+    Go truncates anything finer than a nanosecond, so the fraction is read to
+    nine digits and no further.
+    """
     matched = _RFC3339.fullmatch(timestamp)
     if matched is None:
         raise ValueError(ERR_INVALID_RFC3339_TIMESTAMP.format(timestamp=timestamp))
@@ -108,22 +119,30 @@ def _parse_rfc3339(timestamp: str) -> datetime:
         tzinfo = timezone(-offset if parts["sign"] == "-" else offset)
 
     fraction = parts["fraction"] or ""
-    # datetime resolves to microseconds; anything finer is truncated, as Go
-    # truncates anything finer than a nanosecond.
-    microsecond = int(fraction[:6].ljust(6, "0")) if fraction else 0
+    nanoseconds = int(fraction[:9].ljust(9, "0")) if fraction else 0
 
     # datetime does the remaining range checking -- month 13, day 32, hour 24 and
     # the like all raise ValueError from here, which is where they should raise.
-    return datetime(
+    moment = datetime(
         year=int(parts["year"]),
         month=int(parts["month"]),
         day=int(parts["day"]),
         hour=int(parts["hour"]),
         minute=int(parts["minute"]),
         second=int(parts["second"]),
-        microsecond=microsecond,
         tzinfo=tzinfo,
     )
+    return moment, nanoseconds
+
+
+def _parse_rfc3339(timestamp: str) -> datetime:
+    """The same instant as a plain `datetime`, for the callers that render it.
+
+    `formatdate` has no verb finer than a second, so the microsecond truncation
+    here reaches nothing it can print.
+    """
+    moment, nanoseconds = _parse_rfc3339_parts(timestamp)
+    return moment.replace(microsecond=nanoseconds // _NANOSECONDS_PER_MICROSECOND)
 
 
 def _utc_offset_parts(moment: datetime) -> tuple[str, int, int]:
@@ -145,11 +164,21 @@ def _format_rfc3339(moment: datetime) -> str:
     )
 
 
-def _parse_duration(duration_str: str) -> timedelta:
-    """Parse a duration string by the rules of Go's time.ParseDuration."""
+def _parse_duration_nanoseconds(duration_str: str) -> int:
+    """A duration by the rules of Go's `time.ParseDuration`, in nanoseconds.
+
+    A `time.Duration` *is* an int64 count of nanoseconds, so this is the shape
+    Go holds it in, and returning it unrounded is what lets `timeadd` be exact.
+    An earlier version came back as a `timedelta`, which resolves to
+    microseconds, and the rounding it had to do was the whole of a divergence:
+    truncating the magnitude rather than flooring the signed count put every
+    negative sub-microsecond shift on the far side of the second boundary --
+    `timeadd("0002-01-01T00:00:00Z", "-1ns")` came back unchanged where go-cty
+    answers `0001-12-31T23:59:59Z`, a different second, day and year.
+    """
     # ParseDuration's one special case: a bare zero needs no unit.
     if duration_str in {"0", "+0", "-0"}:
-        return timedelta(0)
+        return 0
 
     matched = _DURATION.fullmatch(duration_str)
     if matched is None:
@@ -173,22 +202,7 @@ def _parse_duration(duration_str: str) -> timedelta:
     if matched.group("sign") == "-":
         total_nanoseconds = -total_nanoseconds
 
-    # Floored on the *signed* count, not truncated on its magnitude. A
-    # `timedelta` resolves to microseconds and a `time.Duration` to nanoseconds,
-    # so a sub-microsecond duration has to land on one side or the other -- and
-    # taking the magnitude first put every negative one on the wrong side:
-    # `timeadd("0002-01-01T00:00:00Z", "-1ns")` came back unchanged where go-cty
-    # answers `0001-12-31T23:59:59Z`, a different second, a different day and a
-    # different year. Flooring keeps the shift on the side of the second
-    # boundary go-cty puts it on, for a duration of either sign.
-    #
-    # The residual is the other half of the same representation limit: a
-    # *timestamp* written with sub-microsecond digits is truncated by
-    # `_parse_rfc3339`, so `timeadd("...00.000000001Z", "-1ns")` still differs.
-    # Closing that means holding the instant as an integer nanosecond count
-    # rather than as a `datetime`, which is the same change the calendar-range
-    # divergence would need. Found 2026-08-19 by the stdlib fuzz.
-    return timedelta(microseconds=total_nanoseconds // _NANOSECONDS_PER_MICROSECOND)
+    return total_nanoseconds
 
 
 def _split_date_format(spec: str) -> list[str]:
@@ -485,12 +499,17 @@ def timeadd(timestamp: CtyValue[Any], duration: CtyValue[Any]) -> CtyValue[Any]:
     reaching a provider from a function whose contract is to answer or refuse.
     """
     try:
-        moment = _parse_rfc3339(cast(str, timestamp.value))
-        delta = _parse_duration(cast(str, duration.value))
+        moment, nanoseconds = _parse_rfc3339_parts(cast(str, timestamp.value))
+        shift = _parse_duration_nanoseconds(cast(str, duration.value))
     except ValueError as e:
         raise CtyFunctionError(ERR_TIMEADD_INVALID_FORMAT.format(error=e)) from e
+    # Nanoseconds first, then the calendar. `divmod` floors, so a shift that
+    # crosses a second boundary downwards borrows from the second rather than
+    # rounding towards zero -- the remainder is always in [0, 1e9), whichever
+    # sign the shift had.
+    seconds, _remaining_nanoseconds = divmod(nanoseconds + shift, _NANOSECONDS_PER_SECOND)
     try:
-        shifted = moment + delta
+        shifted = moment + timedelta(seconds=seconds)
     except OverflowError as e:
         raise CtyFunctionError(ERR_TIMEADD_OUT_OF_RANGE) from e
     return CtyString().validate(_format_rfc3339(shifted))

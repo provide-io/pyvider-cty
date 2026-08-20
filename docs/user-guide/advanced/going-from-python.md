@@ -216,20 +216,27 @@ for document in ('"unterminated', 'a,b\n1,2"3', "\n"):
 
 ## Time
 
-`timeadd` shifts by whole nanoseconds, and a `datetime` resolves to
-microseconds. A sub-microsecond duration still lands on the correct side of a
-second boundary:
+`timeadd` shifts by whole nanoseconds and rounds nothing, even though a
+`datetime` resolves only to microseconds. The instant is carried as a
+whole-second `datetime` plus an integer nanosecond remainder, so both a
+sub-microsecond *duration* and a sub-microsecond *timestamp* land on the side of
+the second boundary Terraform puts them on:
 
 ```python
 shifted = STDLIB["timeadd"](
     string.validate("0002-01-01T00:00:00Z"), string.validate("-1ns")
 )
 assert shifted.value == "0001-12-31T23:59:59Z"
+
+# The nanosecond in the timestamp cancels the one in the duration exactly.
+cancelled = STDLIB["timeadd"](
+    string.validate("0002-01-01T00:00:00.000000001Z"), string.validate("-1ns")
+)
+assert cancelled.value == "0002-01-01T00:00:00Z"
 ```
 
-Two limits of the `datetime` representation are recorded divergences: the
-calendar stops at year 9999 where Go's `time.Time` runs far past it, and a
-*timestamp* written with sub-microsecond digits is truncated on the way in.
+One limit of the `datetime` representation is still a recorded divergence: the
+calendar stops at year 9999 where Go's `time.Time` runs far past it.
 
 ## Nulls are not unknowns
 

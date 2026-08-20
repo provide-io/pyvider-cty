@@ -43,6 +43,7 @@ from hypothesis import strategies as st
 
 from pyvider.cty import (
     CtyList,
+    CtyMap,
     CtyNumber,
     CtySet,
     CtyString,
@@ -409,6 +410,96 @@ def _sets_of_one_or_many_types(draw: Any, *, min_size: int = 1, max_size: int = 
 
 
 @st.composite
+def _sets_drawn_from_one_pool(draw: Any, *, min_size: int = 1, max_size: int = 3) -> list[CtyValue[Any]]:
+    """Sets built from a shared pool of elements, so they actually overlap.
+
+    Independently drawn sets almost never have anything in common, and a set
+    operation whose arguments are disjoint exercises none of the code that
+    decides what to do about a shared element. Measured over 400 draws of the
+    independent plan: `setintersection` answered a non-empty set 12% of the
+    time and `setsubtract` 16%, so most examples were spent watching the two
+    implementations agree that nothing was in common -- agreement that says
+    nothing at all about the operation.
+
+    Elements are drawn without unknowns here, deliberately: an unknown member
+    makes the set's length unknown, and the answer stops being about membership.
+    The independent plan still runs half the time and still draws them, so
+    nothing that used to be reached has stopped being reached.
+    """
+    count = draw(st.integers(min_value=min_size, max_value=max_size))
+    element_type = draw(v.scalar_types)
+    pool = draw(st.lists(v.members(element_type, unknowns=False), min_size=1, max_size=5))
+    return [
+        CtySet(element_type=element_type).validate(draw(st.lists(st.sampled_from(pool), max_size=4)))
+        for _ in range(count)
+    ]
+
+
+def _overlapping_or_not(*, min_size: int = 1, max_size: int = 3) -> Args:
+    """Half from one pool, half independent -- both shapes matter."""
+    return st.one_of(
+        _sets_of_one_or_many_types(min_size=min_size, max_size=max_size),
+        _sets_drawn_from_one_pool(min_size=min_size, max_size=max_size),
+    )
+
+
+def _rebuilt(value: CtyValue[Any]) -> CtyValue[Any]:
+    """An equal value that is not the same object.
+
+    `equal` is a question about structure, and handing it the same object twice
+    asks a weaker one -- an implementation that compared by identity would pass.
+    """
+    try:
+        return value.type.validate(value.value)
+    except Exception:  # noqa: BLE001 - a shape that will not rebuild is not worth a pair
+        return value
+
+
+@st.composite
+def _comparable_pair(draw: Any) -> list[CtyValue[Any]]:
+    """Two values that are equal often enough for `equal` to be tested.
+
+    Drawn independently, `equal` answered True in 11% of 400 draws and
+    `notequal` False in 13%: the plan spent seven examples in eight confirming
+    that two unrelated values are unrelated. Half the draws now pair a value
+    with a rebuilt copy of itself.
+    """
+    left = draw(_comparable_value())
+    if draw(st.booleans()):
+        return [left, _rebuilt(left)]
+    return [left, draw(_comparable_value())]
+
+
+@st.composite
+def _mappings_that_share_keys(draw: Any, *, max_size: int = 3) -> list[CtyValue[Any]]:
+    """Maps whose keys collide, which is the only case `merge` has to decide.
+
+    Independently drawn maps draw their keys from the whole alphabet, so a
+    collision is rare and the later-wins rule is rarely reached.
+    """
+    element_type = draw(v.scalar_types)
+    keys = draw(st.lists(v.map_keys, min_size=1, max_size=4, unique=True))
+    count = draw(st.integers(min_value=1, max_value=max_size))
+    return [
+        CtyMap(element_type=element_type).validate(
+            {
+                key: draw(v.members(element_type))
+                for key in draw(st.lists(st.sampled_from(keys), max_size=len(keys), unique=True))
+            }
+        )
+        for _ in range(count)
+    ]
+
+
+@st.composite
+def _a_list_with_repeats(draw: Any) -> CtyValue[Any]:
+    """A list drawn from a small pool, so `distinct` has something to remove."""
+    element_type = draw(v.scalar_types)
+    pool = draw(st.lists(v.members(element_type), min_size=1, max_size=3))
+    return CtyList(element_type=element_type).validate(draw(st.lists(st.sampled_from(pool), max_size=5)))
+
+
+@st.composite
 def _coalesce_call(draw: Any) -> list[CtyValue[Any]]:
     """Values of one type, some of them null, which is what `coalesce` is for."""
     element_type = draw(v.scalar_types)
@@ -589,13 +680,13 @@ PLANS: dict[str, Args] = {
         ]
     ),
     "hasindex": _collection_and_a_key(),
-    "distinct": _args(v.lists()),
+    "distinct": _args(st.one_of(v.lists(), _a_list_with_repeats())),
     "chunklist": _args(v.lists(), v.sizes.map(N.validate)),
     "flatten": _args(_nested_sequences()),
     "keys": _args(v.mappings()),
     "values": _args(v.mappings()),
     "lookup": _mapping_key_and_default(),
-    "merge": _variadic(v.mappings(), max_size=3),
+    "merge": st.one_of(_variadic(v.mappings(), max_size=3), _mappings_that_share_keys(max_size=3)),
     # Same shape as `slice`: `coalescelist arguments must be lists or tuples`.
     "coalescelist": _variadic(st.one_of(v.lists(), v.tuples()), max_size=3),
     "coalesce": _coalesce_call(),
@@ -616,10 +707,10 @@ PLANS: dict[str, Args] = {
     "sort": _args(v.lists(S)),
     "zipmap": _zipmap_call(),
     # sets
-    "setunion": _sets_of_one_or_many_types(min_size=1, max_size=3),
-    "setintersection": _sets_of_one_or_many_types(min_size=1, max_size=3),
-    "setsymmetricdifference": _sets_of_one_or_many_types(min_size=1, max_size=3),
-    "setsubtract": _sets_of_one_or_many_types(min_size=2, max_size=2),
+    "setunion": _overlapping_or_not(min_size=1, max_size=3),
+    "setintersection": _overlapping_or_not(min_size=1, max_size=3),
+    "setsymmetricdifference": _overlapping_or_not(min_size=1, max_size=3),
+    "setsubtract": _overlapping_or_not(min_size=2, max_size=2),
     # conversion and equality
     # Weighted toward what `tostring` converts. go-cty converts a number and a
     # bool and nothing else, so a pool of arbitrary values watches both sides
@@ -647,8 +738,8 @@ PLANS: dict[str, Args] = {
     # `docs/reference/go-cty-comparison.md`, because Python identity for an
     # immutable `bytes` is decided by interning and would answer differently
     # depending on how the buffer was built.
-    "equal": _args(_comparable_value(), _comparable_value()),
-    "notequal": _args(_comparable_value(), _comparable_value()),
+    "equal": _comparable_pair(),
+    "notequal": _comparable_pair(),
 }
 """The functions a signature cannot generate for, plus the ones it generates badly."""
 

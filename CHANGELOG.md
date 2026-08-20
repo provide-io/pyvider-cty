@@ -389,6 +389,15 @@ these fifteen are what it found. Every one is a behavior change.
 
 ### Fixed
 
+- `timeadd` is exact to the nanosecond in both arguments. A `datetime` resolves
+  to microseconds and Go's `time.Time` to nanoseconds, and the two met twice on
+  the way through -- once parsing the timestamp's fraction, once turning the
+  duration into a `timedelta` -- so the last three digits of a nine-digit
+  fraction were dropped before the arithmetic began. The instant is now carried
+  as a whole-second `datetime` plus an integer nanosecond remainder and the
+  shift as an integer nanosecond count, so `timeadd("...00.000000001Z", "-1ns")`
+  answers the same second go-cty does. Only the calendar range is still a
+  `datetime` limitation, and it remains a recorded divergence.
 - Marks are no longer silently dropped: they now propagate through stdlib
   function arguments, are collected from nested sets and raw containers, and
   survive validation.
