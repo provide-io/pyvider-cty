@@ -75,6 +75,10 @@ class CtyMap(CtyType[dict[str, V]], Generic[V]):
                 )
 
             normalized_key = unicodedata.normalize("NFC", k)
+            if normalized_key in validated_map:
+                raise CtyMapValidationError(
+                    f"Map keys {k!r} and {normalized_key!r} normalize to the same NFC string"
+                )
 
             try:
                 validated_map[normalized_key] = self.element_type.validate(v)

@@ -5,9 +5,10 @@
 
 """An immutable mapping that is still a `dict`.
 
-`CtyValue` is a frozen attrs class, but freezing it freezes the *reference* to
-its payload, not the payload itself. Maps and objects hold a mapping, and a
-plain dict can be changed after the value is built -- which quietly breaks
+`CtyValue` and `CtyObject` are frozen attrs classes, but freezing it freezes the *reference* to
+its payload, not the payload itself. Maps and objects hold a mapping, an
+object *type* holds its attribute schema, and a plain dict can be changed after
+the value is built -- which quietly breaks
 things that read payload contents and remember the answer: `__eq__`,
 `__hash__`, `_canonical_sort_key`, and the deep-mark memo.
 
@@ -34,10 +35,10 @@ from __future__ import annotations
 from typing import Any, NoReturn
 
 _IMMUTABLE = (
-    "A CtyValue's payload is immutable. Build a new value with "
-    "`attrs.evolve(value, value=...)` rather than changing this one in place: "
-    "equality, hashing and the deep-mark memo all read payload contents and "
-    "cache what they find."
+    "This mapping is immutable: it is a CtyValue's payload or a CtyObject's "
+    "schema. Build a new one with `attrs.evolve(...)` rather than changing this "
+    "one in place: equality, hashing and the deep-mark memo all read its "
+    "contents and cache what they find."
 )
 
 

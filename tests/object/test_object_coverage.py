@@ -29,9 +29,7 @@ def test_attrs_post_init_invalid_attribute_type() -> None:
 
 def test_validate_unknown_optionals() -> None:
     with pytest.raises(CtyAttributeValidationError, match="Unknown optional attributes"):
-        CtyObject(attribute_types={"name": CtyString()}, optional_attributes={"age"}).validate(
-            {"name": "test"}
-        )
+        CtyObject(attribute_types={"name": CtyString()}, optional_attributes={"age"})
 
 
 def test_validate_with_cty_value_different_type() -> None:
