@@ -74,4 +74,41 @@ class CtyDynamic(CtyType[object]):
         return "dynamic"
 
 
+def unwrap_dynamic(value: CtyValue[Any], *, carry_marks: bool = False) -> CtyValue[Any]:
+    """See through this package's `CtyDynamic` wrapper to the concrete value.
+
+    go-cty has no such wrapper: a dynamic-typed *value* there is `cty.DynamicVal`,
+    an unknown whose type is `DynamicPseudoType`, and a value that merely arrived
+    through a dynamic-typed slot carries its own concrete type. Here a known
+    dynamic value is a `CtyValue` whose type is `CtyDynamic` and whose payload is
+    another `CtyValue`, so the wrapper has to be removed before any type check to
+    ask go-cty's question rather than a different one. A value that is not a
+    wrapper is returned as itself, identity preserved.
+
+    What happens to the *wrapper's* marks is the caller's decision, and it is
+    made explicit here because four private copies of this loop once disagreed
+    about it silently:
+
+    - `carry_marks=False` (the default) is the structural reading: the wrapper
+      is transparent, and its marks stay where they are. `walk` wants this --
+      it re-wraps a rebuilt value in the original wrapper, marks and all, so
+      carrying them down would mark the same value twice; `flatten` wants it for
+      the same reason, its result already carries the deep union; equality
+      strips marks before comparing and has nothing to carry.
+
+    - `carry_marks=True` moves each removed wrapper's marks onto what it
+      wrapped. The function framework wants this for an *argument*: in go-cty
+      the same marks would already be on the value itself, so dropping them
+      would declassify a sensitive value merely for having arrived through a
+      dynamic slot -- invisible for a parameter that strips marks, and a live
+      leak for one that declares `allow_marked`.
+    """
+    while isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
+        wrapper_marks = value.marks if carry_marks else None
+        value = value.value
+        if wrapper_marks:
+            value = value.with_marks(wrapper_marks)
+    return value
+
+
 # 🌊🪢🔚

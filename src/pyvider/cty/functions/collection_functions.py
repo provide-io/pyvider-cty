@@ -96,6 +96,7 @@ from pyvider.cty.functions._args import INT64_MAX, exact_int64, whole_number
 from pyvider.cty.functions._framework import stdlib_function
 from pyvider.cty.functions._function import CtyParameter, refine_not_null
 from pyvider.cty.refinement import refine
+from pyvider.cty.types.structural.dynamic import unwrap_dynamic
 from pyvider.cty.values.markers import RefinedUnknownValue
 from pyvider.cty.values.set_order import order_key as set_order_key
 
@@ -119,17 +120,6 @@ _SETPRODUCT_MAX_TOTAL_ELEMENTS = 1_000_000
 _AMBIGUOUS_SET_SIZE = 2
 
 Args = Sequence[CtyValue[Any]]
-
-
-def _unwrap_dynamic(element: CtyValue[Any]) -> CtyValue[Any]:
-    """The value a CtyDynamic wrapper stands in front of.
-
-    The framework does this to the *arguments*; this is for values found inside
-    one, which it never touches.
-    """
-    while isinstance(element.type, CtyDynamic) and isinstance(element.value, CtyValue):
-        element = element.value
-    return element
 
 
 def _sequence_elements(seq: CtyValue[Any]) -> list[CtyValue[Any]]:
@@ -227,7 +217,7 @@ def _flatten_elements(seq: CtyValue[Any]) -> tuple[list[CtyValue[Any]], bool]:
         if not frame:
             stack.pop()
             continue
-        element = _unwrap_dynamic(frame.pop())
+        element = unwrap_dynamic(frame.pop())
         if element.is_unknown and isinstance(element.type, CtyDynamic | CtyList | CtySet | CtyTuple):
             known = False
         elif element.is_null or not isinstance(element.type, CtyList | CtySet | CtyTuple):

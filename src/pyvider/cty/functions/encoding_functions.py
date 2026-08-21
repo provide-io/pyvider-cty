@@ -41,9 +41,10 @@ from pyvider.cty.config.defaults import (
 )
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._framework import stdlib_function
-from pyvider.cty.functions._function import CtyArgumentError, CtyParameter, _unwrap_dynamic, refine_not_null
+from pyvider.cty.functions._function import CtyArgumentError, CtyParameter, refine_not_null
 from pyvider.cty.json_codec import cty_to_json
 from pyvider.cty.refinement import refine
+from pyvider.cty.types.structural.dynamic import unwrap_dynamic
 from pyvider.cty.values.markers import RefinedUnknownValue
 
 
@@ -121,7 +122,7 @@ def jsonencode(val: CtyValue[Any]) -> CtyValue[Any]:
     # on both counts -- and, worst of the five, routes numbers through float64,
     # silently truncating a 39-digit decimal to 17. Each one is a permanent plan
     # diff against real Terraform.
-    concrete = _unwrap_dynamic(val)
+    concrete = unwrap_dynamic(val, carry_marks=True)
     try:
         return CtyString().validate(cty_to_json(concrete, concrete.type).decode())
     except Exception as e:
