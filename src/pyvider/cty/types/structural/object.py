@@ -34,7 +34,10 @@ from pyvider.cty.values.frozen import FrozenDict
 class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
     _type_order: ClassVar[int] = 7
-    attribute_types: dict[str, CtyType[Any]] = field(factory=dict)
+    # Copied into a FrozenDict at construction, as go-cty's `cty.Object()` copies
+    # its map: `__hash__` reads this, so a caller's dict that kept changing would
+    # change the hash of a type already used as a key.
+    attribute_types: dict[str, CtyType[Any]] = field(factory=dict, converter=FrozenDict)
     optional_attributes: frozenset[str] = field(factory=frozenset, converter=frozenset)
 
     def __attrs_post_init__(self) -> None:
@@ -43,6 +46,11 @@ class CtyObject(CtyType[dict[str, object]]):
                 raise InvalidTypeError(
                     f"Attribute '{name}' must be a CtyType, but got {type(attr_type).__name__}"
                 )
+        unknown_optionals = self.optional_attributes - set(self.attribute_types)
+        if unknown_optionals:
+            raise CtyAttributeValidationError(
+                f"Unknown optional attributes: {', '.join(sorted(unknown_optionals))}"
+            )
 
     def __repr__(self) -> str:
         # Provide a safe representation that doesn't recurse infinitely
@@ -74,12 +82,6 @@ class CtyObject(CtyType[dict[str, object]]):
         if (unknown_marker := self.unknown_marker(value)) is not None:
             return unknown_marker
 
-        unknown_optionals = self.optional_attributes - set(self.attribute_types.keys())
-        if unknown_optionals:
-            raise CtyAttributeValidationError(
-                f"Unknown optional attributes: {', '.join(sorted(list(unknown_optionals)))}"
-            )
-
         if hasattr(type(value), "__attrs_attrs__"):
             value = _attrs_to_dict_safe(value)
         if not isinstance(value, dict):
@@ -87,9 +89,24 @@ class CtyObject(CtyType[dict[str, object]]):
                 f"Expected a dictionary for CtyObject, got {type(value).__name__}"
             )
 
-        # Normalize keys to NFC before validation to ensure consistency.
-        value_dict = cast(dict[str, Any], value)
-        value = {unicodedata.normalize("NFC", str(k)): v for k, v in value_dict.items()}
+        # Keys are strings (CtyMap already refused anything else; `str(k)` here
+        # let `{1: ...}` satisfy an attribute named "1"), normalized to NFC so the
+        # two spellings of an accented name are one attribute -- and two keys that
+        # are the *same* attribute spelled two ways are refused rather than the
+        # later one silently winning.
+        normalized: dict[str, Any] = {}
+        for raw_key, v in cast(dict[object, Any], value).items():
+            if not isinstance(raw_key, str):
+                raise CtyAttributeValidationError(
+                    f"Object attribute names must be strings, but got key of type {type(raw_key).__name__}"
+                )
+            key = unicodedata.normalize("NFC", raw_key)
+            if key in normalized:
+                raise CtyAttributeValidationError(
+                    f"Attribute names {raw_key!r} and {key!r} normalize to the same NFC string"
+                )
+            normalized[key] = v
+        value = normalized
 
         validated_attrs: dict[str, CtyValue[Any]] = {}
         # Normalize attribute_types keys to NFC for consistent comparison

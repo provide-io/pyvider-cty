@@ -31,7 +31,8 @@ not-null. Confirmed against the live oracle, which answers
 
 The one deliberate divergence left in place is precision. go-cty holds a number
 in a 512-bit `big.Float` and computes `log` and `pow` in `float64` first; this
-package holds a `Decimal` in a 28-digit context. Both of those two are therefore
+package holds a `Decimal` in a 155-digit context (`_GO_BIG_FLOAT_DIGITS`, the
+widest a 512-bit float can spell). Both of those two are therefore
 transcribed *through* `float64`, because go-cty's answer for them is the
 `float64` one -- infinities, range refusals and rounding artefacts included --
 and a more accurate answer is a different answer. `divide` stays in `Decimal`,

@@ -43,7 +43,7 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
             )
 
     @with_recursion_detection
-    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:  # noqa: C901
+    def validate(self, value: object) -> CtyValue[tuple[T, ...]]:
 
         if isinstance(value, CtyValue):
             if self.equal(value.type) and isinstance(value.value, tuple):
@@ -60,16 +60,13 @@ class CtyList(CtyType[tuple[T, ...]], Generic[T]):
         if (unknown := self.unknown_marker(value)) is not None:
             return unknown
 
-        if isinstance(value, list | tuple | set | frozenset):
-            value_collection = cast(list[object] | tuple[object, ...] | set[object] | frozenset[object], value)
-            raw_list_to_validate: list[object] = list(value_collection)
+        # Ordered input only. A `set` used to be accepted, and the list it
+        # produced changed order with PYTHONHASHSEED -- the same configuration
+        # serialized to different state bytes in different processes.
+        if isinstance(value, list | tuple):
+            raw_list_to_validate = cast(list[object] | tuple[object, ...], value)
         else:
             raise CtyListValidationError(f"Expected list, tuple, or CtyValue list, got {type(value).__name__}")
-
-        if not isinstance(raw_list_to_validate, list | tuple):
-            raise CtyListValidationError(
-                f"Value to validate is not a list or tuple, but {type(raw_list_to_validate).__name__}"
-            )
 
         validated_elements: list[CtyValue[T]] = []
         for i, item in enumerate(raw_list_to_validate):

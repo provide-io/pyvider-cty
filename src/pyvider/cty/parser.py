@@ -67,6 +67,14 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
         if isinstance(tf_type, list) and len(tf_type) in (2, 3):
             type_kind, type_spec = tf_type[0], tf_type[1]
             optional_names = tf_type[2] if len(tf_type) == 3 else ()
+            # go-cty decodes this element as `[]string`. Fed straight to
+            # `frozenset`, the string "ab" became the two optional names a and b.
+            if not isinstance(optional_names, list | tuple) or not all(
+                isinstance(n, str) for n in optional_names
+            ):
+                raise CtyValidationError(
+                    f"Object optional attribute names must be a list of strings, got {optional_names!r}"
+                )
 
             # Handle collection types where the spec is a single type
             if type_kind in (TYPE_KIND_LIST, TYPE_KIND_SET, TYPE_KIND_MAP):

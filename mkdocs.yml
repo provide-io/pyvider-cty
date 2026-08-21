@@ -13,7 +13,7 @@ edit_uri: edit/main/docs/
 # Development server configuration
 dev_addr: 127.0.0.1:11005
 
-copyright: Copyright &copy; 2024-2025 provide.io
+copyright: Copyright &copy; 2024-2026 provide.io
 
 # Standalone mode settings
 docs_dir: docs

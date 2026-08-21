@@ -438,8 +438,13 @@ def _unpacked_to_cty(data: Any, schema: CtyType[Any]) -> CtyValue[Any]:
 
 
 def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
+    # go-cty answers EOF here. This used to answer a null of `cty_type`, which
+    # erased the difference between "a null was encoded" (the byte 0xc0) and
+    # "nothing arrived"; a truncated or missing payload became valid state.
+    # Terraform core maps an *absent* DynamicValue to a null itself, and so does
+    # pyvider's `marshaler.unmarshal`, so the codec can be strict.
     if not data:
-        return CtyValue.null(cty_type)
+        raise DeserializationError("cty_from_msgpack: empty input; a null is encoded as 0xc0, not as no bytes")
     raw_unpacked = msgpack.unpackb(
         data,
         ext_hook=_ext_hook,

@@ -22,14 +22,6 @@ def test_validate_none() -> None:
     assert list_type.validate(None).is_null
 
 
-def test_validate_with_set() -> None:
-    list_type = CtyList(element_type=CtyNumber())
-    value = {1, 2, 3}
-    result = list_type.validate(value)
-    assert isinstance(result.value, tuple)
-    assert sorted([v.value for v in result.value]) == [1, 2, 3]
-
-
 def test_validate_null_element_in_list() -> None:
     """A null element is a value, not an error.
 
