@@ -5,6 +5,71 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+Hardening from an external review of 0.5.0. Every item below was reproduced
+before it was changed; the two the review rated highest that were *not*
+changed -- Python's `re` as the regex engine, and the last-wins handling go-cty
+also has for object keys -- are recorded as decisions in
+`.provide/GO-CTY-PARITY.md` rather than silently kept.
+
+### Changed
+
+- **`CtyObject` copies its schema at construction.** `attribute_types` is now a
+  `FrozenDict`, as go-cty's `cty.Object()` copies its map: the type is hashable
+  and the hash reads the schema, so a caller's dict that kept changing changed
+  the hash of a type already used as a key. Still a `dict` for every
+  `isinstance` check. An optional attribute that is not in the schema is now
+  refused at construction rather than on the first `validate`.
+- **`CtyList.validate` refuses a `set` or `frozenset`.** The order it produced
+  from one changed with `PYTHONHASHSEED`, so one configuration serialized to
+  different state bytes in different processes. A `list` or `tuple` is the
+  input; `CtySet` keeps accepting a list.
+- **`cty_from_msgpack(b"")` raises `DeserializationError`.** It answered a null
+  of the requested type, which erased the difference between "a null was
+  encoded" and "nothing arrived" and made a truncated payload valid state.
+  go-cty answers EOF. Terraform core maps an *absent* DynamicValue to a null
+  itself, and so does pyvider's `marshaler.unmarshal`, so no consumer path
+  reaches this with empty bytes.
+- **Object and map keys.** `CtyObject.validate` refuses a non-string key
+  instead of coercing it with `str()`, so `{1: ...}` no longer satisfies an
+  attribute named `"1"`; `CtyMap` already refused it. Both now refuse two keys
+  that normalize to the same NFC string rather than keeping whichever came
+  later -- go-cty keeps the later one, but a configuration that spells one
+  attribute two ways is never what anyone meant.
+- **`parse_tf_type_to_ctytype` checks the optional-names element.** The third
+  element of `["object", {...}, [...]]` must be a list of strings, as go-cty
+  decodes it; fed straight to `frozenset`, the string `"ab"` had become the two
+  optional attributes `a` and `b`.
+
+### Removed
+
+- **`raw_to_cty`'s module-level primitive-key memo.** It was keyed by every
+  distinct primitive ever inferred and never emptied: one entry per unique
+  string in every configuration a long-lived provider process touched. It
+  deduplicated tuple allocations and nothing else. A test now asserts that
+  inference leaves no growing state at module scope.
+
+### CI and release
+
+- The reusable workflows are pinned to commits rather than to the `v0` /
+  `v0.4.2` tags, and `secrets: inherit` is gone: `python-ci.yml` declares one
+  secret and now receives exactly that one; `python-release.yml` declares none.
+- A manual dispatch of the release workflow is now a real dry run. Every job
+  that publishes -- TestPyPI, the version verify, PyPI -- is gated on the
+  release event; before, only `sign-and-upload` was, and only the version
+  verify failing on a branch name kept a dispatch from reaching PyPI.
+- The release SBOM describes the built wheel and its dependencies
+  (`scripts/sbom_from_wheel.sh`). `uvx cyclonedx-py environment` on its own
+  described the uvx tool venv.
+- Python 3.12, 3.13 and 3.14 -- all advertised in `pyproject.toml` -- now run
+  the suite on Linux in CI alongside the five-platform 3.11 run.
+
+### Documentation
+
+- The 28-digit `Decimal` context described in `numeric_functions.py` and in a
+  sweep xfail reason has been 155 digits since 2026-08-19; both now say so.
+  `CtyList`'s accepted inputs in the validation guide match the code. The
+  wire-codec diagram shows empty input as an error. Copyright range reaches 2026.
+
 ## [0.5.0] - 2026-08-20
 
 This release brings pyvider.cty to feature parity with go-cty v1.19.0. Every
