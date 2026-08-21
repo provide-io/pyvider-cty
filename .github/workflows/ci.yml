@@ -12,8 +12,11 @@ permissions:
   security-events: write
 
 jobs:
+  # Pinned to a commit, not the floating `v0` tag, for the same reason the
+  # third-party actions below are: a reusable workflow runs with this
+  # repository's token, and a tag can be moved. Bump deliberately.
   ci:
-    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@v0
+    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@194e51a4ac7a467f2857e16caeb48f9497adb6a8  # v0
     with:
       python-version: '3.11'
       platform-preset: standard  # ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel
@@ -30,7 +33,40 @@ jobs:
       # exist here and `uv sync` cannot resolve them; the published metadata is
       # also what CI should be verifying.
       no-sources: true
-    secrets: inherit
+    # python-ci.yml declares exactly one secret. `inherit` handed it every
+    # repository and organization secret instead.
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # pyproject.toml advertises 3.11 through 3.14; the reusable workflow above
+  # runs one version across five platforms. Its `matrix-testing` input would
+  # multiply all five by three (and stops at 3.13), so the other versions are
+  # covered here on one platform instead: the suite is pure Python, and the
+  # platform-specific behaviour is already measured above on 3.11.
+  versions:
+    name: 🐍 Tests (linux_amd64, py${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13', '3.14']
+    steps:
+      - name: 📥 Check out
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # uv installs the requested interpreter and resolves the locked dependencies.
+      - name: 🐍 Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      # Same `make test` a developer runs. `UV_NO_SOURCES` for the same reason
+      # as `no-sources` above: the sibling path dependencies are not checked out.
+      - name: 🧪 Run the suite
+        run: make test
+        env:
+          UV_NO_SOURCES: "1"
 
   # The differential suite: every claim of go-cty parity, checked against real
   # go-cty rather than against this package's own reading of it. It is gated
@@ -101,6 +137,6 @@ jobs:
           UV_NO_SOURCES: "1"
           # A missing Go toolchain or harness source means this job is
           # misconfigured, not that the check is unavailable. Skipping quietly
-          # would make the only place these 2322 tests run report success while
+          # would make the only place these 3,700-odd tests run report success while
           # running none of them.
           COMPAT_REQUIRE: "1"
