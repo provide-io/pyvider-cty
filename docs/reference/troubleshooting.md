@@ -423,7 +423,7 @@ except SerializationError as e:
 
 #### `DeserializationError`
 
-**Description**: Raised in a handful of inner decode paths — a malformed refined-unknown payload, a malformed dynamic-value type spec — when deserializing MessagePack data fails. It is not (yet) a catch-all: bytes that are not valid MessagePack at all surface the underlying `msgpack` library's own exception (for example `msgpack.exceptions.ExtraData` or a bare `ValueError`) rather than `DeserializationError`, so a caller wanting to catch every decode failure should catch `Exception` around `cty_from_msgpack()`, not just `DeserializationError`.
+**Description**: Raised when the bytes handed to `cty_from_msgpack()` are not a MessagePack payload — empty input, a reserved byte, a truncated array, trailing bytes, invalid UTF-8 inside a string, a malformed refined-unknown extension, a dynamic-value header that is not UTF-8 JSON. The `msgpack` library's own exception is chained as `__cause__`. A payload that decodes but does not fit the requested type raises that type's `CtyValidationError` instead, so `except CtyError` around `cty_from_msgpack()` catches every failure, and `except DeserializationError` catches exactly the ones where the bytes themselves are wrong.
 
 **Common Causes**:
 - Corrupted or truncated MessagePack data (raises a `msgpack` library exception today, not `DeserializationError`)

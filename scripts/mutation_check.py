@@ -44,6 +44,7 @@ from pathlib import Path
 import random
 import subprocess  # nosec
 import sys
+from typing import cast
 
 DEFAULT_TARGETS = [
     "src/pyvider/cty/functions/datetime_functions.py",
@@ -137,9 +138,9 @@ def apply_mutation(tree: ast.AST, site: Site, node: ast.AST) -> ast.AST:
             constant.value = not constant.value
         case "int":
             constant = cast_constant(node)
-            constant.value = constant.value + 1
+            constant.value = cast(int, constant.value) + 1
         case "not":
-            return DropNot(node).visit(tree)
+            return cast(ast.AST, DropNot(node).visit(tree))
     return tree
 
 
