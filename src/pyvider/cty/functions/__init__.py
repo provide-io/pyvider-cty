@@ -21,7 +21,7 @@ from pyvider.cty.functions._function import (
 )
 from pyvider.cty.functions.bool_functions import and_fn, not_fn, or_fn
 from pyvider.cty.functions.bytes_functions import byteslen, bytesslice
-from pyvider.cty.functions.collection_functions import (
+from pyvider.cty.functions.collection import (
     chunklist,
     coalescelist,
     compact,
