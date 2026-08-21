@@ -112,16 +112,6 @@ def _is_leaf(value: CtyValue[Any]) -> bool:
     return not isinstance(inner, CtyValue) and not isinstance(inner, _NESTING_PAYLOADS)
 
 
-def _unwrap_dynamic(value: CtyValue[Any]) -> CtyValue[Any]:
-    """CtyDynamic wraps rather than replaces, so compare what it wraps."""
-    from pyvider.cty.types import CtyDynamic
-    from pyvider.cty.values.base import CtyValue
-
-    while isinstance(value.vtype, CtyDynamic) and isinstance(value.value, CtyValue):
-        value = value.value
-    return value
-
-
 def equals(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     """Whether `a` and `b` are equal: true, false, or unknown.
 
@@ -180,7 +170,12 @@ def _equals_leaves(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
 
 
 def _equals_unmarked(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
-    a, b = _unwrap_dynamic(a), _unwrap_dynamic(b)
+    # CtyDynamic wraps rather than replaces, so compare what it wraps. Imported
+    # here rather than at module scope: `values` cannot import `types` at import
+    # time, and this is the only place in the module that needs it.
+    from pyvider.cty.types.structural.dynamic import unwrap_dynamic
+
+    a, b = unwrap_dynamic(a), unwrap_dynamic(b)
 
     # Unknowns first: an unknown that has not been refined as non-null could
     # still become null, and nulls of any type are equal to one another. Testing

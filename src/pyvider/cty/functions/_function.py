@@ -53,6 +53,7 @@ from pyvider.cty.functions._marks import _arg_marks
 from pyvider.cty.marks import _strip
 from pyvider.cty.refinement import RefinementBuilder, refine
 from pyvider.cty.types import CtyDynamic, CtyType
+from pyvider.cty.types.structural.dynamic import unwrap_dynamic
 from pyvider.cty.values import CtyValue
 
 __all__ = [
@@ -206,35 +207,6 @@ def _arity_error(required: int, given: int, *, variadic: bool) -> CtyFunctionErr
     return CtyFunctionError(f"wrong number of arguments ({required} required; {given} given)")
 
 
-def _unwrap_dynamic(value: CtyValue[Any]) -> CtyValue[Any]:
-    """See through this package's `CtyDynamic` wrapper to the concrete value.
-
-    go-cty has no such wrapper: a dynamic-typed *value* there is `cty.DynamicVal`,
-    an unknown whose type is `DynamicPseudoType`, and a value that merely arrived
-    through a dynamic-typed slot carries its own concrete type. Here a known
-    dynamic value is a `CtyValue` whose type is `CtyDynamic` and whose payload is
-    another `CtyValue`, so the wrapper has to be removed before any type check to
-    ask go-cty's question rather than a different one.
-
-    That is representation, not policy, which is why it is unconditional and not
-    governed by `allow_dynamic_type`. Fifteen function bodies were doing it by
-    hand, three of them with a byte-identical copy of this loop.
-
-    Each removed wrapper's marks move onto what it wrapped. In go-cty the same
-    marks would already be on the value itself -- there is no wrapper to carry
-    them -- so dropping them here would declassify a sensitive value merely for
-    having arrived through a dynamic slot. Invisible for a parameter that strips
-    marks (the call collects them off the *original* argument), and a live leak
-    for one that declares `allow_marked` and is trusted to see every mark.
-    """
-    while isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
-        wrapper_marks = value.marks
-        value = value.value
-        if wrapper_marks:
-            value = value.with_marks(wrapper_marks)
-    return value
-
-
 def _is_dynamic_typed(value: CtyValue[Any]) -> bool:
     """Whether this is go-cty's `cty.DynamicVal` -- a value of no decided type.
 
@@ -255,7 +227,7 @@ def _check_argument(
     removed, and unmarked unless the parameter admits marks -- and whether it was
     too vaguely typed to predict a return type from.
     """
-    value = _unwrap_dynamic(arg)
+    value = unwrap_dynamic(arg, carry_marks=True)
 
     # go-cty unmarks for the type check and discards the marks, on the
     # understanding that the call will collect them separately. A `Type`
@@ -392,7 +364,7 @@ class CtyFunction:
                 # is not an error -- the whole call is already decided to be
                 # `DynamicVal`. Checking them anyway failed 20 of the 83 stdlib
                 # functions on `f(DynamicVal, null)`, a call Terraform accepts.
-                prepared.extend(_unwrap_dynamic(later) for later in args[index + 1 :])
+                prepared.extend(unwrap_dynamic(later, carry_marks=True) for later in args[index + 1 :])
                 return CtyDynamic(), True, tuple(prepared)
 
         return self._call_type_func(prepared), False, tuple(prepared)

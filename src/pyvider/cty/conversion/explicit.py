@@ -123,7 +123,7 @@ _sort_key = canonical_sort_key
 # The lowest number of stored elements at which a set's count can be in doubt.
 # Whatever a single stored element turns out to be, there is one of it; two may
 # turn out to be equal and coalesce. The same constant, for the same reason,
-# governs `length` in `functions/collection_functions.py`, and the two have to
+# governs `length` in `functions/collection/lookup.py`, and the two have to
 # agree -- a conversion that reports a length its own `length` contradicts is
 # the fault this rule exists to prevent.
 _AMBIGUOUS_SET_SIZE = 2
@@ -397,6 +397,21 @@ def _map_to_object(value: CtyValue[Any], target_type: CtyObject) -> CtyValue[Any
     return cast("CtyValue[Any]", concrete.validate(attributes).with_marks(set(value.marks)))
 
 
+def _refuse_unless_types_allow(value: CtyValue[Any], target_type: CtyType[Any]) -> None:
+    """Raise if `can_convert_unsafe` denies this pair; the container-level answer.
+
+    The message names the containers, not the first element that would have
+    failed: `list(string)` to `list(list(string))` is refused as that, the way
+    go-cty's `MismatchMessage` reports the collection and then the element.
+    """
+    if not can_convert_unsafe(value.type, target_type):
+        raise CtyConversionError(
+            ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type),
+            source_value=value,
+            target_type=target_type,
+        )
+
+
 def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  # noqa: C901
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
@@ -579,6 +594,14 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # was refused. A conversion `can_convert_unsafe` admits has to be one
         # `convert` performs, or unification promises a type nothing can reach.
         if isinstance(target_type, CtySet | CtyList) and isinstance(value.type, CtyList | CtySet | CtyTuple):
+            # Decided on the types before a single element is looked at, which
+            # is go-cty's order: `Convert` asks `GetConversionUnsafe` first and
+            # refuses if it answers nil. Elementwise alone let an *empty*
+            # `list(string)` become a `list(list(string))` -- no element to fail
+            # on -- while `can_convert_unsafe` said it could not, so `unify`
+            # could refuse a type `convert` would reach. Found by the
+            # generated-population agreement test, 2026-08-21.
+            _refuse_unless_types_allow(value, target_type)
             collection = _collection_target(target_type, value.type)
             source_elements = _ordered_elements(value)
             # A set whose length is undecided cannot become a list of any
@@ -622,6 +645,7 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
         # reaches. Unification leans on this whenever two objects have different
         # attribute names.
         if isinstance(target_type, CtyMap) and isinstance(value.type, CtyMap | CtyObject):
+            _refuse_unless_types_allow(value, target_type)  # same reason as the list branch
             source_items = value.value
             if not isinstance(source_items, dict):
                 error_message = ERR_SOURCE_OBJECT_NOT_DICT

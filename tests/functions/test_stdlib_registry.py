@@ -191,7 +191,7 @@ class TestTheNamesCouldNotHaveBeenPythonIdentifiers:
     def test_seven_more_would_shadow_builtins_the_modules_call(self) -> None:
         """`slice` is the proof this is not hypothetical.
 
-        `collection_functions.py` defines `slice` and does shadow the builtin;
+        `collection/reshape.py` defines `slice` and does shadow the builtin;
         it only gets away with it because that module never calls the builtin.
         `range` in the same module and `max` in `numeric_functions.py` are both
         called, so those two would break outright. `format` joined the list when
