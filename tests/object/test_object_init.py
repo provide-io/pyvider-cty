@@ -52,12 +52,11 @@ async def test_object_init_invalid_attribute_type() -> None:
 
 @pytest.mark.asyncio
 async def test_object_init_invalid_optional_attribute() -> None:
-    obj = CtyObject(
-        attribute_types={"name": CtyString(), "age": CtyNumber()},
-        optional_attributes=frozenset(["unknown"]),
-    )
     with pytest.raises(CtyValidationError, match="Unknown optional attributes: unknown"):
-        obj.validate({"name": "test", "age": 1})
+        CtyObject(
+            attribute_types={"name": CtyString(), "age": CtyNumber()},
+            optional_attributes=frozenset(["unknown"]),
+        )
 
 
 class TestCtyObjectValidation:

@@ -96,7 +96,7 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # version of the answer this package gave -- they *are* the answer, and being
     # more precise than it was a different function. `pow` is transcribed through
     # float64 now, and the rows above pin the three ways that changes things.
-    "divide(1,3)": "numeric precision model: go-cty big.Float 155 digits, Decimal 28",
+    "divide(1,3)": "numeric representation: go-cty 512-bit binary float, Decimal at the same 155 digits",
     # The *width* half of the same representation gap, and it is not about
     # computing anything. go-cty renders a number with `big.Float.Text('f', -1)`
     # -- the shortest decimal that reads back as the same 512-bit float -- so it

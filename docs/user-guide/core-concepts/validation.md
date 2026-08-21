@@ -67,7 +67,7 @@ The `validate()` method provides:
 ### Collections
 
 **CtyList**
-- Accepts: `list` or other iterables
+- Accepts: `list` or `tuple` — ordered input only. A `set` or `frozenset` is refused, because the order it would produce changes between processes; a generator is refused because it can only be read once
 - Element validation: Each element must match `element_type`
 - Preserves: Order
 
