@@ -3,7 +3,9 @@
 All notable changes to this project are documented here. The format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 0.5.0
+## [Unreleased]
+
+## [0.5.0] - 2026-08-20
 
 This release brings pyvider.cty to feature parity with go-cty v1.19.0. Every
 behavioral change below was verified against a live go-cty oracle (the
@@ -604,7 +606,6 @@ Re-tag of the preceding release; no commits of its own.
 
 - **codebase**: standardize Python files with header/footer protocol
 - Standardize file headers and footers
-- Standardize file headers and footers
 - **workflow**: Standardize CI/CD workflows to two-file pattern
 - **release**: Standardize release workflow with flexible publishing options
 - **version**: Add smart TestPyPI version generation logic
@@ -630,8 +631,6 @@ Re-tag of the preceding release; no commits of its own.
 
 - update project documentation index
 - update installation and index documentation
-- update project documentation index
-- update project documentation index
 - update installation and migration guides with current instructions
 - archive architectural and supplementary analysis documents
 - Fix documentation errors and security issues
@@ -639,7 +638,6 @@ Re-tag of the preceding release; no commits of its own.
 - Add comprehensive architectural analysis and review
 - update documentation for type system, validation, and migration guides
 - restructure and consolidate documentation hierarchy
-- update API documentation structure and content
 - update API documentation structure and content
 
 #### Tests
@@ -662,37 +660,26 @@ Re-tag of the preceding release; no commits of its own.
 - **release**: update release workflow with auto-commit trigger
 - **ci**: migrate to ci-tooling reusable workflow
 - **ci**: update CI workflow configuration
-- **release**: update release workflow with auto-commit trigger
-- **ci**: update CI workflow configuration
 - update wrknv.toml configuration file with auto-generated changes
 - auto-commit README.md updates
 - update coverage data from automated test run
 - update entrypoint script and performance characterization utilities
 - synchronize entrypoint and performance scripts across archive and main directories
-- auto-commit README.md updates
-- auto-commit README.md updates
 - update README with automated maintenance changes
 - update README with auto-generated content
-- update README with project status and setup instructions
 - update README with project status and setup instructions
 - update CI automation scripts for pipeline validation and artifact collection
 - update configuration file with auto-generated changes
 - update project configuration via auto-commit
 - update project configuration for automated commits
-- update project configuration for automated commits
 - **pyproject**: update project configuration for dependency management
 - update pre-commit configuration and project dependencies
-- update project configuration for automated commits
 - standardize release workflow to download-from-CI pattern
 - **release**: standardize release workflow configuration
-- update project configuration for automated commits
 - update pyproject.toml and uv.lock for CI sync
 - update project configuration files with auto-generated changes
 - **ci**: simplify and re-trigger CI workflow
-- **ci**: update CI workflow configuration
-- **ci**: update CI workflow configuration
 - bump version to 0.3.0 for coordinated ecosystem release
-- update project configuration for automated commits
 - **mkdocs**: auto-commit configuration update
 - update mutation testing configuration and example utilities
 - auto-commit project maintenance and configuration updates
@@ -703,7 +690,6 @@ Re-tag of the preceding release; no commits of its own.
 - update documentation assets and configuration for site build
 - update secrets configuration and dependencies
 - **deps**: Replace individual dev dependencies with provide-testkit[all]
-- update project configuration for automated commits
 - update project configuration files for automated maintenance
 - update gitignore and secrets configuration for auto-commit workflow
 - update CI automation scripts and ignore rules for local development environment
@@ -718,22 +704,17 @@ Re-tag of the preceding release; no commits of its own.
 - auto-commit documentation and configuration updates
 - automated maintenance and configuration updates across project files
 - update project configuration and ignore rules for documentation site
-- **mkdocs**: auto-commit configuration update
 - update project configuration via automated commit pipeline
-- update project configuration for automated commits
 - update project documentation files with auto-generated content
 - update test configuration and fixtures for consistency
 - update project configuration and add memory pressure test scaffold
-- update test configuration and fixtures for consistency
 - update coverage script and property-based tests for exception and schema validation
 - **mutation**: configure mutation testing infrastructure
 - **cty**: auto-commit maintenance updates
 - **pyproject**: update dependencies and configuration
 - update project documentation and test infrastructure
-- update version file for auto-commit cycle
 - **cty**: update auto-committed source files
 - **cty**: update codec module with auto-generated changes
-- update project configuration for automated commits
 - **cty**: update version file for auto-commit
 - **cty**: update project structure and module organization
 - **cty**: update conversion module structure and caching logic
@@ -741,14 +722,10 @@ Re-tag of the preceding release; no commits of its own.
 - **ci**: migrate workflows to ci-tooling and consolidate redundant files
 - auto-commit configuration and dependency updates
 - **cty**: auto-commit cache implementation updates
-- update project configuration for automated commits
-- **mkdocs**: auto-commit configuration update
 - **ci**: update ci-new.yml to use ci-tooling@v0.0.0
-- **ci**: update CI workflow configuration
 - update example scripts and verification utilities
 - update mkdocs configuration with backup file handling
 - auto-commit maintenance updates
-- **cty**: auto-commit maintenance updates
 - **pyproject**: update project configuration metadata
 - update auto-generated files and examples for compatibility and performance checks
 - update project configuration and dependencies
@@ -762,9 +739,7 @@ Re-tag of the preceding release; no commits of its own.
 - update CI and release workflows and related configuration files
 - update environment and dependency configuration
 - update environment and workspace configuration files
-- update project configuration for automated commits
 - update project configuration with auto-generated changes
-- update project configuration for automated commits
 - update environment and project configuration files
 - update environment configuration files for consistency and clarity
 - update environment configuration files with auto-generated content
@@ -775,7 +750,6 @@ Re-tag of the preceding release; no commits of its own.
 - **examples**: initialize example modules and structure
 - **cty**: initialize exception hierarchy for cty module
 - **chunker**: establish initial module structure and entry points
-- **cty**: establish core module structure and foundational components
 - **cty**: establish core module structure and foundational components
 - **docs**: introduce new documentation structure with chapter-based organization
 
@@ -792,14 +766,12 @@ Re-tag of the preceding release; no commits of its own.
 - qualify(property_based): add property-based tests for collections and exception coverage
 - qualify(codec): add comprehensive codec test coverage and hardening
 - qualify(adversarial): add property-based fuzzing tests for adversarial inputs
-- qualify(codec): expand codec test coverage and robustness suite
 - qualify(inference_cache): add safety tests for inference cache behavior under concurrent access
 - qualify(diagnostics): add exception message tests for improved diagnostics coverage
 - qualify(inference): add concurrency safety tests for inference conversion logic
 - qualify(ci): Add complete CI migration test using shared tooling
 - qualify(codec): expand roundtrip and robustness test coverage for serialization logic
 - qualify(codec): expand roundtrip and robustness test coverage for serialization/deserialization
-- qualify(codec): expand roundtrip and robustness test coverage for serialization logic
 
 ### v0.3.0 - 2025-08-02
 
@@ -820,13 +792,10 @@ Everything from the first commit up to this tag.
 - Add release readiness evaluation and CI/CD pipeline
 - Generate .pyi files
 - Improve test coverage for pyvider.cty.types
-- Improve test coverage for pyvider.cty.types
 - **cty**: Improve test coverage and fix linting issues
 - Improve test coverage and fix linting issues
 - **cty**: Implement arithmetic functions for CtyNumber values
 - **cty**: Add comprehensive documentation and examples for pyvider.cty
-- Add comprehensive documentation and examples for pyvider.cty
-- Add comprehensive documentation and examples for pyvider.cty
 - Add comprehensive documentation and examples for pyvider.cty
 - **cty**: Add comprehensive documentation and examples for pyvider.cty library
 - **cty**: implement dynamic type system with runtime type inference
@@ -913,7 +882,6 @@ Everything from the first commit up to this tag.
 - **cty**: restructure equality logic across primitive and collection types
 - **cty**: reorganize exception module structure
 - **marshal**: restructure marshaling logic for clarity and maintainability
-- **marshal**: restructure marshaling logic for clarity and maintainability
 - **cty**: rename internal attributes to underscore-prefixed variants
 - **cty**: restructure base value types and map implementation
 - **cty**: restructure object type implementation for clarity and maintainability
@@ -921,14 +889,11 @@ Everything from the first commit up to this tag.
 - **cty**: remove frozen semantics from value classes
 - **cty**: restructure list type implementation for clarity and consistency
 - **cty**: restructure exception hierarchy and rename validation errors
-- **cty**: restructure object type implementation for clarity and maintainability
 - **cty**: restructure collections and path modules for clarity and correctness
 - **path**: restructure path module into unified implementation
 - **cty**: restructure operations and conversion modules into dedicated subsystems
-- **cty**: restructure object type implementation for clarity and maintainability
 - **cty**: restructure encoding and conversion subsystems
 - **cty**: simplify protobuf encoding module structure
-- **cty**: restructure dynamic value encoding logic
 - **cty**: restructure dynamic value encoding logic
 - **cty**: restructure base value handling for clarity and maintainability
 - **cty**: rename Value class to CtyValue and reorganize imports
@@ -1055,7 +1020,6 @@ Everything from the first commit up to this tag.
 - remediate(cty): correct validation and type inference issues
 - qualify(cty): add missing test coverage for validation and conversion logic
 - qualify(cty): add unit tests for primitive type initializers and comparisons
-- qualify(functions): expand test coverage for string, numeric, and collection functions
 - qualify(functions): expand test coverage for string, numeric, and collection functions
 - qualify(cty): add type annotations and fix mypy errors across core modules
 - qualify(cty): add coverage tests for core and function modules
