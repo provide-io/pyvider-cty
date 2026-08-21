@@ -40,6 +40,44 @@ also has for object keys -- are recorded as decisions in
   decodes it; fed straight to `frozenset`, the string `"ab"` had become the two
   optional attributes `a` and `b`.
 
+- **`convert` refuses what `can_convert_unsafe` denies, for collections.** An
+  empty `list(string)` became a `list(list(string))` -- no element to fail on
+  -- while the type-level predicate said it could not, so `unify` could
+  refuse a type `convert` would in fact reach. go-cty decides a conversion
+  on the types before it looks at an element and refuses. The list/set and
+  map branches now ask the predicate first; the refusal names the containers,
+  as go-cty's `MismatchMessage` does. Found by a new property test that
+  checks the two against each other over the generated type population
+  rather than 81 hand-picked pairs.
+- **`cty_from_msgpack` raises only `CtyError` subclasses.** Bytes that are
+  not a MessagePack payload -- a reserved byte, a truncated array, trailing
+  bytes, invalid UTF-8 inside a string, a dynamic header that is not UTF-8
+  JSON -- raise `DeserializationError` with the `msgpack` exception chained
+  as the cause; they used to escape as `msgpack.FormatError`,
+  `msgpack.ExtraData` and a bare `ValueError`. A payload that decodes but
+  does not fit the type still raises that type's `CtyValidationError`, so
+  `except CtyError` catches every failure.
+
+### Internal
+
+- **`pyvider.cty.functions.collection_functions` is a package now.** At
+  1,745 lines it had become a subsystem; it is `collection/reshape.py`
+  (distinct, flatten, sort, slice, concat, reverse, coalescelist, compact,
+  chunklist, range), `collection/lookup.py` (length, contains, keys, values,
+  hasindex, index, element, lookup) and `collection/combine.py` (merge,
+  setproduct, zipmap), with the shared helpers in `collection/_shared.py`.
+  `pyvider.cty.functions.collection_functions` is kept as a re-exporting
+  facade, so every existing import path still works. No behaviour change.
+- **One `unwrap_dynamic`.** Four private copies of the loop that sees
+  through a `CtyDynamic` wrapper lived in `walk`, `values/equality`,
+  `functions/_function` and the collection functions; one carried the
+  wrapper's marks onto what it wrapped and three did not, and nothing said
+  which a new call site should copy. The single helper lives next to
+  `CtyDynamic` and takes `carry_marks`, set explicitly at every call site.
+  No behaviour change at any of them.
+- `scripts/` is under strict mypy and in the pre-commit gate (16 errors
+  across five files, none behavioural).
+
 ### Removed
 
 - **`raw_to_cty`'s module-level primitive-key memo.** It was keyed by every
