@@ -299,20 +299,35 @@ ERR_STDLIB_DUPLICATE_NAME = "two functions are declared as the stdlib function {
 
 # Set operation error messages
 ERR_SET_OP_ARG_MUST_BE_SET = "{func}: set required, but received {type}"
-ERR_FORMAT_TOO_MANY_ARGUMENTS = "format: too many arguments; only {used} used by format string"
-ERR_FORMAT_NO_VERBS = "format: too many arguments; no verbs in format string"
-ERR_FORMAT_INVALID = "format: invalid format string at offset {offset}"
-ERR_FORMAT_UNSUPPORTED_VERB = "format: unsupported verb {verb!r} at offset {offset}"
-ERR_FORMAT_UNSUPPORTED_VALUE = "format: unsupported value for {verb!r} at {offset}: {error}"
-ERR_FORMAT_NULL_VALUE = "format: unsupported value for {verb!r} at {offset}: null value cannot be formatted"
-ERR_FORMAT_REQUIRES_INTEGER = "format: unsupported value for {verb!r} at {offset}: an integer is required"
+# go-cty's own wording, verbatim, because a provider surfaces these to an
+# operator and a differing string is a differing diagnostic. Two details are
+# easy to get wrong and were: go-cty prefixes none of them with the function
+# name, and Go's %q double-quotes a string while single-quoting a rune, which is
+# why the verb character and the whole verb are spelled differently in the same
+# sentence. Measured against `soup-go cty call format`, not transcribed.
+ERR_FORMAT_TOO_MANY_ARGUMENTS = "too many arguments; only {used} used by format string"
+ERR_FORMAT_NO_VERBS = "too many arguments; no verbs in format string"
+ERR_FORMAT_INVALID = "invalid format string starting at offset {offset}"
+ERR_FORMAT_UNSUPPORTED_VERB = "unsupported format verb '{verb}' in \"{raw}\" at offset {offset}"
+ERR_FORMAT_UNSUPPORTED_VALUE = 'unsupported value for "{verb}" at {offset}: {error}'
+ERR_FORMAT_NULL_VALUE = 'unsupported value for "{verb}" at {offset}: null value cannot be formatted'
+ERR_FORMAT_REQUIRES_INTEGER = 'unsupported value for "{verb}" at {offset}: an integer is required'
 ERR_FORMAT_NOT_ENOUGH_ARGUMENTS = (
-    "format: not enough arguments for {verb!r} at {offset}: need index {want} but have {have} total"
+    'not enough arguments for "{verb}" at {offset}: need index {want} but have {have} total'
 )
 ERR_FORMAT_INCONSISTENT_LENGTH = (
-    "formatlist: argument {position} has length {length}, "
+    "argument {position} has length {length}, "
     "which is inconsistent with argument {other} of length {other_length}"
 )
+# go-cty reports a failed conversion two different ways, and which one depends on
+# whether a parse was attempted: converting *from a string* tries to read the
+# value and reports "a number is required", while any other source type is a
+# plain mismatch and reports "number required, but have bool".
+ERR_FORMAT_VALUE_PARSE = "a {target} is required"
+ERR_FORMAT_VALUE_MISMATCH = "{target} required, but have {source}"
+
+# formatlist wraps whatever the underlying format call raised.
+ERR_FORMATLIST_ITERATION = "error on format iteration {index}: {error}"
 ERR_ARGUMENT_MUST_NOT_BE_NULL = "{func}: argument {position} must not be null"
 ERR_CONCAT_REQUIRES_ONE = "concat: at least one argument is required"
 ERR_CONCAT_ARGS_MUST_BE_SEQUENCES = "concat: all arguments must be lists or tuples, got {type}"
