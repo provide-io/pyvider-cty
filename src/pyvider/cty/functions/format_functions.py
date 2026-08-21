@@ -33,8 +33,7 @@ from pyvider.cty.config.defaults import (
     ERR_FORMAT_TOO_MANY_ARGUMENTS,
     ERR_FORMAT_UNSUPPORTED_VALUE,
     ERR_FORMAT_UNSUPPORTED_VERB,
-    ERR_FORMAT_VALUE_MISMATCH,
-    ERR_FORMAT_VALUE_PARSE,
+    ERR_FORMAT_VALUE_NOT_CONVERTIBLE,
     ERR_FORMATLIST_ITERATION,
 )
 from pyvider.cty.conversion import convert
@@ -285,21 +284,20 @@ def _number_text(number: Decimal) -> str:
 
 
 def _conversion_reason(value: CtyValue[Any], target: CtyType[Any]) -> str:
-    """Why the conversion failed, in go-cty's words rather than this library's.
+    """Why the conversion failed, in one line a caller can act on.
 
-    The internal `CtyConversionError` names Python types and carries a nested
-    cause, which is useful in a traceback and wrong in a diagnostic an operator
-    reads. go-cty reports one of two short forms, and reusing
-    `conformance._name` keeps the type spelled the way its own `FriendlyName`
-    does -- "list of string", not "list".
+    The internal `CtyConversionError` nests its cause and names Python types, so
+    interpolating it whole reported "Cannot represent str value 'a' as Decimal
+    (source_type=CtyValue, target_type=number)" to somebody who wrote HCL. That
+    detail is still on `__cause__` where a traceback will show it; this is the
+    part worth putting in a diagnostic.
+
+    Both types are spelled by `conformance._name`, which is go-cty's
+    `FriendlyName`, so a list reads "list of string" rather than "list".
     """
     from pyvider.cty.conformance import _name
 
-    if isinstance(value.type, CtyString):
-        # A string source is parsed rather than matched, so go-cty phrases the
-        # failure as a missing value shape instead of a type mismatch.
-        return ERR_FORMAT_VALUE_PARSE.format(target=_name(target))
-    return ERR_FORMAT_VALUE_MISMATCH.format(target=_name(target), source=_name(value.type))
+    return ERR_FORMAT_VALUE_NOT_CONVERTIBLE.format(target=_name(target), source=_name(value.type))
 
 
 def _as(value: CtyValue[Any], target: CtyType[Any], verb: _Verb) -> CtyValue[Any]:
@@ -428,9 +426,7 @@ def _format_one(verb: _Verb, value: CtyValue[Any]) -> str:  # noqa: C901
             text = _marshal_string(text)
         return _pad(verb, text)
 
-    raise CtyFunctionError(
-        ERR_FORMAT_UNSUPPORTED_VERB.format(verb=verb.verb, raw=verb.raw, offset=verb.offset)
-    )
+    raise CtyFunctionError(ERR_FORMAT_UNSUPPORTED_VERB.format(verb=verb.verb, offset=verb.offset))
 
 
 def _render(template: str, arguments: list[CtyValue[Any]]) -> str:
@@ -659,10 +655,13 @@ def formatlist(template: CtyValue[Any], *arguments: CtyValue[Any], return_type: 
         try:
             rendered = _render(str(template.value), row)
         except CtyFunctionError as exc:
-            # go-cty names the iteration and passes the inner message
-            # through unchanged (`format.go:186`), so a caller can tell
-            # which row of a list argument was the bad one.
-            raise CtyFunctionError(ERR_FORMATLIST_ITERATION.format(index=index, error=exc)) from exc
+            # Name the row that failed: with a list argument that is the thing a
+            # caller has to find. The inner message is already prefixed
+            # `format:` by the call this wraps, and "formatlist: iteration 0:
+            # format: ..." reads badly, so the inner prefix is dropped rather
+            # than repeated.
+            inner = str(exc).removeprefix("format: ")
+            raise CtyFunctionError(ERR_FORMATLIST_ITERATION.format(index=index, error=inner)) from exc
         rows.append(CtyString().validate(rendered))
     return return_type.validate(rows)
 
