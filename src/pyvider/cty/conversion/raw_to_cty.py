@@ -31,10 +31,6 @@ _POST_PROCESS = object()
 # Using a single tuple avoids allocating (item_id,) per container visit.
 _CONTAINER_PLACEHOLDER: tuple[Any, ...] = ("__placeholder__",)
 
-# Cache of structural keys for primitive values, keyed by (type, value).
-# Avoids allocating a new tuple per primitive when the same value recurs.
-_PRIMITIVE_KEY_CACHE: dict[tuple[type, Any], tuple[Any, ...]] = {}
-
 # Lazy-initialized singleton type instances to avoid repeated allocation.
 # Cannot be created at import time due to circular import constraints.
 _SINGLETONS: dict[str, CtyType[Any]] = {}
@@ -156,15 +152,12 @@ def _get_structural_cache_key(value: Any) -> tuple[Any, ...]:
 
         if not isinstance(current_item, dict | list | tuple | set | frozenset):
             # For primitive values, use value-based cache keys to avoid race conditions
-            # from shared object IDs (e.g., interned integers, strings).
-            # Cache the key tuples to avoid re-allocating identical tuples for recurring values.
+            # from shared object IDs (e.g., interned integers, strings). These are
+            # built fresh each time: a module-level memo of them was keyed by every
+            # distinct primitive ever seen, which in a long-lived provider process is
+            # a leak of one entry per unique string in every configuration.
             if isinstance(current_item, (bool, int, float, str, bytes, type(None))):
-                cache_lookup = (type(current_item), current_item)
-                cached_key = _PRIMITIVE_KEY_CACHE.get(cache_lookup)
-                if cached_key is None:
-                    cached_key = cache_lookup
-                    _PRIMITIVE_KEY_CACHE[cache_lookup] = cached_key
-                structural_cache[item_id] = cached_key
+                structural_cache[item_id] = (type(current_item), current_item)
             else:
                 structural_cache[item_id] = (type(current_item),)
             continue
