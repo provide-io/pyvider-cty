@@ -33,6 +33,8 @@ from pyvider.cty.config.defaults import (
     ERR_FORMAT_TOO_MANY_ARGUMENTS,
     ERR_FORMAT_UNSUPPORTED_VALUE,
     ERR_FORMAT_UNSUPPORTED_VERB,
+    ERR_FORMAT_VALUE_NOT_CONVERTIBLE,
+    ERR_FORMATLIST_ITERATION,
 )
 from pyvider.cty.conversion import convert
 from pyvider.cty.conversion._utils import exact_normalize, non_finite_text
@@ -281,12 +283,31 @@ def _number_text(number: Decimal) -> str:
     return non_finite_text(number) or _general_form(number, None, upper=False)
 
 
+def _conversion_reason(value: CtyValue[Any], target: CtyType[Any]) -> str:
+    """Why the conversion failed, in one line a caller can act on.
+
+    The internal `CtyConversionError` nests its cause and names Python types, so
+    interpolating it whole reported "Cannot represent str value 'a' as Decimal
+    (source_type=CtyValue, target_type=number)" to somebody who wrote HCL. That
+    detail is still on `__cause__` where a traceback will show it; this is the
+    part worth putting in a diagnostic.
+
+    Both types are spelled by `conformance._name`, which is go-cty's
+    `FriendlyName`, so a list reads "list of string" rather than "list".
+    """
+    from pyvider.cty.conformance import _name
+
+    return ERR_FORMAT_VALUE_NOT_CONVERTIBLE.format(target=_name(target), source=_name(value.type))
+
+
 def _as(value: CtyValue[Any], target: CtyType[Any], verb: _Verb) -> CtyValue[Any]:
     try:
         return convert(value, target)
     except CtyConversionError as exc:
         raise CtyFunctionError(
-            ERR_FORMAT_UNSUPPORTED_VALUE.format(verb=verb.raw, offset=verb.offset, error=exc)
+            ERR_FORMAT_UNSUPPORTED_VALUE.format(
+                verb=verb.raw, offset=verb.offset, error=_conversion_reason(value, target)
+            )
         ) from exc
 
 
@@ -631,7 +652,17 @@ def formatlist(template: CtyValue[Any], *arguments: CtyValue[Any], return_type: 
             # go-cty spells this one out per row too (`format.go:174`).
             rows.append(unknown_not_null(CtyString()))
             continue
-        rows.append(CtyString().validate(_render(str(template.value), row)))
+        try:
+            rendered = _render(str(template.value), row)
+        except CtyFunctionError as exc:
+            # Name the row that failed: with a list argument that is the thing a
+            # caller has to find. The inner message is already prefixed
+            # `format:` by the call this wraps, and "formatlist: iteration 0:
+            # format: ..." reads badly, so the inner prefix is dropped rather
+            # than repeated.
+            inner = str(exc).removeprefix("format: ")
+            raise CtyFunctionError(ERR_FORMATLIST_ITERATION.format(index=index, error=inner)) from exc
+        rows.append(CtyString().validate(rendered))
     return return_type.validate(rows)
 
 
