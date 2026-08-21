@@ -178,7 +178,7 @@ warn_unused_configs = true
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
-module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*"]
+module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*", "uniseg", "uniseg.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

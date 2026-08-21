@@ -9,14 +9,16 @@ Profiles allocation patterns in:
 """
 
 import os
+from typing import Any
 
 os.environ.setdefault("LOG_LEVEL", "ERROR")
 
 from decimal import Decimal
 
 from pyvider.cty.codec import cty_from_msgpack, cty_to_msgpack
-from pyvider.cty.types import CtyBool, CtyList, CtyMap, CtyNumber, CtyObject, CtyString
+from pyvider.cty.types import CtyBool, CtyList, CtyMap, CtyNumber, CtyObject, CtyString, CtyType
 from pyvider.cty.validation.recursion import clear_recursion_context
+from pyvider.cty.values import CtyValue
 
 # --- Schemas and pre-validated values ---
 
@@ -80,7 +82,7 @@ NESTED_VALUE = NESTED_SCHEMA.validate(
 
 # --- Cycle configs ---
 
-CONFIGS = [
+CONFIGS: list[tuple[str, CtyType[Any], CtyValue[Any], int]] = [
     ("string", STRING_SCHEMA, STRING_VALUE, 10_000),
     ("number", NUMBER_SCHEMA, NUMBER_VALUE, 10_000),
     ("bool", BOOL_SCHEMA, BOOL_VALUE, 10_000),

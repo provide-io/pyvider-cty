@@ -27,6 +27,7 @@ import shutil
 import subprocess  # nosec
 import sys
 import tempfile
+from typing import cast
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BENCHMARK = Path(__file__).resolve().parent / "benchmark.py"
@@ -61,7 +62,7 @@ def run_benchmark(src_root: Path) -> dict[str, float]:
             f"benchmark measured {measured['module']}, expected a module under {src_root}. "
             "The comparison would be meaningless."
         )
-    return measured["results"]
+    return cast(dict[str, float], measured["results"])
 
 
 def export_baseline(ref: str, destination: Path) -> Path:
