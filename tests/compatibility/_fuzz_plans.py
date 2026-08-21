@@ -169,26 +169,42 @@ def _format_call(draw: Any) -> list[CtyValue[Any]]:
 
 
 # Each format string with the number of arguments it consumes, because
-# `formatlist` is generated with its arity *matched*. Supplying more arguments
-# than the verbs use is a recorded divergence rather than a shape worth
-# generating: go-cty raises "too many arguments" from inside an iteration whose
-# arguments are unknown, and this package answers an unknown for that iteration
-# and never reaches the check. Found 2026-08-20 by this suite; see
-# `docs/reference/go-cty-comparison.md`. Narrowing here rather than accepting
-# silently, so the rest of `formatlist` -- broadcasting, length mismatch, the
-# unknown and null element paths -- stays generated.
+# `formatlist` is generated with its arity *matched*, which is now a habit
+# rather than a workaround: the divergence this once guarded against was
+# investigated on 2026-08-21 and does not exist -- go-cty skips its arity check
+# for unknown arguments on exactly the same two paths this package does. Left
+# matched because an arity mismatch is one narrow error case and the shapes
+# worth generating are the others: broadcasting, length mismatch, and the
+# unknown and null element paths.
 _FORMATLIST_VERBS = st.sampled_from([("%s", 1), ("%v", 1), ("%q", 1), ("%d-%s", 2)])
 
 
 @st.composite
 def _formatlist_call(draw: Any) -> list[CtyValue[Any]]:
-    """The same, with the arguments lifted into lists of differing lengths."""
+    """The same, with the arguments lifted into lists of differing lengths.
+
+    Unknown *elements* are drawn only for the single-argument verbs. With two
+    iterated arguments go-cty desynchronises its iterators -- `continue Results`
+    skips advancing the ones it has not read yet -- so after an unknown row
+    every later argument is off by the number of rows skipped, and it answers a
+    confidently wrong value:
+
+        formatlist("%s-%s", [unknown, "a"], ["x", "y"])
+        go-cty  ["<unknown>", "a-x"]
+        here    ["<unknown>", "a-y"]
+
+    This package indexes each row, so it is right and go-cty is wrong. Pinned by
+    `test_formatlist_pairs_each_row_correctly.py` rather than generated here,
+    because a generator that keeps drawing a case the oracle answers incorrectly
+    measures the oracle's bug rather than this library.
+    """
     verb, arity = draw(_FORMATLIST_VERBS)
+    element_unknowns = arity == 1
     arguments = [
         draw(
             st.one_of(
-                v.lists(S, max_size=3),
-                v.lists(N, max_size=3),
+                v.lists(S, max_size=3, unknowns=element_unknowns),
+                v.lists(N, max_size=3, unknowns=element_unknowns),
                 v.scalars(),
             )
         )
