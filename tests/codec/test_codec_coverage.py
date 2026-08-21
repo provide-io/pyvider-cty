@@ -24,9 +24,15 @@ def test_ext_hook_with_malformed_refined_unknown() -> None:
         _ext_hook(12, b"invalid")
 
 
-def test_cty_from_msgpack_with_empty_data() -> None:
-    val = cty_from_msgpack(b"", CtyString())
-    assert val.is_null
+def test_cty_from_msgpack_with_empty_data_is_refused() -> None:
+    """Nothing received is not the same as a null received; go-cty answers EOF.
+
+    Terraform core treats an absent DynamicValue as a null, and pyvider does the
+    same at its own boundary (`marshaler.unmarshal` never calls this with empty
+    bytes), so the codec itself can be strict.
+    """
+    with pytest.raises(DeserializationError, match="empty"):
+        cty_from_msgpack(b"", CtyString())
 
 
 def test_serialize_dynamic_with_non_cty_value() -> None:
