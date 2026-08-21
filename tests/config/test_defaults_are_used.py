@@ -36,7 +36,11 @@ DEFAULTS = SOURCE_ROOT / "pyvider" / "cty" / "config" / "defaults.py"
 
 
 def _declared_constants() -> set[str]:
-    tree = ast.parse(DEFAULTS.read_text())
+    # Explicit encoding: this repository's sources end in an emoji footer, and
+    # `read_text()` without one uses the platform default -- cp1252 on Windows,
+    # which cannot decode them and fails the test for a reason that has nothing
+    # to do with what it checks.
+    tree = ast.parse(DEFAULTS.read_text(encoding="utf-8"))
     return {
         target.id
         for node in tree.body
@@ -47,7 +51,9 @@ def _declared_constants() -> set[str]:
 
 
 def _referenced_constants() -> set[str]:
-    body = "\n".join(path.read_text() for path in SOURCE_ROOT.rglob("*.py") if path.name != "defaults.py")
+    body = "\n".join(
+        path.read_text(encoding="utf-8") for path in SOURCE_ROOT.rglob("*.py") if path.name != "defaults.py"
+    )
     return set(re.findall(r"\bERR_[A-Z0-9_]+\b", body))
 
 

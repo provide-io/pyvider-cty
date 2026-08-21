@@ -24,7 +24,7 @@ def memray_baselines_path() -> Path:
 def memray_baseline(memray_baselines_path: Path) -> dict[str, int]:
     if not memray_baselines_path.exists():
         return {}
-    loaded: dict[str, int] = json.loads(memray_baselines_path.read_text())
+    loaded: dict[str, int] = json.loads(memray_baselines_path.read_text(encoding="utf-8"))
     return loaded
 
 
