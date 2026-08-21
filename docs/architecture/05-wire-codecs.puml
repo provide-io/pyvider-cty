@@ -13,7 +13,7 @@ rectangle "**a CtyValue, and the CtyType to write it against**\nBoth codecs are 
   rectangle "**_convert_value_to_serializable(value, schema, path)**\nshallow mark check at every level, for the path\n**dynamic -> an envelope, first** //[e]// · unknown -> a marker · null -> None\nobject / map -> dict, keys sorted\nlist -> array · **set -> sorted by set_order.order_key** //[l]//\ntuple -> array, positionally · Decimal -> //[b]//" as MP_CONV <<plumbing>>
   rectangle "**msgpack.packb(..., use_bin_type=True)**" as MP_PACK <<plumbing>>
 
-  rectangle "**cty_from_msgpack(data, cty_type)**\nempty input -> a null of cty_type" as MP_DEC <<plumbing>>
+  rectangle "**cty_from_msgpack(data, cty_type)**\nempty input -> DeserializationError" as MP_DEC <<plumbing>>
   rectangle "**msgpack.unpackb(ext_hook=_ext_hook,**\n**raw=False, strict_map_key=False)**" as MP_UNPACK <<plumbing>>
   rectangle "**_unpacked_to_cty(data, schema)**\nan UnknownValue marker -> CtyValue.unknown(schema, marker)\nNone -> CtyValue.null(schema)\nanything else -> schema.validate(data)" as MP_REBUILD <<plumbing>>
 
