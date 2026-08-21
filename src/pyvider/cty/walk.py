@@ -38,7 +38,6 @@ from attrs import evolve
 
 from pyvider.cty.path import CtyPath, GetAttrStep, IndexStep, KeyStep, PathStep
 from pyvider.cty.types import (
-    CtyDynamic,
     CtyList,
     CtyMap,
     CtyObject,
@@ -46,6 +45,7 @@ from pyvider.cty.types import (
     CtyTuple,
     CtyType,
 )
+from pyvider.cty.types.structural.dynamic import unwrap_dynamic
 from pyvider.cty.values import CtyValue
 from pyvider.cty.values.set_order import order_key as set_order_key
 
@@ -57,26 +57,13 @@ WalkFn = Callable[[CtyPath, CtyValue[Any]], bool]
 TransformFn = Callable[[CtyPath, CtyValue[Any]], CtyValue[Any]]
 
 
-def _unwrap_dynamic(value: CtyValue[Any]) -> CtyValue[Any]:
-    """The value a CtyDynamic wrapper stands in front of.
-
-    A dynamic wrapper is transparent to traversal: it is a statement about how
-    the value was typed, not a level of nesting a caller would want a path step
-    for. `IndexStep` and `KeyStep` already unwrap it in their own `apply`, so
-    treating it as transparent here is what keeps the emitted paths applicable.
-    """
-    while isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
-        value = value.value
-    return value
-
-
 def _child_steps(value: CtyValue[Any]) -> list[tuple[PathStep, CtyValue[Any]]]:
     """The values one level inside `value`, each with the step that reaches it.
 
     Empty for a leaf, and for a null or unknown value of any type -- there is
     nothing inside either one to visit, which is go-cty's rule as well.
     """
-    inner = _unwrap_dynamic(value)
+    inner = unwrap_dynamic(value)
     if inner.is_null or inner.is_unknown:
         return []
 
@@ -195,7 +182,7 @@ def _rebuild(
     if all(new is old for new, (_step, old) in zip(children, child_steps, strict=True)):
         return original
 
-    inner = _unwrap_dynamic(original)
+    inner = unwrap_dynamic(original)
     vtype = inner.type
 
     payload: Any

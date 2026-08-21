@@ -9,7 +9,9 @@ Profiles allocation patterns in:
 - Pairwise type comparison allocations
 """
 
+from collections.abc import Sequence
 import os
+from typing import Any
 
 os.environ.setdefault("LOG_LEVEL", "ERROR")
 
@@ -22,6 +24,7 @@ from pyvider.cty.types import (
     CtyNumber,
     CtyObject,
     CtyString,
+    CtyType,
 )
 
 # --- Type lists to unify ---
@@ -29,7 +32,7 @@ from pyvider.cty.types import (
 HOMOGENEOUS_STRINGS = [CtyString(), CtyString(), CtyString(), CtyString()]
 HOMOGENEOUS_NUMBERS = [CtyNumber(), CtyNumber(), CtyNumber()]
 
-MIXED_PRIMITIVES = [CtyString(), CtyNumber(), CtyBool()]
+MIXED_PRIMITIVES: list[CtyType[Any]] = [CtyString(), CtyNumber(), CtyBool()]
 
 COMPATIBLE_LISTS = [
     CtyList(element_type=CtyString()),
@@ -47,9 +50,9 @@ SAME_SCHEMA_OBJECTS = [
     CtyObject(attribute_types={"name": CtyString(), "count": CtyNumber()}),
 ]
 
-DYNAMIC_WITH_CONCRETE = [CtyDynamic(), CtyString()]
+DYNAMIC_WITH_CONCRETE: list[CtyType[Any]] = [CtyDynamic(), CtyString()]
 
-LARGE_TYPE_LIST = [
+LARGE_TYPE_LIST: list[CtyType[Any]] = [
     CtyString(),
     CtyNumber(),
     CtyBool(),
@@ -64,7 +67,7 @@ LARGE_TYPE_LIST = [
 
 # --- Cycle configs ---
 
-CONFIGS = [
+CONFIGS: list[tuple[str, Sequence[CtyType[Any]], int]] = [
     ("homogeneous_strings", HOMOGENEOUS_STRINGS, 10_000),
     ("homogeneous_numbers", HOMOGENEOUS_NUMBERS, 10_000),
     ("mixed_primitives", MIXED_PRIMITIVES, 10_000),

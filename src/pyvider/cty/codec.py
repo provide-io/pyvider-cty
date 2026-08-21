@@ -38,7 +38,6 @@ from pyvider.cty.config.defaults import (
 from pyvider.cty.conversion import encode_cty_type_to_wire_json
 from pyvider.cty.exceptions import (
     CtyMarksSerializationError,
-    CtyValidationError,
     DeserializationError,
     SerializationError,
 )
@@ -445,12 +444,24 @@ def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
     # pyvider's `marshaler.unmarshal`, so the codec can be strict.
     if not data:
         raise DeserializationError("cty_from_msgpack: empty input; a null is encoded as 0xc0, not as no bytes")
-    raw_unpacked = msgpack.unpackb(
-        data,
-        ext_hook=_ext_hook,
-        raw=MSGPACK_RAW_FALSE,
-        strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE,
-    )
+    # Every failure out of here is a CtyError: DeserializationError for bytes
+    # that are not a MessagePack payload, the type's own CtyValidationError for a
+    # payload that decodes but does not fit. msgpack's exceptions -- FormatError,
+    # ExtraData, StackError, the bare ValueError for truncated input, a
+    # UnicodeDecodeError inside a string -- used to escape as themselves, so a
+    # caller wanting to catch every decode failure had to catch Exception.
+    # `_ext_hook` raises DeserializationError itself and passes through.
+    try:
+        raw_unpacked = msgpack.unpackb(
+            data,
+            ext_hook=_ext_hook,
+            raw=MSGPACK_RAW_FALSE,
+            strict_map_key=MSGPACK_STRICT_MAP_KEY_FALSE,
+        )
+    except DeserializationError:
+        raise
+    except (ValueError, TypeError) as e:
+        raise DeserializationError(f"cty_from_msgpack: not a MessagePack payload: {e}") from e
 
     if (
         isinstance(cty_type, CtyDynamic)
@@ -460,13 +471,11 @@ def cty_from_msgpack(data: bytes, cty_type: CtyType[Any]) -> CtyValue[Any]:
     ):
         try:
             type_spec = json.loads(raw_unpacked[0].decode("utf-8"))
-            actual_type = parse_tf_type_to_ctytype(type_spec)
-            inner_value = _unpacked_to_cty(raw_unpacked[1], actual_type)
-            return CtyValue(vtype=cty_type, value=inner_value)
-        except json.JSONDecodeError as e:
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
             raise DeserializationError(ERR_DECODE_DYNAMIC_TYPE) from e
-        except CtyValidationError as e:
-            raise e
+        actual_type = parse_tf_type_to_ctytype(type_spec)
+        inner_value = _unpacked_to_cty(raw_unpacked[1], actual_type)
+        return CtyValue(vtype=cty_type, value=inner_value)
 
     return _unpacked_to_cty(raw_unpacked, cty_type)
 
