@@ -382,7 +382,7 @@ def _coerced(raw: Any, cty_type: CtyType[Any], where: str, wanted: str) -> CtyVa
 def _unmarshal_dynamic(raw: Any, path: str) -> CtyValue[Any]:
     if raw is None:
         return CtyValue.null(CtyDynamic())
-    if not isinstance(raw, dict) or "value" not in raw or "type" not in raw:
+    if not isinstance(raw, dict):
         raise CtyJsonError(f"{path or 'value'}: a dynamic value must be an object with 'value' and 'type'")
     from pyvider.cty.parser import parse_tf_type_to_ctytype
 
@@ -394,12 +394,35 @@ def _unmarshal_dynamic(raw: Any, path: str) -> CtyValue[Any]:
     # silently overridden by a later good one. "value" has no such rule --
     # go-cty overwrites it unconditionally with no validation at read time --
     # so raw["value"]'s last-wins reading already matches.
+    #
+    # The loop's `else` is go-cty's `default:` branch (`unmarshal.go:396`): the
+    # envelope admits `type` and `value` and nothing else. Ignoring the rest let
+    # `{"type":"string","extra":1,"value":"x"}` decode here and be refused
+    # there. Because the refusal is raised from inside the loop it competes with
+    # the type-parse failure by document order, which is why an unknown key
+    # before a bad descriptor wins and one after it does not.
+    #
+    # Both "missing" checks are deliberately after the loop, as go-cty's are
+    # (`unmarshal.go:407`), so either unknown key or bad descriptor outranks
+    # them; and type is checked before value, again as go-cty checks them.
     inner_type: CtyType[Any] | None = None
+    body: Any = None
+    has_value = False
     for key, item in _pairs(raw):
         if key == "type":
             inner_type = parse_tf_type_to_ctytype(item)
-    # "type" in raw guarantees the loop set inner_type at least once.
-    return CtyValue(vtype=CtyDynamic(), value=_unmarshal(raw["value"], cast("CtyType[Any]", inner_type), path))
+        elif key == "value":
+            body, has_value = item, True
+        else:
+            raise CtyJsonError(f'{path or "value"}: invalid key "{key}" in dynamically-typed value')
+    if inner_type is None:
+        raise CtyJsonError(f"{path or 'value'}: missing type in dynamically-typed value")
+    if not has_value:
+        # Distinct from a `value` that is present and JSON null, which go-cty
+        # keeps (it stashes the raw bytes, and `null` is bytes) and decodes to a
+        # null of the declared type.
+        raise CtyJsonError(f"{path or 'value'}: missing value in dynamically-typed value")
+    return CtyValue(vtype=CtyDynamic(), value=_unmarshal(body, inner_type, path))
 
 
 def _unmarshal_sequence(raw: Any, cty_type: CtyList[Any] | CtySet[Any] | CtyTuple, path: str) -> CtyValue[Any]:
