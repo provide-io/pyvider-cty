@@ -116,8 +116,18 @@ class TestDynamic:
         assert cty_to_json(decoded, CtyDynamic()) == b'{"value":"x","type":"string"}'
 
     def test_a_malformed_dynamic_document_is_refused(self) -> None:
-        with pytest.raises(CtyJsonError, match="'value' and 'type'"):
+        with pytest.raises(CtyJsonError, match="missing type"):
             cty_from_json(b'{"value":"x"}', CtyDynamic())
+
+    def test_a_dynamic_envelope_that_is_not_an_object_is_refused(self) -> None:
+        with pytest.raises(CtyJsonError, match="'value' and 'type'"):
+            cty_from_json(b'"x"', CtyDynamic())
+
+    def test_an_explicit_null_value_is_kept(self) -> None:
+        """`value: null` is a null of the declared type, not a missing value."""
+        decoded = cty_from_json(b'{"type":"string","value":null}', CtyDynamic())
+
+        assert decoded.value.is_null
 
 
 class TestRefusals:
@@ -246,6 +256,54 @@ class TestDynamicEnvelopeDuplicateType:
         assert cty_from_json('{"value": "x", "type": "string"}', CtyDynamic()).value.value == "x"
         assert cty_from_json('{"value": "a", "value": "b", "type": "string"}', CtyDynamic()).value.value == "b"
         assert cty_from_json('{"type": "string", "value": "a", "value": "b"}', CtyDynamic()).value.value == "b"
+
+
+class TestDynamicEnvelopeAcceptsOnlyTypeAndValue:
+    """go-cty's `unmarshalDynamic` (`json/unmarshal.go:390`) has a `default:`
+    branch: any key that is not `type` or `value` ends the decode with
+    `invalid key %q in dynamically-typed value`. This decoder ignored them, so
+    `{"type":"string","extra":1,"value":"x"}` decoded to `"x"` here and was
+    refused there.
+
+    The refusal happens *inside* the key loop, so it competes with the other
+    two failures by document order -- an unknown key before a bad type
+    descriptor wins, and after it loses. The missing-`type` and missing-`value`
+    checks run only once the loop has finished, so they always lose to both.
+    All four orderings are oracle-pinned in the compatibility suite.
+    """
+
+    def test_an_unknown_key_is_refused(self) -> None:
+        with pytest.raises(CtyJsonError, match='invalid key "extra"'):
+            cty_from_json('{"type": "string", "extra": 1, "value": "x"}', CtyDynamic())
+
+    def test_an_unknown_key_is_refused_wherever_it_sits(self) -> None:
+        with pytest.raises(CtyJsonError, match='invalid key "bogus"'):
+            cty_from_json('{"value": "x", "type": "string", "bogus": [1, 2]}', CtyDynamic())
+
+    def test_an_unknown_key_beats_a_later_invalid_type(self) -> None:
+        with pytest.raises(CtyJsonError, match='invalid key "bogus"'):
+            cty_from_json('{"bogus": 1, "type": ["nope"]}', CtyDynamic())
+
+    def test_an_earlier_invalid_type_beats_an_unknown_key(self) -> None:
+        # Not CtyJsonError's "invalid key" -- the type parse fails first, and
+        # its refusal comes straight out of parse_tf_type_to_ctytype.
+        with pytest.raises(CtyValidationError) as caught:
+            cty_from_json('{"type": ["nope"], "bogus": 1}', CtyDynamic())
+        assert "invalid key" not in str(caught.value)
+
+    def test_an_unknown_key_beats_the_missing_type_check(self) -> None:
+        with pytest.raises(CtyJsonError, match='invalid key "extra"'):
+            cty_from_json('{"extra": 1}', CtyDynamic())
+
+    def test_a_missing_type_is_reported_before_a_missing_value(self) -> None:
+        with pytest.raises(CtyJsonError, match="missing type"):
+            cty_from_json("{}", CtyDynamic())
+        with pytest.raises(CtyJsonError, match="missing type"):
+            cty_from_json('{"value": "x"}', CtyDynamic())
+
+    def test_a_missing_value_is_reported_once_the_type_is_there(self) -> None:
+        with pytest.raises(CtyJsonError, match="missing value"):
+            cty_from_json('{"type": "string"}', CtyDynamic())
 
 
 # 🌊🪢🔚
