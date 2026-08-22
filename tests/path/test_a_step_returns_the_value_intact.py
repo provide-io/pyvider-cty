@@ -21,6 +21,9 @@ go-cty parity: go-cty has no known-dynamic value to compare against, because
 
 from __future__ import annotations
 
+from decimal import Decimal
+from typing import cast
+
 import pytest
 
 from pyvider.cty import (
@@ -34,6 +37,7 @@ from pyvider.cty import (
     CtyTuple,
     CtyValue,
 )
+from pyvider.cty.exceptions import AttributePathError
 from pyvider.cty.marks import CtyMark
 from pyvider.cty.path import CtyPath
 from pyvider.cty.refinement import refine
@@ -144,6 +148,99 @@ class TestThroughADynamicWrapper:
         assert selected.type.equal(S)
         assert selected.value == "x"
         assert not selected.is_null and not selected.is_unknown
+
+
+class TestASetIsKeyedByCtyIdentity:
+    """A set element keys itself, so the lookup has to use the set's own identity.
+
+    `set_order.identity_key` -- `makeSetHashBytes` plus the canonical key -- is
+    what `CtySet.validate` de-duplicates on. Python equality is not the same
+    relation, and the gap is a signed zero: `Decimal("-0") == Decimal("0")`,
+    while go-cty hashes them to `-0` and `0` and keeps both. Confirmed against
+    the oracle, which visits two elements and gives them two paths::
+
+        soup-go cty walk --type '["set","number"]' '[-0,0]'
+        "visits":[..., {"path":[{"index":-0}],...}, {"path":[{"index":0}],...}]
+    """
+
+    NUMBERS = CtySet(element_type=N)
+
+    def test_go_cty_keeps_both_zeros_and_so_does_this(self) -> None:
+        both = self.NUMBERS.validate([Decimal("-0"), Decimal("0")])
+        assert len(cast("tuple[CtyValue[object], ...]", both.value)) == 2
+
+    def test_the_negative_zero_is_found_by_the_negative_zero(self) -> None:
+        both = self.NUMBERS.validate([Decimal("-0"), Decimal("0")])
+        selected = CtyPath.key(N.validate(Decimal("-0"))).apply_path(both)
+        assert cast(Decimal, selected.value).is_signed()
+
+    def test_the_positive_zero_is_found_by_the_positive_zero(self) -> None:
+        both = self.NUMBERS.validate([Decimal("-0"), Decimal("0")])
+        selected = CtyPath.key(N.validate(Decimal("0"))).apply_path(both)
+        assert not cast(Decimal, selected.value).is_signed()
+
+    def test_a_positive_zero_is_absent_from_a_set_holding_only_a_negative_one(self) -> None:
+        only_negative = self.NUMBERS.validate([Decimal("-0")])
+        with pytest.raises(AttributePathError):
+            CtyPath.key(N.validate(Decimal("0"))).apply_path(only_negative)
+
+    def test_a_marked_key_still_finds_its_element(self) -> None:
+        """`identity_key` strips marks, as go-cty's hashing does, so a marked
+        key asks after the same element. It used to find nothing at all."""
+        selected = CtyPath.key(S.validate("x").mark(SENSITIVE)).apply_path(SET.validate(["x"]))
+        assert selected.value == "x"
+
+    def test_a_marked_key_marks_what_it_finds(self) -> None:
+        selected = CtyPath.key(S.validate("x").mark(SENSITIVE)).apply_path(SET.validate(["x"]))
+        assert selected.marks == frozenset({SENSITIVE})
+
+    def test_a_marked_unknown_key_marks_the_unknown_it_gets_back(self) -> None:
+        selected = CtyPath.key(CtyValue.unknown(S).mark(SENSITIVE)).apply_path(SET.validate(["x"]))
+        assert selected.is_unknown
+        assert selected.marks == frozenset({SENSITIVE})
+
+    def test_the_key_and_the_receiver_both_contribute(self) -> None:
+        marked_set = SET.validate(["x"]).mark(OTHER)
+        selected = CtyPath.key(S.validate("x").mark(SENSITIVE)).apply_path(marked_set)
+        assert selected.marks == frozenset({SENSITIVE, OTHER})
+
+    def test_an_unmarked_key_leaves_the_element_alone(self) -> None:
+        assert CtyPath.key(S.validate("x")).apply_path(SET.validate(["x"])).marks == frozenset()
+
+    def test_a_key_that_is_not_a_cty_value_matches_nothing(self) -> None:
+        """As before: `CtyValue.__eq__` returns `NotImplemented` against a raw
+        operand, so a bare `"x"` never matched an element either."""
+        with pytest.raises(AttributePathError):
+            CtyPath.key("x").apply_path(SET.validate(["x"]))
+
+
+class TestAWhollyUnknownDynamicAttribute:
+    """`GetAttrStep` had no answer for an unknown `dynamic`, where the other two steps did."""
+
+    def test_an_unknown_dynamic_yields_an_unknown(self) -> None:
+        selected = CtyPath.get_attr("a").apply_path(CtyValue.unknown(CtyDynamic()))
+        assert selected.is_unknown
+
+    def test_it_agrees_with_what_apply_path_type_promises(self) -> None:
+        assert CtyPath.get_attr("a").apply_path_type(CtyDynamic()).equal(CtyDynamic())
+        assert CtyPath.get_attr("a").apply_path(CtyValue.unknown(CtyDynamic())).type.equal(CtyDynamic())
+
+    def test_it_agrees_with_the_other_two_steps(self) -> None:
+        unknown_dynamic = CtyValue.unknown(CtyDynamic())
+        assert CtyPath.index(0).apply_path(unknown_dynamic).is_unknown
+        assert CtyPath.key("k").apply_path(unknown_dynamic).is_unknown
+
+    def test_a_marked_unknown_dynamic_keeps_its_mark(self) -> None:
+        selected = CtyPath.get_attr("a").apply_path(CtyValue.unknown(CtyDynamic()).mark(SENSITIVE))
+        assert selected.marks == frozenset({SENSITIVE})
+
+    def test_an_unknown_object_still_answers_with_the_attributes_own_type(self) -> None:
+        """The `CtyObject` branch is checked first on purpose: an unknown object
+        already knows what type the attribute has, and a blanket unknown
+        short-circuit would flatten that to `dynamic`."""
+        selected = CtyPath.get_attr("a").apply_path(CtyValue.unknown(OBJECT))
+        assert selected.is_unknown
+        assert selected.type.equal(S)
 
 
 class TestGetAttrTraversesADynamicWrapperToo:

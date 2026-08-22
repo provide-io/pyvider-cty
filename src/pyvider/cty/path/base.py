@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import Any, TypeVar, cast
+import warnings
 
 from attrs import define, field
 
@@ -44,6 +45,32 @@ class PathStep(ABC):
             unmarked, marks = value.unmark()
             return self._apply(unmarked).with_marks(marks)
         return self._apply(value)
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Accept a subclass written against the older, public `apply`.
+
+        `apply` used to be the abstract method, so a step outside this package
+        implements it and would now be abstract in `_apply` and refuse to
+        instantiate -- `PathStep` is exported from `pyvider.cty.path`, so that is
+        a break in a public contract. Such a subclass is rewired here instead:
+        its `apply` becomes its `_apply`, and the template method above comes
+        back from the base class. It keeps working *and* gains the mark handling
+        it was written too early to have.
+
+        A subclass that defines both is left alone -- it has said what it means.
+        """
+        super().__init_subclass__(**kwargs)
+        if "apply" in cls.__dict__ and "_apply" not in cls.__dict__:
+            warnings.warn(
+                f"{cls.__module__}.{cls.__qualname__} overrides PathStep.apply, which is now a"
+                " template method that carries the receiver's marks onto the value a step"
+                " selects. Implement `_apply` instead; it is handed an already-unmarked value."
+                " The old method has been bridged to `_apply` for now.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            cls._apply = cls.__dict__["apply"]  # type: ignore[method-assign]
+            delattr(cls, "apply")
 
     @abstractmethod
     def _apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
@@ -82,15 +109,26 @@ class GetAttrStep(PathStep):
             raise AttributePathError(f"Cannot get attribute '{self.name}' from null value")
         from pyvider.cty.types.structural import CtyDynamic, CtyObject
 
+        # Checked before the unknown case below, and deliberately: an unknown
+        # object already answers correctly, with an unknown of the *attribute's*
+        # type. Short-circuiting every unknown receiver up front would replace
+        # that with `dynamic` and lose what the object type already says.
         if isinstance(value.type, CtyObject):
             return value.type.get_attribute(value, self.name)
-        # A `dynamic` wrapper is stepped through, as `IndexStep` and `KeyStep`
-        # already did. Only this step lacked the branch, so an attribute of an
-        # object inside a wrapper was unreachable by path while an element of a
-        # list inside one was reachable. Recursed through `apply` rather than
-        # `_apply` so the payload's own marks are picked up as well.
-        if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
-            return self.apply(value.value)
+        if isinstance(value.type, CtyDynamic):
+            # A `dynamic` wrapper is stepped through, as `IndexStep` and `KeyStep`
+            # already did. Only this step lacked the branch, so an attribute of an
+            # object inside a wrapper was unreachable by path while an element of a
+            # list inside one was reachable. Recursed through `apply` rather than
+            # `_apply` so the payload's own marks are picked up as well.
+            if isinstance(value.value, CtyValue):
+                return self.apply(value.value)
+            # A wholly unknown `dynamic` has no inner value to step into. Its own
+            # `apply_type` answers `dynamic` here, and `IndexStep` and `KeyStep`
+            # both hand back an unknown; this raised, so a type could be walked
+            # where the value it described could not.
+            if value.is_unknown:
+                return CtyValue.unknown(CtyDynamic())
         raise AttributePathError(
             f"Cannot get attribute from non-object value of type {value.type.__class__.__name__}"
         )
@@ -181,22 +219,56 @@ class KeyStep(PathStep):
     key: object = field()
 
     def _apply_to_set(self, value: CtyValue[Any]) -> CtyValue[Any]:
+        """Find the element that keys itself, by cty identity rather than `==`.
+
+        `set_order.identity_key` is `makeSetHashBytes` paired with the canonical
+        key -- what `CtySet.validate` de-duplicates on -- so the lookup agrees
+        with what the set actually holds. Python equality did not: a
+        `Decimal("-0")` equals a `Decimal("0")`, so a path of `[0]` into
+        `toset([-0])` matched the negative zero and handed back the positive one.
+        go-cty keeps the two apart, and gives them separate paths:
+        `soup-go cty walk --type '["set","number"]' '[-0,0]'` visits both.
+
+        The element found is returned rather than the key, which now matters:
+        with identity deciding, they can differ only in ways the set itself
+        distinguishes, and the set's member is the one that is really there.
+
+        The key is unmarked before the lookup and its marks go onto the answer.
+        A marked key asks after the same element an unmarked one does --
+        `identity_key` strips marks, as go-cty's hashing does, so a marked key
+        used to find nothing at all -- but asking with a sensitive value is a
+        sensitive question, so the mark travels the way `PathStep.apply` carries
+        the receiver's. The set's own marks are already `apply`'s doing; it
+        unmarked `value` before calling here.
+
+        A key that is not a `CtyValue` matches nothing, as before: `CtyValue.__eq__`
+        returns `NotImplemented` against a raw operand, so it never matched either.
+        """
         from pyvider.cty.types.collections import CtySet
+        from pyvider.cty.values.set_order import identity_key
 
         element_type = cast(CtySet[Any], value.type).element_type
         elements = cast("tuple[CtyValue[Any], ...]", value.value)
-        # The set's marks come along -- cty cannot hold marks on set elements, so
-        # an element's sensitivity is recorded on the set as a whole -- but that
-        # is `PathStep.apply`'s doing now, and it has already unmarked `value`.
-        # This used to be the only step that got it right.
-        if self.key in elements:
-            return cast(CtyValue[Any], self.key)
-        if isinstance(self.key, CtyValue) and self.key.is_unknown:
-            return CtyValue.unknown(element_type)
+
+        key = self.key
+        key_marks: frozenset[Any] = frozenset()
+        if isinstance(key, CtyValue) and key.marks:
+            key, key_marks = key.unmark()
+
+        def answered(selected: CtyValue[Any]) -> CtyValue[Any]:
+            return selected.with_marks(key_marks) if key_marks else selected
+
+        if isinstance(key, CtyValue):
+            wanted = identity_key(key)
+            for element in elements:
+                if identity_key(element) == wanted:
+                    return answered(element)
+            if key.is_unknown:
+                return answered(CtyValue.unknown(element_type))
         if any(element.is_unknown for element in elements):
             # One of the unknowns could still turn out to be the element asked
             # for, so "absent" would be asserting more than the data supports.
-            return CtyValue.unknown(element_type)
+            return answered(CtyValue.unknown(element_type))
         raise AttributePathError("Set does not contain the requested element")
 
     def _apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
