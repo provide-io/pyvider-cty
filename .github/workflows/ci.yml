@@ -68,6 +68,33 @@ jobs:
         env:
           UV_NO_SOURCES: "1"
 
+  # The benchmark tests take pytest-benchmark's `benchmark` fixture and are
+  # skipped unless `--run-benchmarks` is given, so no job above runs them --
+  # and they spent a release cycle unrunnable (the plugin that provides the
+  # fixture had dropped out of the dev group) with nothing noticing. This runs
+  # each of them once, untimed: a check that they still collect and execute,
+  # not a measurement. `make perf-report` is the measurement.
+  benchmarks:
+    name: 📈 Benchmark smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 📥 Check out
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # uv provides the interpreter and resolves the locked dependencies.
+      - name: 🐍 Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          python-version: '3.11'
+          enable-cache: true
+
+      # Same target a developer runs. `UV_NO_SOURCES` for the same reason as
+      # `no-sources` above.
+      - name: 📈 Run each benchmark once
+        run: make bench-smoke
+        env:
+          UV_NO_SOURCES: "1"
+
   # The differential suite: every claim of go-cty parity, checked against real
   # go-cty rather than against this package's own reading of it. It is gated
   # behind `--run-compat` and needs a Go toolchain, so the reusable Python

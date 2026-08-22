@@ -383,6 +383,18 @@ def _compile_pattern(func: str, pattern: str) -> re.Pattern[str]:
     withheld from a pattern that asks for case-insensitivity, where folding is
     the behaviour under test and the classes are unlikely to be. What is left is
     the intersection nobody can reach without writing both in one pattern.
+
+    **ReDoS.** RE2 guarantees linear time; `re` backtracks, so a pattern such as
+    `(a+)+$` against a long non-matching subject takes exponential time, and
+    `re` has no timeout or step limit to cap it. This library accepts that on a
+    stated assumption: patterns reach these functions from provider
+    configuration that the operator running Terraform wrote -- the same trust
+    level as every other expression in that configuration -- so a pathological
+    pattern is self-inflicted, not an attack surface. Anything that evaluates
+    patterns from a less trusted source (a remote API, end-user input) must
+    bound them itself, by an allow-list or a process-level timeout, because
+    nothing here will. Recorded as accepted 2026-08-21; revisit only if the
+    input assumption changes.
     """
     flags = 0 if _CASE_INSENSITIVE.search(pattern) else re.ASCII
     try:
@@ -496,6 +508,9 @@ def regex(
     patterns and a caller could not otherwise tell the two apart. Use `regexall`
     to test whether a pattern matches at all.
 
+    Patterns go through Python's backtracking `re`, not RE2: see
+    `_compile_pattern` for the ReDoS assumption that rests on.
+
     `return_type` is supplied by the framework, which already decided it from
     the pattern; the default exists only so the signature can be bound by
     keyword and is never the value used.
@@ -529,6 +544,9 @@ def regexall(
     Each element has the shape `regex` would return for a single match, so a
     pattern with capture groups gives a list of tuples or objects rather than a
     list of strings. No matches is an empty list rather than an error.
+
+    Patterns go through Python's backtracking `re`, not RE2: see
+    `_compile_pattern` for the ReDoS assumption that rests on.
     """
     element_type = cast(CtyList[Any], return_type).element_type
     compiled = _compile_pattern("regexall", cast(str, pattern_val.value))
@@ -825,6 +843,7 @@ def regexreplace(string: CtyValue[Any], pattern: CtyValue[Any], replacement: Cty
        to maintain Pyodide/WebAssembly compatibility. This means patterns are evaluated
        using a backtracking NFA, which is strictly vulnerable to Regular Expression
        Denial of Service (ReDoS). Do not evaluate untrusted patterns from remote APIs.
+       `_compile_pattern` records the assumption under which that is accepted.
 
     Note the argument order differs from `regex`: go-cty takes `(str, pattern,
     replace)` here and `(pattern, string)` there. That asymmetry is go-cty's
