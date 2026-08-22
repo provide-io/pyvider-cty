@@ -5,11 +5,18 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-Hardening from an external review of 0.5.0. Every item below was reproduced
-before it was changed; the two the review rated highest that were *not*
-changed -- Python's `re` as the regex engine, and the last-wins handling go-cty
-also has for object keys -- are recorded as decisions in
-`.provide/GO-CTY-PARITY.md` rather than silently kept.
+Nothing yet.
+
+## [0.5.1] - 2026-08-21
+
+Hardening from two external reviews of 0.5.0. Every item below was reproduced
+before it was changed. No new surface; what changed is stricter in a handful
+of places -- a `CtyList` no longer accepts a `set`, empty msgpack input and
+malformed msgpack both raise `DeserializationError`, object and map keys and
+`CtyObject` schemas are checked harder -- and every decode failure is now a
+`CtyError`. The one item a review rated highest that was *not* changed,
+Python's `re` as the regex engine, is recorded as an accepted risk with its
+assumption rather than silently kept.
 
 ### Changed
 
