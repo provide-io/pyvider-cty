@@ -58,6 +58,74 @@ def test_a_step_never_sees_a_marked_receiver() -> None:
     assert seen == [frozenset()]
 
 
+class TestASubclassWrittenAgainstTheOlderApply:
+    """`PathStep` is exported, so a step outside this package implements `apply`.
+
+    That was the abstract method until `apply` became a template that carries the
+    receiver's marks. Such a subclass is bridged rather than broken: its `apply`
+    becomes its `_apply`, the base class supplies `apply` again, and it gains the
+    mark handling it was written too early to have.
+    """
+
+    @staticmethod
+    def _legacy() -> type[PathStep]:
+        with pytest.warns(DeprecationWarning, match="Implement `_apply` instead"):
+
+            class LegacyStep(PathStep):
+                def apply(self, value):
+                    return value
+
+                def apply_type(self, vtype):
+                    return vtype
+
+                def __str__(self) -> str:
+                    return "legacy"
+
+        return LegacyStep
+
+    def test_it_is_not_abstract(self) -> None:
+        assert self._legacy().__abstractmethods__ == frozenset()
+
+    def test_it_can_still_be_instantiated(self) -> None:
+        assert self._legacy()() is not None
+
+    def test_its_old_method_still_runs(self) -> None:
+        value = CtyString().validate("x")
+        assert self._legacy()().apply(value).value == "x"
+
+    def test_it_gains_the_mark_handling_it_never_had(self) -> None:
+        sensitive = CtyMark("sensitive")
+        marked = CtyString().validate("x").mark(sensitive)
+        assert self._legacy()().apply(marked).marks == frozenset({sensitive})
+
+    def test_a_subclass_defining_both_is_left_alone(self) -> None:
+        class Both(PathStep):
+            def apply(self, value):
+                return CtyString().validate("from apply")
+
+            def _apply(self, value):
+                return CtyString().validate("from _apply")
+
+            def apply_type(self, vtype):
+                return vtype
+
+            def __str__(self) -> str:
+                return "both"
+
+        assert Both().apply(CtyString().validate("x")).value == "from apply"
+
+    def test_a_subclass_implementing_neither_is_still_abstract(self) -> None:
+        class Neither(PathStep):
+            def apply_type(self, vtype):
+                return vtype
+
+            def __str__(self) -> str:
+                return "neither"
+
+        with pytest.raises(TypeError, match="_apply"):
+            Neither()
+
+
 def test_getattrstep_empty_name() -> None:
     """An empty attribute name is a name. go-cty puts no constraint on one, and
     refusing it here meant no value of `object({"": string})` could be
