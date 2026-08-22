@@ -455,6 +455,23 @@ class CtyValue(Generic[T]):
     def __iter__(self) -> Iterator[Any]:
         from pyvider.cty.types import CtyList, CtyMap, CtySet, CtyTuple
 
+        if self.marks:
+            # Iterating is access, so it carries the container's marks the same
+            # way a subscript does. Found while fixing `__getitem__`; the review
+            # that prompted that fix listed index, slice, update and path, and
+            # `for element in marked_container` was the widest hole of the four
+            # -- it handed back elements the codec would write to the wire.
+            #
+            # go-cty *refuses* here (`ElementIterator`, `cty/value_ops.go:1260`,
+            # calls `assertUnmarked`), but its refusals are the value-to-Go-native
+            # escapes -- `AsString`, `LengthInt`, `EncapsulatedValue`. Everything
+            # that answers with another `Value` unmarks, acts and remarks
+            # instead. This yields `CtyValue`s, so it belongs in the second group.
+            marks = self.marks
+            unmarked, _ = self.unmark()
+            return (
+                element.with_marks(marks) if isinstance(element, CtyValue) else element for element in unmarked
+            )
         if self.is_unknown:
             error_message = ERR_CANNOT_ITERATE_UNKNOWN_VALUE
             raise TypeError(error_message)
@@ -471,6 +488,19 @@ class CtyValue(Generic[T]):
     def __getitem__(self, key: Any) -> CtyValue[Any]:
         from ..types import CtyList, CtyMap, CtyObject, CtyTuple
 
+        if self.marks:
+            # go-cty's `Value.Index` (`cty/value_ops.go:866`) and `Value.GetAttr`
+            # (`:819`) each open the same way -- unmark the receiver, take the
+            # access, put the marks back -- so a mark on a container is a mark on
+            # every value read out of it. That is how sensitivity travels, and
+            # dropping it here handed back a value `cty_to_msgpack` would write
+            # to the wire when it refuses the container it came from.
+            #
+            # Guarded rather than unconditional because `unmark` copies the whole
+            # value and a subscript is hot; an unmarked one pays a frozenset
+            # truth test. The recursion terminates at once: `unmarked` has none.
+            unmarked, marks = self.unmark()
+            return unmarked[key].with_marks(marks)
         if self.is_unknown or self.is_null:
             error_message = ERR_CANNOT_INDEX_UNKNOWN_NULL_VALUE
             raise TypeError(error_message)
@@ -714,6 +744,21 @@ class CtyValue(Generic[T]):
     def is_empty(self) -> bool:
         return not self.value if hasattr(self.value, "__len__") else False
 
+    def _rebuilt(self, payload: Any) -> Self:
+        """This value's type validating a new payload, marks and all.
+
+        The four transform helpers below each build a fresh payload and hand it
+        to `validate`, which returns a value with no marks -- marks live on the
+        `CtyValue`, not inside the payload -- so `map.mark(SENSITIVE)` came back
+        unmarked from `with_key`, and the codec would then serialize it. The
+        transform changes what the container holds, not whether it is sensitive.
+
+        `without_key` on a key that is not there returns `self` untouched, which
+        already kept the marks; it took this to make the two agree.
+        """
+        # validate() returns CtyValue[Any] due to .value: object limitation
+        return self.vtype.validate(payload).with_marks(self.marks)  # type: ignore[return-value]
+
     def with_key(self, key: str, value: Any) -> Self:
         from ..types import CtyMap
 
@@ -723,8 +768,7 @@ class CtyValue(Generic[T]):
             raise TypeError("Internal value of CtyMap must be a dict.")
         new_dict = self.value.copy()
         new_dict[key] = value
-        # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_dict)  # type: ignore[no-any-return]
+        return self._rebuilt(new_dict)
 
     def without_key(self, key: str) -> Self:
         from ..types import CtyMap
@@ -737,8 +781,7 @@ class CtyValue(Generic[T]):
             return self
         new_dict = self.value.copy()
         del new_dict[key]
-        # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_dict)  # type: ignore[no-any-return]
+        return self._rebuilt(new_dict)
 
     def append(self, value: Any) -> Self:
         from ..types import CtyList
@@ -749,8 +792,7 @@ class CtyValue(Generic[T]):
             raise TypeError("Internal value of CtyList must be a list or tuple.")
         new_list = list(self.value)
         new_list.append(value)
-        # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_list)  # type: ignore[no-any-return]
+        return self._rebuilt(new_list)
 
     def with_element_at(self, index: int, value: Any) -> Self:
         from ..types import CtyList
@@ -763,8 +805,7 @@ class CtyValue(Generic[T]):
         if not (-len(new_list) <= index < len(new_list)):
             raise IndexError("list index out of range")
         new_list[index] = value
-        # validate() returns CtyValue[Any] due to .value: object limitation
-        return self.vtype.validate(new_list)  # type: ignore[no-any-return]
+        return self._rebuilt(new_list)
 
     @classmethod
     def unknown(cls, vtype: CtyType[Any], value: Any = UNREFINED_UNKNOWN) -> CtyValue[Any]:

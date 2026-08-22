@@ -7,6 +7,7 @@
 import pytest
 
 from pyvider.cty.exceptions import AttributePathError
+from pyvider.cty.marks import CtyMark
 from pyvider.cty.path import CtyPath, GetAttrStep, IndexStep, KeyStep, PathStep
 from pyvider.cty.types import (
     CtyDynamic,
@@ -19,7 +20,9 @@ from pyvider.cty.values import CtyValue
 
 
 class DummyPathStep(PathStep):
-    def apply(self, value):
+    """A step that implements only `_apply`, to show what the base class adds."""
+
+    def _apply(self, value):
         return value
 
     def apply_type(self, vtype):
@@ -32,6 +35,27 @@ class DummyPathStep(PathStep):
 def test_path_step_is_abstract() -> None:
     with pytest.raises(TypeError):
         PathStep()
+
+
+def test_a_step_that_implements_only_apply_still_carries_marks() -> None:
+    """`PathStep.apply` unmarks, delegates and remarks, so no step can forget."""
+    sensitive = CtyMark("sensitive")
+    marked = CtyString().validate("x").mark(sensitive)
+
+    assert DummyPathStep().apply(marked).marks == frozenset({sensitive})
+
+
+def test_a_step_never_sees_a_marked_receiver() -> None:
+    seen: list[frozenset[object]] = []
+
+    class Recording(DummyPathStep):
+        def _apply(self, value):
+            seen.append(value.marks)
+            return value
+
+    Recording().apply(CtyString().validate("x").mark(CtyMark("sensitive")))
+
+    assert seen == [frozenset()]
 
 
 def test_getattrstep_empty_name() -> None:
