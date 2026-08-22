@@ -7,6 +7,85 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Reading out of a marked container keeps the marks.** `marked_list[0]`,
+  `marked_map["k"]`, `marked_object.a`, `marked_tuple[0]`, a list or tuple
+  slice, and `for element in marked_container` all handed back an *unmarked*
+  value. A mark is how sensitivity travels, and `cty_to_msgpack` refuses a
+  marked value -- so the codec rejected the container while cheerfully writing
+  the secret a subscript had just pulled out of it. go-cty's `Value.Index`
+  (`cty/value_ops.go:866`) and `Value.GetAttr` (`:819`) each open by unmarking
+  the receiver, taking the access and putting the marks back; `CtyValue`
+  does the same now, once at the top of `__getitem__` and `__iter__`, guarded
+  so an unmarked value pays a frozenset truth test. Marks accumulate rather
+  than replace, so an element's own marks survive alongside the container's.
+- **Rebuilding a marked container keeps the marks.** `with_key`,
+  `without_key`, `append` and `with_element_at` each hand a fresh payload to
+  `validate`, which returns an unmarked value -- marks live on the `CtyValue`,
+  not inside the payload. Changing what a container holds does not change
+  whether it is sensitive. `without_key` on an absent key already returned
+  `self` untouched, marks and all; the four agree now.
+- **A path step returns the value it selected, whole.** Stepping through a
+  `dynamic` wrapper rebuilt its answer as `CtyValue(result.type, result.value)`
+  -- two of the five fields a `CtyValue` carries. A null came back as
+  `is_null=False, value=None`, an unknown as `is_unknown=False,
+  value=UNREFINED_UNKNOWN`, and a refined unknown as a known value whose
+  payload was the refinement object; none of the three is a value this library
+  can represent, so a consumer reading `is_null` believed a null was a present
+  value holding `None`. `IndexStep` and `KeyStep` both had the line. Marks are
+  now applied in `PathStep.apply` itself, which unmarks, delegates to `_apply`
+  and remarks, so no step can forget -- `KeyStep._apply_to_set` was the only
+  one that had got it right.
+- **`GetAttrStep` steps through a `dynamic` wrapper.** `IndexStep` and
+  `KeyStep` both did, so an element of a list inside a wrapper was reachable by
+  path while an attribute of an object inside one raised
+  `AttributePathError`. `apply_type` answers `dynamic` for a dynamic receiver
+  there too, as the other two steps already did. A *wholly unknown* `dynamic`
+  is answered as well: it has no inner value to step into, and `IndexStep` and
+  `KeyStep` both hand back an unknown where this raised, so a type could be
+  walked where the value it described could not. An unknown `object` is
+  untouched and still answers with an unknown of the attribute's own type.
+- **A set is traversed by cty identity, not Python equality.** A set element
+  keys itself, and `KeyStep` looked it up with `in` -- but `Decimal("-0") ==
+  Decimal("0")`, so a path of `[0]` into `toset([-0])` matched the negative
+  zero and handed back the positive one. go-cty hashes the two to `-0` and `0`
+  and keeps them as separate members with separate paths, which `CtySet.validate`
+  already followed via `set_order.identity_key`; the lookup follows it now too,
+  and returns the member the set actually holds.
+- **A marked path key finds its element, and marks what it finds.** Looking up
+  a set element by a marked key found nothing at all -- `identity_key` strips
+  marks, as go-cty's hashing does, so a marked key asks after the same element
+  -- and a marked *unknown* key came back as an unmarked unknown, dropping the
+  sensitivity outright. The key is unmarked before the lookup and its marks go
+  onto the answer, alongside the receiver's.
+- **Validation no longer reads another thread's recursion context.**
+  `with_recursion_detection` allocates one `RecursionDetector` per decorated
+  function, shared by every thread that validates through it, and the wrapper
+  assigned the calling thread's context onto that shared instance before the
+  detector read it back a dozen lines later. In between, any other thread could
+  assign its own: four threads validating a twelve-element list of
+  two-attribute objects read a foreign context 1170 times, which is a corrupted
+  depth count, a corrupted cycle graph, and a `validation_stopped` flag
+  belonging to somebody else's validation. The detector now holds no context at
+  all -- it reads the calling thread's on each access, which is what its
+  docstring already claimed -- and a context passed in explicitly is still
+  honoured, for reading metrics off a finished run.
+- **A hostile type description is refused instead of exhausting the
+  interpreter.** `parse_tf_type_to_ctytype` decodes a peer's bytes, so its
+  nesting depth is an input. Three defects compounded: the recursive function
+  was wrapped in an `error_boundary` whose context stringified the whole
+  remaining subtree once per level, making the parse quadratic and paying it on
+  the way *in* -- 1600 levels cost seventeen seconds; nothing bounded the
+  descent, so it ran out of stack and raised a bare `RecursionError`, which is
+  not a `CtyError` and so escaped a caller catching `CtyError` around its
+  decoding; and the boundary logs with `exc_info=True`, whose traceback render
+  walks the frame locals holding the description itself, overflowing the stack
+  again and replacing any controlled refusal. There is now a depth budget
+  (`MAX_TYPE_NESTING_DEPTH`, derived from the live recursion limit, in the
+  hundreds where real schemas nest in the tens) raising `CtyValidationError`,
+  every diagnostic is built with a bounded `reprlib` representation rather than
+  a full render of attacker-controlled data, and the boundary is gone. A
+  6400-level description now takes under a millisecond and raises in-taxonomy,
+  against 29 seconds and a `RecursionError`.
 - **A nested attrs instance infers as an object, not `dynamic`.**
   `infer_cty_type_from_raw` walks a work stack keyed by `id()`, and an attrs
   instance is replaced along the way by a plain dict -- a new object with a new
@@ -38,6 +117,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   library is more permissive than go-cty.
 
 ### Changed
+
+- **`PathStep` subclasses implement `_apply` rather than `apply`.** `apply` is
+  now a template method that carries the receiver's marks onto whatever a step
+  selects, so no step can forget to. `PathStep` is exported, so a subclass
+  outside this package that implements the older public `apply` is bridged
+  rather than broken: its method becomes `_apply`, the base class supplies
+  `apply`, and it gains the mark handling it was written too early to have,
+  with a `DeprecationWarning` at class creation.
 
 - **A directly constructed `CtyValue` is frozen one level deep.** `validate`
   has returned a `FrozenDict` or a tuple since 0.5.0, but
@@ -87,6 +174,46 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   finds `list(string)` and `string` share nothing, and refuses. Found by the
   generated unify sweep against the oracle on 2026-08-22; every other
   map/object/dynamic mix compared unchanged.
+- **The four combining set operations read membership as cty does, not as
+  Python does.** `setintersection`, `setsubtract`, `setsymmetricdifference` and
+  `setunion` collected their arguments into a `frozenset`, which de-duplicates
+  through `CtyValue.__eq__`. cty finds a set element by hash bucket first
+  (`set.Set.Has`), and a positive and a negative zero hash differently while
+  comparing equal -- so `setsymmetricdifference(set(number){0, -0.0})` answered
+  `{0}` here against go-cty's `{-0, 0}`, and `setsubtract({0, -0.0}, {0})` came
+  back *empty* rather than `{-0}`. The set algebra now runs over
+  `identity_key`, which `sethaselement` has used since 2026-08-19 for this
+  exact reason. Found by the stdlib fuzz; the falsifier and six neighbours are
+  pinned in the oracle sweep so a cold CI run cannot miss it again. Keeping
+  both then exposed a second half that the collapse had hidden: the pair also
+  has to be *ordered*. go-cty compares numbers with `big.Float.Cmp`, which ties
+  `-0` against `0`, and its stable sort then leaves the pair in bucket order,
+  so `crc32("-0") < crc32("0")` puts the negative zero first -- confirmed
+  against the oracle. `order_key` ranks it there now. A signed zero is the only
+  tie this can reach, since any two numerically equal `Decimal`s hash alike and
+  are one element.
+- **The dynamic JSON envelope accepts only `type` and `value`.** go-cty's
+  `unmarshalDynamic` ends the decode on any other key with `invalid key %q in
+  dynamically-typed value`; this decoder ignored them, so
+  `{"type":"string","extra":1,"value":"x"}` decoded to `"x"` here and is
+  refused there. The refusal is raised from inside the key loop as go-cty's is,
+  so it competes with an invalid type descriptor by document order, and both
+  outrank the missing-`type` and missing-`value` checks that follow the loop.
+  Those two are now reported separately, matching go-cty's wording, in place of
+  one combined "must be an object with 'value' and 'type'" -- which still
+  covers an envelope that is not an object at all. A `value` that is present
+  and JSON null is unchanged: it is a null of the declared type, not a missing
+  value.
+- **`$` in a regex pattern is end-of-text, as RE2 reads it.** Python's `$` also
+  matches just before a *trailing* newline; RE2's, outside `(?m)`, does not --
+  Python's own `\Z` is the RE2 reading. So `regexall("a*$", "\r\n")` found two
+  empty matches here against go-cty's one, and `regexreplace("ab\n", "b$", "X")`
+  replaced where go-cty leaves the string alone. `regex`, `regexall` and
+  `regexreplace` now compile the anchor as `\Z`; an escaped `\$` or one inside
+  a character class stays a literal, and a pattern that asks for `(?m)` is left
+  as written, because there the two engines already agree. Same shape as the
+  `\w`-is-ASCII divergence this module already carried. Found by the stdlib
+  fuzz, and pinned in the oracle sweep alongside five neighbours.
 
 ### Documentation
 

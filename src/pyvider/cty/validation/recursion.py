@@ -144,7 +144,28 @@ class RecursionDetector:
     """
 
     def __init__(self, context: RecursionContext | None = None) -> None:
-        self.context = context or get_recursion_context()
+        """A detector reads the calling thread's context, unless pinned to one.
+
+        `with_recursion_detection` allocates one detector per decorated function
+        and every thread validating through that function shares it, so a
+        context stored on the instance is a context every other thread can
+        overwrite. It used to be: the decorator assigned `_detector.context`
+        before each call and the twenty-odd reads below happened afterwards, and
+        in between any other thread could assign its own. Four threads
+        validating a twelve-element list of two-attribute objects read another
+        thread's context 1170 times, which is a corrupted validation depth, a
+        corrupted cycle graph and a `validation_stopped` flag belonging to
+        somebody else.
+
+        Pinning stays for a caller that supplies a context explicitly, which is
+        how the metrics are read off a finished run.
+        """
+        self._pinned = context
+
+    @property
+    def context(self) -> RecursionContext:
+        """The pinned context, or this thread's own."""
+        return self._pinned if self._pinned is not None else get_recursion_context()
 
     def should_continue_validation(self, value: Any, current_path: str = "", /) -> tuple[bool, str | None]:
         """
@@ -159,38 +180,40 @@ class RecursionDetector:
         - Must provide detailed diagnostics for debugging
         - Must have predictable performance characteristics
         """
+        # Bound once. Every read below has to come from the *same* context, and
+        # resolving per read would both reopen the window this closed and pay a
+        # thread-local lookup eighteen times on the validation hot path.
+        context = self.context
 
         # Performance safeguards - prevent pathological cases
         # Only check time every 64 validations to reduce time.time() overhead
-        if self.context.total_validations & 63 == 0:
-            elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
+        if context.total_validations & 63 == 0:
+            elapsed_ms = (time.time() - context.validation_start_time) * 1000
         else:
             elapsed_ms = 0.0
-        if elapsed_ms > self.context.max_validation_time_ms:
-            reason = (
-                f"Validation timeout after {elapsed_ms:.1f}ms (max: {self.context.max_validation_time_ms}ms)"
-            )
+        if elapsed_ms > context.max_validation_time_ms:
+            reason = f"Validation timeout after {elapsed_ms:.1f}ms (max: {context.max_validation_time_ms}ms)"
             logger.warning(
                 "CTY validation timeout exceeded",
                 elapsed_ms=elapsed_ms,
-                max_allowed_ms=self.context.max_validation_time_ms,
+                max_allowed_ms=context.max_validation_time_ms,
                 path=current_path,
                 trace="advanced_recursion_detection",
             )
             return False, reason
 
         # Update context
-        self.context.total_validations += 1
-        current_depth = len(self.context.validation_path)
-        self.context.max_depth_reached = max(self.context.max_depth_reached, current_depth)
+        context.total_validations += 1
+        current_depth = len(context.validation_path)
+        context.max_depth_reached = max(context.max_depth_reached, current_depth)
 
         # Depth safeguards - only trigger for truly deep recursion
-        if current_depth > self.context.max_depth_allowed:
-            reason = f"Maximum nesting depth exceeded: {current_depth} > {self.context.max_depth_allowed}"
+        if current_depth > context.max_depth_allowed:
+            reason = f"Maximum nesting depth exceeded: {current_depth} > {context.max_depth_allowed}"
             logger.warning(
                 "CTY validation depth limit exceeded",
                 current_depth=current_depth,
-                max_allowed=self.context.max_depth_allowed,
+                max_allowed=context.max_depth_allowed,
                 path=current_path,
                 trace="advanced_recursion_detection",
             )
@@ -208,14 +231,14 @@ class RecursionDetector:
 
         # Lightweight cycle detection using visit counters
         value_id = id(value)
-        visits = self.context.validation_graph.get(value_id, 0) + 1
-        self.context.validation_graph[value_id] = visits
+        visits = context.validation_graph.get(value_id, 0) + 1
+        context.validation_graph[value_id] = visits
 
-        if visits > self.context.max_object_revisits:
+        if visits > context.max_object_revisits:
             value_type = type(value).__name__
             reason = (
                 f"Circular reference detected: {value_type} object visited "
-                f"{visits} times (max: {self.context.max_object_revisits})"
+                f"{visits} times (max: {context.max_object_revisits})"
             )
             logger.debug(
                 "CTY circular reference detected",
@@ -236,8 +259,9 @@ class RecursionDetector:
 
     def exit_validation_scope(self) -> None:
         """Exit the current validation scope."""
-        if self.context.validation_path:
-            self.context.validation_path.pop()
+        context = self.context
+        if context.validation_path:
+            context.validation_path.pop()
 
     def get_current_path(self) -> str:
         """Get the current validation path for diagnostics."""
@@ -245,13 +269,14 @@ class RecursionDetector:
 
     def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics for monitoring and debugging."""
-        elapsed_ms = (time.time() - self.context.validation_start_time) * 1000
+        context = self.context
+        elapsed_ms = (time.time() - context.validation_start_time) * 1000
         return {
-            "total_validations": self.context.total_validations,
-            "max_depth_reached": self.context.max_depth_reached,
+            "total_validations": context.total_validations,
+            "max_depth_reached": context.max_depth_reached,
             "elapsed_ms": elapsed_ms,
-            "objects_in_graph": len(self.context.validation_graph),
-            "avg_validations_per_ms": self.context.total_validations / max(elapsed_ms, 0.001),
+            "objects_in_graph": len(context.validation_graph),
+            "avg_validations_per_ms": context.total_validations / max(elapsed_ms, 0.001),
             "current_path": self.get_current_path(),
         }
 
@@ -348,8 +373,11 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for advanced recursion detection in validation functions.
     """
-    # Pre-allocate a single detector instance per decorated function.
-    # The detector is stateless — context comes from thread-local storage.
+    # Pre-allocate a single detector instance per decorated function. The
+    # detector really is stateless now: it holds no context, and reads the
+    # calling thread's on each access. It used to be handed one here, which made
+    # a per-function instance shared by every thread a place for one thread's
+    # context to land in another thread's read.
     _detector = RecursionDetector()
 
     @wraps(func)
@@ -362,9 +390,6 @@ def with_recursion_detection(func: Callable[..., Any]) -> Callable[..., Any]:
         is_top_level_call = not context.validation_path
         if is_top_level_call:
             context.reset()
-
-        # Bind detector to current thread's context (avoids per-call allocation)
-        _detector.context = context
 
         # Use None as a lightweight depth marker instead of an f-string scope name.
         # The actual scope string is only constructed on the error path.
