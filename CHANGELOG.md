@@ -119,6 +119,12 @@ also has for object keys -- are recorded as decisions in
   `sign-and-upload` now downloads the SBOM as an artifact and checks nothing
   out. The SBOM job is not gated on the release event, so a dispatch dry run
   exercises it.
+- `python-release.yml` is pinned to the v0.4.2 *commit*. The earlier pin was
+  the SHA of the annotated tag object, which a reusable-workflow reference
+  cannot resolve, so every run of `release.yml` since that pin was a
+  `startup_failure` before any job began. Found by the first
+  `workflow_dispatch` dry run, reproduced on `main`, fixed; the dry run then
+  ran through (tests, build, SBOM).
 - `pytest-benchmark` is back in the dev group -- the ten benchmark tests take
   its `benchmark` fixture and had been unrunnable since the dev-dependency
   consolidation, hidden behind `--run-benchmarks` -- and `make bench-smoke`
