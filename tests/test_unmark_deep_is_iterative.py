@@ -89,12 +89,15 @@ class TestCycles:
     def test_a_cycle_is_refused_rather_than_recursed(self) -> None:
         """A `RecursionError` is not a `CtyError`, and a hang is worse than both.
 
-        `validate` cannot build a cyclic value; a hand-built one can hold a
-        mutable payload that was appended to after construction.
+        `validate` cannot build a cyclic value, and since the constructor
+        freezes a raw payload neither can a hand-built one: the list it used to
+        keep, and that this test appended to after construction, is a tuple
+        now. The guard stays -- a `RecursionError` is not a `CtyError` -- so the
+        cycle is forced in behind the frozen class, the one way left to make one.
         """
-        payload = [CtyString().validate("x").with_marks({SENSITIVE})]
-        cyclic = CtyValue(CtyList(element_type=CtyString()), payload)
-        payload.append(cyclic)
+        marked = CtyString().validate("x").with_marks({SENSITIVE})
+        cyclic = CtyValue(CtyList(element_type=CtyString()), [marked])
+        object.__setattr__(cyclic, "value", (marked, cyclic))
 
         # The collector already answers here, which is what made the two differ.
         assert collect_marks_deep(cyclic) == frozenset({SENSITIVE})

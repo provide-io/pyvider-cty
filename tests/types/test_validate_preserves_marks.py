@@ -250,8 +250,16 @@ class TestDeepMarkMemo:
         assert collect_marks_deep(m) == frozenset()
 
     def test_a_raw_payload_is_still_not_memoized(self) -> None:
-        """A hand-built value can hold a plain dict, which really can change."""
-        value = CtyValue(vtype=CtyMap(element_type=CtyString()), value={"k": marked_string()})
+        """A hand-built value is frozen one level deep; below that, a raw list really can change.
+
+        The constructor turns a top-level dict or list into a `FrozenDict` or a
+        tuple, so the mutable thing has to sit inside: a tuple holding a plain
+        list of marked strings, which a memo could be left under-reporting.
+        """
+        inner = CtyList(element_type=CtyString())
+        value = CtyValue(vtype=CtyList(element_type=inner), value=[[marked_string()]])
+        assert isinstance(value.value, tuple)
+        assert isinstance(value.value[0], list)
 
         assert collect_marks_deep(value) == frozenset({SENSITIVE})
         assert value._deep_marks is None
@@ -297,13 +305,16 @@ class TestMarksSurviveTheRecursionGuard:
     def test_guard_stopping_in_a_nested_call_keeps_marks(self) -> None:
         """Exercises the post-validation stop check, not the pre-check.
 
-        The payload is a list rather than a tuple so `CtyList.validate` cannot
-        take its already-validated fast path: the outer call has to descend,
-        and the guard trips on the inner one.
+        The value's declared type is not `outer` -- its element type is
+        `dynamic` -- so `CtyList.validate` cannot take its already-validated
+        fast path (which needs an equal type and a tuple payload; a raw list
+        payload used to defeat it, but the constructor makes that a tuple now).
+        The outer call has to descend, and the guard trips on the inner one.
         """
         inner = CtyList(element_type=CtyString())
         outer = CtyList(element_type=inner)
-        marked = CtyValue(vtype=outer, value=[["a"]], marks=frozenset({SENSITIVE}))
+        loose = CtyList(element_type=CtyDynamic())
+        marked = CtyValue(vtype=loose, value=[["a"]], marks=frozenset({SENSITIVE}))
 
         self._stop_validation_at(1)
         result = outer.validate(marked)

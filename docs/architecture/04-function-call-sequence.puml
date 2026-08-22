@@ -24,7 +24,7 @@ P -> P : fixed: len(args) != len(params)\nvariadic: len(args) < len(params)\neit
 
 == 2 · every argument, left to right ==
 loop for index, arg in enumerate(args)
-  P -> P : **a.** _unwrap_dynamic(arg)  //[ii]//
+  P -> P : **a.** unwrap_dynamic(arg)  //[ii]//
   P -> P : **b.** _strip unless param.allow_marked  //[iii]//
   P -> P : **c.** null and not allow_null\n-> **CtyArgumentError(index)**
   P -> P : **d.** still dynamically typed?\nvague = not param.allow_dynamic_type
