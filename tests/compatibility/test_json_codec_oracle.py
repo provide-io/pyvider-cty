@@ -48,6 +48,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty.conversion import encode_cty_type_to_wire_json
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.json_codec import CtyJsonError, cty_from_json, cty_to_json, implied_json_type
 from pyvider.cty.parser import parse_tf_type_to_ctytype
 from tests.compatibility._oracle import canonical, dynamic_arg, rich, run, type_spec
@@ -262,6 +263,31 @@ def test_unmarshal_decodes_every_duplicate_property_as_go_does(type_json: str) -
     assert kept["ok"], kept
     assert canonical(kept["value"]) == canonical({"a": 1})
     assert cty_from_json('{"a": 2, "a": 1}', cty_type).value["a"].value == 1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"type": ["bogus"], "type": "string", "value": "x"}',
+        '{"type": "string", "type": ["bogus"], "value": "x"}',
+    ],
+)
+def test_an_invalid_duplicate_type_in_the_dynamic_envelope_is_refused_by_both(payload: str) -> None:
+    """go-cty fails on the first invalid `type` occurrence regardless of order."""
+    theirs = run("cty", "json", "unmarshal", payload, "--type", '"dynamic"')
+
+    assert theirs["ok"] is False, theirs
+    with pytest.raises(CtyValidationError):
+        cty_from_json(payload, CtyDynamic())
+
+
+def test_two_valid_duplicate_types_in_the_dynamic_envelope_keep_the_last() -> None:
+    payload = '{"type": "string", "type": "number", "value": 1}'
+    theirs = run("cty", "json", "unmarshal", payload, "--type", '"dynamic"')
+
+    assert theirs["ok"], theirs
+    decoded = cty_from_json(payload, CtyDynamic())
+    assert canonical(rich(decoded)) == canonical(theirs["value"])
 
 
 def test_a_document_that_is_not_json_is_refused_by_both() -> None:
