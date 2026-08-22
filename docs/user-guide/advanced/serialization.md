@@ -347,7 +347,7 @@ msgpack_bytes = cty_to_msgpack(data, data_type)
 
 ## Error Handling
 
-`cty_to_msgpack` raises `SerializationError` (or the more specific `CtyMarksSerializationError` for marked values); `cty_from_msgpack` raises `DeserializationError` for the failure modes it specifically detects, such as a malformed refined-unknown or dynamic-type payload:
+`cty_to_msgpack` raises `SerializationError` (or the more specific `CtyMarksSerializationError` for marked values); `cty_from_msgpack` raises `DeserializationError` whenever the bytes themselves are not a MessagePack payload — empty input, a truncated or trailing-byte stream, a malformed refined-unknown or dynamic-type payload — with the `msgpack` library's own exception chained as `__cause__`:
 
 ```python
 from pyvider.cty import CtyObject, CtyString
@@ -367,7 +367,7 @@ except DeserializationError as e:
     print(f"Deserialization failed: {e}")
 ```
 
-`DeserializationError` is not a catch-all for arbitrary corrupted bytes, though — data that is invalid in some other way surfaces as whatever raised it: `msgpack`'s own exceptions for malformed msgpack, or a `CtyValidationError` subclass when the bytes decode but don't conform to the schema you supplied. If you're deserializing data from an untrusted or unreliable source, catch `pyvider.cty.exceptions.CtyError` (the common base) alongside `msgpack.exceptions.UnpackException` rather than `DeserializationError` alone.
+`DeserializationError` covers the bytes being wrong; it does not cover the bytes being *right but for a different type*. A payload that decodes cleanly and then fails to conform to the schema you supplied raises that type's `CtyValidationError` subclass instead. If you're deserializing data from an untrusted or unreliable source, catch `pyvider.cty.exceptions.CtyError` (the common base of both) rather than `DeserializationError` alone; no `msgpack` exception escapes `cty_from_msgpack` on its own.
 
 ## Related Topics
 
