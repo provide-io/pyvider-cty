@@ -23,9 +23,31 @@ T = TypeVar("T")
 
 
 class PathStep(ABC):
-    @abstractmethod
     def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
-        pass
+        """Take this step, carrying the receiver's marks onto what it selects.
+
+        go-cty's `Value.Index` (`cty/value_ops.go:866`) and `Value.GetAttr`
+        (`:819`) each open the same way -- unmark the receiver, take the step,
+        put the marks back -- so a mark on a container is a mark on every value
+        read out of it. That is what makes sensitivity travel: `cty_to_msgpack`
+        refuses a marked value, and a step that dropped the mark handed back one
+        the codec would write to the wire.
+
+        Here rather than in each step, so that a step cannot forget it and a new
+        one gets it for nothing. `_apply` is what a step implements, and it is
+        never handed a marked receiver.
+
+        Marks accumulate rather than replace: `with_marks` unions, so an
+        element's own marks survive alongside the container's.
+        """
+        if value.marks:
+            unmarked, marks = value.unmark()
+            return self._apply(unmarked).with_marks(marks)
+        return self._apply(value)
+
+    @abstractmethod
+    def _apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
+        """Take this step on an unmarked value."""
 
     @abstractmethod
     def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
@@ -55,20 +77,29 @@ class GetAttrStep(PathStep):
 
     name: str = field()
 
-    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
+    def _apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError(f"Cannot get attribute '{self.name}' from null value")
-        from pyvider.cty.types.structural import CtyObject
+        from pyvider.cty.types.structural import CtyDynamic, CtyObject
 
         if isinstance(value.type, CtyObject):
             return value.type.get_attribute(value, self.name)
+        # A `dynamic` wrapper is stepped through, as `IndexStep` and `KeyStep`
+        # already did. Only this step lacked the branch, so an attribute of an
+        # object inside a wrapper was unreachable by path while an element of a
+        # list inside one was reachable. Recursed through `apply` rather than
+        # `_apply` so the payload's own marks are picked up as well.
+        if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
+            return self.apply(value.value)
         raise AttributePathError(
             f"Cannot get attribute from non-object value of type {value.type.__class__.__name__}"
         )
 
     def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
-        from pyvider.cty.types.structural import CtyObject
+        from pyvider.cty.types.structural import CtyDynamic, CtyObject
 
+        if isinstance(vtype, CtyDynamic):
+            return CtyDynamic()
         if not isinstance(vtype, CtyObject):
             raise AttributePathError(f"Cannot get attribute from non-object type {vtype.__class__.__name__}")
         if not vtype.has_attribute(self.name):
@@ -81,9 +112,25 @@ class GetAttrStep(PathStep):
 
 @define(frozen=True)
 class IndexStep(PathStep):
+    """A step into a list or tuple by position.
+
+    Stepping through a `dynamic` wrapper returns what the inner step selected,
+    whole. It used to rebuild the answer as `CtyValue(result.type, result.value)`
+    -- two of the five fields a `CtyValue` carries -- which turned a null into
+    `is_null=False, value=None`, an unknown into `is_unknown=False,
+    value=UNREFINED_UNKNOWN`, and a refined unknown into a known value whose
+    payload was the refinement object. None of the three is a value this library
+    can represent, so a consumer reading `is_null` believed a null was a present
+    value holding `None`. `KeyStep` had the same line and the same defect.
+
+    The check is internal consistency rather than go-cty parity: go-cty has no
+    known-dynamic value to compare against, because `Index` and `GetAttr` on a
+    `DynamicPseudoType` receiver return `DynamicVal`.
+    """
+
     index: int = field()
 
-    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
+    def _apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError("Cannot index into null value")
         if value.is_unknown:
@@ -95,8 +142,7 @@ class IndexStep(PathStep):
             list_or_tuple_type = cast(CtyList[Any] | CtyTuple, value.type)  # type: ignore[redundant-cast]
             return list_or_tuple_type.element_at(value, self.index)
         if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
-            result = self.apply(value.value)
-            return CtyValue(result.type, result.value)
+            return self.apply(value.value)
         raise AttributePathError(f"Cannot index into value of type {type(value.type).__name__}")
 
     def apply_type(self, vtype: CtyType[Any]) -> CtyType[Any]:
@@ -139,19 +185,21 @@ class KeyStep(PathStep):
 
         element_type = cast(CtySet[Any], value.type).element_type
         elements = cast("tuple[CtyValue[Any], ...]", value.value)
+        # The set's marks come along -- cty cannot hold marks on set elements, so
+        # an element's sensitivity is recorded on the set as a whole -- but that
+        # is `PathStep.apply`'s doing now, and it has already unmarked `value`.
+        # This used to be the only step that got it right.
         if self.key in elements:
-            # The set's marks come along: cty cannot hold marks on set elements,
-            # so an element's sensitivity is recorded on the set as a whole.
-            return cast(CtyValue[Any], self.key).with_marks(value.marks)
+            return cast(CtyValue[Any], self.key)
         if isinstance(self.key, CtyValue) and self.key.is_unknown:
-            return CtyValue.unknown(element_type).with_marks(value.marks)
+            return CtyValue.unknown(element_type)
         if any(element.is_unknown for element in elements):
             # One of the unknowns could still turn out to be the element asked
             # for, so "absent" would be asserting more than the data supports.
-            return CtyValue.unknown(element_type).with_marks(value.marks)
+            return CtyValue.unknown(element_type)
         raise AttributePathError("Set does not contain the requested element")
 
-    def apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
+    def _apply(self, value: CtyValue[Any]) -> CtyValue[Any]:
         if value.is_null:
             raise AttributePathError("Cannot get key from null value")
         if value.is_unknown:
@@ -164,8 +212,7 @@ class KeyStep(PathStep):
         if isinstance(value.type, CtySet):
             return self._apply_to_set(value)
         if isinstance(value.type, CtyDynamic) and isinstance(value.value, CtyValue):
-            result = self.apply(value.value)
-            return CtyValue(result.type, result.value)
+            return self.apply(value.value)
         raise AttributePathError(
             f"Cannot get key from non-map/non-dynamic value of type {type(value.type).__name__}"
         )
