@@ -5,6 +5,38 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A nested attrs instance infers as an object, not `dynamic`.**
+  `infer_cty_type_from_raw` walks a work stack keyed by `id()`, and an attrs
+  instance is replaced along the way by a plain dict -- a new object with a new
+  id. The parent container is still holding the *instance*, so it looked the
+  child's schema up under the instance's id, found nothing, and fell back to
+  `dynamic`: `[Child(value=1)]` came back as `list(dynamic)` rather than a list
+  of objects, and any schema derived from it lost the attributes. It worked at
+  the root, which is what hid it -- the conversion happens there before the
+  stack exists, so no parent can disagree. The dict's id now maps back to the
+  instance's, and both objects are held until inference finishes so a collected
+  dict cannot free its id for reuse.
+- **Unifying a map with an object keeps the object when the object is not a
+  map.** `compare_types` ranks `map(dynamic)` as more general than an object
+  type, which is true of conversion and wrong as a preference:
+  `unify(map(dynamic), object({a: list(string), b: number}))` took the map and
+  discarded the structure, where go-cty keeps the object. The rule, from the
+  oracle: the map wins when the object's attributes unify -- when it really is
+  a map wearing an object's clothes -- and the object wins when they do not.
+  The first case never reached the preference order anyway, so only the second
+  changes. Held back when a bare `dynamic` is among the candidates, because
+  `_unify_objects_as_maps` gives up there and its refusal stops meaning "these
+  cannot be a map".
+- **The generated unify sweep covers `map(dynamic)` and an object whose
+  attributes have no common type.** Neither was in the representative set, and
+  between them they are the case above; with only `map(string)` and
+  single-attribute objects present, every pair map-ified cleanly and the
+  question never arose. The sweep grows from 969 cases to 1331 and records four
+  pre-existing divergences it uncovered, in three-type combinations where this
+  library is more permissive than go-cty.
+
 ### Changed
 
 - **A directly constructed `CtyValue` is frozen one level deep.** `validate`

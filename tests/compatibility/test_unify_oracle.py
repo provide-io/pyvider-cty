@@ -78,6 +78,17 @@ TYPES: list[tuple[str, CtyType[Any]]] = [
     ("tuple(list(string),number)", CtyTuple(element_types=(CtyList(element_type=S), N))),
     ("object{a:string}", CtyObject(attribute_types={"a": S})),
     ("object{a:number}", CtyObject(attribute_types={"a": N})),
+    # A map whose element type is dynamic, and an object whose attributes have
+    # no common type. Neither was here, and between them they are the case where
+    # preferring the *more general* candidate is the wrong preference: go-cty
+    # keeps the object, because the object cannot be re-cast as a map at all.
+    # With only `map(string)` and single-attribute objects present, every pair
+    # map-ified successfully and the question never arose.
+    ("map(dynamic)", CtyMap(element_type=D)),
+    (
+        "object{a:list(string),b:number}",
+        CtyObject(attribute_types={"a": CtyList(element_type=S), "b": N}),
+    ),
     # Nested element types. A flat set of types cannot reach the case where the
     # *element* unification is what differs.
     ("list(list(string))", CtyList(element_type=CtyList(element_type=S))),
@@ -99,7 +110,31 @@ TYPES: list[tuple[str, CtyType[Any]]] = [
 # `dynamic`-element collection, because `can_convert_unsafe(anything, dynamic)`
 # is yes -- go-cty asks a different question there, unifying the tuple's own
 # elements and refusing when they have no common type.
-KNOWN_DIVERGENCES: set[str] = set()
+#
+# The four below were uncovered on 2026-08-22 by adding `map(dynamic)` and
+# `object{a:list(string),b:number}` to the set above. They are not regressions:
+# each answers identically with and without the preference-order fix that landed
+# alongside them, and they were simply unreachable while every object in the set
+# had a single attribute that map-ified cleanly.
+#
+# Three of the four are this library being *more* permissive than go-cty, which
+# is the worse direction: go-cty finds no common type and refuses, and this
+# answers `map(dynamic)`. The fourth wants the object where this gives
+# `map(dynamic)` -- the same fault the preference order fixes for the pair, but
+# with a bare `dynamic` also present, which is exactly the case that fix holds
+# back from because `_unify_objects_as_maps` gives up there and its refusal
+# stops meaning "these cannot be a map".
+#
+# The real repair is in `_unify_objects_as_maps`: it should map-ify the objects
+# and dynamics separately rather than abandoning the attempt whenever a bare
+# `dynamic` is in the group. That is a larger change to the structural unifier
+# than the preference order, and it is not attempted here.
+KNOWN_DIVERGENCES: set[str] = {
+    "dynamic + map(dynamic) + object{a:list(string),b:number}",
+    "map(string) + map(dynamic) + object{a:list(string),b:number}",
+    "object{a:string} + map(dynamic) + object{a:list(string),b:number}",
+    "object{a:number} + map(dynamic) + object{a:list(string),b:number}",
+}
 
 
 def _combinations() -> list[tuple[str, list[CtyType[Any]]]]:
@@ -138,7 +173,8 @@ def test_the_two_unify_the_same_way(label: str, types: list[CtyType[Any]], reque
         # turns the entry red instead of leaving it to rot.
         request.node.add_marker(
             pytest.mark.xfail(
-                reason="dynamic + a list + a tuple: go-cty refuses, or keeps a concrete element type",
+                reason="map(dynamic) + an object whose attributes do not unify: "
+                "go-cty refuses, or keeps the object; this answers map(dynamic)",
                 strict=True,
             )
         )
