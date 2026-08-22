@@ -59,8 +59,8 @@ def ensure_harness() -> Path | None:
     SOUP_GO_BIN at a binary and run pytest directly if you need that.
     """
     # A laptop without Go should skip; CI must not. Skipping there means the one
-    # place the 2322 differential tests run reports success while running none
-    # of them, which is the same failure the build-failure branch below already
+    # place the differential tests run reports success while running none of
+    # them, which is the same failure the build-failure branch below already
     # guards against -- just arrived at from the other side.
     required = os.environ.get("COMPAT_REQUIRE") == "1"
 
