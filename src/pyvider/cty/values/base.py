@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Set as AbstractSet
+from collections.abc import Iterable, Iterator, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -31,6 +31,7 @@ from pyvider.cty.config.defaults import (
     ERR_VALUE_TYPE_NOT_ITERABLE,
     ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE,
 )
+from pyvider.cty.values.frozen import FrozenDict
 from pyvider.cty.values.markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -67,6 +68,11 @@ _CtyString: Any = None
 _CtyBool: Any = None
 _CtyCapsule: Any = None
 _CtyCapsuleWithOps: Any = None
+
+
+def _freeze_marks(marks: Iterable[Any]) -> frozenset[Any]:
+    """`converter` for `CtyValue.marks`; `frozenset(fs)` is `fs` when it already is one."""
+    return frozenset(marks)
 
 
 def _bind_types() -> None:
@@ -121,17 +127,22 @@ class CtyValue(Generic[T]):
     value: object | None = field(default=None)
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
-    marks: frozenset[Any] = field(default=frozenset())
+    # `converter=frozenset`: a `set` passed here stayed a set -- aliased to the
+    # caller, mutable, and `hash(value)` raised. `frozenset(fs)` returns `fs`
+    # itself when it already is one, so the validated path pays nothing.
+    marks: frozenset[Any] = field(default=frozenset(), converter=_freeze_marks)
 
     # Memo for `collect_marks_deep`, filled on first ask. Excluded from init,
     # equality, hashing and repr: it is derived state, not part of the value.
     #
     # Only filled when that walk proves the whole subtree immutable. Freezing
-    # this class freezes the reference to `value`, not what `value` points at:
-    # maps and objects hold a plain dict, and `validate` accepts raw lists. A
-    # memo taken over one of those could be left under-reporting marks by an
-    # in-place mutation, which is the silent declassification the mark machinery
-    # exists to prevent. See `pyvider.cty.marks._walk_marks`.
+    # this class freezes the reference to `value`, not what `value` points at.
+    # `__attrs_post_init__` freezes a raw payload one level deep (dict to
+    # `FrozenDict`, list to tuple, set to frozenset), but a raw structure
+    # handed straight to the constructor can still hold mutable things below
+    # that level. A memo taken over one of those could be left under-reporting
+    # marks by an in-place mutation, which is the silent declassification the
+    # mark machinery exists to prevent. See `pyvider.cty.marks._walk_marks`.
     _deep_marks: frozenset[Any] | None = field(default=None, init=False, eq=False, repr=False)
 
     # Memo for `_strip`, filled on first ask and under the same immutability
@@ -159,6 +170,31 @@ class CtyValue(Generic[T]):
             # bare `c0` where go-cty writes `[type, value]`. Reading that back,
             # go-cty answers `type=dynamic` against its own `type=string`.
             object.__setattr__(self, "value", None)
+
+        self._freeze_raw_payload()
+
+    def _freeze_raw_payload(self) -> None:
+        """Make a payload handed straight to the constructor as immutable as `validate`'s.
+
+        `validate` has returned a `FrozenDict` or a tuple since 0.5.0, but
+        `CtyValue(vtype, {"a": ...})` kept the caller's dict: aliased, mutable
+        through `value.value`, and the hash of a value already used as a key
+        changed under the caller's later edits. Shallow, on purpose -- a
+        validated payload's elements are themselves `CtyValue`s, so one level is
+        the whole contract, and a deep walk on every construction is the hot
+        path. Already-frozen payloads are not copied. A capsule's payload is an
+        arbitrary Python object and is left exactly as given.
+        """
+        payload = self.value
+        if payload is None or isinstance(self.vtype, _CtyCapsule):
+            return
+        if isinstance(payload, dict):
+            if not isinstance(payload, FrozenDict):
+                object.__setattr__(self, "value", FrozenDict(payload))
+        elif isinstance(payload, list):
+            object.__setattr__(self, "value", tuple(payload))
+        elif isinstance(payload, set):
+            object.__setattr__(self, "value", frozenset(payload))
 
     def _dynamic_wrapper(self) -> bool:
         """Whether this value is a `dynamic` standing in front of a concrete one."""
