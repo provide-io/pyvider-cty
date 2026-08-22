@@ -17,7 +17,10 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   already-frozen payload is not copied) and `marks` is always a frozenset. The
   documented "always construct through `validate`" is a guard now rather than
   a caveat. Code that compared a hand-built value's payload to a list gets a
-  tuple; three tests in this repository did.
+  tuple; four tests in this repository did. Cost on the hot path is two
+  `type()` lookups per value, about 45 ns; `make perf-report` against the
+  previous release is within noise (the first cut of this check was not --
+  a quarter of `validate` on a 20k-element map -- and was measured down).
 - **`CtyMarksSerializationError` is a `SerializationError`.** It was a direct
   `CtyError` subclass, so `except SerializationError` around `cty_to_msgpack`
   let the one serialization failure a provider is most likely to hit straight

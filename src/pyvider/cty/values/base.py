@@ -6,7 +6,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Set as AbstractSet
+from collections.abc import Iterator, Set as AbstractSet
+from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -70,9 +71,16 @@ _CtyCapsule: Any = None
 _CtyCapsuleWithOps: Any = None
 
 
-def _freeze_marks(marks: Iterable[Any]) -> frozenset[Any]:
-    """`converter` for `CtyValue.marks`; `frozenset(fs)` is `fs` when it already is one."""
-    return frozenset(marks)
+# The payload types the constructor turns into their immutable counterparts,
+# and the types construction sees constantly, for which the `isinstance`
+# fallback (which also catches a dict/list/set *subclass*) is skipped. Two
+# frozenset lookups on the hot path, about 45 ns per value; the first version
+# of this check cost a quarter of `validate` on a 20k-element map.
+_RAW_MUTABLE: tuple[type, ...] = (dict, list, set)
+_RAW_MUTABLE_TYPES: frozenset[type] = frozenset(_RAW_MUTABLE)
+_PLAIN_PAYLOAD_TYPES: frozenset[type] = frozenset(
+    {str, bool, int, float, bytes, tuple, frozenset, FrozenDict, Decimal, type(None)}
+)
 
 
 def _bind_types() -> None:
@@ -127,10 +135,11 @@ class CtyValue(Generic[T]):
     value: object | None = field(default=None)
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
-    # `converter=frozenset`: a `set` passed here stayed a set -- aliased to the
-    # caller, mutable, and `hash(value)` raised. `frozenset(fs)` returns `fs`
-    # itself when it already is one, so the validated path pays nothing.
-    marks: frozenset[Any] = field(default=frozenset(), converter=_freeze_marks)
+    # Always a frozenset once constructed: a `set` passed here stayed a set --
+    # aliased to the caller, mutable, and `hash(value)` raised. Frozen in
+    # `__attrs_post_init__` rather than by a `converter`, which would put a
+    # Python frame on every construction; the check there is one `type() is`.
+    marks: frozenset[Any] = field(default=frozenset())
 
     # Memo for `collect_marks_deep`, filled on first ask. Excluded from init,
     # equality, hashing and repr: it is derived state, not part of the value.
@@ -171,7 +180,15 @@ class CtyValue(Generic[T]):
             # go-cty answers `type=dynamic` against its own `type=string`.
             object.__setattr__(self, "value", None)
 
-        self._freeze_raw_payload()
+        # One frozenset lookup for the payload types construction sees constantly;
+        # the rest of the test runs only for anything else.
+        payload_type = type(self.value)
+        if payload_type not in _PLAIN_PAYLOAD_TYPES and (
+            payload_type in _RAW_MUTABLE_TYPES or isinstance(self.value, _RAW_MUTABLE)
+        ):
+            self._freeze_raw_payload()
+        if type(self.marks) is not frozenset:
+            object.__setattr__(self, "marks", frozenset(self.marks))
 
     def _freeze_raw_payload(self) -> None:
         """Make a payload handed straight to the constructor as immutable as `validate`'s.
@@ -186,7 +203,7 @@ class CtyValue(Generic[T]):
         arbitrary Python object and is left exactly as given.
         """
         payload = self.value
-        if payload is None or isinstance(self.vtype, _CtyCapsule):
+        if isinstance(self.vtype, _CtyCapsule):
             return
         if isinstance(payload, dict):
             if not isinstance(payload, FrozenDict):
@@ -756,6 +773,10 @@ class CtyValue(Generic[T]):
     @classmethod
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
+
+
+# A `dynamic` wrapper's payload is a `CtyValue`; known-immutable, skip the fallback.
+_PLAIN_PAYLOAD_TYPES = _PLAIN_PAYLOAD_TYPES | {CtyValue}
 
 
 def _member_key(member: object) -> tuple[Any, ...]:
