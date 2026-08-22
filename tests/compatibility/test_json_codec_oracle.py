@@ -290,6 +290,60 @@ def test_two_valid_duplicate_types_in_the_dynamic_envelope_keep_the_last() -> No
     assert canonical(rich(decoded)) == canonical(theirs["value"])
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"type": "string", "extra": 1, "value": "x"}',
+        '{"value": "x", "type": "string", "bogus": [1, 2]}',
+        '{"extra": 1}',
+        # An unknown key before an invalid type descriptor: the key is read
+        # first, so its refusal is the one that happens.
+        '{"bogus": 1, "type": ["nope"]}',
+    ],
+)
+def test_an_unknown_key_in_the_dynamic_envelope_is_refused_by_both(payload: str) -> None:
+    """go-cty's `unmarshalDynamic` default branch: only `type` and `value`."""
+    theirs = run("cty", "json", "unmarshal", payload, "--type", '"dynamic"')
+
+    assert theirs["ok"] is False, theirs
+    assert "invalid key" in theirs["error"], theirs
+    with pytest.raises(CtyJsonError, match="invalid key"):
+        cty_from_json(payload, CtyDynamic())
+
+
+def test_an_invalid_type_before_an_unknown_key_is_the_failure_both_report() -> None:
+    """The mirror of the case above: document order decides which fires."""
+    payload = '{"type": ["nope"], "bogus": 1}'
+    theirs = run("cty", "json", "unmarshal", payload, "--type", '"dynamic"')
+
+    assert theirs["ok"] is False, theirs
+    assert "invalid key" not in theirs["error"], theirs
+    with pytest.raises(CtyValidationError) as caught:
+        cty_from_json(payload, CtyDynamic())
+    assert "invalid key" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("payload", "missing"),
+    [("{}", "type"), ('{"value": "x"}', "type"), ('{"type": "string"}', "value")],
+)
+def test_the_dynamic_envelope_reports_the_same_missing_half(payload: str, missing: str) -> None:
+    theirs = run("cty", "json", "unmarshal", payload, "--type", '"dynamic"')
+
+    assert theirs["ok"] is False, theirs
+    assert f"missing {missing}" in theirs["error"], theirs
+    with pytest.raises(CtyJsonError, match=f"missing {missing}"):
+        cty_from_json(payload, CtyDynamic())
+
+
+def test_an_explicit_null_in_the_dynamic_envelope_is_not_a_missing_value() -> None:
+    payload = '{"type": "string", "value": null}'
+    theirs = run("cty", "json", "unmarshal", payload, "--type", '"dynamic"')
+
+    assert theirs["ok"], theirs
+    assert canonical(rich(cty_from_json(payload, CtyDynamic()))) == canonical(theirs["value"])
+
+
 def test_a_document_that_is_not_json_is_refused_by_both() -> None:
     theirs = run("cty", "json", "implied-type", "not json")
 

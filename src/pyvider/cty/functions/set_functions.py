@@ -74,20 +74,32 @@ def _set_operation_return_type(func: str) -> TypeFunc:
     return type_func
 
 
-def _as_set_of(value: CtyValue[Any], element_type: CtyType[Any], func: str) -> frozenset[CtyValue[Any]]:
+def _as_set_of(
+    value: CtyValue[Any], element_type: CtyType[Any], func: str
+) -> dict[tuple[Any, ...], CtyValue[Any]]:
     """The argument's elements, converted to the result's element type.
 
     go-cty converts the whole argument to the result *set* type in one step
     (`stdlib/set.go:203`); element-wise is the same conversion, and it is the
     one this package's `convert` is shaped for.
+
+    Keyed by `identity_key`, not collected into a `frozenset`, because the two
+    disagree about signed zero. `Decimal("0") == Decimal("-0.0")` is true, so a
+    `frozenset` holds one of the pair; cty finds an element by hash bucket
+    first (`set.Set.Has`) and the two hash differently, so a cty set holds
+    both. Routing the combining operations through Python's set algebra let
+    `setsymmetricdifference(set(number){0, -0.0})` answer `{0}` where go-cty
+    answers `{-0, 0}`, and made `setsubtract({0, -0.0}, {0})` empty rather than
+    `{-0}`. `sethaselement` has read membership through `identity_key` since
+    2026-08-19 for the same reason; this is the rest of the family catching up.
     """
     elements = cast(Iterable[CtyValue[Any]], value.value or ())
-    if cast(CtySet[Any], value.type).element_type.equal(element_type):
-        return frozenset(elements)
-    try:
-        return frozenset(convert(element, element_type) for element in elements)
-    except CtyConversionError as e:
-        raise CtyFunctionError(ERR_SET_OP_INCOMPATIBLE_ELEMENTS.format(func=func)) from e
+    if not cast(CtySet[Any], value.type).element_type.equal(element_type):
+        try:
+            elements = [convert(element, element_type) for element in elements]
+        except CtyConversionError as e:
+            raise CtyFunctionError(ERR_SET_OP_INCOMPATIBLE_ELEMENTS.format(func=func)) from e
+    return {set_identity_key(element): element for element in elements}
 
 
 def _ordered_elements(value: CtyValue[Any], element_type: CtyType[Any], func: str) -> list[CtyValue[Any]]:
@@ -107,7 +119,7 @@ def _ordered_elements(value: CtyValue[Any], element_type: CtyType[Any], func: st
 
 def _set_operation(
     func: str,
-    combine: Callable[[frozenset[CtyValue[Any]], frozenset[CtyValue[Any]]], frozenset[CtyValue[Any]]],
+    combine: Callable[[frozenset[tuple[Any, ...]], frozenset[tuple[Any, ...]]], frozenset[tuple[Any, ...]]],
     args: Sequence[CtyValue[Any]],
     return_type: CtyType[Any],
     *,
@@ -150,10 +162,16 @@ def _set_operation(
             merged.extend(_ordered_elements(arg, element_type, func))
         return return_type.validate(merged)
 
+    # The set algebra runs over identity keys; the elements themselves come back
+    # out of whichever argument supplied them. An element present in both is the
+    # same set member under `identity_key`, so the first argument's copy of it is
+    # as good as the second's.
     combined = _as_set_of(args[0], element_type, func)
     for arg in args[1:]:
-        combined = combine(combined, _as_set_of(arg, element_type, func))
-    return return_type.validate(list(combined))
+        other = _as_set_of(arg, element_type, func)
+        keys = combine(frozenset(combined), frozenset(other))
+        combined = {key: combined[key] if key in combined else other[key] for key in keys}
+    return return_type.validate(list(combined.values()))
 
 
 @stdlib_function(

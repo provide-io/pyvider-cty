@@ -89,6 +89,19 @@ COLLECTION_CASES: list[tuple[str, list[Arg]]] = [
     ("setsymmetricdifference", [se(["a"]), se(["a"])]),
     ("setsymmetricdifference", [se([]), se(["a"])]),
     ("setsymmetricdifference", [se(["a"]), se(["b"]), se(["c"])]),
+    # Signed zero: the one place Python's set algebra and cty's part company.
+    # `Decimal("0") == Decimal("-0.0")`, so a frozenset holds one of the pair,
+    # while cty hashes them to different buckets and holds both. The stdlib
+    # fuzz found it through setsymmetricdifference on 2026-08-22; these pin it
+    # deterministically, because the fuzz only replays it where a Hypothesis
+    # example database has already seen it -- which CI, starting cold, has not.
+    ("setunion", [sn([0, -0.0])]),
+    ("setintersection", [sn([0, -0.0])]),
+    ("setintersection", [sn([0, -0.0]), sn([0])]),
+    ("setsubtract", [sn([0, -0.0]), sn([0])]),
+    ("setsymmetricdifference", [sn([0, -0.0])]),
+    ("setsymmetricdifference", [sn([0, -0.0]), sn([0])]),
+    ("sethaselement", [sn([0]), nm(-0.0)]),
     ("sethaselement", [se(["a", "b"]), st("a")]),
     ("sethaselement", [se(["a", "b"]), st("z")]),
     ("sethaselement", [se([]), st("a")]),

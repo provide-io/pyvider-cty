@@ -334,4 +334,45 @@ class TestRegexReplace:
             regexreplace(*args)
 
 
+class TestDollarIsEndOfTextNotEndOfLine:
+    """RE2's `$` without `(?m)` matches at the end of the *text*. Python's
+    matches there **or just before a trailing newline**, which is `\\Z` versus
+    `$` in Python's own vocabulary.
+
+    So `regexall("a*$", "\\r\\n")` found two empty matches here -- one before the
+    `\\n`, one at the end -- and one in go-cty. Found 2026-08-22 by the stdlib
+    fuzz, and it is the same shape as the `\\w`-is-ASCII divergence the module
+    already carries: a pattern that is valid in both engines, read differently
+    by each.
+
+    Under `(?m)` the two agree again -- both match at the end of every line --
+    so the rewrite is withheld there.
+    """
+
+    def test_a_trailing_newline_does_not_end_the_text(self) -> None:
+        assert [element.value for element in regexall(s("a*$"), s("\r\n")).value] == [""]
+
+    def test_the_anchor_still_matches_at_the_true_end(self) -> None:
+        assert [element.value for element in regexall(s("b$"), s("ab")).value] == ["b"]
+
+    def test_the_anchor_does_not_match_before_a_trailing_newline(self) -> None:
+        assert regexall(s("b$"), s("ab\n")).value == ()
+
+    def test_multiline_keeps_python_s_reading_because_re2_agrees_there(self) -> None:
+        assert [element.value for element in regexall(s("(?m)b$"), s("ab\ncb")).value] == ["b", "b"]
+
+    def test_an_escaped_dollar_is_still_a_literal(self) -> None:
+        assert [element.value for element in regexall(s(r"a\$"), s("a$b")).value] == ["a$"]
+
+    def test_a_dollar_inside_a_character_class_is_still_a_literal(self) -> None:
+        assert [element.value for element in regexall(s("[$]"), s("a$b")).value] == ["$"]
+
+    def test_regex_and_regexreplace_read_the_anchor_the_same_way(self) -> None:
+        # regexreplace is (subject, pattern, replacement) -- go-cty's
+        # RegexReplaceFunc takes the string first, unlike regex/regexall.
+        assert regex(s("b$"), s("ab")).value == "b"
+        assert regexreplace(s("ab"), s("b$"), s("X")).value == "aX"
+        assert regexreplace(s("ab\n"), s("b$"), s("X")).value == "ab\n"
+
+
 # 🌊🪢🔚
