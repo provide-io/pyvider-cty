@@ -183,6 +183,33 @@ def test_string_representation_of_empty_path() -> None:
     assert path.string() == "(root)"
 
 
+def test_empty_path_applied_to_a_value_is_that_value() -> None:
+    value = CtyString().validate("x")
+    assert CtyPath.empty().apply_path(value) is value
+
+
+def test_empty_path_applied_to_a_non_cty_value() -> None:
+    with pytest.raises(AttributePathError):
+        CtyPath.empty().apply_path("not a cty value")
+
+
+def test_empty_path_applied_to_a_type_is_that_type() -> None:
+    assert CtyPath.empty().apply_path_type(CtyString()).equal(CtyString())
+
+
+def test_getattr_on_a_known_dynamic_that_does_not_wrap_a_value() -> None:
+    """The fall-through of `GetAttrStep`'s dynamic branch.
+
+    A `dynamic` is stepped through when it wraps a `CtyValue`, and answered with
+    an unknown when it is wholly unknown. A hand-built one that is neither has
+    nothing to step into and no unknown to report, so it raises like any other
+    non-object.
+    """
+    step = GetAttrStep("a")
+    with pytest.raises(AttributePathError):
+        step.apply(CtyValue(CtyDynamic(), "not a CtyValue"))
+
+
 def test_key_step_with_invalid_key_type() -> None:
     step = KeyStep(123)
     with pytest.raises(AttributePathError):
