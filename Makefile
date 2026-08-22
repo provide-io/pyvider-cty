@@ -40,6 +40,10 @@ check-docs: ## Execute every Python block in the docs and fail on an inaccuracy
 diagrams-check: ## Fail if any committed architecture SVG is stale against its .puml source
 	uv run python scripts/render_diagrams.py --check
 
+.PHONY: bench-smoke
+bench-smoke: ## Run each benchmark test once, untimed: a check that they still run, not a measurement
+	uv run pytest tests/performance --run-benchmarks --benchmark-disable -q
+
 .PHONY: perf-report
 perf-report: ## Compare hot-path performance against a baseline ref (report only, never fails)
 	uv run python scripts/perf/perf_report.py --base $(or $(BASE),gh-origin/main)
