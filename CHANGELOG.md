@@ -5,6 +5,38 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Validation no longer reads another thread's recursion context.**
+  `with_recursion_detection` allocates one `RecursionDetector` per decorated
+  function, shared by every thread that validates through it, and the wrapper
+  assigned the calling thread's context onto that shared instance before the
+  detector read it back a dozen lines later. In between, any other thread could
+  assign its own: four threads validating a twelve-element list of
+  two-attribute objects read a foreign context 1170 times, which is a corrupted
+  depth count, a corrupted cycle graph, and a `validation_stopped` flag
+  belonging to somebody else's validation. The detector now holds no context at
+  all -- it reads the calling thread's on each access, which is what its
+  docstring already claimed -- and a context passed in explicitly is still
+  honoured, for reading metrics off a finished run.
+- **A hostile type description is refused instead of exhausting the
+  interpreter.** `parse_tf_type_to_ctytype` decodes a peer's bytes, so its
+  nesting depth is an input. Three defects compounded: the recursive function
+  was wrapped in an `error_boundary` whose context stringified the whole
+  remaining subtree once per level, making the parse quadratic and paying it on
+  the way *in* -- 1600 levels cost seventeen seconds; nothing bounded the
+  descent, so it ran out of stack and raised a bare `RecursionError`, which is
+  not a `CtyError` and so escaped a caller catching `CtyError` around its
+  decoding; and the boundary logs with `exc_info=True`, whose traceback render
+  walks the frame locals holding the description itself, overflowing the stack
+  again and replacing any controlled refusal. There is now a depth budget
+  (`MAX_TYPE_NESTING_DEPTH`, derived from the live recursion limit, in the
+  hundreds where real schemas nest in the tens) raising `CtyValidationError`,
+  every diagnostic is built with a bounded `reprlib` representation rather than
+  a full render of attacker-controlled data, and the boundary is gone. A
+  6400-level description now takes under a millisecond and raises in-taxonomy,
+  against 29 seconds and a `RecursionError`.
+
 ### Changed
 
 - **A directly constructed `CtyValue` is frozen one level deep.** `validate`
