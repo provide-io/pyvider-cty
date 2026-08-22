@@ -386,8 +386,20 @@ def _unmarshal_dynamic(raw: Any, path: str) -> CtyValue[Any]:
         raise CtyJsonError(f"{path or 'value'}: a dynamic value must be an object with 'value' and 'type'")
     from pyvider.cty.parser import parse_tf_type_to_ctytype
 
-    inner_type = parse_tf_type_to_ctytype(raw["type"])
-    return CtyValue(vtype=CtyDynamic(), value=_unmarshal(raw["value"], inner_type, path))
+    # go-cty's own decoder (json/unmarshal.go:367) reads key/value pairs one at
+    # a time and parses every "type" occurrence as it is encountered, failing
+    # on the first one that is not a valid type description -- even when a
+    # later occurrence would have been valid. raw["type"] only ever sees the
+    # final occurrence, so a bad type description earlier in the document was
+    # silently overridden by a later good one. "value" has no such rule --
+    # go-cty overwrites it unconditionally with no validation at read time --
+    # so raw["value"]'s last-wins reading already matches.
+    inner_type: CtyType[Any] | None = None
+    for key, item in _pairs(raw):
+        if key == "type":
+            inner_type = parse_tf_type_to_ctytype(item)
+    # "type" in raw guarantees the loop set inner_type at least once.
+    return CtyValue(vtype=CtyDynamic(), value=_unmarshal(raw["value"], cast("CtyType[Any]", inner_type), path))
 
 
 def _unmarshal_sequence(raw: Any, cty_type: CtyList[Any] | CtySet[Any] | CtyTuple, path: str) -> CtyValue[Any]:

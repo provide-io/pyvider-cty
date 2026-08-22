@@ -31,6 +31,7 @@ from pyvider.cty import (
     CtyType,
     CtyValue,
 )
+from pyvider.cty.exceptions import CtyValidationError
 from pyvider.cty.json_codec import (
     CtyJsonError,
     cty_from_json,
@@ -209,6 +210,42 @@ class TestDuplicateProperties:
     )
     def test_unmarshal_keeps_the_last_duplicate(self, cty_type: CtyType[Any]) -> None:
         assert cty_from_json(b'{"a": 2, "a": 1}', cty_type).value["a"].value == 1
+
+
+class TestDynamicEnvelopeDuplicateType:
+    """The dynamic envelope's `type` key follows go-cty's own decode order, not a dict's.
+
+    go-cty's `unmarshalDynamic` (`json/unmarshal.go:367`) reads key/value pairs
+    one at a time and parses *every* `"type"` occurrence as it is encountered,
+    failing immediately on the first one that is not a valid type description --
+    even when a later occurrence would have been valid. A dict's last-wins
+    reading only ever sees the final occurrence, so `{"type": ["bogus"],
+    "type": "string", "value": "x"}` decoded to the string `"x"` here while
+    go-cty refuses it on the first, invalid, occurrence. `value` has no such
+    rule: go-cty overwrites it unconditionally with no validation at read
+    time, so last-wins for `value` is already correct.
+    """
+
+    def test_an_invalid_type_before_a_valid_one_is_refused(self) -> None:
+        # CtyValidationError, not CtyJsonError: the refusal comes straight out of
+        # parse_tf_type_to_ctytype, unwrapped, exactly as a single bad type does.
+        with pytest.raises(CtyValidationError):
+            cty_from_json('{"type": ["bogus"], "type": "string", "value": "x"}', CtyDynamic())
+
+    def test_an_invalid_type_after_a_valid_one_is_still_refused(self) -> None:
+        with pytest.raises(CtyValidationError):
+            cty_from_json('{"type": "string", "type": ["bogus"], "value": "x"}', CtyDynamic())
+
+    def test_two_valid_types_keep_the_last(self) -> None:
+        decoded = cty_from_json('{"type": "string", "type": "number", "value": 1}', CtyDynamic())
+
+        assert decoded.value.type.equal(CtyNumber())
+        assert decoded.value.value == 1
+
+    def test_value_is_last_wins_regardless_of_order_relative_to_type(self) -> None:
+        assert cty_from_json('{"value": "x", "type": "string"}', CtyDynamic()).value.value == "x"
+        assert cty_from_json('{"value": "a", "value": "b", "type": "string"}', CtyDynamic()).value.value == "b"
+        assert cty_from_json('{"type": "string", "value": "a", "value": "b"}', CtyDynamic()).value.value == "b"
 
 
 # 🌊🪢🔚
