@@ -226,6 +226,20 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
     results: dict[int, CtyType[Any]] = {}
     processing: set[int] = set()
 
+    # An attrs instance nested inside a container is replaced below by a plain
+    # dict, and a new dict is a new `id`. Everything here is keyed by `id`, and
+    # the *parent* still holds the attrs instance, so it looks the schema up
+    # under the original object's id and found nothing -- `[Child(value=1)]`
+    # came back as `list(dynamic)` rather than a list of objects. These map the
+    # dict's id back to the instance's, so the schema is recorded under both.
+    #
+    # The keepalive is not decoration: a dict that is collected frees its id for
+    # reuse, and a stale `results` entry would then answer for an unrelated
+    # object. Holding a reference until inference finishes makes every id in
+    # `results` unique for as long as it is consulted.
+    attrs_aliases: dict[int, int] = {}
+    keepalive: list[Any] = []
+
     while work_stack:
         current_item = work_stack.pop()
 
@@ -266,14 +280,26 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
                 inferred_schema = _get_singleton("dynamic")
 
             results[container_id] = inferred_schema
+            # If this container is a dict standing in for an attrs instance,
+            # the parent is holding the instance and will ask under its id.
+            aliased = attrs_aliases.get(container_id)
+            if aliased is not None:
+                results[aliased] = inferred_schema
             continue
 
         if attrs.has(type(current_item)) and not isinstance(current_item, CtyType):
+            original = current_item
             try:
                 current_item = _attrs_to_dict_safe(current_item)
             except TypeError:
-                results[id(current_item)] = _get_singleton("dynamic")
+                results[id(original)] = _get_singleton("dynamic")
                 continue
+            # Both objects held, and the dict's id pointed back at the
+            # instance's, so whichever of the two the parent asks about gets the
+            # same answer. See `attrs_aliases` above.
+            keepalive.append(original)
+            keepalive.append(current_item)
+            attrs_aliases[id(current_item)] = id(original)
 
         if current_item is None:
             continue
@@ -297,7 +323,13 @@ def infer_cty_type_from_raw(value: Any) -> CtyType[Any]:  # noqa: C901
 
         structural_key = _get_structural_cache_key(current_item)
         if container_cache is not None and structural_key in container_cache:
-            results[item_id] = container_cache[structural_key]
+            cached = container_cache[structural_key]
+            results[item_id] = cached
+            # Same as the post-process branch: a cache hit on the stand-in dict
+            # still has to answer for the attrs instance the parent is holding.
+            aliased = attrs_aliases.get(item_id)
+            if aliased is not None:
+                results[aliased] = cached
             continue
 
         processing.add(item_id)

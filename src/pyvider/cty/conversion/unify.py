@@ -240,11 +240,58 @@ def _unify_cached(types: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:  # no
     return _unify_by_preference(types)
 
 
+def _preference_order(types: tuple[CtyType[Any], ...]) -> list[int]:
+    """`sort_types`, with a structural candidate brought in front of a collection.
+
+    `compare_types` ranks `map(dynamic)` as *more general* than an object type,
+    which is true of conversion and wrong as a preference: unifying
+    `map(dynamic)` with `object({a: list(string), b: number})` took the map and
+    threw the structure away, where go-cty keeps the object.
+
+    Asked of the oracle, and the pair of answers is what pins the rule down::
+
+        soup-go cty unify '["map","dynamic"]' '["object",{"a":"string","b":"number"}]'
+        -> ["map","string"]
+        soup-go cty unify '["map","dynamic"]' '["object",{"a":["list","string"],"b":"number"}]'
+        -> ["object",{"a":["list","string"],"b":"number"}]
+
+    So the map wins when the object's attributes unify -- when it really is a
+    map wearing an object's clothes -- and the object wins when they do not.
+    Both orders of the arguments give the same answer there, so this is a
+    property of the types and not of how they arrived.
+
+    That first case never reaches here: `_unify_objects_as_maps` runs earlier
+    and answers `map(string)` for it. Anything arriving at this function with
+    both kinds present has already had map-ification tried and refused, and the
+    structural candidate is the one go-cty keeps. Within each group the
+    topological order is preserved, so nothing else is reordered.
+
+    Held back when a bare `dynamic` is among the candidates, and the oracle is
+    why. `_unify_objects_as_maps` gives up in that case -- the dynamic makes the
+    collection stage unify to `dynamic` rather than to a map -- so its refusal
+    stops meaning "these cannot be a map" and this function starts seeing pairs
+    whose map-ification was never really tried::
+
+        soup-go cty unify '"dynamic"' '["map","string"]' '["object",{"a":"number"}]'
+        -> ["map","string"]
+
+    go-cty maps that one, because `number` converts to `string`. Preferring the
+    object there was wrong, and the generated unify sweep caught it.
+    """
+    order = sort_types(types)
+    if any(isinstance(t, CtyDynamic) for t in types):
+        return order
+    structural = [i for i in order if isinstance(types[i], CtyObject | CtyTuple)]
+    if not structural:
+        return order
+    return structural + [i for i in order if not isinstance(types[i], CtyObject | CtyTuple)]
+
+
 def _unify_by_preference(types: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:
     """Take the most general candidate every other type can convert to."""
     from pyvider.cty.conversion.explicit import can_convert_unsafe
 
-    for index in sort_types(types):
+    for index in _preference_order(types):
         want = types[index]
         if all(
             other.equal(want) or can_convert_unsafe(other, want) for i, other in enumerate(types) if i != index
