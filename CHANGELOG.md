@@ -58,6 +58,18 @@ also has for object keys -- are recorded as decisions in
   does not fit the type still raises that type's `CtyValidationError`, so
   `except CtyError` catches every failure.
 
+- **`CtyObject` checks its schema's attribute names at construction.** A
+  non-string name constructed and then failed inside `validate` with a bare
+  `TypeError` from `unicodedata.normalize`; two names that normalize to the
+  same NFC string were two attributes that one input key filled. Both raise
+  `InvalidTypeError` now -- the same two rules `validate` applies to a value's
+  keys, applied to the schema.
+- **The optional-names check lives in the parser's object branch.** It ran
+  before the kind dispatch, so `["list", "string", "junk"]` was refused with a
+  message about object optional names and `["list", "string", ["a"]]` was
+  accepted with its third element dropped. A third element on any non-object
+  kind is refused as malformed.
+
 ### Internal
 
 - **`pyvider.cty.functions.collection_functions` is a package now.** At
@@ -100,6 +112,18 @@ also has for object keys -- are recorded as decisions in
   described the uvx tool venv.
 - Python 3.12, 3.13 and 3.14 -- all advertised in `pyproject.toml` -- now run
   the suite on Linux in CI alongside the five-platform 3.11 run.
+- The SBOM generator is pinned (`cyclonedx-bom==7.3.1`) and runs in its own
+  job with a read-only token and no OIDC. It installs the wheel's dependency
+  closure and the generator from PyPI and runs them; that happened in the job
+  holding the sigstore signing identity and a writable repository token.
+  `sign-and-upload` now downloads the SBOM as an artifact and checks nothing
+  out. The SBOM job is not gated on the release event, so a dispatch dry run
+  exercises it.
+- `pytest-benchmark` is back in the dev group -- the ten benchmark tests take
+  its `benchmark` fixture and had been unrunnable since the dev-dependency
+  consolidation, hidden behind `--run-benchmarks` -- and `make bench-smoke`
+  runs each of them once, untimed, in CI. A check that they still execute;
+  `make perf-report` remains the measurement.
 
 ### Documentation
 
@@ -107,6 +131,15 @@ also has for object keys -- are recorded as decisions in
   sweep xfail reason has been 155 digits since 2026-08-19; both now say so.
   `CtyList`'s accepted inputs in the validation guide match the code. The
   wire-codec diagram shows empty input as an error. Copyright range reaches 2026.
+- Two passages (`serialization.md`, `troubleshooting.md`) still said malformed
+  msgpack escapes `cty_from_msgpack` as the `msgpack` library's own exception;
+  it has been `DeserializationError` since the taxonomy change above.
+- The regex ReDoS exposure -- Python's `re` backtracks where RE2 is linear, and
+  `re` has no timeout -- is recorded as accepted, with the assumption it rests
+  on (patterns come from operator-written provider configuration), at the
+  compile choke point in `string_functions.py`, on all three regex functions,
+  in the functions guide and in the go-cty comparison. It was noted on
+  `regexreplace` only.
 
 ## [0.5.0] - 2026-08-20
 
