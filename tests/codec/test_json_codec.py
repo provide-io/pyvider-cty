@@ -167,4 +167,48 @@ class TestImpliedType:
         assert decoded.value["a"].value == "x"
 
 
+class TestDuplicateProperties:
+    """go-cty 1.16.2: a repeated property name is an error, with one carve-out.
+
+    `ImpliedType` refuses `{"a": 1, "a": "x"}` -- the two occurrences imply
+    different types -- and accepts `{"a": 1, "a": 2}` as a compatibility
+    concession, since the object type it implies decodes either one. `Unmarshal`
+    decodes *every* occurrence against the declared type and keeps the last, so
+    a wrong-typed earlier duplicate is still an error. This decoder took
+    Python's last-wins reading for both and never saw the earlier value.
+    """
+
+    def test_implied_accepts_a_duplicate_of_the_same_type(self) -> None:
+        assert implied_json_type(b'{"a": 1, "a": 2}').equal(CtyObject({"a": CtyNumber()}))
+
+    def test_implied_refuses_a_duplicate_of_a_different_type(self) -> None:
+        with pytest.raises(CtyJsonError, match='duplicate "a" property in JSON object'):
+            implied_json_type(b'{"a": 1, "a": "x"}')
+
+    def test_implied_refuses_a_nested_duplicate_of_a_different_type(self) -> None:
+        with pytest.raises(CtyJsonError, match='duplicate "a" property in JSON object'):
+            implied_json_type(b'{"o": {"a": 1, "a": "x"}}')
+
+    def test_implied_a_same_typed_duplicate_decodes_with_the_last_value(self) -> None:
+        document = b'{"a": 1, "a": 2}'
+        assert cty_from_json(document, implied_json_type(document)).value["a"].value == 2
+
+    @pytest.mark.parametrize(
+        "cty_type",
+        [CtyObject({"a": CtyNumber()}), CtyMap(element_type=CtyNumber())],
+        ids=["object", "map"],
+    )
+    def test_unmarshal_decodes_every_duplicate_against_the_type(self, cty_type: CtyType[Any]) -> None:
+        with pytest.raises(CtyJsonError, match="number is required"):
+            cty_from_json(b'{"a": "x", "a": 1}', cty_type)
+
+    @pytest.mark.parametrize(
+        "cty_type",
+        [CtyObject({"a": CtyNumber()}), CtyMap(element_type=CtyNumber())],
+        ids=["object", "map"],
+    )
+    def test_unmarshal_keeps_the_last_duplicate(self, cty_type: CtyType[Any]) -> None:
+        assert cty_from_json(b'{"a": 2, "a": 1}', cty_type).value["a"].value == 1
+
+
 # 🌊🪢🔚

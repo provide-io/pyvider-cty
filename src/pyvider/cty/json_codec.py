@@ -92,10 +92,35 @@ def _reject_constant(literal: str) -> Any:
     raise CtyJsonError(f"invalid character in JSON document: {literal} is a Python literal, not valid JSON")
 
 
+class _JsonObject(dict[str, Any]):
+    """A JSON object as decoded: a dict, plus every property in document order.
+
+    `dict` semantics (the last occurrence of a name wins) for every reader that
+    wants a mapping, and `pairs` for the two go-cty rules that need the earlier
+    occurrences too. `ImpliedType` refuses a repeated property whose values
+    imply different types (go-cty 1.16.2; a same-typed repeat is a compatibility
+    carve-out), and `Unmarshal` decodes *every* occurrence against the declared
+    type before keeping the last, so a wrong-typed earlier duplicate is still an
+    error. `json.loads` alone shows neither rule the earlier value.
+    """
+
+    __slots__ = ("pairs",)
+
+    def __init__(self, pairs: list[tuple[str, Any]]) -> None:
+        super().__init__(pairs)
+        self.pairs: tuple[tuple[str, Any], ...] = tuple(pairs)
+
+
+def _pairs(raw: dict[str, Any]) -> tuple[tuple[str, Any], ...]:
+    """Every property in order, duplicates included, for a decoded object."""
+    return raw.pairs if isinstance(raw, _JsonObject) else tuple(raw.items())
+
+
 def _loads(payload: bytes | str) -> Any:
     text = payload.decode() if isinstance(payload, bytes) else payload
     return json.loads(
         text,
+        object_pairs_hook=_JsonObject,
         parse_float=_RawNumber,
         parse_int=_RawNumber,
         parse_constant=_reject_constant,
@@ -397,31 +422,28 @@ def _unmarshal_sequence(raw: Any, cty_type: CtyList[Any] | CtySet[Any] | CtyTupl
 def _unmarshal_mapping(raw: Any, cty_type: CtyMap[Any] | CtyObject, path: str) -> CtyValue[Any]:
     if not isinstance(raw, dict):
         raise CtyJsonError(f"{path or 'value'}: an object is required for {cty_type.ctype}")
+    # Every occurrence of a property is decoded, as go-cty's `Unmarshal` does,
+    # and the last one is kept: `{"a": "x", "a": 1}` against `object({a:
+    # number})` is an error there, not a 1.
+    decoded: dict[str, CtyValue[Any]] = {}
     if isinstance(cty_type, CtyObject):
-        for name in raw:
-            if name not in cty_type.attribute_types:
+        for name, item in _pairs(raw):
+            attribute_type = cty_type.attribute_types.get(name)
+            if attribute_type is None:
                 raise CtyJsonError(f'{path or "value"}: unsupported attribute "{name}"')
+            decoded[name] = _unmarshal(item, attribute_type, f"{path}.{name}")
         return CtyValue(
             vtype=cty_type,
             value=FrozenDict(
-                (
-                    name,
-                    _unmarshal(raw[name], attribute_type, f"{path}.{name}")
-                    if name in raw
-                    else CtyValue.null(attribute_type),
-                )
+                (name, decoded[name] if name in decoded else CtyValue.null(attribute_type))
                 for name, attribute_type in cty_type.attribute_types.items()
             ),
         )
 
     element_type = cty_type.element_type
-    return CtyValue(
-        vtype=cty_type,
-        value=FrozenDict(
-            (unicodedata.normalize("NFC", str(key)), _unmarshal(item, element_type, f"{path}[{key!r}]"))
-            for key, item in raw.items()
-        ),
-    )
+    for key, item in _pairs(raw):
+        decoded[unicodedata.normalize("NFC", str(key))] = _unmarshal(item, element_type, f"{path}[{key!r}]")
+    return CtyValue(vtype=cty_type, value=FrozenDict(decoded))
 
 
 def _implied(raw: Any) -> CtyType[Any]:
@@ -438,7 +460,17 @@ def _implied(raw: Any) -> CtyType[Any]:
         # share a type, and choosing a list would have to invent one.
         return CtyTuple(element_types=tuple(_implied(item) for item in raw))
     if isinstance(raw, dict):
-        return CtyObject({key: _implied(item) for key, item in raw.items()})
+        # go-cty 1.16.2: a repeated property is an error unless both occurrences
+        # imply the same type -- a carve-out for consistently-typed redundancy,
+        # kept because the object type implied decodes either one.
+        attribute_types: dict[str, CtyType[Any]] = {}
+        for key, item in _pairs(raw):
+            implied = _implied(item)
+            existing = attribute_types.get(key)
+            if existing is not None and not existing.equal(implied):
+                raise CtyJsonError(f'duplicate "{key}" property in JSON object')
+            attribute_types[key] = implied
+        return CtyObject(attribute_types)
     raise CtyJsonError(f"cannot infer a type from {type(raw).__name__}")
 
 
