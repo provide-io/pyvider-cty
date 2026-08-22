@@ -120,6 +120,15 @@ SCALAR_CASES: list[tuple[str, list[Arg]]] = [
     ("regexall", [st("x"), st("y")]),
     ("regexreplace", [st("-ab-axxb-"), st("a(x*)b"), st("${1}W")]),
     ("regexreplace", [st("-ab-axxb-"), st("a(x*)b"), st("$1W")]),
+    # RE2's `$` is end-of-text; Python's also matches before a trailing
+    # newline. The fuzz falsified on the first of these on 2026-08-22.
+    ("regexall", [st("a*$"), st("\r\n")]),
+    ("regexall", [st("b$"), st("ab\n")]),
+    ("regexall", [st("b$"), st("ab")]),
+    ("regexall", [st("(?m)b$"), st("ab\ncb")]),
+    ("regexall", [st(r"a\$"), st("a$b")]),
+    ("regexall", [st("[$]"), st("a$b")]),
+    ("regexreplace", [st("ab\n"), st("b$"), st("X")]),
     # numbers
     ("abs", [nm(-3)]),
     ("abs", [nm("3.5")]),
