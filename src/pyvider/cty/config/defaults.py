@@ -106,6 +106,37 @@ MAX_VALIDATION_DEPTH = default_max_validation_depth()
 MAX_OBJECT_REVISITS = 100  # Allow many revisits for complex schemas
 MAX_VALIDATION_TIME_MS = 30000  # 30 second timeout for pathological cases
 
+# One frame per level once the type parser stops entering a context manager at
+# every level; the parse is a plain recursive descent.
+FRAMES_PER_TYPE_PARSE_LEVEL = 1
+
+# Room left for whatever called the parser, on the same reasoning as
+# VALIDATION_STACK_MARGIN.
+TYPE_PARSE_STACK_MARGIN = 100
+
+
+def default_max_type_nesting_depth() -> int:
+    """How deep a Terraform type description may nest before it is refused.
+
+    A type description is decoded from a peer's bytes, so its nesting depth is
+    an input rather than a property of this program, and an input that decides
+    how much stack to consume is a denial of service. Unbounded, a 1600-level
+    description spent seventeen seconds and then raised a bare `RecursionError`
+    -- outside the `CtyError` taxonomy, so a caller catching `CtyError` around
+    its decoding did not catch it.
+
+    Derived from the live recursion limit rather than fixed, for the same reason
+    `default_max_validation_depth` is: a limit that outruns the interpreter is
+    not a limit, and a host that raises its recursion limit should get the
+    benefit. Real schemas nest in the tens; this lands in the hundreds.
+    """
+    limit = sys.getrecursionlimit()
+    usable = (limit - TYPE_PARSE_STACK_MARGIN) // FRAMES_PER_TYPE_PARSE_LEVEL
+    return max(1, usable)
+
+
+MAX_TYPE_NESTING_DEPTH = default_max_type_nesting_depth()
+
 # =================================
 # Codec defaults
 # =================================

@@ -366,6 +366,59 @@ def trimsuffix(input_val: CtyValue[Any], suffix_val: CtyValue[Any]) -> CtyValue[
 # `(?i:...)` and so on.
 _CASE_INSENSITIVE = re.compile(r"\(\?[a-zA-Z]*i")
 
+# The same shape, for the multiline flag: `(?m)`, `(?sm)`, `(?m:...)`.
+_MULTILINE = re.compile(r"\(\?[a-zA-Z]*m")
+
+
+def _end_of_text_anchors(pattern: str) -> str:
+    """Rewrite RE2's `$` to the Python spelling that means the same thing.
+
+    RE2's `$` outside `(?m)` matches at the end of the **text**. Python's
+    matches there *or just before a trailing newline* -- Python's own `\\Z` is
+    the RE2 reading. So `regexall("a*$", "\\r\\n")` found two empty matches here,
+    one before the `\\n` and one at the end, against go-cty's one. Found
+    2026-08-22 by the stdlib fuzz; same shape as the `\\w`-is-ASCII divergence
+    above, where a pattern valid in both engines is read differently by each.
+
+    Under `(?m)` the two agree -- both match at the end of every line -- so a
+    pattern that asks for multiline is left exactly as written. `^` needs no
+    rewrite either way: outside `(?m)` both engines match only at the start of
+    the text.
+
+    Only a `$` that is *acting as* the anchor is rewritten: one that is escaped
+    (`\\$`) or inside a character class (`[$]`) is a literal dollar in both
+    engines and is left alone. That is what the scan below is for -- a plain
+    `str.replace` would corrupt both.
+    """
+    if "$" not in pattern or _MULTILINE.search(pattern):
+        return pattern
+
+    out: list[str] = []
+    in_class = False
+    index = 0
+    while index < len(pattern):
+        char = pattern[index]
+        if char == "\\" and index + 1 < len(pattern):
+            # An escape carries its next character through untouched, which is
+            # what keeps `\$` a literal and `\\` from eating the `$` after it.
+            out.append(pattern[index : index + 2])
+            index += 2
+            continue
+        if in_class:
+            # `]` closes the class, except as its first member, where it is a
+            # literal -- the one place Python and RE2 both read `[]]` that way.
+            if char == "]" and out[-1] != "[":
+                in_class = False
+        elif char == "[":
+            in_class = True
+        elif char == "$":
+            out.append(r"\Z")
+            index += 1
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
 
 def _compile_pattern(func: str, pattern: str) -> re.Pattern[str]:
     """Compile with RE2's reading of the Perl character classes.
@@ -398,7 +451,9 @@ def _compile_pattern(func: str, pattern: str) -> re.Pattern[str]:
     """
     flags = 0 if _CASE_INSENSITIVE.search(pattern) else re.ASCII
     try:
-        return re.compile(pattern, flags)
+        # Compiled from the rewritten pattern, but any error reports against the
+        # pattern the caller wrote -- `\Z` is this module's word, not theirs.
+        return re.compile(_end_of_text_anchors(pattern), flags)
     except re.error as e:
         raise CtyFunctionError(ERR_REGEX_INVALID_PATTERN.format(func=func, error=e)) from e
 
