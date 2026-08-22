@@ -2,6 +2,18 @@
 
 This page orients you to what a release changes from a caller's point of view. For the complete, itemized list of every change — the canonical record — see [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md) in the repository root. This page will not duplicate that list; it explains the shape of it.
 
+## 0.5.1
+
+A hardening release, with no new surface. Two external reviews of 0.5.0 were evaluated finding by finding — each one reproduced before anything changed — and acted on. What a caller can notice:
+
+- **Stricter inputs.** `CtyList.validate` refuses a `set` or `frozenset` (its order varied with `PYTHONHASHSEED`, so one configuration serialized to different bytes per process — pass a `list` or `tuple`). `CtyObject.validate` refuses a non-string key instead of `str()`-coercing it, and both object and map refuse two keys that normalize to the same NFC string. A `CtyObject` schema is copied at construction, and an unknown optional name, a non-string attribute name or an NFC-colliding pair of names is refused there rather than on the first `validate`.
+- **Every decode failure is a `CtyError`.** `cty_from_msgpack(b"")` raises `DeserializationError` rather than answering a null (go-cty answers EOF; Terraform core and pyvider's marshaler map an *absent* value to null at their own boundary, so no consumer path reaches the codec with empty bytes). Malformed msgpack raises `DeserializationError` with the library's exception chained, instead of that exception escaping. `except CtyError` around the codec now catches everything.
+- **`convert` and `can_convert_unsafe` agree.** An empty `list(string)` no longer converts to `list(list(string))` when the predicate, and go-cty, refuse.
+- **Wire-type parsing is stricter.** The optional-names element of an object type must be a list of strings, and a third element on any non-object kind is refused as malformed.
+- **Regex.** `regex`/`regexall`/`regexreplace` still run on Python's backtracking `re`, not RE2. That is now recorded as an accepted risk with its assumption — patterns come from operator-written provider configuration — in the [functions guide](../user-guide/advanced/functions.md) and the [go-cty comparison](go-cty-comparison.md). If your patterns come from anywhere less trusted, bound them yourself.
+
+Release mechanics changed underneath: reusable workflows and actions are pinned to commits, the SBOM describes the built wheel and is generated in a read-only job with a pinned generator, a manual dispatch of the release workflow is a real dry run, and 3.12–3.14 run in CI. The itemized list, with migration notes, is in [CHANGELOG.md](https://github.com/provide-io/pyvider-cty/blob/main/CHANGELOG.md).
+
 ## 0.5.0
 
 This release brings `pyvider.cty` to feature parity with go-cty `v1.19.0`. All 83 of go-cty's stdlib functions are implemented and declared through a full Python port of go-cty's own `cty/function` framework (`CtyFunction`, `CtyFunctionSpec`, `CtyParameter`, `CtyArgumentError`, `SIGNATURES`, `STDLIB`), rather than through hand-rolled null/unknown checks that had drifted apart function by function. Alongside the function port, this release adds a refinement builder (`refine()`, `value_range()`, `safe_known_prefix()`), deep traversal (`walk()`, `deep_values()`, `transform()`), grapheme-cluster-aware string handling, and a long list of correctness fixes — most of them in mark handling, null handling, and set semantics.
