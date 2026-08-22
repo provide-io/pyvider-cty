@@ -37,6 +37,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   rather than a 1. Both took Python's last-wins reading and never saw the
   earlier value. Verified against go-cty through the oracle (`cty json
   implied-type` / `unmarshal`), both the refusals and the carve-out. Closes #11.
+- **The dynamic envelope's `type` key follows go-cty's decode order.**
+  go-cty's own decoder parses every `"type"` occurrence in a dynamic-value
+  envelope as it is encountered and fails on the first invalid one -- even
+  when a later occurrence would have been valid. `raw["type"]` only ever saw
+  the final occurrence, so `{"type": ["bogus"], "type": "string", "value":
+  "x"}` decoded to `"x"` here and go-cty refuses it. Found in review of the
+  duplicate-property fix above, which did not touch this path. `value` needed
+  no change: go-cty overwrites it unconditionally with no read-time
+  validation, so last-wins there already matched.
 - **`unify` of maps with objects is two-stage, as go-cty's is.** The objects'
   attribute types unify into one map among themselves first, and only that map
   meets the map types given (`convert/unify.go:192`). Pooling every attribute
