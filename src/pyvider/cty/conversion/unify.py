@@ -293,21 +293,39 @@ def _unify_objects(types: tuple[CtyType[Any], ...], *, has_dynamic: bool) -> Cty
 
 
 def _unify_objects_as_maps(types: tuple[CtyType[Any], ...]) -> CtyType[Any] | None:
-    """Every attribute of every object, unified into one map element type."""
+    """The objects as one map first, then that map against the maps given.
+
+    Two stages, as go-cty's `unifyObjectsAsMaps` (`convert/unify.go:192`): the
+    objects' attribute types unify into a map element type among themselves,
+    and only that map meets the real map types. Pooling every attribute type
+    with every map element type in one unify let a `dynamic` attribute win the
+    pool -- `map(list(string))` + `object({a: string, b: dynamic})` became
+    `map(dynamic)` -- where go-cty unifies the object to `map(string)` first,
+    then finds `list(string)` and `string` share nothing, and refuses.
+    """
+    objects = tuple(t for t in types if isinstance(t, CtyObject))
+    as_map = _unify_object_types_to_map(objects)
+    if as_map is None:
+        return None
+    mapped = tuple(as_map if isinstance(t, CtyObject) else t for t in types)
+    unified = _unify_cached(mapped)
+    return unified if isinstance(unified, CtyMap) else None
+
+
+def _unify_object_types_to_map(objects: tuple[CtyObject, ...]) -> CtyMap[Any] | None:
+    """Every attribute of every object, unified into one map element type.
+
+    go-cty's `unifyObjectTypesToMap`: the fallback for objects whose attribute
+    names differ, and the first stage of unifying objects with maps.
+    """
     from pyvider.cty.conversion.explicit import can_convert_unsafe
 
-    attribute_types: list[CtyType[Any]] = []
-    for candidate in types:
-        if isinstance(candidate, CtyObject):
-            attribute_types.extend(candidate.attribute_types.values())
-        elif isinstance(candidate, CtyMap):
-            attribute_types.append(candidate.element_type)
-
-    element = _unify_cached(tuple(attribute_types))
+    attribute_types = tuple(aty for obj in objects for aty in obj.attribute_types.values())
+    element = _unify_cached(attribute_types)
     if element is None:
         return None
-    result = CtyMap(element_type=element)
-    if any(not t.equal(result) and not can_convert_unsafe(t, result) for t in types):
+    result: CtyMap[Any] = CtyMap(element_type=element)
+    if any(not obj.equal(result) and not can_convert_unsafe(obj, result) for obj in objects):
         return None
     return result
 
