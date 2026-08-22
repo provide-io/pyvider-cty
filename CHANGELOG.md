@@ -28,6 +28,33 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `SerializationError`. Message, `path` and error code are unchanged; the class
   now lives in `pyvider.cty.exceptions.encoding`, still exported from
   `pyvider.cty.exceptions`.
+- **The JSON codec reads a repeated property the way go-cty does.**
+  `implied_json_type` refuses `{"a": 1, "a": "x"}` -- two occurrences implying
+  different types -- with go-cty's `duplicate "a" property in JSON object`, and
+  keeps go-cty 1.16.2's carve-out for a same-typed repeat. `cty_from_json`
+  decodes *every* occurrence against the declared type before keeping the
+  last, so `{"a": "x", "a": 1}` against `object({a: number})` is an error
+  rather than a 1. Both took Python's last-wins reading and never saw the
+  earlier value. Verified against go-cty through the oracle (`cty json
+  implied-type` / `unmarshal`), both the refusals and the carve-out. Closes #11.
+- **The dynamic envelope's `type` key follows go-cty's decode order.**
+  go-cty's own decoder parses every `"type"` occurrence in a dynamic-value
+  envelope as it is encountered and fails on the first invalid one -- even
+  when a later occurrence would have been valid. `raw["type"]` only ever saw
+  the final occurrence, so `{"type": ["bogus"], "type": "string", "value":
+  "x"}` decoded to `"x"` here and go-cty refuses it. Found in review of the
+  duplicate-property fix above, which did not touch this path. `value` needed
+  no change: go-cty overwrites it unconditionally with no read-time
+  validation, so last-wins there already matched.
+- **`unify` of maps with objects is two-stage, as go-cty's is.** The objects'
+  attribute types unify into one map among themselves first, and only that map
+  meets the map types given (`convert/unify.go:192`). Pooling every attribute
+  type with every map element type in one unify let a `dynamic` attribute win:
+  `map(list(string))` + `object({a: string, b: dynamic})` unified to
+  `map(dynamic)` here where go-cty unifies the object to `map(string)` first,
+  finds `list(string)` and `string` share nothing, and refuses. Found by the
+  generated unify sweep against the oracle on 2026-08-22; every other
+  map/object/dynamic mix compared unchanged.
 
 ### Documentation
 
