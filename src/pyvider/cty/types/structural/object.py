@@ -41,7 +41,24 @@ class CtyObject(CtyType[dict[str, object]]):
     optional_attributes: frozenset[str] = field(factory=frozenset, converter=frozenset)
 
     def __attrs_post_init__(self) -> None:
+        # The same two rules `validate` applies to a value's keys, applied to the
+        # schema's names: a non-string name made `validate` fail later with a bare
+        # `TypeError` from `unicodedata.normalize`, and two names that are one
+        # attribute spelled two ways were two attributes that one input key filled.
+        seen: dict[str, str] = {}
         for name, attr_type in self.attribute_types.items():
+            if not isinstance(name, str):
+                raise InvalidTypeError(
+                    f"Object attribute names must be strings, but got name of type {type(name).__name__}",
+                    invalid_type=name,
+                )
+            normalized = unicodedata.normalize("NFC", name)
+            if normalized in seen:
+                raise InvalidTypeError(
+                    f"Attribute names {seen[normalized]!r} and {name!r} normalize to the same NFC string",
+                    invalid_type=name,
+                )
+            seen[normalized] = name
             if not isinstance(attr_type, CtyType):
                 raise InvalidTypeError(
                     f"Attribute '{name}' must be a CtyType, but got {type(attr_type).__name__}"
