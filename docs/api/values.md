@@ -9,7 +9,7 @@ Key concepts:
 - **Marks** - Ability to attach metadata to values without modifying the value itself
 - **Raw value access** - Use the `.raw_value` property to access the underlying Python value
 
-**Creating Values**: You should always create values through type validation (`my_type.validate(data)`) rather than constructing `CtyValue` directly. The validation process ensures type safety and proper initialization.
+**Creating Values**: You should always create values through type validation (`my_type.validate(data)`) rather than constructing `CtyValue` directly. (A directly constructed value is still frozen one level deep — a dict, list or set payload becomes a `FrozenDict`, tuple or frozenset, and `marks` always a frozenset — but only `validate` checks the payload against the type.) The validation process ensures type safety and proper initialization.
 
 **Accessing Data**: Values support Python's standard access patterns - use `value['attr']` for object attributes, `value[index]` for list/tuple elements, and iteration (`for item in list_value`) for collections.
 
