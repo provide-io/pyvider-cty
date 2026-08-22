@@ -126,7 +126,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: provide-io/tofusoup
-          ref: 32c0a10d9683a0cfa5c717f5cfd98de0a9f90fb0  # tofusoup main
+          ref: d6afa28451bed8c3cd201ad0d52bad61c6528b85  # tofusoup #6
           path: tofusoup
 
       # Pinned deliberately, and the pin is load-bearing: go-cty selects
