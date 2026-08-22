@@ -12,6 +12,8 @@ followed `set.go` by hand instead. What stays here is the unknown handling,
 which is the only place the five differ from one another in substance.
 """
 
+from decimal import Decimal
+
 import pytest
 
 from pyvider.cty import (
@@ -36,6 +38,7 @@ from pyvider.cty.values.markers import RefinedUnknownValue
 
 STRING_SET = CtySet(element_type=CtyString())
 NUMBER_SET = CtySet(element_type=CtyNumber())
+ZEROS = [Decimal("0"), Decimal("-0.0")]
 
 
 def S(*elements: str) -> CtyValue[frozenset[object]]:
@@ -327,6 +330,77 @@ class TestSetOperationsWidenTheirElements:
         """
         with pytest.raises(CtyFunctionError):
             setunion(NUMBER_SET.validate([1]), CtySet(element_type=CtyBool()).validate([True]))
+
+
+class TestMembershipIsCtysNotPythons:
+    """Signed zero, the one place Python equality and cty set identity part.
+
+    `Decimal("0") == Decimal("-0.0")` is true, so a Python `frozenset` holds one
+    of them; go-cty hashes the two to different buckets (`makeSetHashBytes`
+    serializes the value, and the two serialize differently), so a go-cty set
+    holds both. `sethaselement` has read membership through `identity_key` since
+    2026-08-16 and carries a comment saying exactly this; the four combining
+    operations went on routing through `frozenset` and collapsed the pair.
+
+    The fuzz sweep found it: `setsymmetricdifference(set(number){0, -0.0})`
+    answered `{0}` here and `{-0, 0}` there.
+    """
+
+    def test_a_set_of_both_zeros_keeps_both(self) -> None:
+        """The premise. CtySet.validate already de-duplicates by identity."""
+        assert len(NUMBER_SET.validate(ZEROS).value) == 2
+
+    def test_symmetric_difference_of_one_set_keeps_both(self) -> None:
+        result = setsymmetricdifference(NUMBER_SET.validate(ZEROS))
+
+        assert len(result.value) == 2
+
+    def test_intersection_of_one_set_keeps_both(self) -> None:
+        result = setintersection(NUMBER_SET.validate(ZEROS))
+
+        assert len(result.value) == 2
+
+    def test_union_of_one_set_keeps_both(self) -> None:
+        result = setunion(NUMBER_SET.validate(ZEROS))
+
+        assert len(result.value) == 2
+
+    def test_subtracting_positive_zero_leaves_negative_zero(self) -> None:
+        """The two are distinct members, so removing one cannot remove the other."""
+        result = setsubtract(NUMBER_SET.validate(ZEROS), NUMBER_SET.validate([Decimal("0")]))
+
+        assert len(result.value) == 1
+        assert str(next(iter(result.value)).value) == "-0.0"
+
+    def test_intersecting_on_positive_zero_excludes_negative_zero(self) -> None:
+        result = setintersection(NUMBER_SET.validate(ZEROS), NUMBER_SET.validate([Decimal("0")]))
+
+        assert len(result.value) == 1
+        assert str(next(iter(result.value)).value) == "0"
+
+    def test_symmetric_difference_against_positive_zero_leaves_negative_zero(self) -> None:
+        result = setsymmetricdifference(NUMBER_SET.validate(ZEROS), NUMBER_SET.validate([Decimal("0")]))
+
+        assert len(result.value) == 1
+        assert str(next(iter(result.value)).value) == "-0.0"
+
+    def test_the_negative_zero_sorts_before_the_positive_one(self) -> None:
+        """go-cty's `Less` ties the pair, so bucket order decides it there.
+
+        `crc32("-0") < crc32("0")`, so the negative zero comes first, and this
+        is the order that reaches the wire. Only observable now that the two
+        survive as separate elements.
+        """
+        both = setsymmetricdifference(NUMBER_SET.validate(ZEROS))
+
+        assert [str(element.value) for element in both.value] == ["-0.0", "0"]
+
+    def test_sethaselement_already_agreed(self) -> None:
+        """The behaviour the other four are being brought in line with."""
+        positive_only = NUMBER_SET.validate([Decimal("0")])
+
+        assert sethaselement(positive_only, CtyNumber().validate(Decimal("0"))).value is True
+        assert sethaselement(positive_only, CtyNumber().validate(Decimal("-0.0"))).value is False
 
 
 # 🌊🪢🔚

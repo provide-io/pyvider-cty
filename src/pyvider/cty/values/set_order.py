@@ -255,6 +255,11 @@ def hash_bytes(value: CtyValue[Any]) -> str:
     return "".join(out)
 
 
+def _is_negative_zero(raw: object) -> bool:
+    """A `Decimal` that is zero and carries a sign. See `order_key`."""
+    return isinstance(raw, Decimal) and raw.is_zero() and raw.is_signed()
+
+
 def order_key(value: object) -> tuple[Any, ...]:
     """Where one element sorts in a set. go-cty's `setRules.Less`.
 
@@ -262,6 +267,23 @@ def order_key(value: object) -> tuple[Any, ...]:
     looks at the type at all. A string, number or bool is then compared
     directly, and everything else by its hash bytes, with the canonical key
     breaking a tie so the order stays total.
+
+    **The signed-zero tie-break**, added 2026-08-22. `Less` compares numbers
+    with `big.Float.Cmp`, which answers 0 for `-0` against `0`, so go-cty's
+    *stable* sort leaves that pair in the order it already had -- bucket order,
+    `crc32(makeSetHashBytes(v))` ascending (`set/ops.go:112`). A signed zero is
+    the only tie this can ever see: two numerically equal `Decimal`s render the
+    same ten significant digits, so they hash alike and are one element, while
+    `-0` renders `"-0"` against `0`'s `"0"` and stays a second element that
+    go-cty keeps. `crc32("-0")` is 1193965756 and `crc32("0")` is 4108050209,
+    so the negative zero sorts first -- confirmed against the live oracle, not
+    inferred. Ranked with a `bool` rather than by reproducing the bucket id,
+    which would cost a hash render and a checksum on every element of every
+    sorted set to change the answer for this one pair.
+
+    Reachable only since the combining set operations stopped collapsing the
+    pair into one element (same day, `_as_set_of`): before that there was never
+    a second zero to order.
     """
     from pyvider.cty.types import CtyBool, CtyDynamic, CtyNumber, CtyString
     from pyvider.cty.values.base import CtyValue as _CtyValue
@@ -281,7 +303,7 @@ def order_key(value: object) -> tuple[Any, ...]:
 
     type_rank = value.type._type_order
     if isinstance(value.type, CtyBool | CtyNumber | CtyString):
-        return (0, type_rank, value.value)
+        return (0, type_rank, value.value, not _is_negative_zero(value.value))
     return (0, type_rank, hash_bytes(value), value._canonical_sort_key())
 
 

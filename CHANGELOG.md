@@ -55,6 +55,46 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   finds `list(string)` and `string` share nothing, and refuses. Found by the
   generated unify sweep against the oracle on 2026-08-22; every other
   map/object/dynamic mix compared unchanged.
+- **The four combining set operations read membership as cty does, not as
+  Python does.** `setintersection`, `setsubtract`, `setsymmetricdifference` and
+  `setunion` collected their arguments into a `frozenset`, which de-duplicates
+  through `CtyValue.__eq__`. cty finds a set element by hash bucket first
+  (`set.Set.Has`), and a positive and a negative zero hash differently while
+  comparing equal -- so `setsymmetricdifference(set(number){0, -0.0})` answered
+  `{0}` here against go-cty's `{-0, 0}`, and `setsubtract({0, -0.0}, {0})` came
+  back *empty* rather than `{-0}`. The set algebra now runs over
+  `identity_key`, which `sethaselement` has used since 2026-08-19 for this
+  exact reason. Found by the stdlib fuzz; the falsifier and six neighbours are
+  pinned in the oracle sweep so a cold CI run cannot miss it again. Keeping
+  both then exposed a second half that the collapse had hidden: the pair also
+  has to be *ordered*. go-cty compares numbers with `big.Float.Cmp`, which ties
+  `-0` against `0`, and its stable sort then leaves the pair in bucket order,
+  so `crc32("-0") < crc32("0")` puts the negative zero first -- confirmed
+  against the oracle. `order_key` ranks it there now. A signed zero is the only
+  tie this can reach, since any two numerically equal `Decimal`s hash alike and
+  are one element.
+- **The dynamic JSON envelope accepts only `type` and `value`.** go-cty's
+  `unmarshalDynamic` ends the decode on any other key with `invalid key %q in
+  dynamically-typed value`; this decoder ignored them, so
+  `{"type":"string","extra":1,"value":"x"}` decoded to `"x"` here and is
+  refused there. The refusal is raised from inside the key loop as go-cty's is,
+  so it competes with an invalid type descriptor by document order, and both
+  outrank the missing-`type` and missing-`value` checks that follow the loop.
+  Those two are now reported separately, matching go-cty's wording, in place of
+  one combined "must be an object with 'value' and 'type'" -- which still
+  covers an envelope that is not an object at all. A `value` that is present
+  and JSON null is unchanged: it is a null of the declared type, not a missing
+  value.
+- **`$` in a regex pattern is end-of-text, as RE2 reads it.** Python's `$` also
+  matches just before a *trailing* newline; RE2's, outside `(?m)`, does not --
+  Python's own `\Z` is the RE2 reading. So `regexall("a*$", "\r\n")` found two
+  empty matches here against go-cty's one, and `regexreplace("ab\n", "b$", "X")`
+  replaced where go-cty leaves the string alone. `regex`, `regexall` and
+  `regexreplace` now compile the anchor as `\Z`; an escaped `\$` or one inside
+  a character class stays a literal, and a pattern that asks for `(?m)` is left
+  as written, because there the two engines already agree. Same shape as the
+  `\w`-is-ASCII divergence this module already carried. Found by the stdlib
+  fuzz, and pinned in the oracle sweep alongside five neighbours.
 
 ### Documentation
 
