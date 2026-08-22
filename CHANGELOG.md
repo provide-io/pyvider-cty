@@ -5,7 +5,68 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Reading out of a marked container keeps the marks.** `marked_list[0]`,
+  `marked_map["k"]`, `marked_object.a`, `marked_tuple[0]`, a list or tuple
+  slice, and `for element in marked_container` all handed back an *unmarked*
+  value. A mark is how sensitivity travels, and `cty_to_msgpack` refuses a
+  marked value -- so the codec rejected the container while cheerfully writing
+  the secret a subscript had just pulled out of it. go-cty's `Value.Index`
+  (`cty/value_ops.go:866`) and `Value.GetAttr` (`:819`) each open by unmarking
+  the receiver, taking the access and putting the marks back; `CtyValue`
+  does the same now, once at the top of `__getitem__` and `__iter__`, guarded
+  so an unmarked value pays a frozenset truth test. Marks accumulate rather
+  than replace, so an element's own marks survive alongside the container's.
+- **Rebuilding a marked container keeps the marks.** `with_key`,
+  `without_key`, `append` and `with_element_at` each hand a fresh payload to
+  `validate`, which returns an unmarked value -- marks live on the `CtyValue`,
+  not inside the payload. Changing what a container holds does not change
+  whether it is sensitive. `without_key` on an absent key already returned
+  `self` untouched, marks and all; the four agree now.
+- **A path step returns the value it selected, whole.** Stepping through a
+  `dynamic` wrapper rebuilt its answer as `CtyValue(result.type, result.value)`
+  -- two of the five fields a `CtyValue` carries. A null came back as
+  `is_null=False, value=None`, an unknown as `is_unknown=False,
+  value=UNREFINED_UNKNOWN`, and a refined unknown as a known value whose
+  payload was the refinement object; none of the three is a value this library
+  can represent, so a consumer reading `is_null` believed a null was a present
+  value holding `None`. `IndexStep` and `KeyStep` both had the line. Marks are
+  now applied in `PathStep.apply` itself, which unmarks, delegates to `_apply`
+  and remarks, so no step can forget -- `KeyStep._apply_to_set` was the only
+  one that had got it right.
+- **`GetAttrStep` steps through a `dynamic` wrapper.** `IndexStep` and
+  `KeyStep` both did, so an element of a list inside a wrapper was reachable by
+  path while an attribute of an object inside one raised
+  `AttributePathError`. `apply_type` answers `dynamic` for a dynamic receiver
+  there too, as the other two steps already did. A *wholly unknown* `dynamic`
+  is answered as well: it has no inner value to step into, and `IndexStep` and
+  `KeyStep` both hand back an unknown where this raised, so a type could be
+  walked where the value it described could not. An unknown `object` is
+  untouched and still answers with an unknown of the attribute's own type.
+- **A set is traversed by cty identity, not Python equality.** A set element
+  keys itself, and `KeyStep` looked it up with `in` -- but `Decimal("-0") ==
+  Decimal("0")`, so a path of `[0]` into `toset([-0])` matched the negative
+  zero and handed back the positive one. go-cty hashes the two to `-0` and `0`
+  and keeps them as separate members with separate paths, which `CtySet.validate`
+  already followed via `set_order.identity_key`; the lookup follows it now too,
+  and returns the member the set actually holds.
+- **A marked path key finds its element, and marks what it finds.** Looking up
+  a set element by a marked key found nothing at all -- `identity_key` strips
+  marks, as go-cty's hashing does, so a marked key asks after the same element
+  -- and a marked *unknown* key came back as an unmarked unknown, dropping the
+  sensitivity outright. The key is unmarked before the lookup and its marks go
+  onto the answer, alongside the receiver's.
+
 ### Changed
+
+- **`PathStep` subclasses implement `_apply` rather than `apply`.** `apply` is
+  now a template method that carries the receiver's marks onto whatever a step
+  selects, so no step can forget to. `PathStep` is exported, so a subclass
+  outside this package that implements the older public `apply` is bridged
+  rather than broken: its method becomes `_apply`, the base class supplies
+  `apply`, and it gains the mark handling it was written too early to have,
+  with a `DeprecationWarning` at class creation.
 
 - **A directly constructed `CtyValue` is frozen one level deep.** `validate`
   has returned a `FrozenDict` or a tuple since 0.5.0, but
