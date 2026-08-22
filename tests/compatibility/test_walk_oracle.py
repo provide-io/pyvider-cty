@@ -19,6 +19,7 @@ traversal rebuilds*, with the rewrite held fixed.
 
 from __future__ import annotations
 
+from decimal import Decimal
 import json
 from typing import Any
 
@@ -45,6 +46,7 @@ S = CtyString()
 N = CtyNumber()
 STRINGS = CtyList(element_type=S)
 STRING_SET = CtySet(element_type=S)
+NUMBER_SET = CtySet(element_type=N)
 STRING_MAP = CtyMap(element_type=S)
 PAIR = CtyObject(attribute_types={"a": S, "b": N})
 NESTED = CtyObject(attribute_types={"inner": STRINGS})
@@ -63,6 +65,13 @@ CASES: list[tuple[str, CtyType[Any], CtyValue[Any]]] = [
     ("an unknown list", STRINGS, CtyValue.unknown(STRINGS)),
     ("a list holding a null", STRINGS, STRINGS.validate(["a", CtyValue.null(S)])),
     ("a set", STRING_SET, STRING_SET.validate(["b", "a"])),
+    # A set of numbers, and the pair of them go-cty keeps apart while Python's
+    # `==` does not: `Decimal("-0") == Decimal("0")`, but `makeSetHashBytes`
+    # writes `-0` and `0`, so the oracle visits *two* elements and gives each
+    # its own path. Only string sets were covered here, and in a string set the
+    # two relations agree, so nothing in the suite ever told them apart.
+    ("a set of numbers", NUMBER_SET, NUMBER_SET.validate([1, 2])),
+    ("a set holding both zeros", NUMBER_SET, NUMBER_SET.validate([Decimal("-0"), Decimal("0")])),
     ("a map", STRING_MAP, STRING_MAP.validate({"b": "2", "a": "1"})),
     ("an object", PAIR, PAIR.validate({"a": "x", "b": 1})),
     # Declared out of order, and built out of order, because both orders are
@@ -97,6 +106,51 @@ def test_the_visit_order_and_paths_agree(label: str, cty_type: CtyType[Any], val
 
     here = [visit_form(path, visited) for path, visited in deep_values(value)]
     assert here == [canonical(visit) for visit in theirs["visits"]], label
+
+
+@pytest.mark.parametrize(("label", "cty_type", "value"), CASES, ids=IDS)
+def test_every_path_the_oracle_emits_leads_back_to_what_it_visited(
+    label: str, cty_type: CtyType[Any], value: CtyValue[Any]
+) -> None:
+    """A path is only worth what re-applying it gets you.
+
+    The tests above check paths going *out* -- the ones this walk emits against
+    the ones go-cty emits. Nothing checked them coming back *in*, so
+    `KeyStep._apply_to_set` was unverified against the oracle entirely, and a
+    set element's path is the one case where applying a path is more than
+    bookkeeping: the step holds the element itself and has to find it again.
+
+    That is how a real defect survived a green suite. The lookup used Python
+    `==`, under which `Decimal("-0") == Decimal("0")`, so the two paths the
+    oracle emits for `set{-0, 0}` both led to the positive zero -- one of them
+    to an element that is not the one it names. Only string sets were covered,
+    and there the two relations agree.
+
+    The round trip is *up to the marks an ancestor contributes*, because in
+    go-cty these two operations are deliberately not inverses. `Walk` descends
+    through the unmarked container, so it visits a bare child; `Index` and
+    `GetAttr` (`cty/value_ops.go:866` and `:819`) unmark, take the step and put
+    the marks back, so applying the same path hands back a marked one. Asked of
+    the oracle rather than assumed::
+
+        soup-go cty walk --type '["list","string"]' '{"$marks":["sensitive"],"$value":["a"]}'
+        "visits":[{"path":[],...}, {"path":[{"index":0}], "value":"a"}]
+
+    The child is visited as a bare `"a"`. A marked *leaf* keeps its own mark
+    there, which is what the second assertion holds on to.
+    """
+    theirs = traversal_answer("walk", cty_type, value)
+
+    for path, visited in deep_values(value):
+        applied = path.apply_path(value)
+        assert applied.unmark()[0] == visited.unmark()[0], f"{label}: {path.string()}"
+        # The visited value's own marks are never lost on the way back in; the
+        # applied value may carry more, contributed by the containers traversed.
+        assert visited.marks <= applied.marks, f"{label}: {path.string()}"
+
+    # And the count the *oracle* reported, not only what this walk produced, so
+    # the trip is anchored to go-cty's spelling of a set element's path.
+    assert len(list(deep_values(value))) == len(theirs["visits"]), label
 
 
 @pytest.mark.parametrize(("label", "cty_type", "value"), CASES, ids=IDS)

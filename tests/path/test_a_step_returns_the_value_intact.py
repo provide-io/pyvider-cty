@@ -207,6 +207,21 @@ class TestASetIsKeyedByCtyIdentity:
     def test_an_unmarked_key_leaves_the_element_alone(self) -> None:
         assert CtyPath.key(S.validate("x")).apply_path(SET.validate(["x"])).marks == frozenset()
 
+    def test_an_unfound_key_is_unknown_when_the_set_holds_an_unknown(self) -> None:
+        """One of the unknowns could still turn out to be the element asked for,
+        so "absent" would assert more than the data supports."""
+        partly = SET.validate(["x", CtyValue.unknown(S)])
+        assert CtyPath.key(S.validate("absent")).apply_path(partly).is_unknown
+
+    def test_that_unknown_carries_the_keys_marks_too(self) -> None:
+        partly = SET.validate(["x", CtyValue.unknown(S)])
+        selected = CtyPath.key(S.validate("absent").mark(SENSITIVE)).apply_path(partly)
+        assert selected.is_unknown
+        assert selected.marks == frozenset({SENSITIVE})
+
+    def test_the_step_types_a_set_as_its_element_type(self) -> None:
+        assert CtyPath.key(S.validate("x")).apply_path_type(SET).equal(S)
+
     def test_a_key_that_is_not_a_cty_value_matches_nothing(self) -> None:
         """As before: `CtyValue.__eq__` returns `NotImplemented` against a raw
         operand, so a bare `"x"` never matched an element either."""
