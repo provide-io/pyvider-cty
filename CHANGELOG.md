@@ -16,6 +16,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   rather than a 1. Both took Python's last-wins reading and never saw the
   earlier value. Verified against go-cty through the oracle (`cty json
   implied-type` / `unmarshal`), both the refusals and the carve-out. Closes #11.
+- **`unify` of maps with objects is two-stage, as go-cty's is.** The objects'
+  attribute types unify into one map among themselves first, and only that map
+  meets the map types given (`convert/unify.go:192`). Pooling every attribute
+  type with every map element type in one unify let a `dynamic` attribute win:
+  `map(list(string))` + `object({a: string, b: dynamic})` unified to
+  `map(dynamic)` here where go-cty unifies the object to `map(string)` first,
+  finds `list(string)` and `string` share nothing, and refuses. Found by the
+  generated unify sweep against the oracle on 2026-08-22; every other
+  map/object/dynamic mix compared unchanged.
 
 ## [0.5.1] - 2026-08-21
 
