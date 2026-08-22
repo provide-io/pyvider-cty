@@ -56,6 +56,7 @@ dev = [
     # fails the whole resolution rather than skipping the profiler.
     "memray>=1.0; sys_platform != 'emscripten' and sys_platform != 'win32'",
     "provide-testkit[standard]>=0.4.0",
+    "pytest-benchmark>=5.2.3",
 ]
 docs = [
     "provide-testkit[docs]>=0.4.0",

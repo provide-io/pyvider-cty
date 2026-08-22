@@ -12,11 +12,15 @@
 # Usage: scripts/sbom_from_wheel.sh <dist-dir> <output-file>
 set -euo pipefail
 
+# Pinned: this runs code fetched from PyPI inside the release workflow. Bump
+# deliberately, and re-run the script locally against a fresh `uv build` first.
+CYCLONEDX_BOM_VERSION="7.3.1"
+
 DIST_DIR="${1:?usage: sbom_from_wheel.sh <dist-dir> <output-file>}"
 OUT="${2:?usage: sbom_from_wheel.sh <dist-dir> <output-file>}"
 
 VENV="$(mktemp -d)/sbom-venv"
 uv venv --quiet "$VENV"
 uv pip install --quiet --python "$VENV/bin/python" "$DIST_DIR"/*.whl
-uvx --from cyclonedx-bom cyclonedx-py environment "$VENV/bin/python" --output-format json -o "$OUT"
+uvx --from "cyclonedx-bom==${CYCLONEDX_BOM_VERSION}" cyclonedx-py environment "$VENV/bin/python" --output-format json -o "$OUT"
 echo "SBOM written to $OUT"
