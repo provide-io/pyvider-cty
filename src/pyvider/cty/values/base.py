@@ -421,7 +421,34 @@ class CtyValue(Generic[T]):
         error_message = ERR_VALUE_TYPE_NOT_COMPARABLE.format(type=self.type)
         raise TypeError(error_message)
 
+    def _through_dynamic(self) -> CtyValue[Any] | None:
+        """The concrete value inside a known `dynamic` wrapper, or None.
+
+        A `dynamic` position holds the value it was given, and every operation
+        that treats a value as a container has to look through the wrapper to
+        find one. `__len__` and `__bool__` each did this inline and `__getitem__`
+        and `__iter__` did not, so `len(wrapper)` answered while `wrapper[0]` and
+        `list(wrapper)` raised `TypeError` on the very same value. Path traversal
+        looks through a wrapper as of the mark fix, which left the direct façade
+        as the odd one out.
+
+        Answers None for a null or unknown `dynamic`: neither holds an inner
+        `CtyValue`, so there is nothing to look through to and the caller's own
+        null and unknown handling is the right answer.
+        """
+        from pyvider.cty.types import CtyDynamic
+
+        if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
+            return self.value
+        return None
+
     def __contains__(self, item: Any) -> bool:
+        # No `_through_dynamic` here, and none is needed: a wrapper's payload
+        # *is* a `CtyValue`, so `item in self.value` below already delegates to
+        # the inner value's own `__contains__`. A raw operand finds nothing in a
+        # list or set either way -- the elements are `CtyValue`s and a bare
+        # `"a"` is not equal to one -- but that is true of a plain container
+        # too, so it is not the wrapper's doing.
         if self.is_unknown or self.is_null:
             return False
         if hasattr(self.value, "__contains__"):
@@ -429,22 +456,22 @@ class CtyValue(Generic[T]):
         return bool(self.value == item)
 
     def __bool__(self) -> bool:
-        from pyvider.cty.types import CtyDynamic
-
         if self.is_unknown or self.is_null:
             return False
-        if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
-            return bool(self.value)
+        inner = self._through_dynamic()
+        if inner is not None:
+            return bool(inner)
         return True
 
     def __len__(self) -> int:
-        from pyvider.cty.types import CtyDynamic, CtyList, CtyMap, CtySet, CtyTuple
+        from pyvider.cty.types import CtyList, CtyMap, CtySet, CtyTuple
 
         if self.is_unknown:
             error_message = ERR_CANNOT_GET_LENGTH_UNKNOWN_VALUE
             raise TypeError(error_message)
-        if isinstance(self.vtype, CtyDynamic) and isinstance(self.value, CtyValue):
-            return len(self.value)
+        inner = self._through_dynamic()
+        if inner is not None:
+            return len(inner)
         if self.is_null:
             return 0
         if isinstance(self.vtype, CtyList | CtyMap | CtySet | CtyTuple) and hasattr(self.value, "__len__"):
@@ -475,6 +502,11 @@ class CtyValue(Generic[T]):
         if self.is_unknown:
             error_message = ERR_CANNOT_ITERATE_UNKNOWN_VALUE
             raise TypeError(error_message)
+        inner = self._through_dynamic()
+        if inner is not None:
+            # `len()` on the same wrapper already answered, so refusing here was
+            # not a policy about dynamic values, just a missing branch.
+            return iter(inner)
         if self.is_null:
             return iter([])
         if isinstance(self.vtype, CtyList | CtySet | CtyTuple) and hasattr(self.value, "__iter__"):
@@ -485,25 +517,16 @@ class CtyValue(Generic[T]):
         error_message = ERR_VALUE_TYPE_NOT_ITERABLE.format(type_name=self.vtype.__class__.__name__)
         raise TypeError(error_message)
 
-    def __getitem__(self, key: Any) -> CtyValue[Any]:
+    def _select(self, key: Any) -> CtyValue[Any]:
+        """The container-kind dispatch of `__getitem__`, on a plain receiver.
+
+        Split out so the guards above it -- marks, the `dynamic` wrapper, null
+        and unknown -- stay readable as the sequence they are, and so that
+        adding the wrapper branch did not push one function past the complexity
+        limit purely by stacking preconditions in front of a dispatch table.
+        """
         from ..types import CtyList, CtyMap, CtyObject, CtyTuple
 
-        if self.marks:
-            # go-cty's `Value.Index` (`cty/value_ops.go:866`) and `Value.GetAttr`
-            # (`:819`) each open the same way -- unmark the receiver, take the
-            # access, put the marks back -- so a mark on a container is a mark on
-            # every value read out of it. That is how sensitivity travels, and
-            # dropping it here handed back a value `cty_to_msgpack` would write
-            # to the wire when it refuses the container it came from.
-            #
-            # Guarded rather than unconditional because `unmark` copies the whole
-            # value and a subscript is hot; an unmarked one pays a frozenset
-            # truth test. The recursion terminates at once: `unmarked` has none.
-            unmarked, marks = self.unmark()
-            return unmarked[key].with_marks(marks)
-        if self.is_unknown or self.is_null:
-            error_message = ERR_CANNOT_INDEX_UNKNOWN_NULL_VALUE
-            raise TypeError(error_message)
         if isinstance(self.vtype, CtyObject):
             if not isinstance(key, str):
                 raise TypeError(f"Object attribute name must be a string, got {type(key).__name__}")
@@ -520,6 +543,32 @@ class CtyValue(Generic[T]):
             return self.vtype.get(self, key)  # type: ignore[arg-type]
         error_message = ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE.format(type_name=self.vtype.__class__.__name__)
         raise TypeError(error_message)
+
+    def __getitem__(self, key: Any) -> CtyValue[Any]:
+        if self.marks:
+            # go-cty's `Value.Index` (`cty/value_ops.go:866`) and `Value.GetAttr`
+            # (`:819`) each open the same way -- unmark the receiver, take the
+            # access, put the marks back -- so a mark on a container is a mark on
+            # every value read out of it. That is how sensitivity travels, and
+            # dropping it here handed back a value `cty_to_msgpack` would write
+            # to the wire when it refuses the container it came from.
+            #
+            # Guarded rather than unconditional because `unmark` copies the whole
+            # value and a subscript is hot; an unmarked one pays a frozenset
+            # truth test. The recursion terminates at once: `unmarked` has none.
+            unmarked, marks = self.unmark()
+            return unmarked[key].with_marks(marks)
+        inner = self._through_dynamic()
+        if inner is not None:
+            # Before the null/unknown guard, because a wrapper holding an inner
+            # value is itself neither, and the guard would never have fired.
+            # `CtyPath` already steps through a wrapper; this is the same move
+            # for the direct subscript.
+            return inner[key]
+        if self.is_unknown or self.is_null:
+            error_message = ERR_CANNOT_INDEX_UNKNOWN_NULL_VALUE
+            raise TypeError(error_message)
+        return self._select(key)
 
     def __hash__(self) -> int:
         """A hash for **every** value, containers included, as of 2026-08-17.
