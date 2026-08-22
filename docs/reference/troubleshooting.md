@@ -451,7 +451,7 @@ except DeserializationError as e:
 - Verify the MessagePack data is not corrupted
 - Ensure the same schema is used for serialization and deserialization
 - Check data was actually serialized with cty_to_msgpack
-- Catch `Exception` (or both `DeserializationError` and the `msgpack` package's exceptions) if you need to handle every decode failure uniformly
+- Catch `DeserializationError` for malformed bytes, or `CtyError` if the same handler should also catch decoded values that fail schema validation
 
 ---
 
