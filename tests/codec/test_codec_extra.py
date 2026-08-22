@@ -65,9 +65,11 @@ def test_incorrect_container_type_raises_error() -> None:
             CtyList(element_type=CtyString()),
         )
 
+    # A list payload is a tuple by construction (`CtyValue` freezes a raw
+    # payload one level deep), so the wrong shape here has to be a non-sequence.
     with pytest.raises(TypeError, match="Value for CtyTuple must be a tuple"):
         _convert_value_to_serializable(
-            CtyValue(CtyTuple(element_types=(CtyString(),)), ["not", "a", "tuple"]),
+            CtyValue(CtyTuple(element_types=(CtyString(),)), 123),
             CtyTuple(element_types=(CtyString(),)),
         )
 
