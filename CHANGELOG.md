@@ -5,7 +5,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **The JSON codec reads a repeated property the way go-cty does.**
+  `implied_json_type` refuses `{"a": 1, "a": "x"}` -- two occurrences implying
+  different types -- with go-cty's `duplicate "a" property in JSON object`, and
+  keeps go-cty 1.16.2's carve-out for a same-typed repeat. `cty_from_json`
+  decodes *every* occurrence against the declared type before keeping the
+  last, so `{"a": "x", "a": 1}` against `object({a: number})` is an error
+  rather than a 1. Both took Python's last-wins reading and never saw the
+  earlier value. Verified against go-cty through the oracle (`cty json
+  implied-type` / `unmarshal`), both the refusals and the carve-out. Closes #11.
 
 ## [0.5.1] - 2026-08-21
 
