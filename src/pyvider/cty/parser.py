@@ -13,6 +13,7 @@ from provide.foundation.errors import error_boundary
 from pyvider.cty.config.defaults import (
     TYPE_KIND_LIST,
     TYPE_KIND_MAP,
+    TYPE_KIND_OBJECT,
     TYPE_KIND_SET,
 )
 from pyvider.cty.exceptions import CtyValidationError
@@ -66,14 +67,13 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
         # for a schema that declares optional object attributes.
         if isinstance(tf_type, list) and len(tf_type) in (2, 3):
             type_kind, type_spec = tf_type[0], tf_type[1]
-            optional_names = tf_type[2] if len(tf_type) == 3 else ()
-            # go-cty decodes this element as `[]string`. Fed straight to
-            # `frozenset`, the string "ab" became the two optional names a and b.
-            if not isinstance(optional_names, list | tuple) or not all(
-                isinstance(n, str) for n in optional_names
-            ):
+            # go-cty writes the third element for object types only. Before the
+            # kind dispatch this check refused `["list", "string", "junk"]` with a
+            # message about *object* optional names and let `["list", "string",
+            # ["a"]]` through with the extra element silently dropped.
+            if len(tf_type) == 3 and type_kind != TYPE_KIND_OBJECT:
                 raise CtyValidationError(
-                    f"Object optional attribute names must be a list of strings, got {optional_names!r}"
+                    f"Type {type_kind!r} has a third element; only an object type carries a third element"
                 )
 
             # Handle collection types where the spec is a single type
@@ -94,10 +94,19 @@ def parse_tf_type_to_ctytype(tf_type: Any) -> CtyType[Any]:  # noqa: C901
                         raise CtyValidationError(
                             f"Object type spec must be a dictionary, got {type(type_spec).__name__}"
                         )
+                    optional_names = tf_type[2] if len(tf_type) == 3 else ()
+                    # go-cty decodes this element as `[]string`. Fed straight to
+                    # `frozenset`, the string "ab" became the two optional names a and b.
+                    if not isinstance(optional_names, list | tuple) or not all(
+                        isinstance(n, str) for n in optional_names
+                    ):
+                        raise CtyValidationError(
+                            f"Object optional attribute names must be a list of strings, got {optional_names!r}"
+                        )
                     attr_types = {name: parse_tf_type_to_ctytype(spec) for name, spec in type_spec.items()}
                     return CtyObject(
                         attribute_types=attr_types,
-                        optional_attributes=frozenset(optional_names or ()),
+                        optional_attributes=frozenset(optional_names),
                     )
                 case "tuple":
                     if not isinstance(type_spec, list):
