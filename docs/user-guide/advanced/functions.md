@@ -85,6 +85,8 @@ assert user.value == "bob"
 assert domain.value == "example.com"
 ```
 
+All three regex functions run on Python's `re`, which backtracks, rather than go-cty's RE2, which is linear-time. A pattern like `(a+)+$` against a long non-matching string can take exponential time, and `re` has no timeout to cap it. This is accepted on the assumption that patterns come from provider configuration written by the operator running Terraform — the same trust as every other expression in that configuration. If your code evaluates patterns from a less trusted source (a remote API, end-user input), bound them yourself with an allow-list or a process-level timeout; the library does not. The [go-cty comparison](../../reference/go-cty-comparison.md) lists the other ways `re` and RE2 differ.
+
 `indent` takes a *number of spaces*, not a prefix string, and only indents lines after the first — it exists to line a multi-line value up under something already on the line above it, not to indent a block uniformly.
 
 ### Collection Functions
