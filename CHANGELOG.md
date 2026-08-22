@@ -5,7 +5,38 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **A directly constructed `CtyValue` is frozen one level deep.** `validate`
+  has returned a `FrozenDict` or a tuple since 0.5.0, but
+  `CtyValue(vtype, {"a": ...})` kept the caller's dict -- aliased, mutable
+  through `value.value`, its hash changing under the caller's later edits --
+  and a `set` passed as `marks` stayed a set and made `hash(value)` raise. The
+  constructor now turns a dict, list or set payload into a `FrozenDict`, tuple
+  or frozenset (a capsule's payload and a `dynamic` wrapper are left alone; an
+  already-frozen payload is not copied) and `marks` is always a frozenset. The
+  documented "always construct through `validate`" is a guard now rather than
+  a caveat. Code that compared a hand-built value's payload to a list gets a
+  tuple; four tests in this repository did. Cost on the hot path is two
+  `type()` lookups per value, about 45 ns; `make perf-report` against the
+  previous release is within noise (the first cut of this check was not --
+  a quarter of `validate` on a 20k-element map -- and was measured down).
+- **`CtyMarksSerializationError` is a `SerializationError`.** It was a direct
+  `CtyError` subclass, so `except SerializationError` around `cty_to_msgpack`
+  let the one serialization failure a provider is most likely to hit straight
+  through -- while the serialization guide called it "the more specific"
+  `SerializationError`. Message, `path` and error code are unchanged; the class
+  now lives in `pyvider.cty.exceptions.encoding`, still exported from
+  `pyvider.cty.exceptions`.
+
+### Documentation
+
+- The troubleshooting page's malformed-msgpack example caught `Exception` and
+  said the msgpack library's exception escapes; the interop page caught
+  `Exception` for a known `CtyMarksSerializationError`; the go-cty comparison's
+  baseline sentence and `scripts/compat/run_compat.py` carried hand-copied
+  differential-suite counts two rounds stale; the function-call diagram still
+  named `_unwrap_dynamic`. All fixed, the diagram re-rendered.
 
 ## [0.5.1] - 2026-08-21
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 from pyvider.cty.exceptions.base import (
     CtyError,
     CtyFunctionError,
-    CtyMarksSerializationError,
 )
 from pyvider.cty.exceptions.conversion import (
     CtyConversionError,
@@ -18,6 +17,7 @@ from pyvider.cty.exceptions.conversion import (
 )
 from pyvider.cty.exceptions.encoding import (
     AttributePathError,
+    CtyMarksSerializationError,
     DeserializationError,
     DynamicValueError,
     EncodingError,

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Set as AbstractSet
+from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -31,6 +32,7 @@ from pyvider.cty.config.defaults import (
     ERR_VALUE_TYPE_NOT_ITERABLE,
     ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE,
 )
+from pyvider.cty.values.frozen import FrozenDict
 from pyvider.cty.values.markers import UNREFINED_UNKNOWN
 
 T = TypeVar("T", covariant=True)
@@ -67,6 +69,18 @@ _CtyString: Any = None
 _CtyBool: Any = None
 _CtyCapsule: Any = None
 _CtyCapsuleWithOps: Any = None
+
+
+# The payload types the constructor turns into their immutable counterparts,
+# and the types construction sees constantly, for which the `isinstance`
+# fallback (which also catches a dict/list/set *subclass*) is skipped. Two
+# frozenset lookups on the hot path, about 45 ns per value; the first version
+# of this check cost a quarter of `validate` on a 20k-element map.
+_RAW_MUTABLE: tuple[type, ...] = (dict, list, set)
+_RAW_MUTABLE_TYPES: frozenset[type] = frozenset(_RAW_MUTABLE)
+_PLAIN_PAYLOAD_TYPES: frozenset[type] = frozenset(
+    {str, bool, int, float, bytes, tuple, frozenset, FrozenDict, Decimal, type(None)}
+)
 
 
 def _bind_types() -> None:
@@ -121,17 +135,23 @@ class CtyValue(Generic[T]):
     value: object | None = field(default=None)
     is_unknown: bool = field(default=False)
     is_null: bool = field(default=False)
+    # Always a frozenset once constructed: a `set` passed here stayed a set --
+    # aliased to the caller, mutable, and `hash(value)` raised. Frozen in
+    # `__attrs_post_init__` rather than by a `converter`, which would put a
+    # Python frame on every construction; the check there is one `type() is`.
     marks: frozenset[Any] = field(default=frozenset())
 
     # Memo for `collect_marks_deep`, filled on first ask. Excluded from init,
     # equality, hashing and repr: it is derived state, not part of the value.
     #
     # Only filled when that walk proves the whole subtree immutable. Freezing
-    # this class freezes the reference to `value`, not what `value` points at:
-    # maps and objects hold a plain dict, and `validate` accepts raw lists. A
-    # memo taken over one of those could be left under-reporting marks by an
-    # in-place mutation, which is the silent declassification the mark machinery
-    # exists to prevent. See `pyvider.cty.marks._walk_marks`.
+    # this class freezes the reference to `value`, not what `value` points at.
+    # `__attrs_post_init__` freezes a raw payload one level deep (dict to
+    # `FrozenDict`, list to tuple, set to frozenset), but a raw structure
+    # handed straight to the constructor can still hold mutable things below
+    # that level. A memo taken over one of those could be left under-reporting
+    # marks by an in-place mutation, which is the silent declassification the
+    # mark machinery exists to prevent. See `pyvider.cty.marks._walk_marks`.
     _deep_marks: frozenset[Any] | None = field(default=None, init=False, eq=False, repr=False)
 
     # Memo for `_strip`, filled on first ask and under the same immutability
@@ -159,6 +179,39 @@ class CtyValue(Generic[T]):
             # bare `c0` where go-cty writes `[type, value]`. Reading that back,
             # go-cty answers `type=dynamic` against its own `type=string`.
             object.__setattr__(self, "value", None)
+
+        # One frozenset lookup for the payload types construction sees constantly;
+        # the rest of the test runs only for anything else.
+        payload_type = type(self.value)
+        if payload_type not in _PLAIN_PAYLOAD_TYPES and (
+            payload_type in _RAW_MUTABLE_TYPES or isinstance(self.value, _RAW_MUTABLE)
+        ):
+            self._freeze_raw_payload()
+        if type(self.marks) is not frozenset:
+            object.__setattr__(self, "marks", frozenset(self.marks))
+
+    def _freeze_raw_payload(self) -> None:
+        """Make a payload handed straight to the constructor as immutable as `validate`'s.
+
+        `validate` has returned a `FrozenDict` or a tuple since 0.5.0, but
+        `CtyValue(vtype, {"a": ...})` kept the caller's dict: aliased, mutable
+        through `value.value`, and the hash of a value already used as a key
+        changed under the caller's later edits. Shallow, on purpose -- a
+        validated payload's elements are themselves `CtyValue`s, so one level is
+        the whole contract, and a deep walk on every construction is the hot
+        path. Already-frozen payloads are not copied. A capsule's payload is an
+        arbitrary Python object and is left exactly as given.
+        """
+        payload = self.value
+        if isinstance(self.vtype, _CtyCapsule):
+            return
+        if isinstance(payload, dict):
+            if not isinstance(payload, FrozenDict):
+                object.__setattr__(self, "value", FrozenDict(payload))
+        elif isinstance(payload, list):
+            object.__setattr__(self, "value", tuple(payload))
+        elif isinstance(payload, set):
+            object.__setattr__(self, "value", frozenset(payload))
 
     def _dynamic_wrapper(self) -> bool:
         """Whether this value is a `dynamic` standing in front of a concrete one."""
@@ -720,6 +773,10 @@ class CtyValue(Generic[T]):
     @classmethod
     def null(cls, vtype: CtyType[Any]) -> CtyValue[Any]:
         return cls(vtype=vtype, is_null=True)
+
+
+# A `dynamic` wrapper's payload is a `CtyValue`; known-immutable, skip the fallback.
+_PLAIN_PAYLOAD_TYPES = _PLAIN_PAYLOAD_TYPES | {CtyValue}
 
 
 def _member_key(member: object) -> tuple[Any, ...]:

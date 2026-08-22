@@ -274,6 +274,47 @@ class SerializationError(EncodingError):
         super().__init__(message, value, format_name, **kwargs)
 
 
+class CtyMarksSerializationError(SerializationError):
+    """Raised when a value carrying marks is serialized.
+
+    Marks have no wire representation. `tfplugin6.DynamicValue` carries only
+    `msgpack` and `json` -- there is no channel for them -- so serializing a
+    marked value would silently drop the flag and hand Terraform a sensitive
+    value it no longer knows is sensitive.
+
+    go-cty refuses the same way (`cty/msgpack/marshal.go`: "value has marks, so
+    it cannot be serialized"), and for the same reason: dropping a mark is not
+    a degradation the caller can detect, so it has to be an error rather than a
+    silent success.
+
+    Sensitivity reaches Terraform through the *schema* -- `Schema.Attribute.
+    sensitive` -- not through the value, so unmark before serializing.
+
+    A `SerializationError`, so `except SerializationError` around a codec call
+    catches it; it was a direct `CtyError` subclass, and the one serialization
+    failure a provider is most likely to hit slipped past that handler.
+
+    Attributes:
+        message: A human-readable error description
+        path: Where in the value the mark was found, if known
+    """
+
+    def __init__(
+        self,
+        message: str = "value has marks, so it cannot be serialized",
+        *,
+        path: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.path = path
+        if path:
+            message = f"{message} (at {path})"
+        super().__init__(message, **kwargs)
+
+    def _default_code(self) -> str:
+        return "CTY_MARKS_NOT_SERIALIZABLE"
+
+
 class DeserializationError(EncodingError):
     """
     Raised when deserialization of data fails.

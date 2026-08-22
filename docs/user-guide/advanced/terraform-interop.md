@@ -577,13 +577,14 @@ sensitivity dropped:
 
 ```python
 from pyvider.cty.codec import cty_to_msgpack
+from pyvider.cty.exceptions import CtyMarksSerializationError
 from pyvider.cty.marks import unmark_deep
 
 try:
     cty_to_msgpack(config_value, schema)
-except Exception as e:
-    print(f"{type(e).__name__}: {e}")
-    # CtyMarksSerializationError: value has marks, so it cannot be serialized
+except CtyMarksSerializationError as e:  # a SerializationError, so that handler works too
+    print(e)
+    # value has marks, so it cannot be serialized
 
 # Strip marks deeply before serializing; track sensitivity out-of-band
 # (for example in the provider schema, as Terraform itself does).
