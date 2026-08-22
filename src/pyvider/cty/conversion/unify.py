@@ -284,6 +284,26 @@ def _preference_order(types: tuple[CtyType[Any], ...]) -> list[int]:
     structural = [i for i in order if isinstance(types[i], CtyObject | CtyTuple)]
     if not structural:
         return order
+
+    # An object only wins for being a shape a map cannot hold. An *attribute-less*
+    # object is not that: it converts to a map of anything, and go-cty says so --
+    #
+    #     soup-go cty unify '["object",{}]' '["map","string"]'  ->  ["map","string"]
+    #
+    # -- so preferring it there is wrong. `_unify_object_types_to_map` answers
+    # None for an empty object because it has no attribute types to unify, which
+    # reads the same as "these attributes share nothing" and is the opposite
+    # fact. Distinguished here rather than there, because that function's None
+    # is right for its own callers.
+    #
+    # Caught by the generated type-relation property test on
+    # `list(set(object{}))` + `list(set(map(string)))`, one merge after the
+    # preference order landed; the 1331-case sweep has no empty object in it.
+    objects = tuple(t for t in types if isinstance(t, CtyObject))
+    if objects and (
+        any(not obj.attribute_types for obj in objects) or _unify_object_types_to_map(objects) is not None
+    ):
+        return order
     return structural + [i for i in order if not isinstance(types[i], CtyObject | CtyTuple)]
 
 
