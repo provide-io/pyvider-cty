@@ -223,6 +223,42 @@ class CtyValue(Generic[T]):
 
     @property
     def raw_value(self) -> object | None:
+        """This value as plain Python. Refuses on a marked value.
+
+        This is the escape hatch out of cty, and a mark does not fit through it:
+        what comes back is a `str` or a `dict`, with nowhere left to record that
+        it was sensitive. Every other route out of a marked container carries
+        the marks along -- a subscript, iteration, a path step -- and the codecs
+        refuse a marked value outright. This was the one door left open, and it
+        handed back the secret itself.
+
+        go-cty does the same, and by the same rule: its value-to-Go-native
+        escapes (`AsString`, `AsBigFloat`, `AsValueSlice`, `EncapsulatedValue`,
+        `cty/value_ops.go:1456` onward) all call `assertUnmarked` and panic,
+        while everything answering with another `Value` unmarks, acts and
+        remarks. This answers with Go-native's equivalent, so it belongs in the
+        first group.
+
+        `unmark()` first if that is what you meant -- it hands back the marks so
+        the caller decides what happens to them, which is the whole point of
+        making this refuse rather than silently dropping them.
+
+        Deliberately narrower than go-cty's rule. `__len__`, `__bool__` and
+        `__contains__` are also value-to-native escapes and are **not** changed:
+        go-cty's panic sites are all explicit method calls, while those three
+        are invoked by Python *syntax* -- `len(v)`, `if v:`, `x in v` -- so
+        refusing there would raise on lines no reader would recognise as a
+        declassification. `.value` is the raw payload and is left alone too.
+        Those remain open questions; this one had a zero-cost answer.
+        """
+        if self.marks:
+            from pyvider.cty.exceptions import CtyMarksSerializationError
+
+            raise CtyMarksSerializationError(
+                "Cannot take the raw value of a marked value: the marks "
+                f"{sorted(str(mark) for mark in self.marks)} have no representation in plain "
+                "Python. Call unmark() first if the marks are meant to be discarded."
+            )
         if self.is_unknown:
             error_message = ERR_CANNOT_GET_RAW_VALUE_UNKNOWN
             raise ValueError(error_message)

@@ -241,7 +241,10 @@ class TestMarks:
         mark must land on the result even though the body never sees it."""
         result = _function().call([CtyDynamic().validate("a").mark("sensitive")])
 
-        assert result.raw_value == "a!"
+        # `unmark()` first, because `raw_value` refuses a marked value: it is the
+        # escape out of cty, and a `str` has nowhere to record that it was
+        # sensitive. Unmarking says so deliberately and hands the marks back.
+        assert result.unmark()[0].raw_value == "a!"
         assert result.marks == frozenset({"sensitive"})
 
 

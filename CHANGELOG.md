@@ -7,6 +7,35 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **A failed conversion no longer costs 88 milliseconds.** `convert` was
+  wrapped in an `error_boundary` that logs with `exc_info=True`, and rendering
+  that traceback cost a flat **88 ms per refusal** -- measured, independent of
+  the value's size, so a hundred failed conversions took nearly nine seconds. A
+  failed conversion is an ordinary, *expected* outcome: `can_convert_unsafe` and
+  everything built on it ask exactly this question and take "no" for an answer.
+  The boundary also wrapped a function that recurses into every element and
+  attribute, so each of them entered a boundary and stringified both types --
+  quadratic in the depth of the type. Removed; every failure already raises a
+  `CtyConversionError` naming both types. A refusal now costs **0.01 ms**.
+
+### Changed
+
+- **`raw_value` refuses a marked value.** It is the escape out of cty, and a
+  mark does not fit through it: what comes back is a `str` or a `dict`, with
+  nowhere left to record that it was sensitive. Every other route out of a
+  marked container carries the marks along and both codecs refuse a marked
+  value outright; this was the one door left open, and what it handed back was
+  the secret itself. go-cty draws the line in the same place -- its
+  value-to-Go-native escapes (`AsString`, `AsValueSlice`, `EncapsulatedValue`)
+  all `assertUnmarked` and panic. Call `unmark()` first, which hands the marks
+  back so the caller decides what happens to them. Deliberately narrower than
+  go-cty's rule: `len()`, `bool()` and `in` are also value-to-native escapes and
+  are **unchanged**, because go-cty's panic sites are explicit method calls
+  while those three are invoked by Python *syntax* and would raise on lines no
+  reader would recognise as a declassification. `.value` is unchanged too.
+
+### Fixed
+
 - **Reading out of a marked container keeps the marks.** `marked_list[0]`,
   `marked_map["k"]`, `marked_object.a`, `marked_tuple[0]`, a list or tuple
   slice, and `for element in marked_container` all handed back an *unmarked*
