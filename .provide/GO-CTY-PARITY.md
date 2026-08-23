@@ -53,7 +53,7 @@ Living document. Updated as work lands — do not let it drift.
 
 1. ~~**`assertnotnull`**~~ and ~~**the Unicode decision**~~ — both closed 2026-08-16. **The stdlib is now 83 of 83 functions and `UNSWEPT` is empty.**
 2. ~~**Phases 4, 6 and 7**~~ — **all eight landed by 2026-08-17.** The `cty/function` framework (#12) closed last, with every one of the 83 stdlib functions declared through it. ~~**No code items remain in this repo.**~~ **That was wrong, and stayed here for five days while five review rounds contradicted it.** The phases were done; the repository was not. See the 2026-08-22 whole-tree review row.
-3. ~~**Worklist #8**~~ — **done 2026-08-17** in `pyvider-components` (`160dfa2b`): the sixteen Terraform-shadowing functions now answer what Terraform answers, measured against the harness and `terraform console`. The audit found the real count was 25 registered functions, and that `format` — shipping printf verbs to state as literal text — was worse than the famous `length` case. Two decisions remain there for Tim; see the cross-repo entry.
+3. ~~**Worklist #8**~~ — **done 2026-08-17** in `pyvider-components` (`160dfa2b`): the sixteen Terraform-shadowing functions now answer what Terraform answers, measured against the harness and `terraform console`. The audit found the real count was 25 registered functions, and that `format` — shipping printf verbs to state as literal text — was worse than the famous `length` case. Both leftover decisions were settled by measurement the same day and the fix that followed has landed; nothing there is waiting on anyone. See the cross-repo entry.
 4. ~~**Three items left in this repo**~~ — **all three closed 2026-08-22/23.** The
    known-`dynamic` façade (#32: `__getitem__` and `__iter__` now look through a
    wrapper via one `_through_dynamic` helper all four value-like operations
@@ -90,6 +90,15 @@ Living document. Updated as work lands — do not let it drift.
      drafted in this directory, and the `SetProduct` OOM found by the 2026-08-18
      adversarial review.
    - **The three dunder escapes** (`len()`, `bool()`, `in`) as a 0.6.0 question.
+
+   Not on this list, and worth saying so because this document said otherwise
+   for six days: `pyvider-components` has **no** decisions outstanding. Both
+   were settled by measurement on 2026-08-17 -- `divide(1, 0)` against real
+   `terraform console`, `round` against Terraform not having the function at
+   all -- and the components fix that followed has landed and was verified
+   answering `+Inf` / `-Inf` / the zero-by-zero error on 2026-08-23. Item 3
+   above went on claiming two were open, which is how it got reported as
+   still open; it is corrected.
 
 6. **The release gate** — 0.5.0, forty-five breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there.
 
