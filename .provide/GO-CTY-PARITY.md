@@ -54,13 +54,44 @@ Living document. Updated as work lands — do not let it drift.
 1. ~~**`assertnotnull`**~~ and ~~**the Unicode decision**~~ — both closed 2026-08-16. **The stdlib is now 83 of 83 functions and `UNSWEPT` is empty.**
 2. ~~**Phases 4, 6 and 7**~~ — **all eight landed by 2026-08-17.** The `cty/function` framework (#12) closed last, with every one of the 83 stdlib functions declared through it. ~~**No code items remain in this repo.**~~ **That was wrong, and stayed here for five days while five review rounds contradicted it.** The phases were done; the repository was not. See the 2026-08-22 whole-tree review row.
 3. ~~**Worklist #8**~~ — **done 2026-08-17** in `pyvider-components` (`160dfa2b`): the sixteen Terraform-shadowing functions now answer what Terraform answers, measured against the harness and `terraform console`. The audit found the real count was 25 registered functions, and that `format` — shipping printf verbs to state as literal text — was worse than the famous `length` case. Two decisions remain there for Tim; see the cross-repo entry.
-4. **Three items left in this repo**, all found by the 2026-08-22 rounds and none release-blocking:
+4. ~~**Three items left in this repo**~~ — **all three closed 2026-08-22/23.** The
+   known-`dynamic` façade (#32: `__getitem__` and `__iter__` now look through a
+   wrapper via one `_through_dynamic` helper all four value-like operations
+   consult; the review's `__contains__` claim was wrong and is documented as
+   such). The marked-value escape decision (#33: `raw_value` refuses, as
+   go-cty's value-to-Go-native escapes panic; `len()`, `bool()`, `in` and
+   `.value` deliberately left open, because go-cty's panic sites are explicit
+   calls while those are invoked by Python *syntax* — a 0.6.0 question, pinned
+   by tests so it stays a decision). And `conversion/explicit.py`'s
+   `error_boundary` (#33), which turned out worse than flagged: it cost a flat
+   **88 ms per failed conversion**, measured and independent of value size, on
+   a path that is not an error at all — `can_convert_unsafe` and everything
+   built on it ask exactly that question and take "no" for an answer. A hundred
+   refusals took nearly nine seconds; they now take one millisecond.
 
-   - **The known-`dynamic` façade.** `len(wrapper)` unwraps and answers, but `wrapper[0]` and `list(wrapper)` raise `TypeError` — a missing branch in two of the four value-like operations rather than a policy about dynamic values. Path traversal unwraps a wrapper as of #27, which makes the direct façade the odd one out. The fix is to centralise the unwrap so a fifth operation gets it by asking rather than by remembering. The review also listed `__contains__` here and that part is wrong: a wrapper's payload *is* a `CtyValue`, so `item in self.value` already delegates, and `CtyString("a") in wrapper` answers `True`. A raw operand finds nothing in a plain `CtyList` either, so it is not the wrapper's doing.
-   - **Whether the value-to-native escapes should refuse on a marked value**, as go-cty panics (`AsString`, `LengthInt`, `EncapsulatedValue`). Measured rather than guessed: patching `raw_value`, `__bool__`, `__len__` and `__contains__` to refuse breaks **one** assertion in the whole suite, and it is test-side; `.value` has 359 internal callers and is an attrs *field*, so refusing there means turning it into a property. The asymmetry that makes this a real break is that go-cty's panic sites are explicit method calls while three of these are invoked by *syntax* — `if v:`, `len(v)`, `x in v` — so downstream code starts raising on lines nobody reads as a declassification. Recommended split: make `raw_value` refuse, leave `.value`, treat the three dunders as a 0.6.0 decision. **Tim's call.**
-   - **`conversion/explicit.py:419`** uses `error_boundary` the way the type parser did before #28 removed it. Not investigated for whether it is reachable with comparably deep untrusted input; flagged, not fixed.
+5. **What is genuinely open**, none of it a defect in this library's answers:
 
-5. **The release gate** — 0.5.0, forty-five breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there.
+   - **Five recorded unify divergences** (`KNOWN_DIVERGENCES` in the unify
+     oracle), all `map(dynamic)` mixed with an object whose attributes do not
+     unify. Three are this library unifying where go-cty *refuses*, which is
+     the worse direction. Each answers identically with the preference order
+     removed, so they predate it. The repair is in `_unify_objects_as_maps`,
+     which should map-ify objects and dynamics separately rather than giving up
+     whenever a bare `dynamic` is present — a real change to the structural
+     unifier, not a patch.
+   - **`mkdocs build` cannot run from a fresh clone.** `mkdocs.yml` inherits
+     from `.provide/foundry/base-mkdocs.yml`, which is gitignored, and no CI
+     job builds the documentation, so nothing catches it. See `.provide/README.md`.
+     Needs a decision on how the workspace shares that scaffolding, and a CI job
+     that runs `mkdocs build --strict`.
+   - **tofusoup PR #7**, resolving the harness's hardcoded developer paths.
+     Three curve tests skipped on every machine but one and reported as passing.
+   - **Two upstream go-cty issues to file**: the `Value.Equals` nondeterminism
+     drafted in this directory, and the `SetProduct` OOM found by the 2026-08-18
+     adversarial review.
+   - **The three dunder escapes** (`len()`, `bool()`, `in`) as a 0.6.0 question.
+
+6. **The release gate** — 0.5.0, forty-five breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there.
 
    Two release-mechanics questions sit with it, both found 2026-08-18: `chore/use-reusable-release` is unmerged on the remote and rewires `release.yml` through ci-tooling's `python-release.yml@v0.4.2`, so cutting 0.5.0 without it runs the old inline pipeline; and that branch pins a fixed tag where `ci.yml` calls the floating `@v0`, which is two conventions in one repository.
 
