@@ -12,22 +12,21 @@ part of how this project is worked on rather than scratch notes.
 | `ADVERSARIAL-REVIEW-PROMPT.md` | The prompt used to drive adversarial review rounds against this tree. |
 | `UPSTREAM-GO-CTY-EQUALS-NONDETERMINISM.md` | A drafted upstream issue against go-cty, kept here until it is filed. |
 
-## `foundry/` is not tracked, and `mkdocs.yml` depends on it
+## `foundry/` is not tracked, and is provisioned rather than committed
 
-`.provide/foundry/` is gitignored (`.gitignore:71`) and holds shared
-documentation scaffolding vendored from the sibling `provide-foundry`
-repository — `base-mkdocs.yml`, `gen_ref_pages.py`, and a `docs/` tree.
+`.provide/foundry/` is gitignored (`.gitignore:71`) and holds documentation
+scaffolding whose home is the `provide-foundry` package — `base-mkdocs.yml`,
+`gen_ref_pages.py`, and a theme tree. `mkdocs.yml` opens with
+`INHERIT: .provide/foundry/base-mkdocs.yml`.
 
-`mkdocs.yml` opens with `INHERIT: .provide/foundry/base-mkdocs.yml`, so
-**`mkdocs build` does not work from a fresh clone**: the inherited file is not
-in the repository and nothing fetches it. No CI job builds the documentation
-either, so nothing catches this — `make check-docs` executes the code blocks in
-`docs/` and does not read `mkdocs.yml` at all.
+Run `make docs-scaffold` to put it there, or `make docs-build` to do that and
+build. Both pull `provide-foundry` from the `docs` dependency group and call the
+`extract_base_mkdocs` helper it ships for exactly this.
 
-Until that is resolved, building the docs locally needs `provide-foundry`
-checked out beside this repository and its scaffolding present at
-`.provide/foundry/`. The two candidate fixes are to track the inherited file
-here, or to have a `make` target provision it from the sibling repository so a
-clean checkout can build; either wants a CI job that actually runs
-`mkdocs build --strict`, since an unbuilt documentation set is an unverified
-one.
+It used to be neither tracked nor provisioned: nothing in this repository put it
+there, so `mkdocs build` worked only where some other tool had already vendored
+it and failed from a clean clone. No CI job built the documentation either, and
+`make check-docs` executes the code blocks in `docs/` without reading
+`mkdocs.yml` at all, so the docs gate stayed green while the build was broken.
+The `📚 Docs build` job now builds it strictly on a fresh checkout, which is the
+case that was failing.
