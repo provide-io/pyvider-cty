@@ -85,6 +85,11 @@ TYPES: list[tuple[str, CtyType[Any]]] = [
     # With only `map(string)` and single-attribute objects present, every pair
     # map-ified successfully and the question never arose.
     ("map(dynamic)", CtyMap(element_type=D)),
+    # An object with no attributes at all, which converts to a map of anything
+    # and so must *not* be preferred over one. Its absence is why a regression
+    # in the preference order reached `main`: every object here had an
+    # attribute, and the rule only goes wrong when one does not.
+    ("object{}", CtyObject(attribute_types={})),
     (
         "object{a:list(string),b:number}",
         CtyObject(attribute_types={"a": CtyList(element_type=S), "b": N}),
@@ -134,6 +139,11 @@ KNOWN_DIVERGENCES: set[str] = {
     "map(string) + map(dynamic) + object{a:list(string),b:number}",
     "object{a:string} + map(dynamic) + object{a:list(string),b:number}",
     "object{a:number} + map(dynamic) + object{a:list(string),b:number}",
+    # Uncovered on the same day by adding `object{}`. Same family and same
+    # cause: go-cty answers `object{}` and this answers `map(dynamic)`, and it
+    # does so with the preference order removed entirely, so it is pre-existing
+    # rather than anything the preference introduced.
+    "map(dynamic) + object{} + object{a:list(string),b:number}",
 }
 
 
