@@ -246,6 +246,16 @@ def can_convert_unsafe(source: CtyType[Any], target: CtyType[Any]) -> bool:  # n
         if isinstance(source, CtyMap):
             return can_convert_unsafe(source.element_type, target.element_type)
         if isinstance(source, CtyObject):
+            if isinstance(target.element_type, CtyDynamic):
+                # The same fault the tuple branch above already fixes, one
+                # container over. `can_convert_unsafe(anything, dynamic)` is
+                # True, so asking it per attribute said yes for *every* object
+                # -- and `unify` read that back and answered `map(dynamic)`
+                # where go-cty finds no unification at all. go-cty asks a
+                # different question when the target element is dynamic: it
+                # unifies the object's own attribute types and refuses when they
+                # have no common type. See `_object_to_dynamic_element`.
+                return _object_to_dynamic_element(source) is not None
             return all(
                 can_convert_unsafe(attribute, target.element_type)
                 for attribute in source.attribute_types.values()
@@ -335,6 +345,39 @@ def _tuple_to_dynamic_element(source: CtyTuple) -> CtyType[Any] | None:
         return None
     if isinstance(unified, CtyDynamic) and not all(
         isinstance(element, CtyDynamic) for element in source.element_types
+    ):
+        return None
+    return unified
+
+
+def _object_to_dynamic_element(source: CtyObject) -> CtyType[Any] | None:
+    """The element type an object takes when converted to `map(dynamic)`.
+
+    The object-shaped twin of `_tuple_to_dynamic_element`, and the same rule:
+    a `dynamic` target element means "find a single type all of the attributes
+    can convert to", not "anything goes".
+
+      * an object with no attributes converts to an empty map, whatever the
+        element type -- and it must, because go-cty unifies `object({})` with
+        `map(string)` to `map(string)`;
+      * otherwise the attribute types are **unified**, and an object whose
+        attributes share nothing is refused;
+      * and a unification that is itself `dynamic` only stands when every
+        attribute was already `dynamic`, since a `dynamic` arrived at by
+        unification is not a type every attribute converts to.
+
+    Returns `None` where the conversion is refused.
+    """
+    from pyvider.cty.conversion.unify import unify
+
+    if not source.attribute_types:
+        return _EMPTY_TUPLE_KEEPS_TARGET
+
+    unified = unify(list(source.attribute_types.values()))
+    if unified is None:
+        return None
+    if isinstance(unified, CtyDynamic) and not all(
+        isinstance(attribute, CtyDynamic) for attribute in source.attribute_types.values()
     ):
         return None
     return unified
