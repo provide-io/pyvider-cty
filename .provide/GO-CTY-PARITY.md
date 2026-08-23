@@ -71,24 +71,28 @@ Living document. Updated as work lands — do not let it drift.
 
 5. **What is genuinely open**, none of it a defect in this library's answers:
 
-   - **Five recorded unify divergences** (`KNOWN_DIVERGENCES` in the unify
-     oracle), all `map(dynamic)` mixed with an object whose attributes do not
-     unify. Three are this library unifying where go-cty *refuses*, which is
-     the worse direction. Each answers identically with the preference order
-     removed, so they predate it. The repair is in `_unify_objects_as_maps`,
-     which should map-ify objects and dynamics separately rather than giving up
-     whenever a bare `dynamic` is present — a real change to the structural
-     unifier, not a patch.
-   - **`mkdocs build` cannot run from a fresh clone.** `mkdocs.yml` inherits
-     from `.provide/foundry/base-mkdocs.yml`, which is gitignored, and no CI
-     job builds the documentation, so nothing catches it. See `.provide/README.md`.
-     Needs a decision on how the workspace shares that scaffolding, and a CI job
-     that runs `mkdocs build --strict`.
-   - **tofusoup PR #7**, resolving the harness's hardcoded developer paths.
-     Three curve tests skipped on every machine but one and reported as passing.
-   - **Two upstream go-cty issues to file**: the `Value.Equals` nondeterminism
-     drafted in this directory, and the `SetProduct` OOM found by the 2026-08-18
-     adversarial review.
+   - ~~**Five recorded unify divergences**~~ — **closed 2026-08-23.** The cause
+     was not where this entry guessed: not `_unify_objects_as_maps`, but
+     `can_convert_unsafe`, where `can_convert_unsafe(anything, dynamic)` being
+     True meant every object answered yes against `map(dynamic)`. The
+     tuple-shaped half of that exact fault had been fixed since 2026-08-19,
+     eight lines away in the same function, with a comment naming the cause;
+     `_object_to_dynamic_element` is now its twin. `KNOWN_DIVERGENCES` is empty,
+     and every remaining xfail in the differential suite is an accepted
+     representational divergence rather than a wrong answer.
+   - ~~**`mkdocs build` cannot run from a fresh clone.**~~ — **closed
+     2026-08-23.** `provide-foundry` joins the `docs` dependency group and
+     `make docs-scaffold` calls the `extract_base_mkdocs` helper foundry already
+     ships, so the inherited file is provisioned rather than vendored into this
+     repository. A `📚 Docs build` job now builds strictly on a fresh checkout,
+     which is the case that was failing silently -- no job built the docs at
+     all, and `make check-docs` never reads `mkdocs.yml`.
+   - ~~**tofusoup PR #7**~~ — merged 2026-08-23. Three curve tests had skipped
+     on every machine but one and reported as passing.
+   - **Not open, and listed here because it keeps being re-reported as open:**
+     the upstream go-cty issues are **closed as not-filing**, Tim's call on
+     2026-08-19, drafts kept as the record of why this library diverges. See the
+     cross-repo section.
    - **The three dunder escapes** (`len()`, `bool()`, `in`) as a 0.6.0 question.
 
    Not on this list, and worth saying so because this document said otherwise
@@ -102,7 +106,25 @@ Living document. Updated as work lands — do not let it drift.
 
 6. **The release gate** — 0.5.0, forty-five breaking changes, wave-ordered with `pyvider` **and now `tofusoup`**, since CI checks out the harness repo's default branch and the harness fixes are still on a local branch there.
 
-   Two release-mechanics questions sit with it, both found 2026-08-18: `chore/use-reusable-release` is unmerged on the remote and rewires `release.yml` through ci-tooling's `python-release.yml@v0.4.2`, so cutting 0.5.0 without it runs the old inline pipeline; and that branch pins a fixed tag where `ci.yml` calls the floating `@v0`, which is two conventions in one repository.
+   ~~Two release-mechanics questions sit with it, both found 2026-08-18.~~
+   **Both were already resolved on `main`, and re-verified 2026-08-23.**
+   `release.yml` routes through ci-tooling's `python-release.yml` pinned to
+   commit `3dcd8dbf` -- and pinned *correctly*: `v0.4.2` is an **annotated** tag
+   whose own object is `e593b16e`, and `3dcd8dbf` is what that dereferences to,
+   which is the distinction that once cost a silent `startup_failure`. `ci.yml`
+   is SHA-pinned too (`194e51a4`, which is exactly where the floating `v0`
+   currently points), so the "two conventions in one repository" complaint no
+   longer describes anything: both are commit SHAs, and only the trailing
+   comment differs.
+
+   **`chore/use-reusable-release` must not be merged.** The claim that cutting
+   0.5.0 without it "runs the old inline pipeline" is backwards: `main` is 277
+   commits ahead and carries the change already, while the branch's single
+   unique commit predates the 2026-08-21 hardening and would *remove* the
+   comment recording that every publishing job is gated on the release event --
+   the guard that keeps a manual dispatch from reaching TestPyPI or PyPI. It is
+   obsolete rather than pending, and merging it would regress a security fix.
+   Left in place rather than deleted, since that is Tim's branch to remove.
 
    Everything else closed on 2026-08-17. The harness audit took `safe_known_prefix`'s trailing delimiter, the sweep's four missing coverage axes, the harness's own fourth fault and the dead fixture trees. The documentation pass took #13's parity matrix, the release notes, and about sixty inaccuracies found by executing every code block rather than reading it — including a README that told contributors to run a command that does not exist. The sort-key investigation and `pyvider`'s latent `KeyStep` bug are closed. CI runs the differential suite (decision 5). **Every open decision in this repo closed on 2026-08-18** -- decision 3 in both halves, the `timeadd` calendar range as an accepted divergence, and the `formatdate` refusal. What remains is a release. (The adversarial review was completed and closed on 2026-08-18, finding and patching an $O(N^2)$ set-union freeze, a JSON codec memory multiplier, and an unbounded `setproduct` OOM vector. Two upstream issues to file against go-cty remain: the original one, and the newly discovered `SetProduct` OOM vulnerability).
 
