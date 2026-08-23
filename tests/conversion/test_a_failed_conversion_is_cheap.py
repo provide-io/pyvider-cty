@@ -30,9 +30,13 @@ from pyvider.cty import CtyBool, CtyList, CtyNumber, CtyString
 from pyvider.cty.conversion.explicit import convert
 from pyvider.cty.exceptions import CtyConversionError
 
-# Generous by three orders of magnitude against the 88 ms this used to cost, so
-# the test measures the defect's absence rather than the machine it runs on.
-BUDGET_PER_REFUSAL_MS = 5.0
+# The defect this guards against cost 88 ms per refusal. The budget only has to
+# sit clearly below that while staying above anything a loaded machine can do to
+# a sub-millisecond operation -- and it has to hold on a shared CI runner under
+# `pytest -n auto`, where wall-clock for a fast operation is mostly scheduler
+# noise. 5 ms was too tight and went red on macOS at 5.5 ms; 25 ms is still
+# three and a half times under the defect and does not measure the runner.
+BUDGET_PER_REFUSAL_MS = 25.0
 REPEATS = 40
 
 
@@ -55,19 +59,34 @@ class TestARefusalIsCheap:
 
     def test_the_cost_does_not_grow_with_the_value(self) -> None:
         """It never did -- the render was flat -- but a future diagnostic that
-        walks the value would show up here rather than in production."""
+        walks the value would show up here rather than in production.
 
-        def refuse_over(count: int) -> float:
+        Measured as a ratio against a small value rather than as an absolute, so
+        what is asserted is the *shape* of the cost curve and not the speed of
+        the machine. A single timing sample of a sub-millisecond operation on a
+        shared runner is mostly scheduler noise, so both ends are the best of
+        several attempts.
+        """
+
+        def best_refusal_over(count: int) -> float:
             source = CtyList(element_type=CtyString()).validate(["x"] * count)
             target = CtyList(element_type=CtyBool())
-            started = time.perf_counter()
-            with pytest.raises(CtyConversionError):
-                convert(source, target)
-            return time.perf_counter() - started
 
-        refuse_over(10)  # warm
+            def once() -> float:
+                started = time.perf_counter()
+                with pytest.raises(CtyConversionError):
+                    convert(source, target)
+                return time.perf_counter() - started
 
-        assert refuse_over(2000) < BUDGET_PER_REFUSAL_MS / 1000
+            once()  # warm this size
+            return min(once() for _ in range(5))
+
+        small = best_refusal_over(10)
+        large = best_refusal_over(2000)
+
+        # A diagnostic that walked the value would be 200x here, not 20x. The
+        # floor keeps a near-zero `small` from making the ratio meaningless.
+        assert large < max(small * 20, BUDGET_PER_REFUSAL_MS / 1000)
 
 
 class TestTheRefusalItselfIsUnchanged:
