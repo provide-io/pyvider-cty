@@ -32,6 +32,14 @@ compat: ## Cross-language wire checks against real go-cty (needs the soup-go har
 diagrams: ## Re-render docs/architecture/*.puml to SVG (add PNG=1 to also render PNGs)
 	uv run python scripts/render_diagrams.py $(if $(PNG),--png,)
 
+.PHONY: docs-scaffold
+docs-scaffold: ## Put the shared mkdocs scaffolding where `mkdocs.yml` INHERITs it from
+	uv run --group docs python scripts/setup_docs_scaffold.py
+
+.PHONY: docs-build
+docs-build: docs-scaffold ## Build the documentation the way CI does, strictly
+	uv run --group docs mkdocs build --strict
+
 .PHONY: check-docs
 check-docs: ## Execute every Python block in the docs and fail on an inaccuracy
 	uv run python scripts/check_docs.py

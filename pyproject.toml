@@ -60,6 +60,12 @@ dev = [
 ]
 docs = [
     "provide-testkit[docs]>=0.4.0",
+    # `mkdocs.yml` opens with `INHERIT: .provide/foundry/base-mkdocs.yml`, and
+    # that directory is gitignored scaffolding rather than a checked-in file --
+    # so without this the documentation could not be built from a clean clone at
+    # all. `provide.foundry.config.extract_base_mkdocs` puts it there; see
+    # `scripts/setup_docs_scaffold.py` and `make docs-scaffold`.
+    "provide-foundry>=0.0.1",
 ]
 
 # No `[tool.uv.sources]`. Local sibling checkouts are installed with

@@ -95,6 +95,39 @@ jobs:
         env:
           UV_NO_SOURCES: "1"
 
+  # The documentation, built the way a reader gets it. Nothing built it before,
+  # and the gap was not theoretical: `mkdocs.yml` opens with
+  # `INHERIT: .provide/foundry/base-mkdocs.yml`, and that directory is
+  # gitignored scaffolding rather than a checked-in file -- so the build worked
+  # only on a machine where some other tool had already vendored it, and failed
+  # from a clean clone. `make check-docs` executes the code blocks without ever
+  # reading `mkdocs.yml`, so the docs gate was green throughout.
+  docs:
+    name: 📚 Docs build
+    runs-on: ubuntu-24.04
+    steps:
+      # This repository.
+      - name: 📥 Check out
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # uv provides the interpreter and resolves the locked dependencies.
+      - name: 🐍 Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          python-version: '3.11'
+          enable-cache: true
+
+      # `docs-build` provisions the inherited scaffolding from the
+      # `provide-foundry` package (the `docs` dependency group) and then builds
+      # strictly, so a warning is a failure. Running it on a fresh checkout is
+      # the whole point: it is the case that was broken.
+      - name: 📚 Build the documentation strictly
+        run: make docs-build
+        env:
+          # Same reason as `no-sources` above: the sibling path dependencies are
+          # not checked out here, so everything resolves from the index.
+          UV_NO_SOURCES: "1"
+
   # The differential suite: every claim of go-cty parity, checked against real
   # go-cty rather than against this package's own reading of it. It is gated
   # behind `--run-compat` and needs a Go toolchain, so the reusable Python
