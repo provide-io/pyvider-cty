@@ -10,8 +10,6 @@ from decimal import Decimal
 from functools import lru_cache
 from typing import Any, cast
 
-from provide.foundation.errors import error_boundary
-
 from pyvider.cty.config.defaults import (
     ERR_CANNOT_CONVERT_BOOL_CASE,
     ERR_CANNOT_CONVERT_GENERAL,
@@ -416,283 +414,286 @@ def convert(value: CtyValue[Any], target_type: CtyType[Any]) -> CtyValue[Any]:  
     """
     Converts a CtyValue to a new CtyValue of the target CtyType.
     """
-    with error_boundary(
-        context={
-            "operation": "cty_value_conversion",
-            "source_type": str(value.type),
-            "target_type": str(target_type),
-            "value_is_null": value.is_null,
-            "value_is_unknown": value.is_unknown,
-        }
-    ):
-        # Early exit cases. Compared against the target with its optionality
-        # stripped, which is go-cty's `in.Type().Equals(want.WithoutOptional
-        # AttributesDeep())`: a value whose type already matches needs no
-        # conversion, and whether the *constraint* marked an attribute optional
-        # has no bearing on that.
-        if value.type.equal(target_type) or value.type.equal(_without_optional(target_type)):
-            return value
+    # No `error_boundary` here, and its absence is the fix. It wrapped a
+    # function that recurses into every element and attribute, so each of them
+    # entered a boundary and stringified both types: quadratic in the *depth* of
+    # the type, since a type nested D deep has a string of length O(D) rendered
+    # at each of D levels.
+    #
+    # The error path was far worse. The boundary logs with `exc_info=True`, and
+    # rendering that traceback cost a flat **88 ms per failed conversion**,
+    # measured, independent of the value's size -- so a hundred of them took
+    # nearly nine seconds. A failed conversion is an ordinary, *expected*
+    # outcome here: `can_convert_unsafe` and everything built on it ask exactly
+    # this question and take "no" for an answer. Charging 88 ms and an ERROR log
+    # with a full traceback for a routine "these types are incompatible" is not
+    # a diagnostic, it is a denial of service reachable from any decoded value.
+    #
+    # Every failure below is already a `CtyConversionError` naming both types.
+    # Early exit cases. Compared against the target with its optionality
+    # stripped, which is go-cty's `in.Type().Equals(want.WithoutOptional
+    # AttributesDeep())`: a value whose type already matches needs no
+    # conversion, and whether the *constraint* marked an attribute optional
+    # has no bearing on that.
+    if value.type.equal(target_type) or value.type.equal(_without_optional(target_type)):
+        return value
 
-        # A null or an unknown still has to be *convertible*: nullness is not
-        # part of a cty type, so "null of list(string)" is no more a string
-        # than a populated list is. This used to return a null of the target
-        # type for any target at all, so `tostring(null_of_list)` produced a
-        # null string where go-cty refuses the conversion outright.
-        # Converting *into* dynamic is a no-op in go-cty: DynamicPseudoType
-        # imposes no constraint, so the value passes through with its own type,
-        # its marks and its refinement intact. This has to precede the
-        # null/unknown branch below, which would otherwise answer first and
-        # replace a refined unknown with a bare one.
-        if isinstance(target_type, CtyDynamic):
-            return value
+    # A null or an unknown still has to be *convertible*: nullness is not
+    # part of a cty type, so "null of list(string)" is no more a string
+    # than a populated list is. This used to return a null of the target
+    # type for any target at all, so `tostring(null_of_list)` produced a
+    # null string where go-cty refuses the conversion outright.
+    # Converting *into* dynamic is a no-op in go-cty: DynamicPseudoType
+    # imposes no constraint, so the value passes through with its own type,
+    # its marks and its refinement intact. This has to precede the
+    # null/unknown branch below, which would otherwise answer first and
+    # replace a refined unknown with a bare one.
+    if isinstance(target_type, CtyDynamic):
+        return value
 
-        if value.is_null or value.is_unknown:
-            if not can_convert_unsafe(value.type, target_type):
-                error_message = ERR_CANNOT_CONVERT_GENERAL.format(
-                    value_type=value.type, target_type=target_type
-                )
-                raise CtyConversionError(error_message, source_value=value, target_type=target_type)
-            # Marks are re-applied here for the same reason every other return in
-            # this function re-applies them: dropping them declassifies a value
-            # that the codec would otherwise refuse to serialize, and conversion
-            # runs during unification and schema coercion where nobody is looking.
-            marks = set(value.marks)
-            if value.is_null:
-                return CtyValue.null(target_type).with_marks(marks)
-            # The refinement is narrowed rather than discarded. go-cty carries
-            # not-null across a type change, and equality reads exactly that bit
-            # to decide `unknown == null`, so throwing it away turns an answer
-            # go-cty gives into an undecided one.
-            marker = value.value
-            ported = marker.for_type(target_type) if isinstance(marker, RefinedUnknownValue) else marker
-            if isinstance(ported, UnknownValue):
-                return CtyValue.unknown(target_type, value=ported).with_marks(marks)
-            return CtyValue.unknown(target_type).with_marks(marks)
+    if value.is_null or value.is_unknown:
+        if not can_convert_unsafe(value.type, target_type):
+            error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
+            raise CtyConversionError(error_message, source_value=value, target_type=target_type)
+        # Marks are re-applied here for the same reason every other return in
+        # this function re-applies them: dropping them declassifies a value
+        # that the codec would otherwise refuse to serialize, and conversion
+        # runs during unification and schema coercion where nobody is looking.
+        marks = set(value.marks)
+        if value.is_null:
+            return CtyValue.null(target_type).with_marks(marks)
+        # The refinement is narrowed rather than discarded. go-cty carries
+        # not-null across a type change, and equality reads exactly that bit
+        # to decide `unknown == null`, so throwing it away turns an answer
+        # go-cty gives into an undecided one.
+        marker = value.value
+        ported = marker.for_type(target_type) if isinstance(marker, RefinedUnknownValue) else marker
+        if isinstance(ported, UnknownValue):
+            return CtyValue.unknown(target_type, value=ported).with_marks(marks)
+        return CtyValue.unknown(target_type).with_marks(marks)
 
-        # Into a capsule that declares how to receive a value. The target's
-        # `ConversionTo` is tried before the source's `ConversionFrom`, which is
-        # go-cty's order (`convert/conversion.go:172-184`) and matters only when
-        # both ends are capsules -- there, the destination decides first.
-        if isinstance(target_type, CtyCapsuleWithOps) and target_type.convert_to_fn:
-            received = target_type.convert_to_fn(value, target_type)
-            if received is not None:
-                # `received` is a raw Python object rather than a CtyValue, so
-                # `@preserves_marks` on `validate` has nothing to copy from and
-                # the marks have to be carried across by hand.
-                return target_type.validate(received).with_marks(set(value.marks))
+    # Into a capsule that declares how to receive a value. The target's
+    # `ConversionTo` is tried before the source's `ConversionFrom`, which is
+    # go-cty's order (`convert/conversion.go:172-184`) and matters only when
+    # both ends are capsules -- there, the destination decides first.
+    if isinstance(target_type, CtyCapsuleWithOps) and target_type.convert_to_fn:
+        received = target_type.convert_to_fn(value, target_type)
+        if received is not None:
+            # `received` is a raw Python object rather than a CtyValue, so
+            # `@preserves_marks` on `validate` has nothing to copy from and
+            # the marks have to be carried across by hand.
+            return target_type.validate(received).with_marks(set(value.marks))
 
-        # Capsule conversion with operations
-        if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
-            result = value.type.convert_fn(value.value, target_type)
-            if result is None:
-                error_message = ERR_CAPSULE_CANNOT_CONVERT.format(
-                    value_type=value.type, target_type=target_type
-                )
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                )
-            if not isinstance(result, CtyValue):
-                error_message = ERR_CUSTOM_CONVERTER_NON_CTYVALUE
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                )
-            if not result.type.equal(target_type):
-                error_message = ERR_CUSTOM_CONVERTER_WRONG_TYPE.format(
-                    result_type=result.type, target_type=target_type
-                )
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                )
-            return result.with_marks(set(value.marks))
-
-        # Dynamic type handling
-        if isinstance(value.type, CtyDynamic):
-            if not isinstance(value.value, CtyValue):
-                error_message = ERR_DYNAMIC_VALUE_NOT_CTYVALUE
-                raise CtyConversionError(error_message, source_value=value)
-            # The wrapper's own marks are not the inner value's. Unwrapping and
-            # forgetting them is the same silent declassification the null and
-            # unknown branch above used to perform.
-            return convert(value.value, target_type).with_marks(set(value.marks))
-
-        # String conversion. go-cty's table (cty/convert/conversion_primitive.go)
-        # defines exactly two conversions to string -- from number and from bool
-        # -- and nothing else. This used to convert *anything* non-capsule with
-        # `str(raw)`, and `raw` for a collection is the internal tuple of
-        # CtyValues, so `convert(list, string)` returned the text of a repr:
-        # "(CtyValue(vtype=CtyString(), value='a', ...),)". A plausible-looking
-        # string, headed for Terraform state.
-        if isinstance(target_type, CtyString):
-            if isinstance(value.type, CtyBool):
-                text = "true" if value.value else "false"
-                return CtyValue(target_type, text).with_marks(set(value.marks))
-            if isinstance(value.type, CtyNumber):
-                return CtyValue(target_type, _number_to_string(value.value)).with_marks(set(value.marks))
-
-        # Number conversion. Only from a string, or from a number of course.
-        # This used to hand the payload to CtyNumber().validate, which accepts a
-        # bool because a Python bool *is* an int -- so `convert(true, number)`
-        # returned 1 where go-cty has no bool-to-number conversion at all.
-        if isinstance(target_type, CtyNumber) and isinstance(value.type, CtyString | CtyNumber):
-            try:
-                # `Decimal(" 1")` is 1: the constructor strips surrounding
-                # whitespace, and Go's `big.ParseFloat` grammar has no room for
-                # any -- `tonumber(" 1")` is an error in go-cty. Refused here
-                # rather than in `validate`, which is this package's own
-                # convenience for raw Python input; the conversion is the surface
-                # go-cty defines. Found 2026-08-19 by the stdlib fuzz.
-                raw = value.value
-                if isinstance(raw, str) and raw != raw.strip():
-                    raise CtyValidationError("a number cannot carry surrounding whitespace")
-                validated = target_type.validate(raw)
-                return validated.with_marks(set(value.marks))
-            except CtyValidationError as e:
-                error_message = ERR_CANNOT_CONVERT_VALIDATION.format(
-                    value_type=value.type, target_type=target_type, message=e.message
-                )
-                raise CtyConversionError(
-                    error_message,
-                    source_value=value,
-                    target_type=target_type,
-                ) from e
-
-        # Boolean conversion. go-cty accepts "true"/"1" and "false"/"0", and
-        # refuses any other casing with a message that says so; this lowercased
-        # first, so "TRUE" converted here and is refused there.
-        if isinstance(target_type, CtyBool):
-            if isinstance(value.type, CtyString):
-                text = str(value.value)
-                if text in ("true", "1"):
-                    return CtyValue(target_type, True).with_marks(set(value.marks))
-                if text in ("false", "0"):
-                    return CtyValue(target_type, False).with_marks(set(value.marks))
-                lowered = text.lower()
-                if lowered in ("true", "false"):
-                    error_message = ERR_CANNOT_CONVERT_BOOL_CASE.format(text=text, lowered=lowered)
-                    raise CtyConversionError(
-                        error_message,
-                        source_value=value,
-                        target_type=target_type,
-                    )
-            error_message = ERR_CANNOT_CONVERT_TO_BOOL.format(value_type=value.type)
+    # Capsule conversion with operations
+    if isinstance(value.type, CtyCapsuleWithOps) and value.type.convert_fn:
+        result = value.type.convert_fn(value.value, target_type)
+        if result is None:
+            error_message = ERR_CAPSULE_CANNOT_CONVERT.format(value_type=value.type, target_type=target_type)
             raise CtyConversionError(
                 error_message,
                 source_value=value,
                 target_type=target_type,
             )
+        if not isinstance(result, CtyValue):
+            error_message = ERR_CUSTOM_CONVERTER_NON_CTYVALUE
+            raise CtyConversionError(
+                error_message,
+                source_value=value,
+                target_type=target_type,
+            )
+        if not result.type.equal(target_type):
+            error_message = ERR_CUSTOM_CONVERTER_WRONG_TYPE.format(
+                result_type=result.type, target_type=target_type
+            )
+            raise CtyConversionError(
+                error_message,
+                source_value=value,
+                target_type=target_type,
+            )
+        return result.with_marks(set(value.marks))
 
-        # Collection conversions, element by element. `target_type.validate` on
-        # its own was not enough: it checks each element against the element
-        # type rather than converting it, so `list(number)` to `list(string)`
-        # -- exactly what unification asks for once it can widen primitives --
-        # was refused. A conversion `can_convert_unsafe` admits has to be one
-        # `convert` performs, or unification promises a type nothing can reach.
-        if isinstance(target_type, CtySet | CtyList) and isinstance(value.type, CtyList | CtySet | CtyTuple):
-            # Decided on the types before a single element is looked at, which
-            # is go-cty's order: `Convert` asks `GetConversionUnsafe` first and
-            # refuses if it answers nil. Elementwise alone let an *empty*
-            # `list(string)` become a `list(list(string))` -- no element to fail
-            # on -- while `can_convert_unsafe` said it could not, so `unify`
-            # could refuse a type `convert` would reach. Found by the
-            # generated-population agreement test, 2026-08-21.
-            _refuse_unless_types_allow(value, target_type)
-            collection = _collection_target(target_type, value.type)
-            source_elements = _ordered_elements(value)
-            # A set whose length is undecided cannot become a list of any
-            # definite length, so the result is deferred rather than counted.
-            # Only a list target: a set's stored element count is not a claim
-            # about its length, so `conversionCollectionToSet` has nothing it is
-            # unable to predict and neither has this. See
-            # `_list_of_unknown_length` for why the answer is neither go-cty's
-            # nor the elementwise one.
-            if isinstance(collection, CtyList) and _set_length_is_unknown(value.type, source_elements):
-                return _list_of_unknown_length(collection, len(source_elements), value)
-            element_type = collection.element_type
-            elements = [convert(element, element_type) for element in source_elements]
-            converted: CtyValue[Any] = collection.validate(elements).with_marks(set(value.marks))
-            return converted
+    # Dynamic type handling
+    if isinstance(value.type, CtyDynamic):
+        if not isinstance(value.value, CtyValue):
+            error_message = ERR_DYNAMIC_VALUE_NOT_CTYVALUE
+            raise CtyConversionError(error_message, source_value=value)
+        # The wrapper's own marks are not the inner value's. Unwrapping and
+        # forgetting them is the same silent declassification the null and
+        # unknown branch above used to perform.
+        return convert(value.value, target_type).with_marks(set(value.marks))
 
-        # Tuple *from a tuple only*. go-cty's table has no list-to-tuple or
-        # set-to-tuple conversion at all -- a collection's length is a property
-        # of the value and a tuple's is part of its type, so the conversion
-        # would be one that type-checking cannot decide. This accepted both,
-        # while `can_convert_unsafe` above said it could not, so `convert`
-        # performed a conversion its own predicate denied: unification could
-        # refuse a type that `convert` would in fact have reached.
-        if isinstance(target_type, CtyTuple) and isinstance(value.type, CtyTuple):
-            source_elements = _ordered_elements(value)
-            if len(source_elements) != len(target_type.element_types):
-                error_message = ERR_TUPLE_LENGTH_MISMATCH.format(
-                    got=len(source_elements), want=len(target_type.element_types)
+    # String conversion. go-cty's table (cty/convert/conversion_primitive.go)
+    # defines exactly two conversions to string -- from number and from bool
+    # -- and nothing else. This used to convert *anything* non-capsule with
+    # `str(raw)`, and `raw` for a collection is the internal tuple of
+    # CtyValues, so `convert(list, string)` returned the text of a repr:
+    # "(CtyValue(vtype=CtyString(), value='a', ...),)". A plausible-looking
+    # string, headed for Terraform state.
+    if isinstance(target_type, CtyString):
+        if isinstance(value.type, CtyBool):
+            text = "true" if value.value else "false"
+            return CtyValue(target_type, text).with_marks(set(value.marks))
+        if isinstance(value.type, CtyNumber):
+            return CtyValue(target_type, _number_to_string(value.value)).with_marks(set(value.marks))
+
+    # Number conversion. Only from a string, or from a number of course.
+    # This used to hand the payload to CtyNumber().validate, which accepts a
+    # bool because a Python bool *is* an int -- so `convert(true, number)`
+    # returned 1 where go-cty has no bool-to-number conversion at all.
+    if isinstance(target_type, CtyNumber) and isinstance(value.type, CtyString | CtyNumber):
+        try:
+            # `Decimal(" 1")` is 1: the constructor strips surrounding
+            # whitespace, and Go's `big.ParseFloat` grammar has no room for
+            # any -- `tonumber(" 1")` is an error in go-cty. Refused here
+            # rather than in `validate`, which is this package's own
+            # convenience for raw Python input; the conversion is the surface
+            # go-cty defines. Found 2026-08-19 by the stdlib fuzz.
+            raw = value.value
+            if isinstance(raw, str) and raw != raw.strip():
+                raise CtyValidationError("a number cannot carry surrounding whitespace")
+            validated = target_type.validate(raw)
+            return validated.with_marks(set(value.marks))
+        except CtyValidationError as e:
+            error_message = ERR_CANNOT_CONVERT_VALIDATION.format(
+                value_type=value.type, target_type=target_type, message=e.message
+            )
+            raise CtyConversionError(
+                error_message,
+                source_value=value,
+                target_type=target_type,
+            ) from e
+
+    # Boolean conversion. go-cty accepts "true"/"1" and "false"/"0", and
+    # refuses any other casing with a message that says so; this lowercased
+    # first, so "TRUE" converted here and is refused there.
+    if isinstance(target_type, CtyBool):
+        if isinstance(value.type, CtyString):
+            text = str(value.value)
+            if text in ("true", "1"):
+                return CtyValue(target_type, True).with_marks(set(value.marks))
+            if text in ("false", "0"):
+                return CtyValue(target_type, False).with_marks(set(value.marks))
+            lowered = text.lower()
+            if lowered in ("true", "false"):
+                error_message = ERR_CANNOT_CONVERT_BOOL_CASE.format(text=text, lowered=lowered)
+                raise CtyConversionError(
+                    error_message,
+                    source_value=value,
+                    target_type=target_type,
                 )
-                raise CtyConversionError(error_message, source_value=value, target_type=target_type)
-            converted = target_type.validate(
-                tuple(
-                    convert(element, element_type)
-                    for element, element_type in zip(source_elements, target_type.element_types, strict=True)
-                )
-            ).with_marks(set(value.marks))
-            return converted
-
-        # An object is map-shaped data that happens to carry per-attribute
-        # types, so it converts to a map whose element type every attribute
-        # reaches. Unification leans on this whenever two objects have different
-        # attribute names.
-        if isinstance(target_type, CtyMap) and isinstance(value.type, CtyMap | CtyObject):
-            _refuse_unless_types_allow(value, target_type)  # same reason as the list branch
-            source_items = value.value
-            if not isinstance(source_items, dict):
-                error_message = ERR_SOURCE_OBJECT_NOT_DICT
-                raise CtyConversionError(error_message)
-            items = cast(dict[str, CtyValue[Any]], source_items)
-            converted = target_type.validate(
-                {name: convert(item, target_type.element_type) for name, item in items.items()}
-            ).with_marks(set(value.marks))
-            return converted
-
-        # A map converts to an object, and only unsafely: which keys a map holds
-        # is a property of the value, so the type cannot promise the attributes
-        # will be there. Keys the object does not declare are *skipped* rather
-        # than refused, a missing optional attribute becomes null, and a missing
-        # required one is the error. All three are go-cty's rules
-        # (`conversionMapToObject`), and without any of it a provider decoding
-        # `map(string)` config into a schema object was simply refused.
-        if isinstance(target_type, CtyObject) and isinstance(value.type, CtyMap):
-            return _map_to_object(value, target_type)
-
-        # Object conversion
-        if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
-            new_attrs = {}
-            source_attrs = value.value
-            if not isinstance(source_attrs, dict):
-                error_message = ERR_SOURCE_OBJECT_NOT_DICT
-                raise CtyConversionError(error_message)
-            source_attrs_dict = cast(dict[str, CtyValue[Any]], source_attrs)
-            for name, target_attr_type in target_type.attribute_types.items():
-                if name in source_attrs_dict:
-                    new_attrs[name] = convert(source_attrs_dict[name], target_attr_type)
-                elif name in target_type.optional_attributes:
-                    new_attrs[name] = CtyValue.null(target_attr_type)
-                else:
-                    error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
-                    raise CtyConversionError(error_message)
-            concrete = cast(CtyObject, _without_optional(target_type))
-            converted = concrete.validate(new_attrs).with_marks(set(value.marks))
-            return converted
-
-        # Fallback - no conversion available
-        error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
+        error_message = ERR_CANNOT_CONVERT_TO_BOOL.format(value_type=value.type)
         raise CtyConversionError(
             error_message,
             source_value=value,
             target_type=target_type,
         )
+
+    # Collection conversions, element by element. `target_type.validate` on
+    # its own was not enough: it checks each element against the element
+    # type rather than converting it, so `list(number)` to `list(string)`
+    # -- exactly what unification asks for once it can widen primitives --
+    # was refused. A conversion `can_convert_unsafe` admits has to be one
+    # `convert` performs, or unification promises a type nothing can reach.
+    if isinstance(target_type, CtySet | CtyList) and isinstance(value.type, CtyList | CtySet | CtyTuple):
+        # Decided on the types before a single element is looked at, which
+        # is go-cty's order: `Convert` asks `GetConversionUnsafe` first and
+        # refuses if it answers nil. Elementwise alone let an *empty*
+        # `list(string)` become a `list(list(string))` -- no element to fail
+        # on -- while `can_convert_unsafe` said it could not, so `unify`
+        # could refuse a type `convert` would reach. Found by the
+        # generated-population agreement test, 2026-08-21.
+        _refuse_unless_types_allow(value, target_type)
+        collection = _collection_target(target_type, value.type)
+        source_elements = _ordered_elements(value)
+        # A set whose length is undecided cannot become a list of any
+        # definite length, so the result is deferred rather than counted.
+        # Only a list target: a set's stored element count is not a claim
+        # about its length, so `conversionCollectionToSet` has nothing it is
+        # unable to predict and neither has this. See
+        # `_list_of_unknown_length` for why the answer is neither go-cty's
+        # nor the elementwise one.
+        if isinstance(collection, CtyList) and _set_length_is_unknown(value.type, source_elements):
+            return _list_of_unknown_length(collection, len(source_elements), value)
+        element_type = collection.element_type
+        elements = [convert(element, element_type) for element in source_elements]
+        converted: CtyValue[Any] = collection.validate(elements).with_marks(set(value.marks))
+        return converted
+
+    # Tuple *from a tuple only*. go-cty's table has no list-to-tuple or
+    # set-to-tuple conversion at all -- a collection's length is a property
+    # of the value and a tuple's is part of its type, so the conversion
+    # would be one that type-checking cannot decide. This accepted both,
+    # while `can_convert_unsafe` above said it could not, so `convert`
+    # performed a conversion its own predicate denied: unification could
+    # refuse a type that `convert` would in fact have reached.
+    if isinstance(target_type, CtyTuple) and isinstance(value.type, CtyTuple):
+        source_elements = _ordered_elements(value)
+        if len(source_elements) != len(target_type.element_types):
+            error_message = ERR_TUPLE_LENGTH_MISMATCH.format(
+                got=len(source_elements), want=len(target_type.element_types)
+            )
+            raise CtyConversionError(error_message, source_value=value, target_type=target_type)
+        converted = target_type.validate(
+            tuple(
+                convert(element, element_type)
+                for element, element_type in zip(source_elements, target_type.element_types, strict=True)
+            )
+        ).with_marks(set(value.marks))
+        return converted
+
+    # An object is map-shaped data that happens to carry per-attribute
+    # types, so it converts to a map whose element type every attribute
+    # reaches. Unification leans on this whenever two objects have different
+    # attribute names.
+    if isinstance(target_type, CtyMap) and isinstance(value.type, CtyMap | CtyObject):
+        _refuse_unless_types_allow(value, target_type)  # same reason as the list branch
+        source_items = value.value
+        if not isinstance(source_items, dict):
+            error_message = ERR_SOURCE_OBJECT_NOT_DICT
+            raise CtyConversionError(error_message)
+        items = cast(dict[str, CtyValue[Any]], source_items)
+        converted = target_type.validate(
+            {name: convert(item, target_type.element_type) for name, item in items.items()}
+        ).with_marks(set(value.marks))
+        return converted
+
+    # A map converts to an object, and only unsafely: which keys a map holds
+    # is a property of the value, so the type cannot promise the attributes
+    # will be there. Keys the object does not declare are *skipped* rather
+    # than refused, a missing optional attribute becomes null, and a missing
+    # required one is the error. All three are go-cty's rules
+    # (`conversionMapToObject`), and without any of it a provider decoding
+    # `map(string)` config into a schema object was simply refused.
+    if isinstance(target_type, CtyObject) and isinstance(value.type, CtyMap):
+        return _map_to_object(value, target_type)
+
+    # Object conversion
+    if isinstance(target_type, CtyObject) and isinstance(value.type, CtyObject):
+        new_attrs = {}
+        source_attrs = value.value
+        if not isinstance(source_attrs, dict):
+            error_message = ERR_SOURCE_OBJECT_NOT_DICT
+            raise CtyConversionError(error_message)
+        source_attrs_dict = cast(dict[str, CtyValue[Any]], source_attrs)
+        for name, target_attr_type in target_type.attribute_types.items():
+            if name in source_attrs_dict:
+                new_attrs[name] = convert(source_attrs_dict[name], target_attr_type)
+            elif name in target_type.optional_attributes:
+                new_attrs[name] = CtyValue.null(target_attr_type)
+            else:
+                error_message = ERR_MISSING_REQUIRED_ATTRIBUTE.format(name=name)
+                raise CtyConversionError(error_message)
+        concrete = cast(CtyObject, _without_optional(target_type))
+        converted = concrete.validate(new_attrs).with_marks(set(value.marks))
+        return converted
+
+    # Fallback - no conversion available
+    error_message = ERR_CANNOT_CONVERT_GENERAL.format(value_type=value.type, target_type=target_type)
+    raise CtyConversionError(
+        error_message,
+        source_value=value,
+        target_type=target_type,
+    )
 
 
 # 🌊🪢🔚
