@@ -26,9 +26,8 @@ Living document. Updated as work lands — do not let it drift.
 > unifies and go-cty refuses. They are recorded in `KNOWN_DIVERGENCES` with the
 > repair described.
 >
-> **Still open**, none release-blocking: the known-`dynamic` façade (P3 below —
-> and worse than the review reported, since `"a" in wrapper` answers `False`
-> rather than raising); whether the value-to-native escapes should refuse on a
+> **Still open**, none release-blocking: the known-`dynamic` façade (P3 below);
+> whether the value-to-native escapes should refuse on a
 > marked value as go-cty panics (an API decision, measured at one internal
 > caller for four of the five and 359 for `.value`); and
 > `conversion/explicit.py:419`, which uses `error_boundary` the same way the
@@ -57,7 +56,7 @@ Living document. Updated as work lands — do not let it drift.
 3. ~~**Worklist #8**~~ — **done 2026-08-17** in `pyvider-components` (`160dfa2b`): the sixteen Terraform-shadowing functions now answer what Terraform answers, measured against the harness and `terraform console`. The audit found the real count was 25 registered functions, and that `format` — shipping printf verbs to state as literal text — was worse than the famous `length` case. Two decisions remain there for Tim; see the cross-repo entry.
 4. **Three items left in this repo**, all found by the 2026-08-22 rounds and none release-blocking:
 
-   - **The known-`dynamic` façade.** `len(wrapper)` unwraps and answers, but `wrapper[0]` and `list(wrapper)` raise `TypeError` — and worse than the review reported, `"a" in wrapper` answers **`False`** rather than raising, which is a wrong answer rather than a refusal. Path traversal unwraps a wrapper as of #27, which makes the direct façade the odd one out. The fix is to centralise the unwrap across every value-like operation rather than patch each.
+   - **The known-`dynamic` façade.** `len(wrapper)` unwraps and answers, but `wrapper[0]` and `list(wrapper)` raise `TypeError` — a missing branch in two of the four value-like operations rather than a policy about dynamic values. Path traversal unwraps a wrapper as of #27, which makes the direct façade the odd one out. The fix is to centralise the unwrap so a fifth operation gets it by asking rather than by remembering. The review also listed `__contains__` here and that part is wrong: a wrapper's payload *is* a `CtyValue`, so `item in self.value` already delegates, and `CtyString("a") in wrapper` answers `True`. A raw operand finds nothing in a plain `CtyList` either, so it is not the wrapper's doing.
    - **Whether the value-to-native escapes should refuse on a marked value**, as go-cty panics (`AsString`, `LengthInt`, `EncapsulatedValue`). Measured rather than guessed: patching `raw_value`, `__bool__`, `__len__` and `__contains__` to refuse breaks **one** assertion in the whole suite, and it is test-side; `.value` has 359 internal callers and is an attrs *field*, so refusing there means turning it into a property. The asymmetry that makes this a real break is that go-cty's panic sites are explicit method calls while three of these are invoked by *syntax* — `if v:`, `len(v)`, `x in v` — so downstream code starts raising on lines nobody reads as a declassification. Recommended split: make `raw_value` refuse, leave `.value`, treat the three dunders as a 0.6.0 decision. **Tim's call.**
    - **`conversion/explicit.py:419`** uses `error_boundary` the way the type parser did before #28 removed it. Not investigated for whether it is reachable with comparably deep untrusted input; flagged, not fixed.
 
