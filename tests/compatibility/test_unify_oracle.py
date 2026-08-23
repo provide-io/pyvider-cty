@@ -116,35 +116,20 @@ TYPES: list[tuple[str, CtyType[Any]]] = [
 # is yes -- go-cty asks a different question there, unifying the tuple's own
 # elements and refusing when they have no common type.
 #
-# The four below were uncovered on 2026-08-22 by adding `map(dynamic)` and
-# `object{a:list(string),b:number}` to the set above. They are not regressions:
-# each answers identically with and without the preference-order fix that landed
-# alongside them, and they were simply unreachable while every object in the set
-# had a single attribute that map-ified cleanly.
+# The five that were here on 2026-08-22 -- every `map(dynamic)` mixed with an
+# object whose attributes do not unify -- are all fixed as of 2026-08-23, and
+# by the fault the note above already names. `can_convert_unsafe(anything,
+# dynamic)` is True, so asking it per *attribute* said yes for every object
+# against `map(dynamic)`, and `unify` read that back and answered `map(dynamic)`
+# where go-cty refuses or keeps the object. The tuple half of exactly this had
+# been fixed in the same file since 2026-08-19; the object half had not, and
+# `_object_to_dynamic_element` is now its twin.
 #
-# Three of the four are this library being *more* permissive than go-cty, which
-# is the worse direction: go-cty finds no common type and refuses, and this
-# answers `map(dynamic)`. The fourth wants the object where this gives
-# `map(dynamic)` -- the same fault the preference order fixes for the pair, but
-# with a bare `dynamic` also present, which is exactly the case that fix holds
-# back from because `_unify_objects_as_maps` gives up there and its refusal
-# stops meaning "these cannot be a map".
-#
-# The real repair is in `_unify_objects_as_maps`: it should map-ify the objects
-# and dynamics separately rather than abandoning the attempt whenever a bare
-# `dynamic` is in the group. That is a larger change to the structural unifier
-# than the preference order, and it is not attempted here.
-KNOWN_DIVERGENCES: set[str] = {
-    "dynamic + map(dynamic) + object{a:list(string),b:number}",
-    "map(string) + map(dynamic) + object{a:list(string),b:number}",
-    "object{a:string} + map(dynamic) + object{a:list(string),b:number}",
-    "object{a:number} + map(dynamic) + object{a:list(string),b:number}",
-    # Uncovered on the same day by adding `object{}`. Same family and same
-    # cause: go-cty answers `object{}` and this answers `map(dynamic)`, and it
-    # does so with the preference order removed entirely, so it is pre-existing
-    # rather than anything the preference introduced.
-    "map(dynamic) + object{} + object{a:list(string),b:number}",
-}
+# Which is the lesson worth keeping over the divergences themselves: the fix was
+# a transcription of one already written down eight lines away, and the sweep
+# could not see it because no object in the representative set had attributes
+# that failed to unify.
+KNOWN_DIVERGENCES: set[str] = set()
 
 
 def _combinations() -> list[tuple[str, list[CtyType[Any]]]]:
