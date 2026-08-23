@@ -7,6 +7,22 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **An object converts to `map(dynamic)` only if its attributes share a type.**
+  `can_convert_unsafe(anything, dynamic)` is True, so asking it once per
+  attribute answered yes for *every* object against a `dynamic`-element map --
+  and `unify` read that answer back and returned `map(dynamic)` where go-cty
+  either refuses outright or keeps the object. The tuple-shaped half of exactly
+  this fault was fixed on 2026-08-19 (`_tuple_to_dynamic_element`); the
+  object-shaped half was not, and `_object_to_dynamic_element` is now its twin,
+  with the same three rules: an attribute-less object converts to an empty map
+  whatever the element type, an object whose attributes have no common type is
+  refused, and a unification that is itself `dynamic` only stands when every
+  attribute was already `dynamic`. This closes the last five recorded
+  divergences in the unify oracle, three of which were this library unifying
+  where go-cty refuses.
+
+### Fixed
+
 - **A failed conversion no longer costs 88 milliseconds.** `convert` was
   wrapped in an `error_boundary` that logs with `exc_info=True`, and rendering
   that traceback cost a flat **88 ms per refusal** -- measured, independent of
