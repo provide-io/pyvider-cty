@@ -18,7 +18,7 @@ jobs:
   # runs with this repository's token. python-release.yml declares no secrets
   # (GITHUB_TOKEN is implicit), so nothing is inherited.
   release:
-    uses: provide-io/ci-tooling/.github/workflows/python-release.yml@3dcd8dbf98d3ef48451e89995dfbe23769dbf2e7  # v0.4.2
+    uses: provide-io/ci-tooling/.github/workflows/python-release.yml@5bb8bb59921aafba34a2b3c2888c518b52cd0f94  # v0.4.3
     permissions:
       contents: write
     with:
@@ -60,7 +60,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: provide-io/ci-tooling
-          ref: 3dcd8dbf98d3ef48451e89995dfbe23769dbf2e7  # v0.4.2
+          ref: 5bb8bb59921aafba34a2b3c2888c518b52cd0f94  # v0.4.3
           path: .ci-tooling
       - name: 🐍 Setup Python
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
