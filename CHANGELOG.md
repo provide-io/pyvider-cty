@@ -5,34 +5,35 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Fixed
+## [0.5.2] - 2026-08-28
 
-- **An object converts to `map(dynamic)` only if its attributes share a type.**
-  `can_convert_unsafe(anything, dynamic)` is True, so asking it once per
-  attribute answered yes for *every* object against a `dynamic`-element map --
-  and `unify` read that answer back and returned `map(dynamic)` where go-cty
-  either refuses outright or keeps the object. The tuple-shaped half of exactly
-  this fault was fixed on 2026-08-19 (`_tuple_to_dynamic_element`); the
-  object-shaped half was not, and `_object_to_dynamic_element` is now its twin,
-  with the same three rules: an attribute-less object converts to an empty map
-  whatever the element type, an object whose attributes have no common type is
-  refused, and a unification that is itself `dynamic` only stands when every
-  attribute was already `dynamic`. This closes the last five recorded
-  divergences in the unify oracle, three of which were this library unifying
-  where go-cty refuses.
+### Added
 
-### Fixed
+- **A path string can be read back into the `CtyPath` that produced it.**
+  `CtyPath.string()` has always rendered `rule[0].port` or `tags['a']`, and
+  nothing could read one back, so every caller that accepted a hand-written
+  path grew its own parser -- pyvider's was a regex whose docstring recorded
+  its own defect: "a stringified set-element step is indistinguishable from a
+  genuine int or string key ... the information is already gone by the time a
+  string reaches here." True of the string, false of the system. `KeyStep` is
+  what a map and a set accept, `IndexStep` is what a list and a tuple accept,
+  and no type accepts both -- so the type decides what the syntax cannot.
+  `CtyPath.parse(s, within=t)` resolves each step as it builds it, making the
+  round trip exact rather than approximate: `CtyPath.parse(p.string(),
+  within=t) == p` for any `p` valid in `t`. Without `within` the bracket is
+  read syntactically, which is the old behaviour, kept for callers with no
+  type to hand and documented as unable to tell a set element from a map key.
+  Parsing is strict: the regex it replaces used `finditer`, which skipped what
+  it could not match, so a malformed path silently became a shorter
+  valid-looking one, and its `\w+` could not express an attribute name
+  containing a dash, which go-cty allows. Unterminated brackets, empty
+  brackets, unbalanced quotes and non-index non-key contents are refused by
+  name, and a path that does not resolve reports which step failed.
 
-- **A failed conversion no longer costs 88 milliseconds.** `convert` was
-  wrapped in an `error_boundary` that logs with `exc_info=True`, and rendering
-  that traceback cost a flat **88 ms per refusal** -- measured, independent of
-  the value's size, so a hundred failed conversions took nearly nine seconds. A
-  failed conversion is an ordinary, *expected* outcome: `can_convert_unsafe` and
-  everything built on it ask exactly this question and take "no" for an answer.
-  The boundary also wrapped a function that recurses into every element and
-  attribute, so each of them entered a boundary and stringified both types --
-  quadratic in the depth of the type. Removed; every failure already raises a
-  `CtyConversionError` naming both types. A refusal now costs **0.01 ms**.
+- **`CtyPath` and the step types are exported from the package root.** They
+  were reachable only as `pyvider.cty.path`; the root exported the mark-path
+  helpers but not the path type itself. That gap is the likeliest reason a
+  regex was written in the first place.
 
 ### Changed
 
@@ -50,7 +51,129 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   while those three are invoked by Python *syntax* and would raise on lines no
   reader would recognise as a declassification. `.value` is unchanged too.
 
+- **`PathStep` subclasses implement `_apply` rather than `apply`.** `apply` is
+  now a template method that carries the receiver's marks onto whatever a step
+  selects, so no step can forget to. `PathStep` is exported, so a subclass
+  outside this package that implements the older public `apply` is bridged
+  rather than broken: its method becomes `_apply`, the base class supplies
+  `apply`, and it gains the mark handling it was written too early to have,
+  with a `DeprecationWarning` at class creation.
+
+- **A directly constructed `CtyValue` is frozen one level deep.** `validate`
+  has returned a `FrozenDict` or a tuple since 0.5.0, but
+  `CtyValue(vtype, {"a": ...})` kept the caller's dict -- aliased, mutable
+  through `value.value`, its hash changing under the caller's later edits --
+  and a `set` passed as `marks` stayed a set and made `hash(value)` raise. The
+  constructor now turns a dict, list or set payload into a `FrozenDict`, tuple
+  or frozenset (a capsule's payload and a `dynamic` wrapper are left alone; an
+  already-frozen payload is not copied) and `marks` is always a frozenset. The
+  documented "always construct through `validate`" is a guard now rather than
+  a caveat. Code that compared a hand-built value's payload to a list gets a
+  tuple; four tests in this repository did. Cost on the hot path is two
+  `type()` lookups per value, about 45 ns; `make perf-report` against the
+  previous release is within noise (the first cut of this check was not --
+  a quarter of `validate` on a 20k-element map -- and was measured down).
+- **`CtyMarksSerializationError` is a `SerializationError`.** It was a direct
+  `CtyError` subclass, so `except SerializationError` around `cty_to_msgpack`
+  let the one serialization failure a provider is most likely to hit straight
+  through -- while the serialization guide called it "the more specific"
+  `SerializationError`. Message, `path` and error code are unchanged; the class
+  now lives in `pyvider.cty.exceptions.encoding`, still exported from
+  `pyvider.cty.exceptions`.
+- **The JSON codec reads a repeated property the way go-cty does.**
+  `implied_json_type` refuses `{"a": 1, "a": "x"}` -- two occurrences implying
+  different types -- with go-cty's `duplicate "a" property in JSON object`, and
+  keeps go-cty 1.16.2's carve-out for a same-typed repeat. `cty_from_json`
+  decodes *every* occurrence against the declared type before keeping the
+  last, so `{"a": "x", "a": 1}` against `object({a: number})` is an error
+  rather than a 1. Both took Python's last-wins reading and never saw the
+  earlier value. Verified against go-cty through the oracle (`cty json
+  implied-type` / `unmarshal`), both the refusals and the carve-out. Closes #11.
+- **The dynamic envelope's `type` key follows go-cty's decode order.**
+  go-cty's own decoder parses every `"type"` occurrence in a dynamic-value
+  envelope as it is encountered and fails on the first invalid one -- even
+  when a later occurrence would have been valid. `raw["type"]` only ever saw
+  the final occurrence, so `{"type": ["bogus"], "type": "string", "value":
+  "x"}` decoded to `"x"` here and go-cty refuses it. Found in review of the
+  duplicate-property fix above, which did not touch this path. `value` needed
+  no change: go-cty overwrites it unconditionally with no read-time
+  validation, so last-wins there already matched.
+- **`unify` of maps with objects is two-stage, as go-cty's is.** The objects'
+  attribute types unify into one map among themselves first, and only that map
+  meets the map types given (`convert/unify.go:192`). Pooling every attribute
+  type with every map element type in one unify let a `dynamic` attribute win:
+  `map(list(string))` + `object({a: string, b: dynamic})` unified to
+  `map(dynamic)` here where go-cty unifies the object to `map(string)` first,
+  finds `list(string)` and `string` share nothing, and refuses. Found by the
+  generated unify sweep against the oracle on 2026-08-22; every other
+  map/object/dynamic mix compared unchanged.
+- **The four combining set operations read membership as cty does, not as
+  Python does.** `setintersection`, `setsubtract`, `setsymmetricdifference` and
+  `setunion` collected their arguments into a `frozenset`, which de-duplicates
+  through `CtyValue.__eq__`. cty finds a set element by hash bucket first
+  (`set.Set.Has`), and a positive and a negative zero hash differently while
+  comparing equal -- so `setsymmetricdifference(set(number){0, -0.0})` answered
+  `{0}` here against go-cty's `{-0, 0}`, and `setsubtract({0, -0.0}, {0})` came
+  back *empty* rather than `{-0}`. The set algebra now runs over
+  `identity_key`, which `sethaselement` has used since 2026-08-19 for this
+  exact reason. Found by the stdlib fuzz; the falsifier and six neighbours are
+  pinned in the oracle sweep so a cold CI run cannot miss it again. Keeping
+  both then exposed a second half that the collapse had hidden: the pair also
+  has to be *ordered*. go-cty compares numbers with `big.Float.Cmp`, which ties
+  `-0` against `0`, and its stable sort then leaves the pair in bucket order,
+  so `crc32("-0") < crc32("0")` puts the negative zero first -- confirmed
+  against the oracle. `order_key` ranks it there now. A signed zero is the only
+  tie this can reach, since any two numerically equal `Decimal`s hash alike and
+  are one element.
+- **The dynamic JSON envelope accepts only `type` and `value`.** go-cty's
+  `unmarshalDynamic` ends the decode on any other key with `invalid key %q in
+  dynamically-typed value`; this decoder ignored them, so
+  `{"type":"string","extra":1,"value":"x"}` decoded to `"x"` here and is
+  refused there. The refusal is raised from inside the key loop as go-cty's is,
+  so it competes with an invalid type descriptor by document order, and both
+  outrank the missing-`type` and missing-`value` checks that follow the loop.
+  Those two are now reported separately, matching go-cty's wording, in place of
+  one combined "must be an object with 'value' and 'type'" -- which still
+  covers an envelope that is not an object at all. A `value` that is present
+  and JSON null is unchanged: it is a null of the declared type, not a missing
+  value.
+- **`$` in a regex pattern is end-of-text, as RE2 reads it.** Python's `$` also
+  matches just before a *trailing* newline; RE2's, outside `(?m)`, does not --
+  Python's own `\Z` is the RE2 reading. So `regexall("a*$", "\r\n")` found two
+  empty matches here against go-cty's one, and `regexreplace("ab\n", "b$", "X")`
+  replaced where go-cty leaves the string alone. `regex`, `regexall` and
+  `regexreplace` now compile the anchor as `\Z`; an escaped `\$` or one inside
+  a character class stays a literal, and a pattern that asks for `(?m)` is left
+  as written, because there the two engines already agree. Same shape as the
+  `\w`-is-ASCII divergence this module already carried. Found by the stdlib
+  fuzz, and pinned in the oracle sweep alongside five neighbours.
+
 ### Fixed
+
+- **An object converts to `map(dynamic)` only if its attributes share a type.**
+  `can_convert_unsafe(anything, dynamic)` is True, so asking it once per
+  attribute answered yes for *every* object against a `dynamic`-element map --
+  and `unify` read that answer back and returned `map(dynamic)` where go-cty
+  either refuses outright or keeps the object. The tuple-shaped half of exactly
+  this fault was fixed on 2026-08-19 (`_tuple_to_dynamic_element`); the
+  object-shaped half was not, and `_object_to_dynamic_element` is now its twin,
+  with the same three rules: an attribute-less object converts to an empty map
+  whatever the element type, an object whose attributes have no common type is
+  refused, and a unification that is itself `dynamic` only stands when every
+  attribute was already `dynamic`. This closes the last five recorded
+  divergences in the unify oracle, three of which were this library unifying
+  where go-cty refuses.
+
+- **A failed conversion no longer costs 88 milliseconds.** `convert` was
+  wrapped in an `error_boundary` that logs with `exc_info=True`, and rendering
+  that traceback cost a flat **88 ms per refusal** -- measured, independent of
+  the value's size, so a hundred failed conversions took nearly nine seconds. A
+  failed conversion is an ordinary, *expected* outcome: `can_convert_unsafe` and
+  everything built on it ask exactly this question and take "no" for an answer.
+  The boundary also wrapped a function that recurses into every element and
+  attribute, so each of them entered a boundary and stringified both types --
+  quadratic in the depth of the type. Removed; every failure already raises a
+  `CtyConversionError` naming both types. A refusal now costs **0.01 ms**.
 
 - **Reading out of a marked container keeps the marks.** `marked_list[0]`,
   `marked_map["k"]`, `marked_object.a`, `marked_tuple[0]`, a list or tuple
@@ -161,104 +284,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   pre-existing divergences it uncovered, in three-type combinations where this
   library is more permissive than go-cty.
 
-### Changed
-
-- **`PathStep` subclasses implement `_apply` rather than `apply`.** `apply` is
-  now a template method that carries the receiver's marks onto whatever a step
-  selects, so no step can forget to. `PathStep` is exported, so a subclass
-  outside this package that implements the older public `apply` is bridged
-  rather than broken: its method becomes `_apply`, the base class supplies
-  `apply`, and it gains the mark handling it was written too early to have,
-  with a `DeprecationWarning` at class creation.
-
-- **A directly constructed `CtyValue` is frozen one level deep.** `validate`
-  has returned a `FrozenDict` or a tuple since 0.5.0, but
-  `CtyValue(vtype, {"a": ...})` kept the caller's dict -- aliased, mutable
-  through `value.value`, its hash changing under the caller's later edits --
-  and a `set` passed as `marks` stayed a set and made `hash(value)` raise. The
-  constructor now turns a dict, list or set payload into a `FrozenDict`, tuple
-  or frozenset (a capsule's payload and a `dynamic` wrapper are left alone; an
-  already-frozen payload is not copied) and `marks` is always a frozenset. The
-  documented "always construct through `validate`" is a guard now rather than
-  a caveat. Code that compared a hand-built value's payload to a list gets a
-  tuple; four tests in this repository did. Cost on the hot path is two
-  `type()` lookups per value, about 45 ns; `make perf-report` against the
-  previous release is within noise (the first cut of this check was not --
-  a quarter of `validate` on a 20k-element map -- and was measured down).
-- **`CtyMarksSerializationError` is a `SerializationError`.** It was a direct
-  `CtyError` subclass, so `except SerializationError` around `cty_to_msgpack`
-  let the one serialization failure a provider is most likely to hit straight
-  through -- while the serialization guide called it "the more specific"
-  `SerializationError`. Message, `path` and error code are unchanged; the class
-  now lives in `pyvider.cty.exceptions.encoding`, still exported from
-  `pyvider.cty.exceptions`.
-- **The JSON codec reads a repeated property the way go-cty does.**
-  `implied_json_type` refuses `{"a": 1, "a": "x"}` -- two occurrences implying
-  different types -- with go-cty's `duplicate "a" property in JSON object`, and
-  keeps go-cty 1.16.2's carve-out for a same-typed repeat. `cty_from_json`
-  decodes *every* occurrence against the declared type before keeping the
-  last, so `{"a": "x", "a": 1}` against `object({a: number})` is an error
-  rather than a 1. Both took Python's last-wins reading and never saw the
-  earlier value. Verified against go-cty through the oracle (`cty json
-  implied-type` / `unmarshal`), both the refusals and the carve-out. Closes #11.
-- **The dynamic envelope's `type` key follows go-cty's decode order.**
-  go-cty's own decoder parses every `"type"` occurrence in a dynamic-value
-  envelope as it is encountered and fails on the first invalid one -- even
-  when a later occurrence would have been valid. `raw["type"]` only ever saw
-  the final occurrence, so `{"type": ["bogus"], "type": "string", "value":
-  "x"}` decoded to `"x"` here and go-cty refuses it. Found in review of the
-  duplicate-property fix above, which did not touch this path. `value` needed
-  no change: go-cty overwrites it unconditionally with no read-time
-  validation, so last-wins there already matched.
-- **`unify` of maps with objects is two-stage, as go-cty's is.** The objects'
-  attribute types unify into one map among themselves first, and only that map
-  meets the map types given (`convert/unify.go:192`). Pooling every attribute
-  type with every map element type in one unify let a `dynamic` attribute win:
-  `map(list(string))` + `object({a: string, b: dynamic})` unified to
-  `map(dynamic)` here where go-cty unifies the object to `map(string)` first,
-  finds `list(string)` and `string` share nothing, and refuses. Found by the
-  generated unify sweep against the oracle on 2026-08-22; every other
-  map/object/dynamic mix compared unchanged.
-- **The four combining set operations read membership as cty does, not as
-  Python does.** `setintersection`, `setsubtract`, `setsymmetricdifference` and
-  `setunion` collected their arguments into a `frozenset`, which de-duplicates
-  through `CtyValue.__eq__`. cty finds a set element by hash bucket first
-  (`set.Set.Has`), and a positive and a negative zero hash differently while
-  comparing equal -- so `setsymmetricdifference(set(number){0, -0.0})` answered
-  `{0}` here against go-cty's `{-0, 0}`, and `setsubtract({0, -0.0}, {0})` came
-  back *empty* rather than `{-0}`. The set algebra now runs over
-  `identity_key`, which `sethaselement` has used since 2026-08-19 for this
-  exact reason. Found by the stdlib fuzz; the falsifier and six neighbours are
-  pinned in the oracle sweep so a cold CI run cannot miss it again. Keeping
-  both then exposed a second half that the collapse had hidden: the pair also
-  has to be *ordered*. go-cty compares numbers with `big.Float.Cmp`, which ties
-  `-0` against `0`, and its stable sort then leaves the pair in bucket order,
-  so `crc32("-0") < crc32("0")` puts the negative zero first -- confirmed
-  against the oracle. `order_key` ranks it there now. A signed zero is the only
-  tie this can reach, since any two numerically equal `Decimal`s hash alike and
-  are one element.
-- **The dynamic JSON envelope accepts only `type` and `value`.** go-cty's
-  `unmarshalDynamic` ends the decode on any other key with `invalid key %q in
-  dynamically-typed value`; this decoder ignored them, so
-  `{"type":"string","extra":1,"value":"x"}` decoded to `"x"` here and is
-  refused there. The refusal is raised from inside the key loop as go-cty's is,
-  so it competes with an invalid type descriptor by document order, and both
-  outrank the missing-`type` and missing-`value` checks that follow the loop.
-  Those two are now reported separately, matching go-cty's wording, in place of
-  one combined "must be an object with 'value' and 'type'" -- which still
-  covers an envelope that is not an object at all. A `value` that is present
-  and JSON null is unchanged: it is a null of the declared type, not a missing
-  value.
-- **`$` in a regex pattern is end-of-text, as RE2 reads it.** Python's `$` also
-  matches just before a *trailing* newline; RE2's, outside `(?m)`, does not --
-  Python's own `\Z` is the RE2 reading. So `regexall("a*$", "\r\n")` found two
-  empty matches here against go-cty's one, and `regexreplace("ab\n", "b$", "X")`
-  replaced where go-cty leaves the string alone. `regex`, `regexall` and
-  `regexreplace` now compile the anchor as `\Z`; an escaped `\$` or one inside
-  a character class stays a literal, and a pattern that asks for `(?m)` is left
-  as written, because there the two engines already agree. Same shape as the
-  `\w`-is-ASCII divergence this module already carried. Found by the stdlib
-  fuzz, and pinned in the oracle sweep alongside five neighbours.
+- **`KeyStep.apply_type` validates a set's key.** It validated a map's key
+  against `CtyString` but never checked a set's key against the element type,
+  so a set of strings accepted `[0]` and answered with the element type -- a
+  path naming nothing, reported as valid. It now validates, the same way and
+  in the same place the map branch already did.
 
 ### Documentation
 
