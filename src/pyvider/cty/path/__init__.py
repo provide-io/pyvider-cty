@@ -13,6 +13,7 @@ from pyvider.cty.path.base import (
     KeyStep,
     PathStep,
 )
+from pyvider.cty.path.parse import parse_path
 
 #
 # pyvider/cty/path/__init__.py
@@ -31,6 +32,7 @@ __all__ = [
     "IndexStep",
     "KeyStep",
     "PathStep",
+    "parse_path",
 ]
 
 # 🌊🪢🔚

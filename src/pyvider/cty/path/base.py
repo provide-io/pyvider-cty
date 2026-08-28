@@ -297,6 +297,17 @@ class KeyStep(PathStep):
         if isinstance(vtype, CtyDynamic):
             return CtyDynamic()
         if isinstance(vtype, CtySet):
+            # A set element keys itself, so the key has to BE an element. This
+            # went unchecked while the map branch below validated its key, so a
+            # set of strings accepted `[0]` and produced a path naming nothing.
+            probe = self.key.value if isinstance(self.key, CtyValue) else self.key
+            try:
+                vtype.element_type.validate(probe)
+            except CtyValidationError as e:
+                raise AttributePathError(
+                    f"Invalid key for set: {probe!r} is not a valid "
+                    f"{vtype.element_type.__class__.__name__} element"
+                ) from e
             return vtype.element_type
         if not isinstance(vtype, CtyMap):
             raise AttributePathError(f"Cannot get key from non-map type {vtype.__class__.__name__}")
@@ -335,6 +346,25 @@ class CtyPath:
     @classmethod
     def empty(cls) -> CtyPath:
         return cls(())
+
+    @classmethod
+    def parse(cls, path_str: str, *, within: CtyType[Any] | None = None) -> CtyPath:
+        """Read back the string form `string()` emits.
+
+        Pass `within` -- the type the path is relative to -- and each step is
+        resolved as it is built: an unknown attribute name raises rather than
+        producing a path that names nothing, and `[...]` becomes an `IndexStep`
+        or a `KeyStep` according to what the type accepts. Without it the
+        bracket is read syntactically, which cannot tell a set element from a
+        map key, since both are spelled `['a']`.
+
+        Raises:
+            AttributePathError: If the string is malformed, or if `within` is
+                given and the path does not resolve against it.
+        """
+        from pyvider.cty.path.parse import parse_path
+
+        return parse_path(path_str, within)
 
     @classmethod
     def get_attr(cls, name: str) -> CtyPath:
