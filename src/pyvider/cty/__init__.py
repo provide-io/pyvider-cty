@@ -28,6 +28,7 @@ from pyvider.cty.json_codec import cty_from_json, cty_to_json, implied_json_type
 from pyvider.cty.mark_paths import PathMarks, mark_with_paths, unmark_deep_with_paths
 from pyvider.cty.marks import CtyMark, collect_marks_deep, unmark_deep
 from pyvider.cty.parser import parse_tf_type_to_ctytype, parse_type_string_to_ctytype
+from pyvider.cty.path import CtyPath, GetAttrStep, IndexStep, KeyStep, PathStep
 from pyvider.cty.refinement import CtyRefinementError, refine, safe_known_prefix
 from pyvider.cty.types import (
     BytesCapsule,
@@ -70,6 +71,7 @@ __all__ = [
     "CtyMark",
     "CtyNumber",
     "CtyObject",
+    "CtyPath",
     "CtyRefinementError",
     "CtySet",
     "CtySetValidationError",
@@ -81,7 +83,11 @@ __all__ = [
     "CtyTypeParseError",
     "CtyValidationError",
     "CtyValue",
+    "GetAttrStep",
+    "IndexStep",
+    "KeyStep",
     "PathMarks",
+    "PathStep",
     "ValueRange",
     "__version__",
     "collect_marks_deep",
