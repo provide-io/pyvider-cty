@@ -127,11 +127,10 @@ addopts = "-m 'not memray' -ra -q --color=yes"
 line-length = 111
 indent-width = 4
 target-version = "py311"
-# ruff >= 0.16 formats Python blocks inside Markdown. This repo is on 0.15, so
-# the exclusion is inert today and exists because the dependency refresh will
-# cross that boundary: without it, the first `ruff format .` after the upgrade
-# restyles every code block in docs/ as a side effect of upgrading a linter.
-# It did exactly that to 44 files in provide-foundation.
+# ruff >= 0.16 formats Python blocks inside Markdown, and this repo is now on
+# 0.16, so this exclusion is load-bearing rather than anticipatory: without it
+# the first `ruff format .` restyles every code block in docs/ as a side effect
+# of a linter upgrade. It did exactly that to 44 files in provide-foundation.
 exclude = ["**/*.md"]
 
 [tool.ruff.lint]
@@ -186,6 +185,13 @@ disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
 module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*", "uniseg", "uniseg.*"]
+ignore_missing_imports = true
+
+# provide-foundry ships no py.typed marker. Surfaced by mypy 2.3, which reports
+# it where 1.20 did not, and only in scripts/ -- a docs scaffolding helper that
+# is not part of the distribution.
+[[tool.mypy.overrides]]
+module = ["provide.foundry.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
