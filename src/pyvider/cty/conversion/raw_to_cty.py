@@ -396,7 +396,7 @@ def _unify_types(types: set[CtyType[Any]]) -> CtyType[Any]:
             attribute_types={
                 name: _unify_types({obj.attribute_types[name] for obj in objects}) for name in names
             },
-            optional_attributes=optional,  # type: ignore[arg-type]  # attrs converter takes any set
+            optional_attributes=optional,
         )
 
     return CtyDynamic()

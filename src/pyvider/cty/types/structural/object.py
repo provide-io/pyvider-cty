@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any, ClassVar, cast
 import unicodedata
 
@@ -30,6 +31,11 @@ from pyvider.cty.values import CtyValue
 from pyvider.cty.values.frozen import FrozenDict
 
 
+def _to_frozenset(names: Iterable[str]) -> frozenset[str]:
+    """Copy an iterable of attribute names into a frozenset."""
+    return frozenset(names)
+
+
 @define(frozen=True, slots=True)
 class CtyObject(CtyType[dict[str, object]]):
     ctype: ClassVar[str] = "object"
@@ -38,7 +44,11 @@ class CtyObject(CtyType[dict[str, object]]):
     # its map: `__hash__` reads this, so a caller's dict that kept changing would
     # change the hash of a type already used as a key.
     attribute_types: dict[str, CtyType[Any]] = field(factory=dict, converter=FrozenDict)
-    optional_attributes: frozenset[str] = field(factory=frozenset, converter=frozenset)
+    # `frozenset` itself would work at runtime, but attrs derives the __init__
+    # parameter type from the converter, and the class's overloads resolve to
+    # `Iterable[_T_co]` with an unbound TypeVar -- which rejects every concrete
+    # argument, `frozenset[str]` included, under a strict type checker.
+    optional_attributes: frozenset[str] = field(factory=frozenset, converter=_to_frozenset)
 
     def __attrs_post_init__(self) -> None:
         # The same two rules `validate` applies to a value's keys, applied to the
