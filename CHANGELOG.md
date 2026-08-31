@@ -5,6 +5,26 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-30
+
+### Fixed
+
+- **`CtyObject(optional_attributes=...)` type checks again.** The field used the
+  `frozenset` class itself as its attrs converter, and attrs derives the
+  `__init__` parameter type from the converter -- so callers were offered
+  `Iterable[_T_co]`, carrying an unbound TypeVar that nothing concrete
+  satisfies. Under `mypy --strict` every call was an error, including one
+  passing the type the field declares:
+
+      Argument "optional_attributes" to "CtyObject" has incompatible type
+      "frozenset[str]"; expected "Iterable[_T_co]"
+
+  Runtime was unaffected, which is why it lasted: the field works, and the one
+  place in this package that hit it silenced it with a `type: ignore` rather
+  than fixing it. Naming a typed converter function fixes every argument shape
+  a caller plausibly has -- `frozenset`, `set`, a set literal, a list, a
+  generator -- and the now-unused ignore is gone.
+
 ## [0.5.2] - 2026-08-28
 
 ### Added
