@@ -55,11 +55,11 @@ dev = [
     # refuses outright ("memray does not support this platform (win32)"), which
     # fails the whole resolution rather than skipping the profiler.
     "memray>=1.0; sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "provide-testkit[standard]>=0.4.0",
+    "provide-testkit[standard]>=0.4.5",
     "pytest-benchmark>=5.2.3",
 ]
 docs = [
-    "provide-testkit[docs]>=0.4.0",
+    "provide-testkit[docs]>=0.4.5",
     # `mkdocs.yml` opens with `INHERIT: .provide/foundry/base-mkdocs.yml`, and
     # that directory is gitignored scaffolding rather than a checked-in file --
     # so without this the documentation could not be built from a clean clone at
