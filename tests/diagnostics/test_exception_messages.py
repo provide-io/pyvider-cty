@@ -51,7 +51,7 @@ class TestValidationExceptionStructure:
             schema_type=schema,
             invalid_config={"a": True, "b": "not-a-bool"},
             expected_error_type=CtyMapValidationError,
-            expected_error_message="At ['b']: Boolean validation error: Cannot convert str to bool.",
+            expected_error_message="At ['b']: Boolean validation error: a bool is required",
         )
 
     def test_tuple_validation_error_structure(self) -> None:

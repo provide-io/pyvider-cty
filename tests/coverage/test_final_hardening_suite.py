@@ -89,12 +89,23 @@ class TestFinalCoverageSuite:
 
     # --- Coverage for: src/pyvider/cty/codec.py ---
     def test_ext_hook_for_other_codes(self) -> None:
-        """Covers the case where an unknown msgpack extension code is received."""
+        """An unrecognised extension is refused once its body says it means something.
+
+        go-cty decides by length before code: one byte or less is a totally
+        unknown value whatever the code, and a longer body requires code 12 "as
+        an additional signal that the body is intended to be a refinement map"
+        (cty/msgpack/unknown.go, unmarshalUnknownValue).
+        """
+        import pytest
+
         from pyvider.cty.codec import _ext_hook
+        from pyvider.cty.exceptions import DeserializationError
         from pyvider.cty.values.markers import UNREFINED_UNKNOWN
 
-        # Any code other than 0 or 12 should be treated as an unrefined unknown
-        assert _ext_hook(99, b"some-data") is UNREFINED_UNKNOWN
+        assert _ext_hook(99, b"\x00") is UNREFINED_UNKNOWN
+
+        with pytest.raises(DeserializationError, match="unsupported extension"):
+            _ext_hook(99, b"some-data")
 
     # --- Coverage for: src/pyvider/cty/functions/structural_functions.py ---
     def test_coalesce_stops_at_an_unknown(self) -> None:

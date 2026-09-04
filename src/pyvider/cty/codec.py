@@ -136,15 +136,37 @@ def _decode_refined_unknown_payload(data: bytes) -> RefinedUnknownValue:
         raise DeserializationError(error_message) from e
 
 
+#: A refinement map larger than this is refused rather than allocated. go-cty
+#: calls a description this size "unreasonable and might be an abusive attempt
+#: to allocate large amounts of memory in a system consuming this input".
+_MAX_REFINEMENT_BYTES = 1024
+
+
 def _ext_hook(code: int, data: bytes) -> Any:
-    match code:
-        case 0:
-            return UNREFINED_UNKNOWN
-        case 12:
-            return _decode_refined_unknown_payload(data)
-        case _:
-            # Per protocol, any other extension code is an unrefined unknown.
-            return UNREFINED_UNKNOWN
+    """Decode a msgpack extension, deciding on length before code.
+
+    This mirrors go-cty's `unmarshalUnknownValue` (cty/msgpack/unknown.go). A
+    body of one byte or less is a totally unknown value whatever its code --
+    the encoder writes one nul byte because that is msgpack's most compact
+    extension. A longer body demands code 12, which go-cty requires "as an
+    additional signal that the body is intended to be a refinement map", and
+    rejects otherwise:
+
+        return cty.DynamicVal, path.NewErrorf(
+            "unsupported extension type 0x%02x with len %d", typeCode, extLen)
+
+    Reading an unrecognised extension as an unrefined unknown would turn a
+    value the sender meant as something else into a plausible one, and the
+    practitioner would see "(known after apply)" for data that was never
+    unknown.
+    """
+    if len(data) <= 1:
+        return UNREFINED_UNKNOWN
+    if code != MSGPACK_EXT_TYPE_REFINED_UNKNOWN:
+        raise DeserializationError(f"unsupported extension type 0x{code:02x} with len {len(data)}")
+    if len(data) > _MAX_REFINEMENT_BYTES:
+        raise DeserializationError("oversize unknown value refinement")
+    return _decode_refined_unknown_payload(data)
 
 
 _UNKNOWN_EXT = msgpack.ExtType(MSGPACK_EXT_TYPE_CTY, b"\x00")

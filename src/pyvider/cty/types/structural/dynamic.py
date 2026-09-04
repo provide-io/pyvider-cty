@@ -14,7 +14,7 @@ from attrs import define
 from pyvider.cty.exceptions import CtyValidationError, DeserializationError
 from pyvider.cty.types.base import CtyType
 from pyvider.cty.validation.recursion import with_recursion_detection
-from pyvider.cty.values import CtyValue
+from pyvider.cty.values import CtyValue, UnknownValue
 
 
 @define(frozen=True, slots=True)
@@ -40,6 +40,27 @@ class CtyDynamic(CtyType[object]):
 
         if value is None:
             return CtyValue.null(self)
+
+        # An unknown that arrived without a type of its own. Terraform writes
+        # exactly this for a dynamic-typed attribute whose value is unknown and
+        # whose type is not yet determined -- `objchange` answers
+        # `cty.UnknownVal(cty.DynamicPseudoType)` whenever the prior value was
+        # unknown, and `jsondecode` of an unknown returns the same. There is
+        # nothing here to infer a type from, and inference answered `dynamic`,
+        # which called straight back into this method with the same marker until
+        # the recursion detector stopped the whole validation -- flagging every
+        # enclosing value unknown, so a resource's entire planned state was lost
+        # for one unknown attribute. The root of a dynamic value never reached
+        # this, because the codec handles it before `validate`; only a nested one
+        # did.
+        #
+        # Answered totally unrefined, as go-cty does: its msgpack decoder ignores
+        # the refinement map outright when the type is `DynamicPseudoType`
+        # (`cty/msgpack/unknown.go`), and `Refine()` on `DynamicVal` echoes back
+        # an unrefined `DynamicVal` (`cty/unknown_refinement.go`). A refinement
+        # constrains a type, and this value does not have one yet.
+        if isinstance(value, UnknownValue):
+            return CtyValue.unknown(self)
 
         if isinstance(value, list) and len(value) == 2 and isinstance(value[0], bytes):
             try:
