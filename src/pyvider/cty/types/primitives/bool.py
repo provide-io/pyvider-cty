@@ -40,18 +40,25 @@ class CtyBool(CtyType[bool]):
 
         if isinstance(raw_value, bool):
             return CtyValue(vtype=self, value=raw_value)
+        # go-cty converts a string to a bool only as an unsafe conversion, and
+        # only for these four spellings
+        # (cty/convert/conversion_primitive.go:38-54). A number is not
+        # convertible to a bool at all -- neither the safe nor the unsafe
+        # primitive table has an entry for it -- so accepting `1` would let a
+        # provider that returned a count where it meant a flag reach a plan
+        # with a plausible answer rather than an error.
         if isinstance(raw_value, str):
-            if raw_value.lower() == "true":
+            if raw_value in ("true", "1"):
                 return CtyValue(vtype=self, value=True)
-            if raw_value.lower() == "false":
+            if raw_value in ("false", "0"):
                 return CtyValue(vtype=self, value=False)
-        if isinstance(raw_value, int | float):
-            if raw_value == 1:
-                return CtyValue(vtype=self, value=True)
-            if raw_value == 0:
-                return CtyValue(vtype=self, value=False)
+            lowered = raw_value.lower()
+            if lowered in ("true", "false"):
+                raise CtyBoolValidationError(
+                    f'a bool is required; to convert from string, use lowercase "{lowered}"'
+                )
 
-        raise CtyBoolValidationError(f"Cannot convert {type(raw_value).__name__} to bool.")
+        raise CtyBoolValidationError(f"a bool is required; cannot convert {type(raw_value).__name__}")
 
     def equal(self, other: CtyType[Any]) -> bool:
         return isinstance(other, CtyBool)
