@@ -21,12 +21,8 @@ class TestCtyBool:
             (False, False),
             ("true", True),
             ("false", False),
-            ("TRUE", True),
-            ("FALSE", False),
-            (1, True),
-            (0, False),
-            (1.0, True),
-            (0.0, False),
+            ("1", True),
+            ("0", False),
         ],
     )
     def test_validate_valid_values(self, input_val, expected) -> None:

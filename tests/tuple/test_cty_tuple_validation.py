@@ -49,7 +49,7 @@ class TestCtyTupleValidation:
         data = ("outer", (123, "not-a-bool"))
         with pytest.raises(
             CtyTupleValidationError,
-            match=r"At \[1\]\[1\]: Boolean validation error: Cannot convert str to bool\.",
+            match=r"At \[1\]\[1\]: Boolean validation error: a bool is required",
         ):
             nested_tuple_type.validate(data)
 
