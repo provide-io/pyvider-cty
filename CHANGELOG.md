@@ -5,6 +5,34 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **An unknown at a nested dynamic position no longer makes its whole enclosing
+  value unknown.** `CtyDynamic.validate` had no branch for an unknown, so a bare
+  `d4 00 00` -- Terraform's encoding for a dynamic-typed attribute that is
+  unknown and whose type is not yet determined -- fell through to type
+  inference, which answered `dynamic` and called `validate` again with the same
+  marker. The loop only ended when the recursion detector stopped the entire
+  validation, and stopping it flags *every* enclosing value unknown: one unknown
+  dynamic attribute turned the whole object into a bare unknown on the wire,
+  taking its known siblings with it. Terraform produces that byte pattern
+  routinely -- `objchange` answers `cty.UnknownVal(cty.DynamicPseudoType)`
+  whenever the prior value was unknown, and `jsondecode` of an unknown returns
+  the same type -- so a provider with a dynamic attribute lost its planned state
+  and Terraform core refused the plan with "planned value does not match config
+  value" on every other attribute, or refresh with "Provider produced invalid
+  object ... contains unknown values". Only *nested* dynamics were affected: the
+  root of a dynamic value is handled in the codec before `validate` is reached,
+  which is why this stayed hidden. A refined unknown (ext 12) at the same
+  position fell through the same hole and did not loop, because the refinement
+  marker is an attrs class and inference read its *fields* as an object type --
+  so the wire carried `object({string_prefix: string, ...})` where a value
+  belonged. Both now answer an unrefined unknown of `dynamic`, following go-cty,
+  whose msgpack decoder ignores the refinement map outright for
+  `DynamicPseudoType` and whose `Refine()` on `DynamicVal` echoes back the
+  unrefined value: a refinement constrains a type, and this value does not have
+  one yet. A null at a nested dynamic position was already correct and stays so.
+
 ## [0.5.3] - 2026-08-30
 
 ### Fixed
