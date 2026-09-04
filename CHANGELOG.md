@@ -5,6 +5,36 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-04
+
+### Breaking
+
+- **`CtyBool` accepts what go-cty accepts, and nothing else.** Three changes,
+  in both directions: a number is no longer a bool, so `1`, `0`, `1.0` and
+  `0.0` raise where they used to convert -- there is no number-to-bool entry in
+  either the safe or the unsafe primitive table
+  (`cty/convert/conversion_primitive.go:38-54`), and on the wire a bool is
+  `dec.DecodeBool()` with no coercion at all
+  (`cty/msgpack/unmarshal.go:67-72`). Mixed case no longer converts, so
+  `"TRUE"` and `"True"` raise with go-cty's own wording, `a bool is required;
+  to convert from string, use lowercase "true"`. And `"1"` and `"0"` now
+  convert, which they previously did not, because go-cty accepts them as an
+  unsafe conversion.
+
+  Accepting `1` let a provider that returned a count where it meant a flag
+  reach a plan with a plausible answer instead of an error.
+
+- **An unrecognised msgpack extension is an error, not an unknown.** The
+  decoder answered any extension code with an unrefined unknown. go-cty decides
+  by *length before code* (`cty/msgpack/unknown.go`): a body of one byte or
+  less is a totally unknown value whatever its code, and a longer body requires
+  code `0x0c` "as an additional signal that the body is intended to be a
+  refinement map", rejecting anything else as `unsupported extension type
+  0x%02x with len %d`. Accepting it meant a practitioner saw "(known after
+  apply)" for data that was never unknown. A refinement body over 1 KiB is
+  refused as oversize rather than allocated on the say-so of whoever is on the
+  other end of the wire.
+
 ### Fixed
 
 - **An unknown at a nested dynamic position no longer makes its whole enclosing
