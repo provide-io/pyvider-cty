@@ -16,7 +16,7 @@ jobs:
   # third-party actions below are: a reusable workflow runs with this
   # repository's token, and a tag can be moved. Bump deliberately.
   ci:
-    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@d278d6c71cbd98ef3540dd6221535431c647cba9  # v0.8.2
+    uses: provide-io/ci-tooling/.github/workflows/python-ci.yml@ed13a693bea4b0cc89b3e6fb58dd74f513205a05  # v0.8.4
     with:
       python-version: '3.11'
       platform-preset: standard  # ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel
