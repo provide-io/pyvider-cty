@@ -26,7 +26,7 @@ import threading
 import time
 from typing import Any, cast
 
-from provide.foundation import logger
+from provide.telemetry import get_logger
 
 from pyvider.cty.config.defaults import (
     DYNAMIC_DELEGATION_RESERVE,
@@ -35,6 +35,8 @@ from pyvider.cty.config.defaults import (
     MIN_OWNED_OVERFLOW_DEPTH,
     default_max_validation_depth,
 )
+
+logger = get_logger(__name__)
 
 
 def _guard_depth_limit() -> int:

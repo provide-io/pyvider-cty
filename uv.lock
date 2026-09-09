@@ -1993,6 +1993,18 @@ wheels = [
 ]
 
 [[package]]
+name = "provide-telemetry"
+version = "0.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "structlog" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/af/3e/3a61ed1620d785753529dff50b43710b87cc749bb19678c7f8365f772a5d/provide_telemetry-0.10.0.tar.gz", hash = "sha256:5f75b16e6d4698fce1d133f419051ed473b525eddfbb3eda27cc97f334292eab", size = 144399, upload-time = "2026-09-04T01:03:55.361Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a7/f7/46852dd52373f5146964f9bfea88b2758b2c366c11f765cb8c72fb9ffbb3/provide_telemetry-0.10.0-py3-none-any.whl", hash = "sha256:8263123bebb2dcc33a0e4c1f7d9e65507bd3eb56ac684370162ed4b933c01a31", size = 145632, upload-time = "2026-09-04T01:03:53.892Z" },
+]
+
+[[package]]
 name = "provide-testkit"
 version = "0.4.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2268,6 +2280,7 @@ dependencies = [
     { name = "attrs" },
     { name = "msgpack" },
     { name = "provide-foundation" },
+    { name = "provide-telemetry" },
 ]
 
 [package.dev-dependencies]
@@ -2287,6 +2300,7 @@ requires-dist = [
     { name = "attrs", specifier = ">=25.3.0" },
     { name = "msgpack", specifier = ">=1.1.0" },
     { name = "provide-foundation", specifier = ">=0.4.0" },
+    { name = "provide-telemetry", specifier = ">=0.10.0" },
 ]
 
 [package.metadata.requires-dev]

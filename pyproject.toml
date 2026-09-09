@@ -40,6 +40,7 @@ dependencies = [
     "attrs>=25.3.0",
     "msgpack>=1.1.0",
     "provide-foundation>=0.4.0",
+    "provide-telemetry>=0.10.0",
 ]
 
 [project.urls]
