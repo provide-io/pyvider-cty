@@ -177,6 +177,15 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # having, and the row stays so the difference is recorded rather than found
     # again.
     "pow(10,308)": "Go's math.Pow is not correctly rounded; the platform libm behind math.pow is",
+    # Ahead of the oracle rather than behind it. Both are upstream fixes this
+    # package applies before go-cty releases them, and the oracle is built on
+    # v1.19.0. Rebuilding it on a go-cty carrying a fix turns that fix's rows
+    # XPASS, which is the signal to delete them.
+    "signum(0.5)": "zclconf/go-cty#218: fixed on go-cty main (a918e11), not in the oracle's v1.19.0",
+    "signum(9223372036854775808)": "zclconf/go-cty#218: fixed on go-cty main (a918e11), not in the oracle's v1.19.0",
+    "contains([],None)": "zclconf/go-cty#221: untyped null admitted here, not in the oracle's v1.19.0",
+    "contains(['a'],None)": "zclconf/go-cty#221: untyped null admitted here, not in the oracle's v1.19.0",
+    "contains(['b'],None)": "zclconf/go-cty#221: DynamicVal defers as a refined bool here, not in v1.19.0",
 }
 
 # The same, for the nulled-argument population. A list of its own rather than a
@@ -188,7 +197,16 @@ KNOWN_DIVERGENCES: dict[str, str] = {
 # Empty, and kept: four `contains` entries lived here for the afternoon it took
 # the refinement migration to reach that function, and the next unknown-payload
 # divergence in this population has somewhere to go.
-KNOWN_NULL_DIVERGENCES: dict[str, str] = {}
+KNOWN_NULL_DIVERGENCES: dict[str, str] = {
+    # The sweep's `contains` rows with an untyped value already hold a null (or
+    # unknown) of undecided type at argument 1, so nulling it answers what those
+    # rows answer: admitted here under zclconf/go-cty#221's patch, deferred on by
+    # the oracle's v1.19.0. Goes with the sweep's own entries.
+    **{
+        f"contains({collection},None)": "zclconf/go-cty#221: untyped null admitted here, not in the oracle's v1.19.0"
+        for collection in ("[]", "['a']", "['b']")
+    },
+}
 
 
 # Functions the oracle exposes that this sweep does not drive, and why. Every
