@@ -283,10 +283,9 @@ ERR_VALUE_TYPE_NOT_SUBSCRIPTABLE = "Value of type {type_name} is not subscriptab
 # Function-specific error messages
 
 # Numeric function error messages
-# go-cty reads both of these through `gocty.FromCtyValue` into a Go `int`, so a
+# go-cty reads the base through `gocty.FromCtyValue` into a Go `int`, so a
 # fraction, an infinity or anything outside the int64 range is refused before the
 # function looks at the value.
-ERR_SIGNUM_NOT_WHOLE = "signum: number must be a whole number within the int64 range, got {value}"
 ERR_PARSEINT_BASE_NOT_WHOLE = "parseint: base must be a whole number within the int64 range, got {value}"
 
 # String function error messages
