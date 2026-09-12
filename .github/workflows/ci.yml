@@ -132,6 +132,34 @@ jobs:
           # not checked out here, so everything resolves from the index.
           UV_NO_SOURCES: "1"
 
+  # The documentation, run rather than read. `make check-docs` executes every
+  # Python block in the docs against the library, and nothing ran it: 0.6.0 made
+  # `CtyBool` refuse a number while `primitives.md` still asserted
+  # `validate(0)` is `False`, and `main` carried that for a week with every job
+  # above green. The docs build cannot catch it -- mkdocs never executes a block.
+  docs-examples:
+    name: 📖 Docs examples run
+    runs-on: ubuntu-24.04
+    steps:
+      # This repository.
+      - name: 📥 Check out
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # uv provides the interpreter and resolves the locked dependencies.
+      - name: 🐍 Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          python-version: '3.11'
+          enable-cache: true
+
+      # Same target a developer runs: every block must run, and every block
+      # marked as failing must actually fail.
+      - name: 📖 Execute every documentation example
+        run: make check-docs
+        env:
+          # Same reason as `no-sources` above.
+          UV_NO_SOURCES: "1"
+
   # The differential suite: every claim of go-cty parity, checked against real
   # go-cty rather than against this package's own reading of it. It is gated
   # behind `--run-compat` and needs a Go toolchain, so the reusable Python
