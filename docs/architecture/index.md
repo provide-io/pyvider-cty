@@ -42,8 +42,11 @@ rather than from anybody's recollection of which way the imports point.
 
 The sources are PlantUML, one file per diagram, beside the rendered SVGs.
 `make diagrams` re-renders them all; `make diagrams-check` fails if a committed
-SVG has drifted from its source, so the pictures cannot quietly stop being true
-while the code moves on. Add `PNG=1` to also get PNGs, which is what you want
+SVG was not rendered from its current source or from the current shared theme,
+and CI runs it on every push, so the pictures cannot quietly stop being true
+while the code moves on. The check reads the source PlantUML embeds in each SVG
+rather than comparing pixels or bytes, so it needs no PlantUML and does not care
+which renderer version drew the committed copy. Add `PNG=1` to also get PNGs, which is what you want
 when you are reviewing a change to one of them.
 
 Each SVG below is a link to itself: the diagrams are dense, and clicking through
