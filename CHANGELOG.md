@@ -5,6 +5,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-12
+
 ### Changed
 
 - **`signum` answers for any number.** It refused a fraction, an infinity and
