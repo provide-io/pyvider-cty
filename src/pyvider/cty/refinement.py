@@ -10,7 +10,7 @@ all six of go-cty's keys, and the msgpack `0x0c` wire codec reads and writes
 them. What was missing is the part that makes them trustworthy: a builder that
 **refuses** an inconsistent refinement rather than recording it.
 
-That is the point of this module, and the tracker says so: the validation is the
+That is the point of this module: the validation is the
 work, not the API shape. A refinement is a *promise* about a value that is not
 yet known, and Terraform plans on it. A promise that contradicts the value, or
 contradicts an earlier promise, is worse than no refinement at all — it produces

@@ -144,7 +144,7 @@ uv run pytest tests/ -m compat --run-compat          # Cross-language compatibil
 
 #### Never change the tree while a suite is in flight
 
-Don't `git checkout`, `git stash`, rebase, or switch branches while a test run is going — especially a parallel one. Workers import at staggered times, so some pick up the old files and some the new, and the resulting failures look exactly like a nondeterministic bug in code that is actually fine. A run that spanned a tree change is **void, not data**: discard it and re-run on a settled tree rather than investigating it. This has cost this project one long investigation into an xdist race that never existed (see the `TestCanonicalSortKey` entry in `.provide/GO-CTY-PARITY.md`). If two sessions share one working directory, one of them should be in a `git worktree`.
+Don't `git checkout`, `git stash`, rebase, or switch branches while a test run is going — especially a parallel one. Workers import at staggered times, so some pick up the old files and some the new, and the resulting failures look exactly like a nondeterministic bug in code that is actually fine. A run that spanned a tree change is **void, not data**: discard it and re-run on a settled tree rather than investigating it. This has cost this project one long investigation into an xdist race that never existed (see `tests/values/test_canonical_sort_key_rank.py`). If two sessions share one working directory, one of them should be in a `git worktree`.
 
 #### Cross-Language Compatibility Suite
 

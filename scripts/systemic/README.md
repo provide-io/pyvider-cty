@@ -8,7 +8,7 @@ empty.
 It exists because the two things that make day-to-day development pleasant
 also make it unrepresentative. Every package here resolves its siblings as an
 **editable path dependency**, so a suite run measures the working tree rather
-than anything installable; and the parity tracker records that overlay hiding
+than anything installable; and that overlay has been caught hiding
 a live bug in both directions — once making failures invisible, once making a
 green run unreproducible for anyone without it. A release carrying forty-three
 breaking changes is exactly when that stops being acceptable.

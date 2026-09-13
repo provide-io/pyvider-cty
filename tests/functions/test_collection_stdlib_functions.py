@@ -133,7 +133,7 @@ class TestCollectionFunctions:
 
         go-cty allocates whatever the arguments multiply out to; two 1024-element
         lists are 1,048,576 tuples from a payload that fits in a plan request.
-        An accepted divergence -- see `.provide/GO-CTY-PARITY.md`.
+        An accepted divergence -- see `docs/reference/go-cty-comparison.md`.
         """
         big = L(CtyString(), [str(i) for i in range(1024)])
 

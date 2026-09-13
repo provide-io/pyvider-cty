@@ -480,7 +480,7 @@ def test_a_set_target_is_unaffected_and_agrees() -> None:
     it converts elementwise. Both implementations return
     `set(string)` holding `"1"` and an unknown.
 
-    Pinned because it is the reason the tracker entry names *lists*: a fix that
+    Pinned because it is why the divergence names *lists*: a fix that
     took the short-circuit as a general rule about unknown-holding sets would
     break a conversion the two already agree on.
 

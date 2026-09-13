@@ -82,8 +82,8 @@ def equal(a: CtyValue[Any], b: CtyValue[Any]) -> CtyValue[Any]:
     differs, go-cty's `Equals` answers `false` or `unknown` depending on Go's
     randomized map iteration order, and this library answers `false`
     deterministically -- the more informative of go-cty's two answers rather
-    than a third one. Recorded in `.provide/GO-CTY-PARITY.md` rather than
-    called fixed, because matching a coin flip is not parity.
+    than a third one. Recorded as an accepted divergence rather than called
+    fixed, because matching a coin flip is not parity.
     """
     return a.equals(b)
 

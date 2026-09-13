@@ -9,7 +9,7 @@
 Every day-to-day check in this workspace runs against editable path
 dependencies: `pyproject.toml` points `pyvider-cty` at `../pyvider-cty`, and
 the same for its siblings. That is the right thing for development and the
-wrong thing for believing a release. The parity tracker records the overlay
+wrong thing for believing a release. The overlay has been caught
 hiding a live bug in both directions -- once making failures invisible, once
 making a green run unreproducible for anyone without the overlay -- and a
 suite of forty-three breaking changes is exactly when that matters.

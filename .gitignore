@@ -68,7 +68,7 @@ bf-*
 *bfile*
 
 # Provide tooling
-.provide/foundry/
+.provide/
 
 # Archive
 .archive/

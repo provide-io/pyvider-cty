@@ -867,7 +867,7 @@ upgrading.
    rather than returning anything, so no call site can mistake it for a result.
    The cap applies only to a product that would actually be materialized: an
    argument of unknown length still answers an unknown, which is the shape
-   Terraform sends at plan time. See `.provide/GO-CTY-PARITY.md`.
+   Terraform sends at plan time.
 
 #### Found by generated arguments (2026-08-19)
 

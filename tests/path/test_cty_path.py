@@ -246,7 +246,7 @@ class TestPathSet:
     """`set[CtyPath]` stands in for go-cty's `PathSet`, including set elements.
 
     `CtyPath`'s own docstring rests the claim on being frozen, and
-    `.provide/GO-CTY-PARITY.md` closes go-cty's `PathSet` on it. It was false
+    go-cty's `PathSet` is treated as covered on that basis. It was false
     until 2026-08-17 for the one shape that matters: a `KeyStep` into a *set*
     holds the element value itself as its key (a set element is its own key, as
     `path/base.py` explains), so putting such a path into a Python set hashes a

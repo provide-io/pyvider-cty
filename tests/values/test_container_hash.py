@@ -198,7 +198,7 @@ class TestEntryPoints:
     def test_deep_values_paths_go_into_a_set(self) -> None:
         """A set element is its own key, so a `KeyStep` holds a whole CtyValue.
 
-        `.provide/GO-CTY-PARITY.md` closes go-cty's `PathSet` on the grounds
+        go-cty's `PathSet` is treated as covered on the grounds
         that `set[CtyPath]` is the same thing once `CtyPath` is frozen. That was
         false for any set of containers until this fix, and `deep_values` hands
         out exactly those paths.

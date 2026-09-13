@@ -11,7 +11,7 @@ down which, because the hypothesis is otherwise unfalsifiable from the record.
 On 2026-08-16 a parallel run of the suite under `-n auto` produced five
 `assert 0 == 2` failures spread across four xdist workers, all of them in
 `TestCanonicalSortKey`. Two accounts explain that signature and the captured
-data cannot separate them (see the entry in `.provide/GO-CTY-PARITY.md`):
+data cannot separate them:
 
 1.  **A mixed tree.** Commit `a98a920` inverted the three ranks -- they were
     null 0, unknown 1, known 2, and go-cty's `setRules.Less`
@@ -205,8 +205,8 @@ class TestValidatedContainersTakeTheKnownRank:
     """The regression guard for the real-fault account of the 2026-08-16 flake.
 
     A failure here means a `validate` call returned a container that reports
-    itself null or unknown -- which is exactly the hypothesis the tracker
-    records as "untouched by any evidence gathered so far", and the one that
+    itself null or unknown -- which is exactly the hypothesis that stayed
+    "untouched by any evidence gathered so far", and the one that
     could not be ruled out from the captured transcript. It is asserted
     directly rather than inferred from a sort order, so a failure names the
     fault instead of pointing at a downstream symptom.
