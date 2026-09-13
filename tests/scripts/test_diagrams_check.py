@@ -114,6 +114,21 @@ def test_a_missing_theme_stamp_is_stale(diagrams: Path) -> None:
     assert render_diagrams.theme_is_stale(diagrams / "_theme.iuml", diagrams / "_theme.sha256")
 
 
+def test_a_theme_checked_out_with_windows_line_endings_is_not_stale(diagrams: Path) -> None:
+    """Git on Windows checks text out with CRLF line endings unless told not to.
+
+    The theme is the same text either way, so the stamp recorded from an LF
+    checkout must still match it. Hashing the checkout's bytes read every
+    Windows checkout as a theme nobody rendered.
+    """
+    theme = diagrams / "_theme.iuml"
+    theme.write_bytes(theme.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+
+    assert b"\r\n" in theme.read_bytes()
+    assert not render_diagrams.theme_is_stale(theme, diagrams / "_theme.sha256")
+    assert _check(diagrams) == 0
+
+
 def test_rendering_records_the_theme_it_rendered_with(diagrams: Path) -> None:
     """A theme change is resolved by rendering, not by editing the stamp by hand."""
     theme = diagrams / "_theme.iuml"
