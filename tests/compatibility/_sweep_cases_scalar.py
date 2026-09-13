@@ -12,6 +12,7 @@ cares about -- it walks `CASES`, which is the two halves concatenated.
 
 from __future__ import annotations
 
+from pyvider.cty.types import CtyDynamic
 from tests.compatibility._sweep_args import (
     CONJUNCT,
     DYNAMIC_UK,
@@ -26,6 +27,7 @@ from tests.compatibility._sweep_args import (
     mp,
     nm,
     nm_uk,
+    nul,
     st,
     st_uk,
 )
@@ -138,6 +140,11 @@ SCALAR_CASES: list[tuple[str, list[Arg]]] = [
     ("floor", [nm("-1.8")]),
     ("signum", [nm(-5)]),
     ("signum", [nm(0)]),
+    # Refused by the oracle's v1.19.0 and answered here, following upstream's
+    # fix on `main` (zclconf/go-cty#218). Strict xfails until the oracle is
+    # rebuilt on a go-cty carrying it.
+    ("signum", [nm("0.5")]),
+    ("signum", [nm("9223372036854775808")]),
     ("int", [nm("3.9")]),
     ("int", [nm("-3.9")]),
     ("add", [nm(1), nm(2)]),
@@ -219,6 +226,15 @@ SCALAR_CASES: list[tuple[str, list[Arg]]] = [
     ("equal", [DYNAMIC_UK, st("a")]),
     ("merge", [mp({"a": "1"}), DYNAMIC_UK]),
     ("element", [DYNAMIC_UK, nm(0)]),
+    # `contains`' value parameter admits an undecided type here and not in the
+    # oracle's v1.19.0 -- zclconf/go-cty#221's patch, applied. An untyped null
+    # is searched for rather than deferred on, and `cty.DynamicVal` defers as a
+    # refined unknown bool. Strict xfails until the oracle carries the patch.
+    # The collections differ only so the case ids do: a null and an unknown
+    # both render as `None`.
+    ("contains", [ls([]), nul("dynamic", CtyDynamic())]),
+    ("contains", [ls(["a"]), nul("dynamic", CtyDynamic())]),
+    ("contains", [ls(["b"]), DYNAMIC_UK]),
     ("not", [bl(True)]),
     ("not", [bl(False)]),
     ("and", [bl(True), bl(False)]),

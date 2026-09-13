@@ -135,7 +135,7 @@ Every one of go-cty's 83 stdlib functions is implemented, declared through the `
 | `negate` | `negate` | Full parity |
 | `parseint` | `parseint_fn` | Full parity |
 | `pow` | `pow_fn` | Parity (N) |
-| `signum` | `signum_fn` | Full parity |
+| `signum` | `signum_fn` | Ahead (A) |
 | `subtract` | `subtract` | Full parity |
 | **Boolean** | | |
 | `and` | `and_fn` | Full parity |
@@ -174,7 +174,7 @@ Every one of go-cty's 83 stdlib functions is implemented, declared through the `
 | `coalescelist` | `coalescelist` | Full parity |
 | `compact` | `compact` | Parity (W) |
 | `concat` | `concat` | Full parity |
-| `contains` | `contains` | Full parity |
+| `contains` | `contains` | Ahead (A) |
 | `distinct` | `distinct` | Parity (W) |
 | `element` | `element` | Full parity |
 | `flatten` | `flatten` | Parity (M) |
@@ -217,7 +217,7 @@ Every one of go-cty's 83 stdlib functions is implemented, declared through the `
 
 `pyvider.cty` name is the importable symbol from `pyvider.cty.functions`; several are renamed from go-cty's spelling only where Python forces it — `and`/`or`/`not` are keywords, `abs`/`ceil`/`floor`/`int`/`log`/`max`/`min`/`pow`/`range`/`signum`/`format`/`parseint` shadow a builtin or another symbol the same module calls — never for style. `pyvider.cty.functions.STDLIB` maps every go-cty name to its implementation regardless of the Python name, so `STDLIB["reverselist"]` reaches the function exported as `reverse`.
 
-Footnotes: **(N)** numeric precision model differs in both directions (see below) — unresolved. **(U)** grapheme-cluster measurement carries a narrow Unicode-version skew against the oracle only, not against go-cty's own current behavior (see below). **(R)** Python's `re` is not RE2 — a superset, not a mismatch (see below). **(W)** parameter type deliberately widened relative to go-cty's own `list(dynamic)` declaration (see below). **(M)** keeps the deep union of element marks where go-cty drops them (see below). **(S)** `sort(list(number))` orders numerically rather than lexicographically as a consequence of (W) (see below). **(D)** deliberately refuses an input go-cty answers (see below). **(L)** refuses past a size limit go-cty does not impose (see below). **(C)** the calendar range `datetime` covers is narrower than Go's `time.Time` (see below). (N) covers how wide a number can be *written* as well as how precisely it is computed.
+Footnotes: **(N)** numeric precision model differs in both directions (see below) — unresolved. **(U)** grapheme-cluster measurement carries a narrow Unicode-version skew against the oracle only, not against go-cty's own current behavior (see below). **(R)** Python's `re` is not RE2 — a superset, not a mismatch (see below). **(W)** parameter type deliberately widened relative to go-cty's own `list(dynamic)` declaration (see below). **(M)** keeps the deep union of element marks where go-cty drops them (see below). **(S)** `sort(list(number))` orders numerically rather than lexicographically as a consequence of (W) (see below). **(D)** deliberately refuses an input go-cty answers (see below). **(L)** refuses past a size limit go-cty does not impose (see below). **(C)** the calendar range `datetime` covers is narrower than Go's `time.Time` (see below). **(A)** applies an upstream fix go-cty v1.19.0 does not carry: `signum` answers for any number, as fixed on go-cty `main` for zclconf/go-cty#218, and `contains` searches for an untyped `null` instead of answering unknown, the patch proposed in zclconf/go-cty#221. (N) covers how wide a number can be *written* as well as how precisely it is computed.
 
 ## (d) The `cty` Package Surfaces
 

@@ -91,7 +91,20 @@ BY_FUNCTION: dict[str, str] = {}
 # Functions where only some rows diverge, named case by case. A blanket entry
 # would mark the rows that already agree as expected failures, and they would
 # then XPASS and fail -- so these have to be spelled out however long the list.
-BY_CASE: dict[str, str] = {}
+BY_CASE: dict[str, str] = {
+    # The sweep's `contains` rows with an untyped value, reached with the
+    # collection made unknown instead. The oracle's v1.19.0 gives up on the
+    # undecided type before it looks at the collection and answers an unknown of
+    # undecided type; with zclconf/go-cty#221's patch applied the value is
+    # admitted, so the answer is the unknown bool `RefineResult` promises is not
+    # null. Goes when the oracle carries the patch, with the sweep's own entries.
+    **{
+        f"contains({collection},None) :: list(string),dynamic": (
+            "zclconf/go-cty#221: value of undecided type admitted here, not in the oracle's v1.19.0"
+        )
+        for collection in ("[]", "['a']", "['b']")
+    },
+}
 
 KNOWN_DIVERGENCES: dict[str, str] = {
     **{
