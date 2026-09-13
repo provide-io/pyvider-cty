@@ -111,7 +111,13 @@ def stale_diagrams(files: list[Path]) -> list[str]:
 
 
 def theme_digest(theme: Path) -> str:
-    return hashlib.sha256(theme.read_bytes()).hexdigest()
+    """The theme's text, hashed with LF line endings whatever the checkout wrote.
+
+    Git on Windows checks text out with CRLF unless told not to, and the raw
+    bytes then hash differently from the LF checkout the stamp was recorded on,
+    so every Windows checkout read as a theme nobody rendered.
+    """
+    return hashlib.sha256(theme.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def record_theme(theme: Path, stamp: Path) -> None:
