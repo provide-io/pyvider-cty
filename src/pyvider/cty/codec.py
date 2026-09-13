@@ -43,6 +43,7 @@ from pyvider.cty.exceptions import (
 )
 from pyvider.cty.marks import collect_marks_deep
 from pyvider.cty.parser import parse_tf_type_to_ctytype
+from pyvider.cty.refinement import length_bounds_error, number_bounds_error
 from pyvider.cty.types import (
     CtyDynamic,
     CtyList,
@@ -74,7 +75,8 @@ def _checked(value: Any, expected: type, what: str) -> Any:
     These bytes come from whatever is on the other end of the wire, and this is
     the one refinement path that does not go through RefinementBuilder -- whose
     stated purpose is to refuse an inconsistent refinement rather than record
-    one. Unchecked, a malformed field was stored verbatim and surfaced later as
+    one -- so its checks are applied here instead (`_check_satisfiable`).
+    Unchecked, a malformed field was stored verbatim and surfaced later as
     an AttributeError from inside the encoder: outside the CtyError taxonomy, so
     a provider's `except CtyError` missed it and bad input read as a crash.
     go-cty rejects these at the door -- "string prefix refinement is not
@@ -95,6 +97,41 @@ def _checked_length(value: Any, what: str) -> int:
     return cast(int, length)
 
 
+def _checked_number_bound(value: Any, what: str) -> tuple[Decimal, bool]:
+    """A number bound: a `[number, inclusive]` pair and nothing else.
+
+    go-cty decodes it as `cty.Tuple([cty.Number, cty.Bool])` and refuses any
+    other shape. Unchecked, a flag of `"yes"` was stored as the bound's
+    inclusivity, and a bare number failed with Python's own "'int' object is not
+    subscriptable".
+    """
+    # bool is a subclass of int, so `isinstance(flag, bool)` is the whole test:
+    # an integer flag of 1 is not a bool here any more than it is to go-cty.
+    if not isinstance(value, list | tuple) or len(value) != TWO_VALUE or not isinstance(value[1], bool):
+        raise DeserializationError(f"{what} refinement must be [number, bool] array")
+    return _decode_number_value(value[0]), value[1]
+
+
+def _check_satisfiable(refinements: dict[str, Any]) -> None:
+    """Refuse bounds no value can satisfy, by the rules `RefinementBuilder` uses.
+
+    go-cty applies every wire entry through its `Refine()` builder
+    (`cty/msgpack/unknown.go:211`), which panics on crossed bounds and on
+    `3 < x <= 3`, and accepts `3 < x < 3` by testing whether the inclusivity
+    flags are equal rather than both inclusive. Recorded as they arrived, these
+    became unknowns that compare unequal to every number, or an unknown no
+    collection can become.
+    """
+    for error in (
+        number_bounds_error(refinements.get("number_lower_bound"), refinements.get("number_upper_bound")),
+        length_bounds_error(
+            refinements.get("collection_length_lower_bound"), refinements.get("collection_length_upper_bound")
+        ),
+    ):
+        if error:
+            raise DeserializationError(error)
+
+
 def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]:
     """Extract refinement data from a msgpack payload."""
     refinements = {}
@@ -104,14 +141,12 @@ def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]
     if REFINEMENT_STRING_PREFIX in payload:
         refinements["string_prefix"] = _checked(payload[REFINEMENT_STRING_PREFIX], str, "string prefix")
     if REFINEMENT_NUMBER_LOWER_BOUND in payload:
-        refinements["number_lower_bound"] = (
-            _decode_number_value(payload[REFINEMENT_NUMBER_LOWER_BOUND][0]),
-            payload[REFINEMENT_NUMBER_LOWER_BOUND][1],
+        refinements["number_lower_bound"] = _checked_number_bound(
+            payload[REFINEMENT_NUMBER_LOWER_BOUND], "number lower bound"
         )
     if REFINEMENT_NUMBER_UPPER_BOUND in payload:
-        refinements["number_upper_bound"] = (
-            _decode_number_value(payload[REFINEMENT_NUMBER_UPPER_BOUND][0]),
-            payload[REFINEMENT_NUMBER_UPPER_BOUND][1],
+        refinements["number_upper_bound"] = _checked_number_bound(
+            payload[REFINEMENT_NUMBER_UPPER_BOUND], "number upper bound"
         )
     if REFINEMENT_COLLECTION_LENGTH_LOWER_BOUND in payload:
         refinements["collection_length_lower_bound"] = _checked_length(
@@ -122,6 +157,7 @@ def _extract_refinements_from_payload(payload: dict[int, Any]) -> dict[str, Any]
             payload[REFINEMENT_COLLECTION_LENGTH_UPPER_BOUND], "collection length upper bound"
         )
 
+    _check_satisfiable(refinements)
     return refinements
 
 
