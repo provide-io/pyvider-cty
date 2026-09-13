@@ -10,7 +10,7 @@ go-cty v1.19.0 declares `contains`' value parameter `AllowNull` but not
 literal is in Terraform -- never reaches the implementation: `Function.Call`
 treats the undecided type as "cannot predict a return type" and answers an
 unknown. `contains([], null)` is therefore "known after apply" and never
-resolves. Reported upstream as zclconf/go-cty#221 with a one-flag patch, which
+resolves. go-cty upstream issue 221 proposes a one-flag patch, which
 this package applies. The differential sweep records the disagreement with the
 unpatched oracle as strict xfails, so an oracle carrying the fix forces them out.
 """

@@ -616,7 +616,7 @@ def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
     ),
 )
 def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `SignumFunc` as fixed on `main` (`a918e11`, zclconf/go-cty#218).
+    """go-cty's `SignumFunc` as fixed on `main` (`a918e11`, go-cty upstream issue 218).
 
     v1.19.0 read its argument into a Go `int` before looking at the sign, so a
     fraction, an infinity or anything outside int64 was refused; this package

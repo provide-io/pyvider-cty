@@ -152,7 +152,7 @@ def _is_known_leaf(value: CtyValue[Any]) -> bool:
     "contains",
     params=[
         CtyParameter("list", CtyDynamic()),
-        # `allow_dynamic_type` is zclconf/go-cty#221's patch, which v1.19.0 lacks:
+        # `allow_dynamic_type` is the patch from go-cty upstream issue 221, which v1.19.0 lacks:
         # without it an untyped null -- a bare `null` literal -- never reaches
         # the body, and `contains([], null)` is unknown forever.
         CtyParameter("value", CtyDynamic(), allow_null=True, allow_dynamic_type=True),
