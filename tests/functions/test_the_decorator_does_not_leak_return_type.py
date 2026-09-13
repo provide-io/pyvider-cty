@@ -54,7 +54,7 @@ def test_calling_them_type_checks(tmp_path) -> None:
     module.write_text(SNIPPET)
 
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell
-        [sys.executable, "-m", "mypy", "--strict", "--no-error-summary", str(module)],
+        [sys.executable, "-m", "mypy", "--strict", "--no-error-summary", "--show-traceback", str(module)],
         capture_output=True,
         check=False,
         text=True,
