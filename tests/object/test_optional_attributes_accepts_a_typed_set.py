@@ -57,9 +57,20 @@ def test_passing_optional_attributes_type_checks(tmp_path) -> None:
     """No `expected "Iterable[_T_co]"`, on any of the shapes."""
     module = tmp_path / "optionals.py"
     module.write_text(SNIPPET)
+    cache = tmp_path / ".mypy_cache"
 
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell
-        [sys.executable, "-m", "mypy", "--strict", "--no-error-summary", str(module)],
+        [
+            sys.executable,
+            "-m",
+            "mypy",
+            "--strict",
+            "--no-error-summary",
+            "--show-traceback",
+            "--cache-dir",
+            str(cache),
+            str(module),
+        ],
         capture_output=True,
         check=False,
         text=True,
@@ -68,6 +79,7 @@ def test_passing_optional_attributes_type_checks(tmp_path) -> None:
 
     assert "_T_co" not in output, output
     assert completed.returncode == 0, output
+    assert cache.is_dir(), output
 
 
 def test_the_field_still_holds_a_frozenset() -> None:

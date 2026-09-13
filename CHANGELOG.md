@@ -5,6 +5,36 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`signum` answers for any number.** It refused a fraction, an infinity and
+  anything outside int64 -- `signum(0.5)` raised "must be a whole number" --
+  because go-cty v1.19.0 reads its argument into a Go `int` before looking at
+  the sign. Upstream fixed that on `main` (zclconf/go-cty#218, `a918e11`,
+  unreleased as v1.19.1) by switching on the big-float sign, and this follows
+  the fix ahead of the release: `signum(0.5)` is `1`, `signum(-Infinity)` is
+  `-1`, and negative zero is `0`.
+
+### Fixed
+
+- **`contains` finds an untyped null.** `contains([], null)` was unknown, and
+  stayed unknown: the value parameter did not admit a value of undecided type,
+  so a bare `null` never reached the search and the framework deferred instead.
+  It now answers `false` there, and `true` when the collection holds a null.
+  A value of undecided type that is *unknown* still defers, but as an unknown
+  bool that is known not to be null rather than an unknown of undecided type.
+  go-cty v1.19.0 has the same bug; this applies the one-flag patch reported
+  upstream as zclconf/go-cty#221.
+
+- **`cty_from_msgpack` refuses a refinement no value can satisfy.** The
+  decoder recorded refinements as they arrived instead of applying the rules
+  `RefinementBuilder` enforces, so an unknown number refined to `3 < x < 3`,
+  `3 < x <= 3` or `4 <= x <= 3`, or an unknown collection with a length bound
+  of 5..3, decoded into a value that compares unequal to everything it could
+  have been. A number bound whose inclusive flag was not a bool was stored
+  as-is. All of these now raise `DeserializationError`, nested unknowns
+  included. go-cty panics on most of them and accepts `3 < x < 3`.
+
 ## [0.6.0] - 2026-09-04
 
 ### Breaking

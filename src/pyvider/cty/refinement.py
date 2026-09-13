@@ -79,6 +79,38 @@ def safe_known_prefix(prefix: str, /) -> str:
     return "".join(clusters[:-1])
 
 
+def number_bounds_error(
+    lower: tuple[Decimal, bool] | None, upper: tuple[Decimal, bool] | None, /
+) -> str | None:
+    """Why a number range holds no number, or `None` when it holds one.
+
+    Shared by `RefinementBuilder` and the msgpack decoder, so a refinement read
+    off the wire is refused by the same rule as one built here.
+
+    Equal bounds are only satisfiable when *both* are inclusive. This used to
+    test `>` alone, so `3 < x <= 3` -- an empty range, and just as impossible as
+    `5 <= x <= 3`, which was already refused -- was accepted and written to the
+    wire as a refinement no value can satisfy. go-cty is no guide here: it
+    **panics** on the same input (`number lower bound cty.NumberIntVal(3) is
+    greater than upper bound cty.NumberIntVal(3)`), which is not a behaviour to
+    match.
+    """
+    if lower is None or upper is None:
+        return None
+    empty_at_equal = lower[0] == upper[0] and not (lower[1] and upper[1])
+    if lower[0] > upper[0] or empty_at_equal:
+        relation = "excludes" if empty_at_equal else "is greater than"
+        return f"number lower bound {lower[0]} {relation} upper bound {upper[0]}"
+    return None
+
+
+def length_bounds_error(minimum: int | None, maximum: int | None, /) -> str | None:
+    """Why collection length bounds admit no length, or `None` when they admit one."""
+    if minimum is not None and maximum is not None and maximum < minimum:
+        return f"collection length upper bound {maximum} is less than lower bound {minimum}"
+    return None
+
+
 def refine(value: CtyValue[Any], /) -> RefinementBuilder:
     """Begin refining `value`. Finish with `.new_value()`."""
     return RefinementBuilder(value)
@@ -261,27 +293,14 @@ class RefinementBuilder:
                 raise CtyRefinementError(f"refining collection of length {length} with {described}")
 
     def _check_number_bounds(self) -> None:
-        if self._lower is None or self._upper is None:
-            return
-        # Equal bounds are only satisfiable when *both* are inclusive. This used
-        # to test `>` alone, so `3 < x <= 3` -- an empty range, and just as
-        # impossible as `5 <= x <= 3`, which was already refused -- was accepted
-        # and written to the wire as a refinement no value can satisfy. go-cty
-        # is no guide here: it **panics** on the same input
-        # (`number lower bound cty.NumberIntVal(3) is greater than upper bound
-        # cty.NumberIntVal(3)`), which is not a behaviour to match.
-        empty_at_equal = self._lower[0] == self._upper[0] and not (self._lower[1] and self._upper[1])
-        if self._lower[0] > self._upper[0] or empty_at_equal:
-            relation = "excludes" if empty_at_equal else "is greater than"
-            raise CtyRefinementError(
-                f"number lower bound {self._lower[0]} {relation} upper bound {self._upper[0]}"
-            )
+        error = number_bounds_error(self._lower, self._upper)
+        if error:
+            raise CtyRefinementError(error)
 
     def _check_length_bounds(self) -> None:
-        if self._min_len is not None and self._max_len is not None and self._max_len < self._min_len:
-            raise CtyRefinementError(
-                f"collection length upper bound {self._max_len} is less than lower bound {self._min_len}"
-            )
+        error = length_bounds_error(self._min_len, self._max_len)
+        if error:
+            raise CtyRefinementError(error)
 
 
 # 🌊🪢🔚
