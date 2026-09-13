@@ -13,7 +13,7 @@ On 2026-08-16 a parallel run of the suite under `-n auto` produced five
 `TestCanonicalSortKey`. Two accounts explain that signature and the captured
 data cannot separate them:
 
-1.  **A mixed tree.** Commit `a98a920` inverted the three ranks -- they were
+1.  **A mixed tree.** Commit `b765520` inverted the three ranks -- they were
     null 0, unknown 1, known 2, and go-cty's `setRules.Less`
     (`cty/set_internals.go:99-110`) ranks known 0, unknown 1, null 2 -- and it
     changed the ranks and the tests in the same commit. A `git checkout`
@@ -217,7 +217,7 @@ class TestValidatedContainersTakeTheKnownRank:
 
         These ranks reach the wire through the set codec, so an inversion is a
         change to serialized state that Terraform compares textually. They were
-        inverted before `a98a920`; this is the assertion that a re-inversion
+        inverted before `b765520`; this is the assertion that a re-inversion
         has to walk past.
         """
         assert CtyString().validate("a")._canonical_sort_key()[0] == KNOWN_RANK
