@@ -64,7 +64,7 @@ import sys
 from typing import Any, cast
 
 from pyvider.cty import CtyDynamic, CtyNumber, CtyString, CtyType, CtyValue
-from pyvider.cty.config.defaults import ERR_PARSEINT_BASE_NOT_WHOLE, ERR_SIGNUM_NOT_WHOLE
+from pyvider.cty.config.defaults import ERR_PARSEINT_BASE_NOT_WHOLE
 from pyvider.cty.exceptions import CtyFunctionError
 from pyvider.cty.functions._args import whole_number
 from pyvider.cty.functions._framework import stdlib_function
@@ -616,15 +616,16 @@ def pow_fn(num_val: CtyValue[Any], power_val: CtyValue[Any]) -> CtyValue[Any]:
     ),
 )
 def signum_fn(input_val: CtyValue[Any]) -> CtyValue[Any]:
-    """go-cty's `SignumFunc` (`stdlib/number.go:523`).
+    """go-cty's `SignumFunc` as fixed on `main` (`a918e11`, zclconf/go-cty#218).
 
-    Reads its argument into a Go `int` before looking at the sign, so a fraction
-    is an error rather than a sign -- `signum(1.5)` is refused, where this
-    package used to answer `1`. That reads like a quirk and is load-bearing: the
-    function promises three possible answers, and a caller that gets one for
-    `0.5` has been told the value is a whole one.
+    v1.19.0 read its argument into a Go `int` before looking at the sign, so a
+    fraction, an infinity or anything outside int64 was refused; this package
+    matched that from 2026-08-17. Upstream switched to `AsBigFloat().Sign()`,
+    which answers for any number cty can represent, and this follows the fix
+    ahead of its release. `big.Float.Sign` is 0 for negative zero, and so is
+    this: `Decimal("-0")` is neither below nor above zero.
     """
-    number = whole_number(input_val, ERR_SIGNUM_NOT_WHOLE)
+    number = cast("Decimal", input_val.value)
     if number < 0:
         return CtyNumber().validate(Decimal(-1))
     if number > 0:

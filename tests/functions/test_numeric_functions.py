@@ -412,19 +412,6 @@ class TestNumericFunctions:
         with pytest.raises(CtyFunctionError, match="whole number"):
             parseint_fn(S("ff"), N(Decimal("16.5")))
 
-    def test_signum_refuses_a_fraction(self) -> None:
-        """This answered `1` for `1.5` until 2026-08-17.
-
-        `SignumFunc` reads its argument into a Go `int` before looking at the
-        sign (`stdlib/number.go:534`), so a fraction is an error rather than a
-        sign. That reads like a quirk of the Go implementation and is
-        load-bearing: the function promises one of three answers, and a caller
-        handed one for `0.5` has been told the value is whole.
-        """
-        for value in (Decimal("3.5"), Decimal("-0.5"), Decimal("Infinity")):
-            with pytest.raises(CtyFunctionError, match="whole number"):
-                signum_fn(N(value))
-
     def test_abs_keeps_the_fraction_it_is_given(self) -> None:
         """`AllowMarked` means `abs` owns its marks; it must not lose the value.
 
