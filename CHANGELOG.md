@@ -26,6 +26,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   go-cty v1.19.0 has the same bug; this applies the one-flag patch reported
   upstream as zclconf/go-cty#221.
 
+- **`cty_from_msgpack` refuses a refinement no value can satisfy.** The
+  decoder recorded refinements as they arrived instead of applying the rules
+  `RefinementBuilder` enforces, so an unknown number refined to `3 < x < 3`,
+  `3 < x <= 3` or `4 <= x <= 3`, or an unknown collection with a length bound
+  of 5..3, decoded into a value that compares unequal to everything it could
+  have been. A number bound whose inclusive flag was not a bool was stored
+  as-is. All of these now raise `DeserializationError`, nested unknowns
+  included. go-cty panics on most of them and accepts `3 < x < 3`.
+
 ## [0.6.0] - 2026-09-04
 
 ### Breaking
