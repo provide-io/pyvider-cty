@@ -7,7 +7,7 @@
 
 go-cty v1.19.0's `SignumFunc` read its argument into a Go `int` first, so a
 fraction or anything outside int64 was an error before its sign was looked at.
-Upstream fixed that on `main` in `a918e11` (zclconf/go-cty#218, unreleased as
+Upstream fixed that on `main` in `a918e11` (go-cty upstream issue 218, unreleased as
 v1.19.1) by switching on `AsBigFloat().Sign()`, and this package follows the fix
 rather than the release. Until the soup-go oracle is rebuilt against a go-cty
 that carries it, the differential sweep records the disagreement as strict
