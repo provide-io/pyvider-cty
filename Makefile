@@ -45,7 +45,7 @@ check-docs: ## Execute every Python block in the docs and fail on an inaccuracy
 	uv run python scripts/check_docs.py
 
 .PHONY: diagrams-check
-diagrams-check: ## Fail if any committed architecture SVG is stale against its .puml source
+diagrams-check: ## Fail if any committed architecture SVG was not rendered from its current .puml source and theme
 	uv run python scripts/render_diagrams.py --check
 
 .PHONY: bench-smoke
