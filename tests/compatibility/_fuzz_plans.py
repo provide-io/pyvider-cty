@@ -682,7 +682,7 @@ PLANS: dict[str, Args] = {
     # numbers
     # A whole number inside the int64 range, which is all the oracle's go-cty
     # v1.19.0 `signum` accepts. This package follows upstream's fix on `main`
-    # (zclconf/go-cty#218) and answers for any number, so outside this range the
+    # (go-cty upstream issue 218) and answers for any number, so outside this range the
     # two disagree by design until the oracle is rebuilt on a go-cty carrying
     # it; widen this to the general pool then.
     "signum": _args(

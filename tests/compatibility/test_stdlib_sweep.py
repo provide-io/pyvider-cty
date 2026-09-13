@@ -181,11 +181,11 @@ KNOWN_DIVERGENCES: dict[str, str] = {
     # package applies before go-cty releases them, and the oracle is built on
     # v1.19.0. Rebuilding it on a go-cty carrying a fix turns that fix's rows
     # XPASS, which is the signal to delete them.
-    "signum(0.5)": "zclconf/go-cty#218: fixed on go-cty main (a918e11), not in the oracle's v1.19.0",
-    "signum(9223372036854775808)": "zclconf/go-cty#218: fixed on go-cty main (a918e11), not in the oracle's v1.19.0",
-    "contains([],None)": "zclconf/go-cty#221: untyped null admitted here, not in the oracle's v1.19.0",
-    "contains(['a'],None)": "zclconf/go-cty#221: untyped null admitted here, not in the oracle's v1.19.0",
-    "contains(['b'],None)": "zclconf/go-cty#221: DynamicVal defers as a refined bool here, not in v1.19.0",
+    "signum(0.5)": "go-cty upstream issue 218: fixed on go-cty main (a918e11), not in the oracle's v1.19.0",
+    "signum(9223372036854775808)": "go-cty upstream issue 218: fixed on go-cty main (a918e11), not in the oracle's v1.19.0",
+    "contains([],None)": "go-cty upstream issue 221: untyped null admitted here, not in the oracle's v1.19.0",
+    "contains(['a'],None)": "go-cty upstream issue 221: untyped null admitted here, not in the oracle's v1.19.0",
+    "contains(['b'],None)": "go-cty upstream issue 221: DynamicVal defers as a refined bool here, not in v1.19.0",
 }
 
 # The same, for the nulled-argument population. A list of its own rather than a
@@ -200,10 +200,10 @@ KNOWN_DIVERGENCES: dict[str, str] = {
 KNOWN_NULL_DIVERGENCES: dict[str, str] = {
     # The sweep's `contains` rows with an untyped value already hold a null (or
     # unknown) of undecided type at argument 1, so nulling it answers what those
-    # rows answer: admitted here under zclconf/go-cty#221's patch, deferred on by
+    # rows answer: admitted here under the patch from go-cty upstream issue 221, deferred on by
     # the oracle's v1.19.0. Goes with the sweep's own entries.
     **{
-        f"contains({collection},None)": "zclconf/go-cty#221: untyped null admitted here, not in the oracle's v1.19.0"
+        f"contains({collection},None)": "go-cty upstream issue 221: untyped null admitted here, not in the oracle's v1.19.0"
         for collection in ("[]", "['a']", "['b']")
     },
 }

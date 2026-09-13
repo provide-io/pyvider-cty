@@ -141,7 +141,7 @@ SCALAR_CASES: list[tuple[str, list[Arg]]] = [
     ("signum", [nm(-5)]),
     ("signum", [nm(0)]),
     # Refused by the oracle's v1.19.0 and answered here, following upstream's
-    # fix on `main` (zclconf/go-cty#218). Strict xfails until the oracle is
+    # fix on `main` (go-cty upstream issue 218). Strict xfails until the oracle is
     # rebuilt on a go-cty carrying it.
     ("signum", [nm("0.5")]),
     ("signum", [nm("9223372036854775808")]),
@@ -227,7 +227,7 @@ SCALAR_CASES: list[tuple[str, list[Arg]]] = [
     ("merge", [mp({"a": "1"}), DYNAMIC_UK]),
     ("element", [DYNAMIC_UK, nm(0)]),
     # `contains`' value parameter admits an undecided type here and not in the
-    # oracle's v1.19.0 -- zclconf/go-cty#221's patch, applied. An untyped null
+    # oracle's v1.19.0 -- the patch from go-cty upstream issue 221, applied. An untyped null
     # is searched for rather than deferred on, and `cty.DynamicVal` defers as a
     # refined unknown bool. Strict xfails until the oracle carries the patch.
     # The collections differ only so the case ids do: a null and an unknown
