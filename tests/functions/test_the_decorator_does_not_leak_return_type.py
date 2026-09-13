@@ -52,9 +52,20 @@ def test_calling_them_type_checks(tmp_path) -> None:
     """No `Missing named argument "return_type"`, on any of the five shapes."""
     module = tmp_path / "calls.py"
     module.write_text(SNIPPET)
+    cache = tmp_path / ".mypy_cache"
 
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell
-        [sys.executable, "-m", "mypy", "--strict", "--no-error-summary", str(module)],
+        [
+            sys.executable,
+            "-m",
+            "mypy",
+            "--strict",
+            "--no-error-summary",
+            "--show-traceback",
+            "--cache-dir",
+            str(cache),
+            str(module),
+        ],
         capture_output=True,
         check=False,
         text=True,
@@ -63,6 +74,7 @@ def test_calling_them_type_checks(tmp_path) -> None:
 
     assert "return_type" not in output, output
     assert completed.returncode == 0, output
+    assert cache.is_dir(), output
 
 
 # 🐍🏗️🔚
