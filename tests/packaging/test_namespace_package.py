@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""The distribution owns ``pyvider.cty``, not the shared ``pyvider`` root."""
+"""Every distribution sharing ``pyvider`` ships the same root initializer."""
 
 from __future__ import annotations
 
 import base64
 import csv
+from dataclasses import dataclass
 import hashlib
 import json
 import os
@@ -14,7 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import sysconfig
+import tarfile
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
@@ -24,34 +25,97 @@ ROOT_INITIALIZER = "pyvider/__init__.py"
 CTY_INITIALIZER = "pyvider/cty/__init__.py"
 TYPING_MARKER = "pyvider/cty/py.typed"
 RELEASE_VERSION = "0.6.2"
+CANONICAL_INITIALIZER = """#
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
+from provide.foundation.utils.versioning import get_version
+
+__path__ = __import__("pkgutil").extend_path(__path__, __name__)
+
+__version__ = get_version("pyvider", caller_file=__file__)
+
+__all__ = [
+    "__version__",
+]
+
+# 🐍🏗️🔚
+""".encode()
+LEGACY_CTY_INITIALIZER = """#
+# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
+__path__ = __import__("pkgutil").extend_path(__path__, __name__)
+
+# 🌊🪢🔚
+""".encode()
+
+
+@dataclass(frozen=True)
+class BuiltArtifacts:
+    direct_wheel: Path
+    sdist: Path
+    sdist_wheel: Path
+
+
+def _run(command: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(command, cwd=cwd, check=False, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return result
 
 
 @pytest.fixture(scope="module")
-def built_wheel(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    build_root = tmp_path_factory.mktemp("wheel-build")
+def built_artifacts(tmp_path_factory: pytest.TempPathFactory) -> BuiltArtifacts:
+    build_root = tmp_path_factory.mktemp("package-build")
     source = build_root / "source"
     shutil.copytree(REPOSITORY / "src", source / "src", ignore=shutil.ignore_patterns("*.egg-info"))
     for name in ("LICENSE", "README.md", "VERSION", "pyproject.toml"):
         shutil.copy2(REPOSITORY / name, source / name)
-    wheelhouse = build_root / "wheelhouse"
-    result = subprocess.run(
+
+    direct_wheelhouse = build_root / "direct-wheel"
+    _run(
         [
             "uv",
             "build",
             "--wheel",
             "--out-dir",
-            str(wheelhouse),
+            str(direct_wheelhouse),
             "--no-create-gitignore",
         ],
         cwd=source,
-        check=False,
-        capture_output=True,
-        text=True,
     )
-    assert result.returncode == 0, result.stdout + result.stderr
-    wheels = list(wheelhouse.glob("pyvider_cty-*.whl"))
-    assert len(wheels) == 1
-    return wheels[0]
+    direct_wheel = next(direct_wheelhouse.glob("pyvider_cty-*.whl"))
+
+    sdist_house = build_root / "sdist"
+    _run(
+        ["uv", "build", "--sdist", "--out-dir", str(sdist_house), "--no-create-gitignore"],
+        cwd=source,
+    )
+    sdist = next(sdist_house.glob("pyvider_cty-*.tar.gz"))
+
+    sdist_wheelhouse = build_root / "sdist-wheel"
+    _run(
+        [
+            "uv",
+            "build",
+            "--wheel",
+            "--out-dir",
+            str(sdist_wheelhouse),
+            "--no-create-gitignore",
+            str(sdist),
+        ],
+        cwd=build_root,
+    )
+    sdist_wheel = next(sdist_wheelhouse.glob("pyvider_cty-*.whl"))
+    return BuiltArtifacts(direct_wheel=direct_wheel, sdist=sdist, sdist_wheel=sdist_wheel)
+
+
+def _candidate(built_artifacts: BuiltArtifacts, name: str) -> Path:
+    return getattr(built_artifacts, name)
 
 
 def _record_paths(record: Path) -> set[str]:
@@ -59,54 +123,146 @@ def _record_paths(record: Path) -> set[str]:
         return {row[0] for row in csv.reader(rows)}
 
 
-def _write_synthetic_owner_wheel(destination: Path) -> Path:
-    wheel = destination / "synthetic_pyvider_owner-1.0-py3-none-any.whl"
-    dist_info = "synthetic_pyvider_owner-1.0.dist-info"
-    members = {
-        ROOT_INITIALIZER: b'__version__ = "owner-1.0"\nOWNER_MARKER = "preserve-me"\n',
-        f"{dist_info}/METADATA": (b"Metadata-Version: 2.4\nName: synthetic-pyvider-owner\nVersion: 1.0\n"),
+def _write_wheel(
+    destination: Path,
+    *,
+    distribution: str,
+    version: str,
+    members: dict[str, bytes],
+    requirements: tuple[str, ...] = (),
+) -> Path:
+    normalized = distribution.replace("-", "_")
+    wheel = destination / f"{normalized}-{version}-py3-none-any.whl"
+    dist_info = f"{normalized}-{version}.dist-info"
+    requires_dist = "".join(f"Requires-Dist: {requirement}\n" for requirement in requirements)
+    contents = {
+        **members,
+        f"{dist_info}/METADATA": (
+            f"Metadata-Version: 2.4\nName: {distribution}\nVersion: {version}\n{requires_dist}"
+        ).encode(),
         f"{dist_info}/WHEEL": (
             b"Wheel-Version: 1.0\n"
-            b"Generator: pyvider-cty namespace test\n"
+            b"Generator: pyvider-cty packaging test\n"
             b"Root-Is-Purelib: true\n"
             b"Tag: py3-none-any\n"
         ),
     }
     record_rows = []
-    for name, content in members.items():
+    for name, content in contents.items():
         digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode()
         record_rows.append(f"{name},sha256={digest},{len(content)}\n")
     record_rows.append(f"{dist_info}/RECORD,,\n")
-    members[f"{dist_info}/RECORD"] = "".join(record_rows).encode()
+    contents[f"{dist_info}/RECORD"] = "".join(record_rows).encode()
 
     with ZipFile(wheel, "w", ZIP_DEFLATED) as archive:
-        for name, content in members.items():
+        for name, content in contents.items():
             archive.writestr(name, content)
     return wheel
 
 
-def test_wheel_uses_the_shared_pyvider_namespace(built_wheel: Path) -> None:
-    with ZipFile(built_wheel) as archive:
-        members = set(archive.namelist())
-        record_name = next(name for name in members if name.endswith(".dist-info/RECORD"))
-        record_paths = {row[0] for row in csv.reader(archive.read(record_name).decode().splitlines())}
-
-    assert ROOT_INITIALIZER not in members
-    assert ROOT_INITIALIZER not in record_paths
-    assert CTY_INITIALIZER in members
-    assert TYPING_MARKER in members
+def _synthetic_owner(destination: Path) -> Path:
+    return _write_wheel(
+        destination,
+        distribution="pyvider",
+        version="0.7.0",
+        members={ROOT_INITIALIZER: CANONICAL_INITIALIZER},
+        requirements=("provide-foundation>=0.4.0",),
+    )
 
 
-def test_wheel_reports_the_release_version(built_wheel: Path) -> None:
-    with ZipFile(built_wheel) as archive:
-        metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
-        metadata = archive.read(metadata_name).decode()
+def _legacy_cty(destination: Path) -> Path:
+    return _write_wheel(
+        destination,
+        distribution="pyvider-cty",
+        version="0.6.1",
+        members={
+            ROOT_INITIALIZER: LEGACY_CTY_INITIALIZER,
+            CTY_INITIALIZER: b'__version__ = "0.6.1"\n',
+        },
+    )
 
-    assert built_wheel.name.startswith(f"pyvider_cty-{RELEASE_VERSION}-")
-    assert f"Version: {RELEASE_VERSION}\n" in metadata
+
+def _environment(destination: Path) -> tuple[Path, Path]:
+    root = destination / "environment"
+    _run(["uv", "venv", "--python", sys.executable, "--no-project", str(root)])
+    python = root / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    purelib = Path(
+        subprocess.check_output(
+            [str(python), "-c", "import sysconfig; print(sysconfig.get_path('purelib'))"],
+            text=True,
+        ).strip()
+    )
+    return python, purelib
 
 
-def test_source_tree_imports_cty_through_the_namespace(tmp_path: Path) -> None:
+def _install(python: Path, wheel: Path, *, dependencies: bool = False, reinstall: bool = False) -> None:
+    command = ["uv", "pip", "install", "--offline", "--python", str(python)]
+    if not dependencies:
+        command.append("--no-deps")
+    if reinstall:
+        command.append("--reinstall")
+    command.append(str(wheel))
+    _run(command)
+
+
+def _uninstall(python: Path, distribution: str) -> None:
+    _run(["uv", "pip", "uninstall", "--python", str(python), distribution])
+
+
+def _installed_versions(python: Path, cwd: Path) -> dict[str, str]:
+    result = _run(
+        [
+            str(python),
+            "-I",
+            "-c",
+            (
+                "import json, pathlib, pyvider, pyvider.cty; "
+                "print(json.dumps({'owner': pyvider.__version__, "
+                "'root_file': str(pathlib.Path(pyvider.__file__).resolve()), "
+                "'cty': pyvider.cty.__version__, "
+                "'cty_file': str(pathlib.Path(pyvider.cty.__file__).resolve())}))"
+            ),
+        ],
+        cwd=cwd,
+    )
+    return json.loads(result.stdout)
+
+
+def test_built_artifacts_use_the_canonical_shared_initializer(built_artifacts: BuiltArtifacts) -> None:
+    assert hashlib.sha256(CANONICAL_INITIALIZER).hexdigest() == (
+        "364693ccf17415ffefb02e23608027e7d7a322e3ca51224e99f86f4cc5bc0306"
+    )
+    for wheel in (built_artifacts.direct_wheel, built_artifacts.sdist_wheel):
+        with ZipFile(wheel) as archive:
+            members = set(archive.namelist())
+            record_name = next(name for name in members if name.endswith(".dist-info/RECORD"))
+            record_paths = {row[0] for row in csv.reader(archive.read(record_name).decode().splitlines())}
+
+            assert archive.read(ROOT_INITIALIZER) == CANONICAL_INITIALIZER
+        assert ROOT_INITIALIZER in record_paths
+        assert CTY_INITIALIZER in members
+        assert TYPING_MARKER in members
+
+    with tarfile.open(built_artifacts.sdist) as archive:
+        initializer = next(
+            member for member in archive.getmembers() if member.name.endswith("/src/pyvider/__init__.py")
+        )
+        extracted = archive.extractfile(initializer)
+        assert extracted is not None
+        assert extracted.read() == CANONICAL_INITIALIZER
+
+
+def test_wheels_report_the_release_version(built_artifacts: BuiltArtifacts) -> None:
+    for wheel in (built_artifacts.direct_wheel, built_artifacts.sdist_wheel):
+        with ZipFile(wheel) as archive:
+            metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
+            metadata = archive.read(metadata_name).decode()
+
+        assert wheel.name.startswith(f"pyvider_cty-{RELEASE_VERSION}-")
+        assert f"Version: {RELEASE_VERSION}\n" in metadata
+
+
+def test_source_tree_imports_cty(tmp_path: Path) -> None:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(REPOSITORY / "src")
     result = subprocess.run(
@@ -129,69 +285,88 @@ def test_source_tree_imports_cty_through_the_namespace(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     imported = json.loads(result.stdout)
     assert Path(imported["file"]).is_relative_to(REPOSITORY / "src" / "pyvider" / "cty")
-    assert imported["version"]
+    assert imported["version"] == RELEASE_VERSION
 
 
-def test_install_does_not_overwrite_an_existing_pyvider_owner(
-    built_wheel: Path,
+@pytest.mark.parametrize("candidate_name", ["direct_wheel", "sdist_wheel"])
+@pytest.mark.parametrize("order", ["cty-first", "owner-first"])
+def test_fresh_coinstall_is_order_independent(
+    built_artifacts: BuiltArtifacts,
+    candidate_name: str,
+    order: str,
     tmp_path: Path,
 ) -> None:
-    owner_wheel = _write_synthetic_owner_wheel(tmp_path)
-    result = subprocess.run(
-        ["uv", "venv", "--python", sys.executable, "--no-project", str(tmp_path / "environment")],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    python = tmp_path / "environment" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    candidate = _candidate(built_artifacts, candidate_name)
+    owner = _synthetic_owner(tmp_path)
+    python, purelib = _environment(tmp_path)
 
-    for wheel in (owner_wheel, built_wheel):
-        result = subprocess.run(
-            ["uv", "pip", "install", "--python", str(python), "--no-deps", str(wheel)],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, result.stdout + result.stderr
+    if order == "cty-first":
+        _install(python, candidate, dependencies=True)
+        _install(python, owner)
+    else:
+        _install(python, owner)
+        _install(python, candidate, dependencies=True)
 
-    purelib = Path(
-        subprocess.check_output(
-            [str(python), "-c", "import sysconfig; print(sysconfig.get_path('purelib'))"],
-            text=True,
-        ).strip()
-    )
-    (purelib / "test-dependencies.pth").write_text(f"{sysconfig.get_path('purelib')}\n")
-
-    owner_initializer = purelib / ROOT_INITIALIZER
-    assert owner_initializer.read_text() == '__version__ = "owner-1.0"\nOWNER_MARKER = "preserve-me"\n'
-
-    owner_record = next(purelib.glob("synthetic_pyvider_owner-*.dist-info/RECORD"))
+    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+    owner_record = next(purelib.glob("pyvider-*.dist-info/RECORD"))
     cty_record = next(purelib.glob("pyvider_cty-*.dist-info/RECORD"))
     assert ROOT_INITIALIZER in _record_paths(owner_record)
-    assert ROOT_INITIALIZER not in _record_paths(cty_record)
+    assert ROOT_INITIALIZER in _record_paths(cty_record)
 
-    result = subprocess.run(
-        [
-            str(python),
-            "-c",
-            (
-                "import json, pathlib, pyvider, pyvider.cty; "
-                "print(json.dumps({'owner': pyvider.__version__, "
-                "'marker': pyvider.OWNER_MARKER, "
-                "'cty_file': str(pathlib.Path(pyvider.cty.__file__).resolve()), "
-                "'cty_version': pyvider.cty.__version__}))"
-            ),
-        ],
-        cwd=tmp_path,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    imported = json.loads(result.stdout)
-    assert imported["owner"] == "owner-1.0"
-    assert imported["marker"] == "preserve-me"
-    assert imported["cty_version"]
+    imported = _installed_versions(python, tmp_path)
+    assert imported["owner"] == "0.7.0"
+    assert imported["cty"] == RELEASE_VERSION
+    assert Path(imported["root_file"]).is_relative_to(purelib / "pyvider")
     assert Path(imported["cty_file"]).is_relative_to(purelib / "pyvider" / "cty")
+
+
+@pytest.mark.parametrize("candidate_name", ["direct_wheel", "sdist_wheel"])
+def test_upgrade_from_legacy_cty_restores_the_healthy_owner_initializer(
+    built_artifacts: BuiltArtifacts,
+    candidate_name: str,
+    tmp_path: Path,
+) -> None:
+    legacy = _legacy_cty(tmp_path)
+    owner = _synthetic_owner(tmp_path)
+    candidate = _candidate(built_artifacts, candidate_name)
+    python, purelib = _environment(tmp_path)
+
+    # This order reproduces the healthy pre-upgrade state: 0.6.1 owns the
+    # shared path in RECORD, then Pyvider 0.7.0 supplies its canonical bytes.
+    _install(python, legacy)
+    _install(python, owner, dependencies=True)
+    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+    assert _installed_versions(python, tmp_path)["owner"] == "0.7.0"
+
+    # Upgrading removes every path owned by 0.6.1 before installing 0.6.2.
+    # The candidate must therefore restore the canonical shared initializer.
+    _install(python, candidate, dependencies=True)
+
+    assert not list(purelib.glob("pyvider_cty-0.6.1.dist-info"))
+    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+    owner_record = next(purelib.glob("pyvider-*.dist-info/RECORD"))
+    cty_record = next(purelib.glob("pyvider_cty-*.dist-info/RECORD"))
+    assert ROOT_INITIALIZER in _record_paths(owner_record)
+    assert ROOT_INITIALIZER in _record_paths(cty_record)
+    assert _installed_versions(python, tmp_path)["owner"] == "0.7.0"
+
+
+def test_remaining_owner_can_restore_the_shared_path_after_uninstall(
+    built_artifacts: BuiltArtifacts,
+    tmp_path: Path,
+) -> None:
+    owner = _synthetic_owner(tmp_path)
+    python, purelib = _environment(tmp_path)
+    _install(python, owner)
+    _install(python, built_artifacts.direct_wheel, dependencies=True)
+
+    _uninstall(python, "pyvider-cty")
+    assert not (purelib / ROOT_INITIALIZER).exists()
+
+    _install(python, owner, reinstall=True)
+    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+    result = _run(
+        [str(python), "-I", "-c", "import pyvider; print(pyvider.__version__)"],
+        cwd=tmp_path,
+    )
+    assert result.stdout.strip() == "0.7.0"
