@@ -9,22 +9,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
-- **The shared `pyvider` package initializer is stable across installation
-  order and upgrades.** The 0.6.1 wheel shipped different bytes for
-  `pyvider/__init__.py` than `pyvider` and `pyvider-rpcplugin`, so whichever
-  wheel was installed last silently decided whether root-package attributes
-  such as `pyvider.__version__` existed. Simply dropping the file made an
-  upgrade worse: uninstalling 0.6.1 removed its RECORD-owned copy before 0.6.2
-  was installed, leaving a healthy `pyvider` installation without an
-  initializer. Version 0.6.2 instead standardizes on the canonical initializer
-  bytes used by the coordinated releases: `pyvider-cty` 0.6.2,
-  `pyvider-rpcplugin` 0.5.5, and `Pyvider` 0.8.0. When all three distributions
-  are co-installed, users must use those corrected versions together.
-  `pyvider-rpcplugin` 0.5.4 still carries the old initializer bytes, so
-  installing it afterward can replace the canonical file; `pyvider-cty` 0.6.2
-  cannot neutralize that older wheel. With the coordinated versions, fresh
-  co-installs produce the same file in either order, and upgrading cty restores
-  the canonical copy after removing 0.6.1.
+- **The shared `pyvider` package root now has one owner.** The 0.6.1 cty wheel
+  shipped `pyvider/__init__.py` (but did not own `pyvider/py.typed`), which
+  overlapped with sibling distributions and made installation and uninstall
+  order destructive. Version 0.6.2 stops owning the initializer, continues not
+  to own the root typing marker, and uses the implicit namespace for
+  `pyvider.cty`; it still ships `pyvider/cty/py.typed`. This is coordinated with
+  `pyvider-rpcplugin` 0.5.5 and `Pyvider` 0.8.0, where only Pyvider owns the
+  root initializer and typing marker. A direct upgrade from cty 0.6.1 removes
+  the old RECORD-owned initializer before installing the implicit-namespace
+  wheel, so install or upgrade Pyvider 0.8 in the same operation, or
+  reinstall `Pyvider` afterward.
+  Once remediated, uninstalling cty leaves Pyvider's root files intact. The
+  final three-package coordinated upgrade is covered by Pyvider's integration
+  suite.
 
 ## [0.6.1] - 2026-09-12
 
