@@ -17,9 +17,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   upgrade worse: uninstalling 0.6.1 removed its RECORD-owned copy before 0.6.2
   was installed, leaving a healthy `pyvider` installation without an
   initializer. Version 0.6.2 instead standardizes on the canonical initializer
-  bytes used across the coordinated releases. Fresh co-installs now produce
-  the same file in either order, and upgrading restores the canonical copy
-  after removing 0.6.1.
+  bytes used by the coordinated releases: `pyvider-cty` 0.6.2,
+  `pyvider-rpcplugin` 0.5.5, and `Pyvider` 0.8.0. When all three distributions
+  are co-installed, users must use those corrected versions together.
+  `pyvider-rpcplugin` 0.5.4 still carries the old initializer bytes, so
+  installing it afterward can replace the canonical file; `pyvider-cty` 0.6.2
+  cannot neutralize that older wheel. With the coordinated versions, fresh
+  co-installs produce the same file in either order, and upgrading cty restores
+  the canonical copy after removing 0.6.1.
 
 ## [0.6.1] - 2026-09-12
 

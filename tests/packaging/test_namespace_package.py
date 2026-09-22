@@ -259,12 +259,30 @@ def _installed_versions(python: Path, cwd: Path) -> dict[str, str]:
     return cast(dict[str, str], json.loads(result.stdout))
 
 
-def test_published_cty_061_artifact_is_immutable(published_cty_061: Path) -> None:
-    payload = published_cty_061.read_bytes()
+def test_canonical_initializer_checkout_is_lf_only() -> None:
+    source_path = "src/pyvider/__init__.py"
+    attributes = _run(
+        ["git", "check-attr", "text", "eol", "--", source_path],
+        cwd=REPOSITORY,
+    )
 
-    assert published_cty_061.name == PUBLISHED_CTY_061_FILENAME
-    assert len(payload) == PUBLISHED_CTY_061_SIZE
-    assert hashlib.sha256(payload).hexdigest() == PUBLISHED_CTY_061_SHA256
+    assert attributes.stdout.splitlines() == [
+        f"{source_path}: text: set",
+        f"{source_path}: eol: lf",
+    ]
+    initializer = (REPOSITORY / source_path).read_bytes()
+    assert b"\r" not in initializer
+    assert initializer.endswith(b"\n")
+
+
+def test_release_notes_name_the_coordinated_compatibility_floor() -> None:
+    release_notes = (REPOSITORY / "CHANGELOG.md").read_text().split("## [0.6.1]", maxsplit=1)[0]
+
+    assert "`pyvider-rpcplugin` 0.5.5" in release_notes
+    assert "`Pyvider` 0.8.0" in release_notes
+    assert "`pyvider-rpcplugin` 0.5.4" in release_notes
+    assert "must use" in release_notes
+    assert "cannot neutralize" in release_notes
 
 
 def test_built_artifacts_use_the_canonical_shared_initializer(built_artifacts: BuiltArtifacts) -> None:
@@ -359,35 +377,67 @@ def test_fresh_coinstall_is_order_independent(
     assert Path(imported["cty_file"]).is_relative_to(purelib / "pyvider" / "cty")
 
 
-@pytest.mark.parametrize("candidate_name", ["direct_wheel", "sdist_wheel"])
+def test_editable_coinstall_preserves_owner_and_imports_cty(tmp_path: Path) -> None:
+    owner = _synthetic_owner(tmp_path)
+    python, purelib = _environment(tmp_path)
+    _install(python, owner, dependencies=True)
+
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            str(python),
+            "--no-deps",
+            "--editable",
+            str(REPOSITORY),
+        ]
+    )
+
+    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+    imported = _installed_versions(python, tmp_path)
+    assert imported["owner"] == "0.7.0"
+    assert imported["cty"] == RELEASE_VERSION
+    assert Path(imported["cty_file"]).is_relative_to(REPOSITORY / "src" / "pyvider" / "cty")
+
+
 def test_upgrade_from_published_cty_061_restores_the_healthy_owner_initializer(
     built_artifacts: BuiltArtifacts,
     published_cty_061: Path,
-    candidate_name: str,
     tmp_path: Path,
 ) -> None:
-    owner = _synthetic_owner(tmp_path)
-    candidate = _candidate(built_artifacts, candidate_name)
-    python, purelib = _environment(tmp_path)
+    payload = published_cty_061.read_bytes()
+    assert published_cty_061.name == PUBLISHED_CTY_061_FILENAME
+    assert len(payload) == PUBLISHED_CTY_061_SIZE
+    assert hashlib.sha256(payload).hexdigest() == PUBLISHED_CTY_061_SHA256
 
-    # This order reproduces the healthy pre-upgrade state: 0.6.1 owns the
-    # shared path in RECORD, then Pyvider 0.7.0 supplies its canonical bytes.
-    _install(python, published_cty_061)
-    _install(python, owner, dependencies=True)
-    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
-    assert _installed_versions(python, tmp_path)["owner"] == "0.7.0"
+    for candidate_name in ("direct_wheel", "sdist_wheel"):
+        case = tmp_path / candidate_name
+        case.mkdir()
+        owner = _synthetic_owner(case)
+        candidate = _candidate(built_artifacts, candidate_name)
+        python, purelib = _environment(case)
 
-    # Upgrading removes every path owned by 0.6.1 before installing 0.6.2.
-    # The candidate must therefore restore the canonical shared initializer.
-    _install(python, candidate, dependencies=True)
+        # This order reproduces the healthy pre-upgrade state: 0.6.1 owns the
+        # shared path in RECORD, then Pyvider 0.7.0 supplies its canonical bytes.
+        _install(python, published_cty_061)
+        _install(python, owner, dependencies=True)
+        assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+        assert _installed_versions(python, case)["owner"] == "0.7.0"
 
-    assert not list(purelib.glob("pyvider_cty-0.6.1.dist-info"))
-    assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
-    owner_record = next(purelib.glob("pyvider-*.dist-info/RECORD"))
-    cty_record = next(purelib.glob("pyvider_cty-*.dist-info/RECORD"))
-    assert ROOT_INITIALIZER in _record_paths(owner_record)
-    assert ROOT_INITIALIZER in _record_paths(cty_record)
-    assert _installed_versions(python, tmp_path)["owner"] == "0.7.0"
+        # Upgrading removes every path owned by 0.6.1 before installing 0.6.2.
+        # The candidate must therefore restore the canonical shared initializer.
+        _install(python, candidate, dependencies=True)
+
+        assert not list(purelib.glob("pyvider_cty-0.6.1.dist-info"))
+        assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
+        owner_record = next(purelib.glob("pyvider-*.dist-info/RECORD"))
+        cty_record = next(purelib.glob("pyvider_cty-*.dist-info/RECORD"))
+        assert ROOT_INITIALIZER in _record_paths(owner_record)
+        assert ROOT_INITIALIZER in _record_paths(cty_record)
+        assert _installed_versions(python, case)["owner"] == "0.7.0"
 
 
 def test_remaining_owner_can_restore_the_shared_path_after_uninstall(
