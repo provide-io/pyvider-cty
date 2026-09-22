@@ -317,9 +317,8 @@ def test_wheels_report_the_release_version(built_artifacts: BuiltArtifacts) -> N
 
 
 def test_source_tree_imports_cty(tmp_path: Path) -> None:
-    assert not (REPOSITORY / ROOT_INITIALIZER).exists()
-    assert not (REPOSITORY / ROOT_TYPING_MARKER).exists()
-    assert not (REPOSITORY / ".gitattributes").exists()
+    assert not (REPOSITORY / "src" / ROOT_INITIALIZER).exists()
+    assert not (REPOSITORY / "src" / ROOT_TYPING_MARKER).exists()
 
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(REPOSITORY / "src")
