@@ -5,6 +5,25 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-22
+
+### Fixed
+
+- **The shared `pyvider` package root now has one owner.** The 0.6.1 cty wheel
+  shipped `pyvider/__init__.py` (but did not own `pyvider/py.typed`), which
+  overlapped with sibling distributions and made installation and uninstall
+  order destructive. Version 0.6.2 stops owning the initializer, continues not
+  to own the root typing marker, and uses the implicit namespace for
+  `pyvider.cty`; it still ships `pyvider/cty/py.typed`. This is coordinated with
+  `pyvider-rpcplugin` 0.5.5 and `Pyvider` 0.8.0, where only Pyvider owns the
+  root initializer and typing marker. A direct upgrade from cty 0.6.1 removes
+  the old RECORD-owned initializer before installing the implicit-namespace
+  wheel, so install or upgrade Pyvider 0.8 in the same operation, or
+  reinstall `Pyvider` afterward.
+  Once remediated, uninstalling cty leaves Pyvider's root files intact. The
+  final three-package coordinated upgrade is covered by Pyvider's integration
+  suite.
+
 ## [0.6.1] - 2026-09-12
 
 ### Changed
