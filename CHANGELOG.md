@@ -5,6 +5,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-22
+
+### Fixed
+
+- **Installing `pyvider-cty` no longer replaces the shared `pyvider` package
+  initializer.** The 0.6.1 wheel included `pyvider/__init__.py`, a path also
+  shipped by `pyvider` and `pyvider-rpcplugin`. Whichever wheel was installed
+  last silently won ownership of that file, so an otherwise valid co-install
+  could lose root-package attributes such as `pyvider.__version__`. This
+  distribution now uses the implicit Python namespace and owns only
+  `pyvider.cty`; source checkouts and installed wheels continue to import
+  `pyvider.cty` normally while leaving another distribution's root initializer
+  untouched.
+
 ## [0.6.1] - 2026-09-12
 
 ### Changed
