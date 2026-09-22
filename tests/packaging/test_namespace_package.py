@@ -8,6 +8,8 @@ from __future__ import annotations
 import base64
 import csv
 from dataclasses import dataclass
+from email.parser import BytesParser
+from email.policy import default as default_email_policy
 import hashlib
 import json
 import os
@@ -173,6 +175,12 @@ def _record_paths(record: Path) -> set[str]:
         return {row[0] for row in csv.reader(rows)}
 
 
+def _metadata_version(payload: bytes) -> str:
+    version = BytesParser(policy=default_email_policy).parsebytes(payload)["Version"]
+    assert version is not None
+    return str(version)
+
+
 def _write_wheel(
     destination: Path,
     *,
@@ -324,10 +332,25 @@ def test_wheels_report_the_release_version(built_artifacts: BuiltArtifacts) -> N
     for wheel in (built_artifacts.direct_wheel, built_artifacts.sdist_wheel):
         with ZipFile(wheel) as archive:
             metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
-            metadata = archive.read(metadata_name).decode()
+            metadata_version = _metadata_version(archive.read(metadata_name))
 
         assert wheel.name.startswith(f"pyvider_cty-{RELEASE_VERSION}-")
-        assert f"Version: {RELEASE_VERSION}\n" in metadata
+        assert metadata_version == RELEASE_VERSION
+
+
+@pytest.mark.parametrize("line_ending", [b"\n", b"\r\n"])
+def test_wheel_metadata_version_parsing_is_line_ending_independent(line_ending: bytes) -> None:
+    metadata = line_ending.join(
+        [
+            b"Metadata-Version: 2.4",
+            b"Name: pyvider-cty",
+            f"Version: {RELEASE_VERSION}".encode(),
+            b"",
+            b"",
+        ]
+    )
+
+    assert _metadata_version(metadata) == RELEASE_VERSION
 
 
 def test_source_tree_imports_cty(tmp_path: Path) -> None:
