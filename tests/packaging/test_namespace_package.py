@@ -16,6 +16,9 @@ import shutil
 import subprocess
 import sys
 import tarfile
+from typing import cast
+import urllib.error
+import urllib.request
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
@@ -25,6 +28,15 @@ ROOT_INITIALIZER = "pyvider/__init__.py"
 CTY_INITIALIZER = "pyvider/cty/__init__.py"
 TYPING_MARKER = "pyvider/cty/py.typed"
 RELEASE_VERSION = "0.6.2"
+PUBLISHED_CTY_061_FILENAME = "pyvider_cty-0.6.1-py3-none-any.whl"
+PUBLISHED_CTY_061_URL = (
+    "https://files.pythonhosted.org/packages/38/9f/"
+    "014fbb7c371ae700dd573acb335069f6f89ad24542ebbd92add546d6a309/"
+    f"{PUBLISHED_CTY_061_FILENAME}"
+)
+PUBLISHED_CTY_061_SHA256 = "9d1135f5e8f0ac95f12c1d08331fcab45327d59652f4b16b6f71dd0b829a0673"
+PUBLISHED_CTY_061_SIZE = 299_140
+PUBLISHED_CTY_061_CACHE_ENV = "PYVIDER_CTY_061_WHEEL"
 CANONICAL_INITIALIZER = """#
 # SPDX-FileCopyrightText: Copyright (c) 2025-2026 provide.io llc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -43,16 +55,6 @@ __all__ = [
 
 # 🐍🏗️🔚
 """.encode()
-LEGACY_CTY_INITIALIZER = """#
-# SPDX-FileCopyrightText: Copyright (c) provide.io llc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-
-
-__path__ = __import__("pkgutil").extend_path(__path__, __name__)
-
-# 🌊🪢🔚
-""".encode()
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,38 @@ def _run(command: list[str], *, cwd: Path | None = None) -> subprocess.Completed
     result = subprocess.run(command, cwd=cwd, check=False, capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
     return result
+
+
+def _published_cty_061(destination: Path) -> Path:
+    payload: bytes
+    wheel = destination / PUBLISHED_CTY_061_FILENAME
+    cached = os.environ.get(PUBLISHED_CTY_061_CACHE_ENV)
+    if cached:
+        cache_path = Path(cached).expanduser().resolve()
+        if not cache_path.is_file():
+            raise AssertionError(f"{PUBLISHED_CTY_061_CACHE_ENV} is not a file: {cache_path}")
+        payload = cache_path.read_bytes()
+    else:
+        try:
+            # The URL is an immutable HTTPS files.pythonhosted.org constant.
+            with urllib.request.urlopen(PUBLISHED_CTY_061_URL, timeout=60) as response:  # nosec B310
+                payload = response.read(PUBLISHED_CTY_061_SIZE + 1)
+        except urllib.error.URLError as exc:
+            raise AssertionError(
+                f"could not fetch pinned {PUBLISHED_CTY_061_FILENAME}; set "
+                f"{PUBLISHED_CTY_061_CACHE_ENV} to a local copy: {exc}"
+            ) from exc
+
+    actual_size = len(payload)
+    actual_sha256 = hashlib.sha256(payload).hexdigest()
+    assert actual_size == PUBLISHED_CTY_061_SIZE, (
+        f"{wheel}: size {actual_size} != pinned size {PUBLISHED_CTY_061_SIZE}"
+    )
+    assert actual_sha256 == PUBLISHED_CTY_061_SHA256, (
+        f"{wheel}: sha256 {actual_sha256} != pinned sha256 {PUBLISHED_CTY_061_SHA256}"
+    )
+    wheel.write_bytes(payload)
+    return wheel
 
 
 @pytest.fixture(scope="module")
@@ -114,8 +148,17 @@ def built_artifacts(tmp_path_factory: pytest.TempPathFactory) -> BuiltArtifacts:
     return BuiltArtifacts(direct_wheel=direct_wheel, sdist=sdist, sdist_wheel=sdist_wheel)
 
 
+@pytest.fixture(scope="module")
+def published_cty_061(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return _published_cty_061(tmp_path_factory.mktemp("published-cty-061"))
+
+
 def _candidate(built_artifacts: BuiltArtifacts, name: str) -> Path:
-    return getattr(built_artifacts, name)
+    if name == "direct_wheel":
+        return built_artifacts.direct_wheel
+    if name == "sdist_wheel":
+        return built_artifacts.sdist_wheel
+    raise AssertionError(f"unknown candidate artifact: {name}")
 
 
 def _record_paths(record: Path) -> set[str]:
@@ -170,18 +213,6 @@ def _synthetic_owner(destination: Path) -> Path:
     )
 
 
-def _legacy_cty(destination: Path) -> Path:
-    return _write_wheel(
-        destination,
-        distribution="pyvider-cty",
-        version="0.6.1",
-        members={
-            ROOT_INITIALIZER: LEGACY_CTY_INITIALIZER,
-            CTY_INITIALIZER: b'__version__ = "0.6.1"\n',
-        },
-    )
-
-
 def _environment(destination: Path) -> tuple[Path, Path]:
     root = destination / "environment"
     _run(["uv", "venv", "--python", sys.executable, "--no-project", str(root)])
@@ -225,7 +256,15 @@ def _installed_versions(python: Path, cwd: Path) -> dict[str, str]:
         ],
         cwd=cwd,
     )
-    return json.loads(result.stdout)
+    return cast(dict[str, str], json.loads(result.stdout))
+
+
+def test_published_cty_061_artifact_is_immutable(published_cty_061: Path) -> None:
+    payload = published_cty_061.read_bytes()
+
+    assert published_cty_061.name == PUBLISHED_CTY_061_FILENAME
+    assert len(payload) == PUBLISHED_CTY_061_SIZE
+    assert hashlib.sha256(payload).hexdigest() == PUBLISHED_CTY_061_SHA256
 
 
 def test_built_artifacts_use_the_canonical_shared_initializer(built_artifacts: BuiltArtifacts) -> None:
@@ -321,19 +360,19 @@ def test_fresh_coinstall_is_order_independent(
 
 
 @pytest.mark.parametrize("candidate_name", ["direct_wheel", "sdist_wheel"])
-def test_upgrade_from_legacy_cty_restores_the_healthy_owner_initializer(
+def test_upgrade_from_published_cty_061_restores_the_healthy_owner_initializer(
     built_artifacts: BuiltArtifacts,
+    published_cty_061: Path,
     candidate_name: str,
     tmp_path: Path,
 ) -> None:
-    legacy = _legacy_cty(tmp_path)
     owner = _synthetic_owner(tmp_path)
     candidate = _candidate(built_artifacts, candidate_name)
     python, purelib = _environment(tmp_path)
 
     # This order reproduces the healthy pre-upgrade state: 0.6.1 owns the
     # shared path in RECORD, then Pyvider 0.7.0 supplies its canonical bytes.
-    _install(python, legacy)
+    _install(python, published_cty_061)
     _install(python, owner, dependencies=True)
     assert (purelib / ROOT_INITIALIZER).read_bytes() == CANONICAL_INITIALIZER
     assert _installed_versions(python, tmp_path)["owner"] == "0.7.0"
