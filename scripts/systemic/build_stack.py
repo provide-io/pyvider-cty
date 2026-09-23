@@ -69,7 +69,7 @@ def local_packages() -> dict[str, Path]:
         if not candidate.is_dir() or candidate.name.startswith("_") or not pyproject.is_file():
             continue
         try:
-            name = tomllib.loads(pyproject.read_text())["project"]["name"]
+            name = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["name"]
         except (tomllib.TOMLDecodeError, KeyError):
             continue
         candidates.setdefault(name, []).append(candidate)
@@ -110,7 +110,7 @@ def closure(roots: tuple[str, ...], packages: dict[str, Path]) -> list[str]:
         if name in seen or name not in packages:
             continue
         seen.append(name)
-        pyproject = tomllib.loads((packages[name] / "pyproject.toml").read_text())
+        pyproject = tomllib.loads((packages[name] / "pyproject.toml").read_text(encoding="utf-8"))
         for spec in pyproject.get("project", {}).get("dependencies", []):
             queue.append(requirement_name(spec))
     return seen
@@ -228,7 +228,11 @@ def main() -> int:
                 raise SystemExit(f"{name}: expected one wheel, got {[w.name for w in produced]}")
             wheel = produced[0]
 
-            declared = (source / "VERSION").read_text().strip() if (source / "VERSION").is_file() else None
+            declared = (
+                (source / "VERSION").read_text(encoding="utf-8").strip()
+                if (source / "VERSION").is_file()
+                else None
+            )
             if declared and f"-{declared}-" not in wheel.name:
                 raise SystemExit(
                     f"{name}: VERSION says {declared} but the build produced {wheel.name}. "

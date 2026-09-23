@@ -232,7 +232,7 @@ def main() -> None:
     # Generate report
     report = generate_analysis_report(output_dir)
     report_file = output_dir / "ANALYSIS.md"
-    report_file.write_text(report)
+    report_file.write_text(report, encoding="utf-8")
 
     print()
     print(f"Analysis report: {report_file}")

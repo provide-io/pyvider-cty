@@ -51,7 +51,7 @@ SNIPPET = textwrap.dedent(
 def test_calling_them_type_checks(tmp_path) -> None:
     """No `Missing named argument "return_type"`, on any of the five shapes."""
     module = tmp_path / "calls.py"
-    module.write_text(SNIPPET)
+    module.write_text(SNIPPET, encoding="utf-8")
     cache = tmp_path / ".mypy_cache"
 
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell

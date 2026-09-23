@@ -98,7 +98,7 @@ def test_an_svg_without_an_embedded_source_is_stale(diagrams: Path) -> None:
     """Nothing to compare is not a match. An SVG drawn by hand, or by a renderer
     told not to embed its source, cannot show which source it came from."""
     svg = diagrams / "05-wire-codecs.svg"
-    svg.write_text("<svg xmlns='http://www.w3.org/2000/svg'></svg>\n")
+    svg.write_text("<svg xmlns='http://www.w3.org/2000/svg'></svg>\n", encoding="utf-8")
 
     assert render_diagrams.stale_diagrams(sorted(diagrams.glob("*.puml"))) == ["05-wire-codecs.puml"]
 

@@ -86,7 +86,9 @@ def run_memray_stress(
 
     if UPDATE:
         baselines[baseline_key] = measured
-        baselines_path.write_text(json.dumps(dict(sorted(baselines.items())), indent=2) + "\n")
+        baselines_path.write_text(
+            json.dumps(dict(sorted(baselines.items())), indent=2) + "\n", encoding="utf-8"
+        )
         pytest.skip(f"baseline updated: {baseline_key} = {measured}")
 
     recorded = baselines.get(baseline_key)

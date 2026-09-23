@@ -126,7 +126,7 @@ def _run() -> int:
     for document in documents:
         name = str(document.relative_to(ROOT))
         namespace: dict[str, object] = {"__name__": "__docs__"}
-        for index, block in enumerate(FENCE.findall(document.read_text())):
+        for index, block in enumerate(FENCE.findall(document.read_text(encoding="utf-8"))):
             body = block.strip()
             if not body or body.startswith((">>>", "$", "#!")) or NEEDS_WORLD.search(block):
                 rows.append((name, index, "skip", ""))

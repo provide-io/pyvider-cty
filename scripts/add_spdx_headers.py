@@ -61,7 +61,7 @@ def should_skip_file(file_path: Path) -> tuple[bool, str]:
 
     # Skip nearly empty __init__.py files (namespace packages)
     if file_path.name == "__init__.py":
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
         lines = content.strip().split("\n")
         if len(lines) <= 3:
             return True, "nearly empty namespace package"
@@ -89,7 +89,7 @@ def _check_existing_header(content: str, file_path: Path, verbose: bool) -> tupl
 def add_header(file_path: Path, dry_run: bool = False, verbose: bool = False) -> tuple[bool, str]:
     """Add SPDX header to file. Returns (modified, message)."""
     try:
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
     except Exception as e:
         return False, f"ERROR: Could not read {file_path}: {e}"
 
@@ -132,7 +132,7 @@ def add_header(file_path: Path, dry_run: bool = False, verbose: bool = False) ->
 
     # Write file atomically
     try:
-        file_path.write_text(new_content)
+        file_path.write_text(new_content, encoding="utf-8")
         return True, f"  ✓ Added header to {file_path.relative_to(Path.cwd())}"
     except Exception as e:
         return False, f"  ERROR: Could not write {file_path}: {e}"

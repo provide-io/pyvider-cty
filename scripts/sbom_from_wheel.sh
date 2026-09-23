@@ -148,7 +148,7 @@ with zipfile.ZipFile(wheel) as zf:
             continue
         requires.add(normalize(req.name))
 
-bom = json.loads(out.read_text())
+bom = json.loads(out.read_text(encoding="utf-8"))
 components = bom.get("components") or []
 present = {normalize(c["name"]) for c in components}
 
