@@ -21,6 +21,7 @@ from pyvider.cty import (
     CtyValue,
 )
 from pyvider.cty._unicode import cluster_count, iter_clusters
+from pyvider.cty._unicode._case_tables import TITLE_SEPARATORS
 from pyvider.cty._unicode.case import simple_lower, simple_title_char, simple_upper
 from pyvider.cty.config.defaults import (
     ERR_INDENT_SPACES_MUST_BE_WHOLE,
@@ -318,13 +319,10 @@ def _is_separator(character: str) -> bool:
     """Go's `strings.isSeparator`, which decides where a word begins."""
     if character.isascii():
         return character not in _ASCII_WORD_CHARACTERS
-    if character.isalpha() or character.isdecimal():
-        # `isalpha` is Unicode category L and `isdecimal` is Nd, which are
-        # exactly Go's `unicode.IsLetter` and `unicode.IsDigit`.
-        return False
-    # Above ASCII, Python's `isspace` and Go's `unicode.IsSpace` agree: they
-    # differ only on U+001C to U+001F.
-    return character.isspace()
+    # Above ASCII, Go asks `unicode.IsLetter`, `IsDigit` and `IsSpace`. Answered
+    # from Go's own table rather than Python's `isalpha`/`isspace`, which follow
+    # the running interpreter's Unicode version.
+    return ord(character) in TITLE_SEPARATORS
 
 
 @stdlib_function(

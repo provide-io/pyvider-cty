@@ -59,25 +59,6 @@ CASES: list[tuple[str, list[Arg]]] = [*SCALAR_CASES, *COLLECTION_CASES]
 # that fixing one turns its entry red and forces it out of this list. Each entry
 # is a case id and why it is still here.
 KNOWN_DIVERGENCES: dict[str, str] = {
-    # The Unicode versions differ, and this is the one string in the sweep where
-    # that is observable. GB9c -- the Indic conjunct rule, which holds
-    # `Consonant Linker Consonant` together as one cluster -- was added in
-    # Unicode 15.1. This package's tables are 16.0.0, so `\u0915\u094d\u0937` is one character
-    # here. go-cty's `cty/internal/graphemes` selects `go-textseg` v15 or v17 by
-    # *Go toolchain version*, and the oracle is built with go1.26, which takes
-    # the `!go1.27` branch and therefore v15 -- Unicode 15.0, before GB9c. So it
-    # answers two.
-    #
-    # Deliberately not matched. 15.0 is the outlier: 15.1, 16 and 17 all have
-    # GB9c, and go-cty already carries the v17 that agrees with us. Implementing
-    # a superseded rule set to match one build of the oracle would bake in
-    # something we would have to take back out. These entries are strict xfails,
-    # so rebuilding the oracle on go1.27 makes them XPASS and forces them out --
-    # which is the correct end state arriving on its own.
-    "strlen(\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
-    "strrev(\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
-    "substr(\u0915\u094d\u0937,0,1)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
-    "format(%.1s,\u0915\u094d\u0937)": "GB9c: Unicode 16.0.0 here, 15.0 in the oracle's go-textseg v15",
     # The numeric precision model differs where go-cty computes in a big.Float:
     # a non-terminating quotient comes back with 155 significant digits against
     # Decimal's 28-digit default context. Neither is a wrong answer.

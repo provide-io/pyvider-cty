@@ -221,6 +221,6 @@ FAMILY = "\U0001f468‍\U0001f469‍\U0001f467‍\U0001f466"  # GB11, ZWJ sequen
 FLAGS = "\U0001f1fa\U0001f1f8\U0001f1ef\U0001f1f5"  # GB12/GB13, two flags
 THUMB_TONED = "\U0001f44d\U0001f3fd"  # GB9, skin-tone modifier
 HANGUL_JAMO = "각"  # GB6/GB7/GB8, one syllable from three jamo
-CONJUNCT = "क्ष"  # GB9c, and the one Unicode-version divergence
+CONJUNCT = "क्ष"  # GB9c: one cluster from Unicode 15.1 on, two before
 
 # 🌊🪢🔚

@@ -258,7 +258,7 @@ def nested(draw: Any) -> Case:
         return cty_type, cty_type.validate(draw(st.lists(st.lists(strings, max_size=3), max_size=3)))
     if kind == "map-of-lists":
         cty_type = CtyMap(element_type=CtyList(element_type=N))
-        keys = draw(st.lists(strings, max_size=3, unique=True))
+        keys = draw(st.lists(map_keys, max_size=3, unique=True))
         return cty_type, cty_type.validate({key: draw(st.lists(numbers, max_size=3)) for key in keys})
     if kind == "object-of-collections":
         cty_type = CtyObject(

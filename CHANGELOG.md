@@ -5,6 +5,54 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-09-22
+
+Unicode handling now matches OpenTofu 1.13. It is built with Go 1.27, whose
+`unicode` package carries Unicode 17.0.0, and at which go-cty v1.19.0 selects
+`go-textseg` v17 (Unicode 17.0.0) for grapheme clusters. (#58)
+
+### Changed
+
+- **Grapheme clusters follow Unicode 17.0.0.** The segmenter behind `strlen`,
+  `substr`, `strrev` and `format`'s width and precision read Unicode 16.0.0
+  tables. They are now generated from the 17.0.0 Unicode Character Database and
+  pass every case in its `GraphemeBreakTest.txt`, now vendored under
+  `tests/unicode/data/` and run by the suite.
+- **`scripts/generate_grapheme_tables.py` reads the UCD directly.** `uniseg`,
+  the previous generation-time source, has no Unicode 17 release. The
+  generator now reads `GraphemeBreakProperty.txt`, `DerivedCoreProperties.txt`
+  and `emoji-data.txt` from unicode.org; pointed at 16.0.0 it reproduces the
+  previous table byte for byte. The generated table is now licensed
+  `Unicode-3.0`, added as `LICENSES/Unicode-3.0.txt`.
+- **The go-cty differential suite builds its oracle with Go 1.27**, not 1.26,
+  so it measures against the go-cty OpenTofu 1.13 ships. The four GB9c `क्ष`
+  cases held as strict xfails against the Go 1.26 (Unicode 15.0) oracle now
+  agree and are removed from the known divergences.
+- **`scripts/generate_case_tables.py` vendors Go's whole simple case mapping.**
+  It emits every code point Go 1.27's `unicode.ToUpper`, `ToLower` or `ToTitle`
+  changes (2,989 of them, packed into a 4 KB module) and the non-ASCII runes
+  `strings.Title` treats as word separators, and checks the emitted module
+  against Go at all 1,114,112 code points. It no longer compares against
+  Python or refuses to generate when the two differ.
+
+### Fixed
+
+- **`upper`, `lower` and `title` no longer depend on the Python running them.**
+  They consulted a table only where Python's full case mapping differed from
+  Go's simple one, and asked `str.upper()`, `str.lower()` and `str.title()` for
+  every other character -- so the answer followed the interpreter's
+  `unicodedata` (14.0 on Python 3.11, 16.0 on 3.14), and case pairs Unicode
+  added in 16.0 and 17.0 were left unmapped on every supported Python:
+  `upper("ƛ")` was `"ƛ"` where go-cty answers U+A7DC `"Ƛ"`. Every non-ASCII
+  character is now mapped from Go's Unicode 17.0.0 table alone, and `title`
+  decides where a word starts from Go's separator set rather than Python's
+  `isalpha` and `isspace`. A new differential test puts every code point
+  through `upper`, `lower` and `title` on both sides.
+- **The differential suite's map-of-lists strategy no longer draws `$` keys.**
+  It used unfiltered strings for keys, so a `$`-prefixed key -- which the
+  harness's comparison dialect cannot carry -- failed a traversal property
+  test on the harness rather than on either implementation.
+
 ## [0.6.2] - 2026-09-22
 
 ### Fixed
