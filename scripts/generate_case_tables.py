@@ -8,41 +8,45 @@
 
 Go's `strings.ToUpper`, `ToLower` and `Title` map one rune to one rune through
 the Unicode Character Database's *simple* case mapping -- fields 12, 13 and 14
-of `UnicodeData.txt`. Python's `str.upper()` and friends apply the *full*
-mapping from `SpecialCasing.txt` instead, which may produce more than one code
-point (`ß` -> `SS`) and which has context-sensitive rules Go has none of (final
-sigma). So `upper`, `lower` and `title` cannot be implemented with Python's own
-case methods and match go-cty.
+of `UnicodeData.txt` -- as carried by the Go toolchain's `unicode` package.
+go-cty's `upper`, `lower` and `title` are exactly those functions, so the
+answer is whatever that package says, at whatever Unicode version it carries.
 
-Python's standard library does not expose the simple mappings. Go's `unicode`
-package *is* them -- it is generated from `UnicodeData.txt` and is the table
-go-cty's own answers come from -- so this script reads them out of a Go
-toolchain rather than re-parsing the UCD:
+This script reads the package directly, through a throwaway Go program, and
+vendors *all* of it: every code point `unicode.ToUpper`, `ToLower` or `ToTitle`
+maps to something other than itself, plus the non-ASCII runes
+`strings.Title` treats as word separators. Nothing is compared against Python.
 
-    go run ./scripts/_gocase   # not checked in; see _GO_PROGRAM below
+An earlier version stored only where Python's full mapping disagreed with Go's
+simple one and asked `str.upper()` for the rest. That made the answer follow
+the *running* interpreter's `unicodedata` -- 14.0 on Python 3.11, 16.0 on 3.14
+-- and so could never reach the Unicode version Go carries.
+
     ./scripts/generate_case_tables.py
 
-The emitted table holds only the code points where Python's per-character full
-mapping *differs* from Go's simple one: 102 for uppercase, 1 for lowercase and
-48 for titlecase, out of 1,114,112. Everywhere else `chr(cp).upper()` already
-is the simple mapping, so storing all of it would be 7,000 redundant rows.
-
 A **generation-time** dependency on a Go toolchain only. Nothing in `src/`
-shells out to Go.
+shells out to Go. Use the Go that OpenTofu builds with: its `unicode.Version`
+becomes `UNICODE_VERSION` in the emitted table.
 """
 
 from __future__ import annotations
 
+import base64
+import importlib.util
 from pathlib import Path
+import struct
 import subprocess  # nosec B404 - fixed argv, no shell
 import sys
 import tempfile
+import zlib
 
 OUTPUT = Path(__file__).resolve().parent.parent / "src/pyvider/cty/_unicode/_case_tables.py"
 
 # Every code point Go maps to something other than itself, with its simple
-# upper, lower and title. Printed rather than returned because the point is to
-# read Go's tables, and a Go program is the only thing that can.
+# upper, lower and title, then every non-ASCII rune `strings.Title` starts a
+# word after. Printed rather than returned because the point is to read Go's
+# tables, and a Go program is the only thing that can. `isSeparator` is
+# transcribed from `strings/strings.go`, which does not export it.
 _GO_PROGRAM = """package main
 
 import (
@@ -56,10 +60,13 @@ func main() {
 \tw := bufio.NewWriter(os.Stdout)
 \tdefer w.Flush()
 \tfmt.Fprintf(w, "version %s\\n", unicode.Version)
-\tfor r := rune(0); r <= 0x10FFFF; r++ {
+\tfor r := rune(0); r <= unicode.MaxRune; r++ {
 \t\tu, l, t := unicode.ToUpper(r), unicode.ToLower(r), unicode.ToTitle(r)
 \t\tif u != r || l != r || t != r {
-\t\t\tfmt.Fprintf(w, "%d %d %d %d\\n", r, u, l, t)
+\t\t\tfmt.Fprintf(w, "map %d %d %d %d\\n", r, u, l, t)
+\t\t}
+\t\tif r > 0x7F && !unicode.IsLetter(r) && !unicode.IsDigit(r) && unicode.IsSpace(r) {
+\t\t\tfmt.Fprintf(w, "sep %d\\n", r)
 \t\t}
 \t}
 }
@@ -70,42 +77,69 @@ HEADER = '''#
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""Where Python's full case mapping differs from Unicode's simple one.
+"""Go's simple case mappings, all of them, at Unicode {version}.
 
 GENERATED FILE -- do not edit. Regenerate with
 `scripts/generate_case_tables.py`, which needs a Go toolchain.
 
-Go maps case one rune at a time through `UnicodeData.txt`'s simple mapping
-fields, and go-cty's `upper`, `lower` and `title` are `strings.ToUpper`,
-`strings.ToLower` and `strings.Title`. Python applies `SpecialCasing.txt`'s full
-mapping, which can lengthen a string and which carries context-sensitive rules
-Go does not implement. These three tables are exactly the disagreement: a code
-point appears here only when `chr(cp).upper()` (or `.lower()`, `.title()`) is
-not the single code point Go produces for it.
+go-cty's `upper`, `lower` and `title` are `strings.ToUpper`, `strings.ToLower`
+and `strings.Title`, which map one rune at a time through the Go `unicode`
+package's simple case mapping. These tables are that mapping, read out of Go
+itself: every code point `unicode.ToUpper`, `ToLower` or `ToTitle` changes, and
+nothing else. `pyvider.cty._unicode.case` answers from them alone, so the result
+does not depend on which Unicode version the running Python carries.
 
-Everything absent from a table agrees, so `pyvider.cty._unicode.case` falls
-back to Python's own method there rather than storing seven thousand rows that
-say the same thing twice.
+Packed as signed 32-bit little-endian integers, four per mapped code point --
+the gap from the previous code point, then upper, lower and title as offsets
+from the code point itself -- compressed and base85-encoded, because
+{count:,} code points written as dict literals would be thousands of lines.
 """
 
 from __future__ import annotations
 
-UNICODE_VERSION = "{version}"
-"""The UCD version the Go toolchain's `unicode` package carried when generated.
+import base64
+import struct
+import zlib
 
-Python's `unicodedata` is a *different* version, and deliberately not pinned to
-this one: the two agree at every one of the 1,114,112 code points on the simple
-mappings, so the disagreement below is about simple-versus-full and nothing
-else. That was checked at generation time rather than assumed.
+UNICODE_VERSION = "{version}"
+"""Go's `unicode.Version` when these tables were generated.
+
+Go 1.27, which OpenTofu 1.13 builds with, carries 17.0.0.
 """
 
+_PACKED = {packed!r}
+
+
+def _unpack() -> tuple[dict[int, int], dict[int, int], dict[int, int]]:
+    raw = zlib.decompress(base64.b85decode(_PACKED))
+    values = struct.unpack(f"<{{len(raw) // 4}}i", raw)
+    upper: dict[int, int] = {{}}
+    lower: dict[int, int] = {{}}
+    title: dict[int, int] = {{}}
+    codepoint = 0
+    for i in range(0, len(values), 4):
+        codepoint += values[i]
+        for table, offset in zip((upper, lower, title), values[i + 1 : i + 4], strict=True):
+            if offset:
+                table[codepoint] = codepoint + offset
+    return upper, lower, title
+
+
+SIMPLE_UPPER, SIMPLE_LOWER, SIMPLE_TITLE = _unpack()
+"""Code point -> Go's `unicode.ToUpper`, `ToLower` and `ToTitle`, where not itself."""
+
+TITLE_SEPARATORS: frozenset[int] = frozenset({{{separators}}})
+"""Non-ASCII runes after which `strings.Title` titlecases the next one.
+
+Go's `isSeparator` above ASCII: not a letter, not a digit, and `unicode.IsSpace`.
+"""
 '''
 
 FOOTER = "\n# 🌊🪢🔚\n"
 
 
-def _go_case_data() -> tuple[str, dict[int, tuple[int, int, int]]]:
-    """Go's simple case mappings, read out of a throwaway Go program."""
+def _go_case_data() -> tuple[str, dict[int, tuple[int, int, int]], list[int]]:
+    """Go's simple case mappings and title separators, from a throwaway Go program."""
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "main.go").write_text(_GO_PROGRAM, encoding="utf-8")
@@ -115,77 +149,61 @@ def _go_case_data() -> tuple[str, dict[int, tuple[int, int, int]]]:
         )
     version = ""
     mappings: dict[int, tuple[int, int, int]] = {}
+    separators: list[int] = []
     for line in completed.stdout.splitlines():
-        if line.startswith("version "):
-            version = line.split()[1]
-            continue
-        codepoint, upper, lower, title = (int(field) for field in line.split())
-        mappings[codepoint] = (upper, lower, title)
-    if not version:
-        raise SystemExit("the Go program reported no unicode.Version")
-    return version, mappings
+        kind, *fields = line.split()
+        if kind == "version":
+            version = fields[0]
+        elif kind == "map":
+            codepoint, upper, lower, title = (int(field) for field in fields)
+            mappings[codepoint] = (upper, lower, title)
+        elif kind == "sep":
+            separators.append(int(fields[0]))
+    if not version or not mappings:
+        raise SystemExit("the Go program reported no unicode.Version or no mappings")
+    return version, mappings, separators
 
 
-def _exceptions(mappings: dict[int, tuple[int, int, int]]) -> tuple[dict[int, int], ...]:
-    """Per method, the code points where Python and Go disagree.
-
-    Every disagreement must be Python producing *more than one* code point,
-    which is what makes it a simple-versus-full mapping difference. A
-    single-code-point disagreement would instead mean the Go toolchain and
-    Python carry different Unicode versions, and a table built from the newer
-    one would then be wrong for callers of the older -- so that is refused here
-    rather than silently vendored.
-    """
-    tables: tuple[dict[int, int], ...] = ({}, {}, {})
-    for codepoint in range(0x110000):
-        character = chr(codepoint)
-        expected = mappings.get(codepoint, (codepoint, codepoint, codepoint))
-        for table, method, wanted in zip(
-            tables, (character.upper, character.lower, character.title), expected, strict=True
-        ):
-            answer = method()
-            if answer == chr(wanted):
-                continue
-            if len(answer) == 1:
-                raise SystemExit(
-                    f"U+{codepoint:04X}: Python says {answer!r} and Go says {chr(wanted)!r}, both a "
-                    "single code point. That is a Unicode version difference, not a "
-                    "simple-versus-full mapping difference; resolve it before vendoring."
-                )
-            table[codepoint] = wanted
-    return tables
-
-
-def _render(name: str, table: dict[int, int], what: str) -> str:
-    rows = "".join(f"    0x{key:04X}: 0x{value:04X},\n" for key, value in sorted(table.items()))
-    return f'{name}: dict[int, int] = {{\n{rows}}}\n"""{what}"""\n\n'
+def _pack(mappings: dict[int, tuple[int, int, int]]) -> bytes:
+    values: list[int] = []
+    previous = 0
+    for codepoint in sorted(mappings):
+        upper, lower, title = mappings[codepoint]
+        values += [codepoint - previous, upper - codepoint, lower - codepoint, title - codepoint]
+        previous = codepoint
+    return base64.b85encode(zlib.compress(struct.pack(f"<{len(values)}i", *values), 9))
 
 
 def main() -> int:
-    version, mappings = _go_case_data()
-    upper, lower, title = _exceptions(mappings)
-    body = HEADER.format(version=version)
-    body += _render(
-        "SIMPLE_UPPER",
-        upper,
-        "Code point -> its simple uppercase, where `str.upper()` disagrees.",
-    )
-    body += _render(
-        "SIMPLE_LOWER",
-        lower,
-        "Code point -> its simple lowercase, where `str.lower()` disagrees.\n\n"
-        "One entry: U+0130, whose full lowercase keeps a combining dot above and\n"
-        "whose simple lowercase is a bare `i`.",
-    )
-    body += _render(
-        "SIMPLE_TITLE",
-        title,
-        "Code point -> its simple titlecase, where `str.title()` disagrees.",
+    version, mappings, separators = _go_case_data()
+    body = HEADER.format(
+        version=version,
+        count=len(mappings),
+        packed=_pack(mappings),
+        separators=", ".join(f"0x{codepoint:04X}" for codepoint in separators),
     )
     OUTPUT.write_text(body + FOOTER, encoding="utf-8")
+    subprocess.run([sys.executable, "-m", "ruff", "format", str(OUTPUT)], check=False, capture_output=True)
+
+    # Read the emitted module back and check it against Go at every code point,
+    # so a packing bug cannot ship as a table that merely looks plausible.
+    spec = importlib.util.spec_from_file_location("_emitted_case_tables", OUTPUT)
+    assert spec is not None and spec.loader is not None
+    emitted = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(emitted)
+    tables = (emitted.SIMPLE_UPPER, emitted.SIMPLE_LOWER, emitted.SIMPLE_TITLE)
+    for codepoint in range(0x110000):
+        expected = mappings.get(codepoint, (codepoint, codepoint, codepoint))
+        got = tuple(table.get(codepoint, codepoint) for table in tables)
+        if got != expected:
+            raise SystemExit(f"U+{codepoint:04X}: emitted {got}, Go says {expected}")
+    if frozenset(separators) != emitted.TITLE_SEPARATORS:
+        raise SystemExit("emitted title separators differ from Go's")
+
     print(
-        f"wrote {OUTPUT} from Unicode {version}: "
-        f"{len(upper)} upper, {len(lower)} lower, {len(title)} title exceptions"
+        f"wrote {OUTPUT} from Unicode {version}: {len(mappings)} mapped code points, "
+        f"{len(separators)} title separators, {OUTPUT.stat().st_size / 1024:.1f} KB; "
+        "verified at all 1,114,112 code points"
     )
     return 0
 

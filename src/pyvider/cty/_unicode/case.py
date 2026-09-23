@@ -25,8 +25,12 @@ ways in one call. None of it was caught because the differential sweep's only
 case-mapping inputs were `héllo` and `HÉLLO`, which are NFC-composed and map
 one-to-one either way.
 
-Python exposes no simple mapping, so the disagreement is vendored as a table --
-see `_case_tables.py` for where it comes from and how it was checked.
+Python exposes no simple mapping, so Go's is vendored whole -- see
+`_case_tables.py`. Every non-ASCII character is answered from that table and
+never from Python's own methods: those follow the *running* interpreter's
+`unicodedata` (14.0 on Python 3.11, 16.0 on 3.14), so deferring to them for
+characters the table did not list made the answer depend on the interpreter and
+left every Unicode 16 and 17 case pair unmapped.
 """
 
 from __future__ import annotations
@@ -36,33 +40,31 @@ from pyvider.cty._unicode._case_tables import SIMPLE_LOWER, SIMPLE_TITLE, SIMPLE
 __all__ = ["simple_lower", "simple_title_char", "simple_upper"]
 
 
-def _mapped(text: str, exceptions: dict[int, int], method: str) -> str:
+def _mapped(text: str, table: dict[int, int]) -> str:
     """`text` with every character mapped one code point at a time.
 
     Per character rather than per string on purpose, twice over: it is what
-    `strings.Map` does, and it is what takes the final-sigma rule out of play,
-    since Python only applies that rule when it can see a following character.
+    `strings.Map` does, and it leaves no room for a context-sensitive rule such
+    as final sigma. A character absent from the table maps to itself.
     """
-    return "".join(
-        chr(mapped) if (mapped := exceptions.get(ord(character))) is not None else getattr(character, method)()
-        for character in text
-    )
+    return "".join(chr(table.get(codepoint, codepoint)) for codepoint in map(ord, text))
 
 
 def simple_upper(text: str, /) -> str:
     """go-cty's `strings.ToUpper`: simple uppercase, one rune at a time."""
     if text.isascii():
-        # No ASCII code point has a special casing, so Python's own answer is
-        # already the simple one -- and this is the overwhelmingly common input.
+        # ASCII case mapping is the same at every Unicode version and has no
+        # special casing, so Python's answer is Go's -- and this is the
+        # overwhelmingly common input.
         return text.upper()
-    return _mapped(text, SIMPLE_UPPER, "upper")
+    return _mapped(text, SIMPLE_UPPER)
 
 
 def simple_lower(text: str, /) -> str:
     """go-cty's `strings.ToLower`: simple lowercase, one rune at a time."""
     if text.isascii():
         return text.lower()
-    return _mapped(text, SIMPLE_LOWER, "lower")
+    return _mapped(text, SIMPLE_LOWER)
 
 
 def simple_title_char(character: str, /) -> str:
@@ -73,8 +75,8 @@ def simple_title_char(character: str, /) -> str:
     character of each word and leaves the rest exactly as they were, which is
     why `title("HELLO world")` is `"HELLO World"` and not `"Hello World"`.
     """
-    mapped = SIMPLE_TITLE.get(ord(character))
-    return chr(mapped) if mapped is not None else character.title()
+    codepoint = ord(character)
+    return chr(SIMPLE_TITLE.get(codepoint, codepoint))
 
 
 # 🌊🪢🔚
