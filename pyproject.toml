@@ -185,7 +185,7 @@ warn_unused_configs = true
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
-module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*", "uniseg", "uniseg.*"]
+module = ["structlog.*", "google.*", "grpc.*", "pytest.*", "opentelemetry.*"]
 ignore_missing_imports = true
 
 # provide-foundry ships no py.typed marker. Surfaced by mypy 2.3, which reports

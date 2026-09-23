@@ -17,8 +17,9 @@ implementation rather than four loops that each guess.
 Ported from `uniseg`'s `graphemecluster.py` (MIT, see LICENSES/MIT.txt): the
 rules and their ordering are its, restructured from its generic `Run` lookaround
 framework into a single forward pass, since only the grapheme algorithm is
-needed and none of the tailoring is. Verified against `uniseg` itself over an
-exhaustive corpus, and against go-cty through the oracle.
+needed and none of the tailoring is. Verified against every case in Unicode's
+own `GraphemeBreakTest.txt` for 17.0.0 (vendored under `tests/unicode/data/`),
+and against go-cty built with Go 1.27 through the differential oracle.
 
 Rule numbers below are UAX#29's (revision 47, Unicode 17.0.0).
 """
