@@ -56,7 +56,7 @@ SNIPPET = textwrap.dedent(
 def test_passing_optional_attributes_type_checks(tmp_path) -> None:
     """No `expected "Iterable[_T_co]"`, on any of the shapes."""
     module = tmp_path / "optionals.py"
-    module.write_text(SNIPPET)
+    module.write_text(SNIPPET, encoding="utf-8")
     cache = tmp_path / ".mypy_cache"
 
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell

@@ -222,7 +222,7 @@ def main() -> int:
         index1=pack(index1),
         index2=pack(index2),
     )
-    OUTPUT.write_text(source)
+    OUTPUT.write_text(source, encoding="utf-8")
     subprocess.run([sys.executable, "-m", "ruff", "format", str(OUTPUT)], check=False, capture_output=True)
     print(
         f"wrote {OUTPUT.relative_to(Path.cwd())}: Unicode {unidata_version}, "

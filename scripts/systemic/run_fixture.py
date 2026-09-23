@@ -98,7 +98,7 @@ def main() -> int:
     tf = terraform()
     clean()
     (FIXTURE / ".venv").symlink_to(VENV)
-    (FIXTURE / "VERSION").write_text(f"{PROVIDER_VERSION}\n")
+    (FIXTURE / "VERSION").write_text(f"{PROVIDER_VERSION}\n", encoding="utf-8")
 
     try:
         run(str(VENV / "bin" / "pyvider"), "install", "--reinstall")

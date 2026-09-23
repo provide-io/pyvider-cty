@@ -184,7 +184,7 @@ def tests_pass() -> bool:
 
 def check_file(target: str, rng: random.Random) -> list[tuple[str, int, str]]:
     path = Path(target)
-    original = path.read_text()
+    original = path.read_text(encoding="utf-8")
     collector = Collect()
     collector.visit(ast.parse(original))
     total = len(collector.sites)
@@ -208,11 +208,11 @@ def check_file(target: str, rng: random.Random) -> list[tuple[str, int, str]]:
             compile(source, target, "exec")
         except (SyntaxError, ValueError, AssertionError):
             continue
-        path.write_text(source)
+        path.write_text(source, encoding="utf-8")
         try:
             survived = tests_pass()
         finally:
-            path.write_text(original)
+            path.write_text(original, encoding="utf-8")
         if survived:
             survivors.append((target, line, site.kind))
             print(f"  SURVIVED {target}:{line} [{site.kind}]", flush=True)
