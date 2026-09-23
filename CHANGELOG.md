@@ -5,6 +5,25 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-09-22
+
+### Changed
+
+- **Grapheme clusters follow Unicode 17.0.0, as OpenTofu 1.13 does.** The
+  segmenter behind `strlen`, `substr`, `strrev` and `format`'s width and
+  precision read Unicode 16.0.0 tables. OpenTofu 1.13 is built with Go 1.27, at
+  which go-cty v1.19.0 selects `go-textseg` v17, so it segments by Unicode 17.0.0;
+  the tables are now generated from that version of the Unicode Character
+  Database and pass every case in its `GraphemeBreakTest.txt`. `uniseg`, the
+  previous generation-time source, has no Unicode 17 release, so
+  `scripts/generate_grapheme_tables.py` now reads the three UCD files directly;
+  pointed at 16.0.0 it reproduces the previous table exactly. The go-cty
+  differential suite now builds its oracle with Go 1.27, and the four GB9c
+  `क्ष` cases that were strict xfails against the Go 1.26 (Unicode 15.0)
+  oracle now agree and are no longer listed as divergences. Case mapping
+  (`upper`, `lower`, `title`) is unchanged and still follows Unicode 15.0.0.
+  (#58)
+
 ## [0.6.2] - 2026-09-22
 
 ### Fixed

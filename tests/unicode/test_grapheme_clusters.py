@@ -24,7 +24,7 @@ from pyvider.cty._unicode._grapheme_tables import UNICODE_VERSION
 # than read, so regenerating against a newer UCD fails here and forces a
 # deliberate decision -- the drift is otherwise invisible, and it changes
 # answers: GB9c arrived in 15.1 and made `क्ष` one character instead of two.
-EXPECTED_UNICODE_VERSION = "16.0.0"
+EXPECTED_UNICODE_VERSION = "17.0.0"
 
 
 def test_the_table_version_is_the_one_we_think_it_is() -> None:

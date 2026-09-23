@@ -25,9 +25,10 @@ the infinities -- which both models hold exactly -- are in.
 Three more exclusions, each one a divergence that is recorded elsewhere:
 
   * **The Indic conjunct.** `क्ष` is one grapheme cluster under Unicode 15.1 and
-    later and two under 15.0, which is what the oracle's `go-textseg` build has.
-    Four sweep rows pin it; generating it would re-report it on every string
-    function that counts clusters.
+    later and two under 15.0, which is what go-cty answers when built with a Go
+    older than 1.27. Four sweep rows pin it against the oracle; generating it
+    would re-report it on every string function that counts clusters whenever
+    the harness is built with an older toolchain.
   * **NaN.** Both codecs refuse it now, so a function answering one would raise
     out of the comparison rather than diverge from go-cty. `test_non_finite_numbers`
     holds that boundary.

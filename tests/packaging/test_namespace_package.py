@@ -31,7 +31,7 @@ ROOT_INITIALIZER = "pyvider/__init__.py"
 ROOT_TYPING_MARKER = "pyvider/py.typed"
 CTY_INITIALIZER = "pyvider/cty/__init__.py"
 CTY_TYPING_MARKER = "pyvider/cty/py.typed"
-RELEASE_VERSION = "0.6.2"
+RELEASE_VERSION = "0.6.3"
 PUBLISHED_CTY_061_FILENAME = "pyvider_cty-0.6.1-py3-none-any.whl"
 PUBLISHED_CTY_061_URL = (
     "https://files.pythonhosted.org/packages/38/9f/"

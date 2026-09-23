@@ -20,7 +20,7 @@ framework into a single forward pass, since only the grapheme algorithm is
 needed and none of the tailoring is. Verified against `uniseg` itself over an
 exhaustive corpus, and against go-cty through the oracle.
 
-Rule numbers below are UAX#29's (revision 45, Unicode 16.0.0).
+Rule numbers below are UAX#29's (revision 47, Unicode 17.0.0).
 """
 
 from __future__ import annotations

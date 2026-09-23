@@ -6,18 +6,19 @@
 
 """Regenerate `pyvider.cty._unicode._grapheme_tables`.
 
-The canonical source is the Unicode Character Database -- specifically
-`Grapheme_Cluster_Break` from `auxiliary/GraphemeBreakProperty.txt`, `InCB` from
-`DerivedCoreProperties.txt`, and `Extended_Pictographic` from `emoji-data.txt`.
-This script reads them via `uniseg`, which mirrors exactly those files and is
-verified against them upstream, because parsing three UCD files correctly is
-more code than reading one already-parsed table.
+The source is the Unicode Character Database itself -- `Grapheme_Cluster_Break`
+from `auxiliary/GraphemeBreakProperty.txt`, `InCB` from
+`DerivedCoreProperties.txt`, and `Extended_Pictographic` from
+`emoji/emoji-data.txt` -- fetched from unicode.org for `UNICODE_VERSION` below.
 
-`uniseg` is a **generation-time** dependency only. It is not installed at
-runtime and nothing in `src/` imports it -- see `_grapheme_tables.py` for why
-the table is vendored rather than the package depended on.
+Up to Unicode 16.0.0 this read the same three properties out of `uniseg`, which
+mirrors those files. `uniseg` has no Unicode 17 release, and following OpenTofu
+1.13 (Go 1.27, `go-textseg` v17) means Unicode 17, so the files are now read
+directly. The direct reader was checked against the `uniseg`-derived 16.0.0
+table before being pointed at 17.0.0: at `UNICODE_VERSION = "16.0.0"` it emits
+a table equal to that one at every one of the 1,114,112 code points.
 
-    uv run --with uniseg scripts/generate_grapheme_tables.py
+    ./scripts/generate_grapheme_tables.py
 
 The emitted table is checked in. Regenerate it when adopting a new Unicode
 version, and expect the drift test in `tests/unicode/` to fail until its
@@ -30,13 +31,24 @@ import base64
 from pathlib import Path
 import subprocess  # nosec B404 - fixed argv, no shell, formatting our own output
 import sys
+import urllib.request
 import zlib
 
-# Only these three of the thirty properties in uniseg's table are needed to
-# implement UAX#29 grapheme clustering. Reprojecting onto them collapses 251
-# distinct rows to 18, which is what makes the emitted table 4 KB rather than
-# the 161 KB the full one occupies.
-NEEDED = ("Grapheme_Cluster_Break", "InCB", "Extended_Pictographic")
+UNICODE_VERSION = "17.0.0"
+"""The UCD version to generate from. Change this, rerun, and update the test."""
+
+UCD_BASE_URL = "https://www.unicode.org/Public/{version}/ucd/"
+"""Where the UCD files for a given version are published."""
+
+UCD_FILES = {
+    "Grapheme_Cluster_Break": "auxiliary/GraphemeBreakProperty.txt",
+    "InCB": "DerivedCoreProperties.txt",
+    "Extended_Pictographic": "emoji/emoji-data.txt",
+}
+
+# Only these three properties are needed to implement UAX#29 grapheme
+# clustering. Keeping only them collapses the table to under twenty distinct
+# rows, which is what makes the emitted table 4 KB.
 
 GCB_NAMES = (
     "Other",
@@ -59,8 +71,8 @@ INCB_NAMES = ("None", "Consonant", "Extend", "Linker")
 OUTPUT = Path(__file__).resolve().parent.parent / "src/pyvider/cty/_unicode/_grapheme_tables.py"
 
 HEADER = '''#
-# SPDX-FileCopyrightText: Copyright (c) 2013-2024 Masaaki Shibata
-# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Copyright (c) 1991-2025 Unicode, Inc.
+# SPDX-License-Identifier: Unicode-3.0
 #
 
 """Unicode {version} character properties for grapheme cluster breaking.
@@ -68,16 +80,13 @@ HEADER = '''#
 GENERATED FILE -- do not edit. Regenerate with
 `scripts/generate_grapheme_tables.py`.
 
-Derived from `uniseg` (https://bitbucket.org/emptypage/uniseg-py), MIT licensed,
-by reprojecting its thirty-column property table onto the three columns UAX#29
-grapheme clustering needs. The values are the Unicode Character Database's, so
-this table says what the UCD says; the copyright above covers the derivation.
+Derived from the Unicode Character Database (see LICENSES/Unicode-3.0.txt):
+`Grapheme_Cluster_Break`, `InCB` and `Extended_Pictographic`, the three
+properties UAX#29 grapheme clustering needs, packed into a two-stage lookup.
+The values are the UCD's, so this table says what the UCD says.
 
-Vendored rather than depended upon because `uniseg`'s wheel is 8 MB, of which
-10.2 MB uncompressed is bundled Sphinx documentation and webfonts -- for 262 KB
-of code, of which this package uses two modules. The reprojected table below is
-4 KB and has been verified equal to `uniseg`'s at every one of the 1,114,112
-code points.
+Vendored rather than read at runtime so that nothing here needs the UCD files
+or a network. Python's `unicodedata` exposes none of these three properties.
 """
 
 from __future__ import annotations
@@ -89,9 +98,10 @@ UNICODE_VERSION = "{version}"
 """The UCD version these tables were generated from.
 
 go-cty does not pin its own: `cty/internal/graphemes` selects `go-textseg` v15
-or v17 by Go toolchain version, so its Unicode version follows whichever
-compiler built the binary. Exact agreement is therefore not available in either
-direction; what is available is knowing our version, which is what this is for.
+(Unicode 15.0) below Go 1.27 and v17 (Unicode 17.0) at or above it, so its
+Unicode version follows whichever compiler built the binary. OpenTofu 1.13 is
+built with Go 1.27, so this follows v17; a go-cty built with an older Go still
+answers from 15.0.
 """
 
 SHIFT = {shift}
@@ -120,27 +130,54 @@ def properties(codepoint: int, /) -> tuple[int, int, bool]:
 '''
 
 
-def main() -> int:
-    try:
-        from uniseg import (
-            db_lookups,
-            unidata_version,
-        )
-    except ImportError:
-        print("uniseg is required to generate. Run: uv run --with uniseg " + __file__)
-        return 1
+def _read_property(name: str) -> dict[int, str]:
+    """Code point -> value for one UCD property, from its published file.
 
-    columns = [db_lookups.columns.index(name) for name in NEEDED]
-    span = len(db_lookups.index1) << db_lookups.shift
+    Lines are `START[..END] ; VALUE # comment`, except in
+    `DerivedCoreProperties.txt`, where the enumerated `InCB` property is
+    `START[..END] ; InCB; VALUE # comment` among many binary properties. A binary
+    property's value is its own name.
+    """
+    url = UCD_BASE_URL.format(version=UNICODE_VERSION) + UCD_FILES[name]
+    with urllib.request.urlopen(url) as response:  # nosec B310 - fixed https URL
+        text = response.read().decode("utf-8")
+    # `emoji-data.txt` names only the major.minor (`# Version: 17.0`), the others
+    # the full version in their file name; both contain the major.minor.
+    major_minor = ".".join(UNICODE_VERSION.split(".")[:2])
+    if not any(major_minor in line for line in text.splitlines()[:10]):
+        raise SystemExit(f"{url} does not declare itself as Unicode {major_minor}")
+    values: dict[int, str] = {}
+    for line in text.splitlines():
+        data = line.split("#", 1)[0].strip()
+        if not data:
+            continue
+        fields = [field.strip() for field in data.split(";")]
+        if name == "InCB":
+            if fields[1] != "InCB":
+                continue
+            value = fields[2]
+        elif fields[1] != name and name != "Grapheme_Cluster_Break":
+            continue
+        else:
+            value = fields[1]
+        first, _, last = fields[0].partition("..")
+        for codepoint in range(int(first, 16), int(last or first, 16) + 1):
+            values[codepoint] = value
+    if not values:
+        raise SystemExit(f"{url} yielded no {name} values")
+    return values
+
+
+def main() -> int:
+    unidata_version = UNICODE_VERSION
+    gcb, incb, pictographic = (_read_property(name) for name in UCD_FILES)
+    span = 0x110000
 
     def source_row(codepoint: int) -> tuple[int, int, bool]:
-        block = db_lookups.index1[codepoint >> db_lookups.shift]
-        offset = (block << db_lookups.shift) + (codepoint & ((1 << db_lookups.shift) - 1))
-        raw = db_lookups.values[db_lookups.index2[offset]]
         return (
-            GCB_NAMES.index(raw[columns[0]] or "Other"),
-            INCB_NAMES.index(raw[columns[1]] or "None"),
-            raw[columns[2]] == "Y",
+            GCB_NAMES.index(gcb.get(codepoint, "Other")),
+            INCB_NAMES.index(incb.get(codepoint, "None")),
+            codepoint in pictographic,
         )
 
     flat = [source_row(codepoint) for codepoint in range(span)]
@@ -149,7 +186,7 @@ def main() -> int:
 
     # Pick the shift that minimises index1 + index2 together. Larger blocks mean
     # a shorter index1 but less deduplication in index2, and the optimum is not
-    # the same as uniseg's because reprojection changed how repetitive the data is.
+    # the same for every Unicode version.
     best: tuple[int, int, list[int], dict[tuple[int, ...], int]] | None = None
     for shift in range(4, 13):
         width = 1 << shift

@@ -64,7 +64,7 @@ def _marked_case_id(func: str, args: list[Arg]) -> str:
 KNOWN_MARK_DIVERGENCES: dict[str, str] = {
     # A row that diverges on its known values diverges identically with one of
     # them marked -- unlike the unknown population, marking does not replace
-    # the value that carries the divergence. Inherited so the six GB9c and
+    # the value that carries the divergence. Inherited so the
     # numeric-precision rows stay owned by the sweep's registry, not this one.
     **{
         _marked_case_id(func, args): KNOWN_DIVERGENCES[base_id]
