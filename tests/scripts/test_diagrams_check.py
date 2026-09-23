@@ -79,7 +79,10 @@ def test_a_copy_of_the_committed_diagrams_passes(diagrams: Path) -> None:
 
 def test_an_edited_source_is_stale(diagrams: Path) -> None:
     source = diagrams / "02-value-model.puml"
-    source.write_text(source.read_text().replace("@enduml", "note as N\n  changed\nend note\n@enduml"))
+    source.write_text(
+        source.read_text(encoding="utf-8").replace("@enduml", "note as N\n  changed\nend note\n@enduml"),
+        encoding="utf-8",
+    )
 
     assert render_diagrams.stale_diagrams(sorted(diagrams.glob("*.puml"))) == ["02-value-model.puml"]
     assert _check(diagrams) == 1
@@ -102,7 +105,10 @@ def test_an_svg_without_an_embedded_source_is_stale(diagrams: Path) -> None:
 
 def test_a_theme_changed_since_the_last_render_is_stale(diagrams: Path) -> None:
     theme = diagrams / "_theme.iuml"
-    theme.write_text(theme.read_text() + "\n' a comment is still a change nobody rendered\n")
+    theme.write_text(
+        theme.read_text(encoding="utf-8") + "\n' a comment is still a change nobody rendered\n",
+        encoding="utf-8",
+    )
 
     assert render_diagrams.theme_is_stale(theme, diagrams / "_theme.sha256")
     assert _check(diagrams) == 1
@@ -133,9 +139,9 @@ def test_rendering_records_the_theme_it_rendered_with(diagrams: Path) -> None:
     """A theme change is resolved by rendering, not by editing the stamp by hand."""
     theme = diagrams / "_theme.iuml"
     stamp = diagrams / "_theme.sha256"
-    theme.write_text(theme.read_text() + "\n' changed\n")
+    theme.write_text(theme.read_text(encoding="utf-8") + "\n' changed\n", encoding="utf-8")
 
     render_diagrams.record_theme(theme, stamp)
 
     assert not render_diagrams.theme_is_stale(theme, stamp)
-    assert stamp.read_text().endswith("\n")
+    assert stamp.read_text(encoding="utf-8").endswith("\n")

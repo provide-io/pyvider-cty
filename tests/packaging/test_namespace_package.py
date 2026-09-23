@@ -171,7 +171,7 @@ def _candidate(built_artifacts: BuiltArtifacts, name: str) -> Path:
 
 
 def _record_paths(record: Path) -> set[str]:
-    with record.open(newline="") as rows:
+    with record.open(newline="", encoding="utf-8") as rows:
         return {row[0] for row in csv.reader(rows)}
 
 
@@ -292,7 +292,9 @@ def _installed_versions(python: Path, cwd: Path) -> dict[str, str]:
 
 
 def test_release_notes_explain_single_ownership_and_migration() -> None:
-    release_notes = (REPOSITORY / "CHANGELOG.md").read_text().split("## [0.6.1]", maxsplit=1)[0]
+    release_notes = (
+        (REPOSITORY / "CHANGELOG.md").read_text(encoding="utf-8").split("## [0.6.1]", maxsplit=1)[0]
+    )
 
     assert "stops owning" in release_notes
     assert "`pyvider/__init__.py`" in release_notes
